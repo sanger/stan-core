@@ -34,11 +34,11 @@ jobs:
   
     # Rename the jar
     - name: Rename the jar
-      run: mv target/stan-*.jar target/stan-${{ github.ref }}.jar
+      run: mv target/stan-*.jar target/stan-core.jar
       
     # Create a new Github Release with the new jar.
     - uses: ncipollo/release-action@v1
       name: Create Github Release
       with:
-        artifacts: "target/*.jar"
+        artifacts: "target/stan-core.jar"
         token: ${{ secrets.GITHUB_TOKEN }}
