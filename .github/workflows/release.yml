@@ -31,6 +31,10 @@ jobs:
     # Create the jar
     - name: Package
       run: mvn package
+  
+    # Rename the jar
+    - name: Rename the jar
+      run: mv target/stan-*.jar target/stan-${{ github.ref }}.jar
       
     # Create a new Github Release with the new jar.
     - uses: ncipollo/release-action@v1
