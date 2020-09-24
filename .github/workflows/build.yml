@@ -31,5 +31,4 @@ jobs:
     - name: Upload the artifact
       uses: actions/upload-artifact@v2.1.4
       with:
-        name: stan-core.jar
         path: target/*.jar
