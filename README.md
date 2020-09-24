@@ -5,4 +5,5 @@
 ### TODO ###
 
 * [x] ~~Set up CI~~
+* [ ] Build workflow
 * [ ] Finish README
