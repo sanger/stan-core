@@ -1,13 +1,12 @@
 # This workflow will build a Java project with Maven
 # For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
 
-name: Build and release
+name: Build
 
-# Controls when the action will run. Triggers the workflow on tag pushes.
+# Controls when the action will run. Triggers the workflow on pushes into rc branch.
 on:
   push:
-    tags:
-      - "*"
+    branches: "rc"
 
 jobs:
   build:
@@ -27,18 +26,10 @@ jobs:
     # Build with Maven
     - name: Build with Maven
       run: mvn -B package --file pom.xml
-    
-    # Create the jar
-    - name: Package
-      run: mvn package
   
-    # Rename the jar
-    - name: Rename the jar
-      run: mv target/stan-*.jar target/stan-core.jar
-      
-    # Create a new Github Release with the new jar.
-    - uses: ncipollo/release-action@v1
-      name: Create Github Release
+    # Upload the artifact
+    - name: Upload the artifact
+      uses: actions/upload-artifact@v2.1.4
       with:
-        artifacts: "target/stan-core.jar"
-        token: ${{ secrets.GITHUB_TOKEN }}
+        name: stan-core.jar
+        path: target/*.jar
