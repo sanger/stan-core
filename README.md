@@ -5,4 +5,5 @@
 ### TODO ###
 
 * [x] ~~Set up CI~~
+* [x] Finish deployment
 * [ ] Finish README
