@@ -4,7 +4,4 @@
 
 ### TODO ###
 
-* [x] ~~Set up CI~~
-* [x] Finish deployment
-* [x] Build workflow
 * [ ] Finish README
