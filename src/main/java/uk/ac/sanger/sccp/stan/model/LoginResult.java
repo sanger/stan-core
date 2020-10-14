@@ -7,13 +7,13 @@ import com.google.common.base.MoreObjects;
  */
 public class LoginResult {
     private String message;
-    private String cookie;
+    private User user;
 
     public LoginResult() {}
 
-    public LoginResult(String message, String cookie) {
+    public LoginResult(String message, User user) {
         this.message = message;
-        this.cookie = cookie;
+        this.user = user;
     }
 
     public String getMessage() {
@@ -24,19 +24,19 @@ public class LoginResult {
         this.message = message;
     }
 
-    public String getCookie() {
-        return this.cookie;
+    public User getUser() {
+        return this.user;
     }
 
-    public void setCookie(String cookie) {
-        this.cookie = cookie;
+    public void setUser(User user) {
+        this.user = user;
     }
 
     @Override
     public String toString() {
         return MoreObjects.toStringHelper(this)
                 .add("message", message)
-                .add("cookie", cookie)
+                .add("user", user)
                 .toString();
     }
 }

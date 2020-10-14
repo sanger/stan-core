@@ -4,6 +4,7 @@ import graphql.schema.DataFetcher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import uk.ac.sanger.sccp.stan.model.LoginResult;
+import uk.ac.sanger.sccp.stan.model.User;
 import uk.ac.sanger.sccp.stan.service.LDAPService;
 
 /**
@@ -23,7 +24,7 @@ public class GraphQLDataFetchers {
             String username = dataFetchingEnvironment.getArgument("username");
             String password = dataFetchingEnvironment.getArgument("password");
             if (ldapService.verifyCredentials(username, password)) {
-                return new LoginResult("OK", "1");
+                return new LoginResult("OK", new User(username.toLowerCase()));
             }
             return new LoginResult("Login failed", null);
         };

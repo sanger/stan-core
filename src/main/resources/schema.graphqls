@@ -17,9 +17,13 @@
 #    print(printRequest: PrintRequest!, printer: String!, printerType: String): PrintResult
 #}
 
+type User {
+    username: String!,
+}
+
 type LoginResult {
     message: String,
-    cookie: String,
+    user: User,
 }
 
 type Query {
