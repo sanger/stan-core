@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import uk.ac.sanger.sccp.stan.config.LDAPConfig;
 
 import java.util.Hashtable;
 import javax.naming.Context;
@@ -27,16 +28,16 @@ public class LDAPService {
     }
 
     public boolean verifyCredentials(String username, String password) {
-        String bypassPassword = ldapConfig.bypassPassword;
+        String bypassPassword = ldapConfig.getBypassPassword();
         if (bypassPassword!=null && !bypassPassword.isEmpty() && bypassPassword.equals(password)) {
             log.info("Bypass password for username: "+username);
             return true;
         }
         Hashtable<String, String> environment = new Hashtable<>(5);
-        environment.put(Context.INITIAL_CONTEXT_FACTORY, ldapConfig.contextFactory);
-        environment.put(Context.PROVIDER_URL, ldapConfig.providerUrl);
-        environment.put(Context.SECURITY_AUTHENTICATION, ldapConfig.securityAuthentication);
-        environment.put(Context.SECURITY_PRINCIPAL, String.format(ldapConfig.securityPrincipalFormat, username));
+        environment.put(Context.INITIAL_CONTEXT_FACTORY, ldapConfig.getContextFactory());
+        environment.put(Context.PROVIDER_URL, ldapConfig.getProviderUrl());
+        environment.put(Context.SECURITY_AUTHENTICATION, ldapConfig.getSecurityAuthentication());
+        environment.put(Context.SECURITY_PRINCIPAL, ldapConfig.getUserDnPatterns().replace("{0}", username));
         environment.put(Context.SECURITY_CREDENTIALS, password);
         try {
             DirContext context = new InitialDirContext(environment);

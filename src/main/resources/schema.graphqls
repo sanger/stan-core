@@ -27,9 +27,10 @@ type LoginResult {
 }
 
 type Query {
-
+    user: User,
 }
 
 type Mutation {
-    login(username: String!, password: String!): LoginResult!
+    login(username: String!, password: String!): LoginResult!,
+    logout: String,
 }

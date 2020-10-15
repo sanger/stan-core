@@ -54,13 +54,13 @@ public class GraphQLProvider {
 
     private RuntimeWiring buildWiring() {
         return RuntimeWiring.newRuntimeWiring()
-//                .type(newTypeWiring("Query")
-//                        .dataFetcher("printers", graphQLDataFetchers.getPrinters())
-//                        .dataFetcher("printerTypes", graphQLDataFetchers.getPrinterTypes())
-//                        .dataFetcher("printStatus", graphQLDataFetchers.getPrintStatus())
-//                        .dataFetcher("labelTypes", graphQLDataFetchers.getLabelTypes()))
+                .type(newTypeWiring("Query")
+                        .dataFetcher("user", graphQLDataFetchers.getUser())
+                )
                 .type(newTypeWiring("Mutation")
-                        .dataFetcher("login", graphQLDataFetchers.login()))
+                        .dataFetcher("login", graphQLDataFetchers.logIn())
+                        .dataFetcher("logout", graphQLDataFetchers.logOut())
+                )
                 .build();
     }
 }
