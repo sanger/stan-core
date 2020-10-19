@@ -8,12 +8,14 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import uk.ac.sanger.sccp.stan.config.SessionConfig;
 import uk.ac.sanger.sccp.stan.model.LoginResult;
 import uk.ac.sanger.sccp.stan.model.User;
 import uk.ac.sanger.sccp.stan.service.LDAPService;
 
 import java.util.ArrayList;
-import java.util.Optional;
 
 /**
  * @author dr6
@@ -21,10 +23,12 @@ import java.util.Optional;
 @Component
 public class GraphQLDataFetchers {
     final LDAPService ldapService;
+    final SessionConfig sessionConfig;
 
     @Autowired
-    public GraphQLDataFetchers(LDAPService ldapService) {
+    public GraphQLDataFetchers(LDAPService ldapService, SessionConfig sessionConfig) {
         this.ldapService = ldapService;
+        this.sessionConfig = sessionConfig;
     }
 
     public DataFetcher<LoginResult> logIn() {
@@ -36,6 +40,8 @@ public class GraphQLDataFetchers {
             }
             Authentication authentication = new UsernamePasswordAuthenticationToken(username, password, new ArrayList<>());
             SecurityContextHolder.getContext().setAuthentication(authentication);
+            ServletRequestAttributes attr = (ServletRequestAttributes) RequestContextHolder.currentRequestAttributes();
+            attr.getRequest().getSession().setMaxInactiveInterval(60 * this.sessionConfig.getMaxInactiveMinutes());
             return new LoginResult("OK", new User(username.toLowerCase()));
         };
     }
