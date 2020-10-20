@@ -13,9 +13,11 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import uk.ac.sanger.sccp.stan.config.SessionConfig;
 import uk.ac.sanger.sccp.stan.model.LoginResult;
 import uk.ac.sanger.sccp.stan.model.User;
+import uk.ac.sanger.sccp.stan.repo.UserRepo;
 import uk.ac.sanger.sccp.stan.service.LDAPService;
 
 import java.util.ArrayList;
+import java.util.Optional;
 
 /**
  * @author dr6
@@ -24,16 +26,22 @@ import java.util.ArrayList;
 public class GraphQLDataFetchers {
     final LDAPService ldapService;
     final SessionConfig sessionConfig;
+    final UserRepo userRepo;
 
     @Autowired
-    public GraphQLDataFetchers(LDAPService ldapService, SessionConfig sessionConfig) {
+    public GraphQLDataFetchers(LDAPService ldapService, SessionConfig sessionConfig, UserRepo userRepo) {
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
+        this.userRepo = userRepo;
     }
 
     public DataFetcher<LoginResult> logIn() {
         return dataFetchingEnvironment -> {
             String username = dataFetchingEnvironment.getArgument("username");
+            Optional<User> optUser = userRepo.findByUsername(username);
+            if (optUser.isEmpty()) {
+                return new LoginResult("Username not in database.", null);
+            }
             String password = dataFetchingEnvironment.getArgument("password");
             if (!ldapService.verifyCredentials(username, password)) {
                 return new LoginResult("Login failed", null);
@@ -42,7 +50,7 @@ public class GraphQLDataFetchers {
             SecurityContextHolder.getContext().setAuthentication(authentication);
             ServletRequestAttributes attr = (ServletRequestAttributes) RequestContextHolder.currentRequestAttributes();
             attr.getRequest().getSession().setMaxInactiveInterval(60 * this.sessionConfig.getMaxInactiveMinutes());
-            return new LoginResult("OK", new User(username.toLowerCase()));
+            return new LoginResult("OK", optUser.get());
         };
     }
 
