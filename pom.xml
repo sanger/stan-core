@@ -103,7 +103,6 @@
 		<dependency>
 			<groupId>org.springframework.security</groupId>
 			<artifactId>spring-security-config</artifactId>
-			<version>3.2.5.RELEASE</version>
 		</dependency>
 
 		<dependency>
@@ -117,10 +116,6 @@
 		<dependency>
 			<groupId>org.springframework.security</groupId>
 			<artifactId>spring-security-ldap</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>com.unboundid</groupId>
-			<artifactId>unboundid-ldapsdk</artifactId>
 		</dependency>
 
 		<dependency>
