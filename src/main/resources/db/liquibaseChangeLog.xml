@@ -1,0 +1,26 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:pro="http://www.liquibase.org/xml/ns/pro" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd http://www.liquibase.org/xml/ns/pro http://www.liquibase.org/xml/ns/pro/liquibase-pro-4.1.xsd http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+    <changeSet author="dr6" id="1">
+        <createTable tableName="user">
+            <column autoIncrement="true" name="id" type="INT">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="username" type="VARCHAR(32)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column defaultValueComputed="CURRENT_TIMESTAMP" name="created" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <sql splitStatements="false">
+            ALTER TABLE user
+            ADD COLUMN updated TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        </sql>
+    </changeSet>
+
+    <changeSet author="dr6" id="2">
+        <loadData tableName="user" file="db/users.csv">
+            <column name="username" header="username" type="string"/>
+        </loadData>
+    </changeSet>
+</databaseChangeLog>

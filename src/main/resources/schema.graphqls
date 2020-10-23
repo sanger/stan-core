@@ -1,0 +1,36 @@
+## Required Types
+#type Query {
+#    # Get the list of printers, optionally filtered by label type
+#    printers(labelType: String): [Printer!]!
+#    # Get the list of printer types
+#    printerTypes: [PrinterType!]!
+#    # Get the status of a print job
+#    printStatus(jobId: String!): PrintStatus!
+#    # Get the list of label types
+#    labelTypes: [LabelType!]!
+#}
+#
+## Mutations
+#type Mutation {
+#    # Print some labels.
+#    # If the printer is not in config, the printerType must be specified
+#    print(printRequest: PrintRequest!, printer: String!, printerType: String): PrintResult
+#}
+
+type User {
+    username: String!,
+}
+
+type LoginResult {
+    message: String,
+    user: User,
+}
+
+type Query {
+    user: User,
+}
+
+type Mutation {
+    login(username: String!, password: String!): LoginResult!,
+    logout: String,
+}
