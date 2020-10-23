@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # Checkout the repo
+    # Checkout the repo
     - uses: actions/checkout@v2
     
     - name: Set up Java 11
@@ -23,7 +23,7 @@ jobs:
         java-version: 11
         
     - name: Build with Maven
-      run: mvn -B package --file pom.xml
+      run: mvn -B package -Dmaven.test.skip=true --file pom.xml
     
     - name: Rename the build
       run: mv target/*.jar target/stan.jar
