@@ -8,14 +8,13 @@
             <column name="username" type="VARCHAR(32)">
                 <constraints nullable="false" unique="true"/>
             </column>
-            <column defaultValueComputed="CURRENT_TIMESTAMP" name="created" type="timestamp">
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP">
                 <constraints nullable="false"/>
             </column>
         </createTable>
-        <sql splitStatements="false">
-            ALTER TABLE user
-            ADD COLUMN updated TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-        </sql>
     </changeSet>
 
     <changeSet author="dr6" id="2">
@@ -23,4 +22,400 @@
             <column name="username" header="username" type="string"/>
         </loadData>
     </changeSet>
+
+    <changeSet id="3" author="dr6">
+        <createTable tableName="medium">
+            <column name="id" type="INT">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="name" type="VARCHAR(64)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="4" author="dr6">
+        <createTable tableName="mould_size">
+            <column name="id" type="INT">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="name" type="VARCHAR(64)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="5" author="dr6">
+        <createTable tableName="tissue_type">
+            <column name="id" type="INT">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="name" type="VARCHAR(64)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="code" type="VARCHAR(8)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="6" author="dr6">
+        <createTable tableName="hmdmc">
+            <column name="id" type="INT">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="hmdmc" type="VARCHAR(16)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="7" author="dr6">
+        <createTable tableName="label_type">
+            <column name="id" type="INT">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="name" type="VARCHAR(64)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="8" author="dr6">
+        <createTable tableName="operation_type">
+            <column name="id" type="INT">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="name" type="VARCHAR(64)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="9" author="dr6">
+        <createTable tableName="spatial_location">
+            <column name="id" type="INT">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="tissue_type_id" type="INT">
+                <constraints nullable="false" foreignKeyName="spatial_location_fk_tissue_type" referencedTableName="tissue_type" referencedColumnNames="id"/>
+            </column>
+            <column name="name" type="VARCHAR(64)">
+                <constraints nullable="false" unique="false"/>
+            </column>
+            <column name="code" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="spatial_location" indexName="spatial_location_key_tissue_type_code" unique="true">
+            <column name="tissue_type_id"/>
+            <column name="code"/>
+        </createIndex>
+        <rollback>
+            <dropAllForeignKeyConstraints baseTableName="spatial_location"/>
+            <dropTable tableName="spatial_location"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="10" author="dr6">
+        <createTable tableName="labware_type">
+            <column name="id" type="INT">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="name" type="VARCHAR(64)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="num_rows" type="INT" defaultValue="1">
+                <constraints nullable="false"/>
+            </column>
+            <column name="num_columns" type="INT" defaultValue="1">
+                <constraints nullable="false"/>
+            </column>
+            <column name="label_type_id" type="INT">
+                <constraints nullable="true" foreignKeyName="labware_type_fk_label_type" referencedTableName="label_type" referencedColumnNames="id"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="11" author="dr6">
+        <createTable tableName="donor">
+            <column name="id" type="INT">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="donor_name" type="VARCHAR(64)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="life_stage" type="ENUM('adult', 'paediatric', 'fetal')">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="12" author="dr6">
+        <createTable tableName="tissue">
+            <column name="id" type="INT">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="external_name" type="VARCHAR(64)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="replicate" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="medium_id" type="INT">
+                <constraints nullable="true" foreignKeyName="tissue_fk_medium" referencedTableName="medium" referencedColumnNames="id"/>
+            </column>
+            <column name="mould_size_id" type="INT">
+                <constraints nullable="true" foreignKeyName="tissue_fk_mould_size" referencedTableName="mould_size" referencedColumnNames="id"/>
+            </column>
+            <column name="spatial_location_id" type="INT">
+                <constraints nullable="false" foreignKeyName="tissue_fk_spatial_location" referencedTableName="spatial_location" referencedColumnNames="id"/>
+            </column>
+            <column name="hmdmc_id" type="INT">
+                <constraints nullable="false" foreignKeyName="tissue_fk_hmdmc" referencedTableName="hmdmc" referencedColumnNames="id"/>
+            </column>
+            <column name="donor_id" type="INT">
+                <constraints nullable="false" foreignKeyName="tissue_fk_donor" referencedTableName="donor" referencedColumnNames="id"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="13" author="dr6">
+        <createTable tableName="sample">
+            <column name="id" type="INT">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="section" type="INT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="tissue_id" type="INT">
+                <constraints nullable="false" foreignKeyName="sample_fk_tissue" referencedTableName="tissue" referencedColumnNames="id"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="14" author="dr6">
+        <createTable tableName="labware">
+            <column name="id" type="INT">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="barcode" type="VARCHAR(32)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="labware_type_id" type="INT">
+                <constraints nullable="false" foreignKeyName="labware_fk_labware_type" referencedTableName="labware_type" referencedColumnNames="id"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="15" author="dr6">
+        <createTable tableName="slot">
+            <column name="id" type="INT">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="row" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="column" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="labware_id" type="INT">
+                <constraints nullable="false" foreignKeyName="slot_fk_labware" referencedTableName="labware" referencedColumnNames="id"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="slot" indexName="slot_key_labware_row_column" unique="true">
+            <column name="labware_id"/>
+            <column name="row"/>
+            <column name="column"/>
+        </createIndex>
+        <rollback>
+            <dropAllForeignKeyConstraints baseTableName="slot"/>
+            <dropTable tableName="slot"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="16" author="dr6">
+        <createTable tableName="slot_sample">
+            <column name="slot_id" type="INT">
+                <constraints nullable="false" foreignKeyName="slot_sample_fk_slot" referencedTableName="slot" referencedColumnNames="id"/>
+            </column>
+            <column name="sample_id" type="INT">
+                <constraints nullable="false" foreignKeyName="slot_sample_fk_sample" referencedTableName="sample" referencedColumnNames="id"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addPrimaryKey tableName="slot_sample" columnNames="slot_id,sample_id"/>
+        <rollback>
+            <dropAllForeignKeyConstraints baseTableName="slot_sample"/>
+            <dropTable tableName="slot_sample"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="17" author="dr6">
+        <createTable tableName="block_info">
+            <column name="slot_id" type="INT">
+                <constraints nullable="false" foreignKeyName="block_info_fk_slot" referencedTableName="slot" referencedColumnNames="id"/>
+            </column>
+            <column name="sample_id" type="INT">
+                <constraints nullable="false" foreignKeyName="block_info_fk_sample" referencedTableName="sample" referencedColumnNames="id"/>
+            </column>
+            <column name="highest_section" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addPrimaryKey tableName="block_info" columnNames="slot_id,sample_id"/>
+        <rollback>
+            <dropAllForeignKeyConstraints baseTableName="block_info"/>
+            <dropTable tableName="block_info"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="18" author="dr6">
+        <createTable tableName="operation">
+            <column name="id" type="INT">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="performed" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="operation_type_id" type="INT">
+                <constraints nullable="false" foreignKeyName="operation_fk_operation_type" referencedTableName="operation_type" referencedColumnNames="id"/>
+            </column>
+            <column name="user_id" type="INT">
+                <constraints nullable="false" foreignKeyName="operation_fk_user" referencedTableName="user" referencedColumnNames="id"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="19" author="dr6">
+        <createTable tableName="action">
+            <column name="id" type="INT">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="operation_id" type="INT">
+                <constraints nullable="false" foreignKeyName="action_fk_operation" referencedTableName="operation" referencedColumnNames="id"/>
+            </column>
+            <column name="sample_id" type="INT">
+                <constraints nullable="false" foreignKeyName="action_fk_sample" referencedTableName="sample" referencedColumnNames="id"/>
+            </column>
+            <column name="source_slot_id" type="INT">
+                <constraints nullable="false" foreignKeyName="action_fk_source_slot" referencedTableName="slot" referencedColumnNames="id"/>
+            </column>
+            <column name="dest_slot_id" type="INT">
+                <constraints nullable="false" foreignKeyName="action_fk_dest_slot" referencedTableName="slot" referencedColumnNames="id"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="action" indexName="action_key_operation_sample_source_slot_dest_slot" unique="true">
+            <column name="operation_id"/>
+            <column name="sample_id"/>
+            <column name="source_slot_id"/>
+            <column name="dest_slot_id"/>
+        </createIndex>
+        <rollback>
+            <dropAllForeignKeyConstraints baseTableName="action"/>
+            <dropTable tableName="action"/>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>
