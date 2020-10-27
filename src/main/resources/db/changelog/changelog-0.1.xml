@@ -25,7 +25,7 @@
 
     <changeSet id="3" author="dr6">
         <createTable tableName="medium">
-            <column name="id" type="INT">
+            <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
             </column>
             <column name="name" type="VARCHAR(64)">
@@ -42,7 +42,7 @@
 
     <changeSet id="4" author="dr6">
         <createTable tableName="mould_size">
-            <column name="id" type="INT">
+            <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
             </column>
             <column name="name" type="VARCHAR(64)">
@@ -59,7 +59,7 @@
 
     <changeSet id="5" author="dr6">
         <createTable tableName="tissue_type">
-            <column name="id" type="INT">
+            <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
             </column>
             <column name="name" type="VARCHAR(64)">
@@ -79,7 +79,7 @@
 
     <changeSet id="6" author="dr6">
         <createTable tableName="hmdmc">
-            <column name="id" type="INT">
+            <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
             </column>
             <column name="hmdmc" type="VARCHAR(16)">
@@ -96,7 +96,7 @@
 
     <changeSet id="7" author="dr6">
         <createTable tableName="label_type">
-            <column name="id" type="INT">
+            <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
             </column>
             <column name="name" type="VARCHAR(64)">
@@ -113,7 +113,7 @@
 
     <changeSet id="8" author="dr6">
         <createTable tableName="operation_type">
-            <column name="id" type="INT">
+            <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
             </column>
             <column name="name" type="VARCHAR(64)">
@@ -130,7 +130,7 @@
 
     <changeSet id="9" author="dr6">
         <createTable tableName="spatial_location">
-            <column name="id" type="INT">
+            <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
             </column>
             <column name="tissue_type_id" type="INT">
@@ -161,7 +161,7 @@
 
     <changeSet id="10" author="dr6">
         <createTable tableName="labware_type">
-            <column name="id" type="INT">
+            <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
             </column>
             <column name="name" type="VARCHAR(64)">
@@ -187,7 +187,7 @@
 
     <changeSet id="11" author="dr6">
         <createTable tableName="donor">
-            <column name="id" type="INT">
+            <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
             </column>
             <column name="donor_name" type="VARCHAR(64)">
@@ -207,7 +207,7 @@
 
     <changeSet id="12" author="dr6">
         <createTable tableName="tissue">
-            <column name="id" type="INT">
+            <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
             </column>
             <column name="external_name" type="VARCHAR(64)">
@@ -242,7 +242,7 @@
 
     <changeSet id="13" author="dr6">
         <createTable tableName="sample">
-            <column name="id" type="INT">
+            <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
             </column>
             <column name="section" type="INT">
@@ -262,7 +262,7 @@
 
     <changeSet id="14" author="dr6">
         <createTable tableName="labware">
-            <column name="id" type="INT">
+            <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
             </column>
             <column name="barcode" type="VARCHAR(32)">
@@ -282,7 +282,7 @@
 
     <changeSet id="15" author="dr6">
         <createTable tableName="slot">
-            <column name="id" type="INT">
+            <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
             </column>
             <column name="row" type="INT">
@@ -361,7 +361,7 @@
 
     <changeSet id="18" author="dr6">
         <createTable tableName="operation">
-            <column name="id" type="INT">
+            <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
             </column>
             <column name="performed" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
@@ -384,7 +384,7 @@
 
     <changeSet id="19" author="dr6">
         <createTable tableName="action">
-            <column name="id" type="INT">
+            <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
             </column>
             <column name="operation_id" type="INT">
