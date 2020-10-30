@@ -1,6 +1,8 @@
 package uk.ac.sanger.sccp.stan;
 
+import graphql.language.Field;
 import graphql.schema.DataFetcher;
+import graphql.schema.DataFetchingEnvironment;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -11,9 +13,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import uk.ac.sanger.sccp.stan.config.SessionConfig;
-import uk.ac.sanger.sccp.stan.model.LoginResult;
-import uk.ac.sanger.sccp.stan.model.User;
-import uk.ac.sanger.sccp.stan.repo.UserRepo;
+import uk.ac.sanger.sccp.stan.model.*;
+import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.request.LoginResult;
 import uk.ac.sanger.sccp.stan.service.LDAPService;
 
 import java.util.ArrayList;
@@ -27,12 +29,24 @@ public class GraphQLDataFetchers {
     final LDAPService ldapService;
     final SessionConfig sessionConfig;
     final UserRepo userRepo;
+    final TissueTypeRepo tissueTypeRepo;
+    final LabwareTypeRepo labwareTypeRepo;
+    final MediumRepo mediumRepo;
+    final MouldSizeRepo mouldSizeRepo;
+    final HmdmcRepo hmdmcRepo;
 
     @Autowired
-    public GraphQLDataFetchers(LDAPService ldapService, SessionConfig sessionConfig, UserRepo userRepo) {
+    public GraphQLDataFetchers(LDAPService ldapService, SessionConfig sessionConfig, UserRepo userRepo,
+                               TissueTypeRepo tissueTypeRepo, LabwareTypeRepo labwareTypeRepo,
+                               MediumRepo mediumRepo, MouldSizeRepo mouldSizeRepo, HmdmcRepo hmdmcRepo) {
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
         this.userRepo = userRepo;
+        this.tissueTypeRepo = tissueTypeRepo;
+        this.labwareTypeRepo = labwareTypeRepo;
+        this.mediumRepo = mediumRepo;
+        this.mouldSizeRepo = mouldSizeRepo;
+        this.hmdmcRepo = hmdmcRepo;
     }
 
     public DataFetcher<LoginResult> logIn() {
@@ -65,10 +79,35 @@ public class GraphQLDataFetchers {
         };
     }
 
+    public DataFetcher<Iterable<TissueType>> getTissueTypes() {
+        return dfe -> tissueTypeRepo.findAll();
+    }
+
+    public DataFetcher<Iterable<LabwareType>> getLabwareTypes() {
+        return dfe -> labwareTypeRepo.findAll();
+    }
+
+    public DataFetcher<Iterable<Medium>> getMediums() {
+        return dfe -> mediumRepo.findAll();
+    }
+
+    public DataFetcher<Iterable<MouldSize>> getMouldSizes() {
+        return dfe -> mouldSizeRepo.findAll();
+    }
+
+    public DataFetcher<Iterable<Hmdmc>> getHmdmcs() {
+        return dfe -> hmdmcRepo.findAll();
+    }
+
     public DataFetcher<String> logOut() {
         return dataFetchingEnvironment -> {
             SecurityContextHolder.getContext().setAuthentication(null);
             return "OK";
         };
+    }
+
+    private boolean requestsField(DataFetchingEnvironment dfe, String childName) {
+        return dfe.getField().getSelectionSet().getChildren().stream()
+                .anyMatch(f -> ((Field) f).getName().equals(childName));
     }
 }

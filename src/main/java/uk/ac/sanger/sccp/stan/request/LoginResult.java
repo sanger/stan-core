@@ -1,6 +1,7 @@
-package uk.ac.sanger.sccp.stan.model;
+package uk.ac.sanger.sccp.stan.request;
 
 import com.google.common.base.MoreObjects;
+import uk.ac.sanger.sccp.stan.model.User;
 
 /**
  * @author dr6

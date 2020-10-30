@@ -26,8 +26,71 @@ type LoginResult {
     user: User,
 }
 
+type Medium {
+    name: String!,
+}
+
+type MouldSize {
+    name: String!,
+}
+
+type TissueType {
+    name: String!,
+    spatialLocations: [SpatialLocation!]!,
+}
+
+type SpatialLocation {
+    name: String!,
+    code: Int!,
+    tissueType: TissueType!,
+}
+
+type Hmdmc {
+    hmdmc: String!,
+}
+
+type LabelType {
+    name: String!,
+}
+
+type LabwareType {
+    name: String!,
+    numRows: Int!,
+    numColumns: Int!,
+    labelType: LabelType!,
+}
+
+enum LifeStage {
+    ADULT
+    PAEDIATRIC
+    FETAL
+}
+
+type BlockRegisterRequest {
+    donorIdentifier: String!,
+    lifeStage: LifeStage!,
+    hmdmc: String!,
+    tissueType: String!,
+    spatialLocation: Int!,
+    replicateNumber: Int!,
+    externalIdentifier: String!,
+    highestSection: Int!,
+    labwareType: String!,
+    medium: String,
+    mouldSize: String,
+}
+
+type RegisterRequest {
+    blocks: [RegisterRequest!]!,
+}
+
 type Query {
     user: User,
+    tissueTypes: [TissueType],
+    labwareTypes: [LabwareType],
+    hmdmcs: [Hmdmc],
+    mediums: [Medium],
+    mouldSizes: [MouldSize],
 }
 
 type Mutation {

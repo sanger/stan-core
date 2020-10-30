@@ -1,6 +1,7 @@
 package uk.ac.sanger.sccp.stan.model;
 
 import javax.persistence.*;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -13,6 +14,9 @@ public class TissueType {
     private Integer id;
     private String name;
     private String code;
+
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "tissueType")
+    private List<SpatialLocation> spatialLocations;
 
     public TissueType() {}
 
@@ -44,6 +48,14 @@ public class TissueType {
 
     public void setCode(String code) {
         this.code = code;
+    }
+
+    public List<SpatialLocation> getSpatialLocations() {
+        return this.spatialLocations;
+    }
+
+    public void setSpatialLocations(List<SpatialLocation> spatialLocations) {
+        this.spatialLocations = spatialLocations;
     }
 
     @Override
