@@ -65,6 +65,7 @@ public class GraphQLProvider {
                 .type(newTypeWiring("Mutation")
                         .dataFetcher("login", graphQLDataFetchers.logIn())
                         .dataFetcher("logout", graphQLDataFetchers.logOut())
+                        .dataFetcher("register", graphQLDataFetchers.register())
                 )
                 .build();
     }

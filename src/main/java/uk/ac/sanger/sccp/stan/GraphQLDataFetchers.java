@@ -4,11 +4,11 @@ import graphql.language.Field;
 import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.authentication.AnonymousAuthenticationToken;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -17,6 +17,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.LoginResult;
 import uk.ac.sanger.sccp.stan.service.LDAPService;
+import uk.ac.sanger.sccp.stan.service.register.RegisterService;
 
 import java.util.ArrayList;
 import java.util.Optional;
@@ -28,6 +29,8 @@ import java.util.Optional;
 public class GraphQLDataFetchers {
     final LDAPService ldapService;
     final SessionConfig sessionConfig;
+    final RegisterService registerService;
+
     final UserRepo userRepo;
     final TissueTypeRepo tissueTypeRepo;
     final LabwareTypeRepo labwareTypeRepo;
@@ -36,11 +39,14 @@ public class GraphQLDataFetchers {
     final HmdmcRepo hmdmcRepo;
 
     @Autowired
-    public GraphQLDataFetchers(LDAPService ldapService, SessionConfig sessionConfig, UserRepo userRepo,
+    public GraphQLDataFetchers(LDAPService ldapService, SessionConfig sessionConfig,
+                               RegisterService registerService,
+                               UserRepo userRepo,
                                TissueTypeRepo tissueTypeRepo, LabwareTypeRepo labwareTypeRepo,
                                MediumRepo mediumRepo, MouldSizeRepo mouldSizeRepo, HmdmcRepo hmdmcRepo) {
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
+        this.registerService = registerService;
         this.userRepo = userRepo;
         this.tissueTypeRepo = tissueTypeRepo;
         this.labwareTypeRepo = labwareTypeRepo;
@@ -106,8 +112,26 @@ public class GraphQLDataFetchers {
         };
     }
 
+    public DataFetcher<String> register() {
+        return dfe -> {
+            User user = checkUser();
+            registerService.register(dfe.getArgument("request"), user);
+            return "OK";
+        };
+    }
+
     private boolean requestsField(DataFetchingEnvironment dfe, String childName) {
         return dfe.getField().getSelectionSet().getChildren().stream()
                 .anyMatch(f -> ((Field) f).getName().equals(childName));
+    }
+
+    private User checkUser() {
+        SecurityContext sc = SecurityContextHolder.getContext();
+        Authentication auth = (sc==null ? null : sc.getAuthentication());
+        if (auth==null || auth instanceof AnonymousAuthenticationToken || auth.getPrincipal()==null) {
+            throw new AuthenticationCredentialsNotFoundException("Not logged in");
+        }
+        String username = auth.getPrincipal().toString();
+        return userRepo.findByUsername(username).orElseThrow(() -> new UsernameNotFoundException(username));
     }
 }

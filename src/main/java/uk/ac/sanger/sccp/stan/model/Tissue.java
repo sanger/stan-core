@@ -26,10 +26,16 @@ public class Tissue {
 
     public Tissue() {}
 
-    public Tissue(Integer id, String externalName, Integer replicate) {
+    public Tissue(Integer id, String externalName, Integer replicate, SpatialLocation spatialLocation, Donor donor,
+                  MouldSize mouldSize, Medium medium, Hmdmc hmdmc) {
         this.id = id;
         this.externalName = externalName;
         this.replicate = replicate;
+        this.spatialLocation = spatialLocation;
+        this.donor = donor;
+        this.mouldSize = mouldSize;
+        this.medium = medium;
+        this.hmdmc = hmdmc;
     }
 
     public Integer getId() {
