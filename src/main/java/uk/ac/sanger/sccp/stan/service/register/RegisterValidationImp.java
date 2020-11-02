@@ -255,12 +255,12 @@ public class RegisterValidationImp implements RegisterValidation {
 
     @Override
     public MouldSize getMouldSize(String name) {
-        return this.mouldSizeMap.get(name.toUpperCase());
+        return (name==null ? null : this.mouldSizeMap.get(name.toUpperCase()));
     }
 
     @Override
     public Medium getMedium(String name) {
-        return this.mediumMap.get(name.toUpperCase());
+        return (name==null ? null : this.mediumMap.get(name.toUpperCase()));
     }
 
     static class StringIntKey {
