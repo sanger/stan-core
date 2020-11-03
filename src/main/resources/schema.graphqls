@@ -82,9 +82,9 @@ type Labware {
 }
 
 enum LifeStage {
-    ADULT
-    PAEDIATRIC
-    FETAL
+    adult
+    paediatric
+    fetal
 }
 
 input BlockRegisterRequest {

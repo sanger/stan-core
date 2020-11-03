@@ -287,10 +287,10 @@
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
             </column>
-            <column name="row" type="INT">
+            <column name="row_index" type="INT">
                 <constraints nullable="false"/>
             </column>
-            <column name="column" type="INT">
+            <column name="col_index" type="INT">
                 <constraints nullable="false"/>
             </column>
             <column name="labware_id" type="INT">
@@ -303,10 +303,10 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
-        <createIndex tableName="slot" indexName="slot_key_labware_row_column" unique="true">
+        <createIndex tableName="slot" indexName="slot_key_labware_row_col" unique="true">
             <column name="labware_id"/>
-            <column name="row"/>
-            <column name="column"/>
+            <column name="row_index"/>
+            <column name="col_index"/>
         </createIndex>
         <rollback>
             <dropAllForeignKeyConstraints baseTableName="slot"/>

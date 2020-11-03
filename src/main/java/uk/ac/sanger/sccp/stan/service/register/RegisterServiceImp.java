@@ -1,42 +1,45 @@
 package uk.ac.sanger.sccp.stan.service.register;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.service.*;
 
+import javax.persistence.EntityManager;
 import javax.persistence.EntityNotFoundException;
+import javax.transaction.Transactional;
 import java.util.*;
 
 /**
  * @author dr6
  */
-@Component
+@Transactional
+@Service
 public class RegisterServiceImp implements RegisterService {
+    private final EntityManager entityManager;
     private final RegistrationValidationFactory validationFactory;
     private final DonorRepo donorRepo;
     private final TissueRepo tissueRepo;
     private final SampleRepo sampleRepo;
     private final SlotRepo slotRepo;
-    private final LabwareRepo labwareRepo;
     private final OperationTypeRepo opTypeRepo;
     private final LabwareService labwareService;
     private final OperationService operationService;
 
     @Autowired
-    public RegisterServiceImp(RegistrationValidationFactory validationFactory,
+    public RegisterServiceImp(EntityManager entityManager, RegistrationValidationFactory validationFactory,
                               DonorRepo donorRepo, TissueRepo tissueRepo,
-                              SampleRepo sampleRepo, SlotRepo slotRepo, LabwareRepo labwareRepo,
+                              SampleRepo sampleRepo, SlotRepo slotRepo,
                               OperationTypeRepo opTypeRepo,
                               LabwareService labwareService, OperationService operationService) {
+        this.entityManager = entityManager;
         this.validationFactory = validationFactory;
         this.donorRepo = donorRepo;
         this.tissueRepo = tissueRepo;
         this.sampleRepo = sampleRepo;
         this.slotRepo = slotRepo;
-        this.labwareRepo = labwareRepo;
         this.opTypeRepo = opTypeRepo;
         this.labwareService = labwareService;
         this.operationService = operationService;
@@ -79,7 +82,9 @@ public class RegisterServiceImp implements RegisterService {
                     validation.getMouldSize(block.getMouldSize()),
                     validation.getMedium(block.getMedium()),
                     validation.getHmdmc(block.getHmdmc()));
+            System.out.println("SAVING TISSUE! "+tissue);
             tissue = tissueRepo.save(tissue);
+            System.out.println("SAVED TISSUE! "+tissue);
             tissueList.add(tissue);
             Sample sample = sampleRepo.save(new Sample(null, null, tissue));
             LabwareType labwareType = validation.getLabwareType(block.getLabwareType());
@@ -88,8 +93,10 @@ public class RegisterServiceImp implements RegisterService {
             slot.getSamples().add(sample);
             slot.setBlockSampleId(sample.getId());
             slot.setBlockHighestSection(block.getHighestSection());
+            System.out.println("SAVING SLOT: "+slot);
             slot = slotRepo.save(slot);
-            labware = labwareRepo.findById(labware.getId()).orElseThrow(EntityNotFoundException::new);
+            System.out.println("SAVED SLOT: "+slot);
+            entityManager.refresh(labware);
             labwareList.add(labware);
             OperationType operationType = opTypeRepo.findByName("Register").orElseThrow(EntityNotFoundException::new);
             operationService.createOperation(operationType, user, slot, slot, sample);

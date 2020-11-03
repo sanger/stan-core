@@ -5,12 +5,22 @@ import com.google.common.base.MoreObjects;
 import java.util.List;
 import java.util.Objects;
 
+import static java.util.Collections.emptyList;
+
 /**
  * The information required to register some blocks.
  * @author dr6
  */
 public class RegisterRequest {
     private List<BlockRegisterRequest> blocks;
+
+    public RegisterRequest() {
+        this(emptyList());
+    }
+
+    public RegisterRequest(List<BlockRegisterRequest> blocks) {
+        this.blocks = blocks;
+    }
 
     public List<BlockRegisterRequest> getBlocks() {
         return this.blocks;

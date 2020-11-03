@@ -14,6 +14,8 @@ public class Donor {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
     private String donorName;
+    @Column(columnDefinition = "enum('adult', 'paediatric', 'fetal')")
+    @Enumerated(EnumType.STRING)
     private LifeStage lifeStage;
 
     public Donor() {}

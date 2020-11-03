@@ -1,8 +1,9 @@
 package uk.ac.sanger.sccp.stan.model;
 
+import com.google.common.base.MoreObjects;
+
 import javax.persistence.*;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * @author dr6
@@ -13,6 +14,7 @@ public class Slot {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
+    @Column(name="labware_id")
     private Integer labwareId;
     @Embedded
     private Address address;
@@ -25,7 +27,9 @@ public class Slot {
     @Column(table = "block_info", name = "highest_section")
     private Integer blockHighestSection;
 
-    public Slot() {}
+    public Slot() {
+        this.samples = new ArrayList<>();
+    }
 
     public Slot(Integer id, Integer labwareId, Address address, List<Sample> samples, Integer blockSampleId,
                 Integer blockHighestSection) {
@@ -102,5 +106,17 @@ public class Slot {
     @Override
     public int hashCode() {
         return (id!=null ? id.hashCode() : Objects.hash(labwareId, address));
+    }
+
+    @Override
+    public String toString() {
+        return MoreObjects.toStringHelper(this)
+                .add("id", id)
+                .add("labwareId", labwareId)
+                .add("address", address)
+                .add("samples", samples)
+                .add("blockSampleId", blockSampleId)
+                .add("blockHighestSection", blockHighestSection)
+                .toString();
     }
 }

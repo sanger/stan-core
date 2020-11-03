@@ -2,14 +2,19 @@ package uk.ac.sanger.sccp.stan.model;
 
 import org.jetbrains.annotations.NotNull;
 
+import javax.persistence.Column;
 import javax.persistence.Embeddable;
 
 /**
  * @author dr6
  */
+@SuppressWarnings("JpaDataSourceORMInspection")
 @Embeddable
 public class Address implements Comparable<Address> {
-    private int row, column;
+    @Column(name="row_index")
+    private int row;
+    @Column(name="col_index")
+    private int column;
 
     public Address() {}
 

@@ -18,6 +18,7 @@ public class Labware {
     private LabwareType labwareType;
 
     @OneToMany
+    @JoinColumn(name="labware_id")
     @OrderBy("address.row, address.column")
     private List<Slot> slots;
 

@@ -1,5 +1,7 @@
 package uk.ac.sanger.sccp.stan.model;
 
+import com.google.common.base.MoreObjects;
+
 import javax.persistence.*;
 import java.util.Objects;
 
@@ -59,5 +61,14 @@ public class Sample {
     @Override
     public int hashCode() {
         return (id!=null ? id.hashCode() : 0);
+    }
+
+    @Override
+    public String toString() {
+        return MoreObjects.toStringHelper(this)
+                .add("id", id)
+                .add("section", section)
+                .add("tissue", tissue)
+                .toString();
     }
 }

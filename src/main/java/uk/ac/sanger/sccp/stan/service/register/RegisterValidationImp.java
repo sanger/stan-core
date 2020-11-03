@@ -110,7 +110,7 @@ public class RegisterValidationImp implements RegisterValidation {
             if (unknownTissueTypes.contains(block.getTissueType())) {
                 continue;
             }
-            StringIntKey key = new StringIntKey(block.getTissueType(), block.getReplicateNumber());
+            StringIntKey key = new StringIntKey(block.getTissueType(), block.getSpatialLocation());
             if (spatialLocationMap.containsKey(key)) {
                 continue;
             }

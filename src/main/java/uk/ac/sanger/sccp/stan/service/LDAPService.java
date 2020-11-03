@@ -3,20 +3,20 @@ package uk.ac.sanger.sccp.stan.service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.config.LDAPConfig;
 
-import java.util.Hashtable;
 import javax.naming.Context;
 import javax.naming.NamingException;
 import javax.naming.directory.DirContext;
 import javax.naming.directory.InitialDirContext;
+import java.util.Hashtable;
 
 /**
  * Based on the analogous class in CGAP LIMS.
  * @author dr6
  */
-@Component
+@Service
 public class LDAPService {
     Logger log = LoggerFactory.getLogger(LDAPService.class);
 

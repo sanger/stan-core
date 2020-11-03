@@ -24,10 +24,12 @@ public class GraphQLProvider {
     private GraphQL graphQL;
 
     final GraphQLDataFetchers graphQLDataFetchers;
+    final GraphQLMutation graphQLMutation;
 
     @Autowired
-    public GraphQLProvider(GraphQLDataFetchers graphQLDataFetchers) {
+    public GraphQLProvider(GraphQLDataFetchers graphQLDataFetchers, GraphQLMutation graphQLMutation) {
         this.graphQLDataFetchers = graphQLDataFetchers;
+        this.graphQLMutation = graphQLMutation;
     }
 
     @Bean
@@ -63,9 +65,9 @@ public class GraphQLProvider {
                         .dataFetcher("mouldSizes", graphQLDataFetchers.getMouldSizes())
                 )
                 .type(newTypeWiring("Mutation")
-                        .dataFetcher("login", graphQLDataFetchers.logIn())
-                        .dataFetcher("logout", graphQLDataFetchers.logOut())
-                        .dataFetcher("register", graphQLDataFetchers.register())
+                        .dataFetcher("login", graphQLMutation.logIn())
+                        .dataFetcher("logout", graphQLMutation.logOut())
+                        .dataFetcher("register", graphQLMutation.register())
                 )
                 .build();
     }
