@@ -16,6 +16,7 @@ import uk.ac.sanger.sccp.stan.config.SessionConfig;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.LoginResult;
+import uk.ac.sanger.sccp.stan.request.RegisterResult;
 import uk.ac.sanger.sccp.stan.service.LDAPService;
 import uk.ac.sanger.sccp.stan.service.register.RegisterService;
 
@@ -112,11 +113,10 @@ public class GraphQLDataFetchers {
         };
     }
 
-    public DataFetcher<String> register() {
+    public DataFetcher<RegisterResult> register() {
         return dfe -> {
             User user = checkUser();
-            registerService.register(dfe.getArgument("request"), user);
-            return "OK";
+            return registerService.register(dfe.getArgument("request"), user);
         };
     }
 

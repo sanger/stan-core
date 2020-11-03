@@ -1,21 +1,3 @@
-## Required Types
-#type Query {
-#    # Get the list of printers, optionally filtered by label type
-#    printers(labelType: String): [Printer!]!
-#    # Get the list of printer types
-#    printerTypes: [PrinterType!]!
-#    # Get the status of a print job
-#    printStatus(jobId: String!): PrintStatus!
-#    # Get the list of label types
-#    labelTypes: [LabelType!]!
-#}
-#
-## Mutations
-#type Mutation {
-#    # Print some labels.
-#    # If the printer is not in config, the printerType must be specified
-#    print(printRequest: PrintRequest!, printer: String!, printerType: String): PrintResult
-#}
 
 type User {
     username: String!,
@@ -60,6 +42,45 @@ type LabwareType {
     labelType: LabelType!,
 }
 
+type Donor {
+    donorName: String!,
+    lifeStage: LifeStage!,
+}
+
+type Tissue {
+    externalName: String!,
+    replicate: Int!,
+    spatialLocation: SpatialLocation!,
+    donor: Donor!,
+    hmdmc: Hmdmc!,
+    mouldSize: MouldSize,
+    medium: Medium,
+}
+
+type Address {
+    row: Int!,
+    column: Int!,
+}
+
+type Sample {
+    section: Int!,
+    tissue: Tissue!,
+}
+
+type Slot {
+    address: Address!,
+    labwareId: Int!,
+    samples: [Sample!]!,
+    block: Boolean!,
+    highestSection: Int,
+}
+
+type Labware {
+    barcode: String!,
+    labwareType: LabwareType!,
+    slots: [Slot!],
+}
+
 enum LifeStage {
     ADULT
     PAEDIATRIC
@@ -85,8 +106,8 @@ input RegisterRequest {
 }
 
 type RegisterResult {
-    data: String, # todo
-    errors: [String!],
+    labware: [Labware!],
+    tissue: [Tissue!],
 }
 
 type Query {

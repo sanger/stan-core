@@ -4,8 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.BlockRegisterRequest;
-import uk.ac.sanger.sccp.stan.request.RegisterRequest;
+import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.service.*;
 
 import javax.persistence.EntityNotFoundException;
@@ -44,9 +43,9 @@ public class RegisterServiceImp implements RegisterService {
     }
 
     @Override
-    public List<Labware> register(RegisterRequest request, User user) {
+    public RegisterResult register(RegisterRequest request, User user) {
         if (request.getBlocks().isEmpty()) {
-            return List.of(); // nothing to do
+            return new RegisterResult(); // nothing to do
         }
         RegisterValidation validation = validationFactory.createRegistrationValidation(request);
         Collection<String> problems = validation.validate();
@@ -56,7 +55,7 @@ public class RegisterServiceImp implements RegisterService {
         return create(request, user, validation);
     }
 
-    public List<Labware> create(RegisterRequest request, User user, RegisterValidation validation) {
+    public RegisterResult create(RegisterRequest request, User user, RegisterValidation validation) {
         Map<String, Donor> donors = new HashMap<>();
         for (BlockRegisterRequest block : request.getBlocks()) {
             String donorName = block.getDonorIdentifier().toUpperCase();
@@ -69,6 +68,8 @@ public class RegisterServiceImp implements RegisterService {
             }
         }
 
+        List<Tissue> tissueList = new ArrayList<>(request.getBlocks().size());
+
         List<Labware> labwareList = new ArrayList<>(request.getBlocks().size());
 
         for (BlockRegisterRequest block : request.getBlocks()) {
@@ -79,6 +80,7 @@ public class RegisterServiceImp implements RegisterService {
                     validation.getMedium(block.getMedium()),
                     validation.getHmdmc(block.getHmdmc()));
             tissue = tissueRepo.save(tissue);
+            tissueList.add(tissue);
             Sample sample = sampleRepo.save(new Sample(null, null, tissue));
             LabwareType labwareType = validation.getLabwareType(block.getLabwareType());
             Labware labware = labwareService.create(labwareType);
@@ -93,7 +95,7 @@ public class RegisterServiceImp implements RegisterService {
             operationService.createOperation(operationType, user, slot, slot, sample);
         }
 
-        return labwareList;
+        return new RegisterResult(labwareList, tissueList);
     }
 
 }
