@@ -6,14 +6,12 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 
 import javax.persistence.EntityManager;
-import javax.transaction.Transactional;
 import java.util.ArrayList;
 
 /**
  * @author dr6
  */
 @Service
-@Transactional
 public class LabwareService {
     private final LabwareRepo labwareRepo;
     private final SlotRepo slotRepo;

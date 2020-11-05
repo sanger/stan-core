@@ -8,14 +8,11 @@ import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.service.*;
 
 import javax.persistence.EntityManager;
-import javax.persistence.EntityNotFoundException;
-import javax.transaction.Transactional;
 import java.util.*;
 
 /**
  * @author dr6
  */
-@Transactional
 @Service
 public class RegisterServiceImp implements RegisterService {
     private final EntityManager entityManager;
@@ -98,7 +95,7 @@ public class RegisterServiceImp implements RegisterService {
             System.out.println("SAVED SLOT: "+slot);
             entityManager.refresh(labware);
             labwareList.add(labware);
-            OperationType operationType = opTypeRepo.findByName("Register").orElseThrow(EntityNotFoundException::new);
+            OperationType operationType = opTypeRepo.getByName("Register");
             operationService.createOperation(operationType, user, slot, slot, sample);
         }
 

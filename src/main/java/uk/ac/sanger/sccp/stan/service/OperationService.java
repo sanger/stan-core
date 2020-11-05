@@ -7,14 +7,12 @@ import uk.ac.sanger.sccp.stan.repo.ActionRepo;
 import uk.ac.sanger.sccp.stan.repo.OperationRepo;
 
 import javax.persistence.EntityManager;
-import javax.transaction.Transactional;
 import java.util.List;
 
 /**
  * @author dr6
  */
 @Service
-@Transactional
 public class OperationService {
     private final EntityManager entityManager;
     private final OperationRepo opRepo;
