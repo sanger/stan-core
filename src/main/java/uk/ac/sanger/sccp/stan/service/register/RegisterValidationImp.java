@@ -4,6 +4,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.BlockRegisterRequest;
 import uk.ac.sanger.sccp.stan.request.RegisterRequest;
+import uk.ac.sanger.sccp.stan.service.Validator;
 
 import java.util.*;
 import java.util.function.Function;
@@ -21,6 +22,8 @@ public class RegisterValidationImp implements RegisterValidation {
     private final MouldSizeRepo mouldSizeRepo;
     private final MediumRepo mediumRepo;
     private final TissueRepo tissueRepo;
+    private final Validator<String> donorNameValidation;
+    private final Validator<String> externalNameValidation;
 
     private final Map<String, Donor> donorMap = new HashMap<>();
     private final Map<String, Hmdmc> hmdmcMap = new HashMap<>();
@@ -31,7 +34,8 @@ public class RegisterValidationImp implements RegisterValidation {
 
     public RegisterValidationImp(RegisterRequest request, DonorRepo donorRepo,
                                  HmdmcRepo hmdmcRepo, TissueTypeRepo ttRepo, LabwareTypeRepo ltRepo,
-                                 MouldSizeRepo mouldSizeRepo, MediumRepo mediumRepo, TissueRepo tissueRepo) {
+                                 MouldSizeRepo mouldSizeRepo, MediumRepo mediumRepo, TissueRepo tissueRepo,
+                                 Validator<String> donorNameValidation, Validator<String> externalNameValidation) {
         this.request = request;
         this.donorRepo = donorRepo;
         this.hmdmcRepo = hmdmcRepo;
@@ -40,6 +44,8 @@ public class RegisterValidationImp implements RegisterValidation {
         this.mouldSizeRepo = mouldSizeRepo;
         this.mediumRepo = mediumRepo;
         this.tissueRepo = tissueRepo;
+        this.donorNameValidation = donorNameValidation;
+        this.externalNameValidation = externalNameValidation;
         this.problems = new LinkedHashSet<>();
     }
 
@@ -66,6 +72,8 @@ public class RegisterValidationImp implements RegisterValidation {
             if (block.getDonorIdentifier()==null || block.getDonorIdentifier().isEmpty()) {
                 skip = true;
                 addProblem("Missing donor identifier.");
+            } else if (donorNameValidation!=null) {
+                donorNameValidation.validate(block.getDonorIdentifier(), this::addProblem);
             }
             if (block.getLifeStage()==null) {
                 skip = true;
@@ -172,6 +180,9 @@ public class RegisterValidationImp implements RegisterValidation {
             if (block.getExternalIdentifier()==null || block.getExternalIdentifier().isEmpty()) {
                 addProblem("Missing external identifier.");
                 continue;
+            }
+            if (externalNameValidation!=null) {
+                externalNameValidation.validate(block.getExternalIdentifier(), this::addProblem);
             }
             if (!keys.add(new StringIntKey(block.getExternalIdentifier(), block.getReplicateNumber()))) {
                 addProblem(String.format("Repeated external identifier and replicate number: %s, %s",
