@@ -78,7 +78,7 @@ type Slot {
 type Labware {
     barcode: String!,
     labwareType: LabwareType!,
-    slots: [Slot!],
+    slots: [Slot!]!,
 }
 
 enum LifeStage {
@@ -106,21 +106,21 @@ input RegisterRequest {
 }
 
 type RegisterResult {
-    labware: [Labware!],
-    tissue: [Tissue!],
+    labware: [Labware!]!,
+    tissue: [Tissue!]!,
 }
 
 type Query {
     user: User,
-    tissueTypes: [TissueType],
-    labwareTypes: [LabwareType],
-    hmdmcs: [Hmdmc],
-    mediums: [Medium],
-    mouldSizes: [MouldSize],
+    tissueTypes: [TissueType!]!,
+    labwareTypes: [LabwareType!]!,
+    hmdmcs: [Hmdmc!]!,
+    mediums: [Medium!]!,
+    mouldSizes: [MouldSize!]!,
 }
 
 type Mutation {
     login(username: String!, password: String!): LoginResult!,
     logout: String,
-    register(request: RegisterRequest!): RegisterResult,
+    register(request: RegisterRequest!): RegisterResult!,
 }
