@@ -213,7 +213,7 @@
                 <constraints nullable="false" primaryKey="true"/>
             </column>
             <column name="external_name" type="VARCHAR(64)">
-                <constraints nullable="false" unique="true"/>
+                <constraints nullable="false"/>
             </column>
             <column name="replicate" type="INT">
                 <constraints nullable="false"/>
@@ -240,6 +240,14 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
+        <createIndex tableName="tissue" indexName="tissue_key_external_name_replicate" unique="true">
+            <column name="external_name"/>
+            <column name="replicate"/>
+        </createIndex>
+        <rollback>
+            <dropAllForeignKeyConstraints baseTableName="tissue"/>
+            <dropTable tableName="tissue"/>
+        </rollback>
     </changeSet>
 
     <changeSet id="13" author="dr6">
