@@ -27,6 +27,10 @@ public class LDAPService {
         this.ldapConfig = ldapConfig;
     }
 
+    /**
+     * Verifies your credentials in LDAP.
+     * @return true if your credentials are verified; false if they are not
+     */
     public boolean verifyCredentials(String username, String password) {
         String bypassPassword = ldapConfig.getBypassPassword();
         if (bypassPassword!=null && !bypassPassword.isEmpty() && bypassPassword.equals(password)) {

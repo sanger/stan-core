@@ -9,6 +9,7 @@ import javax.persistence.EntityManager;
 import java.util.ArrayList;
 
 /**
+ * Service to create labware (complete with the appropriate slots).
  * @author dr6
  */
 @Service
@@ -27,10 +28,21 @@ public class LabwareService {
         this.entityManager = entityManager;
     }
 
+    /**
+     * Create new empty labware of the given type, with a new stan barcode.
+     * @param labwareType the labware type
+     * @return the new labware
+     */
     public Labware create(LabwareType labwareType) {
         return create(labwareType, barcodeSeedRepo.createStanBarcode());
     }
 
+    /**
+     * Create new empty labware of the given type with the given barcode.
+     * @param labwareType the labware type
+     * @param barcode the barcode for the labware
+     * @return the new labware
+     */
     public Labware create(LabwareType labwareType, String barcode) {
         Labware labware = labwareRepo.save(new Labware(null, barcode, labwareType, null));
         final int numRows = labwareType.getNumRows();

@@ -4,6 +4,8 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.persistence.Column;
 import javax.persistence.Embeddable;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * @author dr6
@@ -75,5 +77,13 @@ public class Address implements Comparable<Address> {
             return (this.column < that.column ? -1 : 1);
         }
         return 0;
+    }
+
+    public static Stream<Address> stream(final int numRows, final int numColumns) {
+        if (numRows < 1 || numColumns < 1) {
+            return Stream.empty();
+        }
+        return IntStream.range(0, numRows * numColumns)
+                .mapToObj(n -> new Address(1 + n / numColumns, 1 + n % numColumns));
     }
 }

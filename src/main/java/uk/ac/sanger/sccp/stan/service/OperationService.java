@@ -10,6 +10,7 @@ import javax.persistence.EntityManager;
 import java.util.List;
 
 /**
+ * Service to create and record {@link Operation operations}.
  * @author dr6
  */
 @Service
@@ -25,7 +26,17 @@ public class OperationService {
         this.actionRepo = actionRepo;
     }
 
+    /**
+     * Records an operation with the specified actions.
+     * @param operationType the type of operation
+     * @param user the user responsible
+     * @param actions the actions for the operation
+     * @return a new instance of operation
+     */
     public Operation createOperation(OperationType operationType, User user, List<Action> actions) {
+        if (actions.isEmpty()) {
+            throw new IllegalArgumentException("No actions received to create operation.");
+        }
         Operation op = opRepo.save(new Operation(null, operationType, null, null, user));
         for (Action action : actions) {
             action.setOperationId(op.getId());

@@ -1,8 +1,7 @@
 package uk.ac.sanger.sccp.stan.model;
 
 import javax.persistence.*;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * @author dr6
@@ -28,7 +27,7 @@ public class Labware {
         this.id = id;
         this.barcode = barcode;
         this.labwareType = labwareType;
-        this.slots = slots;
+        this.slots = (slots==null ? new ArrayList<>() : slots);
     }
 
     public Integer getId() {
@@ -61,6 +60,10 @@ public class Labware {
 
     public void setSlots(List<Slot> slots) {
         this.slots = slots;
+    }
+
+    public Slot getFirstSlot() {
+        return this.slots.get(0);
     }
 
     @Override

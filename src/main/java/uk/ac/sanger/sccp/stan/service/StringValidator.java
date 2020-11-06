@@ -4,6 +4,7 @@ import java.util.*;
 import java.util.function.Consumer;
 
 /**
+ * A tool to perform simple validation on a string
  * @author dr6
  */
 public class StringValidator implements Validator<String> {
@@ -17,6 +18,13 @@ public class StringValidator implements Validator<String> {
     private final int maxLength;
     private final Set<CharacterType> characterTypes;
 
+    /**
+     * Creates a new string validator
+     * @param fieldName the name of the field being validated (used in problem messages)
+     * @param minLength the minimum length of the field
+     * @param maxLength the maximum length of the field
+     * @param characterTypes the types of characters allowed in the field
+     */
     public StringValidator(String fieldName, int minLength, int maxLength, Set<CharacterType> characterTypes) {
         this.fieldName = fieldName;
         this.minLength = minLength;
@@ -24,19 +32,32 @@ public class StringValidator implements Validator<String> {
         this.characterTypes = characterTypes;
     }
 
-    public StringValidator(String fieldName, int minLength, int maxLength, CharacterType... charTypes) {
-        this(fieldName, minLength, maxLength, set(charTypes));
+    /**
+     * Creates a new string validator
+     * @param fieldName the name of the field being validated (used in problem messages)
+     * @param minLength the minimum length of the field
+     * @param maxLength the maximum length of the field
+     * @param characterTypes the types of characters allowed in the field
+     */
+    public StringValidator(String fieldName, int minLength, int maxLength, CharacterType... characterTypes) {
+        this(fieldName, minLength, maxLength, set(characterTypes));
     }
 
+    /**
+     * Checks if a string has suitable length and content.
+     * @param string the string to validate
+     * @param problemConsumer a function to receive information about the problems
+     * @return true if the string is valid; false if problems were found
+     */
     public boolean validate(String string, Consumer<String> problemConsumer) {
         boolean ok = true;
         int sl = string.length();
         if (sl < minLength) {
-            problemConsumer.accept(String.format("%s \"%s\" below minimum length %s.", fieldName, string, minLength));
+            problemConsumer.accept(String.format("%s \"%s\" is shorter than the minimum length %s.", fieldName, string, minLength));
             ok = false;
         }
         if (sl > maxLength) {
-            problemConsumer.accept(String.format("%s \"%s\" longer than maximum length %s.", fieldName, string, maxLength));
+            problemConsumer.accept(String.format("%s \"%s\" is longer than the maximum length %s.", fieldName, string, maxLength));
             ok = false;
         }
         Set<Character> invalidCharacterSet = null;
@@ -66,7 +87,13 @@ public class StringValidator implements Validator<String> {
         return set;
     }
 
-    private static CharacterType characterType(char ch) {
+    /**
+     * Classifies a character into a {@code CharacterType}.
+     * Unclassified characters yield null.
+     * @param ch a character
+     * @return the character type matched, or null
+     */
+    public static CharacterType characterType(char ch) {
         if (ch >= 'A' && ch <= 'Z') return CharacterType.UPPER;
         if (ch >= 'a' && ch <= 'z') return CharacterType.LOWER;
         if (ch >= '0' && ch <= '9') return CharacterType.DIGIT;
