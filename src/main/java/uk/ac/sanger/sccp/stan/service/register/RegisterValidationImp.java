@@ -14,7 +14,6 @@ import java.util.function.Function;
  */
 public class RegisterValidationImp implements RegisterValidation {
     private final RegisterRequest request;
-    private final LinkedHashSet<String> problems;
     private final DonorRepo donorRepo;
     private final HmdmcRepo hmdmcRepo;
     private final TissueTypeRepo ttRepo;
@@ -25,12 +24,13 @@ public class RegisterValidationImp implements RegisterValidation {
     private final Validator<String> donorNameValidation;
     private final Validator<String> externalNameValidation;
 
-    private final Map<String, Donor> donorMap = new HashMap<>();
-    private final Map<String, Hmdmc> hmdmcMap = new HashMap<>();
-    private final Map<StringIntKey, SpatialLocation> spatialLocationMap = new HashMap<>();
-    private final Map<String, LabwareType> labwareTypeMap = new HashMap<>();
-    private final Map<String, MouldSize> mouldSizeMap = new HashMap<>();
-    private final Map<String, Medium> mediumMap = new HashMap<>();
+    final Map<String, Donor> donorMap = new HashMap<>();
+    final Map<String, Hmdmc> hmdmcMap = new HashMap<>();
+    final Map<StringIntKey, SpatialLocation> spatialLocationMap = new HashMap<>();
+    final Map<String, LabwareType> labwareTypeMap = new HashMap<>();
+    final Map<String, MouldSize> mouldSizeMap = new HashMap<>();
+    final Map<String, Medium> mediumMap = new HashMap<>();
+    final LinkedHashSet<String> problems = new LinkedHashSet<>();
 
     public RegisterValidationImp(RegisterRequest request, DonorRepo donorRepo,
                                  HmdmcRepo hmdmcRepo, TissueTypeRepo ttRepo, LabwareTypeRepo ltRepo,
@@ -46,7 +46,6 @@ public class RegisterValidationImp implements RegisterValidation {
         this.tissueRepo = tissueRepo;
         this.donorNameValidation = donorNameValidation;
         this.externalNameValidation = externalNameValidation;
-        this.problems = new LinkedHashSet<>();
     }
 
     @Override
@@ -57,8 +56,6 @@ public class RegisterValidationImp implements RegisterValidation {
         validateDonors();
         validateHmdmcs();
         validateSpatialLocations();
-        validateLabwareTypes();
-        validateMouldSizes();
         validateLabwareTypes();
         validateMouldSizes();
         validateMediums();
@@ -153,7 +150,7 @@ public class RegisterValidationImp implements RegisterValidation {
     }
 
     public void validateLabwareTypes() {
-        validateByName("Unknown labware types: ", "Missing labware type",
+        validateByName("Unknown labware types: ", "Missing labware type.",
                 BlockRegisterRequest::getLabwareType, ltRepo::findByName, labwareTypeMap);
     }
 
@@ -168,7 +165,6 @@ public class RegisterValidationImp implements RegisterValidation {
     }
 
     public void validateTissues() {
-        // tissue (incl. rep number and highest section and lw barcode...?)
         Set<StringIntKey> keys = new LinkedHashSet<>();
         for (BlockRegisterRequest block : blocks()) {
             if (block.getReplicateNumber() < 0) {
@@ -186,7 +182,7 @@ public class RegisterValidationImp implements RegisterValidation {
             }
             if (!keys.add(new StringIntKey(block.getExternalIdentifier(), block.getReplicateNumber()))) {
                 addProblem(String.format("Repeated external identifier and replicate number: %s, %s",
-                        block.getTissueType(), block.getReplicateNumber()));
+                        block.getExternalIdentifier(), block.getReplicateNumber()));
             }
             Optional<Tissue> tissueOpt = tissueRepo.findByExternalNameAndReplicate(
                     block.getExternalIdentifier(), block.getReplicateNumber());
