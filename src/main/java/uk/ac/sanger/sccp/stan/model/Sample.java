@@ -55,7 +55,8 @@ public class Sample {
         if (o == null || getClass() != o.getClass()) return false;
         Sample that = (Sample) o;
         return (Objects.equals(this.id, that.id)
-                && Objects.equals(this.section, that.section));
+                && Objects.equals(this.section, that.section)
+                && Objects.equals(this.tissue, that.tissue));
     }
 
     @Override

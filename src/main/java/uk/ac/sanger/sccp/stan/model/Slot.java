@@ -100,7 +100,10 @@ public class Slot {
         Slot that = (Slot) o;
         return (Objects.equals(this.id, that.id)
                 && Objects.equals(this.address, that.address)
-                && Objects.equals(this.labwareId, that.labwareId));
+                && Objects.equals(this.labwareId, that.labwareId)
+                && Objects.equals(this.samples, that.samples)
+                && Objects.equals(this.blockSampleId, that.blockSampleId)
+                && Objects.equals(this.blockHighestSection, that.blockHighestSection));
     }
 
     @Override

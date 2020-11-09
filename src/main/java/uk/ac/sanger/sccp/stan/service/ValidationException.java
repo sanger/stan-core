@@ -9,7 +9,7 @@ import java.util.*;
  * @author dr6
  */
 public class ValidationException extends RuntimeException implements GraphQLError {
-    private Collection<?> problems;
+    private final Collection<?> problems;
 
     public ValidationException(String message, Collection<?> problems) {
         super(message);
@@ -28,6 +28,10 @@ public class ValidationException extends RuntimeException implements GraphQLErro
 
     @Override
     public Map<String, Object> getExtensions() {
-        return Map.of("problems", this.problems);
+        return Map.of("problems", getProblems());
+    }
+
+    public Collection<?> getProblems() {
+        return this.problems;
     }
 }

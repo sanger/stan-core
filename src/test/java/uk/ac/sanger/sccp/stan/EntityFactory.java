@@ -8,6 +8,7 @@ import java.util.List;
 import static java.util.stream.Collectors.toList;
 
 /**
+ * Create entity objects for tests
  * @author dr6
  */
 public class EntityFactory {
@@ -21,6 +22,8 @@ public class EntityFactory {
     private static Sample sample;
     private static Labware tube;
     private static Hmdmc hmdmc;
+    private static MouldSize mouldSize;
+    private static Medium medium;
     private static int idCounter = 10_000;
 
     public static User getUser() {
@@ -89,6 +92,20 @@ public class EntityFactory {
             sample = new Sample(90, 1, getTissue());
         }
         return sample;
+    }
+
+    public static MouldSize getMouldSize() {
+        if (mouldSize==null) {
+            mouldSize = new MouldSize(150, "Minimould");
+        }
+        return mouldSize;
+    }
+
+    public static Medium getMedium() {
+        if (medium==null) {
+            medium = new Medium(160, "Butter");
+        }
+        return medium;
     }
 
     public static Labware getTube() {

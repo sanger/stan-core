@@ -16,7 +16,7 @@ import java.util.*;
 @Service
 public class RegisterServiceImp implements RegisterService {
     private final EntityManager entityManager;
-    private final RegistrationValidationFactory validationFactory;
+    private final RegisterValidationFactory validationFactory;
     private final DonorRepo donorRepo;
     private final TissueRepo tissueRepo;
     private final SampleRepo sampleRepo;
@@ -26,7 +26,7 @@ public class RegisterServiceImp implements RegisterService {
     private final OperationService operationService;
 
     @Autowired
-    public RegisterServiceImp(EntityManager entityManager, RegistrationValidationFactory validationFactory,
+    public RegisterServiceImp(EntityManager entityManager, RegisterValidationFactory validationFactory,
                               DonorRepo donorRepo, TissueRepo tissueRepo,
                               SampleRepo sampleRepo, SlotRepo slotRepo,
                               OperationTypeRepo opTypeRepo,
@@ -47,7 +47,7 @@ public class RegisterServiceImp implements RegisterService {
         if (request.getBlocks().isEmpty()) {
             return new RegisterResult(); // nothing to do
         }
-        RegisterValidation validation = validationFactory.createRegistrationValidation(request);
+        RegisterValidation validation = validationFactory.createRegisterValidation(request);
         Collection<String> problems = validation.validate();
         if (!problems.isEmpty()) {
             throw new ValidationException("The register request could not be validated.", problems);
@@ -55,7 +55,7 @@ public class RegisterServiceImp implements RegisterService {
         return create(request, user, validation);
     }
 
-    public RegisterResult create(RegisterRequest request, User user, RegisterValidation validation) {
+    public Map<String, Donor> createDonors(RegisterRequest request, RegisterValidation validation) {
         Map<String, Donor> donors = new HashMap<>();
         for (BlockRegisterRequest block : request.getBlocks()) {
             String donorName = block.getDonorIdentifier().toUpperCase();
@@ -67,6 +67,11 @@ public class RegisterServiceImp implements RegisterService {
                 donors.put(donorName, donor);
             }
         }
+        return donors;
+    }
+
+    public RegisterResult create(RegisterRequest request, User user, RegisterValidation validation) {
+        Map<String, Donor> donors = createDonors(request, validation);
 
         List<Tissue> tissueList = new ArrayList<>(request.getBlocks().size());
 
@@ -79,20 +84,16 @@ public class RegisterServiceImp implements RegisterService {
                     validation.getMouldSize(block.getMouldSize()),
                     validation.getMedium(block.getMedium()),
                     validation.getHmdmc(block.getHmdmc()));
-            System.out.println("SAVING TISSUE! "+tissue);
             tissue = tissueRepo.save(tissue);
-            System.out.println("SAVED TISSUE! "+tissue);
             tissueList.add(tissue);
             Sample sample = sampleRepo.save(new Sample(null, null, tissue));
             LabwareType labwareType = validation.getLabwareType(block.getLabwareType());
             Labware labware = labwareService.create(labwareType);
-            Slot slot = labware.getSlots().get(0);
+            Slot slot = labware.getFirstSlot();
             slot.getSamples().add(sample);
             slot.setBlockSampleId(sample.getId());
             slot.setBlockHighestSection(block.getHighestSection());
-            System.out.println("SAVING SLOT: "+slot);
             slot = slotRepo.save(slot);
-            System.out.println("SAVED SLOT: "+slot);
             entityManager.refresh(labware);
             labwareList.add(labware);
             OperationType operationType = opTypeRepo.getByName("Register");

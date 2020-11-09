@@ -12,10 +12,11 @@ import java.util.EnumSet;
 import java.util.Set;
 
 /**
+ * Factory for {@link RegisterValidation}
  * @author dr6
  */
 @Component
-public class RegistrationValidationFactory {
+public class RegisterValidationFactory {
     private DonorRepo donorRepo;
     private HmdmcRepo hmdmcRepo;
     private TissueTypeRepo ttRepo;
@@ -27,9 +28,9 @@ public class RegistrationValidationFactory {
     private Validator<String> externalNameValidation;
 
     @Autowired
-    public RegistrationValidationFactory(DonorRepo donorRepo, HmdmcRepo hmdmcRepo, TissueTypeRepo ttRepo,
-                                         LabwareTypeRepo ltRepo, MouldSizeRepo mouldSizeRepo, MediumRepo mediumRepo,
-                                         TissueRepo tissueRepo) {
+    public RegisterValidationFactory(DonorRepo donorRepo, HmdmcRepo hmdmcRepo, TissueTypeRepo ttRepo,
+                                     LabwareTypeRepo ltRepo, MouldSizeRepo mouldSizeRepo, MediumRepo mediumRepo,
+                                     TissueRepo tissueRepo) {
         this.donorRepo = donorRepo;
         this.hmdmcRepo = hmdmcRepo;
         this.ttRepo = ttRepo;
@@ -44,7 +45,7 @@ public class RegistrationValidationFactory {
         this.externalNameValidation = new StringValidator("External identifier", 3, 64, charTypes);
     }
 
-    public RegisterValidation createRegistrationValidation(RegisterRequest request) {
+    public RegisterValidation createRegisterValidation(RegisterRequest request) {
         return new RegisterValidationImp(request, donorRepo, hmdmcRepo, ttRepo, ltRepo, mouldSizeRepo, mediumRepo,
                 tissueRepo, donorNameValidation, externalNameValidation);
     }

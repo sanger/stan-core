@@ -117,7 +117,10 @@ public class Tissue {
                 && Objects.equals(this.externalName, that.externalName)
                 && Objects.equals(this.replicate, that.replicate)
                 && Objects.equals(this.spatialLocation, that.spatialLocation)
-                && Objects.equals(this.donor, that.donor));
+                && Objects.equals(this.mouldSize, that.mouldSize)
+                && Objects.equals(this.medium, that.medium)
+                && Objects.equals(this.donor, that.donor)
+                && Objects.equals(this.hmdmc, that.hmdmc));
     }
 
     @Override
