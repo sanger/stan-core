@@ -44,12 +44,16 @@ public class LDAPService {
         environment.put(Context.SECURITY_PRINCIPAL, ldapConfig.getUserDnPatterns().replace("{0}", username));
         environment.put(Context.SECURITY_CREDENTIALS, password);
         try {
-            DirContext context = new InitialDirContext(environment);
-            context.close();
+            accessLdap(environment);
         } catch (NamingException e) {
             log.error("LDAP check failed for "+username, e);
             return false;
         }
         return true;
+    }
+
+    void accessLdap(Hashtable<String, String> environment) throws NamingException {
+        DirContext context = new InitialDirContext(environment);
+        context.close();
     }
 }
