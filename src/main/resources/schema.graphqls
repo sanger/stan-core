@@ -1,21 +1,3 @@
-## Required Types
-#type Query {
-#    # Get the list of printers, optionally filtered by label type
-#    printers(labelType: String): [Printer!]!
-#    # Get the list of printer types
-#    printerTypes: [PrinterType!]!
-#    # Get the status of a print job
-#    printStatus(jobId: String!): PrintStatus!
-#    # Get the list of label types
-#    labelTypes: [LabelType!]!
-#}
-#
-## Mutations
-#type Mutation {
-#    # Print some labels.
-#    # If the printer is not in config, the printerType must be specified
-#    print(printRequest: PrintRequest!, printer: String!, printerType: String): PrintResult
-#}
 
 type User {
     username: String!,
@@ -26,11 +8,119 @@ type LoginResult {
     user: User,
 }
 
+type Medium {
+    name: String!,
+}
+
+type MouldSize {
+    name: String!,
+}
+
+type TissueType {
+    name: String!,
+    spatialLocations: [SpatialLocation!]!,
+}
+
+type SpatialLocation {
+    name: String!,
+    code: Int!,
+    tissueType: TissueType!,
+}
+
+type Hmdmc {
+    hmdmc: String!,
+}
+
+type LabelType {
+    name: String!,
+}
+
+type LabwareType {
+    name: String!,
+    numRows: Int!,
+    numColumns: Int!,
+    labelType: LabelType!,
+}
+
+type Donor {
+    donorName: String!,
+    lifeStage: LifeStage!,
+}
+
+type Tissue {
+    externalName: String!,
+    replicate: Int!,
+    spatialLocation: SpatialLocation!,
+    donor: Donor!,
+    hmdmc: Hmdmc!,
+    mouldSize: MouldSize,
+    medium: Medium,
+}
+
+type Address {
+    row: Int!,
+    column: Int!,
+}
+
+type Sample {
+    section: Int!,
+    tissue: Tissue!,
+}
+
+type Slot {
+    address: Address!,
+    labwareId: Int!,
+    samples: [Sample!]!,
+    block: Boolean!,
+    highestSection: Int,
+}
+
+type Labware {
+    barcode: String!,
+    labwareType: LabwareType!,
+    slots: [Slot!]!,
+}
+
+enum LifeStage {
+    adult
+    paediatric
+    fetal
+}
+
+input BlockRegisterRequest {
+    donorIdentifier: String!,
+    lifeStage: LifeStage!,
+    hmdmc: String!,
+    tissueType: String!,
+    spatialLocation: Int!,
+    replicateNumber: Int!,
+    externalIdentifier: String!,
+    highestSection: Int!,
+    labwareType: String!,
+    medium: String,
+    mouldSize: String,
+}
+
+input RegisterRequest {
+    blocks: [BlockRegisterRequest!]!,
+}
+
+type RegisterResult {
+    labware: [Labware!]!,
+    tissue: [Tissue!]!,
+}
+
 type Query {
     user: User,
+    tissueTypes: [TissueType!]!,
+    labwareTypes: [LabwareType!]!,
+    hmdmcs: [Hmdmc!]!,
+    mediums: [Medium!]!,
+    mouldSizes: [MouldSize!]!,
 }
 
 type Mutation {
     login(username: String!, password: String!): LoginResult!,
     logout: String,
+    register(request: RegisterRequest!): RegisterResult!,
 }

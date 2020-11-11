@@ -1,0 +1,83 @@
+name	code
+Adrenal gland	ADR
+Amnion	AMN
+Appendix	APP
+Arm	ARM
+Bladder	?BL
+Bone	?BO
+Bone marrow	BON
+Brain	?BR
+Caecum	CAE
+Colon ascending	ACL
+Colon descending	DCL
+Colon sigmoid	SCL
+Colon transverse	TCL
+Decidua (uterus in pregnancy)	DEC
+Duodenum	DUO
+Endometrium	?EN
+Eye	?EY
+Fallopian tube	FLT
+Fallopian tube left, distal/fimbrial	?F1
+Fallopian tube left, proximal	?F2
+Fallopian tube right, distal/fimbrial	?F3
+Fallopian tubes right, proximal	?F4
+Femur	?FE
+Gut	?GU
+Large intestine	?LI
+Leg	LEG
+Middle ileum	?MI
+Proximal ileum	?PI
+Small intestine	?SI
+Fibula	?FI
+Gallbladder	?GB
+Gastro-oesophageal junction	GOJ
+Gonads	GON
+Left ventricle	?LV
+Right ventricle	?RV
+Left atrium	?LA
+Right atrium	?RA
+Septum	?SE
+Apex	?AP
+Hilar lymph node	?HL
+Ileum	ILE
+Jejunum	JEJ
+Kidney	KID
+Liver	LIV
+Lung	LNG
+Lymph node thoracic	TLN
+Lymph node axillary	ALN
+Lymph node iliac	ILN
+Lymph node mesentric	MLN
+Lymph node, parietal pelvic	?PP
+Maternal fetal interface	?MF
+Lymph node, mediastinal	?LM
+Multi organ	?MO
+Nasal mucosa	?NM
+Oesophagus	OES
+Omentum	?OM
+Ovaries	OVA
+Ovary left	OVL
+Ovary right	OVR
+Pancreas	PAN
+Peripheral blood	BLD
+Pharyngeal mucosa	?PM
+Placenta	PLA
+Rectum	REC
+Retina	?RE
+Saliva	SAL
+Skeletal muscle	SKM
+Skin	SKI
+Spinal cord	?SC
+Spleen	SPL
+Stomach	STO
+Terminal ileum	?TE
+Thymus	THY
+Thyroid gland	?TG
+Lymph node, thyroid	?LT
+Tibia	?TI
+Transplanted thymus biopsy	?TB
+Umbilical cord	UMB
+Uterus	UTR
+Uterus and cervix	?UC
+Vascular system	?VS
+Yolk sac	YOL

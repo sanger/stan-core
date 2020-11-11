@@ -23,6 +23,18 @@ public class LDAPConfig {
     @Value("${groupSearchBase}")
     String groupSearchBase;
 
+    public LDAPConfig() {}
+
+    public LDAPConfig(String contextFactory, String providerUrl, String securityAuthentication, String bypassPassword,
+                      String userDnPatterns, String groupSearchBase) {
+        this.contextFactory = contextFactory;
+        this.providerUrl = providerUrl;
+        this.securityAuthentication = securityAuthentication;
+        this.bypassPassword = bypassPassword;
+        this.userDnPatterns = userDnPatterns;
+        this.groupSearchBase = groupSearchBase;
+    }
+
     public String getContextFactory() {
         return this.contextFactory;
     }

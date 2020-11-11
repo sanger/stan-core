@@ -18,8 +18,13 @@ public class User {
 
     public User() {}
 
-    public User(String username) {
+    public User(Integer id, String username) {
+        this.id = id;
         this.username = username;
+    }
+
+    public User(String username) {
+        this(null, username);
     }
 
     public Integer getId() {
@@ -56,6 +61,6 @@ public class User {
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, username);
+        return (id!=null ? id.hashCode() : username!=null ? username.hashCode() : 0);
     }
 }
