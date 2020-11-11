@@ -1,6 +1,7 @@
 package uk.ac.sanger.sccp.stan.model;
 
 import com.google.common.base.MoreObjects;
+import org.hibernate.annotations.DynamicInsert;
 
 import javax.persistence.*;
 import java.sql.Timestamp;
@@ -11,6 +12,7 @@ import java.util.Objects;
  * @author dr6
  */
 @Entity
+@DynamicInsert
 public class Operation {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
