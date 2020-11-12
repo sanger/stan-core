@@ -1,11 +1,11 @@
 package uk.ac.sanger.sccp.stan;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest
-@Disabled("TODO: get spring working in tests")
+@ActiveProfiles(profiles = "test")
 class StanApplicationTests {
 
 	@Test
