@@ -13,8 +13,31 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        ports:
+          - 3306
+        env:
+          MYSQL_ROOT_PASSWORD: rootpw
+          MYSQL_DATABASE: stantest
+          MYSQL_USER: stan
+          MYSQL_PASSWORD: stanpw
 
     steps:
+    - name: start mysql
+      run: |
+        sudo /etc/init.d/mysql start
+    - name: wait 10s for service
+      uses: jakejarvis/wait-action@v0.1.0
+      with:
+        time: '10s'
+    - name: verify mysql from container
+      run: |
+        mysql -h 127.0.0.1 -P $MYSQL_PORT -uroot -prootpw -e "SHOW DATABASES"
+      env:
+        MYSQL_PORT: "${{ job.services.mysql.ports['3306'] }}"
     - uses: actions/checkout@v2
     - name: Set up Java 11
       uses: actions/setup-java@v1
@@ -22,3 +45,11 @@ jobs:
         java-version: 11
     - name: Build with Maven
       run: mvn -B package --file pom.xml
+      env:
+        MYSQL_PORT: "${{ job.services.mysql.ports['3306'] }}"
+        MYSQL_HOST: localhost
+        MYSQL_RW_USER: stan
+        MYSQL_RW_PASSWORD: stanpw
+        MYSQL_ADMIN_USER: stan
+        MYSQL_ADMIN_PASSWORD: stanpw
+        MYSQL_DATABASE: stantest
