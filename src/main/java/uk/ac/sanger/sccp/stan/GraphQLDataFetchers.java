@@ -7,8 +7,6 @@ import graphql.schema.DataFetchingEnvironment;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import uk.ac.sanger.sccp.stan.config.SessionConfig;
 import uk.ac.sanger.sccp.stan.model.*;
@@ -20,6 +18,7 @@ import uk.ac.sanger.sccp.stan.repo.*;
 @Component
 public class GraphQLDataFetchers {
     final ObjectMapper objectMapper;
+    final AuthenticationComponent authComp;
 
     final SessionConfig sessionConfig;
     final UserRepo userRepo;
@@ -30,11 +29,11 @@ public class GraphQLDataFetchers {
     final HmdmcRepo hmdmcRepo;
 
     @Autowired
-    public GraphQLDataFetchers(ObjectMapper objectMapper, SessionConfig sessionConfig,
-                               UserRepo userRepo,
-                               TissueTypeRepo tissueTypeRepo, LabwareTypeRepo labwareTypeRepo,
+    public GraphQLDataFetchers(ObjectMapper objectMapper, AuthenticationComponent authComp, SessionConfig sessionConfig,
+                               UserRepo userRepo, TissueTypeRepo tissueTypeRepo, LabwareTypeRepo labwareTypeRepo,
                                MediumRepo mediumRepo, MouldSizeRepo mouldSizeRepo, HmdmcRepo hmdmcRepo) {
         this.objectMapper = objectMapper;
+        this.authComp = authComp;
         this.sessionConfig = sessionConfig;
         this.userRepo = userRepo;
         this.tissueTypeRepo = tissueTypeRepo;
@@ -46,8 +45,7 @@ public class GraphQLDataFetchers {
 
     public DataFetcher<User> getUser() {
         return dataFetchingEnvironment -> {
-            SecurityContext sc = SecurityContextHolder.getContext();
-            Authentication auth = (sc==null ? null : sc.getAuthentication());
+            Authentication auth = authComp.getAuthentication();
             if (auth==null || auth instanceof AnonymousAuthenticationToken || auth.getPrincipal()==null) {
                 return null;
             }
