@@ -524,4 +524,86 @@
         </loadData>
     </changeSet>
 
+    <changeSet id="200" author="dr6">
+        <createTable tableName="plan_operation">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="planned" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="operation_id" type="INT">
+                <constraints nullable="true" foreignKeyName="plan_operation_fk_operation" referencedTableName="operation" referencedColumnNames="id"/>
+            </column>
+            <column name="operation_type_id" type="INT">
+                <constraints nullable="false" foreignKeyName="plan_operation_fk_operation_type" referencedTableName="operation_type" referencedColumnNames="id"/>
+            </column>
+            <column name="user_id" type="INT">
+                <constraints nullable="false" foreignKeyName="plan_operation_fk_user" referencedTableName="user" referencedColumnNames="id"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="201" author="dr6">
+        <createTable tableName="plan_sample">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="section" type="INT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="tissue_id" type="INT">
+                <constraints nullable="false" foreignKeyName="plan_sample_fk_tissue" referencedTableName="tissue" referencedColumnNames="id"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="202" author="dr6">
+        <createTable tableName="plan_action">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="plan_operation_id" type="INT">
+                <constraints nullable="false" foreignKeyName="plan_action_fk_plan_operation" referencedTableName="plan_operation" referencedColumnNames="id"/>
+            </column>
+            <column name="plan_sample_id" type="INT">
+                <constraints nullable="false" foreignKeyName="plan_action_fk_plan_sample" referencedTableName="plan_sample" referencedColumnNames="id"/>
+            </column>
+            <column name="source_slot_id" type="INT">
+                <constraints nullable="false" foreignKeyName="plan_action_fk_source_slot" referencedTableName="slot" referencedColumnNames="id"/>
+            </column>
+            <column name="dest_slot_id" type="INT">
+                <constraints nullable="false" foreignKeyName="plan_action_fk_dest_slot" referencedTableName="slot" referencedColumnNames="id"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="plan_action" indexName="plan_action_key_plan_operation_plan_sample_source_slot_dest_slot" unique="true">
+            <column name="plan_operation_id"/>
+            <column name="plan_sample_id"/>
+            <column name="source_slot_id"/>
+            <column name="dest_slot_id"/>
+        </createIndex>
+        <rollback>
+            <dropAllForeignKeyConstraints baseTableName="plan_action"/>
+            <dropTable tableName="plan_action"/>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>
