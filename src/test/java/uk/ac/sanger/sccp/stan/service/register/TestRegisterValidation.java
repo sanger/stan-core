@@ -23,7 +23,7 @@ import java.util.stream.Stream;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 /**
@@ -118,6 +118,7 @@ public class TestRegisterValidation {
     public void testValidateDonors(List<String> donorNames, List<LifeStage> lifeStages,
                                    List<Donor> knownDonors, List<Donor> expectedDonors,
                                    List<String> expectedProblems) {
+        @SuppressWarnings("UnstableApiUsage")
         RegisterRequest request = new RegisterRequest(
                 Streams.zip(donorNames.stream(), lifeStages.stream(),
                         (name, lifeStage) -> {
@@ -173,6 +174,7 @@ public class TestRegisterValidation {
     public void testSpatialLocations(List<String> tissueTypeNames, List<Integer> codes,
                                      List<TissueType> knownTissueTypes, List<SpatialLocation> expectedSLs,
                                      List<String> expectedProblems) {
+        @SuppressWarnings("UnstableApiUsage")
         RegisterRequest request = new RegisterRequest(
                 Streams.zip(tissueTypeNames.stream(), codes.stream(),
                 (name, code) -> {
@@ -263,11 +265,10 @@ public class TestRegisterValidation {
             }
             return false;
         });
-        when(mockTissueRepo.findByExternalNameAndReplicate(anyString(), anyInt())).then(invocation -> {
+        when(mockTissueRepo.findByExternalName(anyString())).then(invocation -> {
             final String name = invocation.getArgument(0);
-            final int replicate = invocation.getArgument(1);
             return knownTissues.stream()
-                    .filter(tissue -> tissue.getExternalName().equalsIgnoreCase(name) && tissue.getReplicate()==replicate)
+                    .filter(tissue -> tissue.getExternalName().equalsIgnoreCase(name))
                     .findAny();
         });
         RegisterRequest request = new RegisterRequest(
@@ -281,8 +282,71 @@ public class TestRegisterValidation {
                         }).collect(toList())
         );
         RegisterValidationImp validation = create(request);
+        when(validation.anySimilarTissuesInDatabase(any(), any(), anyInt(), any(), anyInt())).thenReturn(false);
         validation.validateTissues();
         assertThat(validation.getProblems()).hasSameElementsAs(expectedProblems);
+    }
+
+    @Test
+    public void testAnySimilarTissuesInDatabase() {
+        Tissue tissue = EntityFactory.getTissue();
+        final Medium medium = EntityFactory.getMedium();
+        Donor donor = tissue.getDonor();
+        SpatialLocation sl = tissue.getSpatialLocation();
+        RegisterValidationImp validation = create(new RegisterRequest());
+        String tissueTypeName = sl.getTissueType().getName();
+        String donorName = donor.getDonorName();
+        validation.donorMap.put(donorName.toUpperCase(), donor);
+        int slCode = sl.getCode();
+        int replicate = tissue.getReplicate();
+        validation.spatialLocationMap.put(new StringIntKey(tissueTypeName, slCode), sl);
+        final String mediumName = medium.getName();
+        validation.mediumMap.put(mediumName.toUpperCase(), medium);
+
+        when(mockTissueRepo.findByDonorIdAndSpatialLocationIdAndReplicate(anyInt(), anyInt(), anyInt()))
+                .then(invocation -> {
+                    int donorId = invocation.getArgument(0);
+                    int slId = invocation.getArgument(1);
+                    int repl = invocation.getArgument(2);
+                    if (tissue.getDonor().getId()==donorId
+                            && tissue.getSpatialLocation().getId()==slId
+                            && tissue.getReplicate()==repl) {
+                        return List.of(tissue);
+                    }
+                    return List.of();
+                });
+
+        assertTrue(validation.anySimilarTissuesInDatabase(donorName.toUpperCase(), tissueTypeName.toUpperCase(), slCode, null, replicate));
+        assertThat(validation.anySimilarTissuesInDatabase(donorName.toLowerCase(), tissueTypeName.toLowerCase(), slCode, "", replicate));
+
+        assertFalse(validation.anySimilarTissuesInDatabase("foop", tissueTypeName, slCode, null, replicate));
+        assertFalse(validation.anySimilarTissuesInDatabase(donorName, "boop", slCode, null, replicate));
+        assertFalse(validation.anySimilarTissuesInDatabase(donorName, tissueTypeName, slCode+1, null, replicate));
+        assertFalse(validation.anySimilarTissuesInDatabase(donorName, tissueTypeName, slCode, mediumName, replicate));
+        assertFalse(validation.anySimilarTissuesInDatabase(donorName, tissueTypeName, slCode, null, replicate+1));
+
+        Tissue tissue2 = new Tissue(99, "Tissue1", replicate, sl, donor, null, medium, tissue.getHmdmc());
+        when(mockTissueRepo.findByDonorIdAndSpatialLocationIdAndReplicate(anyInt(), anyInt(), anyInt()))
+                .then(invocation -> {
+                    int donorId = invocation.getArgument(0);
+                    int slId = invocation.getArgument(1);
+                    int repl = invocation.getArgument(2);
+                    if (tissue2.getDonor().getId()==donorId
+                            && tissue2.getSpatialLocation().getId()==slId
+                            && tissue2.getReplicate()==repl) {
+                        return List.of(tissue2);
+                    }
+                    return List.of();
+                });
+        assertTrue(validation.anySimilarTissuesInDatabase(donorName.toUpperCase(), tissueTypeName.toUpperCase(), slCode, mediumName, replicate));
+        assertThat(validation.anySimilarTissuesInDatabase(donorName.toLowerCase(), tissueTypeName.toLowerCase(), slCode, mediumName.toUpperCase(), replicate));
+
+        assertFalse(validation.anySimilarTissuesInDatabase("foop", tissueTypeName, slCode, mediumName, replicate));
+        assertFalse(validation.anySimilarTissuesInDatabase(donorName, "boop", slCode, mediumName, replicate));
+        assertFalse(validation.anySimilarTissuesInDatabase(donorName, tissueTypeName, slCode+1, mediumName, replicate));
+        assertFalse(validation.anySimilarTissuesInDatabase(donorName, tissueTypeName, slCode, null, replicate));
+        assertFalse(validation.anySimilarTissuesInDatabase(donorName, tissueTypeName, slCode, "", replicate));
+        assertFalse(validation.anySimilarTissuesInDatabase(donorName, tissueTypeName, slCode, mediumName, replicate+1));
     }
 
     private  <E> void testValidateSimpleField(List<String> givenStrings,
@@ -416,6 +480,11 @@ public class TestRegisterValidation {
     }
 
     private static Stream<Arguments> tissueData() {
+        // TODO: rewrite
+        /*
+        testValidateTissues(List<String> names, List<Integer> replicates, List<Integer> highestSections,
+                                    List<Tissue> knownTissues, List<String> expectedProblems) {
+         */
         final Tissue tissue = EntityFactory.getTissue();
         final String name = tissue.getExternalName();
         final int repl = tissue.getReplicate();

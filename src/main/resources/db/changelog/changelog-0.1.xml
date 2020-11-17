@@ -213,7 +213,7 @@
                 <constraints nullable="false" primaryKey="true"/>
             </column>
             <column name="external_name" type="VARCHAR(64)">
-                <constraints nullable="false"/>
+                <constraints nullable="false" unique="true"/>
             </column>
             <column name="replicate" type="INT">
                 <constraints nullable="false"/>
@@ -240,8 +240,10 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
-        <createIndex tableName="tissue" indexName="tissue_key_external_name_replicate" unique="true">
-            <column name="external_name"/>
+        <createIndex tableName="tissue" indexName="tissue_key_donor_spatial_location_medium_replicate" unique="true">
+            <column name="donor_id"/>
+            <column name="spatial_location_id"/>
+            <column name="medium_id"/>
             <column name="replicate"/>
         </createIndex>
         <rollback>

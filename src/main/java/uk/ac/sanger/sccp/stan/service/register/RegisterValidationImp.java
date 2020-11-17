@@ -165,7 +165,8 @@ public class RegisterValidationImp implements RegisterValidation {
     }
 
     public void validateTissues() {
-        Set<StringIntKey> keys = new LinkedHashSet<>();
+        Set<String> externalNames = new HashSet<>();
+        Set<TissueKey> tissueKeys = new HashSet<>();
         for (BlockRegisterRequest block : blocks()) {
             if (block.getReplicateNumber() < 0) {
                 addProblem("Replicate number cannot be negative.");
@@ -175,23 +176,54 @@ public class RegisterValidationImp implements RegisterValidation {
             }
             if (block.getExternalIdentifier()==null || block.getExternalIdentifier().isEmpty()) {
                 addProblem("Missing external identifier.");
-                continue;
+            } else {
+                if (externalNameValidation != null) {
+                    externalNameValidation.validate(block.getExternalIdentifier(), this::addProblem);
+                }
+                if (!externalNames.add(block.getExternalIdentifier().toUpperCase())) {
+                    addProblem("Repeated external identifier: " + block.getExternalIdentifier());
+                } else if (tissueRepo.findByExternalName(block.getExternalIdentifier()).isPresent()) {
+                    addProblem("There is already tissue in the database with external identifier " + block.getExternalIdentifier());
+                }
             }
-            if (externalNameValidation!=null) {
-                externalNameValidation.validate(block.getExternalIdentifier(), this::addProblem);
-            }
-            if (!keys.add(new StringIntKey(block.getExternalIdentifier(), block.getReplicateNumber()))) {
-                addProblem(String.format("Repeated external identifier and replicate number: %s, %s",
-                        block.getExternalIdentifier(), block.getReplicateNumber()));
-            }
-            Optional<Tissue> tissueOpt = tissueRepo.findByExternalNameAndReplicate(
-                    block.getExternalIdentifier(), block.getReplicateNumber());
-            if (tissueOpt.isPresent()) {
-                Tissue tissue = tissueOpt.get();
-                addProblem(String.format("Tissue with external identifier %s, replicate number %s already exists.",
-                        tissue.getExternalName(), tissue.getReplicate()));
+            TissueKey tissueKey = new TissueKey(block);
+            if (tissueKey.isComplete() && !tissueKeys.add(tissueKey)) {
+                addProblem("Repeated combination of fields: "+tissueKey);
+            } else if (anySimilarTissuesInDatabase(block.getDonorIdentifier(), block.getTissueType(), block.getSpatialLocation(),
+                    block.getMedium(), block.getReplicateNumber())) {
+                addProblem("There is already similar tissue in the database: "+tissueKey);
             }
         }
+    }
+
+    public boolean anySimilarTissuesInDatabase(String donorName, String tissueTypeName, int spatialLocationCode,
+                                               String mediumName, int replicate) {
+        Donor donor = getDonor(donorName);
+        if (donor==null) {
+            return false;
+        }
+        if (tissueTypeName==null || tissueTypeName.isEmpty()) {
+            return false;
+        }
+        SpatialLocation sl = spatialLocationMap.get(new StringIntKey(tissueTypeName, spatialLocationCode));
+        if (sl==null) {
+            return false;
+        }
+        List<Tissue> tissues = tissueRepo.findByDonorIdAndSpatialLocationIdAndReplicate(donor.getId(), sl.getId(), replicate);
+        if (tissues.isEmpty()) {
+            return false;
+        }
+        if (mediumName==null || mediumName.isEmpty()) {
+            return tissues.stream()
+                    .anyMatch(tissue -> tissue.getMedium()==null);
+        }
+        Medium medium = getMedium(mediumName);
+        if (medium==null) {
+            // no such medium, problem reported elsewhere
+            return false;
+        }
+        return tissues.stream()
+                .anyMatch(tissue -> tissue.getMedium()!=null && medium.getId().equals(tissue.getMedium().getId()));
     }
 
     private <E> void validateByName(String unknownMessage, String missingMessage,
@@ -242,7 +274,7 @@ public class RegisterValidationImp implements RegisterValidation {
 
     @Override
     public Donor getDonor(String name) {
-        return this.donorMap.get(name.toUpperCase());
+        return (name==null ? null : this.donorMap.get(name.toUpperCase()));
     }
 
     @Override
@@ -295,6 +327,60 @@ public class RegisterValidationImp implements RegisterValidation {
         @Override
         public String toString() {
             return String.format("(%s, %s)", string, number);
+        }
+    }
+
+    static class TissueKey {
+        String donorName;
+        String mediumName;
+        String tissueTypeName;
+        int spatialLocation;
+        int replicate;
+
+        public TissueKey(String donorName, String mediumName, String tissueTypeName, int spatialLocation, int replicate) {
+            this.donorName = uc(donorName);
+            this.mediumName = uc(mediumName);
+            this.tissueTypeName = uc(tissueTypeName);
+            this.spatialLocation = spatialLocation;
+            this.replicate = replicate;
+        }
+
+        public TissueKey(BlockRegisterRequest br) {
+            this(br.getDonorIdentifier(), br.getMedium(), br.getTissueType(), br.getSpatialLocation(), br.getReplicateNumber());
+        }
+
+        private static String uc(String value) {
+            if (value==null || value.isEmpty()) {
+                return null;
+            }
+            return value.toUpperCase();
+        }
+
+        public boolean isComplete() {
+            return (this.donorName!=null && this.tissueTypeName!=null);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            TissueKey that = (TissueKey) o;
+            return (this.spatialLocation == that.spatialLocation
+                    && this.replicate == that.replicate
+                    && Objects.equals(this.donorName, that.donorName)
+                    && Objects.equals(this.mediumName, that.mediumName)
+                    && Objects.equals(this.tissueTypeName, that.tissueTypeName));
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(donorName, mediumName, tissueTypeName, spatialLocation, replicate);
+        }
+
+        @Override
+        public String toString() {
+            return String.format("{donor=%s, medium=%s, tissue type=%s, spatial location=%s, replicate=%s}",
+                    donorName, mediumName, tissueTypeName, spatialLocation, replicate);
         }
     }
 }
