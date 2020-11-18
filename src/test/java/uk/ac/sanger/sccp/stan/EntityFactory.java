@@ -24,6 +24,7 @@ public class EntityFactory {
     private static Hmdmc hmdmc;
     private static MouldSize mouldSize;
     private static Medium medium;
+    private static Fixative fixative;
     private static int idCounter = 10_000;
 
     public static User getUser() {
@@ -82,7 +83,7 @@ public class EntityFactory {
     public static Tissue getTissue() {
         if (tissue==null) {
             tissue = new Tissue(80, "TISSUE1", 1, getSpatialLocation(), getDonor(),
-                    null, null, getHmdmc());
+                    getMouldSize(), getMedium(), getFixative(), getHmdmc());
         }
         return tissue;
     }
@@ -106,6 +107,13 @@ public class EntityFactory {
             medium = new Medium(160, "Butter");
         }
         return medium;
+    }
+
+    public static Fixative getFixative() {
+        if (fixative==null) {
+            fixative = new Fixative(170, "Formalin");
+        }
+        return fixative;
     }
 
     public static Labware getTube() {

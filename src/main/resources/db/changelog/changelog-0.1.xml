@@ -131,6 +131,23 @@
     </changeSet>
 
     <changeSet id="9" author="dr6">
+        <createTable tableName="fixative">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="name" type="VARCHAR(64)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="10" author="dr6">
         <createTable tableName="spatial_location">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
@@ -161,7 +178,7 @@
         </rollback>
     </changeSet>
 
-    <changeSet id="10" author="dr6">
+    <changeSet id="11" author="dr6">
         <createTable tableName="labware_type">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
@@ -187,7 +204,7 @@
         </createTable>
     </changeSet>
 
-    <changeSet id="11" author="dr6">
+    <changeSet id="12" author="dr6">
         <createTable tableName="donor">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
@@ -207,7 +224,7 @@
         </createTable>
     </changeSet>
 
-    <changeSet id="12" author="dr6">
+    <changeSet id="13" author="dr6">
         <createTable tableName="tissue">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
@@ -219,10 +236,10 @@
                 <constraints nullable="false"/>
             </column>
             <column name="medium_id" type="INT">
-                <constraints nullable="true" foreignKeyName="tissue_fk_medium" referencedTableName="medium" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="tissue_fk_medium" referencedTableName="medium" referencedColumnNames="id"/>
             </column>
             <column name="mould_size_id" type="INT">
-                <constraints nullable="true" foreignKeyName="tissue_fk_mould_size" referencedTableName="mould_size" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="tissue_fk_mould_size" referencedTableName="mould_size" referencedColumnNames="id"/>
             </column>
             <column name="spatial_location_id" type="INT">
                 <constraints nullable="false" foreignKeyName="tissue_fk_spatial_location" referencedTableName="spatial_location" referencedColumnNames="id"/>
@@ -233,6 +250,9 @@
             <column name="donor_id" type="INT">
                 <constraints nullable="false" foreignKeyName="tissue_fk_donor" referencedTableName="donor" referencedColumnNames="id"/>
             </column>
+            <column name="fixative_id" type="INT">
+                <constraints nullable="false" foreignKeyName="tissue_fk_fixative" referencedTableName="fixative" referencedColumnNames="id"/>
+            </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
             </column>
@@ -240,10 +260,11 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
-        <createIndex tableName="tissue" indexName="tissue_key_donor_spatial_location_medium_replicate" unique="true">
+        <createIndex tableName="tissue" indexName="tissue_key_donor_spatial_location_medium_fixative_replicate" unique="true">
             <column name="donor_id"/>
             <column name="spatial_location_id"/>
             <column name="medium_id"/>
+            <column name="fixative_id"/>
             <column name="replicate"/>
         </createIndex>
         <rollback>
@@ -252,7 +273,7 @@
         </rollback>
     </changeSet>
 
-    <changeSet id="13" author="dr6">
+    <changeSet id="14" author="dr6">
         <createTable tableName="sample">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
@@ -272,7 +293,7 @@
         </createTable>
     </changeSet>
 
-    <changeSet id="14" author="dr6">
+    <changeSet id="15" author="dr6">
         <createTable tableName="labware">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
@@ -292,7 +313,7 @@
         </createTable>
     </changeSet>
 
-    <changeSet id="15" author="dr6">
+    <changeSet id="16" author="dr6">
         <createTable tableName="slot">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
@@ -324,7 +345,7 @@
         </rollback>
     </changeSet>
 
-    <changeSet id="16" author="dr6">
+    <changeSet id="17" author="dr6">
         <createTable tableName="slot_sample">
             <column name="slot_id" type="INT">
                 <constraints nullable="false" foreignKeyName="slot_sample_fk_slot" referencedTableName="slot" referencedColumnNames="id"/>
@@ -346,7 +367,7 @@
         </rollback>
     </changeSet>
 
-    <changeSet id="17" author="dr6">
+    <changeSet id="18" author="dr6">
         <createTable tableName="block_info">
             <column name="slot_id" type="INT">
                 <constraints nullable="false" foreignKeyName="block_info_fk_slot" referencedTableName="slot" referencedColumnNames="id"/>
@@ -371,7 +392,7 @@
         </rollback>
     </changeSet>
 
-    <changeSet id="18" author="dr6">
+    <changeSet id="19" author="dr6">
         <createTable tableName="operation">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
@@ -394,7 +415,7 @@
         </createTable>
     </changeSet>
 
-    <changeSet id="19" author="dr6">
+    <changeSet id="20" author="dr6">
         <createTable tableName="action">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
@@ -430,7 +451,7 @@
         </rollback>
     </changeSet>
 
-    <changeSet id="20" author="dr6">
+    <changeSet id="21" author="dr6">
         <createTable tableName="barcode_seed">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
@@ -438,13 +459,13 @@
         </createTable>
     </changeSet>
 
-    <changeSet id="21" author="dr6">
+    <changeSet id="101" author="dr6">
         <loadData tableName="operation_type" file="db/operationtypes.csv">
             <column name="name" header="name" type="string"/>
         </loadData>
     </changeSet>
 
-    <changeSet id="22" author="dr6">
+    <changeSet id="102" author="dr6">
         <insert tableName="tissue_type">
             <column name="name" value="Unknown"/>
             <column name="code" value="???"/>
@@ -452,25 +473,25 @@
         </insert>
     </changeSet>
 
-    <changeSet id="23" author="dr6">
+    <changeSet id="103" author="dr6">
         <loadData tableName="tissue_type" file="db/tissuetypes.tsv" separator="\t">
             <column name="name" header="name" type="string"/>
             <column name="code" header="code" type="string"/>
         </loadData>
     </changeSet>
 
-    <changeSet id="24" author="dr6">
+    <changeSet id="104" author="dr6">
         <sqlFile path="db/spatiallocations.sql" />
     </changeSet>
 
-    <changeSet id="25" author="dr6">
+    <changeSet id="105" author="dr6">
         <loadData tableName="label_type" file="db/labeltypes.tsv" separator="\t">
             <column name="id" header="id" type="numeric"/>
             <column name="name" header="name" type="string"/>
         </loadData>
     </changeSet>
 
-    <changeSet id="26" author="dr6">
+    <changeSet id="106" author="dr6">
         <loadData tableName="labware_type" file="db/labwaretypes.tsv" separator="\t">
             <column name="name" header="name" type="string"/>
             <column name="label_type_id" header="label_type_id" type="numeric"/>
@@ -479,20 +500,26 @@
         </loadData>
     </changeSet>
 
-    <changeSet id="27" author="dr6">
+    <changeSet id="107" author="dr6">
         <loadData tableName="hmdmc" file="db/hmdmcs.csv">
             <column name="hmdmc" header="hmdmc" type="string"/>
         </loadData>
     </changeSet>
 
-    <changeSet id="28" author="dr6">
+    <changeSet id="108" author="dr6">
         <loadData tableName="mould_size" file="db/mouldsizes.csv">
             <column name="name" header="name" type="string"/>
         </loadData>
     </changeSet>
 
-    <changeSet id="29" author="dr6">
+    <changeSet id="109" author="dr6">
         <loadData tableName="medium" file="db/mediums.csv">
+            <column name="name" header="name" type="string"/>
+        </loadData>
+    </changeSet>
+
+    <changeSet id="110" author="dr6">
+        <loadData tableName="fixative" file="db/fixatives.csv">
             <column name="name" header="name" type="string"/>
         </loadData>
     </changeSet>

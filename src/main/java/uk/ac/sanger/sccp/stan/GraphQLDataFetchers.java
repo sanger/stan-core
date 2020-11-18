@@ -26,6 +26,7 @@ public class GraphQLDataFetchers {
     final TissueTypeRepo tissueTypeRepo;
     final LabwareTypeRepo labwareTypeRepo;
     final MediumRepo mediumRepo;
+    final FixativeRepo fixativeRepo;
     final MouldSizeRepo mouldSizeRepo;
     final HmdmcRepo hmdmcRepo;
 
@@ -33,13 +34,14 @@ public class GraphQLDataFetchers {
     public GraphQLDataFetchers(ObjectMapper objectMapper, SessionConfig sessionConfig,
                                UserRepo userRepo,
                                TissueTypeRepo tissueTypeRepo, LabwareTypeRepo labwareTypeRepo,
-                               MediumRepo mediumRepo, MouldSizeRepo mouldSizeRepo, HmdmcRepo hmdmcRepo) {
+                               MediumRepo mediumRepo, FixativeRepo fixativeRepo, MouldSizeRepo mouldSizeRepo, HmdmcRepo hmdmcRepo) {
         this.objectMapper = objectMapper;
         this.sessionConfig = sessionConfig;
         this.userRepo = userRepo;
         this.tissueTypeRepo = tissueTypeRepo;
         this.labwareTypeRepo = labwareTypeRepo;
         this.mediumRepo = mediumRepo;
+        this.fixativeRepo = fixativeRepo;
         this.mouldSizeRepo = mouldSizeRepo;
         this.hmdmcRepo = hmdmcRepo;
     }
@@ -73,6 +75,10 @@ public class GraphQLDataFetchers {
 
     public DataFetcher<Iterable<Hmdmc>> getHmdmcs() {
         return dfe -> hmdmcRepo.findAll();
+    }
+
+    public DataFetcher<Iterable<Fixative>> getFixatives() {
+        return dfe -> fixativeRepo.findAll();
     }
 
     private boolean requestsField(DataFetchingEnvironment dfe, String childName) {
