@@ -12,6 +12,8 @@ import uk.ac.sanger.sccp.stan.config.SessionConfig;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 
+import javax.persistence.EntityNotFoundException;
+
 /**
  * @author dr6
  */
@@ -28,12 +30,14 @@ public class GraphQLDataFetchers {
     final FixativeRepo fixativeRepo;
     final MouldSizeRepo mouldSizeRepo;
     final HmdmcRepo hmdmcRepo;
+    final LabwareRepo labwareRepo;
 
     @Autowired
     public GraphQLDataFetchers(ObjectMapper objectMapper, AuthenticationComponent authComp, SessionConfig sessionConfig,
                                UserRepo userRepo,
                                TissueTypeRepo tissueTypeRepo, LabwareTypeRepo labwareTypeRepo,
-                               MediumRepo mediumRepo, FixativeRepo fixativeRepo, MouldSizeRepo mouldSizeRepo, HmdmcRepo hmdmcRepo) {
+                               MediumRepo mediumRepo, FixativeRepo fixativeRepo, MouldSizeRepo mouldSizeRepo,
+                               HmdmcRepo hmdmcRepo, LabwareRepo labwareRepo) {
         this.objectMapper = objectMapper;
         this.authComp = authComp;
         this.sessionConfig = sessionConfig;
@@ -44,6 +48,7 @@ public class GraphQLDataFetchers {
         this.fixativeRepo = fixativeRepo;
         this.mouldSizeRepo = mouldSizeRepo;
         this.hmdmcRepo = hmdmcRepo;
+        this.labwareRepo = labwareRepo;
     }
 
     public DataFetcher<User> getUser() {
@@ -78,6 +83,17 @@ public class GraphQLDataFetchers {
 
     public DataFetcher<Iterable<Fixative>> getFixatives() {
         return dfe -> fixativeRepo.findAll();
+    }
+
+    public DataFetcher<Labware> findLabwareByBarcode() {
+        return dfe -> {
+            String barcode = dfe.getArgument("barcode");
+            if (barcode==null || barcode.isEmpty()) {
+                throw new IllegalArgumentException("No barcode supplied.");
+            }
+            return labwareRepo.findByBarcode(barcode)
+                    .orElseThrow(() -> new EntityNotFoundException("No labware found with barcode: "+barcode));
+        };
     }
 
     private boolean requestsField(DataFetchingEnvironment dfe, String childName) {
