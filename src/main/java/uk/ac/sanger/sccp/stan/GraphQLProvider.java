@@ -68,6 +68,7 @@ public class GraphQLProvider {
                         .dataFetcher("hmdmcs", graphQLDataFetchers.getHmdmcs())
                         .dataFetcher("labwareTypes", graphQLDataFetchers.getLabwareTypes())
                         .dataFetcher("mediums", graphQLDataFetchers.getMediums())
+                        .dataFetcher("fixatives", graphQLDataFetchers.getFixatives())
                         .dataFetcher("mouldSizes", graphQLDataFetchers.getMouldSizes())
                 )
                 .type(newTypeWiring("Mutation")

@@ -83,6 +83,7 @@ public class RegisterServiceImp implements RegisterService {
                     donors.get(block.getDonorIdentifier().toUpperCase()),
                     validation.getMouldSize(block.getMouldSize()),
                     validation.getMedium(block.getMedium()),
+                    validation.getFixative(block.getFixative()),
                     validation.getHmdmc(block.getHmdmc()));
             tissue = tissueRepo.save(tissue);
             tissueList.add(tissue);

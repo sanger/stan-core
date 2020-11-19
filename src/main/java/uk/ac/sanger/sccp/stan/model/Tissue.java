@@ -24,12 +24,14 @@ public class Tissue {
     @ManyToOne
     private Medium medium;
     @ManyToOne
+    private Fixative fixative;
+    @ManyToOne
     private Hmdmc hmdmc;
 
     public Tissue() {}
 
     public Tissue(Integer id, String externalName, Integer replicate, SpatialLocation spatialLocation, Donor donor,
-                  MouldSize mouldSize, Medium medium, Hmdmc hmdmc) {
+                  MouldSize mouldSize, Medium medium, Fixative fixative, Hmdmc hmdmc) {
         this.id = id;
         this.externalName = externalName;
         this.replicate = replicate;
@@ -37,6 +39,7 @@ public class Tissue {
         this.donor = donor;
         this.mouldSize = mouldSize;
         this.medium = medium;
+        this.fixative = fixative;
         this.hmdmc = hmdmc;
     }
 
@@ -100,6 +103,14 @@ public class Tissue {
         this.medium = medium;
     }
 
+    public Fixative getFixative() {
+        return this.fixative;
+    }
+
+    public void setFixative(Fixative fixative) {
+        this.fixative = fixative;
+    }
+
     public Hmdmc getHmdmc() {
         return this.hmdmc;
     }
@@ -120,7 +131,8 @@ public class Tissue {
                 && Objects.equals(this.mouldSize, that.mouldSize)
                 && Objects.equals(this.medium, that.medium)
                 && Objects.equals(this.donor, that.donor)
-                && Objects.equals(this.hmdmc, that.hmdmc));
+                && Objects.equals(this.hmdmc, that.hmdmc)
+                && Objects.equals(this.fixative, that.fixative));
     }
 
     @Override
@@ -138,6 +150,7 @@ public class Tissue {
                 .add("donor", donor)
                 .add("mouldSize", mouldSize)
                 .add("medium", medium)
+                .add("fixative", fixative)
                 .add("hmdmc", hmdmc)
                 .toString();
     }

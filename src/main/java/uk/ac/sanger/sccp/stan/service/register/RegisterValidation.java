@@ -18,4 +18,6 @@ public interface RegisterValidation {
     MouldSize getMouldSize(String name);
 
     Medium getMedium(String name);
+
+    Fixative getFixative(String name);
 }

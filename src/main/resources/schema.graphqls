@@ -12,6 +12,10 @@ type Medium {
     name: String!,
 }
 
+type Fixative {
+    name: String!,
+}
+
 type MouldSize {
     name: String!,
 }
@@ -53,8 +57,9 @@ type Tissue {
     spatialLocation: SpatialLocation!,
     donor: Donor!,
     hmdmc: Hmdmc!,
-    mouldSize: MouldSize,
-    medium: Medium,
+    mouldSize: MouldSize!,
+    medium: Medium!,
+    fixative: Fixative!,
 }
 
 type Address {
@@ -97,8 +102,9 @@ input BlockRegisterRequest {
     externalIdentifier: String!,
     highestSection: Int!,
     labwareType: String!,
-    medium: String,
-    mouldSize: String,
+    medium: String!,
+    fixative: String!,
+    mouldSize: String!,
 }
 
 input RegisterRequest {
@@ -116,6 +122,7 @@ type Query {
     labwareTypes: [LabwareType!]!,
     hmdmcs: [Hmdmc!]!,
     mediums: [Medium!]!,
+    fixatives: [Fixative!]!,
     mouldSizes: [MouldSize!]!,
 }
 
