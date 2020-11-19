@@ -10,8 +10,6 @@ import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 import uk.ac.sanger.sccp.stan.config.SessionConfig;
 import uk.ac.sanger.sccp.stan.model.User;
 import uk.ac.sanger.sccp.stan.repo.UserRepo;
@@ -28,6 +26,7 @@ import java.util.Optional;
 @Component
 public class GraphQLMutation {
     final ObjectMapper objectMapper;
+    final AuthenticationComponent authComp;
 
     final LDAPService ldapService;
     final SessionConfig sessionConfig;
@@ -36,10 +35,12 @@ public class GraphQLMutation {
     final UserRepo userRepo;
 
     @Autowired
-    public GraphQLMutation(ObjectMapper objectMapper, LDAPService ldapService, SessionConfig sessionConfig,
-                               RegisterService registerService,
-                               UserRepo userRepo) {
+    public GraphQLMutation(ObjectMapper objectMapper, AuthenticationComponent authComp,
+                           LDAPService ldapService, SessionConfig sessionConfig,
+                           RegisterService registerService,
+                           UserRepo userRepo) {
         this.objectMapper = objectMapper;
+        this.authComp = authComp;
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
         this.registerService = registerService;
@@ -58,10 +59,9 @@ public class GraphQLMutation {
             if (!ldapService.verifyCredentials(username, password)) {
                 return new LoginResult("Login failed", null);
             }
+
             Authentication authentication = new UsernamePasswordAuthenticationToken(username, password, new ArrayList<>());
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-            ServletRequestAttributes attr = (ServletRequestAttributes) RequestContextHolder.currentRequestAttributes();
-            attr.getRequest().getSession().setMaxInactiveInterval(60 * this.sessionConfig.getMaxInactiveMinutes());
+            authComp.setAuthentication(authentication, sessionConfig.getMaxInactiveMinutes());
             return new LoginResult("OK", optUser.get());
         };
     }
@@ -69,7 +69,7 @@ public class GraphQLMutation {
 
     public DataFetcher<String> logOut() {
         return dataFetchingEnvironment -> {
-            SecurityContextHolder.getContext().setAuthentication(null);
+            authComp.setAuthentication(null, 0);
             return "OK";
         };
     }
