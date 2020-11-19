@@ -21,6 +21,7 @@ public class BlockRegisterRequest {
     private String labwareType;
     private String medium;
     private String mouldSize;
+    private String fixative;
 
     public String getDonorIdentifier() {
         return this.donorIdentifier;
@@ -102,6 +103,14 @@ public class BlockRegisterRequest {
         this.medium = medium;
     }
 
+    public String getFixative() {
+        return this.fixative;
+    }
+
+    public void setFixative(String fixative) {
+        this.fixative = fixative;
+    }
+
     public String getMouldSize() {
         return this.mouldSize;
     }
@@ -125,12 +134,13 @@ public class BlockRegisterRequest {
                 && Objects.equals(this.externalIdentifier, that.externalIdentifier)
                 && Objects.equals(this.labwareType, that.labwareType)
                 && Objects.equals(this.medium, that.medium)
+                && Objects.equals(this.fixative, that.fixative)
                 && Objects.equals(this.mouldSize, that.mouldSize));
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(externalIdentifier, replicateNumber);
+        return (externalIdentifier!=null ? externalIdentifier.hashCode() : 0);
     }
 
     @Override
@@ -146,6 +156,7 @@ public class BlockRegisterRequest {
                 .add("highestSection", highestSection)
                 .add("labwareType", labwareType)
                 .add("medium", medium)
+                .add("fixative", fixative)
                 .add("mouldSize", mouldSize)
                 .toString();
     }

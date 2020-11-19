@@ -1,5 +1,6 @@
 package uk.ac.sanger.sccp.stan.service.register;
 
+import com.google.common.base.MoreObjects;
 import com.google.common.collect.Streams;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,13 +18,12 @@ import uk.ac.sanger.sccp.stan.service.register.RegisterValidationImp.StringIntKe
 
 import java.util.*;
 import java.util.function.*;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 /**
@@ -37,6 +37,7 @@ public class TestRegisterValidation {
     private LabwareTypeRepo mockLtRepo;
     private MouldSizeRepo mockMouldSizeRepo;
     private MediumRepo mockMediumRepo;
+    private FixativeRepo mockFixativeRepo;
     private TissueRepo mockTissueRepo;
     private Validator<String> mockDonorNameValidation;
     private Validator<String> mockExternalNameValidation;
@@ -50,6 +51,7 @@ public class TestRegisterValidation {
         mockMouldSizeRepo = mock(MouldSizeRepo.class);
         mockMediumRepo = mock(MediumRepo.class);
         mockTissueRepo = mock(TissueRepo.class);
+        mockFixativeRepo = mock(FixativeRepo.class);
         //noinspection unchecked
         mockDonorNameValidation = mock(Validator.class);
         //noinspection unchecked
@@ -58,7 +60,7 @@ public class TestRegisterValidation {
 
     private RegisterValidationImp create(RegisterRequest request) {
         return spy(new RegisterValidationImp(request, mockDonorRepo, mockHmdmcRepo, mockTtRepo, mockLtRepo,
-                mockMouldSizeRepo, mockMediumRepo, mockTissueRepo, mockDonorNameValidation, mockExternalNameValidation));
+                mockMouldSizeRepo, mockMediumRepo, mockFixativeRepo, mockTissueRepo, mockDonorNameValidation, mockExternalNameValidation));
     }
 
     private void stubValidationMethods(RegisterValidationImp validation) {
@@ -69,6 +71,7 @@ public class TestRegisterValidation {
         doNothing().when(validation).validateMouldSizes();
         doNothing().when(validation).validateMediums();
         doNothing().when(validation).validateTissues();
+        doNothing().when(validation).validateFixatives();
     }
 
     private void verifyValidateMethods(RegisterValidationImp validation, VerificationMode verificationMode) {
@@ -79,6 +82,7 @@ public class TestRegisterValidation {
         verify(validation, verificationMode).validateMouldSizes();
         verify(validation, verificationMode).validateMediums();
         verify(validation, verificationMode).validateTissues();
+        verify(validation, verificationMode).validateFixatives();
     }
 
     @Test
@@ -118,6 +122,7 @@ public class TestRegisterValidation {
     public void testValidateDonors(List<String> donorNames, List<LifeStage> lifeStages,
                                    List<Donor> knownDonors, List<Donor> expectedDonors,
                                    List<String> expectedProblems) {
+        @SuppressWarnings("UnstableApiUsage")
         RegisterRequest request = new RegisterRequest(
                 Streams.zip(donorNames.stream(), lifeStages.stream(),
                         (name, lifeStage) -> {
@@ -173,6 +178,7 @@ public class TestRegisterValidation {
     public void testSpatialLocations(List<String> tissueTypeNames, List<Integer> codes,
                                      List<TissueType> knownTissueTypes, List<SpatialLocation> expectedSLs,
                                      List<String> expectedProblems) {
+        @SuppressWarnings("UnstableApiUsage")
         RegisterRequest request = new RegisterRequest(
                 Streams.zip(tissueTypeNames.stream(), codes.stream(),
                 (name, code) -> {
@@ -251,9 +257,21 @@ public class TestRegisterValidation {
     }
 
     @ParameterizedTest
+    @MethodSource("fixativeData")
+    public void testValidateFixatives(List<Fixative> knownItems, List<String> givenNames,
+                                      List<Fixative> expectedItems, List<String> expectedProblems) {
+        when(mockFixativeRepo.findByName(any())).then(invocation -> {
+            final String arg = invocation.getArgument(0);
+            return knownItems.stream().filter(item -> arg.equalsIgnoreCase(item.getName())).findAny();
+        });
+        testValidateSimpleField(givenNames, expectedItems, expectedProblems,
+                RegisterValidationImp::validateFixatives, Fixative::getName, BlockRegisterRequest::setFixative,
+                v -> v.fixativeMap, RegisterValidationImp::getFixative);
+    }
+
+    @ParameterizedTest
     @MethodSource("tissueData")
-    public void testValidateTissues(List<String> names, List<Integer> replicates, List<Integer> highestSections,
-                                    List<Tissue> knownTissues, List<String> expectedProblems) {
+    public void testValidateTissues(final List<ValidateTissueTestData> testData, List<String> expectedProblems) {
         when(mockExternalNameValidation.validate(any(), any())).then(invocation -> {
             String name = invocation.getArgument(0);
             Consumer<String> addProblem = invocation.getArgument(1);
@@ -263,29 +281,113 @@ public class TestRegisterValidation {
             }
             return false;
         });
-        when(mockTissueRepo.findByExternalNameAndReplicate(anyString(), anyInt())).then(invocation -> {
+        when(mockTissueRepo.findByExternalName(anyString())).then(invocation -> {
             final String name = invocation.getArgument(0);
-            final int replicate = invocation.getArgument(1);
-            return knownTissues.stream()
-                    .filter(tissue -> tissue.getExternalName().equalsIgnoreCase(name) && tissue.getReplicate()==replicate)
-                    .findAny();
+            return testData.stream()
+                    .filter(td -> td.anyWithSameIdentifier && td.externalName.equalsIgnoreCase(name))
+                    .findAny()
+                    .map(td -> EntityFactory.getTissue());
         });
+
         RegisterRequest request = new RegisterRequest(
-                IntStream.range(0, names.size())
-                        .mapToObj(i -> {
-                            BlockRegisterRequest br = new BlockRegisterRequest();
-                            br.setExternalIdentifier(names.get(i));
-                            br.setHighestSection(highestSections.get(i));
-                            br.setReplicateNumber(replicates.get(i));
-                            return br;
-                        }).collect(toList())
+                testData.stream()
+                .map(td -> {
+                    BlockRegisterRequest br = new BlockRegisterRequest();
+                    br.setExternalIdentifier(td.externalName);
+                    br.setReplicateNumber(td.replicate);
+                    br.setDonorIdentifier(td.donorName);
+                    br.setTissueType(td.tissueTypeName);
+                    br.setSpatialLocation(td.slCode);
+                    br.setMedium(td.mediumName);
+                    br.setHighestSection(td.highestSection);
+                    br.setFixative(td.fixativeName);
+                    return br;
+                })
+                .collect(toList())
         );
+
         RegisterValidationImp validation = create(request);
+
+        doAnswer(invocation -> {
+            final String donorName = invocation.getArgument(0);
+            final String tissueTypeName = invocation.getArgument(1);
+            final int slCode = invocation.getArgument(2);
+            final String mediumName = invocation.getArgument(3);
+            final String fixativeName = invocation.getArgument(4);
+            final int replicate = invocation.getArgument(5);
+
+            return testData.stream()
+                    .anyMatch(td -> td.anySimilarInDatabase && td.donorName.equalsIgnoreCase(donorName)
+                            && td.tissueTypeName.equalsIgnoreCase(tissueTypeName)
+                            && td.slCode==slCode && td.mediumName.equalsIgnoreCase(mediumName)
+                            && td.fixativeName.equalsIgnoreCase(fixativeName) && td.replicate==replicate);
+
+        }).when(validation).anySimilarTissuesInDatabase(any(), any(), anyInt(), any(), any(), anyInt());
+
         validation.validateTissues();
         assertThat(validation.getProblems()).hasSameElementsAs(expectedProblems);
     }
 
-    private  <E> void testValidateSimpleField(List<String> givenStrings,
+    @Test
+    public void testAnySimilarTissuesInDatabase() {
+        Tissue tissue = EntityFactory.getTissue();
+        final Medium medium = tissue.getMedium();
+        final Fixative fixative = tissue.getFixative();
+        Donor donor = tissue.getDonor();
+        SpatialLocation sl = tissue.getSpatialLocation();
+        RegisterValidationImp validation = create(new RegisterRequest());
+        String tissueTypeName = sl.getTissueType().getName();
+        String donorName = donor.getDonorName();
+        validation.donorMap.put(donorName.toUpperCase(), donor);
+        int slCode = sl.getCode();
+        int replicate = tissue.getReplicate();
+        StringIntKey key = new StringIntKey(tissueTypeName, slCode);
+        assertEquals(key.toString(), "("+tissueTypeName.toUpperCase()+", "+slCode+")");
+        validation.spatialLocationMap.put(key, sl);
+        final String mediumName = medium.getName();
+        final String fixativeName = fixative.getName();
+        validation.mediumMap.put(mediumName.toUpperCase(), medium);
+        validation.fixativeMap.put(fixativeName.toUpperCase(), fixative);
+
+        when(mockTissueRepo.findByDonorIdAndSpatialLocationIdAndMediumIdAndFixativeIdAndReplicate(anyInt(), anyInt(), anyInt(), anyInt(), anyInt()))
+                .then(invocation -> {
+                    int donorId = invocation.getArgument(0);
+                    int slId = invocation.getArgument(1);
+                    int mediumId = invocation.getArgument(2);
+                    int fixativeId = invocation.getArgument(3);
+                    int repl = invocation.getArgument(4);
+                    if (tissue.getDonor().getId()==donorId
+                            && tissue.getSpatialLocation().getId()==slId
+                            && tissue.getMedium().getId()==mediumId
+                            && tissue.getFixative().getId()==fixativeId
+                            && tissue.getReplicate()==repl) {
+                        return Optional.of(tissue);
+                    }
+                    return Optional.empty();
+                });
+
+        assertTrue(validation.anySimilarTissuesInDatabase(donorName.toUpperCase(), tissueTypeName.toUpperCase(), slCode,
+                mediumName.toUpperCase(), fixativeName.toUpperCase(), replicate));
+        assertTrue(validation.anySimilarTissuesInDatabase(donorName.toLowerCase(), tissueTypeName.toLowerCase(), slCode,
+                mediumName.toLowerCase(), fixativeName.toLowerCase(), replicate));
+
+        assertFalse(validation.anySimilarTissuesInDatabase(donorName, null, 0, null, null, 0));
+
+        assertFalse(validation.anySimilarTissuesInDatabase("Bananas", tissueTypeName, slCode,
+                mediumName, fixativeName, replicate));
+        assertFalse(validation.anySimilarTissuesInDatabase(donorName, "Custard", slCode,
+                mediumName, fixativeName, replicate));
+        assertFalse(validation.anySimilarTissuesInDatabase(donorName, tissueTypeName, slCode+1,
+                mediumName, fixativeName, replicate));
+        assertFalse(validation.anySimilarTissuesInDatabase(donorName, tissueTypeName, slCode,
+                "Rhubarb", fixativeName, replicate));
+        assertFalse(validation.anySimilarTissuesInDatabase(donorName, tissueTypeName, slCode,
+                mediumName, "Blancmange", replicate));
+        assertFalse(validation.anySimilarTissuesInDatabase(donorName, tissueTypeName, slCode,
+                mediumName, fixativeName, replicate+1));
+    }
+
+    private <E> void testValidateSimpleField(List<String> givenStrings,
                                    List<E> expectedItems, List<String> expectedProblems,
                                             Consumer<RegisterValidationImp> validationFunction,
                                             Function<E, String> stringFn,
@@ -371,7 +473,7 @@ public class TestRegisterValidation {
                         List.of(tt), List.of(), List.of("Missing tissue type.")),
                 Arguments.of(List.of(name, "", "Plumbus", name), List.of(0, 0, 0, 5),
                         List.of(tt), List.of(sl0),
-                        List.of("Missing tissue type.", "Unknown tissue types: [Plumbus]",
+                        List.of("Missing tissue type.", "Unknown tissue type: [Plumbus]",
                                 "Unknown spatial location 5 for tissue type Arm."))
         );
     }
@@ -383,7 +485,7 @@ public class TestRegisterValidation {
                 Arguments.of(List.of(h0, h1), List.of("20/001", "20/000", "20/000"), List.of(h0, h1), List.of()),
                 Arguments.of(List.of(h0, h1), List.of("20/001", "20/404", "20/405"), List.of(h1), List.of("Unknown HMDMCs: [20/404, 20/405]")),
                 Arguments.of(List.of(h0), Arrays.asList(null, "20/000", null), List.of(h0), List.of("Missing HMDMC.")),
-                Arguments.of(List.of(h0, h1), List.of("20/000", "20/001", "20/000", "", "", "20/404"), List.of(h0, h1), List.of("Missing HMDMC.", "Unknown HMDMCs: [20/404]"))
+                Arguments.of(List.of(h0, h1), List.of("20/000", "20/001", "20/000", "", "", "20/404"), List.of(h0, h1), List.of("Missing HMDMC.", "Unknown HMDMC: [20/404]"))
         );
     }
 
@@ -396,51 +498,150 @@ public class TestRegisterValidation {
                 Arguments.of(List.of(lt0, lt1), List.of(name1, name0, name0), List.of(lt0, lt1), List.of()),
                 Arguments.of(List.of(lt0, lt1), List.of(name1, "Custard", "Banana"), List.of(lt1), List.of("Unknown labware types: [Custard, Banana]")),
                 Arguments.of(List.of(lt0), Arrays.asList(null, name0, null), List.of(lt0), List.of("Missing labware type.")),
-                Arguments.of(List.of(lt0, lt1), List.of(name0, name1, name0, "", "", "Banana"), List.of(lt0, lt1), List.of("Missing labware type.", "Unknown labware types: [Banana]"))
+                Arguments.of(List.of(lt0, lt1), List.of(name0, name1, name0, "", "", "Banana"), List.of(lt0, lt1), List.of("Missing labware type.", "Unknown labware type: [Banana]"))
         );
     }
 
     private static Stream<Arguments> mouldSizeData() {
         MouldSize ms = EntityFactory.getMouldSize();
         return Stream.of(Arguments.of(List.of(ms), List.of(ms.getName()), List.of(ms), List.of()),
-                Arguments.of(List.of(), Arrays.asList(null, ""), List.of(), List.of()),
-                Arguments.of(List.of(ms), List.of("", "Sausage"), List.of(), List.of("Unknown mould sizes: [Sausage]")));
+                Arguments.of(List.of(), Arrays.asList(null, ""), List.of(), List.of("Missing mould size.")),
+                Arguments.of(List.of(ms), List.of(ms.getName(), "Sausage"), List.of(ms), List.of("Unknown mould size: [Sausage]")));
     }
 
 
     private static Stream<Arguments> mediumData() {
         Medium med = EntityFactory.getMedium();
         return Stream.of(Arguments.of(List.of(med), List.of(med.getName()), List.of(med), List.of()),
-                Arguments.of(List.of(), Arrays.asList(null, ""), List.of(), List.of()),
-                Arguments.of(List.of(med), List.of("", "Sausage", "Sausage"), List.of(), List.of("Unknown mediums: [Sausage]")));
+                Arguments.of(List.of(), Arrays.asList(null, ""), List.of(), List.of("Missing medium.")),
+                Arguments.of(List.of(med), List.of(med.getName(), "Sausage", "Sausage"), List.of(med), List.of("Unknown medium: [Sausage]")));
     }
 
+
+    private static Stream<Arguments> fixativeData() {
+        Fixative fix = EntityFactory.getFixative();
+        return Stream.of(Arguments.of(List.of(fix), List.of(fix.getName()), List.of(fix), List.of()),
+                Arguments.of(List.of(), Arrays.asList(null, ""), List.of(), List.of("Missing fixative.")),
+                Arguments.of(List.of(fix), List.of(fix.getName(), "Sausage", "Sausage"), List.of(fix), List.of("Unknown fixative: [Sausage]")));
+    }
+
+
     private static Stream<Arguments> tissueData() {
-        final Tissue tissue = EntityFactory.getTissue();
-        final String name = tissue.getExternalName();
-        final int repl = tissue.getReplicate();
         return Stream.of(
-                Arguments.of(List.of("NewTissue", "NewTissue", name, name),
-                        List.of(1, 2, repl + 1, repl + 2), List.of(0,0,1,7), List.of(tissue), List.of()),
+                // No problems
+                Arguments.of(List.of(ValidateTissueTestData.externalName("X1").replicate(1),
+                        ValidateTissueTestData.externalName("X2").replicate(2)),
+                        List.of()),
 
-                Arguments.of(List.of(name, name), List.of(repl, repl+1), List.of(1,2), List.of(tissue),
-                        List.of("Tissue with external identifier "+name+", replicate number "+repl+" already exists.")),
-
-                Arguments.of(List.of(name, name), List.of(7, 7), List.of(1,2), List.of(tissue),
-                        List.of("Repeated external identifier and replicate number: "+name+", 7")),
-
-                Arguments.of(List.of("Banana*", "Custard*", name, "Banana*"), List.of(10, 11, 12, 13), List.of(1, 2, 3, 4),
-                        List.of(tissue),
-                        List.of("Invalid name: Banana*", "Invalid name: Custard*")),
-
-                Arguments.of(Arrays.asList(null, "Bananas", null), List.of(1,2,3), List.of(1,2,3), List.of(tissue),
+                // Some problems
+                Arguments.of(List.of(ValidateTissueTestData.externalName("X1").replicate(1),
+                        ValidateTissueTestData.externalName("X2").replicate(-4)),
+                        List.of("Replicate number cannot be negative.")),
+                Arguments.of(List.of(ValidateTissueTestData.externalName("X1").replicate(1),
+                        ValidateTissueTestData.externalName("X2").replicate(2).highestSection(-2)),
+                        List.of("Highest section number cannot be negative.")),
+                Arguments.of(List.of(ValidateTissueTestData.externalName(null)),
                         List.of("Missing external identifier.")),
-
-                Arguments.of(List.of("", "Bananas", ""), List.of(1,2,3), List.of(1,2,3), List.of(tissue),
+                Arguments.of(List.of(ValidateTissueTestData.externalName("")),
                         List.of("Missing external identifier.")),
+                Arguments.of(List.of(ValidateTissueTestData.externalName("Banana*")),
+                        List.of("Invalid name: Banana*")),
+                Arguments.of(List.of(ValidateTissueTestData.externalName("xyz").replicate(1),
+                        ValidateTissueTestData.externalName("Xyz").replicate(2)),
+                        List.of("Repeated external identifier: Xyz")),
+                Arguments.of(List.of(ValidateTissueTestData.externalName("X1").replicate(1),
+                        ValidateTissueTestData.externalName("X2").replicate(2).anyWithSameIdentifier(true)),
+                        List.of("There is already tissue in the database with external identifier X2.")),
+                Arguments.of(List.of(ValidateTissueTestData.externalName("X1").replicate(1).anyWithSameIdentifier(true),
+                        ValidateTissueTestData.externalName("X1").replicate(2).anyWithSameIdentifier(true),
+                        ValidateTissueTestData.externalName("X2").replicate(3).anyWithSameIdentifier(true)),
+                        List.of("There is already tissue in the database with external identifier X1.",
+                                "There is already tissue in the database with external identifier X2.",
+                                "Repeated external identifier: X1")),
+                Arguments.of(List.of(ValidateTissueTestData.externalName("X1"),
+                        ValidateTissueTestData.externalName("X2")),
+                        List.of("Repeated combination of fields: {donor=D, medium=M, fixative=F, tissue type=TT, " +
+                                "spatial location=2, replicate=1}")),
+                Arguments.of(List.of(ValidateTissueTestData.externalName("X1").replicate(1),
+                        ValidateTissueTestData.externalName("X2").replicate(2).anySimilarInDatabase(true)),
+                        List.of("There is already similar tissue in the database: {donor=D, medium=M, fixative=F, " +
+                                "tissue type=TT, spatial location=2, replicate=2}")),
 
-                Arguments.of(List.of(name), List.of(-1), List.of(-1), List.of(tissue),
-                        List.of("Replicate number cannot be negative.", "Highest section number cannot be negative."))
+                // Many problems
+                Arguments.of(List.of(ValidateTissueTestData.externalName("X1*").replicate(-1).highestSection(-1),
+                        ValidateTissueTestData.externalName(null).replicate(2),
+                        ValidateTissueTestData.externalName("X1").replicate(3).anySimilarInDatabase(true),
+                        ValidateTissueTestData.externalName("X2").replicate(4).anyWithSameIdentifier(true),
+                        ValidateTissueTestData.externalName("X3").replicate(5),
+                        ValidateTissueTestData.externalName("X4").replicate(5),
+                        ValidateTissueTestData.externalName("X4").replicate(6)),
+                        List.of("Replicate number cannot be negative.",
+                                "Highest section number cannot be negative.",
+                                "Missing external identifier.",
+                                "Invalid name: X1*",
+                                "Repeated external identifier: X4",
+                                "There is already tissue in the database with external identifier X2.",
+                                "Repeated combination of fields: {donor=D, medium=M, fixative=F, tissue type=TT, " +
+                                        "spatial location=2, replicate=5}",
+                                "There is already similar tissue in the database: {donor=D, medium=M, fixative=F, " +
+                                        "tissue type=TT, spatial location=2, replicate=3}"))
         );
+    }
+
+    static class ValidateTissueTestData {
+        String externalName;
+        int replicate = 1;
+        String donorName = "D";
+        String tissueTypeName = "TT";
+        int slCode = 2;
+        String mediumName = "M";
+        String fixativeName = "F";
+        int highestSection = 0;
+        boolean anySimilarInDatabase;
+        boolean anyWithSameIdentifier;
+
+        public ValidateTissueTestData(String externalName) {
+            this.externalName = externalName;
+        }
+
+        public static ValidateTissueTestData externalName(String externalName) {
+            return new ValidateTissueTestData(externalName);
+        }
+
+        public ValidateTissueTestData replicate(int replicate) {
+            this.replicate = replicate;
+            return this;
+        }
+
+        public ValidateTissueTestData highestSection(int highestSection) {
+            this.highestSection = highestSection;
+            return this;
+        }
+
+        public ValidateTissueTestData anySimilarInDatabase(boolean anySimilarInDatabase) {
+            this.anySimilarInDatabase = anySimilarInDatabase;
+            return this;
+        }
+
+        public ValidateTissueTestData anyWithSameIdentifier(boolean anyWithSameIdentifier) {
+            this.anyWithSameIdentifier = anyWithSameIdentifier;
+            return this;
+        }
+
+        @Override
+        public String toString() {
+            return MoreObjects.toStringHelper(this)
+                    .add("externalName", externalName)
+                    .add("replicate", replicate)
+                    .add("donorName", donorName)
+                    .add("tissueTypeName", tissueTypeName)
+                    .add("slCode", slCode)
+                    .add("mediumName", mediumName)
+                    .add("highestSection", highestSection)
+                    .add("fixativeName", fixativeName)
+                    .add("anySimilarInDatabase", anySimilarInDatabase)
+                    .add("anyWithSameIdentifier", anyWithSameIdentifier)
+                    .toString();
+        }
     }
 }

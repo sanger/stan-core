@@ -138,7 +138,9 @@ public class TestRegisterService {
         TissueType tissueType = EntityFactory.getTissueType();
         MouldSize mouldSize = EntityFactory.getMouldSize();
         Medium medium = EntityFactory.getMedium();
+        Fixative fixative = EntityFactory.getFixative();
         Hmdmc[] hmdmcs = {new Hmdmc(20000, "20/000"), new Hmdmc(20001, "20/001")};
+
         BlockRegisterRequest block0 = new BlockRegisterRequest();
         block0.setDonorIdentifier(donor.getDonorName());
         block0.setLifeStage(donor.getLifeStage());
@@ -147,10 +149,12 @@ public class TestRegisterService {
         block0.setHmdmc("20/000");
         block0.setLabwareType(lts[0].getName());
         block0.setMedium(medium.getName());
+        block0.setFixative(fixative.getName());
         block0.setMouldSize(mouldSize.getName());
         block0.setTissueType(tissueType.getName());
         block0.setReplicateNumber(2);
         block0.setSpatialLocation(1);
+
         BlockRegisterRequest block1 = new BlockRegisterRequest();
         block1.setDonorIdentifier(donor.getDonorName());
         block1.setLifeStage(donor.getLifeStage());
@@ -158,6 +162,9 @@ public class TestRegisterService {
         block1.setTissueType(tissueType.getName());
         block1.setSpatialLocation(0);
         block1.setLabwareType(lts[1].getName());
+        block1.setMedium(medium.getName().toUpperCase());
+        block1.setFixative(fixative.getName().toUpperCase());
+        block1.setMouldSize(mouldSize.getName().toUpperCase());
         block1.setHighestSection(0);
         block1.setExternalIdentifier("TISSUE1");
         block1.setHmdmc("20/001");
@@ -174,6 +181,7 @@ public class TestRegisterService {
                 .thenReturn(sls[1]);
         when(mockValidation.getMouldSize(eqCi(mouldSize.getName()))).thenReturn(mouldSize);
         when(mockValidation.getMedium(eqCi(medium.getName()))).thenReturn(medium);
+        when(mockValidation.getFixative(eqCi(fixative.getName()))).thenReturn(fixative);
         Arrays.stream(lts).forEach(lt -> when(mockValidation.getLabwareType(eqCi(lt.getName()))).thenReturn(lt));
         Arrays.stream(hmdmcs).forEach(h -> when(mockValidation.getHmdmc(eqCi(h.getHmdmc()))).thenReturn(h));
         RegisterRequest request = new RegisterRequest(List.of(block0, block1));
@@ -182,9 +190,9 @@ public class TestRegisterService {
 
         Tissue[] tissues = new Tissue[]{
                 new Tissue(5000, block0.getExternalIdentifier(), block0.getReplicateNumber(),
-                        sls[0], donor, mouldSize, medium, hmdmcs[0]),
+                        sls[0], donor, mouldSize, medium, fixative, hmdmcs[0]),
                 new Tissue(5001, block1.getExternalIdentifier(), block1.getReplicateNumber(),
-                        sls[1], donor, null, null, hmdmcs[1]),
+                        sls[1], donor, mouldSize, medium, fixative, hmdmcs[1]),
         };
 
         Sample[] samples = new Sample[]{
@@ -212,8 +220,9 @@ public class TestRegisterService {
                             block.getReplicateNumber(),
                             sls[i],
                             donor,
-                            i == 0 ? mouldSize : null,
-                            i == 0 ? medium : null,
+                            mouldSize,
+                            medium,
+                            fixative,
                             hmdmcs[i]
                     ));
             verify(mockSampleRepo).save(new Sample(null, null, tissues[i]));

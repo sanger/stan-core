@@ -23,6 +23,7 @@ public class RegisterValidationFactory {
     private LabwareTypeRepo ltRepo;
     private MouldSizeRepo mouldSizeRepo;
     private MediumRepo mediumRepo;
+    private FixativeRepo fixativeRepo;
     private TissueRepo tissueRepo;
     private Validator<String> donorNameValidation;
     private Validator<String> externalNameValidation;
@@ -30,13 +31,14 @@ public class RegisterValidationFactory {
     @Autowired
     public RegisterValidationFactory(DonorRepo donorRepo, HmdmcRepo hmdmcRepo, TissueTypeRepo ttRepo,
                                      LabwareTypeRepo ltRepo, MouldSizeRepo mouldSizeRepo, MediumRepo mediumRepo,
-                                     TissueRepo tissueRepo) {
+                                     FixativeRepo fixativeRepo, TissueRepo tissueRepo) {
         this.donorRepo = donorRepo;
         this.hmdmcRepo = hmdmcRepo;
         this.ttRepo = ttRepo;
         this.ltRepo = ltRepo;
         this.mouldSizeRepo = mouldSizeRepo;
         this.mediumRepo = mediumRepo;
+        this.fixativeRepo = fixativeRepo;
         this.tissueRepo = tissueRepo;
         Set<CharacterType> charTypes = EnumSet.of(
                 CharacterType.UPPER, CharacterType.LOWER, CharacterType.DIGIT, CharacterType.HYPHEN, CharacterType.UNDERSCORE
@@ -47,6 +49,6 @@ public class RegisterValidationFactory {
 
     public RegisterValidation createRegisterValidation(RegisterRequest request) {
         return new RegisterValidationImp(request, donorRepo, hmdmcRepo, ttRepo, ltRepo, mouldSizeRepo, mediumRepo,
-                tissueRepo, donorNameValidation, externalNameValidation);
+                fixativeRepo, tissueRepo, donorNameValidation, externalNameValidation);
     }
 }

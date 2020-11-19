@@ -20,6 +20,7 @@ public class RegisterValidationImp implements RegisterValidation {
     private final LabwareTypeRepo ltRepo;
     private final MouldSizeRepo mouldSizeRepo;
     private final MediumRepo mediumRepo;
+    private final FixativeRepo fixativeRepo;
     private final TissueRepo tissueRepo;
     private final Validator<String> donorNameValidation;
     private final Validator<String> externalNameValidation;
@@ -30,11 +31,13 @@ public class RegisterValidationImp implements RegisterValidation {
     final Map<String, LabwareType> labwareTypeMap = new HashMap<>();
     final Map<String, MouldSize> mouldSizeMap = new HashMap<>();
     final Map<String, Medium> mediumMap = new HashMap<>();
+    final Map<String, Fixative> fixativeMap = new HashMap<>();
     final LinkedHashSet<String> problems = new LinkedHashSet<>();
 
     public RegisterValidationImp(RegisterRequest request, DonorRepo donorRepo,
                                  HmdmcRepo hmdmcRepo, TissueTypeRepo ttRepo, LabwareTypeRepo ltRepo,
-                                 MouldSizeRepo mouldSizeRepo, MediumRepo mediumRepo, TissueRepo tissueRepo,
+                                 MouldSizeRepo mouldSizeRepo, MediumRepo mediumRepo,
+                                 FixativeRepo fixativeRepo, TissueRepo tissueRepo,
                                  Validator<String> donorNameValidation, Validator<String> externalNameValidation) {
         this.request = request;
         this.donorRepo = donorRepo;
@@ -43,6 +46,7 @@ public class RegisterValidationImp implements RegisterValidation {
         this.ltRepo = ltRepo;
         this.mouldSizeRepo = mouldSizeRepo;
         this.mediumRepo = mediumRepo;
+        this.fixativeRepo = fixativeRepo;
         this.tissueRepo = tissueRepo;
         this.donorNameValidation = donorNameValidation;
         this.externalNameValidation = externalNameValidation;
@@ -59,6 +63,7 @@ public class RegisterValidationImp implements RegisterValidation {
         validateLabwareTypes();
         validateMouldSizes();
         validateMediums();
+        validateFixatives();
         validateTissues();
         return problems;
     }
@@ -103,7 +108,6 @@ public class RegisterValidationImp implements RegisterValidation {
         }
     }
 
-
     public void validateSpatialLocations() {
         Map<String, TissueType> tissueTypeMap = new HashMap<>();
         Set<String> unknownTissueTypes = new LinkedHashSet<>();
@@ -140,32 +144,37 @@ public class RegisterValidationImp implements RegisterValidation {
             spatialLocationMap.put(key, slOpt.get());
         }
         if (!unknownTissueTypes.isEmpty()) {
-            addProblem("Unknown tissue types: "+unknownTissueTypes);
+            if (unknownTissueTypes.size()==1) {
+                addProblem("Unknown tissue type: "+unknownTissueTypes);
+            } else {
+                addProblem("Unknown tissue types: " + unknownTissueTypes);
+            }
         }
     }
 
     public void validateHmdmcs() {
-        validateByName("Unknown HMDMCs: ", "Missing HMDMC.",
-                BlockRegisterRequest::getHmdmc, hmdmcRepo::findByHmdmc, hmdmcMap);
+        validateByName("HMDMC", BlockRegisterRequest::getHmdmc, hmdmcRepo::findByHmdmc, hmdmcMap);
     }
 
     public void validateLabwareTypes() {
-        validateByName("Unknown labware types: ", "Missing labware type.",
-                BlockRegisterRequest::getLabwareType, ltRepo::findByName, labwareTypeMap);
+        validateByName("labware type", BlockRegisterRequest::getLabwareType, ltRepo::findByName, labwareTypeMap);
     }
 
     public void validateMouldSizes() {
-        validateByName("Unknown mould sizes: ", null,
-                BlockRegisterRequest::getMouldSize, mouldSizeRepo::findByName, mouldSizeMap);
+        validateByName("mould size", BlockRegisterRequest::getMouldSize, mouldSizeRepo::findByName, mouldSizeMap);
     }
 
     public void validateMediums() {
-        validateByName("Unknown mediums: ", null,
-                BlockRegisterRequest::getMedium, mediumRepo::findByName, mediumMap);
+        validateByName("medium", BlockRegisterRequest::getMedium, mediumRepo::findByName, mediumMap);
+    }
+
+    public void validateFixatives() {
+        validateByName("fixative", BlockRegisterRequest::getFixative, fixativeRepo::findByName, fixativeMap);
     }
 
     public void validateTissues() {
-        Set<StringIntKey> keys = new LinkedHashSet<>();
+        Set<String> externalNames = new HashSet<>();
+        Set<TissueKey> tissueKeys = new HashSet<>();
         for (BlockRegisterRequest block : blocks()) {
             if (block.getReplicateNumber() < 0) {
                 addProblem("Replicate number cannot be negative.");
@@ -175,26 +184,55 @@ public class RegisterValidationImp implements RegisterValidation {
             }
             if (block.getExternalIdentifier()==null || block.getExternalIdentifier().isEmpty()) {
                 addProblem("Missing external identifier.");
-                continue;
+            } else {
+                if (externalNameValidation != null) {
+                    externalNameValidation.validate(block.getExternalIdentifier(), this::addProblem);
+                }
+                if (!externalNames.add(block.getExternalIdentifier().toUpperCase())) {
+                    addProblem("Repeated external identifier: " + block.getExternalIdentifier());
+                } else if (tissueRepo.findByExternalName(block.getExternalIdentifier()).isPresent()) {
+                    addProblem(String.format("There is already tissue in the database with external identifier %s.",
+                            block.getExternalIdentifier()));
+                }
             }
-            if (externalNameValidation!=null) {
-                externalNameValidation.validate(block.getExternalIdentifier(), this::addProblem);
-            }
-            if (!keys.add(new StringIntKey(block.getExternalIdentifier(), block.getReplicateNumber()))) {
-                addProblem(String.format("Repeated external identifier and replicate number: %s, %s",
-                        block.getExternalIdentifier(), block.getReplicateNumber()));
-            }
-            Optional<Tissue> tissueOpt = tissueRepo.findByExternalNameAndReplicate(
-                    block.getExternalIdentifier(), block.getReplicateNumber());
-            if (tissueOpt.isPresent()) {
-                Tissue tissue = tissueOpt.get();
-                addProblem(String.format("Tissue with external identifier %s, replicate number %s already exists.",
-                        tissue.getExternalName(), tissue.getReplicate()));
+            TissueKey tissueKey = new TissueKey(block);
+            if (tissueKey.isComplete()) {
+                if (!tissueKeys.add(tissueKey)) {
+                    addProblem("Repeated combination of fields: "+tissueKey);
+                } else if (anySimilarTissuesInDatabase(block.getDonorIdentifier(), block.getTissueType(), block.getSpatialLocation(),
+                        block.getMedium(), block.getFixative(), block.getReplicateNumber())) {
+                    addProblem("There is already similar tissue in the database: "+tissueKey);
+                }
             }
         }
     }
 
-    private <E> void validateByName(String unknownMessage, String missingMessage,
+    public boolean anySimilarTissuesInDatabase(String donorName, String tissueTypeName, int spatialLocationCode,
+                                               String mediumName, String fixativeName, int replicate) {
+        Donor donor = getDonor(donorName);
+        if (donor==null || donor.getId()==null) {
+            return false;
+        }
+        if (tissueTypeName==null || tissueTypeName.isEmpty()) {
+            return false;
+        }
+        SpatialLocation sl = spatialLocationMap.get(new StringIntKey(tissueTypeName, spatialLocationCode));
+        if (sl==null) {
+            return false;
+        }
+        Medium medium = getMedium(mediumName);
+        if (medium==null) {
+            return false;
+        }
+        Fixative fixative = getFixative(fixativeName);
+        if (fixative==null) {
+            return false;
+        }
+        return tissueRepo.findByDonorIdAndSpatialLocationIdAndMediumIdAndFixativeIdAndReplicate(
+                donor.getId(), sl.getId(), medium.getId(), fixative.getId(), replicate).isPresent();
+    }
+
+    private <E> void validateByName(String entityName,
                                     Function<BlockRegisterRequest, String> nameFunction,
                                     Function<String, Optional<E>> lkp,
                                     Map<String, E> map) {
@@ -220,11 +258,11 @@ public class RegisterValidationImp implements RegisterValidation {
             }
             map.put(nameUc, opt.get());
         }
-        if (missing && missingMessage!=null) {
-            addProblem(missingMessage);
+        if (missing) {
+            addProblem(String.format("Missing %s.", entityName));
         }
         if (!unknownNames.isEmpty()) {
-            addProblem(unknownMessage + unknownNames);
+            addProblem(String.format("Unknown %s%s: %s", entityName, unknownNames.size()==1 ? "" : "s", unknownNames));
         }
     }
 
@@ -242,32 +280,41 @@ public class RegisterValidationImp implements RegisterValidation {
 
     @Override
     public Donor getDonor(String name) {
-        return this.donorMap.get(name.toUpperCase());
+        return ucGet(this.donorMap, name);
     }
 
     @Override
     public Hmdmc getHmdmc(String hmdmc) {
-        return this.hmdmcMap.get(hmdmc.toUpperCase());
+        return ucGet(hmdmcMap, hmdmc);
     }
 
     @Override
     public SpatialLocation getSpatialLocation(String tissueTypeName, int code) {
-        return this.spatialLocationMap.get(new StringIntKey(tissueTypeName, code));
+        return (tissueTypeName==null ? null : this.spatialLocationMap.get(new StringIntKey(tissueTypeName, code)));
     }
 
     @Override
     public LabwareType getLabwareType(String name) {
-        return this.labwareTypeMap.get(name.toUpperCase());
+        return ucGet(this.labwareTypeMap, name);
     }
 
     @Override
     public MouldSize getMouldSize(String name) {
-        return (name==null ? null : this.mouldSizeMap.get(name.toUpperCase()));
+        return ucGet(this.mouldSizeMap, name);
     }
 
     @Override
     public Medium getMedium(String name) {
-        return (name==null ? null : this.mediumMap.get(name.toUpperCase()));
+        return ucGet(this.mediumMap, name);
+    }
+
+    @Override
+    public Fixative getFixative(String name) {
+        return ucGet(this.fixativeMap, name);
+    }
+
+    private static <E> E ucGet(Map<String, E> map, String key) {
+        return (key==null ? null : map.get(key.toUpperCase()));
     }
 
     static class StringIntKey {
@@ -295,6 +342,63 @@ public class RegisterValidationImp implements RegisterValidation {
         @Override
         public String toString() {
             return String.format("(%s, %s)", string, number);
+        }
+    }
+
+    static class TissueKey {
+        String donorName;
+        String mediumName;
+        String fixativeName;
+        String tissueTypeName;
+        int spatialLocation;
+        int replicate;
+
+        public TissueKey(String donorName, String mediumName, String fixativeName, String tissueTypeName,
+                         int spatialLocation, int replicate) {
+            this.donorName = uc(donorName);
+            this.mediumName = uc(mediumName);
+            this.tissueTypeName = uc(tissueTypeName);
+            this.fixativeName = uc(fixativeName);
+            this.spatialLocation = spatialLocation;
+            this.replicate = replicate;
+        }
+
+        public TissueKey(BlockRegisterRequest br) {
+            this(br.getDonorIdentifier(), br.getMedium(), br.getFixative(), br.getTissueType(),
+                    br.getSpatialLocation(), br.getReplicateNumber());
+        }
+
+        private static String uc(String value) {
+            return (value==null || value.isEmpty() ? null : value.toUpperCase());
+        }
+
+        public boolean isComplete() {
+            return (this.donorName!=null && this.tissueTypeName!=null
+                    && this.mediumName!=null && this.fixativeName!=null);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            TissueKey that = (TissueKey) o;
+            return (this.spatialLocation == that.spatialLocation
+                    && this.replicate == that.replicate
+                    && Objects.equals(this.donorName, that.donorName)
+                    && Objects.equals(this.mediumName, that.mediumName)
+                    && Objects.equals(this.fixativeName, that.fixativeName)
+                    && Objects.equals(this.tissueTypeName, that.tissueTypeName));
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(donorName, mediumName, fixativeName,tissueTypeName, spatialLocation, replicate);
+        }
+
+        @Override
+        public String toString() {
+            return String.format("{donor=%s, medium=%s, fixative=%s, tissue type=%s, spatial location=%s, replicate=%s}",
+                    donorName, mediumName, fixativeName, tissueTypeName, spatialLocation, replicate);
         }
     }
 }
