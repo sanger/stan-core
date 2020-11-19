@@ -124,6 +124,7 @@ type Query {
     mediums: [Medium!]!,
     fixatives: [Fixative!]!,
     mouldSizes: [MouldSize!]!,
+    labware(barcode: String!): Labware!,
 }
 
 type Mutation {

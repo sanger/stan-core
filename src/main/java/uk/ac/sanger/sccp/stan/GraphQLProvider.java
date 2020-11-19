@@ -70,6 +70,7 @@ public class GraphQLProvider {
                         .dataFetcher("mediums", graphQLDataFetchers.getMediums())
                         .dataFetcher("fixatives", graphQLDataFetchers.getFixatives())
                         .dataFetcher("mouldSizes", graphQLDataFetchers.getMouldSizes())
+                        .dataFetcher("labware", graphQLDataFetchers.findLabwareByBarcode())
                 )
                 .type(newTypeWiring("Mutation")
                         .dataFetcher("login", graphQLMutation.logIn())
