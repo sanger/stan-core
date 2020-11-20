@@ -67,7 +67,13 @@ type Address {
     column: Int!,
 }
 
+input AddressInput {
+    row: Int!,
+    column: Int!,
+}
+
 type Sample {
+    id: Int!,
     section: Int!,
     tissue: Tissue!,
 }
@@ -116,6 +122,32 @@ type RegisterResult {
     tissue: [Tissue!]!,
 }
 
+input PlanRequestSource {
+    barcode: String!,
+    address: AddressInput,
+}
+
+input PlanRequestAction {
+    address: AddressInput!,
+    sampleId: Int!,
+    source: PlanRequestSource!,
+}
+
+input PlanRequestLabware {
+    labwareType: String!,
+    barcode: String,
+    actions: [PlanRequestAction!]!,
+}
+
+input PlanRequest {
+    operationType: String!,
+    labware: [PlanRequestLabware!]!,
+}
+
+type PlanResult {
+    labware: [Labware!]!,
+}
+
 type Query {
     user: User,
     tissueTypes: [TissueType!]!,
@@ -131,4 +163,5 @@ type Mutation {
     login(username: String!, password: String!): LoginResult!,
     logout: String,
     register(request: RegisterRequest!): RegisterResult!,
+    plan(request: PlanRequest!): PlanResult!,
 }
