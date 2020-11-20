@@ -7,7 +7,6 @@ import uk.ac.sanger.sccp.stan.repo.ActionRepo;
 import uk.ac.sanger.sccp.stan.repo.OperationRepo;
 
 import javax.persistence.EntityManager;
-import java.sql.Timestamp;
 import java.util.List;
 
 /**
@@ -38,8 +37,7 @@ public class OperationService {
         if (actions.isEmpty()) {
             throw new IllegalArgumentException("No actions received to create operation.");
         }
-        Operation op = opRepo.save(new Operation(null, operationType, new Timestamp(System.currentTimeMillis()),
-                null, user));
+        Operation op = opRepo.save(new Operation(null, operationType, null,null, user));
         for (Action action : actions) {
             action.setOperationId(op.getId());
         }
