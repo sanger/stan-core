@@ -13,6 +13,7 @@ public class Action {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
+    @Column(name="operation_id")
     private Integer operationId;
 
     @ManyToOne

@@ -9,7 +9,7 @@ import java.util.Objects;
  * An action (i.e. one sample moving from one slot to another slot) in a planned operation.
  * @author dr6
  */
-class PlanRequestAction {
+public class PlanRequestAction {
     private Address address;
     private int sampleId;
     private PlanRequestSource source;

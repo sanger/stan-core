@@ -8,7 +8,7 @@ import java.util.Objects;
 /**
  * @author dr6
  */
-class PlanRequestSource {
+public class PlanRequestSource {
     private String barcode;
     private Address address;
 

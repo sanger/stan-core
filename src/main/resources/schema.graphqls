@@ -127,6 +127,22 @@ input PlanRequestSource {
     address: AddressInput,
 }
 
+type OperationType {
+    name: String!,
+}
+
+type PlanAction {
+    sourceSlot: Slot!,
+    destinationSlot: Slot!,
+    sample: Sample!,
+    section: Int!,
+}
+
+type PlanOperation {
+    operationType: OperationType,
+    actions: [PlanAction!]!,
+}
+
 input PlanRequestAction {
     address: AddressInput!,
     sampleId: Int!,
@@ -146,6 +162,7 @@ input PlanRequest {
 
 type PlanResult {
     labware: [Labware!]!,
+    plan: [PlanOperation!]!,
 }
 
 type Query {

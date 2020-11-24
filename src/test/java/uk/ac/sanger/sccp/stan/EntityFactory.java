@@ -57,13 +57,13 @@ public class EntityFactory {
 
     public static LabwareType getTubeType() {
         if (tubeType==null) {
-            tubeType = new LabwareType(50, "Tube", 1, 1, getLabelType());
+            tubeType = new LabwareType(50, "Tube", 1, 1, getLabelType(), false);
         }
         return tubeType;
     }
 
     public static LabwareType makeLabwareType(int numRows, int numColumns) {
-        return new LabwareType(++idCounter, numRows+"x"+numColumns, numRows, numColumns, getLabelType());
+        return new LabwareType(++idCounter, numRows+"x"+numColumns, numRows, numColumns, getLabelType(), false);
     }
 
     public static Hmdmc getHmdmc() {

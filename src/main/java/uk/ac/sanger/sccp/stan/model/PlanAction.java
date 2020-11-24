@@ -6,13 +6,16 @@ import javax.persistence.*;
 import java.util.Objects;
 
 /**
+ * A planned action inside a planned operation.
  * @author dr6
  */
 @Entity
+@Table(name="plan_action")
 public class PlanAction {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
+    @Column(name="plan_operation_id")
     private Integer planOperationId;
 
     @ManyToOne
@@ -22,16 +25,18 @@ public class PlanAction {
     @JoinColumn(name="dest_slot_id")
     private Slot destination;
     @ManyToOne
-    private PlanSample planSample;
+    private Sample sample;
+    private int section;
 
     public PlanAction() {}
 
-    public PlanAction(Integer id, Integer operationId, Slot source, Slot destination, PlanSample planSample) {
+    public PlanAction(Integer id, Integer planOperationId, Slot source, Slot destination, Sample sample, int section) {
         this.id = id;
-        this.planOperationId = operationId;
+        this.planOperationId = planOperationId;
         this.source = source;
         this.destination = destination;
-        this.planSample = planSample;
+        this.sample = sample;
+        this.section = section;
     }
 
     public Integer getId() {
@@ -66,12 +71,20 @@ public class PlanAction {
         this.planOperationId = planOperationId;
     }
 
-    public PlanSample getPlanSample() {
-        return this.planSample;
+    public Sample getSample() {
+        return this.sample;
     }
 
-    public void setPlanSample(PlanSample planSample) {
-        this.planSample = planSample;
+    public void setSample(Sample sample) {
+        this.sample = sample;
+    }
+
+    public int getSection() {
+        return this.section;
+    }
+
+    public void setSection(int section) {
+        this.section = section;
     }
 
     @Override
@@ -80,10 +93,11 @@ public class PlanAction {
         if (o == null || getClass() != o.getClass()) return false;
         PlanAction that = (PlanAction) o;
         return (Objects.equals(this.id, that.id)
+                && this.section==that.section
                 && Objects.equals(this.planOperationId, that.planOperationId)
                 && Objects.equals(this.source, that.source)
                 && Objects.equals(this.destination, that.destination)
-                && Objects.equals(this.planSample, that.planSample));
+                && Objects.equals(this.sample, that.sample));
     }
 
     @Override
@@ -98,7 +112,8 @@ public class PlanAction {
                 .add("planOperationId", planOperationId)
                 .add("source", source)
                 .add("destination", destination)
-                .add("planSample", planSample)
+                .add("sample", sample)
+                .add("section", section)
                 .toString();
     }
 }

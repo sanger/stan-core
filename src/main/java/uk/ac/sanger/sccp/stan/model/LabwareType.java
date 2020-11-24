@@ -15,18 +15,20 @@ public class LabwareType {
     private String name;
     private int numRows = 1;
     private int numColumns = 1;
+    private boolean prebarcoded;
 
     @ManyToOne
     private LabelType labelType;
 
     public LabwareType() {}
 
-    public LabwareType(Integer id, String name, int numRows, int numColumns, LabelType labelType) {
+    public LabwareType(Integer id, String name, int numRows, int numColumns, LabelType labelType, boolean prebarcoded) {
         this.id = id;
         this.name = name;
         this.numRows = numRows;
         this.numColumns = numColumns;
         this.labelType = labelType;
+        this.prebarcoded = prebarcoded;
     }
 
     public Integer getId() {
@@ -69,6 +71,22 @@ public class LabwareType {
         this.labelType = labelType;
     }
 
+    public boolean isPrebarcoded() {
+        return this.prebarcoded;
+    }
+
+    public void setPrebarcoded(boolean prebarcoded) {
+        this.prebarcoded = prebarcoded;
+    }
+
+    public int indexOf(Address address) {
+        if (address.getRow() < 1 || address.getColumn() < 1
+                || address.getRow() > numRows || address.getColumn() > numColumns) {
+            return -1;
+        }
+        return (address.getRow()-1) * numColumns + address.getColumn()-1;
+    }
+
     @Override
     public String toString() {
         return getName();
@@ -81,6 +99,7 @@ public class LabwareType {
         LabwareType that = (LabwareType) o;
         return (this.numRows == that.numRows
                 && this.numColumns == that.numColumns
+                && this.prebarcoded == that.prebarcoded
                 && Objects.equals(this.id, that.id)
                 && Objects.equals(this.name, that.name)
                 && Objects.equals(this.labelType, that.labelType));

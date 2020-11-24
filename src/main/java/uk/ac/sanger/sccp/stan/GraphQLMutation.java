@@ -14,7 +14,10 @@ import uk.ac.sanger.sccp.stan.config.SessionConfig;
 import uk.ac.sanger.sccp.stan.model.User;
 import uk.ac.sanger.sccp.stan.repo.UserRepo;
 import uk.ac.sanger.sccp.stan.request.*;
+import uk.ac.sanger.sccp.stan.request.plan.PlanRequest;
+import uk.ac.sanger.sccp.stan.request.plan.PlanResult;
 import uk.ac.sanger.sccp.stan.service.LDAPService;
+import uk.ac.sanger.sccp.stan.service.operation.plan.PlanService;
 import uk.ac.sanger.sccp.stan.service.register.RegisterService;
 
 import java.util.ArrayList;
@@ -31,19 +34,21 @@ public class GraphQLMutation {
     final LDAPService ldapService;
     final SessionConfig sessionConfig;
     final RegisterService registerService;
+    final PlanService planService;
 
     final UserRepo userRepo;
 
     @Autowired
     public GraphQLMutation(ObjectMapper objectMapper, AuthenticationComponent authComp,
                            LDAPService ldapService, SessionConfig sessionConfig,
-                           RegisterService registerService,
+                           RegisterService registerService, PlanService planService,
                            UserRepo userRepo) {
         this.objectMapper = objectMapper;
         this.authComp = authComp;
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
         this.registerService = registerService;
+        this.planService = planService;
         this.userRepo = userRepo;
     }
 
@@ -79,6 +84,14 @@ public class GraphQLMutation {
             User user = checkUser();
             RegisterRequest request = arg(dfe, "request", RegisterRequest.class);
             return registerService.register(request, user);
+        };
+    }
+
+    public DataFetcher<PlanResult> recordPlan() {
+        return dfe -> {
+            User user = checkUser();
+            PlanRequest request = arg(dfe, "request", PlanRequest.class);
+            return planService.recordPlan(user, request);
         };
     }
 

@@ -1,6 +1,7 @@
 package uk.ac.sanger.sccp.stan.model;
 
 import com.google.common.base.MoreObjects;
+import org.hibernate.annotations.DynamicInsert;
 
 import javax.persistence.*;
 import java.sql.Timestamp;
@@ -12,6 +13,7 @@ import java.util.Objects;
  * @author dr6
  */
 @Entity
+@DynamicInsert
 public class PlanOperation {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,6 +27,7 @@ public class PlanOperation {
     private Timestamp planned;
 
     @OneToMany
+    @JoinColumn(name="plan_operation_id")
     private List<PlanAction> planActions;
 
     @ManyToOne

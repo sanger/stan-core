@@ -24,6 +24,7 @@ public class Operation {
     private Timestamp performed;
 
     @OneToMany
+    @JoinColumn(name="operation_id")
     private List<Action> actions;
 
     @ManyToOne
