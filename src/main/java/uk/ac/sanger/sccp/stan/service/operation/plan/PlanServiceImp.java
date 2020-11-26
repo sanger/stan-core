@@ -119,13 +119,13 @@ public class PlanServiceImp implements PlanService {
                         .findAny()
                         .orElseThrow(() -> new EntityNotFoundException("Sample " + prac.getSampleId()
                                 + " not found in " + prac.getSource()));
-                int section;
-                if (originalSample.getSection()!=null) {
-                    section = originalSample.getSection();
+                Integer newSection;
+                if (originalSample.getSection()==null) {
+                    newSection = sampleService.nextSection(slot0);
                 } else {
-                    section = sampleService.nextSection(slot0);
+                    newSection = null; // Do not specify a new section in the plan action
                 }
-                PlanAction action = new PlanAction(null, planId, slot0, slot1, originalSample, section);
+                PlanAction action = new PlanAction(null, planId, slot0, slot1, originalSample, newSection);
                 planActionRepo.save(action);
                 actions.add(action);
             }

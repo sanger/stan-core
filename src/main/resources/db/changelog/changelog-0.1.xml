@@ -576,8 +576,8 @@
             <column name="dest_slot_id" type="INT">
                 <constraints nullable="false" foreignKeyName="plan_action_fk_dest_slot" referencedTableName="slot" referencedColumnNames="id"/>
             </column>
-            <column name="section" type="INT">
-                <constraints nullable="false"/>
+            <column name="new_section" type="INT">
+                <constraints nullable="true"/>
             </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
@@ -597,7 +597,5 @@
             <dropTable tableName="plan_action"/>
         </rollback>
     </changeSet>
-
-
 
 </databaseChangeLog>

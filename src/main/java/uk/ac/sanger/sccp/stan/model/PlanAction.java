@@ -26,17 +26,17 @@ public class PlanAction {
     private Slot destination;
     @ManyToOne
     private Sample sample;
-    private int section;
+    private Integer newSection;
 
     public PlanAction() {}
 
-    public PlanAction(Integer id, Integer planOperationId, Slot source, Slot destination, Sample sample, int section) {
+    public PlanAction(Integer id, Integer planOperationId, Slot source, Slot destination, Sample sample, Integer newSection) {
         this.id = id;
         this.planOperationId = planOperationId;
         this.source = source;
         this.destination = destination;
         this.sample = sample;
-        this.section = section;
+        this.newSection = newSection;
     }
 
     public Integer getId() {
@@ -79,12 +79,12 @@ public class PlanAction {
         this.sample = sample;
     }
 
-    public int getSection() {
-        return this.section;
+    public Integer getNewSection() {
+        return this.newSection;
     }
 
-    public void setSection(int section) {
-        this.section = section;
+    public void setNewSection(Integer section) {
+        this.newSection = section;
     }
 
     @Override
@@ -93,11 +93,11 @@ public class PlanAction {
         if (o == null || getClass() != o.getClass()) return false;
         PlanAction that = (PlanAction) o;
         return (Objects.equals(this.id, that.id)
-                && this.section==that.section
                 && Objects.equals(this.planOperationId, that.planOperationId)
                 && Objects.equals(this.source, that.source)
                 && Objects.equals(this.destination, that.destination)
-                && Objects.equals(this.sample, that.sample));
+                && Objects.equals(this.sample, that.sample)
+                && Objects.equals(this.newSection, that.newSection));
     }
 
     @Override
@@ -113,7 +113,7 @@ public class PlanAction {
                 .add("source", source)
                 .add("destination", destination)
                 .add("sample", sample)
-                .add("section", section)
+                .add("newSection", newSection)
                 .toString();
     }
 }

@@ -7,7 +7,7 @@ import uk.ac.sanger.sccp.stan.model.PlanAction;
 import java.util.OptionalInt;
 
 public interface PlanActionRepo extends CrudRepository<PlanAction, Integer> {
-    @Query("SELECT MAX(a.section) FROM PlanAction a WHERE a.sample.tissue.id=?1")
+    @Query("SELECT MAX(a.newSection) FROM PlanAction a WHERE a.sample.tissue.id=?1")
     Integer _findMaxPlannedSectionForTissueId(int tissueId);
 
     /**
