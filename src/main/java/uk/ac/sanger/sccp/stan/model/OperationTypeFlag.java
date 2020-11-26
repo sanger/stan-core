@@ -5,7 +5,7 @@ public enum OperationTypeFlag {
     SOURCE_IS_BLOCK,
     ;
 
-    int bit() {
+    public int bit() {
         return (1 << this.ordinal());
     }
 }

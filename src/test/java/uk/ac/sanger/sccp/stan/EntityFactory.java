@@ -135,4 +135,12 @@ public class EntityFactory {
                 .collect(toList());
         return new Labware(lwId, "STAN-"+lwId, lt, slots);
     }
+
+    public static OperationType makeOperationType(String name, OperationTypeFlag... flags) {
+        int flagbits = 0;
+        for (OperationTypeFlag flag : flags) {
+            flagbits |= flag.bit();
+        }
+        return new OperationType(++idCounter, name, flagbits);
+    }
 }

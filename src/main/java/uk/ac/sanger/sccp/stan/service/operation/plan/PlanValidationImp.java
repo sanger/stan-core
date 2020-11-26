@@ -17,8 +17,8 @@ public class PlanValidationImp implements PlanValidation {
     private final OperationTypeRepo opTypeRepo;
     private final Validator<String> prebarcodeValidator;
 
-    private final Set<String> problems = new LinkedHashSet<>();
     private final PlanRequest request;
+    final Set<String> problems = new LinkedHashSet<>();
 
     public PlanValidationImp(PlanRequest request, LabwareRepo labwareRepo, LabwareTypeRepo ltRepo,
                              OperationTypeRepo opTypeRepo, Validator<String> prebarcodeValidator) {
@@ -69,12 +69,17 @@ public class PlanValidationImp implements PlanValidation {
                 continue;
             }
             Slot slot = lw.getSlot(address);
-            if (slot.getSamples().stream().noneMatch(sample -> sample.getId()==action.getSampleId())) {
+            Sample sample = slot.getSamples().stream().filter(sam -> sam.getId()==action.getSampleId())
+                    .findAny().orElse(null);
+            if (sample==null) {
                 addProblem("Slot %s of labware %s does not contain a sample with ID %s.",
                         address, barcode, action.getSampleId());
             }
             if (opType!=null && opType.sourceMustBeBlock() && !slot.isBlock()) {
-                addProblem("Source %s is not a block for operation %s.", action.getSource(), opType.getName());
+                addProblem("Source %s,%s is not a block for operation %s.", action.getSource().getBarcode(), address,
+                        opType.getName());
+            } else if (opType!=null && !opType.canCreateSection() && sample!=null && sample.getSection()==null) {
+                addProblem("Operation %s cannot create a section of sample %s.", opType.getName(), sample.getId());
             }
         }
         if (!unfoundBarcodes.isEmpty()) {
@@ -167,7 +172,7 @@ public class PlanValidationImp implements PlanValidation {
             }
             ActionKey key = new ActionKey(ac);
             if (key.isComplete() && !keys.add(key)) {
-                addProblem("Actions for labware %s contains duplicate action: %s", lwErrorDesc(lw), key);
+                addProblem("Actions for labware %s contain duplicate action: %s", lwErrorDesc(lw), key);
             }
         }
     }
