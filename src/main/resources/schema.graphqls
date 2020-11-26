@@ -135,7 +135,7 @@ type PlanAction {
     sourceSlot: Slot!,
     destinationSlot: Slot!,
     sample: Sample!,
-    section: Int!,
+    newSection: Int,
 }
 
 type PlanOperation {
