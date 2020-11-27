@@ -44,7 +44,7 @@ public class IntegrationTests {
                 "        donorIdentifier:\"DONOR1\",\n" +
                 "        externalIdentifier:\"TISSUE1\",\n" +
                 "        lifeStage:adult,\n" +
-                "        hmdmc:\"20/000\",\n" +
+                "        hmdmc:\"20/0002\",\n" +
                 "        spatialLocation:0,\n" +
                 "        tissueType:\"Arm\",\n" +
                 "        replicateNumber:1,\n" +
