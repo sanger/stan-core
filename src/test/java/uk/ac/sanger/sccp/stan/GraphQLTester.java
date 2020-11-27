@@ -1,5 +1,7 @@
 package uk.ac.sanger.sccp.stan;
 
+import com.google.common.base.Charsets;
+import com.google.common.io.Resources;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestComponent;
@@ -10,6 +12,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import uk.ac.sanger.sccp.stan.model.User;
+
+import java.io.IOException;
+import java.net.URL;
 
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -45,5 +50,11 @@ public class GraphQLTester {
 
     public void setUser(User user) {
         setUser(user.getUsername());
+    }
+
+    @SuppressWarnings("UnstableApiUsage")
+    public String readResource(String path) throws IOException {
+        URL url = Resources.getResource(path);
+        return Resources.toString(url, Charsets.UTF_8);
     }
 }

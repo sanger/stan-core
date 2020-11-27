@@ -1,0 +1,19 @@
+mutation {
+    plan(request:{
+        operationType: "Section",
+        labware:[{
+            labwareType:"Tube",
+            actions:[{
+                source:{
+                    barcode:"STAN-B70C",
+                },
+                address:{row:1, column:1},
+                sampleId:$sampleId,
+            }],
+        }]
+    }) {
+        labware {
+            barcode
+        }
+    }
+}
