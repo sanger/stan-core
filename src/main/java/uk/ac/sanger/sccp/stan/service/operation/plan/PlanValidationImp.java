@@ -12,12 +12,12 @@ import java.util.stream.Stream;
  * @author dr6
  */
 public class PlanValidationImp implements PlanValidation {
-    private final LabwareRepo labwareRepo;
-    private final LabwareTypeRepo ltRepo;
-    private final OperationTypeRepo opTypeRepo;
-    private final Validator<String> prebarcodeValidator;
+    final LabwareRepo labwareRepo;
+    final LabwareTypeRepo ltRepo;
+    final OperationTypeRepo opTypeRepo;
+    final Validator<String> prebarcodeValidator;
 
-    private final PlanRequest request;
+    final PlanRequest request;
     final Set<String> problems = new LinkedHashSet<>();
 
     public PlanValidationImp(PlanRequest request, LabwareRepo labwareRepo, LabwareTypeRepo ltRepo,

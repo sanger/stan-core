@@ -506,6 +506,7 @@
             <column name="label_type_id" header="label_type_id" type="numeric"/>
             <column name="num_rows" header="num_rows" type="numeric"/>
             <column name="num_columns" header="num_columns" type="numeric"/>
+            <column name="prebarcoded" header="prebarcoded" type="boolean"/>
         </loadData>
     </changeSet>
 

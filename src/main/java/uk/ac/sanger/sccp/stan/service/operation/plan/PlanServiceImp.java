@@ -126,8 +126,7 @@ public class PlanServiceImp implements PlanService {
                     newSection = null; // Do not specify a new section in the plan action
                 }
                 PlanAction action = new PlanAction(null, planId, slot0, slot1, originalSample, newSection);
-                planActionRepo.save(action);
-                actions.add(action);
+                actions.add(planActionRepo.save(action));
             }
         }
         return actions;
