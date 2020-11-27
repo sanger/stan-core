@@ -6,8 +6,6 @@ import graphql.schema.DataFetchingEnvironment;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
 import uk.ac.sanger.sccp.stan.config.SessionConfig;
@@ -96,8 +94,7 @@ public class GraphQLMutation {
     }
 
     private User checkUser() {
-        SecurityContext sc = SecurityContextHolder.getContext();
-        Authentication auth = (sc==null ? null : sc.getAuthentication());
+        Authentication auth = authComp.getAuthentication();
         if (auth==null || auth instanceof AnonymousAuthenticationToken || auth.getPrincipal()==null) {
             throw new AuthenticationCredentialsNotFoundException("Not logged in");
         }
