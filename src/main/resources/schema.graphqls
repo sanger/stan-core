@@ -74,7 +74,7 @@ input AddressInput {
 
 type Sample {
     id: Int!,
-    section: Int!,
+    section: Int,
     tissue: Tissue!,
 }
 
