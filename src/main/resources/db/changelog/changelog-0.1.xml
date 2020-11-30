@@ -483,15 +483,9 @@
     </changeSet>
 
     <changeSet id="103" author="dr6">
-        <loadData tableName="tissue_type" file="db/tissuetypes.tsv" separator="\t">
-            <column name="name" header="name" type="string"/>
-            <column name="code" header="code" type="string"/>
-        </loadData>
+        <customChange class="uk.ac.sanger.sccp.stan.db.FillTissueTypesAndSpatialLocations" />
     </changeSet>
 
-    <changeSet id="104" author="dr6">
-        <sqlFile path="db/spatiallocations.sql" />
-    </changeSet>
 
     <changeSet id="105" author="dr6">
         <loadData tableName="label_type" file="db/labeltypes.tsv" separator="\t">
