@@ -8,7 +8,7 @@ mutation {
                 lifeStage:adult,
                 hmdmc:"20/0002",
                 spatialLocation:0,
-                tissueType:"Arm",
+                tissueType:"Bone",
                 replicateNumber:1,
                 medium:"None",
                 mouldSize:"None",

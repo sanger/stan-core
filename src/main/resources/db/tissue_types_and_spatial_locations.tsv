@@ -1,0 +1,82 @@
+Tissue type code	Tissue type name	Spatial location code	Spatial location name
+ACL	Colon ascending	0	
+ADR	Adrenal gland	0	
+ALN	Lymph node, axillary	0	
+AMN	Amnion	0	
+APD	Appendix	0	
+BLA	Bladder	0	
+BLD	Peripheral blood	0	
+BMA	Bone marrow	0	
+BON	Bone	0	
+BRA	Brain	0	
+BRE	Breast	0	
+CAE	Caecum	0	
+DCL	Colon descending	0	
+DEC	Decidua (uterus in pregnancy)	0	
+DUO	Duodenum	0	
+END	Endometrium	0	
+FEM	Femur	0	
+FIB	Fibula	0	
+GAL	Gallbladder	0	
+GOJ	Gastro-oesophageal junction	0	
+GON	Gonads	0	
+HEA	Heart	0	
+HEA	Heart	1	Left ventricle
+HEA	Heart	2	Right ventricle
+HEA	Heart	3	Left atrium
+HEA	Heart	4	Right atrium
+HEA	Heart	5	Septum
+HEA	Heart	6	Apex
+HLN	Hilar lymph node	0	
+ILE	Ileum	0	
+ILN	Lymph node, iliac	0	
+JEJ	Jejunum	0	
+KID	Kidney	0	
+KID	Kidney	1	Cortex
+KID	Kidney	2	Medulla
+KID	Kidney	3	Pelvis
+LIV	Liver	0	
+LNG	Lung	1	Lower left lobe
+LNG	Lung	2	1st gen airway
+LNG	Lung	3	2nd/3rd gen airway
+LNG	Lung	4	4th gen airway
+LNG	Lung	5	Top left lobe
+MDLN	Mediastinal lymph node	0	
+MFI	Maternal fetal interface	0	
+MLN	Lymph node, mesentric	0	
+MLT	Multi organ	0	
+OES	Oesophagus	0	
+OME	Omentum	0	
+OVR	Ovaries	7	Ovary
+OVR	Ovaries	8	Ovary
+PHG	Pharyngeal mucosa	0	
+PLA	Placenta	0	
+PLN	Lymph node, parietal pelvic	0	
+PNC	Pancreas	0	
+REC	Rectum	0	
+RTN	Retina	0	
+SCL	Colon sigmoid	0	
+SKI	Skin	0	
+SKM	Skeletal muscle	0	
+SPC	Spinal cord	0	
+SPC	Spinal cord	1	Cervical
+SPC	Spinal cord	2	Thoracic
+SPC	Spinal cord	3	Lumbar
+SPC	Spinal cord	4	Sacral
+SPC	Spinal cord	5	Caudal
+SPL	Spleen	0	
+STO	Stomach	0	
+TCL	Colon transverse	0	
+THY	Thymus	0	
+TIB	Tibia	0	
+TIL	Terminal ileum	0	
+TLN	Lymph node thoracic	0	
+TRL	Thyroid lymph node	0	
+TTB	Transplanted thymus biopsy	0	
+TYR	Thyroid gland	0	
+UTR	Uterus	1	Uterus close to cervix
+UTR	Uterus	2	Uterus mid
+UTR	Uterus	3	Uterus close to ovary
+UMB	Umbilical cord	0	
+VSC	Vascular system	0	
+YOL	Yolk sac	0	
