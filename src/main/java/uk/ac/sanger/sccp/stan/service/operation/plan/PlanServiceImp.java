@@ -125,7 +125,8 @@ public class PlanServiceImp implements PlanService {
                 } else {
                     newSection = null; // Do not specify a new section in the plan action
                 }
-                PlanAction action = new PlanAction(null, planId, slot0, slot1, originalSample, newSection);
+                PlanAction action = new PlanAction(null, planId, slot0, slot1, originalSample,
+                        newSection, prac.getSampleThickness());
                 actions.add(planActionRepo.save(action));
             }
         }

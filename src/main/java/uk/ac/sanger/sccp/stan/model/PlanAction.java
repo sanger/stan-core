@@ -27,16 +27,19 @@ public class PlanAction {
     @ManyToOne
     private Sample sample;
     private Integer newSection;
+    private Integer sampleThickness;
 
     public PlanAction() {}
 
-    public PlanAction(Integer id, Integer planOperationId, Slot source, Slot destination, Sample sample, Integer newSection) {
+    public PlanAction(Integer id, Integer planOperationId, Slot source, Slot destination, Sample sample,
+                      Integer newSection, Integer sampleThickness) {
         this.id = id;
         this.planOperationId = planOperationId;
         this.source = source;
         this.destination = destination;
         this.sample = sample;
         this.newSection = newSection;
+        this.sampleThickness = sampleThickness;
     }
 
     public Integer getId() {
@@ -87,6 +90,14 @@ public class PlanAction {
         this.newSection = section;
     }
 
+    public Integer getSampleThickness() {
+        return this.sampleThickness;
+    }
+
+    public void setSampleThickness(Integer sampleThickness) {
+        this.sampleThickness = sampleThickness;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -97,7 +108,8 @@ public class PlanAction {
                 && Objects.equals(this.source, that.source)
                 && Objects.equals(this.destination, that.destination)
                 && Objects.equals(this.sample, that.sample)
-                && Objects.equals(this.newSection, that.newSection));
+                && Objects.equals(this.newSection, that.newSection)
+                && Objects.equals(this.sampleThickness, that.sampleThickness));
     }
 
     @Override
@@ -114,6 +126,7 @@ public class PlanAction {
                 .add("destination", destination)
                 .add("sample", sample)
                 .add("newSection", newSection)
+                .add("sampleThickness", sampleThickness)
                 .toString();
     }
 }

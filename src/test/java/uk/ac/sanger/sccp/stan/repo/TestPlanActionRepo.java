@@ -84,9 +84,9 @@ public class TestPlanActionRepo {
         slotRepo.save(slot2);
         slotRepo.save(slot3);
 
-        planActionRepo.save(new PlanAction(null, plan.getId(), slot1, slot1, sample, 3));
-        planActionRepo.save(new PlanAction(null, plan.getId(), slot2, slot2, sample, 18));
-        planActionRepo.save(new PlanAction(null, plan.getId(), slot3, slot3, sample, 4));
+        planActionRepo.save(new PlanAction(null, plan.getId(), slot1, slot1, sample, 3, null));
+        planActionRepo.save(new PlanAction(null, plan.getId(), slot2, slot2, sample, 18, null));
+        planActionRepo.save(new PlanAction(null, plan.getId(), slot3, slot3, sample, 4, null));
         assertThat(planActionRepo.findMaxPlannedSectionForTissueId(tissue.getId())).hasValue(18);
     }
 

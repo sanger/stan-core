@@ -109,7 +109,7 @@ public class TestPlanService {
         List<Labware> destinations = List.of(tube);
         doReturn(destinations).when(planService).createDestinations(any());
         List<PlanAction> actions = List.of(new PlanAction(50, plan.getId(),
-                tube.getFirstSlot(), tube.getFirstSlot(), EntityFactory.getSample(), null));
+                tube.getFirstSlot(), tube.getFirstSlot(), EntityFactory.getSample(), null, null));
         doReturn(actions).when(planService).createActions(any(), anyInt(), any(), any());
 
         final PlanRequest request = new PlanRequest("Section", List.of());
@@ -150,7 +150,7 @@ public class TestPlanService {
                         Stream.of(labware.get(0).getBarcode().toUpperCase(), labware.get(0).getBarcode().toLowerCase(),
                                 labware.get(1).getBarcode())
                                 .map(bc -> new PlanRequestSource(bc, FIRST))
-                                .map(src -> new PlanRequestAction(FIRST, 1, src))
+                                .map(src -> new PlanRequestAction(FIRST, 1, src, null))
                                 .collect(toList()))
                 )
         );
@@ -221,24 +221,24 @@ public class TestPlanService {
                         new PlanRequestLabware(lt.getName(), destinations.get(0).getBarcode(),
                                 List.of(
                                         new PlanRequestAction(FIRST, samples.get(0).getId(),
-                                                new PlanRequestSource(sourceBarcodes.get(0), FIRST)),
+                                                new PlanRequestSource(sourceBarcodes.get(0), FIRST), null),
                                         new PlanRequestAction(SECOND, samples.get(0).getId(),
-                                                new PlanRequestSource(sourceBarcodes.get(0), null))
+                                                new PlanRequestSource(sourceBarcodes.get(0), null), 1)
                                 )),
                         new PlanRequestLabware(lt.getName(), destinations.get(1).getBarcode(),
                                 List.of(
                                         new PlanRequestAction(FIRST, samples.get(0).getId(),
-                                                new PlanRequestSource(sourceBarcodes.get(0), null)),
+                                                new PlanRequestSource(sourceBarcodes.get(0), null), 2),
                                         new PlanRequestAction(SECOND, samples.get(1).getId(),
-                                                new PlanRequestSource(sourceBarcodes.get(1), SECOND))
+                                                new PlanRequestSource(sourceBarcodes.get(1), SECOND), 3)
                                 ))
                 ));
 
         List<PlanAction> expectedActions = List.of(
-                new PlanAction(21, planId, sources.get(0).getFirstSlot(), destinations.get(0).getFirstSlot(), samples.get(0), 5),
-                new PlanAction(22, planId, sources.get(0).getFirstSlot(), destinations.get(0).getSlot(SECOND), samples.get(0), 6),
-                new PlanAction(23, planId, sources.get(0).getFirstSlot(), destinations.get(1).getFirstSlot(), samples.get(0), 7),
-                new PlanAction(24, planId, sources.get(1).getSlot(SECOND), destinations.get(1).getSlot(SECOND), samples.get(1), null)
+                new PlanAction(21, planId, sources.get(0).getFirstSlot(), destinations.get(0).getFirstSlot(), samples.get(0), 5, null),
+                new PlanAction(22, planId, sources.get(0).getFirstSlot(), destinations.get(0).getSlot(SECOND), samples.get(0), 6, 1),
+                new PlanAction(23, planId, sources.get(0).getFirstSlot(), destinations.get(1).getFirstSlot(), samples.get(0), 7, 2),
+                new PlanAction(24, planId, sources.get(1).getSlot(SECOND), destinations.get(1).getSlot(SECOND), samples.get(1), null, 3)
         );
 
         final int[] planActionIdCounter = {20};

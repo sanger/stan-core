@@ -580,6 +580,9 @@
             <column name="new_section" type="INT">
                 <constraints nullable="true"/>
             </column>
+            <column name="sample_thickness" type="INT">
+                <constraints nullable="true"/>
+            </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
             </column>

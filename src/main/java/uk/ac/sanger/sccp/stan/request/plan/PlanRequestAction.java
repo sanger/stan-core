@@ -6,20 +6,22 @@ import uk.ac.sanger.sccp.stan.model.Address;
 import java.util.Objects;
 
 /**
- * An action (i.e. one sample moving from one slot to another slot) in a planned operation.
+ * An reqeust for an action (i.e. one sample moving from one slot to another slot) in a planned operation.
  * @author dr6
  */
 public class PlanRequestAction {
     private Address address;
     private int sampleId;
     private PlanRequestSource source;
+    private Integer sampleThickness;
 
     public PlanRequestAction() {}
 
-    public PlanRequestAction(Address address, int sampleId, PlanRequestSource source) {
+    public PlanRequestAction(Address address, int sampleId, PlanRequestSource source, Integer sampleThickness) {
         this.address = address;
         this.sampleId = sampleId;
         this.source = source;
+        this.sampleThickness = sampleThickness;
     }
 
     public Address getAddress() {
@@ -46,6 +48,14 @@ public class PlanRequestAction {
         this.source = source;
     }
 
+    public Integer getSampleThickness() {
+        return this.sampleThickness;
+    }
+
+    public void setSampleThickness(Integer sampleThickness) {
+        this.sampleThickness = sampleThickness;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -53,7 +63,8 @@ public class PlanRequestAction {
         PlanRequestAction that = (PlanRequestAction) o;
         return (this.sampleId==that.sampleId
                 && Objects.equals(this.address, that.address)
-                && Objects.equals(this.source, that.source));
+                && Objects.equals(this.source, that.source)
+                && Objects.equals(this.sampleThickness, that.sampleThickness));
     }
 
     @Override
@@ -67,6 +78,7 @@ public class PlanRequestAction {
                 .add("address", address)
                 .add("sampleId", sampleId)
                 .add("source", source)
+                .add("sampleThickness", sampleThickness)
                 .toString();
     }
 }

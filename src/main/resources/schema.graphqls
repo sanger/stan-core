@@ -146,6 +146,7 @@ type PlanOperation {
 input PlanRequestAction {
     address: AddressInput!,
     sampleId: Int!,
+    sampleThickness: Int,
     source: PlanRequestSource!,
 }
 
