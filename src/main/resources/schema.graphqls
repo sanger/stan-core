@@ -163,7 +163,7 @@ input PlanRequest {
 
 type PlanResult {
     labware: [Labware!]!,
-    plan: [PlanOperation!]!,
+    operations: [PlanOperation!]!,
 }
 
 type Query {
