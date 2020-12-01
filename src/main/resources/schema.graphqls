@@ -87,6 +87,7 @@ type Slot {
 }
 
 type Labware {
+    id: Int!,
     barcode: String!,
     labwareType: LabwareType!,
     slots: [Slot!]!,
