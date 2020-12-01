@@ -14,6 +14,24 @@ mutation {
     }) {
         labware {
             barcode
+            labwareType { name }
+        }
+        operations {
+            operationType {
+                name
+            }
+            planActions {
+                source {
+                    address { row, column }
+                    labwareId
+                }
+                destination {
+                    address { row, column }
+                    labwareId
+                }
+                sample { id }
+                newSection
+            }
         }
     }
 }

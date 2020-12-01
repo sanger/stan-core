@@ -132,15 +132,15 @@ type OperationType {
 }
 
 type PlanAction {
-    sourceSlot: Slot!,
-    destinationSlot: Slot!,
+    source: Slot!,
+    destination: Slot!,
     sample: Sample!,
     newSection: Int,
 }
 
 type PlanOperation {
     operationType: OperationType,
-    actions: [PlanAction!]!,
+    planActions: [PlanAction!]!,
 }
 
 input PlanRequestAction {
