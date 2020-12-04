@@ -596,4 +596,61 @@
         </rollback>
     </changeSet>
 
+    <changeSet id="202" author="dr6">
+        <createTable tableName="printer">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="name" type="VARCHAR(64)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="label_type_id" type="INT">
+                <constraints nullable="false" foreignKeyName="printer_fk_label_type" referencedTableName="label_type" referencedColumnNames="id"/>
+            </column>
+            <column name="service" type="ENUM('sprint')">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="203" author="dr6">
+        <createTable tableName="labware_print">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="user_id" type="INT">
+                <constraints nullable="false" foreignKeyName="labware_print_fk_user" referencedTableName="user" referencedColumnNames="id"/>
+            </column>
+            <column name="labware_id" type="INT">
+                <constraints nullable="false" foreignKeyName="labware_print_fk_labware" referencedTableName="labware" referencedColumnNames="id"/>
+            </column>
+            <column name="printer_id" type="INT">
+                <constraints nullable="false" foreignKeyName="labware_print_fk_printer" referencedTableName="printer" referencedColumnNames="id"/>
+            </column>
+            <column name="printed" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="204" author="dr6">
+        <loadData tableName="printer" file="db/printers.csv">
+            <column name="name" header="name" type="string"/>
+            <column name="label_type_id" header="label_type_id" type="numeric"/>
+            <column name="service" header="service" type="string"/>
+        </loadData>
+    </changeSet>
+
 </databaseChangeLog>

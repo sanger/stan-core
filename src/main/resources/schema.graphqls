@@ -167,6 +167,11 @@ type PlanResult {
     operations: [PlanOperation!]!,
 }
 
+type Printer {
+    name: String!,
+    labelType: LabelType!,
+}
+
 type Query {
     user: User,
     tissueTypes: [TissueType!]!,
@@ -176,6 +181,7 @@ type Query {
     fixatives: [Fixative!]!,
     mouldSizes: [MouldSize!]!,
     labware(barcode: String!): Labware!,
+    printers(labelType: String): [Printer!]!
 }
 
 type Mutation {
@@ -183,4 +189,5 @@ type Mutation {
     logout: String,
     register(request: RegisterRequest!): RegisterResult!,
     plan(request: PlanRequest!): PlanResult!,
+    printLabware(printer: String!, barcodes: [String!]!): String,
 }
