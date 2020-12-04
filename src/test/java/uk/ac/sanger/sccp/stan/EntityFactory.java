@@ -57,13 +57,13 @@ public class EntityFactory {
 
     public static LabwareType getTubeType() {
         if (tubeType==null) {
-            tubeType = new LabwareType(50, "Tube", 1, 1, getLabelType());
+            tubeType = new LabwareType(50, "Tube", 1, 1, getLabelType(), false);
         }
         return tubeType;
     }
 
     public static LabwareType makeLabwareType(int numRows, int numColumns) {
-        return new LabwareType(++idCounter, numRows+"x"+numColumns, numRows, numColumns, getLabelType());
+        return new LabwareType(++idCounter, numRows+"x"+numColumns, numRows, numColumns, getLabelType(), false);
     }
 
     public static Hmdmc getHmdmc() {
@@ -134,5 +134,13 @@ public class EntityFactory {
                 .map(ad -> new Slot(++slotId[0], lwId, ad, new ArrayList<>(), null, null))
                 .collect(toList());
         return new Labware(lwId, "STAN-"+lwId, lt, slots);
+    }
+
+    public static OperationType makeOperationType(String name, OperationTypeFlag... flags) {
+        int flagbits = 0;
+        for (OperationTypeFlag flag : flags) {
+            flagbits |= flag.bit();
+        }
+        return new OperationType(++idCounter, name, flagbits);
     }
 }

@@ -113,6 +113,7 @@
         </createTable>
     </changeSet>
 
+
     <changeSet id="8" author="dr6">
         <createTable tableName="operation_type">
             <column name="id" type="INT" autoIncrement="true">
@@ -120,6 +121,9 @@
             </column>
             <column name="name" type="VARCHAR(64)">
                 <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="flags" type="INT UNSIGNED" defaultValueNumeric="0">
+                <constraints nullable="false"/>
             </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
@@ -129,6 +133,7 @@
             </column>
         </createTable>
     </changeSet>
+
 
     <changeSet id="9" author="dr6">
         <createTable tableName="fixative">
@@ -194,6 +199,9 @@
             </column>
             <column name="label_type_id" type="INT">
                 <constraints nullable="true" foreignKeyName="labware_type_fk_label_type" referencedTableName="label_type" referencedColumnNames="id"/>
+            </column>
+            <column name="prebarcoded" type="BOOLEAN" defaultValue="FALSE">
+                <constraints nullable="false"/>
             </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
@@ -460,8 +468,9 @@
     </changeSet>
 
     <changeSet id="101" author="dr6">
-        <loadData tableName="operation_type" file="db/operationtypes.csv">
+        <loadData tableName="operation_type" file="db/operationtypes.tsv" separator="\t">
             <column name="name" header="name" type="string"/>
+            <column name="flags" header="flags" type="numeric"/>
         </loadData>
     </changeSet>
 
@@ -497,6 +506,7 @@
             <column name="label_type_id" header="label_type_id" type="numeric"/>
             <column name="num_rows" header="num_rows" type="numeric"/>
             <column name="num_columns" header="num_columns" type="numeric"/>
+            <column name="prebarcoded" header="prebarcoded" type="boolean"/>
         </loadData>
     </changeSet>
 
@@ -522,6 +532,74 @@
         <loadData tableName="fixative" file="db/fixatives.csv">
             <column name="name" header="name" type="string"/>
         </loadData>
+    </changeSet>
+
+    <changeSet id="200" author="dr6">
+        <createTable tableName="plan_operation">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="planned" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="operation_id" type="INT">
+                <constraints nullable="true" foreignKeyName="plan_operation_fk_operation" referencedTableName="operation" referencedColumnNames="id"/>
+            </column>
+            <column name="operation_type_id" type="INT">
+                <constraints nullable="false" foreignKeyName="plan_operation_fk_operation_type" referencedTableName="operation_type" referencedColumnNames="id"/>
+            </column>
+            <column name="user_id" type="INT">
+                <constraints nullable="false" foreignKeyName="plan_operation_fk_user" referencedTableName="user" referencedColumnNames="id"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="201" author="dr6">
+        <createTable tableName="plan_action">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="plan_operation_id" type="INT">
+                <constraints nullable="false" foreignKeyName="plan_action_fk_plan_operation" referencedTableName="plan_operation" referencedColumnNames="id"/>
+            </column>
+            <column name="sample_id" type="INT">
+                <constraints nullable="false" foreignKeyName="plan_action_fk_sample" referencedTableName="sample" referencedColumnNames="id"/>
+            </column>
+            <column name="source_slot_id" type="INT">
+                <constraints nullable="false" foreignKeyName="plan_action_fk_source_slot" referencedTableName="slot" referencedColumnNames="id"/>
+            </column>
+            <column name="dest_slot_id" type="INT">
+                <constraints nullable="false" foreignKeyName="plan_action_fk_dest_slot" referencedTableName="slot" referencedColumnNames="id"/>
+            </column>
+            <column name="new_section" type="INT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="sample_thickness" type="INT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="plan_action" indexName="plan_action_key_plan_operation_sample_source_slot_dest_slot" unique="true">
+            <column name="plan_operation_id"/>
+            <column name="sample_id"/>
+            <column name="source_slot_id"/>
+            <column name="dest_slot_id"/>
+        </createIndex>
+        <rollback>
+            <dropAllForeignKeyConstraints baseTableName="plan_action"/>
+            <dropTable tableName="plan_action"/>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

@@ -9,11 +9,12 @@ import java.util.List;
 import java.util.Objects;
 
 /**
+ * A recorded plan for an operation (created by prelabelling)
  * @author dr6
  */
 @Entity
 @DynamicInsert
-public class Operation {
+public class PlanOperation {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
@@ -21,24 +22,18 @@ public class Operation {
     @ManyToOne
     private OperationType operationType;
 
-    private Timestamp performed;
+    private Integer operationId;
+
+    private Timestamp planned;
 
     @OneToMany
-    @JoinColumn(name="operation_id")
-    private List<Action> actions;
+    @JoinColumn(name="plan_operation_id")
+    private List<PlanAction> planActions;
 
     @ManyToOne
     private User user;
 
-    public Operation() {}
-
-    public Operation(Integer id, OperationType operationType, Timestamp performed, List<Action> actions, User user) {
-        this.id = id;
-        this.operationType = operationType;
-        this.performed = performed;
-        this.actions = actions;
-        this.user = user;
-    }
+    public PlanOperation() {}
 
     public Integer getId() {
         return this.id;
@@ -46,14 +41,6 @@ public class Operation {
 
     public void setId(Integer id) {
         this.id = id;
-    }
-
-    public Timestamp getPerformed() {
-        return this.performed;
-    }
-
-    public void setPerformed(Timestamp performed) {
-        this.performed = performed;
     }
 
     public OperationType getOperationType() {
@@ -64,13 +51,30 @@ public class Operation {
         this.operationType = operationType;
     }
 
-    public List<Action> getActions() {
-        return this.actions;
+    public Integer getOperationId() {
+        return this.operationId;
     }
 
-    public void setActions(List<Action> actions) {
-        this.actions = actions;
+    public void setOperationId(Integer operationId) {
+        this.operationId = operationId;
     }
+
+    public List<PlanAction> getPlanActions() {
+        return this.planActions;
+    }
+
+    public void setPlanActions(List<PlanAction> planActions) {
+        this.planActions = planActions;
+    }
+
+    public Timestamp getPlanned() {
+        return this.planned;
+    }
+
+    public void setPlanned(Timestamp planned) {
+        this.planned = planned;
+    }
+
 
     public User getUser() {
         return this.user;
@@ -84,12 +88,13 @@ public class Operation {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        Operation that = (Operation) o;
+        PlanOperation that = (PlanOperation) o;
         return (Objects.equals(this.id, that.id)
-                && Objects.equals(this.performed, that.performed)
                 && Objects.equals(this.operationType, that.operationType)
-                && Objects.equals(this.user, that.user)
-                && Objects.equals(this.actions, that.actions));
+                && Objects.equals(this.operationId, that.operationId)
+                && Objects.equals(this.planned, that.planned)
+                && Objects.equals(this.planActions, that.planActions)
+                && Objects.equals(this.user, that.user));
     }
 
     @Override
@@ -101,8 +106,11 @@ public class Operation {
     public String toString() {
         return MoreObjects.toStringHelper(this)
                 .add("id", id)
-                .add("performed", performed)
                 .add("operationType", operationType)
+                .add("operationId", operationId)
+                .add("planned", planned)
+                .add("planActions", planActions)
+                .add("user", user)
                 .toString();
     }
 }

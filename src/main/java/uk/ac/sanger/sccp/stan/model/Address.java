@@ -4,6 +4,7 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.persistence.Column;
 import javax.persistence.Embeddable;
+import java.util.Comparator;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -13,6 +14,8 @@ import java.util.stream.Stream;
 @SuppressWarnings("JpaDataSourceORMInspection")
 @Embeddable
 public class Address implements Comparable<Address> {
+    public static Comparator<Address> COLUMN_MAJOR = Comparator.comparing(Address::getColumn).thenComparing(Address::getRow);
+
     @Column(name="row_index")
     private int row;
     @Column(name="col_index")

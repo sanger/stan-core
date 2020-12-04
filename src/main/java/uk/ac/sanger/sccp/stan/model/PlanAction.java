@@ -6,15 +6,17 @@ import javax.persistence.*;
 import java.util.Objects;
 
 /**
+ * A planned action inside a planned operation.
  * @author dr6
  */
 @Entity
-public class Action {
+@Table(name="plan_action")
+public class PlanAction {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
-    @Column(name="operation_id")
-    private Integer operationId;
+    @Column(name="plan_operation_id")
+    private Integer planOperationId;
 
     @ManyToOne
     @JoinColumn(name="source_slot_id")
@@ -24,15 +26,20 @@ public class Action {
     private Slot destination;
     @ManyToOne
     private Sample sample;
+    private Integer newSection;
+    private Integer sampleThickness;
 
-    public Action() {}
+    public PlanAction() {}
 
-    public Action(Integer id, Integer operationId, Slot source, Slot destination, Sample sample) {
+    public PlanAction(Integer id, Integer planOperationId, Slot source, Slot destination, Sample sample,
+                      Integer newSection, Integer sampleThickness) {
         this.id = id;
-        this.operationId = operationId;
+        this.planOperationId = planOperationId;
         this.source = source;
         this.destination = destination;
         this.sample = sample;
+        this.newSection = newSection;
+        this.sampleThickness = sampleThickness;
     }
 
     public Integer getId() {
@@ -41,14 +48,6 @@ public class Action {
 
     public void setId(Integer id) {
         this.id = id;
-    }
-
-    public Integer getOperationId() {
-        return this.operationId;
-    }
-
-    public void setOperationId(Integer operationId) {
-        this.operationId = operationId;
     }
 
     public Slot getSource() {
@@ -67,6 +66,14 @@ public class Action {
         this.destination = destination;
     }
 
+    public Integer getPlanOperationId() {
+        return this.planOperationId;
+    }
+
+    public void setPlanOperationId(Integer planOperationId) {
+        this.planOperationId = planOperationId;
+    }
+
     public Sample getSample() {
         return this.sample;
     }
@@ -75,16 +82,34 @@ public class Action {
         this.sample = sample;
     }
 
+    public Integer getNewSection() {
+        return this.newSection;
+    }
+
+    public void setNewSection(Integer section) {
+        this.newSection = section;
+    }
+
+    public Integer getSampleThickness() {
+        return this.sampleThickness;
+    }
+
+    public void setSampleThickness(Integer sampleThickness) {
+        this.sampleThickness = sampleThickness;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        Action that = (Action) o;
+        PlanAction that = (PlanAction) o;
         return (Objects.equals(this.id, that.id)
-                && Objects.equals(this.operationId, that.operationId)
+                && Objects.equals(this.planOperationId, that.planOperationId)
                 && Objects.equals(this.source, that.source)
                 && Objects.equals(this.destination, that.destination)
-                && Objects.equals(this.sample, that.sample));
+                && Objects.equals(this.sample, that.sample)
+                && Objects.equals(this.newSection, that.newSection)
+                && Objects.equals(this.sampleThickness, that.sampleThickness));
     }
 
     @Override
@@ -96,10 +121,12 @@ public class Action {
     public String toString() {
         return MoreObjects.toStringHelper(this)
                 .add("id", id)
-                .add("operationId", operationId)
+                .add("planOperationId", planOperationId)
                 .add("source", source)
                 .add("destination", destination)
                 .add("sample", sample)
+                .add("newSection", newSection)
+                .add("sampleThickness", sampleThickness)
                 .toString();
     }
 }
