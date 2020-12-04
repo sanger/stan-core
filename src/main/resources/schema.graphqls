@@ -43,7 +43,7 @@ type LabwareType {
     name: String!,
     numRows: Int!,
     numColumns: Int!,
-    labelType: LabelType!,
+    labelType: LabelType,
 }
 
 type Donor {
@@ -67,8 +67,14 @@ type Address {
     column: Int!,
 }
 
+input AddressInput {
+    row: Int!,
+    column: Int!,
+}
+
 type Sample {
-    section: Int!,
+    id: Int!,
+    section: Int,
     tissue: Tissue!,
 }
 
@@ -81,6 +87,7 @@ type Slot {
 }
 
 type Labware {
+    id: Int!,
     barcode: String!,
     labwareType: LabwareType!,
     slots: [Slot!]!,
@@ -116,6 +123,50 @@ type RegisterResult {
     tissue: [Tissue!]!,
 }
 
+input PlanRequestSource {
+    barcode: String!,
+    address: AddressInput,
+}
+
+type OperationType {
+    name: String!,
+}
+
+type PlanAction {
+    source: Slot!,
+    destination: Slot!,
+    sample: Sample!,
+    newSection: Int,
+}
+
+type PlanOperation {
+    operationType: OperationType,
+    planActions: [PlanAction!]!,
+}
+
+input PlanRequestAction {
+    address: AddressInput!,
+    sampleId: Int!,
+    sampleThickness: Int,
+    source: PlanRequestSource!,
+}
+
+input PlanRequestLabware {
+    labwareType: String!,
+    barcode: String,
+    actions: [PlanRequestAction!]!,
+}
+
+input PlanRequest {
+    operationType: String!,
+    labware: [PlanRequestLabware!]!,
+}
+
+type PlanResult {
+    labware: [Labware!]!,
+    operations: [PlanOperation!]!,
+}
+
 type Query {
     user: User,
     tissueTypes: [TissueType!]!,
@@ -131,4 +182,5 @@ type Mutation {
     login(username: String!, password: String!): LoginResult!,
     logout: String,
     register(request: RegisterRequest!): RegisterResult!,
+    plan(request: PlanRequest!): PlanResult!,
 }

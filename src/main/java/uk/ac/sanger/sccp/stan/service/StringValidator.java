@@ -2,6 +2,7 @@ package uk.ac.sanger.sccp.stan.service;
 
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 
 /**
  * A tool to perform simple validation on a string
@@ -17,6 +18,24 @@ public class StringValidator implements Validator<String> {
     private final int minLength;
     private final int maxLength;
     private final Set<CharacterType> characterTypes;
+    private final Pattern pattern;
+
+    /**
+     * Creates a new string validator
+     * @param fieldName the name of the field being validated (used in problem messages)
+     * @param minLength the minimum length of the field
+     * @param maxLength the maximum length of the field
+     * @param characterTypes the types of characters allowed in the field
+     * @param pattern regular expression pattern to match against string (optional)
+     */
+    public StringValidator(String fieldName, int minLength, int maxLength, Set<CharacterType> characterTypes,
+                           Pattern pattern) {
+        this.fieldName = fieldName;
+        this.minLength = minLength;
+        this.maxLength = maxLength;
+        this.characterTypes = characterTypes;
+        this.pattern = pattern;
+    }
 
     /**
      * Creates a new string validator
@@ -26,11 +45,9 @@ public class StringValidator implements Validator<String> {
      * @param characterTypes the types of characters allowed in the field
      */
     public StringValidator(String fieldName, int minLength, int maxLength, Set<CharacterType> characterTypes) {
-        this.fieldName = fieldName;
-        this.minLength = minLength;
-        this.maxLength = maxLength;
-        this.characterTypes = characterTypes;
+        this(fieldName, minLength, maxLength, characterTypes, null);
     }
+
 
     /**
      * Creates a new string validator
@@ -75,6 +92,12 @@ public class StringValidator implements Validator<String> {
             invalidCharacterSet.stream().sorted().forEach(sb::append);
             problemConsumer.accept(String.format("%s \"%s\" contains invalid characters \"%s\".", fieldName, string, sb));
             ok = false;
+        }
+        if (ok && pattern!=null) {
+            if (!pattern.matcher(string).matches()) {
+                problemConsumer.accept(String.format("%s \"%s\" does not match the expected format.", fieldName, string));
+                ok = false;
+            }
         }
         return ok;
     }

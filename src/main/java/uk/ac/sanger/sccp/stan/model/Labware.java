@@ -66,6 +66,19 @@ public class Labware {
         return this.slots.get(0);
     }
 
+    public Slot getSlot(Address address) {
+        int index = labwareType.indexOf(address);
+        if (index < 0) {
+            throw new IllegalArgumentException("Address "+address+" is not valid for labware type "+labwareType.getName());
+        }
+        Slot slot = getSlots().get(index);
+        if (!slot.getAddress().equals(address)) {
+            throw new IllegalStateException("Expected slot "+address+" at index "+index+" in labware "
+                    +getBarcode()+" but found "+slot.getAddress());
+        }
+        return slot;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
