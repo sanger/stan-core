@@ -15,6 +15,7 @@ import org.springframework.transaction.support.DefaultTransactionDefinition;
 import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.net.URL;
+import java.sql.Timestamp;
 
 import static graphql.schema.idl.TypeRuntimeWiring.newTypeWiring;
 
@@ -72,6 +73,7 @@ public class GraphQLProvider {
                         .dataFetcher("mouldSizes", graphQLDataFetchers.getMouldSizes())
                         .dataFetcher("labware", graphQLDataFetchers.findLabwareByBarcode())
                         .dataFetcher("printers", graphQLDataFetchers.findPrinters())
+                        .dataFetcher("bananas", dfe -> new Timestamp(System.currentTimeMillis()))
                 )
                 .type(newTypeWiring("Mutation")
                         .dataFetcher("login", graphQLMutation.logIn())
@@ -81,6 +83,7 @@ public class GraphQLProvider {
                         .dataFetcher("printLabware", graphQLMutation.printLabware()) // not transacted
                 )
                 .scalar(GraphQLCustomTypes.ADDRESS)
+                .scalar(GraphQLCustomTypes.TIMESTAMP)
                 .build();
     }
 
