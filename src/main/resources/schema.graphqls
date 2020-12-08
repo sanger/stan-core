@@ -1,3 +1,4 @@
+scalar Address
 
 type User {
     username: String!,
@@ -62,16 +63,6 @@ type Tissue {
     fixative: Fixative!,
 }
 
-type Address {
-    row: Int!,
-    column: Int!,
-}
-
-input AddressInput {
-    row: Int!,
-    column: Int!,
-}
-
 type Sample {
     id: Int!,
     section: Int,
@@ -125,7 +116,7 @@ type RegisterResult {
 
 input PlanRequestSource {
     barcode: String!,
-    address: AddressInput,
+    address: Address,
 }
 
 type OperationType {
@@ -145,7 +136,7 @@ type PlanOperation {
 }
 
 input PlanRequestAction {
-    address: AddressInput!,
+    address: Address!,
     sampleId: Int!,
     sampleThickness: Int,
     source: PlanRequestSource!,
@@ -181,7 +172,7 @@ type Query {
     fixatives: [Fixative!]!,
     mouldSizes: [MouldSize!]!,
     labware(barcode: String!): Labware!,
-    printers(labelType: String): [Printer!]!
+    printers(labelType: String): [Printer!]!,
 }
 
 type Mutation {

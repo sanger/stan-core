@@ -70,10 +70,9 @@ public class IntegrationTests {
         List<?> resultActions = chainGet(resultOps, 0, "planActions");
         assertEquals(1, resultActions.size());
         Map<String, ?> resultAction = chainGet(resultActions, 0);
-        Map<String, Integer> firstAddress = Map.of("row", 1, "column", 1);
-        assertEquals(firstAddress, chainGet(resultAction, "source", "address"));
+        assertEquals("A1", chainGet(resultAction, "source", "address"));
         assertEquals(sourceBlock.getId(), chainGet(resultAction, "source", "labwareId"));
-        assertEquals(firstAddress, chainGet(resultAction, "destination", "address"));
+        assertEquals("A1", chainGet(resultAction, "destination", "address"));
         assertNotNull(chainGet(resultAction, "destination", "labwareId"));
         assertEquals(sample.getId(), chainGet(resultAction, "sample", "id"));
         assertNotNull(chainGet(resultAction, "newSection"));

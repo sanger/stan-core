@@ -80,6 +80,7 @@ public class GraphQLProvider {
                         .dataFetcher("plan", transact(graphQLMutation.recordPlan()))
                         .dataFetcher("printLabware", graphQLMutation.printLabware()) // not transacted
                 )
+                .scalar(GraphQLCustomTypes.ADDRESS)
                 .build();
     }
 
