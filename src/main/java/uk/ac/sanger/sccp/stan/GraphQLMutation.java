@@ -13,6 +13,8 @@ import uk.ac.sanger.sccp.stan.config.SessionConfig;
 import uk.ac.sanger.sccp.stan.model.User;
 import uk.ac.sanger.sccp.stan.repo.UserRepo;
 import uk.ac.sanger.sccp.stan.request.*;
+import uk.ac.sanger.sccp.stan.request.confirm.ConfirmOperationRequest;
+import uk.ac.sanger.sccp.stan.request.confirm.ConfirmOperationResult;
 import uk.ac.sanger.sccp.stan.request.plan.PlanRequest;
 import uk.ac.sanger.sccp.stan.request.plan.PlanResult;
 import uk.ac.sanger.sccp.stan.service.LDAPService;
@@ -103,6 +105,15 @@ public class GraphQLMutation {
             String printerName = dfe.getArgument("printer");
             labelPrintService.printLabwareBarcodes(user, printerName, barcodes);
             return "OK";
+        };
+    }
+
+    public DataFetcher<ConfirmOperationResult> confirmOperation() {
+        return dfe -> {
+            User user = checkUser();
+            ConfirmOperationRequest request = arg(dfe, "request", ConfirmOperationRequest.class);
+
+            return new ConfirmOperationResult();
         };
     }
 

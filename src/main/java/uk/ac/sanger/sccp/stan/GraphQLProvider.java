@@ -81,6 +81,7 @@ public class GraphQLProvider {
                         .dataFetcher("register", transact(graphQLMutation.register()))
                         .dataFetcher("plan", transact(graphQLMutation.recordPlan()))
                         .dataFetcher("printLabware", graphQLMutation.printLabware()) // not transacted
+                        .dataFetcher("confirmOperation", transact(graphQLMutation.confirmOperation()))
                 )
                 .scalar(GraphQLCustomTypes.ADDRESS)
                 .scalar(GraphQLCustomTypes.TIMESTAMP)

@@ -312,6 +312,9 @@
             <column name="labware_type_id" type="INT">
                 <constraints nullable="false" foreignKeyName="labware_fk_labware_type" referencedTableName="labware_type" referencedColumnNames="id"/>
             </column>
+            <column name="discarded" type="BOOLEAN" defaultValue="FALSE">
+                <constraints nullable="false"/>
+            </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
             </column>
@@ -650,6 +653,98 @@
             <column name="name" header="name" type="string"/>
             <column name="label_type_id" header="label_type_id" type="numeric"/>
             <column name="service" header="service" type="string"/>
+        </loadData>
+    </changeSet>
+
+    <changeSet id="300" author="dr6">
+        <createTable tableName="measurement">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="name" type="VARCHAR(16)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="value" type="VARCHAR(16)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sample_id" type="INT">
+                <constraints nullable="false" foreignKeyName="measurement_fk_sample" referencedTableName="sample" referencedColumnNames="id"/>
+            </column>
+            <column name="operation_id" type="INT">
+                <constraints nullable="false" foreignKeyName="measurement_fk_operation" referencedTableName="operation" referencedColumnNames="id"/>
+            </column>
+            <column name="slot_id" type="INT">
+                <constraints nullable="false" foreignKeyName="measurement_fk_slot" referencedTableName="slot" referencedColumnNames="id"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="301" author="dr6">
+        <createTable tableName="comment">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="text" type="VARCHAR(128)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="category" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValue="TRUE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="comment" indexName="comment_key_category_text" unique="true">
+            <column name="category"/>
+            <column name="text"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="302" author="dr6">
+        <createTable tableName="operation_comment">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="comment_id" type="INT">
+                <constraints nullable="false" foreignKeyName="operation_comment_fk_comment" referencedTableName="comment" referencedColumnNames="id"/>
+            </column>
+            <column name="operation_id" type="INT">
+                <constraints nullable="false" foreignKeyName="operation_comment_fk_operation" referencedTableName="operation" referencedColumnNames="id"/>
+            </column>
+            <column name="sample_id" type="INT">
+                <constraints nullable="true" foreignKeyName="operation_comment_fk_sample" referencedTableName="sample" referencedColumnNames="id"/>
+            </column>
+            <column name="slot_id" type="INT">
+                <constraints nullable="true" foreignKeyName="operation_comment_fk_slot" referencedTableName="slot" referencedColumnNames="id"/>
+            </column>
+            <column name="labware_id" type="INT">
+                <constraints nullable="true" foreignKeyName="operation_comment_fk_labware" referencedTableName="labware" referencedColumnNames="id"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="303" author="dr6">
+        <loadData tableName="comment" file="db/comments.tsv" separator="\t">
+            <column name="category" header="category" type="string"/>
+            <column name="text" header="text" type="string"/>
         </loadData>
     </changeSet>
 

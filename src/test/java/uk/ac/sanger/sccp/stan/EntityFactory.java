@@ -2,8 +2,9 @@ package uk.ac.sanger.sccp.stan;
 
 import uk.ac.sanger.sccp.stan.model.*;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+import java.util.function.BiFunction;
+import java.util.stream.IntStream;
 
 import static java.util.stream.Collectors.toList;
 
@@ -145,6 +146,17 @@ public class EntityFactory {
         return new Labware(lwId, "STAN-"+lwId, lt, slots);
     }
 
+    public static Labware makeLabware(LabwareType lt, Sample... samples) {
+        Labware lw = makeEmptyLabware(lt);
+        if (samples.length > 0) {
+            Iterator<Slot> slotIterator = lw.getSlots().iterator();
+            for (Sample sample : samples) {
+                slotIterator.next().getSamples().add(sample);
+            }
+        }
+        return lw;
+    }
+
     public static OperationType makeOperationType(String name, OperationTypeFlag... flags) {
         int flagbits = 0;
         for (OperationTypeFlag flag : flags) {
@@ -156,5 +168,45 @@ public class EntityFactory {
     public static Tissue makeTissue(Donor donor, SpatialLocation sl) {
         int id = ++idCounter;
         return new Tissue(id, "TISSUE "+id, id%7, sl, donor, getMouldSize(), getMedium(), getFixative(), getHmdmc());
+    }
+
+    public static PlanOperation makePlanForLabware(OperationType opType, List<Labware> sources, List<Labware> destination) {
+        return makePlanForLabware(opType, sources, destination, null);
+    }
+
+    public static PlanOperation makePlanForLabware(OperationType opType, List<Labware> sources, List<Labware> destinations, User user) {
+        return makePlanForSlots(opType, sources.stream().map(Labware::getFirstSlot).collect(toList()),
+                destinations.stream().map(Labware::getFirstSlot).collect(toList()), user);
+    }
+
+    public static PlanOperation makePlanForSlots(OperationType opType, List<Slot> sources, List<Slot> destinations, User user) {
+        if (user == null) {
+            user = getUser();
+        }
+        int planId = ++idCounter;
+        PlanOperation plan = new PlanOperation(planId, opType, user);
+        BiFunction<Slot, Slot, PlanAction> slotActionFn = (source, dest) ->
+                new PlanAction(++idCounter, planId, source, dest, source.getSamples().get(0), null, null);
+        final List<PlanAction> planActions;
+        if (sources.size() == destinations.size()) {
+            planActions = IntStream.range(0, sources.size())
+                    .mapToObj(i -> slotActionFn.apply(sources.get(i), destinations.get(i)))
+                    .collect(toList());
+        } else if (sources.size() == 1) {
+            final Slot source = sources.get(0);
+            planActions = destinations.stream()
+                    .map(dest -> slotActionFn.apply(source, dest))
+                    .collect(toList());
+        } else if (destinations.size() == 1) {
+            final Slot dest = destinations.get(0);
+            planActions = sources.stream()
+                    .map(source -> slotActionFn.apply(source, dest))
+                    .collect(toList());
+        } else {
+            throw new IllegalArgumentException("Unclear how to construct plan from " + sources.size()
+                    + " sources and " + destinations.size() + " destinations.");
+        }
+        plan.setPlanActions(planActions);
+        return plan;
     }
 }

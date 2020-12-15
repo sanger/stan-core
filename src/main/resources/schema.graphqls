@@ -154,16 +154,16 @@ input PlanRequest {
     labware: [PlanRequestLabware!]!,
 }
 
-input AddressStringInput {
-    address: Address,
-    string: String!,
+input AddressCommentInput {
+    address: Address!,
+    commentId: Int!,
 }
 
 input ConfirmOperationLabware {
     barcode: String!,
     cancelled: Boolean,
     cancelledAddresses: [Address!],
-    comments: [AddressStringInput!],
+    addressComments: [AddressCommentInput!],
 }
 
 input ConfirmOperationRequest {

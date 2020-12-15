@@ -116,7 +116,7 @@ public class TestPlanService {
         PlanResult result = planService.executePlanRequest(user, request);
 
         assertNotNull(result);
-        assertThat(result.getOperations()).containsExactly(plan);
+        assertThat(result.getOperations()).containsOnly(plan);
         assertThat(result.getLabware()).hasSameElementsAs(destinations);
         assertEquals(plan.getPlanActions(), actions);
 
