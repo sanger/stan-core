@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
 import uk.ac.sanger.sccp.stan.model.PlanAction;
 
+import java.util.List;
 import java.util.OptionalInt;
 
 public interface PlanActionRepo extends CrudRepository<PlanAction, Integer> {
@@ -19,4 +20,6 @@ public interface PlanActionRepo extends CrudRepository<PlanAction, Integer> {
         Integer maxInteger = _findMaxPlannedSectionForTissueId(tissueId);
         return (maxInteger==null ? OptionalInt.empty() : OptionalInt.of(maxInteger));
     }
+
+    List<PlanAction> findAllByDestinationLabwareId(int labwareId);
 }

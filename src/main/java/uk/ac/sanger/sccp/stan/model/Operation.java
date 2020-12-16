@@ -1,8 +1,9 @@
 package uk.ac.sanger.sccp.stan.model;
 
 import com.google.common.base.MoreObjects;
-import org.hibernate.annotations.DynamicInsert;
+import org.hibernate.annotations.*;
 
+import javax.persistence.Entity;
 import javax.persistence.*;
 import java.sql.Timestamp;
 import java.util.List;
@@ -21,6 +22,7 @@ public class Operation {
     @ManyToOne
     private OperationType operationType;
 
+    @Generated(GenerationTime.INSERT)
     private Timestamp performed;
 
     @OneToMany

@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import uk.ac.sanger.sccp.stan.config.SessionConfig;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.service.label.print.LabelPrintService;
 
 import javax.persistence.EntityNotFoundException;
 
@@ -31,13 +32,14 @@ public class GraphQLDataFetchers {
     final MouldSizeRepo mouldSizeRepo;
     final HmdmcRepo hmdmcRepo;
     final LabwareRepo labwareRepo;
+    final LabelPrintService labelPrintService;
 
     @Autowired
     public GraphQLDataFetchers(ObjectMapper objectMapper, AuthenticationComponent authComp, SessionConfig sessionConfig,
                                UserRepo userRepo,
                                TissueTypeRepo tissueTypeRepo, LabwareTypeRepo labwareTypeRepo,
                                MediumRepo mediumRepo, FixativeRepo fixativeRepo, MouldSizeRepo mouldSizeRepo,
-                               HmdmcRepo hmdmcRepo, LabwareRepo labwareRepo) {
+                               HmdmcRepo hmdmcRepo, LabwareRepo labwareRepo, LabelPrintService labelPrintService) {
         this.objectMapper = objectMapper;
         this.authComp = authComp;
         this.sessionConfig = sessionConfig;
@@ -49,6 +51,7 @@ public class GraphQLDataFetchers {
         this.mouldSizeRepo = mouldSizeRepo;
         this.hmdmcRepo = hmdmcRepo;
         this.labwareRepo = labwareRepo;
+        this.labelPrintService = labelPrintService;
     }
 
     public DataFetcher<User> getUser() {
@@ -93,6 +96,13 @@ public class GraphQLDataFetchers {
             }
             return labwareRepo.findByBarcode(barcode)
                     .orElseThrow(() -> new EntityNotFoundException("No labware found with barcode: "+barcode));
+        };
+    }
+
+    public DataFetcher<Iterable<Printer>> findPrinters() {
+        return dfe -> {
+            String labelTypeName = dfe.getArgument("labelType");
+            return labelPrintService.findPrinters(labelTypeName);
         };
     }
 

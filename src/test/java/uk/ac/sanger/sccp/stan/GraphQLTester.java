@@ -12,6 +12,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import uk.ac.sanger.sccp.stan.model.User;
+import uk.ac.sanger.sccp.stan.service.label.print.PrintClientFactory;
 
 import java.io.IOException;
 import java.net.URL;
@@ -28,6 +29,8 @@ public class GraphQLTester {
 
     @MockBean
     AuthenticationComponent mockAuthComp;
+    @MockBean
+    PrintClientFactory mockPrintClientFactory;
     @Autowired
     private MockMvc mockMvc;
 

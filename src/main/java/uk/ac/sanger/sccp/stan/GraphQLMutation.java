@@ -1,5 +1,6 @@
 package uk.ac.sanger.sccp.stan;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
@@ -15,11 +16,11 @@ import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.request.plan.PlanRequest;
 import uk.ac.sanger.sccp.stan.request.plan.PlanResult;
 import uk.ac.sanger.sccp.stan.service.LDAPService;
+import uk.ac.sanger.sccp.stan.service.label.print.LabelPrintService;
 import uk.ac.sanger.sccp.stan.service.operation.plan.PlanService;
 import uk.ac.sanger.sccp.stan.service.register.RegisterService;
 
-import java.util.ArrayList;
-import java.util.Optional;
+import java.util.*;
 
 /**
  * @author dr6
@@ -33,6 +34,7 @@ public class GraphQLMutation {
     final SessionConfig sessionConfig;
     final RegisterService registerService;
     final PlanService planService;
+    final LabelPrintService labelPrintService;
 
     final UserRepo userRepo;
 
@@ -40,13 +42,14 @@ public class GraphQLMutation {
     public GraphQLMutation(ObjectMapper objectMapper, AuthenticationComponent authComp,
                            LDAPService ldapService, SessionConfig sessionConfig,
                            RegisterService registerService, PlanService planService,
-                           UserRepo userRepo) {
+                           LabelPrintService labelPrintService, UserRepo userRepo) {
         this.objectMapper = objectMapper;
         this.authComp = authComp;
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
         this.registerService = registerService;
         this.planService = planService;
+        this.labelPrintService = labelPrintService;
         this.userRepo = userRepo;
     }
 
@@ -93,6 +96,16 @@ public class GraphQLMutation {
         };
     }
 
+    public DataFetcher<String> printLabware() {
+        return dfe -> {
+            User user = checkUser();
+            List<String> barcodes = dfe.getArgument("barcodes");
+            String printerName = dfe.getArgument("printer");
+            labelPrintService.printLabwareBarcodes(user, printerName, barcodes);
+            return "OK";
+        };
+    }
+
     private User checkUser() {
         Authentication auth = authComp.getAuthentication();
         if (auth==null || auth instanceof AnonymousAuthenticationToken || auth.getPrincipal()==null) {
@@ -104,5 +117,9 @@ public class GraphQLMutation {
 
     private <E> E arg(DataFetchingEnvironment dfe, String name, Class<E> cls) {
         return objectMapper.convertValue(dfe.getArgument(name), cls);
+    }
+
+    private <E> E arg(DataFetchingEnvironment dfe, String name, TypeReference<E> typeRef) {
+        return objectMapper.convertValue(dfe.getArgument(name), typeRef);
     }
 }
