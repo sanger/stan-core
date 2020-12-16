@@ -7,12 +7,19 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import uk.ac.sanger.sccp.stan.model.*;
+import uk.ac.sanger.sccp.stan.repo.LabwarePrintRepo;
+import uk.ac.sanger.sccp.stan.service.label.LabelPrintRequest;
+import uk.ac.sanger.sccp.stan.service.label.LabwareLabelData;
+import uk.ac.sanger.sccp.stan.service.label.LabwareLabelData.LabelContent;
+import uk.ac.sanger.sccp.stan.service.label.print.PrintClient;
 
 import javax.transaction.Transactional;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 /**
  * Non-exhaustive integration tests.
@@ -29,6 +36,8 @@ public class IntegrationTests {
 
     @Autowired
     private EntityCreator entityCreator;
+    @Autowired
+    private LabwarePrintRepo labwarePrintRepo;
 
     @Test
     @Transactional
@@ -61,13 +70,68 @@ public class IntegrationTests {
         List<?> resultActions = chainGet(resultOps, 0, "planActions");
         assertEquals(1, resultActions.size());
         Map<String, ?> resultAction = chainGet(resultActions, 0);
-        Map<String, Integer> firstAddress = Map.of("row", 1, "column", 1);
-        assertEquals(firstAddress, chainGet(resultAction, "source", "address"));
+        assertEquals("A1", chainGet(resultAction, "source", "address"));
         assertEquals(sourceBlock.getId(), chainGet(resultAction, "source", "labwareId"));
-        assertEquals(firstAddress, chainGet(resultAction, "destination", "address"));
+        assertEquals("A1", chainGet(resultAction, "destination", "address"));
         assertNotNull(chainGet(resultAction, "destination", "labwareId"));
         assertEquals(sample.getId(), chainGet(resultAction, "sample", "id"));
         assertNotNull(chainGet(resultAction, "newSection"));
+    }
+
+    @Test
+    @Transactional
+    public void testPrintLabware() throws Exception {
+        //noinspection unchecked
+        PrintClient<LabelPrintRequest> mockPrintClient = mock(PrintClient.class);
+        when(tester.mockPrintClientFactory.getClient(any())).thenReturn(mockPrintClient);
+        tester.setUser(entityCreator.createUser("dr6"));
+        Tissue tissue = entityCreator.createTissue(entityCreator.createDonor("DONOR1", LifeStage.adult), "TISSUE1");
+        Labware lw = entityCreator.createLabware("STAN-SLIDE", entityCreator.createLabwareType("slide6", 3, 2),
+                entityCreator.createSample(tissue, 1), entityCreator.createSample(tissue, 2),
+                entityCreator.createSample(tissue, 3), entityCreator.createSample(tissue, 4));
+        Printer printer = entityCreator.createPrinter("stub");
+        String mutation = "mutation { printLabware(barcodes: [\"STAN-SLIDE\"], printer: \"stub\") }";
+        assertThat(tester.<Map<?,?>>post(mutation)).isEqualTo(Map.of("data", Map.of("printLabware", "OK")));
+        String donorName = tissue.getDonor().getDonorName();
+        String tissueDesc = getTissueDesc(tissue);
+        Integer replicate = tissue.getReplicate();
+        verify(mockPrintClient).print("stub", new LabelPrintRequest(
+                lw.getLabwareType().getLabelType(),
+                List.of(new LabwareLabelData(lw.getBarcode(), tissue.getMedium().getName(),
+                        List.of(
+                                new LabelContent(donorName, tissueDesc, replicate, 1),
+                                new LabelContent(donorName, tissueDesc, replicate, 2),
+                                new LabelContent(donorName, tissueDesc, replicate, 3),
+                                new LabelContent(donorName, tissueDesc, replicate, 4)
+                        ))
+                ))
+        );
+
+        Iterator<LabwarePrint> recordIter = labwarePrintRepo.findAll().iterator();
+        assertTrue(recordIter.hasNext());
+        LabwarePrint record = recordIter.next();
+        assertFalse(recordIter.hasNext());
+
+        assertNotNull(record.getPrinted());
+        assertNotNull(record.getId());
+        assertEquals(record.getLabware().getId(), lw.getId());
+        assertEquals(record.getPrinter().getId(), printer.getId());
+        assertEquals(record.getUser().getUsername(), "dr6");
+    }
+
+    private static String getTissueDesc(Tissue tissue) {
+        String prefix;
+        switch (tissue.getDonor().getLifeStage()) {
+            case paediatric:
+                prefix = "P";
+                break;
+            case fetal:
+                prefix = "F";
+                break;
+            default:
+                prefix = "";
+        }
+        return String.format("%s%s-%s", prefix, tissue.getTissueType().getCode(), tissue.getSpatialLocation().getCode());
     }
 
     @SuppressWarnings("unchecked")

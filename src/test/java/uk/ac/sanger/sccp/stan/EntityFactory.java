@@ -25,6 +25,7 @@ public class EntityFactory {
     private static MouldSize mouldSize;
     private static Medium medium;
     private static Fixative fixative;
+    private static Printer printer;
     private static int idCounter = 10_000;
 
     public static User getUser() {
@@ -127,6 +128,14 @@ public class EntityFactory {
         return tube;
     }
 
+    public static Printer getPrinter() {
+        if (printer==null) {
+            int id = ++idCounter;
+            printer = new Printer(id, "printer"+id, getLabelType(), Printer.Service.sprint);
+        }
+        return printer;
+    }
+
     public static Labware makeEmptyLabware(LabwareType lt) {
         int lwId = ++idCounter;
         final int[] slotId = { 10*lwId };
@@ -142,5 +151,10 @@ public class EntityFactory {
             flagbits |= flag.bit();
         }
         return new OperationType(++idCounter, name, flagbits);
+    }
+
+    public static Tissue makeTissue(Donor donor, SpatialLocation sl) {
+        int id = ++idCounter;
+        return new Tissue(id, "TISSUE "+id, id%7, sl, donor, getMouldSize(), getMedium(), getFixative(), getHmdmc());
     }
 }

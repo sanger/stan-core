@@ -71,13 +71,16 @@ public class GraphQLProvider {
                         .dataFetcher("fixatives", graphQLDataFetchers.getFixatives())
                         .dataFetcher("mouldSizes", graphQLDataFetchers.getMouldSizes())
                         .dataFetcher("labware", graphQLDataFetchers.findLabwareByBarcode())
+                        .dataFetcher("printers", graphQLDataFetchers.findPrinters())
                 )
                 .type(newTypeWiring("Mutation")
                         .dataFetcher("login", graphQLMutation.logIn())
                         .dataFetcher("logout", graphQLMutation.logOut())
                         .dataFetcher("register", transact(graphQLMutation.register()))
                         .dataFetcher("plan", transact(graphQLMutation.recordPlan()))
+                        .dataFetcher("printLabware", graphQLMutation.printLabware()) // not transacted
                 )
+                .scalar(GraphQLCustomTypes.ADDRESS)
                 .build();
     }
 

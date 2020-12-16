@@ -3,11 +3,14 @@ package uk.ac.sanger.sccp.stan.repo;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.test.context.ActiveProfiles;
+import uk.ac.sanger.sccp.stan.EntityCreator;
 import uk.ac.sanger.sccp.stan.model.*;
 
 import javax.transaction.Transactional;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -17,7 +20,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @SpringBootTest
 @ActiveProfiles(profiles = "test")
+@Import(EntityCreator.class)
 public class TestPlanActionRepo {
+    private final EntityCreator entityCreator;
+
     private final PlanOperationRepo planOpRepo;
     private final PlanActionRepo planActionRepo;
     private final OperationTypeRepo opTypeRepo;
@@ -34,12 +40,15 @@ public class TestPlanActionRepo {
     private final LabwareRepo labwareRepo;
     private final SlotRepo slotRepo;
 
+
     @Autowired
-    public TestPlanActionRepo(PlanOperationRepo planOpRepo, PlanActionRepo planActionRepo, OperationTypeRepo opTypeRepo,
+    public TestPlanActionRepo(EntityCreator entityCreator,
+                              PlanOperationRepo planOpRepo, PlanActionRepo planActionRepo, OperationTypeRepo opTypeRepo,
                               SampleRepo sampleRepo, DonorRepo donorRepo, TissueRepo tissueRepo,
                               SpatialLocationRepo slRepo, MouldSizeRepo mouldSizeRepo, MediumRepo mediumRepo,
                               FixativeRepo fixativeRepo, HmdmcRepo hmdmcRepo, UserRepo userRepo,
                               LabwareTypeRepo labwareTypeRepo, LabwareRepo labwareRepo, SlotRepo slotRepo) {
+        this.entityCreator = entityCreator;
         this.planOpRepo = planOpRepo;
         this.planActionRepo = planActionRepo;
         this.opTypeRepo = opTypeRepo;
@@ -88,6 +97,25 @@ public class TestPlanActionRepo {
         planActionRepo.save(new PlanAction(null, plan.getId(), slot2, slot2, sample, 18, null));
         planActionRepo.save(new PlanAction(null, plan.getId(), slot3, slot3, sample, 4, null));
         assertThat(planActionRepo.findMaxPlannedSectionForTissueId(tissue.getId())).hasValue(18);
+    }
+
+    @Test
+    @Transactional
+    public void testFindAllByDestinationLabwareId() {
+        Sample sample = entityCreator.createSample(entityCreator.createTissue(entityCreator.createDonor("DONOR1", LifeStage.adult), "TISSUE1"),null);
+        Labware sourceLabware = entityCreator.createBlock("STAN-000", sample);
+        Slot sourceSlot = sourceLabware.getFirstSlot();
+        LabwareType lt = entityCreator.createLabwareType("2x2", 2, 2);
+        Labware labware = entityCreator.createLabware("STAN-001", lt);
+        User user = entityCreator.createUser("dr6");
+        OperationType opType = entityCreator.createOpType("Paint");
+        List<Slot> slots = labware.getSlots();
+        PlanOperation plan = entityCreator.createPlan(opType, user, sourceSlot, slots.get(0), sourceSlot, slots.get(1));
+        List<PlanAction> actual = planActionRepo.findAllByDestinationLabwareId(labware.getId());
+        assertThat(actual).isNotEmpty();
+        assertThat(actual).hasSameElementsAs(plan.getPlanActions());
+
+        assertThat(planActionRepo.findAllByDestinationLabwareId(-1)).isEmpty();
     }
 
     private <T> T any(CrudRepository<T, ?> repo) {

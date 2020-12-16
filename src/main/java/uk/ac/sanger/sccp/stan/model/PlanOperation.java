@@ -1,8 +1,9 @@
 package uk.ac.sanger.sccp.stan.model;
 
 import com.google.common.base.MoreObjects;
-import org.hibernate.annotations.DynamicInsert;
+import org.hibernate.annotations.*;
 
+import javax.persistence.Entity;
 import javax.persistence.*;
 import java.sql.Timestamp;
 import java.util.List;
@@ -24,6 +25,7 @@ public class PlanOperation {
 
     private Integer operationId;
 
+    @Generated(GenerationTime.INSERT)
     private Timestamp planned;
 
     @OneToMany
@@ -34,6 +36,12 @@ public class PlanOperation {
     private User user;
 
     public PlanOperation() {}
+
+    public PlanOperation(Integer id, OperationType opType, User user) {
+        this.id = id;
+        this.operationType = opType;
+        this.user = user;
+    }
 
     public Integer getId() {
         return this.id;

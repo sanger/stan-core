@@ -6,8 +6,9 @@ import org.springframework.data.repository.CrudRepository;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 
-import java.util.ArrayList;
-import java.util.List;
+import javax.persistence.EntityManager;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Utility for creating persisted entities for tests
@@ -39,6 +40,19 @@ public class EntityCreator {
     private LabwareTypeRepo ltRepo;
     @Autowired
     private SlotRepo slotRepo;
+    @Autowired
+    private PlanOperationRepo planOpRepo;
+    @Autowired
+    private PlanActionRepo planActionRepo;
+    @Autowired
+    private OperationTypeRepo opTypeRepo;
+    @Autowired
+    private LabelTypeRepo labelTypeRepo;
+    @Autowired
+    private PrinterRepo printerRepo;
+
+    @Autowired
+    private EntityManager entityManager;
 
     public User createUser(String username) {
         return userRepo.save(new User(null, username));
@@ -71,6 +85,55 @@ public class EntityCreator {
         Slot slot = slotRepo.save(new Slot(null, lw.getId(), new Address(1,1), new ArrayList<>(List.of(sample)), sample.getId(), 0));
         lw.getSlots().add(slot);
         return lw;
+    }
+
+    public Labware createLabware(String barcode, LabwareType lt, Sample... samples) {
+        Labware lw = labwareRepo.save(new Labware(null, barcode, lt, null));
+        Iterator<Sample> sampleIter = Arrays.asList(samples).iterator();
+        List<Slot> slots = Address.stream(lt.getNumRows(), lt.getNumColumns())
+                .map(ad -> new Slot(null, lw.getId(), ad, (sampleIter.hasNext() ? List.of(sampleIter.next()) : List.of()),
+                        null, null))
+                .collect(Collectors.toList());
+        slotRepo.saveAll(slots);
+        entityManager.refresh(lw);
+        return lw;
+    }
+
+    public LabwareType createLabwareType(String name, int rows, int columns) {
+        return ltRepo.save(new LabwareType(null, name, rows, columns, getAny(labelTypeRepo), false));
+    }
+
+    public OperationType createOpType(String opTypeName, OperationTypeFlag... opTypeFlags) {
+        int flags = 0;
+        for (OperationTypeFlag flag : opTypeFlags) {
+            flags |= flag.bit();
+        }
+        return opTypeRepo.save(new OperationType(null, opTypeName, flags));
+    }
+
+    public PlanOperation createPlan(OperationType opType, User user, Slot... slots) {
+        PlanOperation plan = new PlanOperation(null, opType, user);
+        plan = planOpRepo.save(plan);
+        int planId = plan.getId();
+        List<PlanAction> planActions = new ArrayList<>(slots.length/2);
+        for (int i = 0; i < slots.length; i += 2) {
+            Slot src = slots[i];
+            Slot dest = slots[i+1];
+            PlanAction planAction = new PlanAction(null, planId, src, dest, src.getSamples().get(0), null, null);
+            planActions.add(planAction);
+        }
+        planActionRepo.saveAll(planActions);
+        entityManager.refresh(plan);
+        return plan;
+    }
+
+    public Printer createPrinter(String name, LabelType labelType) {
+        Printer printer = new Printer(null, name, labelType, Printer.Service.sprint);
+        return printerRepo.save(printer);
+    }
+
+    public Printer createPrinter(String name) {
+        return createPrinter(name, getAny(labelTypeRepo));
     }
 
     public <E> E getAny(CrudRepository<E, ?> repo) {
