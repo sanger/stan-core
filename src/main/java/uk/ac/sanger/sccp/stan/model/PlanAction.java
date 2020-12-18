@@ -31,6 +31,10 @@ public class PlanAction {
 
     public PlanAction() {}
 
+    public PlanAction(Integer id, Integer planOperationId, Slot source, Slot destination, Sample sample) {
+        this(id, planOperationId, source, destination, sample, null, null);
+    }
+
     public PlanAction(Integer id, Integer planOperationId, Slot source, Slot destination, Sample sample,
                       Integer newSection, Integer sampleThickness) {
         this.id = id;

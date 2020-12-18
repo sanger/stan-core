@@ -37,9 +37,11 @@ public class PlanOperation {
 
     public PlanOperation() {}
 
-    public PlanOperation(Integer id, OperationType opType, User user) {
+    public PlanOperation(Integer id, OperationType opType, Timestamp planned, List<PlanAction> planActions, User user) {
         this.id = id;
         this.operationType = opType;
+        this.planned = planned;
+        this.planActions = planActions;
         this.user = user;
     }
 

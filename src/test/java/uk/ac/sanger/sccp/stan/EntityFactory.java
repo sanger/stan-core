@@ -2,6 +2,7 @@ package uk.ac.sanger.sccp.stan;
 
 import uk.ac.sanger.sccp.stan.model.*;
 
+import java.sql.Timestamp;
 import java.util.*;
 import java.util.function.BiFunction;
 import java.util.stream.IntStream;
@@ -175,38 +176,69 @@ public class EntityFactory {
     }
 
     public static PlanOperation makePlanForLabware(OperationType opType, List<Labware> sources, List<Labware> destinations, User user) {
-        return makePlanForSlots(opType, sources.stream().map(Labware::getFirstSlot).collect(toList()),
-                destinations.stream().map(Labware::getFirstSlot).collect(toList()), user);
+        return makePlanForSlots(opType, toFirstSlots(sources), toFirstSlots(destinations), user);
     }
 
-    public static PlanOperation makePlanForSlots(OperationType opType, List<Slot> sources, List<Slot> destinations, User user) {
+    private static <C, A> C makeOpLike(OperationType opType, List<Slot> sources, List<Slot> destinations, User user,
+                                           OpLikeMaker<C, A> opLikeMaker, ActionLikeMaker<A> actionLikeMaker) {
         if (user == null) {
             user = getUser();
         }
-        int planId = ++idCounter;
-        PlanOperation plan = new PlanOperation(planId, opType, user);
-        BiFunction<Slot, Slot, PlanAction> slotActionFn = (source, dest) ->
-                new PlanAction(++idCounter, planId, source, dest, source.getSamples().get(0), null, null);
-        final List<PlanAction> planActions;
-        if (sources.size() == destinations.size()) {
-            planActions = IntStream.range(0, sources.size())
-                    .mapToObj(i -> slotActionFn.apply(sources.get(i), destinations.get(i)))
+        int opId = ++idCounter;
+        BiFunction<Slot, Slot, A> slotAFunction = (source, dest) -> actionLikeMaker.make(++idCounter, opId, source, dest, source.getSamples().get(0));
+        final List<A> actions;
+        if (sources.size()==destinations.size()) {
+            actions = IntStream.range(0, sources.size())
+                    .mapToObj(i -> slotAFunction.apply(sources.get(i), destinations.get(i)))
                     .collect(toList());
-        } else if (sources.size() == 1) {
-            final Slot source = sources.get(0);
-            planActions = destinations.stream()
-                    .map(dest -> slotActionFn.apply(source, dest))
+        } else if (sources.size()==1) {
+            final Slot src = sources.get(0);
+            actions = destinations.stream()
+                    .map(dest -> slotAFunction.apply(src, dest))
                     .collect(toList());
-        } else if (destinations.size() == 1) {
+        } else if (destinations.size()==1) {
             final Slot dest = destinations.get(0);
-            planActions = sources.stream()
-                    .map(source -> slotActionFn.apply(source, dest))
+            actions = destinations.stream()
+                    .map(src -> slotAFunction.apply(src, dest))
                     .collect(toList());
         } else {
-            throw new IllegalArgumentException("Unclear how to construct plan from " + sources.size()
+            throw new IllegalArgumentException("Unclear how to construct actions from " + sources.size()
                     + " sources and " + destinations.size() + " destinations.");
         }
-        plan.setPlanActions(planActions);
-        return plan;
+        return opLikeMaker.make(opId, opType, now(), actions, user);
+    }
+
+    public static PlanOperation makePlanForSlots(OperationType opType, List<Slot> sources, List<Slot> destinations, User user) {
+        return makeOpLike(opType, sources, destinations, user, PlanOperation::new, PlanAction::new);
+    }
+
+    public static Operation makeOpForLabware(OperationType opType, List<Labware> sources, List<Labware> destinations) {
+        return makeOpForLabware(opType, sources, destinations, null);
+    }
+
+    public static Operation makeOpForLabware(OperationType opType, List<Labware> sources, List<Labware> destinations, User user) {
+        return makeOpForSlots(opType, toFirstSlots(sources), toFirstSlots(destinations), user);
+    }
+
+    public static Operation makeOpForSlots(OperationType opType, List<Slot> sources, List<Slot> destinations, User user) {
+        return makeOpLike(opType, sources, destinations, user, Operation::new, Action::new);
+    }
+
+    public static Timestamp now() {
+        return new Timestamp(System.currentTimeMillis());
+    }
+
+    private static List<Slot> toFirstSlots(Collection<Labware> labware) {
+        return labware.stream().map(Labware::getFirstSlot).collect(toList());
+    }
+
+    @FunctionalInterface
+    private interface OpLikeMaker<C, A> {
+        C make(int id, OperationType opType, Timestamp timestamp, List<A> actions, User user);
+    }
+
+    @FunctionalInterface
+    private interface ActionLikeMaker<A> {
+        A make(int id, int opId, Slot source, Slot dest, Sample sample);
     }
 }

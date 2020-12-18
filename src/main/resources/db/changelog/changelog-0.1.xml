@@ -721,7 +721,7 @@
                 <constraints nullable="false" foreignKeyName="operation_comment_fk_comment" referencedTableName="comment" referencedColumnNames="id"/>
             </column>
             <column name="operation_id" type="INT">
-                <constraints nullable="false" foreignKeyName="operation_comment_fk_operation" referencedTableName="operation" referencedColumnNames="id"/>
+                <constraints nullable="true" foreignKeyName="operation_comment_fk_operation" referencedTableName="operation" referencedColumnNames="id"/>
             </column>
             <column name="sample_id" type="INT">
                 <constraints nullable="true" foreignKeyName="operation_comment_fk_sample" referencedTableName="sample" referencedColumnNames="id"/>
