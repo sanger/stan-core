@@ -30,13 +30,14 @@ public class ConfirmOperationServiceImp implements ConfirmOperationService {
     private final SampleRepo sampleRepo;
     private final CommentRepo commentRepo;
     private final OperationCommentRepo opCommentRepo;
+    private final MeasurementRepo measurementRepo;
 
     @Autowired
     public ConfirmOperationServiceImp(ConfirmOperationValidationFactory validationFactory, EntityManager entityManager,
                                       OperationService operationService,
                                       LabwareRepo labwareRepo, PlanOperationRepo planOpRepo, SlotRepo slotRepo,
                                       SampleRepo sampleRepo, CommentRepo commentRepo,
-                                      OperationCommentRepo opCommentRepo) {
+                                      OperationCommentRepo opCommentRepo, MeasurementRepo measurementRepo) {
         this.validationFactory = validationFactory;
         this.entityManager = entityManager;
         this.operationService = operationService;
@@ -46,6 +47,7 @@ public class ConfirmOperationServiceImp implements ConfirmOperationService {
         this.sampleRepo = sampleRepo;
         this.commentRepo = commentRepo;
         this.opCommentRepo = opCommentRepo;
+        this.measurementRepo = measurementRepo;
     }
 
     @Override
@@ -129,6 +131,7 @@ public class ConfirmOperationServiceImp implements ConfirmOperationService {
     /**
      * Updates the labware and records the operation (if necessary) described by the given confirm-labware request.
      * If the operation is cancelled, no operation will be recorded, and the labware will be discarded.
+     * Thickness measurements from the plan are recorded against the new operation (if any).
      * @param col the confirm-request for a particular piece of labware
      * @param lw the labware
      * @param plan the plan for the labware
@@ -161,6 +164,8 @@ public class ConfirmOperationServiceImp implements ConfirmOperationService {
         }
         List<Action> actions = new ArrayList<>(planActions.size());
 
+        List<Measurement> measurements = new ArrayList<>();
+
         for (PlanAction pa : planActions) {
             // update the slot object inside the labware, in case we have multiple identical slot instances
             // whose updates might clobber each other
@@ -168,13 +173,19 @@ public class ConfirmOperationServiceImp implements ConfirmOperationService {
             Sample sample = getOrCreateSample(pa, dest);
             Action action = makeAction(pa, dest, sample);
             actions.add(action);
-            if (sample!=null) {
-                dest.getSamples().add(sample);
-                slotRepo.save(dest);
+            dest.getSamples().add(sample);
+            slotRepo.save(dest);
+            if (pa.getSampleThickness()!=null) {
+                measurements.add(new Measurement(null, "Thickness", String.valueOf(pa.getSampleThickness()),
+                        sample.getId(), null, dest.getId()));
             }
         }
         entityManager.refresh(lw);
-        Operation op = operationService.createOperation(plan.getOperationType(), user, actions);
+        Operation op = operationService.createOperation(plan.getOperationType(), user, actions, plan.getId());
+        if (!measurements.isEmpty()) {
+            measurements.forEach(m -> m.setOperationId(op.getId()));
+            measurementRepo.saveAll(measurements);
+        }
         return new ConfirmLabwareResult(op, lw);
     }
 

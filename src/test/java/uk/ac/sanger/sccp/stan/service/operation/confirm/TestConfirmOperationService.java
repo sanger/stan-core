@@ -40,6 +40,7 @@ public class TestConfirmOperationService {
     private SampleRepo mockSampleRepo;
     private CommentRepo mockCommentRepo;
     private OperationCommentRepo mockOperationCommentRepo;
+    private MeasurementRepo mockMeasurementRepo;
 
     private ConfirmOperationServiceImp service;
 
@@ -54,10 +55,11 @@ public class TestConfirmOperationService {
         mockSampleRepo = mock(SampleRepo.class);
         mockCommentRepo = mock(CommentRepo.class);
         mockOperationCommentRepo = mock(OperationCommentRepo.class);
+        mockMeasurementRepo = mock(MeasurementRepo.class);
 
         service = spy(new ConfirmOperationServiceImp(mockConfirmOperationValidationFactory, mockEntityManager,
                 mockOperationService, mockLabwareRepo, mockPlanOperationRepo, mockSlotRepo, mockSampleRepo,
-                mockCommentRepo, mockOperationCommentRepo));
+                mockCommentRepo, mockOperationCommentRepo, mockMeasurementRepo));
     }
 
     @ParameterizedTest
@@ -166,8 +168,9 @@ public class TestConfirmOperationService {
     @ParameterizedTest
     @MethodSource("performConfirmationArguments")
     public void testPerformConfirmation(ConfirmOperationLabware col, OperationType opType, LabwareType lt,
-                                        List<Address> planDestAddresses,
-                                        boolean expectDiscard, Set<Address> expectedActionAddresses) {
+                                        List<Address> planDestAddresses, Integer[] planThicknesses,
+                                        boolean expectDiscard, Set<Address> expectedActionAddresses,
+                                        Map<Address, Integer> expectedThicknesses) {
         User user = EntityFactory.getUser();
         Labware lw = EntityFactory.makeEmptyLabware(lt);
         lw.setBarcode(col.getBarcode());
@@ -177,10 +180,15 @@ public class TestConfirmOperationService {
                 .map(lw::getSlot)
                 .collect(toList());
         PlanOperation plan = EntityFactory.makePlanForSlots(opType, sourceSlots, destSlots, user);
+        if (planThicknesses!=null) {
+            for (int i = 0; i < planThicknesses.length; ++i) {
+                plan.getPlanActions().get(i).setSampleThickness(planThicknesses[i]);
+            }
+        }
         Operation op = (expectDiscard ? null : EntityFactory.makeOpForSlots(opType, sourceSlots, destSlots, user));
         when(mockSlotRepo.save(any())).then(Matchers.returnArgument());
         when(mockLabwareRepo.save(any())).then(Matchers.returnArgument());
-        when(mockOperationService.createOperation(any(), any(), anyList())).thenReturn(op);
+        when(mockOperationService.createOperation(any(), any(), anyList(), any())).thenReturn(op);
 
         ConfirmLabwareResult result = service.performConfirmation(col, lw, plan, user);
         assertEquals(result.labware, lw);
@@ -189,15 +197,16 @@ public class TestConfirmOperationService {
             assertNull(result.operation);
             verifyNoInteractions(mockOperationService);
             verify(mockLabwareRepo).save(lw);
+            verifyNoInteractions(mockMeasurementRepo);
         } else {
             ConfirmLabwareResult expectedResult = new ConfirmLabwareResult(op, lw);
             assertEquals(expectedResult.hashCode(), result.hashCode());
             assertEquals(expectedResult, result);
-
+            assert op != null;
             assertSame(op, result.operation);
             @SuppressWarnings("unchecked")
             ArgumentCaptor<List<Action>> actionsCaptor = ArgumentCaptor.forClass(List.class);
-            verify(mockOperationService).createOperation(eq(plan.getOperationType()), eq(user), actionsCaptor.capture());
+            verify(mockOperationService).createOperation(eq(plan.getOperationType()), eq(user), actionsCaptor.capture(), eq(plan.getId()));
             List<Action> actions = actionsCaptor.getValue();
             List<Slot> expectedDestinations = expectedActionAddresses.stream()
                     .map(lw::getSlot)
@@ -205,6 +214,21 @@ public class TestConfirmOperationService {
             assertThat(actions.stream().map(Action::getDestination)).hasSameElementsAs(expectedDestinations);
             verify(mockEntityManager).refresh(lw);
             expectedDestinations.forEach(destSlot -> verify(mockSlotRepo).save(destSlot));
+            if (expectedThicknesses!=null && !expectedThicknesses.isEmpty()) {
+                List<Measurement> expectedMeasurements = expectedThicknesses.entrySet().stream()
+                        .filter(e -> e.getValue()!=null)
+                        .map(e -> {
+                            Action action = actions.stream().filter(a -> a.getDestination().getAddress().equals(e.getKey()))
+                                    .findAny()
+                                    .orElseThrow();
+                            return new Measurement(null, "Thickness", e.getValue().toString(),
+                                    action.getSample().getId(), op.getId(), action.getDestination().getId());
+                        })
+                        .collect(toList());
+                verify(mockMeasurementRepo).saveAll(Matchers.sameElements(expectedMeasurements));
+            } else {
+                verifyNoInteractions(mockMeasurementRepo);
+            }
         }
     }
 
@@ -223,14 +247,27 @@ public class TestConfirmOperationService {
                 new ConfirmOperationLabware(bc, false, List.of(new Address(2,1)), null)
         );
         boolean[] expectLabwareDiscarded = {false, true, true, false};
+        Integer[][] planThicknesses = {
+                {100, null, 150},
+                {100, null, 150},
+                null,
+                {100, null, 150},
+        };
         List<Set<Address>> expectedActionAddresses = Arrays.asList(
                 Set.of(new Address(1, 1), new Address(1, 2), new Address(2, 1)),
                 null,
                 null,
                 Set.of(new Address(1, 1), new Address(1, 2))
         );
+        List<Map<Address, Integer>> expectedThicknesses = Arrays.asList(
+                Map.of(new Address(1,1), 100, new Address(2,1), 150),
+                null,
+                null,
+                Map.of(new Address(1,1), 100)
+        );
         return IntStream.range(0, cols.size()).mapToObj(
-                i -> Arguments.of(cols.get(i), opType, lt, planDestAddresses, expectLabwareDiscarded[i], expectedActionAddresses.get(i))
+                i -> Arguments.of(cols.get(i), opType, lt, planDestAddresses, planThicknesses[i],
+                        expectLabwareDiscarded[i], expectedActionAddresses.get(i), expectedThicknesses.get(i))
         );
     }
 

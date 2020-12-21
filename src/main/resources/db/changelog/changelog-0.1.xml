@@ -403,6 +403,7 @@
         </rollback>
     </changeSet>
 
+
     <changeSet id="19" author="dr6">
         <createTable tableName="operation">
             <column name="id" type="INT" autoIncrement="true">
@@ -539,9 +540,6 @@
             <column name="planned" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
             </column>
-            <column name="operation_id" type="INT">
-                <constraints nullable="true" foreignKeyName="plan_operation_fk_operation" referencedTableName="operation" referencedColumnNames="id"/>
-            </column>
             <column name="operation_type_id" type="INT">
                 <constraints nullable="false" foreignKeyName="plan_operation_fk_operation_type" referencedTableName="operation_type" referencedColumnNames="id"/>
             </column>
@@ -558,6 +556,14 @@
     </changeSet>
 
     <changeSet id="201" author="dr6">
+        <addColumn tableName="operation">
+            <column name="plan_operation_id" type="INT">
+                <constraints nullable="true" foreignKeyName="operation_fk_plan_operation" referencedTableName="plan_operation" referencedColumnNames="id"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="202" author="dr6">
         <createTable tableName="plan_action">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
@@ -599,7 +605,7 @@
         </rollback>
     </changeSet>
 
-    <changeSet id="202" author="dr6">
+    <changeSet id="203" author="dr6">
         <createTable tableName="printer">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
@@ -622,7 +628,7 @@
         </createTable>
     </changeSet>
 
-    <changeSet id="203" author="dr6">
+    <changeSet id="204" author="dr6">
         <createTable tableName="labware_print">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
@@ -646,14 +652,6 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
-    </changeSet>
-
-    <changeSet id="204" author="dr6">
-        <loadData tableName="printer" file="db/printers.csv">
-            <column name="name" header="name" type="string"/>
-            <column name="label_type_id" header="label_type_id" type="numeric"/>
-            <column name="service" header="service" type="string"/>
-        </loadData>
     </changeSet>
 
     <changeSet id="300" author="dr6">

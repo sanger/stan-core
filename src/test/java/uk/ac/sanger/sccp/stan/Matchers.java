@@ -66,5 +66,10 @@ public class Matchers {
         public boolean matches(C argument) {
             return sameContents(this.collection, argument);
         }
+
+        @Override
+        public String toString() {
+            return "in any order "+this.collection;
+        }
     }
 }

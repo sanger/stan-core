@@ -31,13 +31,14 @@ public class OperationService {
      * @param operationType the type of operation
      * @param user the user responsible
      * @param actions the actions for the operation
+     * @param planId the id of the plan associated with this operation
      * @return a new instance of operation
      */
-    public Operation createOperation(OperationType operationType, User user, List<Action> actions) {
+    public Operation createOperation(OperationType operationType, User user, List<Action> actions, Integer planId) {
         if (actions.isEmpty()) {
             throw new IllegalArgumentException("No actions received to create operation.");
         }
-        Operation op = opRepo.save(new Operation(null, operationType, null,null, user));
+        Operation op = opRepo.save(new Operation(null, operationType, null,null, user, planId));
         for (Action action : actions) {
             action.setOperationId(op.getId());
         }
@@ -48,6 +49,6 @@ public class OperationService {
 
     public Operation createOperation(OperationType operationType, User user, Slot source, Slot dest, Sample sample) {
         Action action = new Action(null, null, source, dest, sample);
-        return createOperation(operationType, user, List.of(action));
+        return createOperation(operationType, user, List.of(action), null);
     }
 }
