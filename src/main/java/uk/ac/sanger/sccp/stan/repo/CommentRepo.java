@@ -16,4 +16,6 @@ public interface CommentRepo extends CrudRepository<Comment, Integer> {
     Set<Integer> findIdByIdIn(Collection<Integer> ids);
 
     List<Comment> findAllByIdIn(Collection<Integer> ids);
+
+    List<Comment> findAllByEnabled(boolean enabled);
 }

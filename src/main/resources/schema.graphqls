@@ -199,6 +199,12 @@ type Printer {
     labelType: LabelType!,
 }
 
+type Comment {
+    id: Int!,
+    text: String!,
+    category: String!,
+}
+
 type Query {
     user: User,
     tissueTypes: [TissueType!]!,
@@ -209,6 +215,7 @@ type Query {
     mouldSizes: [MouldSize!]!,
     labware(barcode: String!): Labware!,
     printers(labelType: String): [Printer!]!,
+    comments(category: String): [Comment!]!,
 }
 
 type Mutation {
