@@ -51,7 +51,7 @@ public class IntegrationTests {
 
     @Test
     @Transactional
-    public void testPlanOperation() throws Exception {
+    public void testPlanAndRecordOperation() throws Exception {
         tester.setUser(entityCreator.createUser("dr6"));
         Sample sample = entityCreator.createSample(entityCreator.createTissue(entityCreator.createDonor("DONOR1", LifeStage.adult), "TISSUE1"), null);
         Labware sourceBlock = entityCreator.createBlock("STAN-B70C", sample);
@@ -60,10 +60,11 @@ public class IntegrationTests {
         Map<String, ?> result = tester.post(mutation);
         assertNull(result.get("errors"));
         Object resultPlan = chainGet(result, "data", "plan");
-        List<?> resultLabware = chainGet(resultPlan, "labware");
-        assertEquals(1, resultLabware.size());
-        assertNotNull(chainGet(resultLabware, 0, "barcode"));
-        assertEquals("Tube", chainGet(resultLabware, 0, "labwareType", "name"));
+        List<?> planResultLabware = chainGet(resultPlan, "labware");
+        assertEquals(1, planResultLabware.size());
+        String barcode = chainGet(planResultLabware, 0, "barcode");
+        assertNotNull(barcode);
+        assertEquals("Tube", chainGet(planResultLabware, 0, "labwareType", "name"));
         List<?> resultOps = chainGet(resultPlan, "operations");
         assertEquals(resultOps.size(), 1);
         assertEquals("Section", chainGet(resultOps, 0, "operationType", "name"));
@@ -76,6 +77,31 @@ public class IntegrationTests {
         assertNotNull(chainGet(resultAction, "destination", "labwareId"));
         assertEquals(sample.getId(), chainGet(resultAction, "sample", "id"));
         assertNotNull(chainGet(resultAction, "newSection"));
+
+        String recordMutation = tester.readResource("graphql/confirm.graphql");
+        recordMutation = recordMutation.replace("$BARCODE", barcode);
+        result = tester.post(recordMutation);
+        assertNull(result.get("errors"));
+
+        Object resultConfirm = chainGet(result, "data", "confirmOperation");
+        List<?> resultLabware = chainGet(resultConfirm, "labware");
+        assertEquals(1, resultLabware.size());
+        assertEquals(barcode, chainGet(resultLabware, 0, "barcode"));
+        List<?> slots = chainGet(resultLabware, 0, "slots");
+        assertEquals(1, slots.size());
+        assertEquals((Integer) 1, chainGet(slots, 0, "samples", 0, "section"));
+        assertNotNull(chainGet(slots, 0, "samples", 0, "id"));
+
+        resultOps = chainGet(resultConfirm, "operations");
+        assertEquals(resultOps.size(), 1);
+        Object resultOp = resultOps.get(0);
+        assertNotNull(chainGet(resultOp, "performed"));
+        assertEquals("Section", chainGet(resultOp, "operationType", "name"));
+        List<?> actions = chainGet(resultOp, "actions");
+        assertEquals(1, actions.size());
+        Object action = actions.get(0);
+        assertEquals((Integer) 1, chainGet(action, "sample", "section"));
+        assertEquals("A1", chainGet(action, "destination", "address").toString());
     }
 
     @Test

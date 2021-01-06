@@ -21,6 +21,8 @@ public class Labware {
     @OrderBy("address.row, address.column")
     private List<Slot> slots;
 
+    private boolean discarded;
+
     public Labware() {}
 
     public Labware(Integer id, String barcode, LabwareType labwareType, List<Slot> slots) {
@@ -66,6 +68,14 @@ public class Labware {
         return this.slots.get(0);
     }
 
+    /**
+     * Returns the slot with the given address from this labware.
+     * Throws an exception if no such slot exists
+     * @param address the address of the slot to get
+     * @return the slot with the given address
+     * @exception IllegalArgumentException no such slot exists
+     * @exception IllegalStateException the slot at the index expected for that address does not have the expected address
+     */
     public Slot getSlot(Address address) {
         int index = labwareType.indexOf(address);
         if (index < 0) {
@@ -79,6 +89,14 @@ public class Labware {
         return slot;
     }
 
+    public boolean isDiscarded() {
+        return this.discarded;
+    }
+
+    public void setDiscarded(boolean discarded) {
+        this.discarded = discarded;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -87,7 +105,8 @@ public class Labware {
         return (Objects.equals(this.id, that.id)
                 && Objects.equals(this.barcode, that.barcode)
                 && Objects.equals(this.labwareType, that.labwareType)
-                && Objects.equals(this.slots, that.slots));
+                && Objects.equals(this.slots, that.slots)
+                && this.discarded==that.discarded);
     }
 
     @Override

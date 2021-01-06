@@ -32,14 +32,22 @@ public class Operation {
     @ManyToOne
     private User user;
 
+    private Integer planOperationId;
+
     public Operation() {}
 
-    public Operation(Integer id, OperationType operationType, Timestamp performed, List<Action> actions, User user) {
+    public Operation(Integer id, OperationType operationType, Timestamp performed, List<Action> actions, User user,
+                     Integer planOperationId) {
         this.id = id;
         this.operationType = operationType;
         this.performed = performed;
         this.actions = actions;
         this.user = user;
+        this.planOperationId = planOperationId;
+    }
+
+    public Operation(Integer id, OperationType operationType, Timestamp performed, List<Action> actions, User user) {
+        this(id, operationType, performed, actions, user, null);
     }
 
     public Integer getId() {
@@ -82,6 +90,14 @@ public class Operation {
         this.user = user;
     }
 
+    public Integer getPlanOperationId() {
+        return this.planOperationId;
+    }
+
+    public void setPlanOperationId(Integer planOperationId) {
+        this.planOperationId = planOperationId;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -91,7 +107,8 @@ public class Operation {
                 && Objects.equals(this.performed, that.performed)
                 && Objects.equals(this.operationType, that.operationType)
                 && Objects.equals(this.user, that.user)
-                && Objects.equals(this.actions, that.actions));
+                && Objects.equals(this.actions, that.actions)
+                && Objects.equals(this.planOperationId, that.planOperationId));
     }
 
     @Override
