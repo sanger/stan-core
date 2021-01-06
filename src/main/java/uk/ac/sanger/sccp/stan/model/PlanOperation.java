@@ -23,8 +23,6 @@ public class PlanOperation {
     @ManyToOne
     private OperationType operationType;
 
-    private Integer operationId;
-
     @Generated(GenerationTime.INSERT)
     private Timestamp planned;
 
@@ -37,9 +35,11 @@ public class PlanOperation {
 
     public PlanOperation() {}
 
-    public PlanOperation(Integer id, OperationType opType, User user) {
+    public PlanOperation(Integer id, OperationType opType, Timestamp planned, List<PlanAction> planActions, User user) {
         this.id = id;
         this.operationType = opType;
+        this.planned = planned;
+        this.planActions = planActions;
         this.user = user;
     }
 
@@ -57,14 +57,6 @@ public class PlanOperation {
 
     public void setOperationType(OperationType operationType) {
         this.operationType = operationType;
-    }
-
-    public Integer getOperationId() {
-        return this.operationId;
-    }
-
-    public void setOperationId(Integer operationId) {
-        this.operationId = operationId;
     }
 
     public List<PlanAction> getPlanActions() {
@@ -99,7 +91,6 @@ public class PlanOperation {
         PlanOperation that = (PlanOperation) o;
         return (Objects.equals(this.id, that.id)
                 && Objects.equals(this.operationType, that.operationType)
-                && Objects.equals(this.operationId, that.operationId)
                 && Objects.equals(this.planned, that.planned)
                 && Objects.equals(this.planActions, that.planActions)
                 && Objects.equals(this.user, that.user));
@@ -115,7 +106,6 @@ public class PlanOperation {
         return MoreObjects.toStringHelper(this)
                 .add("id", id)
                 .add("operationType", operationType)
-                .add("operationId", operationId)
                 .add("planned", planned)
                 .add("planActions", planActions)
                 .add("user", user)

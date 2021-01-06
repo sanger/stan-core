@@ -81,7 +81,7 @@ public class OperationServiceTest {
     public void testCreateOperationWithNoActions() {
         OperationType opType = new OperationType(1, "Passage");
         User user = EntityFactory.getUser();
-        assertThrows(IllegalArgumentException.class, () -> opService.createOperation(opType, user, List.of()));
+        assertThrows(IllegalArgumentException.class, () -> opService.createOperation(opType, user, List.of(), null));
         assertThat(savedOps).isEmpty();
         assertThat(savedActions).isEmpty();
     }
@@ -99,7 +99,7 @@ public class OperationServiceTest {
                 new Action(null, null, slot1, slot2, sample)
         );
 
-        Operation op = opService.createOperation(opType, user, actions);
+        Operation op = opService.createOperation(opType, user, actions, null);
         assertNotNull(op.getId());
         assertThat(savedOps).contains(op);
         assertThat(savedActions).hasSameElementsAs(actions);

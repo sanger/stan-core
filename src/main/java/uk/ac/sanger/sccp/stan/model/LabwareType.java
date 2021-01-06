@@ -79,6 +79,12 @@ public class LabwareType {
         this.prebarcoded = prebarcoded;
     }
 
+    /**
+     * Returns the index of the specified address in this labware types valid addresses.
+     * Returns -1 if the address is not valid for this labware type
+     * @param address the address to find
+     * @return the index found, or -1 if the address is not valid for this labware type
+     */
     public int indexOf(Address address) {
         if (address.getRow() < 1 || address.getColumn() < 1
                 || address.getRow() > numRows || address.getColumn() > numColumns) {

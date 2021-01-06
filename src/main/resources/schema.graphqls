@@ -1,4 +1,5 @@
 scalar Address
+scalar Timestamp
 
 type User {
     username: String!,
@@ -153,6 +154,41 @@ input PlanRequest {
     labware: [PlanRequestLabware!]!,
 }
 
+input AddressCommentInput {
+    address: Address!,
+    commentId: Int!,
+}
+
+input ConfirmOperationLabware {
+    barcode: String!,
+    cancelled: Boolean,
+    cancelledAddresses: [Address!],
+    addressComments: [AddressCommentInput!],
+}
+
+input ConfirmOperationRequest {
+    labware: [ConfirmOperationLabware!]!,
+}
+
+type Action {
+    source: Slot!,
+    destination: Slot!,
+    operationId: Int!,
+    sample: Sample!,
+}
+
+type Operation {
+    operationType: OperationType!,
+    actions: [Action!]!,
+    user: User!,
+    performed: Timestamp!,
+}
+
+type ConfirmOperationResult {
+    labware: [Labware!]!,
+    operations: [Operation!]!,
+}
+
 type PlanResult {
     labware: [Labware!]!,
     operations: [PlanOperation!]!,
@@ -161,6 +197,12 @@ type PlanResult {
 type Printer {
     name: String!,
     labelType: LabelType!,
+}
+
+type Comment {
+    id: Int!,
+    text: String!,
+    category: String!,
 }
 
 type Query {
@@ -173,6 +215,7 @@ type Query {
     mouldSizes: [MouldSize!]!,
     labware(barcode: String!): Labware!,
     printers(labelType: String): [Printer!]!,
+    comments(category: String): [Comment!]!,
 }
 
 type Mutation {
@@ -181,4 +224,5 @@ type Mutation {
     register(request: RegisterRequest!): RegisterResult!,
     plan(request: PlanRequest!): PlanResult!,
     printLabware(printer: String!, barcodes: [String!]!): String,
+    confirmOperation(request: ConfirmOperationRequest!): ConfirmOperationResult!,
 }

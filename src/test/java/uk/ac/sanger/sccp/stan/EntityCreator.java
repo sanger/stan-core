@@ -112,7 +112,7 @@ public class EntityCreator {
     }
 
     public PlanOperation createPlan(OperationType opType, User user, Slot... slots) {
-        PlanOperation plan = new PlanOperation(null, opType, user);
+        PlanOperation plan = new PlanOperation(null, opType, null, null, user);
         plan = planOpRepo.save(plan);
         int planId = plan.getId();
         List<PlanAction> planActions = new ArrayList<>(slots.length/2);

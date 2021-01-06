@@ -72,6 +72,7 @@ public class GraphQLProvider {
                         .dataFetcher("mouldSizes", graphQLDataFetchers.getMouldSizes())
                         .dataFetcher("labware", graphQLDataFetchers.findLabwareByBarcode())
                         .dataFetcher("printers", graphQLDataFetchers.findPrinters())
+                        .dataFetcher("comments", graphQLDataFetchers.getComments())
                 )
                 .type(newTypeWiring("Mutation")
                         .dataFetcher("login", graphQLMutation.logIn())
@@ -79,8 +80,10 @@ public class GraphQLProvider {
                         .dataFetcher("register", transact(graphQLMutation.register()))
                         .dataFetcher("plan", transact(graphQLMutation.recordPlan()))
                         .dataFetcher("printLabware", graphQLMutation.printLabware()) // not transacted
+                        .dataFetcher("confirmOperation", transact(graphQLMutation.confirmOperation()))
                 )
                 .scalar(GraphQLCustomTypes.ADDRESS)
+                .scalar(GraphQLCustomTypes.TIMESTAMP)
                 .build();
     }
 

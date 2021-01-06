@@ -13,10 +13,13 @@ import uk.ac.sanger.sccp.stan.config.SessionConfig;
 import uk.ac.sanger.sccp.stan.model.User;
 import uk.ac.sanger.sccp.stan.repo.UserRepo;
 import uk.ac.sanger.sccp.stan.request.*;
+import uk.ac.sanger.sccp.stan.request.confirm.ConfirmOperationRequest;
+import uk.ac.sanger.sccp.stan.request.confirm.ConfirmOperationResult;
 import uk.ac.sanger.sccp.stan.request.plan.PlanRequest;
 import uk.ac.sanger.sccp.stan.request.plan.PlanResult;
 import uk.ac.sanger.sccp.stan.service.LDAPService;
 import uk.ac.sanger.sccp.stan.service.label.print.LabelPrintService;
+import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmOperationService;
 import uk.ac.sanger.sccp.stan.service.operation.plan.PlanService;
 import uk.ac.sanger.sccp.stan.service.register.RegisterService;
 
@@ -35,6 +38,7 @@ public class GraphQLMutation {
     final RegisterService registerService;
     final PlanService planService;
     final LabelPrintService labelPrintService;
+    final ConfirmOperationService confirmOperationService;
 
     final UserRepo userRepo;
 
@@ -42,7 +46,9 @@ public class GraphQLMutation {
     public GraphQLMutation(ObjectMapper objectMapper, AuthenticationComponent authComp,
                            LDAPService ldapService, SessionConfig sessionConfig,
                            RegisterService registerService, PlanService planService,
-                           LabelPrintService labelPrintService, UserRepo userRepo) {
+                           LabelPrintService labelPrintService,
+                           ConfirmOperationService confirmOperationService,
+                           UserRepo userRepo) {
         this.objectMapper = objectMapper;
         this.authComp = authComp;
         this.ldapService = ldapService;
@@ -50,6 +56,7 @@ public class GraphQLMutation {
         this.registerService = registerService;
         this.planService = planService;
         this.labelPrintService = labelPrintService;
+        this.confirmOperationService = confirmOperationService;
         this.userRepo = userRepo;
     }
 
@@ -103,6 +110,14 @@ public class GraphQLMutation {
             String printerName = dfe.getArgument("printer");
             labelPrintService.printLabwareBarcodes(user, printerName, barcodes);
             return "OK";
+        };
+    }
+
+    public DataFetcher<ConfirmOperationResult> confirmOperation() {
+        return dfe -> {
+            User user = checkUser();
+            ConfirmOperationRequest request = arg(dfe, "request", ConfirmOperationRequest.class);
+            return confirmOperationService.confirmOperation(user, request);
         };
     }
 

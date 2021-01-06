@@ -32,6 +32,7 @@ public class GraphQLDataFetchers {
     final MouldSizeRepo mouldSizeRepo;
     final HmdmcRepo hmdmcRepo;
     final LabwareRepo labwareRepo;
+    final CommentRepo commentRepo;
     final LabelPrintService labelPrintService;
 
     @Autowired
@@ -39,7 +40,8 @@ public class GraphQLDataFetchers {
                                UserRepo userRepo,
                                TissueTypeRepo tissueTypeRepo, LabwareTypeRepo labwareTypeRepo,
                                MediumRepo mediumRepo, FixativeRepo fixativeRepo, MouldSizeRepo mouldSizeRepo,
-                               HmdmcRepo hmdmcRepo, LabwareRepo labwareRepo, LabelPrintService labelPrintService) {
+                               HmdmcRepo hmdmcRepo, LabwareRepo labwareRepo, CommentRepo commentRepo,
+                               LabelPrintService labelPrintService) {
         this.objectMapper = objectMapper;
         this.authComp = authComp;
         this.sessionConfig = sessionConfig;
@@ -51,6 +53,7 @@ public class GraphQLDataFetchers {
         this.mouldSizeRepo = mouldSizeRepo;
         this.hmdmcRepo = hmdmcRepo;
         this.labwareRepo = labwareRepo;
+        this.commentRepo = commentRepo;
         this.labelPrintService = labelPrintService;
     }
 
@@ -103,6 +106,16 @@ public class GraphQLDataFetchers {
         return dfe -> {
             String labelTypeName = dfe.getArgument("labelType");
             return labelPrintService.findPrinters(labelTypeName);
+        };
+    }
+
+    public DataFetcher<Iterable<Comment>> getComments() {
+        return dfe -> {
+            String category = dfe.getArgument("category");
+            if (category==null) {
+                return commentRepo.findAllByEnabled(true);
+            }
+            return commentRepo.findAllByCategoryAndEnabled(category, true);
         };
     }
 
