@@ -127,14 +127,14 @@ public class TestConfirmOperationService {
         assertThat(result.getLabware()).hasSameElementsAs(labware);
         assertThat(result.getOperations()).containsOnly(op);
 
-        assertThrows(IllegalArgumentException.class,
+        assertThat(assertThrows(IllegalArgumentException.class,
                 () -> service.recordConfirmation(user, new ConfirmOperationRequest(
                         List.of(new ConfirmOperationLabware("BANANAS"))
-                )), "Invalid labware barcode: BANANAS");
+                )))).hasMessage("Invalid labware barcode: BANANAS");
         planMap.remove(labware.get(0).getId());
-        assertThrows(IllegalArgumentException.class,
-                () -> service.recordConfirmation(user, new ConfirmOperationRequest(cols)),
-                "No plan found for labware "+labware.get(0).getBarcode());
+        assertThat(assertThrows(IllegalArgumentException.class,
+                () -> service.recordConfirmation(user, new ConfirmOperationRequest(cols))))
+                .hasMessage("No plan found for labware "+labware.get(0).getBarcode());
     }
 
     @Test
@@ -326,9 +326,9 @@ public class TestConfirmOperationService {
         col.setAddressComments(addressCommentIds);
         when(mockCommentRepo.findAllByIdIn(any())).thenReturn(comments);
         if (expectedInvalidCommentIds!=null && !expectedInvalidCommentIds.isEmpty()) {
-            assertThrows(IllegalArgumentException.class,
-                    () -> service.recordComments(col, opId, labware),
-                    "Invalid comment ids: "+expectedInvalidCommentIds);
+            assertThat(assertThrows(IllegalArgumentException.class,
+                    () -> service.recordComments(col, opId, labware)))
+                    .hasMessage("Invalid comment ids: "+expectedInvalidCommentIds);
             verifyNoInteractions(mockOperationCommentRepo);
             return;
         }

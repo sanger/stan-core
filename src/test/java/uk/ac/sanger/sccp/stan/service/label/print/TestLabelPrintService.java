@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.stream.IntStream;
 
 import static java.util.stream.Collectors.toList;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
@@ -61,9 +62,9 @@ public class TestLabelPrintService {
         labelPrintService.printLabwareBarcodes(user, "printer1", barcodes);
         verify(labelPrintService).printLabware(user, "printer1", labware);
 
-        assertThrows(IllegalArgumentException.class,
-                () -> labelPrintService.printLabwareBarcodes(user, "printer1", List.of()),
-                "No labware barcodes supplied to print.");
+        assertThat(assertThrows(IllegalArgumentException.class,
+                () -> labelPrintService.printLabwareBarcodes(user, "printer1", List.of())))
+                .hasMessage("No labware barcodes supplied to print.");
     }
 
     @Test
@@ -92,21 +93,21 @@ public class TestLabelPrintService {
 
     @Test
     public void testPrintLabwareErrors() throws IOException {
-        assertThrows(IllegalArgumentException.class, () -> labelPrintService.printLabware(user, printer.getName(), List.of()),
-                "No labware supplied to print.");
+        assertThat(assertThrows(IllegalArgumentException.class, () -> labelPrintService.printLabware(user, printer.getName(), List.of())))
+                .hasMessage("No labware supplied to print.");
 
         LabwareType unprintableType = new LabwareType(1, "dud", 1, 1, null, true);
         Labware lw = EntityFactory.makeEmptyLabware(unprintableType);
-        assertThrows(IllegalArgumentException.class, () -> labelPrintService.printLabware(user, printer.getName(), List.of(lw)),
-                "Cannot print label for labware without a label type.");
+        assertThat(assertThrows(IllegalArgumentException.class, () -> labelPrintService.printLabware(user, printer.getName(), List.of(lw))))
+                .hasMessage("Cannot print label for labware without a label type.");
 
         List<Labware> labware = IntStream.range(0,2)
                 .mapToObj(i -> new LabelType(i, "label type "+i))
                 .map(labelType -> new LabwareType(10+labelType.getId(), "lw type "+labelType.getId(), 1, 1, labelType, false))
                 .map(EntityFactory::makeEmptyLabware)
                 .collect(toList());
-        assertThrows(IllegalArgumentException.class, () -> labelPrintService.printLabware(user, printer.getName(), labware),
-                "Cannot perform a print request incorporating multiple different label types.");
+        assertThat(assertThrows(IllegalArgumentException.class, () -> labelPrintService.printLabware(user, printer.getName(), labware)))
+                .hasMessage("Cannot perform a print request incorporating multiple different label types.");
     }
 
     @Test
