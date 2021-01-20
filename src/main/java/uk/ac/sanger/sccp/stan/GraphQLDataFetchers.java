@@ -19,12 +19,9 @@ import javax.persistence.EntityNotFoundException;
  * @author dr6
  */
 @Component
-public class GraphQLDataFetchers {
-    final ObjectMapper objectMapper;
-    final AuthenticationComponent authComp;
+public class GraphQLDataFetchers extends BaseGraphQLResource {
 
     final SessionConfig sessionConfig;
-    final UserRepo userRepo;
     final TissueTypeRepo tissueTypeRepo;
     final LabwareTypeRepo labwareTypeRepo;
     final MediumRepo mediumRepo;
@@ -36,16 +33,14 @@ public class GraphQLDataFetchers {
     final LabelPrintService labelPrintService;
 
     @Autowired
-    public GraphQLDataFetchers(ObjectMapper objectMapper, AuthenticationComponent authComp, SessionConfig sessionConfig,
-                               UserRepo userRepo,
+    public GraphQLDataFetchers(ObjectMapper objectMapper, AuthenticationComponent authComp, UserRepo userRepo,
+                               SessionConfig sessionConfig,
                                TissueTypeRepo tissueTypeRepo, LabwareTypeRepo labwareTypeRepo,
                                MediumRepo mediumRepo, FixativeRepo fixativeRepo, MouldSizeRepo mouldSizeRepo,
                                HmdmcRepo hmdmcRepo, LabwareRepo labwareRepo, CommentRepo commentRepo,
                                LabelPrintService labelPrintService) {
-        this.objectMapper = objectMapper;
-        this.authComp = authComp;
+        super(objectMapper, authComp, userRepo);
         this.sessionConfig = sessionConfig;
-        this.userRepo = userRepo;
         this.tissueTypeRepo = tissueTypeRepo;
         this.labwareTypeRepo = labwareTypeRepo;
         this.mediumRepo = mediumRepo;

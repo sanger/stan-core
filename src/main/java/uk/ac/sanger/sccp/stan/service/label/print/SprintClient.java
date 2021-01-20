@@ -1,7 +1,6 @@
 package uk.ac.sanger.sccp.stan.service.label.print;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
@@ -26,12 +25,10 @@ public class SprintClient extends BaseHttpClient implements PrintClient<LabelPri
     Logger log = LoggerFactory.getLogger(SprintClient.class);
 
     private final SprintConfig config;
-    private final ObjectMapper objectMapper;
 
     @Autowired
     public SprintClient(SprintConfig config) {
         this.config = config;
-        this.objectMapper = new ObjectMapper();
     }
 
     @Override

@@ -1,13 +1,10 @@
 package uk.ac.sanger.sccp.stan;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import graphql.schema.DataFetcher;
-import graphql.schema.DataFetchingEnvironment;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.authentication.*;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
 import uk.ac.sanger.sccp.stan.config.SessionConfig;
 import uk.ac.sanger.sccp.stan.model.User;
@@ -29,18 +26,13 @@ import java.util.*;
  * @author dr6
  */
 @Component
-public class GraphQLMutation {
-    final ObjectMapper objectMapper;
-    final AuthenticationComponent authComp;
-
+public class GraphQLMutation extends BaseGraphQLResource {
     final LDAPService ldapService;
     final SessionConfig sessionConfig;
     final RegisterService registerService;
     final PlanService planService;
     final LabelPrintService labelPrintService;
     final ConfirmOperationService confirmOperationService;
-
-    final UserRepo userRepo;
 
     @Autowired
     public GraphQLMutation(ObjectMapper objectMapper, AuthenticationComponent authComp,
@@ -49,15 +41,13 @@ public class GraphQLMutation {
                            LabelPrintService labelPrintService,
                            ConfirmOperationService confirmOperationService,
                            UserRepo userRepo) {
-        this.objectMapper = objectMapper;
-        this.authComp = authComp;
+        super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
         this.registerService = registerService;
         this.planService = planService;
         this.labelPrintService = labelPrintService;
         this.confirmOperationService = confirmOperationService;
-        this.userRepo = userRepo;
     }
 
 
@@ -119,22 +109,5 @@ public class GraphQLMutation {
             ConfirmOperationRequest request = arg(dfe, "request", ConfirmOperationRequest.class);
             return confirmOperationService.confirmOperation(user, request);
         };
-    }
-
-    private User checkUser() {
-        Authentication auth = authComp.getAuthentication();
-        if (auth==null || auth instanceof AnonymousAuthenticationToken || auth.getPrincipal()==null) {
-            throw new AuthenticationCredentialsNotFoundException("Not logged in");
-        }
-        String username = auth.getPrincipal().toString();
-        return userRepo.findByUsername(username).orElseThrow(() -> new UsernameNotFoundException(username));
-    }
-
-    private <E> E arg(DataFetchingEnvironment dfe, String name, Class<E> cls) {
-        return objectMapper.convertValue(dfe.getArgument(name), cls);
-    }
-
-    private <E> E arg(DataFetchingEnvironment dfe, String name, TypeReference<E> typeRef) {
-        return objectMapper.convertValue(dfe.getArgument(name), typeRef);
     }
 }

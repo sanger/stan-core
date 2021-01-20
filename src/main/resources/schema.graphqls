@@ -205,6 +205,45 @@ type Comment {
     category: String!,
 }
 
+type StoredItem {
+    barcode: String!
+    location: Location!
+    address: Address
+}
+
+type UnstoredItem {
+    barcode: String!
+    address: Address
+}
+
+type Size {
+    numRows: Int!
+    numColumns: Int!
+}
+
+type Location {
+    barcode: String!
+    name: String
+    customName: String
+    address: Address
+    size: Size
+    stored: [StoredItem!]!
+    children: [LinkedLocation!]!
+}
+
+type LinkedLocation {
+    barcode: String!
+    name: String
+    customName: String
+    address: Address
+    size: Size
+}
+
+type UnstoreResult {
+    numUnstored: Int!
+    unstored: [UnstoredItem!]!
+}
+
 type Query {
     user: User,
     tissueTypes: [TissueType!]!,
@@ -216,6 +255,9 @@ type Query {
     labware(barcode: String!): Labware!,
     printers(labelType: String): [Printer!]!,
     comments(category: String): [Comment!]!,
+
+    location(locationBarcode: String!): Location!
+    stored(barcodes: [String!]!): [StoredItem!]!
 }
 
 type Mutation {
@@ -225,4 +267,10 @@ type Mutation {
     plan(request: PlanRequest!): PlanResult!,
     printLabware(printer: String!, barcodes: [String!]!): String,
     confirmOperation(request: ConfirmOperationRequest!): ConfirmOperationResult!,
+
+    storeBarcode(barcode: String!, locationBarcode: String!, address: Address): StoredItem!
+    unstoreBarcode(barcode: String!): UnstoredItem
+    empty(locationBarcode: String!): UnstoreResult!
+    setLocationCustomName(locationBarcode: String!, customName: String): Location!
+
 }
