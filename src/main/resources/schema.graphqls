@@ -227,6 +227,7 @@ type Location {
     customName: String
     address: Address
     size: Size
+    parent: LinkedLocation
     stored: [StoredItem!]!
     children: [LinkedLocation!]!
 }

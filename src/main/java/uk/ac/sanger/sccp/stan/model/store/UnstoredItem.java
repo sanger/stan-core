@@ -14,6 +14,13 @@ public class UnstoredItem {
     private String barcode;
     private Address address;
 
+    public UnstoredItem() {}
+
+    public UnstoredItem(String barcode, Address address) {
+        this.barcode = barcode;
+        this.address = address;
+    }
+
     public String getBarcode() {
         return this.barcode;
     }

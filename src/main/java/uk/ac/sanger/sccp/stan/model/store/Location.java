@@ -7,6 +7,7 @@ import java.util.*;
  * @author dr6
  */
 public class Location extends LinkedLocation {
+    private LinkedLocation parent;
     private List<StoredItem> stored = new ArrayList<>();
     private List<LinkedLocation> children = new ArrayList<>();
 
@@ -24,6 +25,14 @@ public class Location extends LinkedLocation {
 
     public void setChildren(Collection<LinkedLocation> children) {
         this.children = (children==null ? new ArrayList<>() : new ArrayList<>(children));
+    }
+
+    public LinkedLocation getParent() {
+        return this.parent;
+    }
+
+    public void setParent(LinkedLocation parent) {
+        this.parent = parent;
     }
 
     public Location fixInternalLinks() {

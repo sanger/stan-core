@@ -1,8 +1,5 @@
 mutation {
     empty(location: { barcode: "LOCATIONBARCODE"}) {
-        unstored {
-            barcode
-            address
-        }
+        unstored { barcode address }
     }
 }

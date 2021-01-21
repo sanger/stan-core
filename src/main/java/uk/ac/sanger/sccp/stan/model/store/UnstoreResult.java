@@ -8,7 +8,15 @@ import java.util.*;
  * @author dr6
  */
 public class UnstoreResult {
-    private List<UnstoredItem> unstored = new ArrayList<>();
+    private List<UnstoredItem> unstored;
+
+    public UnstoreResult() {
+        this(null);
+    }
+
+    public UnstoreResult(Collection<UnstoredItem> unstored) {
+        setUnstored(unstored);
+    }
 
     public List<UnstoredItem> getUnstored() {
         return this.unstored;
