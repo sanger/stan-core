@@ -1,5 +1,6 @@
 package uk.ac.sanger.sccp.stan.model.store;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.base.MoreObjects;
 import uk.ac.sanger.sccp.stan.model.Address;
 
@@ -37,6 +38,7 @@ public class StoredItem {
         return this.location;
     }
 
+    @JsonIgnore
     public String getLocationBarcode() {
         return (this.location!=null ? this.location.getBarcode() : null);
     }

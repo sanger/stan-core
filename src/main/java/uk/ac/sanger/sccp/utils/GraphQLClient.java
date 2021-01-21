@@ -18,7 +18,8 @@ public abstract class GraphQLClient extends BaseHttpClient {
         return objectNode;
     }
 
-    protected GraphQLResponse postQuery(HttpURLConnection connection, String query) throws IOException {
+    // public to allow for mocking in unit tests
+    public GraphQLResponse postQuery(HttpURLConnection connection, String query) throws IOException {
         ObjectNode objectNode = queryObject(query);
         attemptPost(objectNode, connection);
         return toGraphQLResponse(readReturnValue(connection, ObjectNode.class));

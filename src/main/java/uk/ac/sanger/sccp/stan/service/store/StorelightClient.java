@@ -36,7 +36,7 @@ public class StorelightClient extends GraphQLClient {
         }
     }
 
-    private void setHeaders(HttpURLConnection connection, String user) {
+    protected void setHeaders(HttpURLConnection connection, String user) {
         setUsualHeaders(connection);
         connection.setRequestProperty("STORELIGHT-APIKEY", storelightConfig.getApiKey());
         if (user!=null && !user.isEmpty()) {

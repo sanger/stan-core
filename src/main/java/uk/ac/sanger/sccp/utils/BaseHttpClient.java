@@ -88,7 +88,8 @@ public abstract class BaseHttpClient {
         }
     }
 
-    protected HttpURLConnection openConnection(URL url) throws IOException {
+    // public to allow for mocking in unit tests
+    public HttpURLConnection openConnection(URL url) throws IOException {
         Proxy proxy = getProxy();
         URLConnection con;
         if (proxy==null) {

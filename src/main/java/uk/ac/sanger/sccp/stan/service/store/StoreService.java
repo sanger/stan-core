@@ -126,7 +126,7 @@ public class StoreService {
         }
     }
 
-    private GraphQLResponse checkErrors(GraphQLResponse response) {
+    protected GraphQLResponse checkErrors(GraphQLResponse response) {
         if (response.hasErrors()) {
             throw new StoreException(response.getErrors());
         }
@@ -134,7 +134,7 @@ public class StoreService {
     }
 
     @SuppressWarnings("UnstableApiUsage")
-    private String readResource(String path) throws IOException {
+    protected String readResource(String path) throws IOException {
         URL url = Resources.getResource("storelight/"+path+".graphql");
         return Resources.toString(url, Charsets.UTF_8);
     }
