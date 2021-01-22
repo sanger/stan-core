@@ -19,7 +19,6 @@ public class LinkedLocation {
     private String barcode;
     private String description;
     private Address address;
-    private Size size;
 
     public String getBarcode() {
         return this.barcode;
@@ -33,10 +32,6 @@ public class LinkedLocation {
         return this.address;
     }
 
-    public Size getSize() {
-        return this.size;
-    }
-
     public void setBarcode(String barcode) {
         this.barcode = barcode;
     }
@@ -47,10 +42,6 @@ public class LinkedLocation {
 
     public void setAddress(Address address) {
         this.address = address;
-    }
-
-    public void setSize(Size size) {
-        this.size = size;
     }
 
     public String getName() {
@@ -112,11 +103,13 @@ public class LinkedLocation {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        LinkedLocation that = (LinkedLocation) o;
+        return equalsLinkedLocation((LinkedLocation) o);
+    }
+
+    protected boolean equalsLinkedLocation(LinkedLocation that) {
         return (Objects.equals(this.barcode, that.barcode)
                 && Objects.equals(this.description, that.description)
-                && Objects.equals(this.address, that.address)
-                && Objects.equals(this.size, that.size));
+                && Objects.equals(this.address, that.address));
     }
 
     @Override
@@ -130,7 +123,6 @@ public class LinkedLocation {
                 .add("barcode", repr(barcode))
                 .add("description", repr(description))
                 .add("address", address)
-                .add("size", size)
                 .omitNullValues()
                 .toString()
                 ;

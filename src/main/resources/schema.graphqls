@@ -221,6 +221,14 @@ type Size {
     numColumns: Int!
 }
 
+"""A traversal order for a grid."""
+enum GridDirection {
+    """Right across the top row, then down to the next row, etc."""
+    RightDown
+    """Down the leftmost column, then right to the next column, etc."""
+    DownRight
+}
+
 type Location {
     barcode: String!
     name: String
@@ -230,6 +238,7 @@ type Location {
     parent: LinkedLocation
     stored: [StoredItem!]!
     children: [LinkedLocation!]!
+    direction: GridDirection
 }
 
 type LinkedLocation {
@@ -237,7 +246,6 @@ type LinkedLocation {
     name: String
     customName: String
     address: Address
-    size: Size
 }
 
 type UnstoreResult {

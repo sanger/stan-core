@@ -92,9 +92,10 @@ public class TestStoreService {
         verifyQueryMatches("mutation { storeBarcode(barcode: \""+itemBarcode+"\", location: {barcode: \""
                 + locationBarcode+"\"}, address: " + quote(address) + ") { barcode address location " +
                 "{ barcode description address size { numRows numColumns } " +
-                "children { barcode description address size { numRows numColumns }} " +
+                "children { barcode description address } " +
                 "stored { barcode address }" +
-                "parent { barcode description address size { numRows numColumns }}}}}");
+                "parent { barcode description address }" +
+                "direction}}}");
         verify(service).checkErrors(response);
         assertEquals(item, result);
     }
@@ -145,9 +146,10 @@ public class TestStoreService {
         verifyQueryMatches("mutation { editLocation(location:{barcode:"+json(barcode)
                 +"}, change: {description:"+json(alteredLocation.getDescription())+"}) {" +
                 "barcode description address size {numRows numColumns } " +
-                "children { barcode description address size { numRows numColumns }}" +
+                "children { barcode description address }" +
                 "stored { barcode address } " +
-                "parent { barcode description address size { numRows numColumns }}}}");
+                "parent { barcode description address }" +
+                "direction }}");
         verify(service).checkErrors(response);
         assertEquals(alteredLocation, result);
         assertEquals(newCustomName, alteredLocation.getCustomName());
@@ -161,13 +163,13 @@ public class TestStoreService {
         location.setBarcode(barcode);
         location.setNameAndCustomName("Alpha", "Beta");
         location.setAddress(new Address(2,1));
+        location.setDirection(GridDirection.RightDown);
         StoredItem item = new StoredItem();
         item.setBarcode("ITEM-1");
         item.setAddress(new Address(1,2));
         location.getStored().add(item);
         LinkedLocation parent = new LinkedLocation();
         parent.setBarcode("STO-000A");
-        parent.setSize(new Size(5,6));
         location.setParent(parent);
         LinkedLocation child = new LinkedLocation();
         child.setBarcode("STO-002E");
@@ -185,9 +187,10 @@ public class TestStoreService {
                         "        description" +
                         "        address" +
                         "        size { numRows numColumns}" +
-                        "        children { barcode description address size { numRows numColumns } }" +
+                        "        children { barcode description address }" +
                         "        stored { barcode address }" +
-                        "        parent { barcode description address size { numRows numColumns } }" +
+                        "        parent { barcode description address }" +
+                        "        direction" +
                         "    }}",
 
                 null);
@@ -247,9 +250,10 @@ public class TestStoreService {
                 "            description" +
                 "            address" +
                 "            size { numRows numColumns}" +
-                "            children { barcode description address size { numRows numColumns } }" +
-                "            parent { barcode description address size { numRows numColumns } }" +
+                "            children { barcode description address }" +
+                "            parent { barcode description address }" +
                 "            stored { barcode address }" +
+                "            direction" +
                 "        }}}",
                 null);
 

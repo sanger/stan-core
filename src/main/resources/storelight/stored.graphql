@@ -7,9 +7,10 @@
             description
             address
             size { numRows numColumns}
-            children { barcode description address size { numRows numColumns } }
-            parent { barcode description address size { numRows numColumns } }
+            children { barcode description address }
+            parent { barcode description address }
             stored { barcode address }
+            direction
         }
     }
 }
