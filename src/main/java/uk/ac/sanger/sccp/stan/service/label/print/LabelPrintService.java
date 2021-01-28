@@ -7,7 +7,6 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.service.label.*;
 
 import javax.persistence.EntityNotFoundException;
-import javax.transaction.Transactional;
 import java.io.IOException;
 import java.util.List;
 import java.util.Set;
@@ -76,7 +75,6 @@ public class LabelPrintService {
         printClient.print(printer.getName(), request);
     }
 
-    @Transactional
     public Iterable<LabwarePrint> recordPrint(final Printer printer, final User user, final List<Labware> labware) {
         List<LabwarePrint> labwarePrints = labware.stream()
                 .map(lw -> new LabwarePrint(printer, lw, user))

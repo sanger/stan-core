@@ -152,7 +152,10 @@ public class EntityFactory {
         if (samples.length > 0) {
             Iterator<Slot> slotIterator = lw.getSlots().iterator();
             for (Sample sample : samples) {
-                slotIterator.next().getSamples().add(sample);
+                Slot slot = slotIterator.next();
+                if (sample!=null) {
+                    slot.getSamples().add(sample);
+                }
             }
         }
         return lw;

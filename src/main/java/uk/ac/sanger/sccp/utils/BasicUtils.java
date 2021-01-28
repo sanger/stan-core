@@ -94,4 +94,25 @@ public class BasicUtils {
         }
         return a.equals(b);
     }
+
+    /**
+     * Creates a new arraylist using the argument as its contents.
+     * If <tt>items</tt> is null, the new list will be empty.
+     * If <tt>items</tt> contains objects, the new list will contain those objects.
+     * @param items the contents for the new list
+     * @param <E> the content type of the list
+     * @return a new arraylist
+     */
+    public static <E> ArrayList<E> newArrayList(Iterable<? extends E> items) {
+        if (items==null) {
+            return new ArrayList<>();
+        }
+        if (items instanceof Collection) {
+            //noinspection unchecked
+            return new ArrayList<>((Collection<? extends E>) items);
+        }
+        ArrayList<E> list = new ArrayList<>();
+        items.forEach(list::add);
+        return list;
+    }
 }

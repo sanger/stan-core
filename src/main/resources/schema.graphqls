@@ -79,10 +79,11 @@ type Slot {
 }
 
 type Labware {
-    id: Int!,
-    barcode: String!,
-    labwareType: LabwareType!,
-    slots: [Slot!]!,
+    id: Int!
+    barcode: String!
+    labwareType: LabwareType!
+    slots: [Slot!]!
+    released: Boolean!
 }
 
 enum LifeStage {
@@ -178,10 +179,12 @@ type Action {
 }
 
 type Operation {
-    operationType: OperationType!,
-    actions: [Action!]!,
-    user: User!,
-    performed: Timestamp!,
+    operationType: OperationType!
+    actions: [Action!]!
+    user: User!
+    performed: Timestamp!
+    releaseDestination: ReleaseDestination
+    releaseRecipient: ReleaseRecipient
 }
 
 type ConfirmOperationResult {
@@ -203,6 +206,30 @@ type Comment {
     id: Int!,
     text: String!,
     category: String!,
+}
+
+type ReleaseDestination {
+    name: String!
+}
+
+type ReleaseRecipient {
+    username: String!
+}
+
+type Release {
+    labware: Labware!
+    destination: ReleaseDestination!
+    recipient: ReleaseRecipient!
+}
+
+type ReleaseResult {
+    releases: [Release!]!
+}
+
+input ReleaseRequest {
+    barcodes: [String!]!
+    destination: String!
+    recipient: String!
 }
 
 type StoredItem {
@@ -254,32 +281,34 @@ type UnstoreResult {
 }
 
 type Query {
-    user: User,
-    tissueTypes: [TissueType!]!,
-    labwareTypes: [LabwareType!]!,
-    hmdmcs: [Hmdmc!]!,
-    mediums: [Medium!]!,
-    fixatives: [Fixative!]!,
-    mouldSizes: [MouldSize!]!,
-    labware(barcode: String!): Labware!,
-    printers(labelType: String): [Printer!]!,
-    comments(category: String): [Comment!]!,
+    user: User
+    tissueTypes: [TissueType!]!
+    labwareTypes: [LabwareType!]!
+    hmdmcs: [Hmdmc!]!
+    mediums: [Medium!]!
+    fixatives: [Fixative!]!
+    mouldSizes: [MouldSize!]!
+    labware(barcode: String!): Labware!
+    printers(labelType: String): [Printer!]!
+    comments(category: String): [Comment!]!
+    releaseDestinations: [ReleaseDestination!]!
+    releaseRecipients: [ReleaseRecipient!]!
 
     location(locationBarcode: String!): Location!
     stored(barcodes: [String!]!): [StoredItem!]!
 }
 
 type Mutation {
-    login(username: String!, password: String!): LoginResult!,
-    logout: String,
-    register(request: RegisterRequest!): RegisterResult!,
-    plan(request: PlanRequest!): PlanResult!,
-    printLabware(printer: String!, barcodes: [String!]!): String,
-    confirmOperation(request: ConfirmOperationRequest!): ConfirmOperationResult!,
+    login(username: String!, password: String!): LoginResult!
+    logout: String
+    register(request: RegisterRequest!): RegisterResult!
+    plan(request: PlanRequest!): PlanResult!
+    printLabware(printer: String!, barcodes: [String!]!): String
+    confirmOperation(request: ConfirmOperationRequest!): ConfirmOperationResult!
+    release(request: ReleaseRequest!): ReleaseResult!
 
     storeBarcode(barcode: String!, locationBarcode: String!, address: Address): StoredItem!
     unstoreBarcode(barcode: String!): UnstoredItem
     empty(locationBarcode: String!): UnstoreResult!
     setLocationCustomName(locationBarcode: String!, customName: String): Location!
-
 }

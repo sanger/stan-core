@@ -16,8 +16,7 @@ import uk.ac.sanger.sccp.utils.GraphQLClient.GraphQLResponse;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URL;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 
 import static java.util.Objects.requireNonNull;
 
@@ -49,6 +48,17 @@ public class StoreService {
         requireNonNull(barcode, "Barcode is null.");
         return send(user, "unstoreBarcode", new String[] { "\"BARCODE\"" }, new Object[] { barcode},
                     UnstoredItem.class);
+    }
+
+    public int unstoreBarcodesWithoutValidatingThem(User user, Collection<String> barcodes) {
+        requireNonNull(user, "User is null");
+        requireNonNull(barcodes, "Barcodes is null");
+        if (barcodes.isEmpty()) {
+            return 0;
+        }
+        Map<?, ?> result = send(user, "unstoreBarcodes", new String[] { "[]" }, new Object[] { barcodes },
+                Map.class);
+        return (int) result.get("numUnstored");
     }
 
     public UnstoreResult empty(User user, String locationBarcode) {
@@ -105,9 +115,7 @@ public class StoreService {
             String[] replaceTo = new String[replaceToObj.length];
             for (int i = 0; i < replaceTo.length; ++i) {
                 Object r = replaceToObj[i];
-                if (r==null) {
-                    replaceTo[i] = "null";
-                } else if (r instanceof Address) {
+                if (r instanceof Address) {
                     replaceTo[i] = objectMapper.writeValueAsString(r.toString());
                 } else {
                     replaceTo[i] = objectMapper.writeValueAsString(r);

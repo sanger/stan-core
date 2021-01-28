@@ -30,6 +30,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final HmdmcRepo hmdmcRepo;
     final LabwareRepo labwareRepo;
     final CommentRepo commentRepo;
+    final ReleaseDestinationRepo releaseDestinationRepo;
+    final ReleaseRecipientRepo releaseRecipientRepo;
     final LabelPrintService labelPrintService;
 
     @Autowired
@@ -38,6 +40,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                TissueTypeRepo tissueTypeRepo, LabwareTypeRepo labwareTypeRepo,
                                MediumRepo mediumRepo, FixativeRepo fixativeRepo, MouldSizeRepo mouldSizeRepo,
                                HmdmcRepo hmdmcRepo, LabwareRepo labwareRepo, CommentRepo commentRepo,
+                               ReleaseDestinationRepo releaseDestinationRepo, ReleaseRecipientRepo releaseRecipientRepo,
                                LabelPrintService labelPrintService) {
         super(objectMapper, authComp, userRepo);
         this.sessionConfig = sessionConfig;
@@ -49,6 +52,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.hmdmcRepo = hmdmcRepo;
         this.labwareRepo = labwareRepo;
         this.commentRepo = commentRepo;
+        this.releaseDestinationRepo = releaseDestinationRepo;
+        this.releaseRecipientRepo = releaseRecipientRepo;
         this.labelPrintService = labelPrintService;
     }
 
@@ -112,6 +117,14 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
             }
             return commentRepo.findAllByCategoryAndEnabled(category, true);
         };
+    }
+
+    public DataFetcher<Iterable<ReleaseDestination>> getReleaseDestinations() {
+        return dfe -> releaseDestinationRepo.findAllByEnabled(true);
+    }
+
+    public DataFetcher<Iterable<ReleaseRecipient>> getReleaseRecipients() {
+        return dfe -> releaseRecipientRepo.findAllByEnabled(true);
     }
 
     private boolean requestsField(DataFetchingEnvironment dfe, String childName) {

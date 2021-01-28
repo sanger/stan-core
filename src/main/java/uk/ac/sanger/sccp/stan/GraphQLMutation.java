@@ -15,6 +15,7 @@ import uk.ac.sanger.sccp.stan.request.confirm.ConfirmOperationResult;
 import uk.ac.sanger.sccp.stan.request.plan.PlanRequest;
 import uk.ac.sanger.sccp.stan.request.plan.PlanResult;
 import uk.ac.sanger.sccp.stan.service.LDAPService;
+import uk.ac.sanger.sccp.stan.service.ReleaseService;
 import uk.ac.sanger.sccp.stan.service.label.print.LabelPrintService;
 import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmOperationService;
 import uk.ac.sanger.sccp.stan.service.operation.plan.PlanService;
@@ -33,6 +34,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final PlanService planService;
     final LabelPrintService labelPrintService;
     final ConfirmOperationService confirmOperationService;
+    final ReleaseService releaseService;
 
     @Autowired
     public GraphQLMutation(ObjectMapper objectMapper, AuthenticationComponent authComp,
@@ -40,7 +42,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            RegisterService registerService, PlanService planService,
                            LabelPrintService labelPrintService,
                            ConfirmOperationService confirmOperationService,
-                           UserRepo userRepo) {
+                           UserRepo userRepo, ReleaseService releaseService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
@@ -48,6 +50,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.planService = planService;
         this.labelPrintService = labelPrintService;
         this.confirmOperationService = confirmOperationService;
+        this.releaseService = releaseService;
     }
 
 
@@ -108,6 +111,14 @@ public class GraphQLMutation extends BaseGraphQLResource {
             User user = checkUser();
             ConfirmOperationRequest request = arg(dfe, "request", ConfirmOperationRequest.class);
             return confirmOperationService.confirmOperation(user, request);
+        };
+    }
+
+    public DataFetcher<ReleaseResult> release() {
+        return dfe -> {
+            User user = checkUser();
+            ReleaseRequest request = arg(dfe, "request", ReleaseRequest.class);
+            return releaseService.releaseAndUnstore(user, request);
         };
     }
 }

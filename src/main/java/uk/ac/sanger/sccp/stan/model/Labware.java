@@ -22,6 +22,8 @@ public class Labware {
     private List<Slot> slots;
 
     private boolean discarded;
+    private boolean released;
+    private boolean destroyed;
 
     public Labware() {}
 
@@ -97,6 +99,22 @@ public class Labware {
         this.discarded = discarded;
     }
 
+    public boolean isReleased() {
+        return this.released;
+    }
+
+    public void setReleased(boolean released) {
+        this.released = released;
+    }
+
+    public boolean isDestroyed() {
+        return this.destroyed;
+    }
+
+    public void setDestroyed(boolean destroyed) {
+        this.destroyed = destroyed;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -106,11 +124,14 @@ public class Labware {
                 && Objects.equals(this.barcode, that.barcode)
                 && Objects.equals(this.labwareType, that.labwareType)
                 && Objects.equals(this.slots, that.slots)
-                && this.discarded==that.discarded);
+                && this.discarded == that.discarded
+                && this.released == that.released
+                && this.destroyed == that.destroyed);
     }
 
     @Override
     public int hashCode() {
         return (id!=null ? id.hashCode() : barcode!=null ? barcode.hashCode() : 0);
     }
+
 }

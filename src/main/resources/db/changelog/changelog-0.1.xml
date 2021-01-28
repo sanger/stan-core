@@ -746,4 +746,116 @@
         </loadData>
     </changeSet>
 
+    <changeSet id="400" author="dr6">
+        <createTable tableName="release_destination">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="name" type="VARCHAR(64)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValue="TRUE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="401" author="dr6">
+        <createTable tableName="release_recipient">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="username" type="VARCHAR(16)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValue="TRUE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="402" author="dr6">
+        <createTable tableName="labware_release">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="released" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="user_id" type="INT">
+                <constraints nullable="false" foreignKeyName="labware_release_fk_user" referencedTableName="user" referencedColumnNames="id"/>
+            </column>
+            <column name="labware_id" type="INT">
+                <constraints nullable="false" foreignKeyName="labware_release_fk_labware" referencedTableName="labware" referencedColumnNames="id"/>
+            </column>
+            <column name="destination_id" type="INT">
+                <constraints nullable="false" foreignKeyName="labware_release_fk_destination" referencedTableName="release_destination" referencedColumnNames="id"/>
+            </column>
+            <column name="recipient_id" type="INT">
+                <constraints nullable="false" foreignKeyName="labware_release_fk_recipient" referencedTableName="release_recipient" referencedColumnNames="id"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="403" author="dr6">
+        <createTable tableName="release_detail">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="release_id" type="INT">
+                <constraints nullable="false" foreignKeyName="release_detail_fk_release" referencedTableName="labware_release" referencedColumnNames="id"/>
+            </column>
+            <column name="slot_id" type="INT">
+                <constraints nullable="false" foreignKeyName="release_detail_fk_slot" referencedTableName="slot" referencedColumnNames="id"/>
+            </column>
+            <column name="sample_id" type="INT">
+                <constraints nullable="false" foreignKeyName="release_detail_fk_sample" referencedTableName="sample" referencedColumnNames="id"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="release_detail" indexName="release_detail_key_release_slot_sample" unique="true">
+            <column name="release_id"/>
+            <column name="slot_id"/>
+            <column name="sample_id"/>
+        </createIndex>
+        <rollback>
+            <dropAllForeignKeyConstraints baseTableName="release_detail"/>
+            <dropTable tableName="release_detail"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="404" author="dr6">
+        <addColumn tableName="labware">
+            <column name="released" type="BOOLEAN" defaultValue="FALSE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="destroyed" type="BOOLEAN" defaultValue="FALSE">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
 </databaseChangeLog>

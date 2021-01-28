@@ -50,6 +50,10 @@ public class EntityCreator {
     private LabelTypeRepo labelTypeRepo;
     @Autowired
     private PrinterRepo printerRepo;
+    @Autowired
+    private ReleaseDestinationRepo releaseDestinationRepo;
+    @Autowired
+    private ReleaseRecipientRepo releaseRecipientRepo;
 
     @Autowired
     private EntityManager entityManager;
@@ -91,8 +95,11 @@ public class EntityCreator {
         Labware lw = labwareRepo.save(new Labware(null, barcode, lt, null));
         Iterator<Sample> sampleIter = Arrays.asList(samples).iterator();
         List<Slot> slots = Address.stream(lt.getNumRows(), lt.getNumColumns())
-                .map(ad -> new Slot(null, lw.getId(), ad, (sampleIter.hasNext() ? List.of(sampleIter.next()) : List.of()),
-                        null, null))
+                .map(ad -> {
+                    Sample sample = sampleIter.hasNext() ? sampleIter.next() : null;
+                    return new Slot(null, lw.getId(), ad, (sample==null ? List.of() : List.of(sample)),
+                            null, null);
+                })
                 .collect(Collectors.toList());
         slotRepo.saveAll(slots);
         entityManager.refresh(lw);
@@ -134,6 +141,16 @@ public class EntityCreator {
 
     public Printer createPrinter(String name) {
         return createPrinter(name, getAny(labelTypeRepo));
+    }
+
+    public ReleaseRecipient createReleaseRecipient(String username) {
+        ReleaseRecipient rec = new ReleaseRecipient(null, username);
+        return releaseRecipientRepo.save(rec);
+    }
+
+    public ReleaseDestination createReleaseDestination(String name) {
+        ReleaseDestination dest = new ReleaseDestination(null, name);
+        return releaseDestinationRepo.save(dest);
     }
 
     public <E> E getAny(CrudRepository<E, ?> repo) {

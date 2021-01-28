@@ -75,6 +75,8 @@ public class GraphQLProvider {
                         .dataFetcher("labware", graphQLDataFetchers.findLabwareByBarcode())
                         .dataFetcher("printers", graphQLDataFetchers.findPrinters())
                         .dataFetcher("comments", graphQLDataFetchers.getComments())
+                        .dataFetcher("releaseDestinations", graphQLDataFetchers.getReleaseDestinations())
+                        .dataFetcher("releaseRecipients", graphQLDataFetchers.getReleaseRecipients())
                         .dataFetcher("location", graphQLStore.getLocation())
                         .dataFetcher("stored", graphQLStore.getStored())
                 )
@@ -85,6 +87,7 @@ public class GraphQLProvider {
                         .dataFetcher("plan", transact(graphQLMutation.recordPlan()))
                         .dataFetcher("printLabware", graphQLMutation.printLabware()) // not transacted
                         .dataFetcher("confirmOperation", transact(graphQLMutation.confirmOperation()))
+                        .dataFetcher("release", graphQLMutation.release()) // transaction handled in service
 
                         .dataFetcher("storeBarcode", transact(graphQLStore.storeBarcode()))
                         .dataFetcher("unstoreBarcode", transact(graphQLStore.unstoreBarcode()))
