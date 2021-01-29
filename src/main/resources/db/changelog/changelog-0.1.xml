@@ -858,4 +858,16 @@
         </addColumn>
     </changeSet>
 
+    <changeSet id="405" author="dr6">
+        <loadData tableName="release_destination" file="db/releasedestinations.tsv" separator="\t">
+            <column name="name" header="name" type="string"/>
+        </loadData>
+    </changeSet>
+
+    <changeSet id="406" author="dr6">
+        <loadData tableName="release_recipient" file="db/releaserecipients.tsv" separator="\t">
+            <column name="username" header="username" type="string"/>
+        </loadData>
+    </changeSet>
+
 </databaseChangeLog>
