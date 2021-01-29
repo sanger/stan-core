@@ -10,13 +10,16 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
 import org.mockito.ArgumentCaptor;
-import uk.ac.sanger.sccp.stan.model.Address;
-import uk.ac.sanger.sccp.stan.model.User;
+import uk.ac.sanger.sccp.stan.EntityFactory;
+import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.store.*;
+import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
 import uk.ac.sanger.sccp.utils.GraphQLClient.GraphQLResponse;
 
+import javax.persistence.EntityNotFoundException;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -25,6 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
  * Tests {@link StoreService}
@@ -35,12 +39,14 @@ public class TestStoreService {
     private StoreService service;
     private User user;
     private ObjectMapper objectMapper;
+    private LabwareRepo mockLabwareRepo;
 
     @BeforeEach
     void setup() throws IOException {
         mockClient = mock(StorelightClient.class);
+        mockLabwareRepo = mock(LabwareRepo.class);
         user = new User("dr6");
-        service = spy(new StoreService(mockClient));
+        service = spy(new StoreService(mockClient, mockLabwareRepo));
         objectMapper = new ObjectMapper();
     }
 
@@ -72,7 +78,9 @@ public class TestStoreService {
     @ValueSource(booleans={false, true})
     public void testStoreBarcode(boolean withAddress) throws IOException {
         Address address = withAddress ? new Address(2,3) : null;
-        String itemBarcode = "STAN-123";
+        Labware lw = EntityFactory.makeEmptyLabware(EntityFactory.getTubeType());
+        String itemBarcode = lw.getBarcode();
+        when(mockLabwareRepo.getByBarcode(itemBarcode)).thenReturn(lw);
         String locationBarcode = "STO-ABC";
         StoredItem item = new StoredItem();
         item.setBarcode(itemBarcode);
@@ -89,6 +97,8 @@ public class TestStoreService {
 
         StoredItem result = service.storeBarcode(user, itemBarcode, locationBarcode, address);
 
+        verify(service).validateLabwareBarcodeForStorage(itemBarcode);
+
         verifyQueryMatches("mutation { storeBarcode(barcode: \""+itemBarcode+"\", location: {barcode: \""
                 + locationBarcode+"\"}, address: " + quote(address) + ") { barcode address location " +
                 "{ barcode description address size { numRows numColumns } " +
@@ -101,16 +111,82 @@ public class TestStoreService {
     }
 
     @ParameterizedTest
-    @ValueSource(booleans={false, true})
-    public void testUnstoreBarcode(boolean itemExists) throws IOException {
+    @MethodSource("unstoreBarcodeArgs")
+    public void testUnstoreBarcode(boolean itemExists, boolean itemStored) throws IOException {
         String barcode = "ITEM-1";
-        UnstoredItem item = itemExists ? new UnstoredItem(barcode, new Address(2,3)) : null;
+        when(mockLabwareRepo.existsByBarcode(barcode)).thenReturn(itemExists);
+
+        if (!itemExists) {
+            assertThat(assertThrows(EntityNotFoundException.class, () -> service.unstoreBarcode(user, barcode)))
+                    .hasMessage("No labware found with barcode " + repr(barcode));
+            verifyNoInteractions(mockClient);
+            return;
+        }
+
+        UnstoredItem item = itemStored ? new UnstoredItem(barcode, new Address(2,3)) : null;
 
         GraphQLResponse response = setupResponse("unstoreBarcode", item);
         UnstoredItem result = service.unstoreBarcode(user, barcode);
         verifyQueryMatches("mutation { unstoreBarcode(barcode: \""+barcode+"\") {barcode address}}");
         verify(service).checkErrors(response);
         assertEquals(item, result);
+    }
+
+    static Stream<Arguments> unstoreBarcodeArgs() {
+        return Stream.of(Arguments.of(false, false), Arguments.of(true, false), Arguments.of(true, true));
+    }
+
+    @Test
+    public void testUnstoreBarcodesWithoutValidatingThem() throws IOException {
+        assertEquals(0, service.unstoreBarcodesWithoutValidatingThem(user, List.of()));
+
+        List<String> barcodes = List.of("STAN-001", "STAN-002");
+        GraphQLResponse response = setupResponse("unstoreBarcodes", Map.of("numUnstored", 1));
+        assertEquals(1, service.unstoreBarcodesWithoutValidatingThem(user, barcodes));
+        verifyQueryMatches("mutation { unstoreBarcodes(barcodes: [\"STAN-001\",\"STAN-002\"]) { numUnstored }}");
+        verify(service).checkErrors(response);
+    }
+
+    @ParameterizedTest
+    @MethodSource("validateBarcodeForStorageArgs")
+    public void testValidateBarcodeForStorage(Object labwareOrBarcode, String expectedErrorMessage) {
+        if (labwareOrBarcode instanceof String) {
+            String barcode = (String) labwareOrBarcode;
+            when(mockLabwareRepo.getByBarcode(barcode)).thenThrow(new EntityNotFoundException(expectedErrorMessage));
+            assertThat(assertThrows(EntityNotFoundException.class, () -> service.validateLabwareBarcodeForStorage(barcode)))
+                    .hasMessage(expectedErrorMessage);
+            return;
+        }
+        Labware labware = (Labware) labwareOrBarcode;
+        String barcode = labware.getBarcode();
+        when(mockLabwareRepo.getByBarcode(barcode)).thenReturn(labware);
+        if (expectedErrorMessage==null) {
+            service.validateLabwareBarcodeForStorage(barcode);
+        } else {
+            expectedErrorMessage = expectedErrorMessage.replace("%bc", barcode);
+            assertThat(assertThrows(IllegalArgumentException.class, () -> service.validateLabwareBarcodeForStorage(barcode)))
+                    .hasMessage(expectedErrorMessage);
+        }
+    }
+
+    static Stream<Arguments> validateBarcodeForStorageArgs() {
+        LabwareType lt = EntityFactory.getTubeType();
+        Labware okLabware = EntityFactory.makeEmptyLabware(lt);
+        Labware releasedLabware = EntityFactory.makeEmptyLabware(lt);
+        releasedLabware.setReleased(true);
+        Labware destroyedLabware = EntityFactory.makeEmptyLabware(lt);
+        destroyedLabware.setDestroyed(true);
+        Labware discardedLabware = EntityFactory.makeEmptyLabware(lt);
+        discardedLabware.setDiscarded(true);
+
+        return Stream.of(
+                Arguments.of("Bananas", "No labware found with barcode \"Bananas\""),
+
+                Arguments.of(okLabware, null),
+                Arguments.of(releasedLabware, "Labware %bc cannot be stored because it is released."),
+                Arguments.of(destroyedLabware, "Labware %bc cannot be stored because it is destroyed."),
+                Arguments.of(discardedLabware, "Labware %bc cannot be stored because it is discarded.")
+        );
     }
 
     @Test

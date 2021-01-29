@@ -8,17 +8,19 @@ import com.google.common.io.Resources;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.ac.sanger.sccp.stan.model.Address;
-import uk.ac.sanger.sccp.stan.model.User;
+import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.store.*;
+import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
 import uk.ac.sanger.sccp.utils.GraphQLClient.GraphQLResponse;
 
+import javax.persistence.EntityNotFoundException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URL;
 import java.util.*;
 
 import static java.util.Objects.requireNonNull;
+import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
  * Service for dealing with storage of labware
@@ -27,11 +29,13 @@ import static java.util.Objects.requireNonNull;
 @Service
 public class StoreService {
     private final StorelightClient storelightClient;
+    private final LabwareRepo labwareRepo;
     private final ObjectMapper objectMapper;
 
     @Autowired
-    public StoreService(StorelightClient storelightClient) {
+    public StoreService(StorelightClient storelightClient, LabwareRepo labwareRepo) {
         this.storelightClient = storelightClient;
+        this.labwareRepo = labwareRepo;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -39,6 +43,7 @@ public class StoreService {
         requireNonNull(user, "User is null.");
         requireNonNull(barcode, "Item barcode is null.");
         requireNonNull(locationBarcode, "Location barcode is null.");
+        validateLabwareBarcodeForStorage(barcode);
         return send(user, "storeBarcode", new String[] {"\"BARCODE\"", "\"LOCATIONBARCODE\"", "\"ADDRESS\"" },
                 new Object[] { barcode, locationBarcode, address}, StoredItem.class).fixInternalLinks();
     }
@@ -46,10 +51,20 @@ public class StoreService {
     public UnstoredItem unstoreBarcode(User user, String barcode) {
         requireNonNull(user, "User is null.");
         requireNonNull(barcode, "Barcode is null.");
+        if (!labwareRepo.existsByBarcode(barcode)) {
+            throw new EntityNotFoundException("No labware found with barcode "+repr(barcode));
+        }
         return send(user, "unstoreBarcode", new String[] { "\"BARCODE\"" }, new Object[] { barcode},
                     UnstoredItem.class);
     }
 
+    /**
+     * This is called when releasing labware. The barcodes have already been confirmed to be valid
+     * labware barcodes, so they do not need to be looked up again; only unstored.
+     * @param user the user responsible for unstoring the labware
+     * @param barcodes the barcodes that need to be unstored
+     * @return the number of items unstored
+     */
     public int unstoreBarcodesWithoutValidatingThem(User user, Collection<String> barcodes) {
         requireNonNull(user, "User is null");
         requireNonNull(barcodes, "Barcodes is null");
@@ -106,6 +121,30 @@ public class StoreService {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
+    }
+
+    /**
+     * Checks if the labware can be stored.
+     * @param barcode the barcode being stored
+     * @exception EntityNotFoundException no such labware can be found
+     * @exception IllegalArgumentException the specified labware cannot be stored
+     */
+    public void validateLabwareBarcodeForStorage(String barcode) {
+        Labware lw = labwareRepo.getByBarcode(barcode);
+        String badState = badState(lw);
+        if (badState!=null) {
+            throw new IllegalArgumentException(String.format("Labware %s cannot be stored because it is %s.",
+                    lw.getBarcode(), badState));
+        }
+    }
+
+    private static String badState(Labware lw) {
+        if (lw.isDestroyed()) return "destroyed";
+        if (lw.isReleased()) return "released";
+        if (lw.isDiscarded()) return "discarded";
+        return null;
+        // In CGAP storing discarded labware automatically reactivates it.
+        // The behaviour of stan wrt discarded labware is not yet established.
     }
 
     private <T> T send(User user, String operationName, String[] replaceFrom, Object[] replaceToObj,
