@@ -110,15 +110,24 @@ public class TestConfirmOperationValidation {
         Labware emptyTube = EntityFactory.makeEmptyLabware(lt);
         Labware discardedTube = EntityFactory.makeEmptyLabware(lt);
         discardedTube.setDiscarded(true);
+        Labware destroyedTube = EntityFactory.makeEmptyLabware(lt);
+        destroyedTube.setDestroyed(true);
+        Labware releasedTube = EntityFactory.makeEmptyLabware(lt);
+        releasedTube.setReleased(true);
         Labware usedTube = EntityFactory.makeEmptyLabware(lt);
         usedTube.getFirstSlot().getSamples().add(EntityFactory.getSample());
 
         String emptyBc = emptyTube.getBarcode();
         String discardedBc = discardedTube.getBarcode();
         String usedBc = usedTube.getBarcode();
+        String destroyedBc = destroyedTube.getBarcode();
+        String releasedBc = releasedTube.getBarcode();
         String invalidBc = "NOSUCHBARCODE";
 
         String discardedProblem = "Labware " + discardedBc + " is already discarded.";
+        String destroyedProblem = "Labware " + destroyedBc + " is destroyed.";
+        String releasedProblem = "Labware " + releasedBc + " is released.";
+
         String usedProblem = "Labware " + usedBc + " already has contents.";
         String invalidProblem = "Unknown labware barcode: " + invalidBc;
 
@@ -126,13 +135,15 @@ public class TestConfirmOperationValidation {
                 Arguments.of(List.of(emptyBc), List.of(emptyTube), List.of()),
                 Arguments.of(List.of(discardedBc), List.of(discardedTube), List.of(discardedProblem)),
                 Arguments.of(List.of(usedBc), List.of(usedTube), List.of(usedProblem)),
+                Arguments.of(List.of(releasedBc), List.of(releasedTube), List.of(releasedProblem)),
+                Arguments.of(List.of(destroyedBc), List.of(destroyedTube), List.of(destroyedProblem)),
                 Arguments.of(List.of(invalidBc), List.of(), List.of(invalidProblem)),
                 Arguments.of(List.of(emptyBc, emptyBc), List.of(emptyTube), List.of("Repeated labware barcode: "+emptyBc)),
                 Arguments.of(Arrays.asList(emptyBc, null), List.of(emptyTube), List.of("Missing labware barcode.")),
                 Arguments.of(List.of(emptyBc, ""), List.of(emptyTube), List.of("Missing labware barcode.")),
-                Arguments.of(List.of(emptyBc, discardedBc, usedBc, invalidBc),
-                        List.of(emptyTube, discardedTube, usedTube),
-                        List.of(discardedProblem, usedProblem, invalidProblem))
+                Arguments.of(List.of(emptyBc, discardedBc, usedBc, invalidBc, destroyedBc, releasedBc),
+                        List.of(emptyTube, discardedTube, usedTube, destroyedTube, releasedTube),
+                        List.of(discardedProblem, usedProblem, invalidProblem, destroyedProblem, releasedProblem))
         );
     }
 

@@ -43,6 +43,8 @@ public class PlanValidationImp implements PlanValidation {
         }
         Map<String, Labware> labwareMap = new HashMap<>();
         Set<String> unfoundBarcodes = new LinkedHashSet<>();
+        Set<String> destroyedBarcodes = new LinkedHashSet<>();
+        Set<String> releasedBarcodes = new LinkedHashSet<>();
         for (PlanRequestAction action : (Iterable<PlanRequestAction>) (actions()::iterator)) {
             PlanRequestSource source = action.getSource();
             if (source==null || source.getBarcode()==null || source.getBarcode().isEmpty()) {
@@ -62,6 +64,11 @@ public class PlanValidationImp implements PlanValidation {
                 }
                 lw = optLw.get();
                 labwareMap.put(barcode, lw);
+                if (lw.isDestroyed()) {
+                    destroyedBarcodes.add(lw.getBarcode());
+                } else if (lw.isReleased()) {
+                    releasedBarcodes.add(lw.getBarcode());
+                }
             }
             Address address = (source.getAddress()==null ? new Address(1,1) : source.getAddress());
             if (lw.getLabwareType().indexOf(address) < 0) {
@@ -84,6 +91,12 @@ public class PlanValidationImp implements PlanValidation {
         }
         if (!unfoundBarcodes.isEmpty()) {
             addProblem("Unknown labware barcode%s: %s", unfoundBarcodes.size()==1 ? "" : "s", unfoundBarcodes);
+        }
+        if (!releasedBarcodes.isEmpty()) {
+            addProblem("Labware already released: "+releasedBarcodes);
+        }
+        if (!destroyedBarcodes.isEmpty()) {
+            addProblem("Labware already destroyed: "+destroyedBarcodes);
         }
     }
 

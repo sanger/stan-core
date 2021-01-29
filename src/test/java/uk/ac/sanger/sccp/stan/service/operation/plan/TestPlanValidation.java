@@ -206,7 +206,13 @@ public class TestPlanValidation {
         Labware nonBlock = EntityFactory.makeEmptyLabware(lt);
         nonBlock.getFirstSlot().getSamples().add(sample);
 
-        Address FIRST = new Address(1,1);
+        Labware destroyedLw = EntityFactory.makeLabware(lt, sample);
+        destroyedLw.setDestroyed(true);
+
+        Labware releasedLw = EntityFactory.makeLabware(lt, sample);
+        releasedLw.setReleased(true);
+
+        Address A1 = new Address(1,1);
 
         OperationType sectionOpType = EntityFactory.makeOperationType("Section", OperationTypeFlag.SOURCE_IS_BLOCK);
         OperationType nonSectionOpType = mock(OperationType.class);
@@ -217,13 +223,15 @@ public class TestPlanValidation {
 
         return Stream.of(
                 Arguments.of(List.of(), List.of(), null, null, sectionOpType, null),
-                Arguments.of(block.getBarcode(), FIRST, blockSampleId, block, sectionOpType, null),
+                Arguments.of(block.getBarcode(), A1, blockSampleId, block, sectionOpType, null),
                 Arguments.of(block.getBarcode(), null, blockSampleId, block, sectionOpType, null),
                 Arguments.of(nonBlock.getBarcode(), null, sectionSampleId, nonBlock, otherOpType, null),
 
-                Arguments.of(null, FIRST, blockSampleId, block, sectionOpType, "Missing source barcode."),
-                Arguments.of("", FIRST, blockSampleId, block, sectionOpType, "Missing source barcode."),
-                Arguments.of("404", FIRST, blockSampleId, block, sectionOpType, "Unknown labware barcode: [404]"),
+                Arguments.of(destroyedLw.getBarcode(), A1, sectionSampleId, destroyedLw, otherOpType, "Labware already destroyed: ["+destroyedLw.getBarcode()+"]"),
+                Arguments.of(releasedLw.getBarcode(), A1, sectionSampleId, releasedLw, otherOpType, "Labware already released: ["+releasedLw.getBarcode()+"]"),
+                Arguments.of(null, A1, blockSampleId, block, sectionOpType, "Missing source barcode."),
+                Arguments.of("", A1, blockSampleId, block, sectionOpType, "Missing source barcode."),
+                Arguments.of("404", A1, blockSampleId, block, sectionOpType, "Unknown labware barcode: [404]"),
                 Arguments.of(block.getBarcode(), new Address(2,3), blockSampleId, block, sectionOpType,
                         "Labware "+block.getBarcode()+" ("+lt.getName()+") has no slot at address B3."),
                 Arguments.of(block.getBarcode(), null, blockSampleId+1, block, sectionOpType,

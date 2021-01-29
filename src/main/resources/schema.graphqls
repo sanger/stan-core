@@ -84,6 +84,8 @@ type Labware {
     labwareType: LabwareType!
     slots: [Slot!]!
     released: Boolean!
+    destroyed: Boolean!
+    discarded: Boolean!
 }
 
 enum LifeStage {

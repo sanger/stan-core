@@ -44,7 +44,9 @@ public class ConfirmOperationValidationImp implements ConfirmOperationValidation
     }
 
     /**
-     * Looks up the labware specified in the request; adds any problems
+     * Looks up the labware specified in the request; adds any problems.
+     * NB we do not currently check if the source has become unusable (e.g. released)
+     * since the planning stage. Maybe it is more useful if we do not check that case.
      * @return a map of the loaded labware from its barcode
      */
     public Map<String, Labware> validateLabware() {
@@ -66,9 +68,14 @@ public class ConfirmOperationValidationImp implements ConfirmOperationValidation
                 continue;
             }
             Labware lw = optLw.get();
-            if (lw.isDiscarded()) {
+            if (lw.isDestroyed()) {
+                addProblem("Labware %s is destroyed.", col.getBarcode());
+            } else if (lw.isReleased()) {
+                addProblem("Labware %s is released.", col.getBarcode());
+            } else if (lw.isDiscarded()) {
                 addProblem("Labware %s is already discarded.", col.getBarcode());
             }
+
             if (lw.getSlots().stream().anyMatch(slot -> !slot.getSamples().isEmpty())) {
                 addProblem("Labware %s already has contents.", col.getBarcode());
             }
