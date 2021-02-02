@@ -1,10 +1,12 @@
 package uk.ac.sanger.sccp.stan;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
-import uk.ac.sanger.sccp.utils.tsv.TsvColumn;
+import uk.ac.sanger.sccp.stan.service.releasefile.*;
 import uk.ac.sanger.sccp.utils.tsv.TsvFile;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -13,40 +15,17 @@ import java.util.List;
  */
 @Controller
 public class ReleaseFileController {
+    private final ReleaseFileService releaseFileService;
 
-    @GetMapping("/release1")
-    @ResponseBody
-    public String getReleaseData(@RequestParam(name="id") List<Integer> ids) {
-        return "RELEASE DATA: "+ids;
+    @Autowired
+    public ReleaseFileController(ReleaseFileService releaseFileService) {
+        this.releaseFileService = releaseFileService;
     }
 
     @RequestMapping(value="/release", method = RequestMethod.GET, produces = "text/tsv")
     @ResponseBody
-    public TsvFile<Integer> getTsv(@RequestParam(name="id") List<Integer> ids) {
-        return new TsvFile<Integer>("release.tsv", ids, List.of(
-                new TsvColumn<Integer>() {
-
-                    @Override
-                    public String get(Integer entry) {
-                        return entry.toString();
-                    }
-
-                    @Override
-                    public String toString() {
-                        return "id";
-                    }
-                },
-                new TsvColumn<Integer>() {
-                    @Override
-                    public String get(Integer entry) {
-                        return "banana "+entry;
-                    }
-
-                    @Override
-                    public String toString() {
-                        return "Bananas";
-                    }
-                }
-        ));
+    public TsvFile<ReleaseEntry> getReleaseFile(@RequestParam(name="id") List<Integer> ids) {
+        List<ReleaseEntry> entries = releaseFileService.getReleaseEntries(ids);
+        return new TsvFile<>("releases.tsv", entries, Arrays.asList(ReleaseColumn.values()));
     }
 }
