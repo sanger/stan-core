@@ -29,13 +29,15 @@ public class GraphQLProvider {
     final PlatformTransactionManager transactionManager;
     final GraphQLDataFetchers graphQLDataFetchers;
     final GraphQLMutation graphQLMutation;
+    final GraphQLStore graphQLStore;
 
     @Autowired
     public GraphQLProvider(PlatformTransactionManager transactionManager,
-                           GraphQLDataFetchers graphQLDataFetchers, GraphQLMutation graphQLMutation) {
+                           GraphQLDataFetchers graphQLDataFetchers, GraphQLMutation graphQLMutation, GraphQLStore graphQLStore) {
         this.transactionManager = transactionManager;
         this.graphQLDataFetchers = graphQLDataFetchers;
         this.graphQLMutation = graphQLMutation;
+        this.graphQLStore = graphQLStore;
     }
 
     @Bean
@@ -73,6 +75,10 @@ public class GraphQLProvider {
                         .dataFetcher("labware", graphQLDataFetchers.findLabwareByBarcode())
                         .dataFetcher("printers", graphQLDataFetchers.findPrinters())
                         .dataFetcher("comments", graphQLDataFetchers.getComments())
+                        .dataFetcher("releaseDestinations", graphQLDataFetchers.getReleaseDestinations())
+                        .dataFetcher("releaseRecipients", graphQLDataFetchers.getReleaseRecipients())
+                        .dataFetcher("location", graphQLStore.getLocation())
+                        .dataFetcher("stored", graphQLStore.getStored())
                 )
                 .type(newTypeWiring("Mutation")
                         .dataFetcher("login", graphQLMutation.logIn())
@@ -81,6 +87,12 @@ public class GraphQLProvider {
                         .dataFetcher("plan", transact(graphQLMutation.recordPlan()))
                         .dataFetcher("printLabware", graphQLMutation.printLabware()) // not transacted
                         .dataFetcher("confirmOperation", transact(graphQLMutation.confirmOperation()))
+                        .dataFetcher("release", graphQLMutation.release()) // transaction handled in service
+
+                        .dataFetcher("storeBarcode", transact(graphQLStore.storeBarcode()))
+                        .dataFetcher("unstoreBarcode", transact(graphQLStore.unstoreBarcode()))
+                        .dataFetcher("empty", transact(graphQLStore.empty()))
+                        .dataFetcher("setLocationCustomName", transact(graphQLStore.setLocationCustomName()))
                 )
                 .scalar(GraphQLCustomTypes.ADDRESS)
                 .scalar(GraphQLCustomTypes.TIMESTAMP)

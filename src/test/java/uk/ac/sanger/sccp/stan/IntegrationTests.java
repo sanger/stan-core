@@ -1,21 +1,29 @@
 package uk.ac.sanger.sccp.stan;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.LabwarePrintRepo;
+import uk.ac.sanger.sccp.stan.request.ReleaseRequest;
 import uk.ac.sanger.sccp.stan.service.label.LabelPrintRequest;
 import uk.ac.sanger.sccp.stan.service.label.LabwareLabelData;
 import uk.ac.sanger.sccp.stan.service.label.LabwareLabelData.LabelContent;
 import uk.ac.sanger.sccp.stan.service.label.print.PrintClient;
+import uk.ac.sanger.sccp.stan.service.store.StorelightClient;
+import uk.ac.sanger.sccp.utils.GraphQLClient.GraphQLResponse;
 
 import javax.transaction.Transactional;
 import java.util.*;
 
+import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -38,6 +46,9 @@ public class IntegrationTests {
     private EntityCreator entityCreator;
     @Autowired
     private LabwarePrintRepo labwarePrintRepo;
+
+    @MockBean
+    StorelightClient mockStorelightClient;
 
     @Test
     @Transactional
@@ -143,6 +154,53 @@ public class IntegrationTests {
         assertEquals(record.getLabware().getId(), lw.getId());
         assertEquals(record.getPrinter().getId(), printer.getId());
         assertEquals(record.getUser().getUsername(), "dr6");
+    }
+
+    @Test
+    @Transactional
+    public void testRelease() throws Exception {
+        Donor donor = entityCreator.createDonor("DONOR1", LifeStage.adult);
+        Tissue tissue = entityCreator.createTissue(donor, "TISSUE1");
+        Sample sample = entityCreator.createSample(tissue, null);
+        Sample sample1 = entityCreator.createSample(tissue, 1);
+        LabwareType lwtype = entityCreator.createLabwareType("lwtype4", 1, 4);
+        Labware lw1 = entityCreator.createBlock("STAN-001", sample);
+        Labware lw2 = entityCreator.createLabware("STAN-002", lwtype, sample, sample, null, sample1);
+        ReleaseDestination destination = entityCreator.createReleaseDestination("Venus");
+        ReleaseRecipient recipient = entityCreator.createReleaseRecipient("Mekon");
+        ReleaseRequest request = new ReleaseRequest(List.of(lw1.getBarcode(), lw2.getBarcode()),
+                destination.getName(), recipient.getUsername());
+        User user = entityCreator.createUser("user1");
+        tester.setUser(user);
+        String mutation = tester.readResource("graphql/release.graphql")
+                .replace("[]", "[\"STAN-001\", \"STAN-002\"]")
+                .replace("DESTINATION", destination.getName())
+                .replace("RECIPIENT", recipient.getUsername());
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        ObjectNode storelightDataNode = objectMapper.createObjectNode()
+                .set("unstoreBarcodes", objectMapper.createObjectNode().put("numUnstored", 2));
+        GraphQLResponse storelightResponse = new GraphQLResponse(storelightDataNode, null);
+        when(mockStorelightClient.postQuery(anyString(), anyString())).thenReturn(storelightResponse);
+
+        Object result = tester.post(mutation);
+
+        List<Map<String,?>> releaseData = chainGet(result, "data", "release", "releases");
+        assertThat(releaseData).hasSize(2);
+        List<String> barcodesData = releaseData.stream()
+                .<String>map(map -> chainGet(map, "labware", "barcode"))
+                .collect(toList());
+        assertThat(barcodesData).containsOnly("STAN-001", "STAN-002");
+        for (Map<String,?> releaseItem : releaseData) {
+            assertEquals(destination.getName(), chainGet(releaseItem, "destination", "name"));
+            assertEquals(recipient.getUsername(), chainGet(releaseItem, "recipient", "username"));
+            assertTrue((boolean) chainGet(releaseItem, "labware", "released"));
+        }
+
+        ArgumentCaptor<String> queryCaptor = ArgumentCaptor.forClass(String.class);
+        verify(mockStorelightClient).postQuery(queryCaptor.capture(), eq(user.getUsername()));
+        String storelightQuery = queryCaptor.getValue();
+        assertThat(storelightQuery).contains("STAN-001", "STAN-002");
     }
 
     private static String getTissueDesc(Tissue tissue) {

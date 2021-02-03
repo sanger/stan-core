@@ -1,0 +1,12 @@
+mutation {
+    editLocation(location: {barcode:"LOCATIONBARCODE"}, change: {description:"DESCRIPTION"}) {
+        barcode
+        description
+        address
+        size { numRows numColumns }
+        children { barcode description address }
+        stored { barcode address }
+        parent { barcode description address }
+        direction
+    }
+}

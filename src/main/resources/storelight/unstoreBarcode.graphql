@@ -1,0 +1,6 @@
+mutation {
+    unstoreBarcode(barcode: "BARCODE") {
+        barcode
+        address
+    }
+}

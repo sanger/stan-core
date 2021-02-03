@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
@@ -95,7 +96,8 @@ public class TestSprintClient {
         doReturn(responseNode).when(sprintClient).postJson(any(), any(), any());
         LabelPrintRequest request = new LabelPrintRequest(EntityFactory.getLabelType(), List.of());
 
-        assertThrows(IOException.class, () -> sprintClient.print("printer1", request), errorMessage);
+        assertThat(assertThrows(IOException.class, () -> sprintClient.print("printer1", request)))
+                .hasMessage(errorMessage);
 
         verify(sprintClient).toJson("printer1", request);
         verify(sprintClient).postJson(new URL(mockSprintConfig.getHost()), requestJson, ObjectNode.class);

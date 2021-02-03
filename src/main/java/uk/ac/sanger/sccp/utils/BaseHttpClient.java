@@ -14,7 +14,7 @@ import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 public abstract class BaseHttpClient {
     private int timeout = 2000; // 2 s
     private Proxy proxy;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    protected final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * Gets the connect and read timeout (milliseconds). Zero is no timeout.
@@ -56,7 +56,7 @@ public abstract class BaseHttpClient {
      * @return a response of the given type read from the given connection
      * @exception IOException communication problem
      */
-    private <T> T readReturnValue(URLConnection connection, Class<T> returnType) throws IOException {
+    protected <T> T readReturnValue(URLConnection connection, Class<T> returnType) throws IOException {
         if (returnType==null || returnType==Void.class) {
             return null;
         }
@@ -80,6 +80,7 @@ public abstract class BaseHttpClient {
     protected <T> T postJson(URL url, Object data, Class<T> jsonReturnType) throws IOException {
         HttpURLConnection connection = openConnection(url);
         try {
+            setHeaders(connection);
             attemptPost(data, connection);
             return readReturnValue(connection, jsonReturnType);
         } finally {
@@ -87,7 +88,8 @@ public abstract class BaseHttpClient {
         }
     }
 
-    private HttpURLConnection openConnection(URL url) throws IOException {
+    // public to allow for mocking in unit tests
+    public HttpURLConnection openConnection(URL url) throws IOException {
         Proxy proxy = getProxy();
         URLConnection con;
         if (proxy==null) {
@@ -101,10 +103,9 @@ public abstract class BaseHttpClient {
         return (HttpURLConnection) con;
     }
 
-    private void attemptPost(Object data, HttpURLConnection connection) throws IOException {
+    protected void attemptPost(Object data, HttpURLConnection connection) throws IOException {
         connection.setRequestMethod("POST");
         connection.setDoOutput(true);
-        setHeaders(connection);
         connection.connect();
         try (OutputStreamWriter out = new OutputStreamWriter(connection.getOutputStream())) {
             out.write(data.toString());
@@ -116,33 +117,6 @@ public abstract class BaseHttpClient {
                 }
                 throw new IOException(responseCode + " - " + getResponseString(connection.getErrorStream()));
             }
-        }
-    }
-
-    /**
-     * Performs a GET and returns a response indicated by the supplied class.
-     * @param url location to get from
-     * @param jsonReturnType a class indicating what type to return
-     * @param <T> the type of response that will be returned
-     * @return a json object
-     * @exception IOException there was a communication problem
-     */
-    protected <T> T getJson(URL url, Class<T> jsonReturnType) throws IOException {
-        HttpURLConnection connection = openConnection(url);
-        try {
-            connection.setRequestMethod("GET");
-            setHeaders(connection);
-            connection.connect();
-            int responseCode = connection.getResponseCode();
-            if (responseCode==HTTP_NOT_FOUND) {
-                throw new IOException(HTTP_NOT_FOUND+" - NOT FOUND");
-            }
-            if (!responseIsGood(responseCode)) {
-                throw new IOException(getResponseString(connection.getErrorStream()));
-            }
-            return readReturnValue(connection, jsonReturnType);
-        } finally {
-            connection.disconnect();
         }
     }
 
