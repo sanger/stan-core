@@ -47,6 +47,10 @@ public class GraphQLTester {
         return (T) result.getAsyncResult();
     }
 
+    public MockMvc getMockMvc() {
+        return this.mockMvc;
+    }
+
     public void setUser(String username) {
         when(mockAuthComp.getAuthentication()).thenReturn(new UsernamePasswordAuthenticationToken(username, "42"));
     }

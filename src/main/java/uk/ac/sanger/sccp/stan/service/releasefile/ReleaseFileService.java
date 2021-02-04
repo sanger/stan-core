@@ -34,6 +34,12 @@ public class ReleaseFileService {
         this.ancestoriser = ancestoriser;
     }
 
+    /**
+     * Gets the entries which become rows in a release file.
+     * Each release maps to 1 or more release entries.
+     * @param releaseIds the ids of the releases
+     * @return the release entries from the specified releases
+     */
     public List<ReleaseEntry> getReleaseEntries(Collection<Integer> releaseIds) {
         if (releaseIds.isEmpty()) {
             return List.of();
@@ -53,6 +59,13 @@ public class ReleaseFileService {
         return entries;
     }
 
+    /**
+     * Gets the ancestry for the given release entries;
+     * that is, a map of what slot-sample combinations arose from what other
+     * slot-sample combinations
+     * @param entries the release entries under construction
+     * @return a map of destination slot/sample to source slot/sample
+     */
     public Map<SlotSample, SlotSample> findAncestry(Collection<ReleaseEntry> entries) {
         Set<SlotSample> entrySlotSamples = entries.stream()
                 .map(entry -> new SlotSample(entry.getSlot(), entry.getSample()))
@@ -60,6 +73,13 @@ public class ReleaseFileService {
         return ancestoriser.findAncestry(entrySlotSamples);
     }
 
+    /**
+     * Loads the samples listed in the given releases.
+     * Those that are available are taken from the labware included in each release.
+     * The rest are loaded from the database.
+     * @param releases the releases we are describing
+     * @return a map of sample id to sample
+     */
     public Map<Integer, Sample> loadSamples(Collection<Release> releases) {
         final Map<Integer, Sample> sampleMap = new HashMap<>();
         Consumer<Sample> addSample = sam -> sampleMap.put(sam.getId(), sam);
@@ -77,6 +97,14 @@ public class ReleaseFileService {
         return sampleMap;
     }
 
+    /**
+     * Figures and sets the last section field for release entries.
+     * The last section is only set on entries that specify a block.
+     * The last section is the maximum of the {@link Slot#getBlockHighestSection} highest section
+     * listed for the slot, and the highest section number created from the tissue
+     * (for whichever of those two are non-null).
+     * @param entries the release entries under construction
+     */
     public void loadLastSection(Collection<ReleaseEntry> entries) {
         Map<Integer, Integer> tissueIdToMaxSection = new HashMap<>();
         for (ReleaseEntry entry : entries) {
@@ -98,6 +126,13 @@ public class ReleaseFileService {
         }
     }
 
+    /**
+     * Creates release entries for a given release.
+     * One entry per slot/sample in combination.
+     * @param release the release
+     * @param sampleIdMap a map to look up samples in
+     * @return a stream of release entries
+     */
     public Stream<ReleaseEntry> toReleaseEntries(final Release release, Map<Integer, Sample> sampleIdMap) {
         final Labware labware = release.getLabware();
         final Map<Integer, Slot> slotIdMap = labware.getSlots().stream()
@@ -106,10 +141,22 @@ public class ReleaseFileService {
                 .map(rd -> new ReleaseEntry(release.getLabware(), slotIdMap.get(rd.getSlotId()), sampleIdMap.get(rd.getSampleId())));
     }
 
+    /**
+     * Loads the releases from the release repo.
+     * @param releaseIds the release ids to look up
+     * @return a list of releases
+     */
     public List<Release> getReleases(Collection<Integer> releaseIds) {
         return releaseRepo.getAllByIdIn(releaseIds);
     }
 
+    /**
+     * Sets the original (block) barcodes for the release entries.
+     * Follows the slot/sample combinations through the given ancestry to find the original
+     * slot, and looks up the barcode.
+     * @param entries the release entries
+     * @param ancestry the ancestry map
+     */
     public void loadOriginalBarcodes(Collection<ReleaseEntry> entries, Map<SlotSample, SlotSample> ancestry) {
         Map<Integer, String> labwareIdBarcode = new HashMap<>();
         for (ReleaseEntry entry : entries) {
@@ -118,11 +165,10 @@ public class ReleaseFileService {
         }
         for (ReleaseEntry entry : entries) {
             SlotSample slotSample = new SlotSample(entry.getSlot(), entry.getSample());
-            SlotSample firstSlotSample = slotSample;
-            SlotSample nextSlotSample = ancestry.get(firstSlotSample);
+            SlotSample nextSlotSample = ancestry.get(slotSample);
             while (nextSlotSample!=null) {
-                firstSlotSample = nextSlotSample;
-                nextSlotSample = ancestry.get(firstSlotSample);
+                slotSample = nextSlotSample;
+                nextSlotSample = ancestry.get(slotSample);
             }
             Integer lwId = slotSample.getSlot().getLabwareId();
             String bc = labwareIdBarcode.get(lwId);
@@ -134,6 +180,13 @@ public class ReleaseFileService {
         }
     }
 
+    /**
+     * Sets the section thickness for the release entries.
+     * The thickness is a measurement recorded on the specified slot, or any ancestral slot
+     * found through the given ancestry map.
+     * @param entries the release entries
+     * @param ancestry the ancestry map
+     */
     public void loadSectionThickness(Collection<ReleaseEntry> entries, Map<SlotSample, SlotSample> ancestry) {
         Set<Integer> slotIds = Stream.concat(ancestry.keySet().stream(), ancestry.values().stream())
                 .map(ss -> ss.getSlot().getId())
@@ -147,14 +200,14 @@ public class ReleaseFileService {
             }
         }
         for (ReleaseEntry entry : entries) {
-            Measurement measurement = getMeasurement(entry, slotIdToMeasurement, ancestry);
+            Measurement measurement = selectMeasurement(entry, slotIdToMeasurement, ancestry);
             if (measurement!=null) {
                 entry.setSectionThickness(measurement.getValue());
             }
         }
     }
 
-    private Measurement getMeasurement(ReleaseEntry entry, Map<Integer, List<Measurement>> slotIdToMeasurement,
+    public Measurement selectMeasurement(ReleaseEntry entry, Map<Integer, List<Measurement>> slotIdToMeasurement,
                                        Map<SlotSample, SlotSample> ancestry) {
         SlotSample slotSample = new SlotSample(entry.getSlot(), entry.getSample());
         while (slotSample!=null) {

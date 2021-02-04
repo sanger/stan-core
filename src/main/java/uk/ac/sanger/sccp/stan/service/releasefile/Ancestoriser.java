@@ -33,6 +33,9 @@ public class Ancestoriser {
             Map<Integer, List<Action>> destSlotIdActions = new HashMap<>();
             for (Action action : actions) {
                 Integer destSlotId = action.getDestination().getId();
+                if (destSlotId.equals(action.getSource().getId())) {
+                    continue;
+                }
                 List<Action> ac = destSlotIdActions.computeIfAbsent(destSlotId, k -> new ArrayList<>());
                 ac.add(action);
             }
@@ -43,6 +46,9 @@ public class Ancestoriser {
                     continue;
                 }
                 List<Action> slotActions = destSlotIdActions.get(slotSample.slot.getId());
+                if (slotActions==null) {
+                    continue;
+                }
                 for (Action action : slotActions) {
                     if (action.getSample().equals(slotSample.sample)) {
                         SlotSample sourceSlotSample = source(action);
@@ -105,6 +111,11 @@ public class Ancestoriser {
         @Override
         public int hashCode() {
             return 31*slot.getId() + sample.getId();
+        }
+
+        @Override
+        public String toString() {
+            return String.format("(Slot(%s), Sample(%s))", slot.getId(), sample.getId());
         }
     }
 }

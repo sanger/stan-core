@@ -53,17 +53,21 @@ public class TsvWriter implements Closeable {
             return;
         }
         write(iter.next());
-        if (separator!=0) {
-            write(separator);
-        }
         while (iter.hasNext()) {
+            if (separator!=0) {
+                write(separator);
+            }
             write(iter.next());
         }
         out.write(newline);
     }
 
     private void write(String value) throws IOException {
-        boolean addQuotes = (separator!=0 && quote!=0 && value.indexOf(separator) >= 0);
+        if (value==null) {
+            return; // omit null
+        }
+        boolean addQuotes = (quote!=0 && (separator!=0 && value.indexOf(separator) >= 0)
+                            || (quoteEscape!=0 && value.indexOf(quote) >= 0));
         if (addQuotes) {
             out.write(quote);
         }

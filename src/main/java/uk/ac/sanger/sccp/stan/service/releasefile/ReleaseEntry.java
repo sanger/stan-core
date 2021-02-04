@@ -2,6 +2,8 @@ package uk.ac.sanger.sccp.stan.service.releasefile;
 
 import uk.ac.sanger.sccp.stan.model.*;
 
+import java.util.Objects;
+
 /**
  * @author dr6
  */
@@ -53,5 +55,23 @@ public class ReleaseEntry {
 
     public void setSectionThickness(String sectionThickness) {
         this.sectionThickness = sectionThickness;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ReleaseEntry that = (ReleaseEntry) o;
+        return (Objects.equals(this.labware, that.labware)
+                && Objects.equals(this.slot, that.slot)
+                && Objects.equals(this.sample, that.sample)
+                && Objects.equals(this.lastSection, that.lastSection)
+                && Objects.equals(this.originalBarcode, that.originalBarcode)
+                && Objects.equals(this.sectionThickness, that.sectionThickness));
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(slot, sample);
     }
 }
