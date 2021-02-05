@@ -219,6 +219,7 @@ type ReleaseRecipient {
 }
 
 type Release {
+    id: Int!
     labware: Labware!
     destination: ReleaseDestination!
     recipient: ReleaseRecipient!

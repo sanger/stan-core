@@ -10,9 +10,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.LabwarePrintRepo;
-import uk.ac.sanger.sccp.stan.request.ReleaseRequest;
 import uk.ac.sanger.sccp.stan.service.label.LabelPrintRequest;
 import uk.ac.sanger.sccp.stan.service.label.LabwareLabelData;
 import uk.ac.sanger.sccp.stan.service.label.LabwareLabelData.LabelContent;
@@ -22,12 +24,15 @@ import uk.ac.sanger.sccp.utils.GraphQLClient.GraphQLResponse;
 
 import javax.transaction.Transactional;
 import java.util.*;
+import java.util.stream.IntStream;
 
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * Non-exhaustive integration tests.
@@ -164,12 +169,10 @@ public class IntegrationTests {
         Sample sample = entityCreator.createSample(tissue, null);
         Sample sample1 = entityCreator.createSample(tissue, 1);
         LabwareType lwtype = entityCreator.createLabwareType("lwtype4", 1, 4);
-        Labware lw1 = entityCreator.createBlock("STAN-001", sample);
-        Labware lw2 = entityCreator.createLabware("STAN-002", lwtype, sample, sample, null, sample1);
+        Labware block = entityCreator.createBlock("STAN-001", sample);
+        Labware lw = entityCreator.createLabware("STAN-002", lwtype, sample, sample, null, sample1);
         ReleaseDestination destination = entityCreator.createReleaseDestination("Venus");
         ReleaseRecipient recipient = entityCreator.createReleaseRecipient("Mekon");
-        ReleaseRequest request = new ReleaseRequest(List.of(lw1.getBarcode(), lw2.getBarcode()),
-                destination.getName(), recipient.getUsername());
         User user = entityCreator.createUser("user1");
         tester.setUser(user);
         String mutation = tester.readResource("graphql/release.graphql")
@@ -185,13 +188,13 @@ public class IntegrationTests {
 
         Object result = tester.post(mutation);
 
-        List<Map<String,?>> releaseData = chainGet(result, "data", "release", "releases");
+        List<Map<String, ?>> releaseData = chainGet(result, "data", "release", "releases");
         assertThat(releaseData).hasSize(2);
         List<String> barcodesData = releaseData.stream()
                 .<String>map(map -> chainGet(map, "labware", "barcode"))
                 .collect(toList());
         assertThat(barcodesData).containsOnly("STAN-001", "STAN-002");
-        for (Map<String,?> releaseItem : releaseData) {
+        for (Map<String, ?> releaseItem : releaseData) {
             assertEquals(destination.getName(), chainGet(releaseItem, "destination", "name"));
             assertEquals(recipient.getUsername(), chainGet(releaseItem, "recipient", "username"));
             assertTrue((boolean) chainGet(releaseItem, "labware", "released"));
@@ -201,6 +204,47 @@ public class IntegrationTests {
         verify(mockStorelightClient).postQuery(queryCaptor.capture(), eq(user.getUsername()));
         String storelightQuery = queryCaptor.getValue();
         assertThat(storelightQuery).contains("STAN-001", "STAN-002");
+
+        List<Integer> releaseIds = releaseData.stream()
+                .map(rd -> (Integer) rd.get("id"))
+                .collect(toList());
+        String tsvString = getReleaseFile(releaseIds);
+        var tsvMaps = tsvToMap(tsvString);
+        assertEquals(tsvMaps.size(), 4);
+        assertThat(tsvMaps.get(0).keySet()).containsOnly("Barcode", "Labware type", "Address", "Donor name",
+                "Life stage", "Tissue type", "Spatial location", "Replicate number", "Section number",
+                "Last section number", "Source barcode", "Section thickness");
+        var row0 = tsvMaps.get(0);
+        assertEquals(block.getBarcode(), row0.get("Barcode"));
+        assertEquals(block.getLabwareType().getName(), row0.get("Labware type"));
+        assertEquals("1", row0.get("Last section number"));
+        for (int i = 1; i < 4; ++i) {
+            var row = tsvMaps.get(i);
+            assertEquals(lw.getBarcode(), row.get("Barcode"));
+            assertEquals(lw.getLabwareType().getName(), row.get("Labware type"));
+        }
+    }
+
+    private List<Map<String, String>> tsvToMap(String tsv) {
+        String[] lines = tsv.split("\n");
+        String[] headers = lines[0].split("\t");
+        return IntStream.range(1, lines.length)
+                .mapToObj(i -> lines[i].split("\t", -1))
+                .map(values ->
+                    IntStream.range(0, headers.length)
+                            .boxed()
+                            .collect(toMap(j -> headers[j], j -> values[j]))
+        ).collect(toList());
+    }
+
+    private String getReleaseFile(List<Integer> releaseIds) throws Exception {
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        releaseIds.forEach(id -> params.add("id", id.toString()));
+        return tester.getMockMvc().perform(MockMvcRequestBuilders.get("/release")
+                .queryParams(params)).andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
     }
 
     private static String getTissueDesc(Tissue tissue) {

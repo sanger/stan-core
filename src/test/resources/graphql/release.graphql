@@ -5,6 +5,7 @@ mutation {
         recipient: "RECIPIENT"
     }) {
         releases {
+            id
             destination { name }
             recipient { username }
             labware { barcode, released }
