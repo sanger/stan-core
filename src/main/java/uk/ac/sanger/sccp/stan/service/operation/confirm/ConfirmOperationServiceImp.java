@@ -15,6 +15,7 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.*;
+import static uk.ac.sanger.sccp.utils.BasicUtils.coalesce;
 
 /**
  * @author dr6
@@ -199,14 +200,19 @@ public class ConfirmOperationServiceImp implements ConfirmOperationService {
      * @return a new or existing sample
      */
     public Sample getOrCreateSample(PlanAction planAction, Slot dest) {
-        if (planAction.getNewSection()==null || planAction.getNewSection().equals(planAction.getSample().getSection())) {
-            return planAction.getSample();
+        final Sample sourceSample = planAction.getSample();
+        final Integer correctSection = coalesce(planAction.getNewSection(), sourceSample.getSection());
+        final BioState correctBioState = coalesce(planAction.getNewBioState(), sourceSample.getBioState());
+        if (Objects.equals(correctSection, sourceSample.getSection())
+                && correctBioState.getId().equals(sourceSample.getBioState().getId())) {
+            return sourceSample;
         }
         return dest.getSamples().stream()
-                .filter(sample -> sample.getTissue().getId().equals(planAction.getSample().getTissue().getId())
-                        && planAction.getNewSection().equals(sample.getSection()))
+                .filter(sample -> sample.getTissue().getId().equals(sourceSample.getTissue().getId())
+                        && Objects.equals(sample.getSection(), correctSection)
+                        && correctBioState.getId().equals(sample.getBioState().getId()))
                 .findFirst()
-                .orElseGet(() -> createNewSample(planAction));
+                .orElseGet(() -> createNewSample(sourceSample, correctSection, correctBioState));
     }
 
     /**
@@ -255,11 +261,11 @@ public class ConfirmOperationServiceImp implements ConfirmOperationService {
     }
 
     private Action makeAction(PlanAction planAction, Slot destination, Sample sample) {
-        return new Action(null, null, planAction.getSource(), destination, sample);
+        return new Action(null, null, planAction.getSource(), destination, sample, planAction.getSample());
     }
 
-    private Sample createNewSample(PlanAction planAction) {
-        return sampleRepo.save(new Sample(null, planAction.getNewSection(), planAction.getSample().getTissue()));
+    private Sample createNewSample(Sample sourceSample, Integer section, BioState bioState) {
+        return sampleRepo.save(new Sample(null, section, sourceSample.getTissue(), bioState));
     }
 
     static class ConfirmLabwareResult {

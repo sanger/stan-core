@@ -30,6 +30,7 @@ public class TestRegisterService {
     private SampleRepo mockSampleRepo;
     private SlotRepo mockSlotRepo;
     private OperationTypeRepo mockOpTypeRepo;
+    private BioStateRepo mockBioStateRepo;
     private LabwareService mockLabwareService;
     private OperationService mockOpService;
     private RegisterValidation mockValidation;
@@ -52,13 +53,15 @@ public class TestRegisterService {
         mockLabwareService = mock(LabwareService.class);
         mockOpService = mock(OperationService.class);
         mockValidation = mock(RegisterValidation.class);
+        mockBioStateRepo = mock(BioStateRepo.class);
         user = EntityFactory.getUser();
         when(mockValidationFactory.createRegisterValidation(any())).thenReturn(mockValidation);
         opType = new OperationType(99, "Register");
         when(mockOpTypeRepo.getByName(opType.getName())).thenReturn(opType);
+        when(mockBioStateRepo.getByName("Tissue")).thenReturn(EntityFactory.getBioState());
 
         registerService = spy(new RegisterServiceImp(mockEntityManager, mockValidationFactory, mockDonorRepo, mockTissueRepo,
-                mockSampleRepo, mockSlotRepo, mockOpTypeRepo, mockLabwareService, mockOpService));
+                mockSampleRepo, mockSlotRepo, mockOpTypeRepo, mockBioStateRepo, mockLabwareService, mockOpService));
     }
 
     @Test
@@ -195,9 +198,10 @@ public class TestRegisterService {
                         sls[1], donor, mouldSize, medium, fixative, hmdmcs[1]),
         };
 
+        BioState bioState = EntityFactory.getBioState();
         Sample[] samples = new Sample[]{
-                new Sample(6000, null, tissues[0]),
-                new Sample(6001, null, tissues[1]),
+                new Sample(6000, null, tissues[0], bioState),
+                new Sample(6001, null, tissues[1], bioState),
         };
 
         when(mockTissueRepo.save(any())).thenReturn(tissues[0], tissues[1]);
@@ -225,7 +229,7 @@ public class TestRegisterService {
                             fixative,
                             hmdmcs[i]
                     ));
-            verify(mockSampleRepo).save(new Sample(null, null, tissues[i]));
+            verify(mockSampleRepo).save(new Sample(null, null, tissues[i], bioState));
             verify(mockLabwareService).create(lts[i]);
             Labware lw = lws[i];
             verify(mockEntityManager).refresh(lw);
@@ -233,7 +237,7 @@ public class TestRegisterService {
             assertEquals(slot.getBlockHighestSection(), block.getHighestSection());
             assertEquals(slot.getBlockSampleId(), samples[i].getId());
             verify(mockSlotRepo).save(slot);
-            verify(mockOpService).createOperation(opType, user, slot, slot, samples[i]);
+            verify(mockOpService).createOperationInPlace(opType, user, slot, samples[i]);
         }
     }
 }

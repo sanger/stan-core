@@ -16,13 +16,16 @@ public class Sample {
     private Integer section;
     @ManyToOne
     private Tissue tissue;
+    @ManyToOne
+    private BioState bioState;
 
     public Sample() {}
 
-    public Sample(Integer id, Integer section, Tissue tissue) {
+    public Sample(Integer id, Integer section, Tissue tissue, BioState bioState) {
         this.id = id;
         this.section = section;
         this.tissue = tissue;
+        this.bioState = bioState;
     }
 
     public Integer getId() {
@@ -49,6 +52,14 @@ public class Sample {
         this.tissue = tissue;
     }
 
+    public BioState getBioState() {
+        return this.bioState;
+    }
+
+    public void setBioState(BioState bioState) {
+        this.bioState = bioState;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -56,7 +67,8 @@ public class Sample {
         Sample that = (Sample) o;
         return (Objects.equals(this.id, that.id)
                 && Objects.equals(this.section, that.section)
-                && Objects.equals(this.tissue, that.tissue));
+                && Objects.equals(this.tissue, that.tissue)
+                && Objects.equals(this.bioState, that.bioState));
     }
 
     @Override
@@ -70,6 +82,7 @@ public class Sample {
                 .add("id", id)
                 .add("section", section)
                 .add("tissue", tissue)
+                .add("bioState", bioState)
                 .toString();
     }
 }

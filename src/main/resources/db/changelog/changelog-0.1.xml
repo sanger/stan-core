@@ -113,7 +113,6 @@
         </createTable>
     </changeSet>
 
-
     <changeSet id="8" author="dr6">
         <createTable tableName="operation_type">
             <column name="id" type="INT" autoIncrement="true">
@@ -134,7 +133,6 @@
         </createTable>
     </changeSet>
 
-
     <changeSet id="9" author="dr6">
         <createTable tableName="fixative">
             <column name="id" type="INT" autoIncrement="true">
@@ -153,6 +151,23 @@
     </changeSet>
 
     <changeSet id="10" author="dr6">
+        <createTable tableName="bio_state">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="name" type="VARCHAR(64)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="11" author="dr6">
         <createTable tableName="spatial_location">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
@@ -183,7 +198,7 @@
         </rollback>
     </changeSet>
 
-    <changeSet id="11" author="dr6">
+    <changeSet id="12" author="dr6">
         <createTable tableName="labware_type">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
@@ -212,7 +227,7 @@
         </createTable>
     </changeSet>
 
-    <changeSet id="12" author="dr6">
+    <changeSet id="13" author="dr6">
         <createTable tableName="donor">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
@@ -232,7 +247,7 @@
         </createTable>
     </changeSet>
 
-    <changeSet id="13" author="dr6">
+    <changeSet id="14" author="dr6">
         <createTable tableName="tissue">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
@@ -281,7 +296,7 @@
         </rollback>
     </changeSet>
 
-    <changeSet id="14" author="dr6">
+    <changeSet id="15" author="dr6">
         <createTable tableName="sample">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
@@ -292,6 +307,9 @@
             <column name="tissue_id" type="INT">
                 <constraints nullable="false" foreignKeyName="sample_fk_tissue" referencedTableName="tissue" referencedColumnNames="id"/>
             </column>
+            <column name="bio_state_id" type="INT">
+                <constraints nullable="false" foreignKeyName="sample_fk_bio_state" referencedTableName="bio_state" referencedColumnNames="id"/>
+            </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
             </column>
@@ -301,7 +319,7 @@
         </createTable>
     </changeSet>
 
-    <changeSet id="15" author="dr6">
+    <changeSet id="16" author="dr6">
         <createTable tableName="labware">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
@@ -324,7 +342,7 @@
         </createTable>
     </changeSet>
 
-    <changeSet id="16" author="dr6">
+    <changeSet id="17" author="dr6">
         <createTable tableName="slot">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
@@ -356,7 +374,7 @@
         </rollback>
     </changeSet>
 
-    <changeSet id="17" author="dr6">
+    <changeSet id="18" author="dr6">
         <createTable tableName="slot_sample">
             <column name="slot_id" type="INT">
                 <constraints nullable="false" foreignKeyName="slot_sample_fk_slot" referencedTableName="slot" referencedColumnNames="id"/>
@@ -378,7 +396,7 @@
         </rollback>
     </changeSet>
 
-    <changeSet id="18" author="dr6">
+    <changeSet id="19" author="dr6">
         <createTable tableName="block_info">
             <column name="slot_id" type="INT">
                 <constraints nullable="false" foreignKeyName="block_info_fk_slot" referencedTableName="slot" referencedColumnNames="id"/>
@@ -403,8 +421,7 @@
         </rollback>
     </changeSet>
 
-
-    <changeSet id="19" author="dr6">
+    <changeSet id="20" author="dr6">
         <createTable tableName="operation">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
@@ -427,7 +444,7 @@
         </createTable>
     </changeSet>
 
-    <changeSet id="20" author="dr6">
+    <changeSet id="21" author="dr6">
         <createTable tableName="action">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
@@ -443,6 +460,9 @@
             </column>
             <column name="dest_slot_id" type="INT">
                 <constraints nullable="false" foreignKeyName="action_fk_dest_slot" referencedTableName="slot" referencedColumnNames="id"/>
+            </column>
+            <column name="source_sample_id" type="INT">
+                <constraints nullable="false" foreignKeyName="action_fk_source_sample" referencedTableName="sample" referencedColumnNames="id"/>
             </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
@@ -463,7 +483,7 @@
         </rollback>
     </changeSet>
 
-    <changeSet id="21" author="dr6">
+    <changeSet id="22" author="dr6">
         <createTable tableName="barcode_seed">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
@@ -532,6 +552,12 @@
         </loadData>
     </changeSet>
 
+    <changeSet id="111" author="dr6">
+        <loadData tableName="bio_state" file="db/biostates.tsv" separator="\t">
+            <column name="name" header="name" type="string"/>
+        </loadData>
+    </changeSet>
+
     <changeSet id="200" author="dr6">
         <createTable tableName="plan_operation">
             <column name="id" type="INT" autoIncrement="true">
@@ -579,6 +605,9 @@
             </column>
             <column name="dest_slot_id" type="INT">
                 <constraints nullable="false" foreignKeyName="plan_action_fk_dest_slot" referencedTableName="slot" referencedColumnNames="id"/>
+            </column>
+            <column name="new_bio_state_id" type="INT">
+                <constraints nullable="true" foreignKeyName="plan_action_fk_new_bio_state" referencedTableName="bio_state" referencedColumnNames="id"/>
             </column>
             <column name="new_section" type="INT">
                 <constraints nullable="true"/>

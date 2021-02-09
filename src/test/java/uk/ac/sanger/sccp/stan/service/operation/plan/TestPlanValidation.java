@@ -195,7 +195,7 @@ public class TestPlanValidation {
         Sample sample = EntityFactory.getSample();
         int sectionSampleId = sample.getId();
         int blockSampleId = sectionSampleId + 50;
-        Sample blockSample = new Sample(blockSampleId, null, sample.getTissue());
+        Sample blockSample = new Sample(blockSampleId, null, sample.getTissue(), EntityFactory.getBioState());
         LabwareType lt = EntityFactory.getTubeType();
         Labware block = EntityFactory.makeEmptyLabware(lt);
         Slot blockSlot = block.getFirstSlot();

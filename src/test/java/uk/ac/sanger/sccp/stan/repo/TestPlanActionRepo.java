@@ -39,6 +39,7 @@ public class TestPlanActionRepo {
     private final LabwareTypeRepo labwareTypeRepo;
     private final LabwareRepo labwareRepo;
     private final SlotRepo slotRepo;
+    private final BioStateRepo bioStateRepo;
 
 
     @Autowired
@@ -47,7 +48,7 @@ public class TestPlanActionRepo {
                               SampleRepo sampleRepo, DonorRepo donorRepo, TissueRepo tissueRepo,
                               SpatialLocationRepo slRepo, MouldSizeRepo mouldSizeRepo, MediumRepo mediumRepo,
                               FixativeRepo fixativeRepo, HmdmcRepo hmdmcRepo, UserRepo userRepo,
-                              LabwareTypeRepo labwareTypeRepo, LabwareRepo labwareRepo, SlotRepo slotRepo) {
+                              LabwareTypeRepo labwareTypeRepo, LabwareRepo labwareRepo, SlotRepo slotRepo, BioStateRepo bioStateRepo) {
         this.entityCreator = entityCreator;
         this.planOpRepo = planOpRepo;
         this.planActionRepo = planActionRepo;
@@ -64,6 +65,7 @@ public class TestPlanActionRepo {
         this.labwareTypeRepo = labwareTypeRepo;
         this.labwareRepo = labwareRepo;
         this.slotRepo = slotRepo;
+        this.bioStateRepo = bioStateRepo;
     }
 
     @Test
@@ -74,8 +76,9 @@ public class TestPlanActionRepo {
         donorRepo.save(donor);
         Tissue tissue = new Tissue(null, "TISSUE1", 1, any(slRepo), donor, any(mouldSizeRepo),
                 any(mediumRepo), any(fixativeRepo), any(hmdmcRepo));
+        BioState bioState = any(bioStateRepo);
         tissueRepo.save(tissue);
-        final Sample sample = new Sample(null, 3, tissue);
+        final Sample sample = new Sample(null, 3, tissue, bioState);
 
         sampleRepo.save(sample);
 
@@ -93,9 +96,9 @@ public class TestPlanActionRepo {
         slotRepo.save(slot2);
         slotRepo.save(slot3);
 
-        planActionRepo.save(new PlanAction(null, plan.getId(), slot1, slot1, sample, 3, null));
-        planActionRepo.save(new PlanAction(null, plan.getId(), slot2, slot2, sample, 18, null));
-        planActionRepo.save(new PlanAction(null, plan.getId(), slot3, slot3, sample, 4, null));
+        planActionRepo.save(new PlanAction(null, plan.getId(), slot1, slot1, sample, 3, null, null));
+        planActionRepo.save(new PlanAction(null, plan.getId(), slot2, slot2, sample, 18, null, null));
+        planActionRepo.save(new PlanAction(null, plan.getId(), slot3, slot3, sample, 4, null, null));
         assertThat(planActionRepo.findMaxPlannedSectionForTissueId(tissue.getId())).hasValue(18);
     }
 

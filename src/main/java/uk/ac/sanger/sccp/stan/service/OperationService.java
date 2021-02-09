@@ -47,8 +47,8 @@ public class OperationService {
         return op;
     }
 
-    public Operation createOperation(OperationType operationType, User user, Slot source, Slot dest, Sample sample) {
-        Action action = new Action(null, null, source, dest, sample);
+    public Operation createOperationInPlace(OperationType operationType, User user, Slot slot, Sample sample) {
+        Action action = new Action(null, null, slot, slot, sample, sample);
         return createOperation(operationType, user, List.of(action), null);
     }
 }

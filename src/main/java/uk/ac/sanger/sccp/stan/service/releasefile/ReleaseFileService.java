@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.Ancestry;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
 
 import java.util.*;
@@ -53,7 +54,7 @@ public class ReleaseFileService {
                 .collect(toList());
 
         loadLastSection(entries);
-        Map<SlotSample, SlotSample> ancestry = findAncestry(entries);
+        Ancestry ancestry = findAncestry(entries);
         loadOriginalBarcodes(entries, ancestry);
         loadSectionThickness(entries, ancestry);
         return entries;
@@ -66,7 +67,7 @@ public class ReleaseFileService {
      * @param entries the release entries under construction
      * @return a map of destination slot/sample to source slot/sample
      */
-    public Map<SlotSample, SlotSample> findAncestry(Collection<ReleaseEntry> entries) {
+    public Ancestry findAncestry(Collection<ReleaseEntry> entries) {
         Set<SlotSample> entrySlotSamples = entries.stream()
                 .map(entry -> new SlotSample(entry.getSlot(), entry.getSample()))
                 .collect(toSet());
@@ -157,7 +158,7 @@ public class ReleaseFileService {
      * @param entries the release entries
      * @param ancestry the ancestry map
      */
-    public void loadOriginalBarcodes(Collection<ReleaseEntry> entries, Map<SlotSample, SlotSample> ancestry) {
+    public void loadOriginalBarcodes(Collection<ReleaseEntry> entries, Ancestry ancestry) {
         Map<Integer, String> labwareIdBarcode = new HashMap<>();
         for (ReleaseEntry entry : entries) {
             Labware lw = entry.getLabware();
@@ -165,12 +166,11 @@ public class ReleaseFileService {
         }
         for (ReleaseEntry entry : entries) {
             SlotSample slotSample = new SlotSample(entry.getSlot(), entry.getSample());
-            SlotSample nextSlotSample = ancestry.get(slotSample);
-            while (nextSlotSample!=null) {
-                slotSample = nextSlotSample;
-                nextSlotSample = ancestry.get(slotSample);
-            }
-            Integer lwId = slotSample.getSlot().getLabwareId();
+            Set<SlotSample> roots = ancestry.getRoots(slotSample);
+            SlotSample root = roots.stream()
+                    .min(Comparator.naturalOrder())
+                    .orElse(slotSample);
+            Integer lwId = root.getSlot().getLabwareId();
             String bc = labwareIdBarcode.get(lwId);
             if (bc==null) {
                 bc = labwareRepo.getById(lwId).getBarcode();
@@ -187,10 +187,8 @@ public class ReleaseFileService {
      * @param entries the release entries
      * @param ancestry the ancestry map
      */
-    public void loadSectionThickness(Collection<ReleaseEntry> entries, Map<SlotSample, SlotSample> ancestry) {
-        Set<Integer> slotIds = Stream.concat(ancestry.keySet().stream(), ancestry.values().stream())
-                .map(ss -> ss.getSlot().getId())
-                .collect(toSet());
+    public void loadSectionThickness(Collection<ReleaseEntry> entries, Ancestry ancestry) {
+        Set<Integer> slotIds = ancestry.keySet().stream().map(ss -> ss.getSlot().getId()).collect(toSet());
         List<Measurement> measurements = measurementRepo.findAllBySlotIdIn(slotIds);
         Map<Integer, List<Measurement>> slotIdToMeasurement = new HashMap<>();
         for (Measurement measurement : measurements) {
@@ -208,12 +206,11 @@ public class ReleaseFileService {
     }
 
     public Measurement selectMeasurement(ReleaseEntry entry, Map<Integer, List<Measurement>> slotIdToMeasurement,
-                                       Map<SlotSample, SlotSample> ancestry) {
-        SlotSample slotSample = new SlotSample(entry.getSlot(), entry.getSample());
-        while (slotSample!=null) {
-            List<Measurement> measurements = slotIdToMeasurement.get(slotSample.getSlot().getId());
+                                         Ancestry ancestry) {
+        for (SlotSample ss : ancestry.ancestors(new SlotSample(entry.getSlot(), entry.getSample()))) {
+            List<Measurement> measurements = slotIdToMeasurement.get(ss.getSlot().getId());
             if (measurements!=null && !measurements.isEmpty()) {
-                final Integer sampleId = slotSample.getSample().getId();
+                final Integer sampleId = ss.getSample().getId();
                 var optMeasurement = measurements.stream()
                         .filter(m -> m.getSampleId().equals(sampleId))
                         .findAny();
@@ -221,7 +218,6 @@ public class ReleaseFileService {
                     return optMeasurement.get();
                 }
             }
-            slotSample = ancestry.get(slotSample);
         }
         return null;
     }

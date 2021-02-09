@@ -36,8 +36,9 @@ public class TestLabwareLabelDataService {
         TissueType ttype = new TissueType(null, "Skellington", "SKE");
         SpatialLocation sl = new SpatialLocation(null, "SL4", 4, ttype);
         Tissue tissue = EntityFactory.makeTissue(EntityFactory.getDonor(), sl);
-        Sample sample1 = new Sample(null, null, tissue);
-        Sample sample2 = new Sample(null, 5, tissue);
+        BioState bioState = EntityFactory.getBioState();
+        Sample sample1 = new Sample(null, null, tissue, bioState);
+        Sample sample2 = new Sample(null, 5, tissue, bioState);
         Labware lw = EntityFactory.makeEmptyLabware(EntityFactory.makeLabwareType(1, 2));
         lw.getSlots().get(1).getSamples().addAll(List.of(sample1, sample2));
 
@@ -65,18 +66,19 @@ public class TestLabwareLabelDataService {
         SpatialLocation sl2 = new SpatialLocation(null, "SL7", 7, ttype2);
         Tissue tissue1 = EntityFactory.makeTissue(donor1, sl1);
         Tissue tissue2 = EntityFactory.makeTissue(donor2, sl2);
-        Sample sample1 = new Sample(null, null, tissue1);
-        Sample sample2 = new Sample(null, 5, tissue2);
+        BioState bioState = EntityFactory.getBioState();
+        Sample sample1 = new Sample(null, null, tissue1, bioState);
+        Sample sample2 = new Sample(null, 5, tissue2, bioState);
         Labware labware = EntityFactory.makeEmptyLabware(EntityFactory.makeLabwareType(1, 4));
         List<Slot> slots = labware.getSlots();
         PlanOperation plan = new PlanOperation();
         final int planId = 400;
         plan.setId(planId);
         List<PlanAction> planActions = List.of(
-                new PlanAction(404, planId, slots.get(3), slots.get(3), sample2, 14, null),
-                new PlanAction(403, planId, slots.get(2), slots.get(2), sample2, null, null),
-                new PlanAction(401, planId, slots.get(0), slots.get(0), sample1, null, null),
-                new PlanAction(402, planId, slots.get(1), slots.get(1), sample1, 7, null)
+                new PlanAction(404, planId, slots.get(3), slots.get(3), sample2, 14, null, null),
+                new PlanAction(403, planId, slots.get(2), slots.get(2), sample2, null, null, null),
+                new PlanAction(401, planId, slots.get(0), slots.get(0), sample1, null, null, null),
+                new PlanAction(402, planId, slots.get(1), slots.get(1), sample1, 7, null, null)
         );
         when(mockPlanActionRepo.findAllByDestinationLabwareId(labware.getId())).thenReturn(planActions);
 

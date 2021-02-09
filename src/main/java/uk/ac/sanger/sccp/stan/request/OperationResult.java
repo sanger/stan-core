@@ -1,4 +1,4 @@
-package uk.ac.sanger.sccp.stan.request.confirm;
+package uk.ac.sanger.sccp.stan.request;
 
 import com.google.common.base.MoreObjects;
 import uk.ac.sanger.sccp.stan.model.Labware;
@@ -13,15 +13,15 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.newArrayList;
  * The results to a successful confirm operation request
  * @author dr6
  */
-public class ConfirmOperationResult {
+public class OperationResult {
     private List<Operation> operations;
     private List<Labware> labware;
 
-    public ConfirmOperationResult() {
+    public OperationResult() {
         this(null, null);
     }
 
-    public ConfirmOperationResult(Iterable<Operation> operations, Iterable<Labware> labware) {
+    public OperationResult(Iterable<Operation> operations, Iterable<Labware> labware) {
         setOperations(operations);
         setLabware(labware);
     }
@@ -54,7 +54,7 @@ public class ConfirmOperationResult {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        ConfirmOperationResult that = (ConfirmOperationResult) o;
+        OperationResult that = (OperationResult) o;
         return (Objects.equals(this.operations, that.operations)
                 && Objects.equals(this.labware, that.labware));
     }

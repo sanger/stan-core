@@ -63,7 +63,7 @@ public class TestReleaseService {
         when(mockRecipientRepo.getByUsername(recipient.getUsername())).thenReturn(recipient);
 
         sample = EntityFactory.getSample();
-        sample1 = new Sample(sample.getId()+1, 7, sample.getTissue());
+        sample1 = new Sample(sample.getId()+1, 7, sample.getTissue(), EntityFactory.getBioState());
         labwareType = EntityFactory.makeLabwareType(1,4);
 
         service = spy(new ReleaseServiceImp(mockTransactionManager, mockDestinationRepo, mockRecipientRepo, mockLabwareRepo, mockStoreService,

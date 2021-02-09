@@ -11,6 +11,18 @@ public class BasicUtils {
     private BasicUtils() {}
 
     /**
+     * Returns the first (if any) non-null value.
+     * If {@code a} is non-null, returns {@code a}; otherwise returns {@code b}
+     * @param a first value
+     * @param b second value
+     * @param <T> type of value
+     * @return {@code a} if it is non-null, otherwise {@code b}
+     */
+    public static <T> T coalesce(T a, T b) {
+        return (a==null ? b : a);
+    }
+
+    /**
      * Returns a string representation of the given object.
      * If it is a string it will be in quote marks and unprintable
      * characters will be shown as unicode insertions.

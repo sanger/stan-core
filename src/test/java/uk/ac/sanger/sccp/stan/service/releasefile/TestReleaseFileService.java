@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.Ancestry;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
 
 import java.sql.Timestamp;
@@ -57,8 +58,9 @@ public class TestReleaseFileService {
     private void setupLabware() {
         LabwareType lt = EntityFactory.makeLabwareType(1, 2);
         Tissue tissue = EntityFactory.getTissue();
-        sample = new Sample(10, null, tissue);
-        sample1 = new Sample(11, 1, tissue);
+        BioState bioState = EntityFactory.getBioState();
+        sample = new Sample(10, null, tissue, bioState);
+        sample1 = new Sample(11, 1, tissue, bioState);
         lw1 = EntityFactory.makeLabware(lt);
         lw1.getFirstSlot().getSamples().addAll(List.of(sample, sample1));
         lw1.getSlots().get(1).getSamples().add(sample);
@@ -99,7 +101,7 @@ public class TestReleaseFileService {
         doReturn(sampleMap).when(service).loadSamples(anyCollection());
         doReturn(entries.subList(0,2).stream()).when(service).toReleaseEntries(this.release1, sampleMap);
         doReturn(entries.subList(2,3).stream()).when(service).toReleaseEntries(release2, sampleMap);
-        Map<SlotSample, SlotSample> ancestry = makeAncestry(lw1, sample1, lw2, sample);
+        var ancestry = makeAncestry(lw1, sample1, lw2, sample);
         doReturn(ancestry).when(service).findAncestry(any());
         doNothing().when(service).loadLastSection(any());
         doNothing().when(service).loadOriginalBarcodes(any(), any());
@@ -126,7 +128,7 @@ public class TestReleaseFileService {
                 new ReleaseEntry(lw1, lw1.getFirstSlot(), sample1),
                 new ReleaseEntry(lw2, lw2.getFirstSlot(), sample)
         );
-        Map<SlotSample, SlotSample> ancestry = makeAncestry(lw1, sample1, lw2, sample);
+        var ancestry = makeAncestry(lw1, sample1, lw2, sample);
         when(mockAncestoriser.findAncestry(any())).thenReturn(ancestry);
 
         assertSame(ancestry, service.findAncestry(entries));
@@ -139,7 +141,7 @@ public class TestReleaseFileService {
     @Test
     public void testLoadSamples() {
         setupReleases();
-        Sample otherSample = new Sample(800, 3, sample.getTissue());
+        Sample otherSample = new Sample(800, 3, sample.getTissue(), EntityFactory.getBioState());
         Integer otherSampleId = otherSample.getId();
         Set<Integer> otherSampleIds = Set.of(otherSampleId);
         when(mockSampleRepo.getAllByIdIn(otherSampleIds)).thenReturn(List.of(otherSample));
@@ -161,7 +163,7 @@ public class TestReleaseFileService {
         Sample sampleA = EntityFactory.getSample();
         Tissue tissueA = sampleA.getTissue();
         Tissue tissueB = EntityFactory.makeTissue(EntityFactory.getDonor(), EntityFactory.getSpatialLocation());
-        Sample sampleB = new Sample(60, null, tissueB);
+        Sample sampleB = new Sample(60, null, tissueB, EntityFactory.getBioState());
         Sample[] samples = { sampleA, sampleB, sampleA, sampleA, sampleB, sampleA };
         boolean[] isBlock = { true, true, true, true, true, false };
         Integer[] blockMaxSection = { 6, 6, 2, null, null, null };
@@ -223,25 +225,27 @@ public class TestReleaseFileService {
     public void testLoadOriginalBarcodes() {
         setupLabware();
         Labware lw0 = EntityFactory.makeLabware(EntityFactory.getTubeType(), sample);
-        Map<SlotSample, SlotSample> ancestry = makeAncestry(
+        var ancestry = makeAncestry(
                 lw2, sample, lw1, sample,
                 lw1, sample, lw0, sample
         );
         Stream.of(lw0, lw1, lw2).forEach(lw -> when(mockLabwareRepo.getById(lw.getId())).thenReturn(lw));
         List<ReleaseEntry> entries = List.of(
                 new ReleaseEntry(lw2, lw2.getFirstSlot(), sample),
-                new ReleaseEntry(lw1, lw1.getFirstSlot(), sample1)
+                new ReleaseEntry(lw1, lw1.getFirstSlot(), sample1),
+                new ReleaseEntry(lw1, lw1.getFirstSlot(), sample)
         );
         service.loadOriginalBarcodes(entries, ancestry);
         assertEquals(lw0.getBarcode(), entries.get(0).getOriginalBarcode());
         assertEquals(lw1.getBarcode(), entries.get(1).getOriginalBarcode());
+        assertEquals(lw0.getBarcode(), entries.get(2).getOriginalBarcode());
     }
 
     @Test
     public void testLoadSectionThickness() {
         setupLabware();
         Labware lw0 = EntityFactory.makeLabware(EntityFactory.getTubeType(), sample);
-        Map<SlotSample, SlotSample> ancestry = makeAncestry(
+        var ancestry = makeAncestry(
                 lw2, sample, lw1, sample,
                 lw1, sample, lw0, sample
         );
@@ -265,7 +269,7 @@ public class TestReleaseFileService {
     public void testSelectMeasurement() {
         setupLabware();
         Labware lw0 = EntityFactory.makeLabware(EntityFactory.getTubeType(), sample);
-        Map<SlotSample, SlotSample> ancestry = makeAncestry(
+        var ancestry = makeAncestry(
                 lw2, sample, lw1, sample,
                 lw1, sample, lw0, sample
         );
@@ -289,12 +293,12 @@ public class TestReleaseFileService {
         return map;
     }
 
-    private Map<SlotSample, SlotSample> makeAncestry(Object... args) {
-        Map<SlotSample, SlotSample> map = new HashMap<>(args.length/4);
+    private Ancestry makeAncestry(Object... args) {
+        Ancestry ancestry = new Ancestry();
         for (int i = 0; i < args.length; i += 4) {
-            map.put(slotSample(args[i], args[i+1]), slotSample(args[i+2], args[i+3]));
+            ancestry.put(slotSample(args[i], args[i+1]), Set.of(slotSample(args[i+2], args[i+3])));
         }
-        return map;
+        return ancestry;
     }
 
     private SlotSample slotSample(Object arg1, Object arg2) {
