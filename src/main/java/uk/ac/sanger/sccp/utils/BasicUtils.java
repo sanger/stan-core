@@ -2,6 +2,8 @@ package uk.ac.sanger.sccp.utils;
 
 import java.util.*;
 import java.util.function.Function;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 /**
  * Much copied from the corresponding class in CGAP lims
@@ -126,5 +128,14 @@ public class BasicUtils {
         ArrayList<E> list = new ArrayList<>();
         items.forEach(list::add);
         return list;
+    }
+
+    /**
+     * Collector that produces a {@code LinkedHashSet} (an insertion-ordered set).
+     * @param <T> the type of elements
+     * @return a collector
+     */
+    public static <T> Collector<T, ?, LinkedHashSet<T>> toLinkedHashSet() {
+        return Collectors.toCollection(LinkedHashSet::new);
     }
 }

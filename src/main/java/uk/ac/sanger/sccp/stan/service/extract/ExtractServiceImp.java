@@ -6,8 +6,10 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.ExtractRequest;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
+import uk.ac.sanger.sccp.stan.service.*;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
 
@@ -17,15 +19,30 @@ import static java.util.Objects.requireNonNull;
  */
 @Service
 public class ExtractServiceImp implements ExtractService {
+    private final LabwareValidatorFactory labwareValidatorFactory;
+    private final LabwareService labwareService;
+    private final OperationService opService;
     private final LabwareRepo labwareRepo;
     private final LabwareTypeRepo lwTypeRepo;
     private final OperationTypeRepo opTypeRepo;
+    private final BioStateRepo bioStateRepo;
+    private final SampleRepo sampleRepo;
+    private final SlotRepo slotRepo;
 
     @Autowired
-    public ExtractServiceImp(LabwareRepo labwareRepo, LabwareTypeRepo lwTypeRepo, OperationTypeRepo opTypeRepo) {
+    public ExtractServiceImp(LabwareValidatorFactory labwareValidatorFactory, LabwareService labwareService,
+                             OperationService opService,
+                             LabwareRepo labwareRepo, LabwareTypeRepo lwTypeRepo, OperationTypeRepo opTypeRepo,
+                             BioStateRepo bioStateRepo, SampleRepo sampleRepo, SlotRepo slotRepo) {
+        this.labwareValidatorFactory = labwareValidatorFactory;
+        this.labwareService = labwareService;
+        this.opService = opService;
         this.labwareRepo = labwareRepo;
         this.lwTypeRepo = lwTypeRepo;
         this.opTypeRepo = opTypeRepo;
+        this.bioStateRepo = bioStateRepo;
+        this.sampleRepo = sampleRepo;
+        this.slotRepo = slotRepo;
     }
 
     @Override
@@ -38,103 +55,117 @@ public class ExtractServiceImp implements ExtractService {
         if (request.getLabwareType()==null || request.getLabwareType().isEmpty()) {
             throw new IllegalArgumentException("No labware type specified.");
         }
-        List<Labware> labware = labwareRepo.getByBarcodeIn(request.getBarcodes());
         LabwareType labwareType = lwTypeRepo.getByName(request.getLabwareType());
         OperationType opType = opTypeRepo.getByName("Extract");
-        validateLabware(labware);
-        // Create new labware
-        // Update old labware
-        // Create operations
-        // NB "RNA" tissue state
-        return null;
+        List<Labware> sources = loadAndValidateLabware(request.getBarcodes());
+
+        sources = discardSources(sources);
+        Map<Labware, Labware> labwareMap = createNewLabware(labwareType, sources);
+        createSamples(labwareMap);
+        List<Operation> ops = createOperations(user, opType, labwareMap);
+        return new OperationResult(ops, labwareMap.values());
     }
 
-    public void validateLabware(Collection<Labware> labware) {
-        checkForRepeatedLabware(labware);
-        checkLabwareState(labware);
-        checkLabwareContent(labware);
+    /**
+     * Loads and validates the source barcodes using {@link LabwareValidator}.
+     * @param barcodes barcodes to load
+     * @return the loaded labware
+     * @exception IllegalArgumentException if there is a problem with the specified labware
+     */
+    public List<Labware> loadAndValidateLabware(Collection<String> barcodes) {
+        LabwareValidator labwareValidator = labwareValidatorFactory.getValidator();
+        labwareValidator.setUniqueRequired(true);
+        labwareValidator.setSingleSample(true);
+        List<Labware> sources = labwareValidator.loadLabware(labwareRepo, barcodes);
+        labwareValidator.validateSources();
+        labwareValidator.throwError(IllegalArgumentException::new);
+        return sources;
     }
 
-    public void checkLabwareContent(Collection<Labware> labware) {
-        List<String> barcodesOfMultiSlotLabware = new ArrayList<>();
-        List<String> barcodesOfMultiSampleLabware = new ArrayList<>();
-        List<String> barcodesOfEmptyLabware = new ArrayList<>();
-        for (Labware lw : labware) {
-            int slotCount = 0;
-            Set<Integer> sampleIds = new HashSet<>();
-            for (Slot slot : lw.getSlots()) {
-                if (slot.getSamples().isEmpty()) {
-                    continue;
-                }
-                ++slotCount;
-                for (Sample sample : slot.getSamples()) {
-                    sampleIds.add(sample.getId());
-                }
-            }
-            if (slotCount==0) {
-                barcodesOfEmptyLabware.add(lw.getBarcode());
-            }
-            if (sampleIds.size() > 1) {
-                barcodesOfMultiSampleLabware.add(lw.getBarcode());
-            }
-            if (slotCount > 1) {
-                barcodesOfMultiSlotLabware.add(lw.getBarcode());
-            }
+    /**
+     * Creates new labware as destination for the extractions.
+     * Returns a map of existing source labware to new destination labware.
+     * @param lwType the type of the new labware
+     * @param sources the source labware
+     * @return a map of source to destination labware
+     */
+    public Map<Labware, Labware> createNewLabware(LabwareType lwType, List<Labware> sources) {
+        Map<Labware, Labware> map = new HashMap<>(sources.size());
+        for (Labware source : sources) {
+            Labware dest = labwareService.create(lwType);
+            map.put(source, dest);
         }
-
-        if (!barcodesOfEmptyLabware.isEmpty()) {
-            throw new IllegalArgumentException("Labware is empty: "+barcodesOfEmptyLabware);
-        }
-        if (!barcodesOfMultiSampleLabware.isEmpty()) {
-            throw new IllegalArgumentException("Labware contains multiple samples: "+barcodesOfMultiSampleLabware);
-        }
-        if (!barcodesOfMultiSlotLabware.isEmpty()) {
-            throw new IllegalArgumentException("Labware contains samples in multiple slots: "+barcodesOfMultiSlotLabware);
-        }
+        return map;
     }
 
-    public void checkLabwareState(Collection<Labware> labware) {
-        List<String> discardedBarcodes = new ArrayList<>();
-        List<String> destroyedBarcodes = new ArrayList<>();
-        List<String> releasedBarcodes = new ArrayList<>();
-
-        for (Labware lw : labware) {
-            if (lw.isDestroyed()) {
-                destroyedBarcodes.add(lw.getBarcode());
-            } else if (lw.isReleased()) {
-                releasedBarcodes.add(lw.getBarcode());
-            } else if (lw.isDiscarded()) {
-                discardedBarcodes.add(lw.getBarcode());
-            }
-        }
-        if (discardedBarcodes.isEmpty() && destroyedBarcodes.isEmpty() && releasedBarcodes.isEmpty()) {
-            return;
-        }
-        List<String> errors = new ArrayList<>(3);
-        if (!destroyedBarcodes.isEmpty()) {
-            errors.add("Labware already destroyed: "+destroyedBarcodes);
-        }
-        if (!releasedBarcodes.isEmpty()) {
-            errors.add("Labware already released: "+releasedBarcodes);
-        }
-        if (!discardedBarcodes.isEmpty()) {
-            errors.add("Labware already discarded: "+discardedBarcodes);
-        }
-        throw new IllegalArgumentException(String.join(" ", errors));
+    /**
+     * Updates the given labware as discarded (and saves them). Returns a list of updated labware.
+     * @param sources the labware to update
+     * @return the updated labware
+     */
+    public List<Labware> discardSources(List<Labware> sources) {
+        return sources.stream()
+                .map(lw -> {
+                    lw.setDiscarded(true);
+                    return labwareRepo.save(lw);
+                }).collect(Collectors.toList());
     }
 
-    public void checkForRepeatedLabware(Collection<Labware> labware) {
-        Set<Integer> lwIds = new HashSet<>();
-        Set<String> repeatedBarcodes = new LinkedHashSet<>();
-        for (Labware lw : labware) {
-            if (!lwIds.add(lw.getId())) {
-                repeatedBarcodes.add(lw.getBarcode());
+    /**
+     * Creates samples, inserting them into the destination labware.
+     * The samples will have bio state RNA. (If the source samples have that bio state, they will be reused.)
+     * @param labwareMap map of source to destination labware
+     */
+    public void createSamples(Map<Labware, Labware> labwareMap) {
+        BioState bioState = bioStateRepo.getByName("RNA");
+        for (var entry : labwareMap.entrySet()) {
+            Slot slot = sourceSlot(entry.getKey());
+            Sample oldSample = slot.getSamples().get(0);
+            Sample newSample;
+            if (oldSample.getBioState().equals(bioState)) {
+                newSample = oldSample;
+            } else {
+                newSample = sampleRepo.save(new Sample(null, oldSample.getSection(), oldSample.getTissue(), bioState));
             }
-        }
-        if (!repeatedBarcodes.isEmpty()) {
-            throw new IllegalArgumentException("Labware specified multiple times: "+repeatedBarcodes);
+            Labware destLw = entry.getValue();
+            Slot destSlot = destLw.getFirstSlot();
+            destSlot.getSamples().add(newSample);
+            destSlot = slotRepo.save(destSlot);
+            destLw.getSlots().set(0, destSlot);
         }
     }
 
+    /**
+     * Creates extract operations.
+     * Uses {@link OperationService}.
+     * @param user the user responsible for the operations
+     * @param opType the type of operation
+     * @param labwareMap the map of source to destination labware
+     * @return a list of newly created operations.
+     */
+    public List<Operation> createOperations(User user, OperationType opType, Map<Labware, Labware> labwareMap) {
+        List<Operation> ops = new ArrayList<>(labwareMap.size());
+        for (var entry : labwareMap.entrySet()) {
+            Slot src = sourceSlot(entry.getKey());
+            Slot dst = entry.getValue().getFirstSlot();
+            Sample srcSample = src.getSamples().get(0);
+            Sample dstSample = dst.getSamples().get(0);
+            Action action = new Action(null, null, src, dst, dstSample, srcSample);
+            Operation op = opService.createOperation(opType, user, List.of(action), null);
+            ops.add(op);
+        }
+        return ops;
+    }
 
+    /**
+     * Gets the populated slot from the given labware
+     * @param lw an item of labware
+     * @return the populated slot from the given labware
+     */
+    private static Slot sourceSlot(Labware lw) {
+        return lw.getSlots().stream()
+                .filter(slot -> !slot.getSamples().isEmpty())
+                .findAny()
+                .orElseThrow();
+    }
 }
