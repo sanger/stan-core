@@ -74,7 +74,11 @@ public class EntityCreator {
     }
 
     public Sample createSample(Tissue tissue, Integer section) {
-        return sampleRepo.save(new Sample(null, section, tissue, getAny(bioStateRepo)));
+        return createSample(tissue, section, getAny(bioStateRepo));
+    }
+
+    public Sample createSample(Tissue tissue, Integer section, BioState bioState) {
+        return sampleRepo.save(new Sample(null, section, tissue, bioState));
     }
 
     public Labware createTube(String barcode) {

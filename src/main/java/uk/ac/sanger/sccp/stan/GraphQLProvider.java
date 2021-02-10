@@ -88,6 +88,7 @@ public class GraphQLProvider {
                         .dataFetcher("printLabware", graphQLMutation.printLabware()) // not transacted
                         .dataFetcher("confirmOperation", transact(graphQLMutation.confirmOperation()))
                         .dataFetcher("release", graphQLMutation.release()) // transaction handled in service
+                        .dataFetcher("extract", transact(graphQLMutation.extract()))
 
                         .dataFetcher("storeBarcode", transact(graphQLStore.storeBarcode()))
                         .dataFetcher("unstoreBarcode", transact(graphQLStore.unstoreBarcode()))
