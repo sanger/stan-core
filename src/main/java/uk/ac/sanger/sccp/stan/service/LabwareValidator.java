@@ -35,6 +35,14 @@ public class LabwareValidator {
     }
 
     /**
+     * Sets the labware to be validated by this validator
+     * @param labware the labware to validate
+     */
+    public void setLabware(Collection<Labware> labware) {
+        this.labware = labware;
+    }
+
+    /**
      * Gets the labware validated by this validator.
      * @return the labware
      */

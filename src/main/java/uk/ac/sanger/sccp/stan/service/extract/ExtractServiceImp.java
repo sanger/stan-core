@@ -57,11 +57,12 @@ public class ExtractServiceImp implements ExtractService {
         }
         LabwareType labwareType = lwTypeRepo.getByName(request.getLabwareType());
         OperationType opType = opTypeRepo.getByName("Extract");
+        BioState bioState = bioStateRepo.getByName("RNA");
         List<Labware> sources = loadAndValidateLabware(request.getBarcodes());
 
         sources = discardSources(sources);
         Map<Labware, Labware> labwareMap = createNewLabware(labwareType, sources);
-        createSamples(labwareMap);
+        createSamples(labwareMap, bioState);
         List<Operation> ops = createOperations(user, opType, labwareMap);
         return new OperationResult(ops, labwareMap.values());
     }
@@ -115,9 +116,9 @@ public class ExtractServiceImp implements ExtractService {
      * Creates samples, inserting them into the destination labware.
      * The samples will have bio state RNA. (If the source samples have that bio state, they will be reused.)
      * @param labwareMap map of source to destination labware
+     * @param bioState the bio state for the new samples
      */
-    public void createSamples(Map<Labware, Labware> labwareMap) {
-        BioState bioState = bioStateRepo.getByName("RNA");
+    public void createSamples(Map<Labware, Labware> labwareMap, BioState bioState) {
         for (var entry : labwareMap.entrySet()) {
             Slot slot = sourceSlot(entry.getKey());
             Sample oldSample = slot.getSamples().get(0);
