@@ -10,7 +10,7 @@ import java.util.Objects;
 import static uk.ac.sanger.sccp.utils.BasicUtils.newArrayList;
 
 /**
- * The results to a successful confirm operation request
+ * The results of a successful request to record operations.
  * @author dr6
  */
 public class OperationResult {
