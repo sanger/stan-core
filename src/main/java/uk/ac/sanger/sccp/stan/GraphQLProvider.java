@@ -9,8 +9,6 @@ import graphql.schema.idl.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.*;
-import org.springframework.transaction.support.DefaultTransactionDefinition;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
@@ -26,15 +24,15 @@ public class GraphQLProvider {
 
     private GraphQL graphQL;
 
-    final PlatformTransactionManager transactionManager;
+    final Transactor transactor;
     final GraphQLDataFetchers graphQLDataFetchers;
     final GraphQLMutation graphQLMutation;
     final GraphQLStore graphQLStore;
 
     @Autowired
-    public GraphQLProvider(PlatformTransactionManager transactionManager,
+    public GraphQLProvider(Transactor transactor,
                            GraphQLDataFetchers graphQLDataFetchers, GraphQLMutation graphQLMutation, GraphQLStore graphQLStore) {
-        this.transactionManager = transactionManager;
+        this.transactor = transactor;
         this.graphQLDataFetchers = graphQLDataFetchers;
         this.graphQLMutation = graphQLMutation;
         this.graphQLStore = graphQLStore;
@@ -101,23 +99,6 @@ public class GraphQLProvider {
     }
 
     private <T> DataFetcher<T> transact(DataFetcher<T> dataFetcher) {
-        return dfe -> {
-            DefaultTransactionDefinition transactionDefinition = new DefaultTransactionDefinition();
-            transactionDefinition.setName("Mutation transaction");
-            transactionDefinition.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRED);
-            TransactionStatus status = transactionManager.getTransaction(transactionDefinition);
-            boolean success = false;
-            try {
-                T value = dataFetcher.get(dfe);
-                success = true;
-                return value;
-            } finally {
-                if (success) {
-                    transactionManager.commit(status);
-                } else {
-                    transactionManager.rollback(status);
-                }
-            }
-        };
+        return transactor.dataFetcher("Mutation transaction", dataFetcher);
     }
 }

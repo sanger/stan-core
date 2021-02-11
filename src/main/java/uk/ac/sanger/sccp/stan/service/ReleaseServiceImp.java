@@ -4,8 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.*;
-import org.springframework.transaction.support.DefaultTransactionDefinition;
+import uk.ac.sanger.sccp.stan.Transactor;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.ReleaseRequest;
@@ -25,6 +24,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.newArrayList;
 public class ReleaseServiceImp implements ReleaseService {
     Logger log = LoggerFactory.getLogger(ReleaseServiceImp.class);
 
+    private final Transactor transactor;
     private final ReleaseDestinationRepo destinationRepo;
     private final ReleaseRecipientRepo recipientRepo;
     private final LabwareRepo labwareRepo;
@@ -32,14 +32,13 @@ public class ReleaseServiceImp implements ReleaseService {
     private final ReleaseRepo releaseRepo;
     private final ReleaseDetailRepo releaseDetailRepo;
     private final EntityManager entityManager;
-    private final PlatformTransactionManager transactionManager;
 
     @Autowired
-    public ReleaseServiceImp(PlatformTransactionManager transactionManager,
+    public ReleaseServiceImp(Transactor transactor,
                              ReleaseDestinationRepo destinationRepo, ReleaseRecipientRepo recipientRepo,
                              LabwareRepo labwareRepo, StoreService storeService, ReleaseRepo releaseRepo,
                              ReleaseDetailRepo releaseDetailRepo, EntityManager entityManager) {
-        this.transactionManager = transactionManager;
+        this.transactor = transactor;
         this.destinationRepo = destinationRepo;
         this.recipientRepo = recipientRepo;
         this.labwareRepo = labwareRepo;
@@ -76,22 +75,7 @@ public class ReleaseServiceImp implements ReleaseService {
 
     // NB @Transactional annotation does not work for method calls within the same object
     public List<Release> transactRelease(User user, ReleaseRequest request) {
-        DefaultTransactionDefinition transactionDefinition = new DefaultTransactionDefinition();
-        transactionDefinition.setName("Release transaction");
-        transactionDefinition.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRED);
-        TransactionStatus status = transactionManager.getTransaction(transactionDefinition);
-        boolean success = false;
-        try {
-            List<Release> releases = release(user, request);
-            success = true;
-            return releases;
-        } finally {
-            if (success) {
-                transactionManager.commit(status);
-            } else {
-                transactionManager.rollback(status);
-            }
-        }
+        return transactor.transact("Release transaction", () -> release(user, request));
     }
 
     /**
