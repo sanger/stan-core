@@ -14,7 +14,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.repo.LabwarePrintRepo;
+import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.service.label.LabelPrintRequest;
 import uk.ac.sanger.sccp.stan.service.label.LabwareLabelData;
 import uk.ac.sanger.sccp.stan.service.label.LabwareLabelData.LabelContent;
@@ -22,6 +22,7 @@ import uk.ac.sanger.sccp.stan.service.label.print.PrintClient;
 import uk.ac.sanger.sccp.stan.service.store.StorelightClient;
 import uk.ac.sanger.sccp.utils.GraphQLClient.GraphQLResponse;
 
+import javax.persistence.EntityManager;
 import javax.transaction.Transactional;
 import java.util.*;
 import java.util.stream.IntStream;
@@ -48,9 +49,20 @@ public class IntegrationTests {
     private GraphQLTester tester;
 
     @Autowired
+    private EntityManager entityManager;
+
+    @Autowired
     private EntityCreator entityCreator;
     @Autowired
     private LabwarePrintRepo labwarePrintRepo;
+    @Autowired
+    private BioStateRepo bioStateRepo;
+    @Autowired
+    private SampleRepo sampleRepo;
+    @Autowired
+    private OperationRepo opRepo;
+    @Autowired
+    private LabwareRepo lwRepo;
 
     @MockBean
     StorelightClient mockStorelightClient;
@@ -225,6 +237,106 @@ public class IntegrationTests {
         }
     }
 
+    @Test
+    @Transactional
+    public void testExtract() throws Exception {
+        Donor donor = entityCreator.createDonor("DONOR1", LifeStage.adult);
+        Tissue tissue = entityCreator.createTissue(donor, "TISSUE");
+        BioState tissueBs = bioStateRepo.getByName("Tissue");
+        Sample[] samples = IntStream.range(0,2)
+                .mapToObj(i -> entityCreator.createSample(tissue, null, tissueBs))
+                .toArray(Sample[]::new);
+        LabwareType lwType = entityCreator.createLabwareType("lwtype", 1, 1);
+        String[] barcodes = { "STAN-A1", "STAN-A2" };
+        Labware[] sources = IntStream.range(0, samples.length)
+                .mapToObj(i -> entityCreator.createLabware(barcodes[i], lwType, samples[i]))
+                .toArray(Labware[]::new);
+
+        String mutation = tester.readResource("graphql/extract.graphql")
+                .replace("[]", "[\"STAN-A1\", \"STAN-A2\"]")
+                .replace("LWTYPE", lwType.getName());
+        User user = entityCreator.createUser("user1");
+        tester.setUser(user);
+        Object result = tester.post(mutation);
+
+        Object extractData = chainGet(result, "data", "extract");
+        List<Map<String,?>> lwData = chainGet(extractData, "labware");
+        assertThat(lwData).hasSize(2);
+        for (var lwd : lwData) {
+            assertEquals(lwType.getName(), chainGet(lwd, "labwareType", "name"));
+            assertThat((String) lwd.get("barcode")).startsWith("STAN-");
+            List<?> slotData = chainGet(lwd, "slots");
+            assertThat(slotData).hasSize(1);
+            List<?> sampleData = chainGet(slotData, 0, "samples");
+            assertThat(sampleData).hasSize(1);
+            assertNotNull(chainGet(sampleData, 0, "id"));
+        }
+
+        List<Map<String,?>> opData = chainGet(extractData, "operations");
+        assertThat(opData).hasSize(2);
+        if (sources[0].getId().equals(chainGet(opData, 1, "actions", 0, "source", "labwareId"))) {
+            swap(opData, 0, 1);
+        }
+        if (chainGet(opData, 0, "actions", 0, "destination", "labwareId").equals(
+                chainGet(lwData, 1, "id"))) {
+            swap(lwData, 0, 1);
+        }
+        int[] sampleIds = new int[2];
+        int[] destIds = new int[2];
+        int[] opIds = new int[2];
+        for (int i = 0; i < 2; ++i) {
+            Map<String, ?> opd = opData.get(i);
+            Map<String, ?> lwd = lwData.get(i);
+            opIds[i] = (int) opd.get("id");
+            assertEquals("Extract", chainGet(opd, "operationType", "name"));
+            assertNotNull(opd.get("performed"));
+            List<Map<String,?>> actionData = chainGet(opd, "actions");
+            assertThat(actionData).hasSize(1);
+            Map<String, ?> acd = actionData.get(0);
+            int sampleId = chainGet(acd, "sample", "id");
+            sampleIds[i] = sampleId;
+            int lwId = (int) lwd.get("id");
+            destIds[i] = lwId;
+            assertEquals(lwId, (int) chainGet(acd, "destination", "labwareId"));
+            assertEquals("A1", chainGet(acd, "destination", "address"));
+            assertEquals(sampleId, (int) chainGet(lwd, "slots", 0, "samples", 0, "id"));
+            assertEquals(sources[i].getId(), (int) chainGet(acd, "source", "labwareId"));
+        }
+
+        entityManager.flush();
+
+        Sample[] newSamples = Arrays.stream(sampleIds)
+                .mapToObj((int id) -> sampleRepo.findById(id).orElseThrow())
+                .toArray(Sample[]::new);
+        Labware[] dests = Arrays.stream(destIds)
+                .mapToObj(id -> lwRepo.findById(id).orElseThrow())
+                .toArray(Labware[]::new);
+        Operation[] ops = Arrays.stream(opIds)
+                .mapToObj(id -> opRepo.findById(id).orElseThrow())
+                .toArray(Operation[]::new);
+
+        for (int i = 0; i < 2; ++i) {
+            entityManager.refresh(sources[i]);
+            assertTrue(sources[i].isDiscarded());
+
+            Labware dest = dests[i];
+            Sample sample = newSamples[i];
+            assertEquals(lwType, dest.getLabwareType());
+            Slot slot = dest.getFirstSlot();
+            assertThat(slot.getSamples()).containsOnly(sample);
+            assertEquals("RNA", sample.getBioState().getName());
+            Operation op = ops[i];
+            assertEquals("Extract", op.getOperationType().getName());
+            assertThat(op.getActions()).hasSize(1);
+            Action action = op.getActions().get(0);
+            assertEquals(sources[i].getId(), action.getSource().getLabwareId());
+            assertEquals(samples[i], action.getSourceSample());
+            assertEquals(dest.getFirstSlot(), action.getDestination());
+            assertEquals(sample, action.getSample());
+            assertNotNull(op.getPerformed());
+        }
+    }
+
     private List<Map<String, String>> tsvToMap(String tsv) {
         String[] lines = tsv.split("\n");
         String[] headers = lines[0].split("\t");
@@ -264,13 +376,30 @@ public class IntegrationTests {
 
     @SuppressWarnings("unchecked")
     private static <T> T chainGet(Object container, Object... accessors) {
-        for (Object accessor : accessors) {
+        for (int i = 0; i < accessors.length; i++) {
+            Object accessor = accessors[i];
+            assert container != null;
+            Object item;
             if (accessor instanceof Integer) {
-                container = ((List<?>) container).get((int) accessor);
+                if (!(container instanceof List)) {
+                    throw new IllegalArgumentException("["+accessor+"]: container is not list: "+container);
+                }
+                item = ((List<?>) container).get((int) accessor);
             } else {
-                container = ((Map<?,?>) container).get(accessor);
+                if (!(container instanceof Map)) {
+                    throw new IllegalArgumentException("["+accessor+"]: container is not map: "+container);
+                }
+                item = ((Map<?, ?>) container).get(accessor);
             }
+            if (item==null && i < accessors.length-1) {
+                throw new IllegalArgumentException("No such element as "+accessor+" in object "+container);
+            }
+            container = item;
         }
         return (T) container;
+    }
+
+    private static <E> void swap(List<E> list, int i, int j) {
+        list.set(i, list.set(j, list.get(i)));
     }
 }

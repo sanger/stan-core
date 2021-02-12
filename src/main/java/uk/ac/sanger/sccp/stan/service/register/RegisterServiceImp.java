@@ -22,6 +22,7 @@ public class RegisterServiceImp implements RegisterService {
     private final SampleRepo sampleRepo;
     private final SlotRepo slotRepo;
     private final OperationTypeRepo opTypeRepo;
+    private final BioStateRepo bioStateRepo;
     private final LabwareService labwareService;
     private final OperationService operationService;
 
@@ -29,7 +30,7 @@ public class RegisterServiceImp implements RegisterService {
     public RegisterServiceImp(EntityManager entityManager, RegisterValidationFactory validationFactory,
                               DonorRepo donorRepo, TissueRepo tissueRepo,
                               SampleRepo sampleRepo, SlotRepo slotRepo,
-                              OperationTypeRepo opTypeRepo,
+                              OperationTypeRepo opTypeRepo, BioStateRepo bioStateRepo,
                               LabwareService labwareService, OperationService operationService) {
         this.entityManager = entityManager;
         this.validationFactory = validationFactory;
@@ -38,6 +39,7 @@ public class RegisterServiceImp implements RegisterService {
         this.sampleRepo = sampleRepo;
         this.slotRepo = slotRepo;
         this.opTypeRepo = opTypeRepo;
+        this.bioStateRepo = bioStateRepo;
         this.labwareService = labwareService;
         this.operationService = operationService;
     }
@@ -76,6 +78,7 @@ public class RegisterServiceImp implements RegisterService {
         List<Tissue> tissueList = new ArrayList<>(request.getBlocks().size());
 
         List<Labware> labwareList = new ArrayList<>(request.getBlocks().size());
+        BioState bioState = bioStateRepo.getByName("Tissue");
 
         for (BlockRegisterRequest block : request.getBlocks()) {
             Tissue tissue = new Tissue(null, block.getExternalIdentifier(), block.getReplicateNumber(),
@@ -87,7 +90,7 @@ public class RegisterServiceImp implements RegisterService {
                     validation.getHmdmc(block.getHmdmc()));
             tissue = tissueRepo.save(tissue);
             tissueList.add(tissue);
-            Sample sample = sampleRepo.save(new Sample(null, null, tissue));
+            Sample sample = sampleRepo.save(new Sample(null, null, tissue, bioState));
             LabwareType labwareType = validation.getLabwareType(block.getLabwareType());
             Labware labware = labwareService.create(labwareType);
             Slot slot = labware.getFirstSlot();
@@ -98,7 +101,7 @@ public class RegisterServiceImp implements RegisterService {
             entityManager.refresh(labware);
             labwareList.add(labware);
             OperationType operationType = opTypeRepo.getByName("Register");
-            operationService.createOperation(operationType, user, slot, slot, sample);
+            operationService.createOperationInPlace(operationType, user, slot, sample);
         }
 
         return new RegisterResult(labwareList, tissueList);

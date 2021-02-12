@@ -280,39 +280,58 @@ public class TestConfirmOperationService {
 
         assertSame(expectedSample, service.getOrCreateSample(planAction, slot));
         if (creates) {
-            verify(mockSampleRepo).save(new Sample(null, planAction.getNewSection(), planAction.getSample().getTissue()));
+            Integer newSection = planAction.getNewSection();
+            if (newSection==null) {
+                newSection = planAction.getSample().getSection();
+            }
+            BioState newBioState = planAction.getNewBioState();
+            if (newBioState==null) {
+                newBioState = planAction.getSample().getBioState();
+            }
+            verify(mockSampleRepo).save(makeSample(null, newSection, planAction.getSample().getTissue(), newBioState));
         } else {
             verifyNoInteractions(mockSampleRepo);
         }
     }
 
+    private static Sample makeSample(Integer id, Integer section, Tissue tissue, BioState bioState) {
+        return new Sample(id, section, tissue, bioState);
+    }
+
     static Stream<Arguments> getOrCreateSampleArguments() {
+        BioState bio = new BioState(1, "Tissue");
         Tissue tissue1 = EntityFactory.getTissue();
         Tissue tissue2 = EntityFactory.makeTissue(EntityFactory.getDonor(), EntityFactory.getSpatialLocation());
-        Sample blockSample = new Sample(540, null, tissue1);
+        Sample blockSample = makeSample(540, null, tissue1, bio);
         List<Sample> sections = List.of(
-                new Sample(541, 1, tissue2),
-                new Sample(542, 1, tissue1),
-                new Sample(543, 2, tissue1)
+                makeSample(541, 1, tissue2, bio),
+                makeSample(542, 1, tissue1, bio),
+                makeSample(543, 2, tissue1, bio)
         );
-        Sample newSection = new Sample(544, 3, tissue1);
+        BioState rna = new BioState(2, "RNA");
+        Sample newSection = makeSample(544, 3, tissue1, bio);
         Slot sourceSlot = new Slot(null, null, new Address(1,1), List.of(blockSample), null, null);
         Slot emptySlot = new Slot(null, null, new Address(1,1), List.of(), null, null);
         Slot populousSlot = new Slot(null, null, new Address(1,2), sections, null, null);
         return Stream.of(
-                Arguments.of(new PlanAction(null, null, sourceSlot, emptySlot, blockSample, null, null),
+                Arguments.of(new PlanAction(null, null, sourceSlot, emptySlot, blockSample, null, null, null),
                         emptySlot, blockSample, false),
-                Arguments.of(new PlanAction(null, null, sourceSlot, emptySlot, blockSample, 3, null),
+                Arguments.of(new PlanAction(null, null, sourceSlot, emptySlot, blockSample, 3, null, null),
                         emptySlot, newSection, true),
-                Arguments.of(new PlanAction(null, null, sourceSlot, populousSlot, blockSample, 3, null),
+                Arguments.of(new PlanAction(null, null, sourceSlot, populousSlot, blockSample, 3, null, null),
                         populousSlot, newSection, true),
-                Arguments.of(new PlanAction(null, null, sourceSlot, populousSlot, blockSample, 1, null),
+                Arguments.of(new PlanAction(null, null, sourceSlot, populousSlot, blockSample, 1, null, null),
                         populousSlot, sections.get(1), false),
-                Arguments.of(new PlanAction(null, null, sourceSlot, populousSlot, blockSample, 2, null),
+                Arguments.of(new PlanAction(null, null, sourceSlot, populousSlot, blockSample, 2, null, null),
                         populousSlot, sections.get(2), false),
-                Arguments.of(new PlanAction(null, null, sourceSlot, populousSlot, sections.get(1), 1, null),
+                Arguments.of(new PlanAction(null, null, sourceSlot, populousSlot, sections.get(1), 1, null, null),
                         populousSlot, sections.get(1), false),
-                Arguments.of(new PlanAction(null, null, sourceSlot, emptySlot, sections.get(1), 3, null),
+                Arguments.of(new PlanAction(null, null, sourceSlot, emptySlot, sections.get(1), 3, null, null),
+                        emptySlot, newSection, true),
+
+                Arguments.of(new PlanAction(null, null, sourceSlot, emptySlot, blockSample, null, null, rna),
+                        emptySlot, newSection, true),
+                Arguments.of(new PlanAction(null, null, sourceSlot, emptySlot, blockSample, 17, null, rna),
                         emptySlot, newSection, true)
         );
     }
@@ -348,7 +367,7 @@ public class TestConfirmOperationService {
         final Address FIRST = new Address(1,1);
         final Address SECOND = new Address(1,2);
         final Address THIRD = new Address(2,1);
-        Sample sample2 = new Sample(sample1.getId()+1, 700, sample1.getTissue());
+        Sample sample2 = makeSample(sample1.getId()+1, 700, sample1.getTissue(), EntityFactory.getBioState());
         final int sam1id = sample1.getId();
         final int sam2id = sample2.getId();
         Labware lw = EntityFactory.makeEmptyLabware(EntityFactory.makeLabwareType(2,2));

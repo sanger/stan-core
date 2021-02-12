@@ -5,9 +5,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
 import org.mockito.InOrder;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionStatus;
 import uk.ac.sanger.sccp.stan.EntityFactory;
+import uk.ac.sanger.sccp.stan.Transactor;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.ReleaseRequest;
@@ -18,6 +17,7 @@ import uk.ac.sanger.sccp.stan.service.store.StoreService;
 import javax.persistence.EntityManager;
 import java.sql.Timestamp;
 import java.util.*;
+import java.util.function.Supplier;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -36,7 +36,7 @@ public class TestReleaseService {
     private ReleaseRepo mockReleaseRepo;
     private ReleaseDetailRepo mockReleaseDetailRepo;
     private EntityManager mockEntityManager;
-    private PlatformTransactionManager mockTransactionManager;
+    private Transactor mockTransactor;
 
     private ReleaseDestination destination;
     private ReleaseRecipient recipient;
@@ -50,7 +50,7 @@ public class TestReleaseService {
     void setup() {
         ReleaseDestinationRepo mockDestinationRepo = mock(ReleaseDestinationRepo.class);
         ReleaseRecipientRepo mockRecipientRepo = mock(ReleaseRecipientRepo.class);
-        mockTransactionManager = mock(PlatformTransactionManager.class);
+        mockTransactor = mock(Transactor.class);
         mockLabwareRepo = mock(LabwareRepo.class);
         mockStoreService = mock(StoreService.class);
         mockReleaseRepo = mock(ReleaseRepo.class);
@@ -63,11 +63,16 @@ public class TestReleaseService {
         when(mockRecipientRepo.getByUsername(recipient.getUsername())).thenReturn(recipient);
 
         sample = EntityFactory.getSample();
-        sample1 = new Sample(sample.getId()+1, 7, sample.getTissue());
+        sample1 = new Sample(sample.getId()+1, 7, sample.getTissue(), EntityFactory.getBioState());
         labwareType = EntityFactory.makeLabwareType(1,4);
 
-        service = spy(new ReleaseServiceImp(mockTransactionManager, mockDestinationRepo, mockRecipientRepo, mockLabwareRepo, mockStoreService,
+        service = spy(new ReleaseServiceImp(mockTransactor, mockDestinationRepo, mockRecipientRepo, mockLabwareRepo, mockStoreService,
                 mockReleaseRepo, mockReleaseDetailRepo, mockEntityManager));
+
+        when(mockTransactor.transact(any(), any())).then(invocation -> {
+            Supplier<List<Release>> supplier = invocation.getArgument(1);
+            return supplier.get();
+        });
     }
 
     @Test
@@ -92,8 +97,6 @@ public class TestReleaseService {
     @ParameterizedTest
     @ValueSource(booleans={true, false})
     public void testTransactRelease(final boolean successful) {
-        TransactionStatus status = mock(TransactionStatus.class);
-        when(mockTransactionManager.getTransaction(any())).thenReturn(status);
         ReleaseRequest request = new ReleaseRequest();
 
         IllegalArgumentException exception;
@@ -115,14 +118,8 @@ public class TestReleaseService {
                     .hasMessage(exception.getMessage());
         }
 
-        verify(mockTransactionManager).getTransaction(any());
+        verify(mockTransactor).transact(anyString(), any());
         verify(service).release(user, request);
-
-        if (successful) {
-            verify(mockTransactionManager).commit(status);
-        } else {
-            verify(mockTransactionManager).rollback(status);
-        }
     }
 
     @ParameterizedTest

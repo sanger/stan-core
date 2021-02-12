@@ -17,6 +17,7 @@ public class EntityFactory {
     private static User user;
     private static TissueType tissueType;
     private static SpatialLocation spatialLocation;
+    private static BioState bioState;
     private static LabelType labelType;
     private static LabwareType tubeType;
     private static Donor donor;
@@ -42,6 +43,13 @@ public class EntityFactory {
             tissueType = new TissueType(20, "Arm", "ARM");
         }
         return tissueType;
+    }
+
+    public static BioState getBioState() {
+        if (bioState==null) {
+            bioState = new BioState(30, "Tissue");
+        }
+        return bioState;
     }
 
     public static SpatialLocation getSpatialLocation() {
@@ -93,7 +101,7 @@ public class EntityFactory {
 
     public static Sample getSample() {
         if (sample==null) {
-            sample = new Sample(90, 1, getTissue());
+            sample = new Sample(90, 1, getTissue(), getBioState());
         }
         return sample;
     }
@@ -224,7 +232,7 @@ public class EntityFactory {
     }
 
     public static Operation makeOpForSlots(OperationType opType, List<Slot> sources, List<Slot> destinations, User user) {
-        return makeOpLike(opType, sources, destinations, user, Operation::new, Action::new);
+        return makeOpLike(opType, sources, destinations, user, Operation::new, EntityFactory::makeAction);
     }
 
     public static Timestamp now() {
@@ -233,6 +241,10 @@ public class EntityFactory {
 
     private static List<Slot> toFirstSlots(Collection<Labware> labware) {
         return labware.stream().map(Labware::getFirstSlot).collect(toList());
+    }
+
+    private static Action makeAction(int id, int opId, Slot source, Slot dest, Sample sample) {
+        return new Action(id, opId, source, dest, sample, sample);
     }
 
     @FunctionalInterface

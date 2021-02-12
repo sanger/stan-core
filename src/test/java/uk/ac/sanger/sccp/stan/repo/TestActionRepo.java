@@ -43,7 +43,7 @@ public class TestActionRepo {
         Slot slot2 = lw2.getFirstSlot();
         OperationType opType = entityCreator.createOpType("optype");
         Operation op = opRepo.save(new Operation(null, opType, null, null, user));
-        Action action = actionRepo.save(new Action(null, op.getId(), slot1, slot2, sample));
+        Action action = actionRepo.save(new Action(null, op.getId(), slot1, slot2, sample, sample));
 
         assertThat(actionRepo.findAllByDestinationIn(List.of(slot1, slot2))).containsOnly(action);
         assertThat(actionRepo.findAllByDestinationIn(List.of(slot1))).isEmpty();

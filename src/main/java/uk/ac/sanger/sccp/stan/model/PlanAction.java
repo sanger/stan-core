@@ -28,15 +28,17 @@ public class PlanAction {
     private Sample sample;
     private Integer newSection;
     private Integer sampleThickness;
+    @ManyToOne
+    private BioState newBioState;
 
     public PlanAction() {}
 
     public PlanAction(Integer id, Integer planOperationId, Slot source, Slot destination, Sample sample) {
-        this(id, planOperationId, source, destination, sample, null, null);
+        this(id, planOperationId, source, destination, sample, null, null, null);
     }
 
     public PlanAction(Integer id, Integer planOperationId, Slot source, Slot destination, Sample sample,
-                      Integer newSection, Integer sampleThickness) {
+                      Integer newSection, Integer sampleThickness, BioState newBioState) {
         this.id = id;
         this.planOperationId = planOperationId;
         this.source = source;
@@ -44,6 +46,7 @@ public class PlanAction {
         this.sample = sample;
         this.newSection = newSection;
         this.sampleThickness = sampleThickness;
+        this.newBioState = newBioState;
     }
 
     public Integer getId() {
@@ -102,6 +105,14 @@ public class PlanAction {
         this.sampleThickness = sampleThickness;
     }
 
+    public BioState getNewBioState() {
+        return this.newBioState;
+    }
+
+    public void setNewBioState(BioState newBioState) {
+        this.newBioState = newBioState;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -113,7 +124,8 @@ public class PlanAction {
                 && Objects.equals(this.destination, that.destination)
                 && Objects.equals(this.sample, that.sample)
                 && Objects.equals(this.newSection, that.newSection)
-                && Objects.equals(this.sampleThickness, that.sampleThickness));
+                && Objects.equals(this.sampleThickness, that.sampleThickness)
+                && Objects.equals(this.newBioState, that.newBioState));
     }
 
     @Override
@@ -131,6 +143,7 @@ public class PlanAction {
                 .add("sample", sample)
                 .add("newSection", newSection)
                 .add("sampleThickness", sampleThickness)
+                .add("newBioState", newBioState)
                 .toString();
     }
 }

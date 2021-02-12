@@ -2,6 +2,8 @@ package uk.ac.sanger.sccp.stan.service.operation.plan;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
@@ -109,8 +111,8 @@ public class TestPlanService {
         List<Labware> destinations = List.of(tube);
         doReturn(destinations).when(planService).createDestinations(any());
         List<PlanAction> actions = List.of(new PlanAction(50, plan.getId(),
-                tube.getFirstSlot(), tube.getFirstSlot(), EntityFactory.getSample(), null, null));
-        doReturn(actions).when(planService).createActions(any(), anyInt(), any(), any());
+                tube.getFirstSlot(), tube.getFirstSlot(), EntityFactory.getSample(), null, null, null));
+        doReturn(actions).when(planService).createActions(any(), anyInt(), any(), any(), any());
 
         final PlanRequest request = new PlanRequest("Section", List.of());
         PlanResult result = planService.executePlanRequest(user, request);
@@ -123,7 +125,7 @@ public class TestPlanService {
         verify(planService).createPlan(user, request.getOperationType());
         verify(planService).lookUpSources(request);
         verify(planService).createDestinations(request);
-        verify(planService).createActions(request, plan.getId(), sources, destinations);
+        verify(planService).createActions(request, plan.getId(), sources, destinations, null);
     }
 
     @Test
@@ -193,11 +195,13 @@ public class TestPlanService {
         verify(mockLwService).create(preType, prebarcode);
     }
 
-    @Test
-    public void testCreateActions() {
+    @ParameterizedTest
+    @ValueSource(booleans={false, true})
+    public void testCreateActions(boolean useNewBioState) {
+        BioState bioState = (useNewBioState ? new BioState(2, "RNA") : null);
         LabwareType lt = EntityFactory.makeLabwareType(1, 2);
         Sample nonSectionSample = EntityFactory.getSample();
-        Sample sectionSample = new Sample(nonSectionSample.getId()+1, null, nonSectionSample.getTissue());
+        Sample sectionSample = new Sample(nonSectionSample.getId()+1, null, nonSectionSample.getTissue(), EntityFactory.getBioState());
         List<Sample> samples = List.of(sectionSample, nonSectionSample);
         final Address FIRST = new Address(1,1);
         final Address SECOND = new Address(1, 2);
@@ -235,10 +239,10 @@ public class TestPlanService {
                 ));
 
         List<PlanAction> expectedActions = List.of(
-                new PlanAction(21, planId, sources.get(0).getFirstSlot(), destinations.get(0).getFirstSlot(), samples.get(0), 5, null),
-                new PlanAction(22, planId, sources.get(0).getFirstSlot(), destinations.get(0).getSlot(SECOND), samples.get(0), 6, 1),
-                new PlanAction(23, planId, sources.get(0).getFirstSlot(), destinations.get(1).getFirstSlot(), samples.get(0), 7, 2),
-                new PlanAction(24, planId, sources.get(1).getSlot(SECOND), destinations.get(1).getSlot(SECOND), samples.get(1), null, 3)
+                new PlanAction(21, planId, sources.get(0).getFirstSlot(), destinations.get(0).getFirstSlot(), samples.get(0), 5, null, bioState),
+                new PlanAction(22, planId, sources.get(0).getFirstSlot(), destinations.get(0).getSlot(SECOND), samples.get(0), 6, 1, bioState),
+                new PlanAction(23, planId, sources.get(0).getFirstSlot(), destinations.get(1).getFirstSlot(), samples.get(0), 7, 2, bioState),
+                new PlanAction(24, planId, sources.get(1).getSlot(SECOND), destinations.get(1).getSlot(SECOND), samples.get(1), null, 3, bioState)
         );
 
         final int[] planActionIdCounter = {20};
@@ -251,7 +255,7 @@ public class TestPlanService {
         final int[] newSectionCounter = {4};
         when(mockSampleService.nextSection(any())).then(invocation -> (++newSectionCounter[0]));
 
-        final List<PlanAction> actions = planService.createActions(request, planId, sourceMap, destinations);
+        final List<PlanAction> actions = planService.createActions(request, planId, sourceMap, destinations, bioState);
         assertEquals(expectedActions, actions);
 
         actions.forEach(ac -> verify(mockPlanActionRepo).save(ac));

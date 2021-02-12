@@ -24,15 +24,18 @@ public class Action {
     private Slot destination;
     @ManyToOne
     private Sample sample;
+    @ManyToOne
+    private Sample sourceSample;
 
     public Action() {}
 
-    public Action(Integer id, Integer operationId, Slot source, Slot destination, Sample sample) {
+    public Action(Integer id, Integer operationId, Slot source, Slot destination, Sample sample, Sample sourceSample) {
         this.id = id;
         this.operationId = operationId;
         this.source = source;
         this.destination = destination;
         this.sample = sample;
+        this.sourceSample = sourceSample;
     }
 
     public Integer getId() {
@@ -75,6 +78,14 @@ public class Action {
         this.sample = sample;
     }
 
+    public Sample getSourceSample() {
+        return this.sourceSample;
+    }
+
+    public void setSourceSample(Sample sourceSample) {
+        this.sourceSample = sourceSample;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -84,7 +95,8 @@ public class Action {
                 && Objects.equals(this.operationId, that.operationId)
                 && Objects.equals(this.source, that.source)
                 && Objects.equals(this.destination, that.destination)
-                && Objects.equals(this.sample, that.sample));
+                && Objects.equals(this.sample, that.sample)
+                && Objects.equals(this.sourceSample, that.sourceSample));
     }
 
     @Override
@@ -100,6 +112,7 @@ public class Action {
                 .add("source", source)
                 .add("destination", destination)
                 .add("sample", sample)
+                .add("sourceSample", sourceSample)
                 .toString();
     }
 }

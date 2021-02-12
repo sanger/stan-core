@@ -26,11 +26,12 @@ public class TestSampleRepo {
     private final MediumRepo mediumRepo;
     private final FixativeRepo fixativeRepo;
     private final HmdmcRepo hmdmcRepo;
+    private final BioStateRepo bioStateRepo;
 
     @Autowired
     public TestSampleRepo(SampleRepo sampleRepo, DonorRepo donorRepo, TissueRepo tissueRepo,
                           SpatialLocationRepo slRepo, MouldSizeRepo mouldSizeRepo, MediumRepo mediumRepo,
-                          FixativeRepo fixativeRepo, HmdmcRepo hmdmcRepo) {
+                          FixativeRepo fixativeRepo, HmdmcRepo hmdmcRepo, BioStateRepo bioStateRepo) {
         this.sampleRepo = sampleRepo;
         this.donorRepo = donorRepo;
         this.tissueRepo = tissueRepo;
@@ -39,6 +40,7 @@ public class TestSampleRepo {
         this.mediumRepo = mediumRepo;
         this.fixativeRepo = fixativeRepo;
         this.hmdmcRepo = hmdmcRepo;
+        this.bioStateRepo = bioStateRepo;
     }
 
     @Test
@@ -50,10 +52,11 @@ public class TestSampleRepo {
         Tissue tissue = new Tissue(null, "TISSUE1", 1, any(slRepo), donor, any(mouldSizeRepo),
                 any(mediumRepo), any(fixativeRepo), any(hmdmcRepo));
         tissueRepo.save(tissue);
+        BioState bioState = any(bioStateRepo);
 
-        sampleRepo.save(new Sample(null, 3, tissue));
-        sampleRepo.save(new Sample(null, 18, tissue));
-        sampleRepo.save(new Sample(null, 4, tissue));
+        sampleRepo.save(new Sample(null, 3, tissue, bioState));
+        sampleRepo.save(new Sample(null, 18, tissue, bioState));
+        sampleRepo.save(new Sample(null, 4, tissue, bioState));
         assertThat(sampleRepo.findMaxSectionForTissueId(tissue.getId())).hasValue(18);
     }
 
