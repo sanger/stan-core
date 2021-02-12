@@ -53,10 +53,11 @@ public class PlanServiceImp implements PlanService {
     }
 
     public PlanResult executePlanRequest(User user, PlanRequest request) {
+        // At some point it may be necessary to derive a new biostate as part of this method
         PlanOperation plan = createPlan(user, request.getOperationType());
         Map<String, Labware> sources = lookUpSources(request);
         List<Labware> destinations = createDestinations(request);
-        List<PlanAction> actions = createActions(request, plan.getId(), sources, destinations);
+        List<PlanAction> actions = createActions(request, plan.getId(), sources, destinations, null);
         plan.setPlanActions(actions);
         return new PlanResult(List.of(plan), destinations);
     }
@@ -98,7 +99,8 @@ public class PlanServiceImp implements PlanService {
     }
 
     public List<PlanAction> createActions(PlanRequest request, int planId,
-                                          Map<String, Labware> sources, List<Labware> destinations) {
+                                          Map<String, Labware> sources, List<Labware> destinations,
+                                          BioState newBioState) {
         assert request.getLabware().size()==destinations.size();
         Iterator<Labware> destIter = destinations.iterator();
         List<PlanAction> actions = new ArrayList<>();
@@ -126,7 +128,7 @@ public class PlanServiceImp implements PlanService {
                     newSection = null; // Do not specify a new section in the plan action
                 }
                 PlanAction action = new PlanAction(null, planId, slot0, slot1, originalSample,
-                        newSection, prac.getSampleThickness());
+                        newSection, prac.getSampleThickness(), newBioState);
                 actions.add(planActionRepo.save(action));
             }
         }

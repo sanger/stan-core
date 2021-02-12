@@ -54,6 +54,8 @@ public class EntityCreator {
     private ReleaseDestinationRepo releaseDestinationRepo;
     @Autowired
     private ReleaseRecipientRepo releaseRecipientRepo;
+    @Autowired
+    private BioStateRepo bioStateRepo;
 
     @Autowired
     private EntityManager entityManager;
@@ -72,7 +74,11 @@ public class EntityCreator {
     }
 
     public Sample createSample(Tissue tissue, Integer section) {
-        return sampleRepo.save(new Sample(null, section, tissue));
+        return createSample(tissue, section, getAny(bioStateRepo));
+    }
+
+    public Sample createSample(Tissue tissue, Integer section, BioState bioState) {
+        return sampleRepo.save(new Sample(null, section, tissue, bioState));
     }
 
     public Labware createTube(String barcode) {
@@ -126,7 +132,7 @@ public class EntityCreator {
         for (int i = 0; i < slots.length; i += 2) {
             Slot src = slots[i];
             Slot dest = slots[i+1];
-            PlanAction planAction = new PlanAction(null, planId, src, dest, src.getSamples().get(0), null, null);
+            PlanAction planAction = new PlanAction(null, planId, src, dest, src.getSamples().get(0), null, null, null);
             planActions.add(planAction);
         }
         planActionRepo.saveAll(planActions);

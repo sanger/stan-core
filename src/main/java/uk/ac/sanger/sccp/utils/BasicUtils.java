@@ -2,6 +2,8 @@ package uk.ac.sanger.sccp.utils;
 
 import java.util.*;
 import java.util.function.Function;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 /**
  * Much copied from the corresponding class in CGAP lims
@@ -9,6 +11,18 @@ import java.util.function.Function;
  */
 public class BasicUtils {
     private BasicUtils() {}
+
+    /**
+     * Returns the first (if any) non-null value.
+     * If {@code a} is non-null, returns {@code a}; otherwise returns {@code b}
+     * @param a first value
+     * @param b second value
+     * @param <T> type of value
+     * @return {@code a} if it is non-null, otherwise {@code b}
+     */
+    public static <T> T coalesce(T a, T b) {
+        return (a==null ? b : a);
+    }
 
     /**
      * Returns a string representation of the given object.
@@ -114,5 +128,14 @@ public class BasicUtils {
         ArrayList<E> list = new ArrayList<>();
         items.forEach(list::add);
         return list;
+    }
+
+    /**
+     * Collector that produces a {@code LinkedHashSet} (an insertion-ordered set).
+     * @param <T> the type of elements
+     * @return a collector
+     */
+    public static <T> Collector<T, ?, LinkedHashSet<T>> toLinkedHashSet() {
+        return Collectors.toCollection(LinkedHashSet::new);
     }
 }

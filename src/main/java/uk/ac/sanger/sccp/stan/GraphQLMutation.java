@@ -16,6 +16,7 @@ import uk.ac.sanger.sccp.stan.request.plan.PlanRequest;
 import uk.ac.sanger.sccp.stan.request.plan.PlanResult;
 import uk.ac.sanger.sccp.stan.service.LDAPService;
 import uk.ac.sanger.sccp.stan.service.ReleaseService;
+import uk.ac.sanger.sccp.stan.service.extract.ExtractService;
 import uk.ac.sanger.sccp.stan.service.label.print.LabelPrintService;
 import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmOperationService;
 import uk.ac.sanger.sccp.stan.service.operation.plan.PlanService;
@@ -35,6 +36,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final LabelPrintService labelPrintService;
     final ConfirmOperationService confirmOperationService;
     final ReleaseService releaseService;
+    final ExtractService extractService;
 
     @Autowired
     public GraphQLMutation(ObjectMapper objectMapper, AuthenticationComponent authComp,
@@ -42,7 +44,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            RegisterService registerService, PlanService planService,
                            LabelPrintService labelPrintService,
                            ConfirmOperationService confirmOperationService,
-                           UserRepo userRepo, ReleaseService releaseService) {
+                           UserRepo userRepo, ReleaseService releaseService, ExtractService extractService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
@@ -51,6 +53,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.labelPrintService = labelPrintService;
         this.confirmOperationService = confirmOperationService;
         this.releaseService = releaseService;
+        this.extractService = extractService;
     }
 
 
@@ -119,6 +122,14 @@ public class GraphQLMutation extends BaseGraphQLResource {
             User user = checkUser();
             ReleaseRequest request = arg(dfe, "request", ReleaseRequest.class);
             return releaseService.releaseAndUnstore(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> extract() {
+        return dfe -> {
+            User user = checkUser();
+            ExtractRequest request = arg(dfe, "request", ExtractRequest.class);
+            return extractService.extract(user, request);
         };
     }
 }

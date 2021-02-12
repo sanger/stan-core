@@ -95,8 +95,8 @@ public class OperationServiceTest {
         Slot slot1 = EntityFactory.makeEmptyLabware(EntityFactory.getTubeType()).getFirstSlot();
         Slot slot2 = EntityFactory.makeEmptyLabware(EntityFactory.getTubeType()).getFirstSlot();
         List<Action> actions = Arrays.asList(
-                new Action(null, null, slot0, slot2, sample),
-                new Action(null, null, slot1, slot2, sample)
+                new Action(null, null, slot0, slot2, sample, sample),
+                new Action(null, null, slot1, slot2, sample, sample)
         );
 
         Operation op = opService.createOperation(opType, user, actions, null);
@@ -116,15 +116,14 @@ public class OperationServiceTest {
         User user = EntityFactory.getUser();
         Slot slot0 = EntityFactory.getTube().getFirstSlot();
         Sample sample = slot0.getSamples().get(0);
-        Slot slot1 = EntityFactory.makeEmptyLabware(EntityFactory.getTubeType()).getFirstSlot();
 
-        Operation op = opService.createOperation(opType, user, slot0, slot1, sample);
+        Operation op = opService.createOperationInPlace(opType, user, slot0, sample);
         assertNotNull(op.getId());
         assertThat(savedOps).contains(op);
         assertThat(savedActions).hasSize(1);
         Action action = savedActions.get(0);
         assertEquals(action.getSource(), slot0);
-        assertEquals(action.getDestination(), slot1);
+        assertEquals(action.getDestination(), slot0);
         assertEquals(action.getSample(), sample);
         assertEquals(action.getOperationId(), op.getId());
         assertNotNull(action.getId());

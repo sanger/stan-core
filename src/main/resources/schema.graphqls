@@ -181,12 +181,11 @@ type Action {
 }
 
 type Operation {
+    id: Int!
     operationType: OperationType!
     actions: [Action!]!
     user: User!
     performed: Timestamp!
-    releaseDestination: ReleaseDestination
-    releaseRecipient: ReleaseRecipient
 }
 
 type ConfirmOperationResult {
@@ -233,6 +232,16 @@ input ReleaseRequest {
     barcodes: [String!]!
     destination: String!
     recipient: String!
+}
+
+input ExtractRequest {
+    barcodes: [String!]!
+    labwareType: String!
+}
+
+type OperationResult {
+    labware: [Labware!]!
+    operations: [Operation!]!
 }
 
 type StoredItem {
@@ -309,6 +318,7 @@ type Mutation {
     printLabware(printer: String!, barcodes: [String!]!): String
     confirmOperation(request: ConfirmOperationRequest!): ConfirmOperationResult!
     release(request: ReleaseRequest!): ReleaseResult!
+    extract(request: ExtractRequest!): OperationResult!
 
     storeBarcode(barcode: String!, locationBarcode: String!, address: Address): StoredItem!
     unstoreBarcode(barcode: String!): UnstoredItem
