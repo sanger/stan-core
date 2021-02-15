@@ -15,6 +15,8 @@ public interface SampleRepo extends CrudRepository<Sample, Integer> {
 
     List<Sample> findAllByIdIn(Collection<Integer> ids);
 
+    List<Sample> findAllByTissueIdIn(Collection<Integer> tissueIds);
+
     /**
      * Finds the maximum section for particular tissue
      *
@@ -32,7 +34,7 @@ public interface SampleRepo extends CrudRepository<Sample, Integer> {
      * @return the samples in the order of the corresponding ids
      * @exception EntityNotFoundException any ids were not found
      */
-    default List<Sample> getAllByIdIn(Collection<Integer> ids) {
+    default List<Sample> getAllByIdIn(Collection<Integer> ids) throws EntityNotFoundException {
         Map<Integer, Sample> sampleIdMap = findAllByIdIn(ids).stream()
                 .collect(toMap(Sample::getId, r -> r));
 

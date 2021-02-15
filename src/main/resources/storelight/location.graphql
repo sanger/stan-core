@@ -1,5 +1,6 @@
 {
     location(location: {barcode:"LOCATIONBARCODE"}) {
+        id
         barcode
         description
         address

@@ -15,8 +15,20 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
  */
 public class StoredItem {
     private String barcode;
-    private Address address;
     private Location location;
+    private Address address;
+
+    public StoredItem() {}
+
+    public StoredItem(String barcode, Location location) {
+        this(barcode, location, null);
+    }
+
+    public StoredItem(String barcode, Location location, Address address) {
+        this.barcode = barcode;
+        this.location = location;
+        this.address = address;
+    }
 
     public String getBarcode() {
         return this.barcode;
@@ -51,8 +63,8 @@ public class StoredItem {
     public String toString() {
         return MoreObjects.toStringHelper(this)
                 .add("barcode", repr(barcode))
-                .add("address", address)
                 .add("location", repr(getLocationBarcode()))
+                .add("address", address)
                 .omitNullValues()
                 .toString();
     }

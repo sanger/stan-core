@@ -64,12 +64,20 @@ public class EntityCreator {
         return userRepo.save(new User(null, username));
     }
 
+    public Donor createDonor(String donorName) {
+        return createDonor(donorName, LifeStage.adult);
+    }
+
     public Donor createDonor(String donorName, LifeStage lifeStage) {
         return donorRepo.save(new Donor(null, donorName, lifeStage));
     }
 
     public Tissue createTissue(Donor donor, String externalName) {
-        return tissueRepo.save(new Tissue(null, externalName, 1, getAny(slRepo), donor, getAny(mouldSizeRepo),
+        return createTissue(donor, externalName, 1);
+    }
+
+    public Tissue createTissue(Donor donor, String externalName, Integer replicate) {
+        return tissueRepo.save(new Tissue(null, externalName, replicate, getAny(slRepo), donor, getAny(mouldSizeRepo),
                 getAny(mediumRepo), getAny(fixativeRepo), getAny(hmdmcRepo)));
     }
 
@@ -157,6 +165,10 @@ public class EntityCreator {
     public ReleaseDestination createReleaseDestination(String name) {
         ReleaseDestination dest = new ReleaseDestination(null, name);
         return releaseDestinationRepo.save(dest);
+    }
+
+    public BioState anyBioState() {
+        return getAny(bioStateRepo);
     }
 
     public <E> E getAny(CrudRepository<E, ?> repo) {
