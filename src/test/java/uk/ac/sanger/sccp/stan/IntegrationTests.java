@@ -139,10 +139,11 @@ public class IntegrationTests {
         PrintClient<LabelPrintRequest> mockPrintClient = mock(PrintClient.class);
         when(tester.mockPrintClientFactory.getClient(any())).thenReturn(mockPrintClient);
         tester.setUser(entityCreator.createUser("dr6"));
+        BioState rna = bioStateRepo.getByName("RNA");
         Tissue tissue = entityCreator.createTissue(entityCreator.createDonor("DONOR1", LifeStage.adult), "TISSUE1");
         Labware lw = entityCreator.createLabware("STAN-SLIDE", entityCreator.createLabwareType("slide6", 3, 2),
                 entityCreator.createSample(tissue, 1), entityCreator.createSample(tissue, 2),
-                entityCreator.createSample(tissue, 3), entityCreator.createSample(tissue, 4));
+                entityCreator.createSample(tissue, 3), entityCreator.createSample(tissue, 4, rna));
         Printer printer = entityCreator.createPrinter("stub");
         String mutation = "mutation { printLabware(barcodes: [\"STAN-SLIDE\"], printer: \"stub\") }";
         assertThat(tester.<Map<?,?>>post(mutation)).isEqualTo(Map.of("data", Map.of("printLabware", "OK")));
@@ -156,7 +157,7 @@ public class IntegrationTests {
                                 new LabelContent(donorName, tissueDesc, replicate, 1),
                                 new LabelContent(donorName, tissueDesc, replicate, 2),
                                 new LabelContent(donorName, tissueDesc, replicate, 3),
-                                new LabelContent(donorName, tissueDesc, replicate, 4)
+                                new LabelContent(donorName, tissueDesc, replicate, "RNA")
                         ))
                 ))
         );

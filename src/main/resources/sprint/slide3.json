@@ -45,7 +45,7 @@
       "y": 10
     },
     {
-      "value": "#section[0]#",
+      "value": "#state[0]#",
       "fontSize": 1.8,
       "x": 17,
       "y": 10
@@ -69,7 +69,7 @@
       "y": 14
     },
     {
-      "value": "#section[1]#",
+      "value": "#state[1]#",
       "fontSize": 1.8,
       "x": 17,
       "y": 14
@@ -93,7 +93,7 @@
       "y": 18
     },
     {
-      "value": "#section[2]#",
+      "value": "#state[2]#",
       "fontSize": 1.8,
       "x": 17,
       "y": 18

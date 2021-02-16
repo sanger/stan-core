@@ -47,8 +47,13 @@ public class LabwareLabelDataService {
 
     public LabelContent getContent(Sample sample) {
         Tissue tissue = sample.getTissue();
+        final String stateDesc = sample.getBioState().getName();
+        if (stateDesc.equalsIgnoreCase("Tissue")) {
+            return new LabelContent(tissue.getDonor().getDonorName(),
+                    getTissueDesc(tissue), tissue.getReplicate(), sample.getSection());
+        }
         return new LabelContent(tissue.getDonor().getDonorName(),
-                getTissueDesc(tissue), tissue.getReplicate(), sample.getSection());
+                getTissueDesc(tissue), tissue.getReplicate(), stateDesc);
     }
 
     public String getTissueDesc(Tissue tissue) {
@@ -73,15 +78,28 @@ public class LabwareLabelDataService {
     }
 
     public LabelContent getContent(PlanAction planAction) {
-        Integer section = planAction.getNewSection();
-        if (section==null) {
-            section = planAction.getSample().getSection();
+        BioState bs = planAction.getNewBioState();
+        if (bs==null) {
+            bs = planAction.getSample().getBioState();
+        }
+        if (bs.getName().equalsIgnoreCase("Tissue")) {
+            Integer section = planAction.getNewSection();
+            if (section == null) {
+                section = planAction.getSample().getSection();
+            }
+
+            return new LabelContent(
+                    planAction.getSample().getTissue().getDonor().getDonorName(),
+                    getTissueDesc(planAction.getSample().getTissue()),
+                    planAction.getSample().getTissue().getReplicate(),
+                    section
+            );
         }
         return new LabelContent(
                 planAction.getSample().getTissue().getDonor().getDonorName(),
                 getTissueDesc(planAction.getSample().getTissue()),
                 planAction.getSample().getTissue().getReplicate(),
-                section
+                bs.getName()
         );
     }
 }
