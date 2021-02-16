@@ -1,6 +1,7 @@
 package uk.ac.sanger.sccp.stan;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -14,6 +15,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import uk.ac.sanger.sccp.stan.model.*;
+import uk.ac.sanger.sccp.stan.model.store.Location;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.service.label.LabelPrintRequest;
 import uk.ac.sanger.sccp.stan.service.label.LabwareLabelData;
@@ -337,6 +339,99 @@ public class IntegrationTests {
         }
     }
 
+    @Test
+    @Transactional
+    public void testFind() throws Exception {
+        Donor donor = entityCreator.createDonor("DONOR1");
+        Tissue tissue1 = entityCreator.createTissue(donor, "TISSUE1");
+        BioState bs = entityCreator.anyBioState();
+        Tissue tissue2 = entityCreator.createTissue(donor, "TISSUE2", 2);
+
+        Sample[] samples = {
+                entityCreator.createSample(tissue1, 1, bs),
+                entityCreator.createSample(tissue1, 2, bs),
+                entityCreator.createSample(tissue2, 3, bs),
+        };
+
+        LabwareType lt1 = entityCreator.createLabwareType("lt1", 1, 1);
+
+        Labware[] labware = {
+                entityCreator.createLabware("STAN-01", lt1, samples[0]),
+                entityCreator.createLabware("STAN-02", lt1, samples[1]),
+                entityCreator.createLabware("STAN-03", lt1, samples[2]),
+        };
+
+        Location[] locations = {
+                new Location(), new Location()
+        };
+        locations[0].setId(10);
+        locations[0].setBarcode("STO-10");
+        locations[1].setId(20);
+        locations[1].setBarcode("STO-20");
+
+        String[] storageAddresses = {null, "B3"};
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        ObjectNode[] locationNodes = Arrays.stream(locations)
+                .map(loc -> objectMapper.createObjectNode()
+                        .put("id", loc.getId())
+                        .put("barcode", loc.getBarcode()))
+                .toArray(ObjectNode[]::new);
+        ObjectNode[] storedItemNodes = IntStream.range(0, 2)
+                .<ObjectNode>mapToObj(i -> objectMapper.createObjectNode()
+                        .put("barcode", labware[i].getBarcode())
+                        .put("address", storageAddresses[i])
+                        .set("location", locationNodes[i])
+                )
+                .toArray(ObjectNode[]::new);
+        ArrayNode storedItemArray = objectMapper.createArrayNode()
+                .addAll(Arrays.asList(storedItemNodes));
+        ObjectNode storelightDataNode = objectMapper.createObjectNode()
+                .set("stored", storedItemArray);
+        GraphQLResponse storelightResponse = new GraphQLResponse(storelightDataNode, null);
+        when(mockStorelightClient.postQuery(anyString(), any())).thenReturn(storelightResponse);
+
+        String query = tester.readResource("graphql/find_tissue.graphql").replace("TISSUE_NAME", tissue1.getExternalName());
+
+        Object response = tester.post(query);
+        final Object findData = chainGet(response, "data", "find");
+
+        List<Map<String, ?>> entriesData = chainGet(findData, "entries");
+        assertThat(entriesData).containsExactlyInAnyOrderElementsOf(
+                IntStream.range(0, 2)
+                        .mapToObj(i -> Map.of("labwareId", labware[i].getId(), "sampleId", samples[i].getId()))
+                        .collect(toList())
+        );
+
+        List<Map<String, ?>> lwData = chainGet(findData, "labware");
+        assertThat(lwData).containsExactlyInAnyOrderElementsOf(
+                Arrays.stream(labware, 0, 2)
+                        .map(lw -> Map.of("id", lw.getId(), "barcode", lw.getBarcode()))
+                        .collect(toList())
+        );
+
+        List<Map<String, ?>> samplesData = chainGet(findData, "samples");
+        assertThat(samplesData).containsExactlyInAnyOrderElementsOf(
+                Arrays.stream(samples, 0, 2)
+                        .map(sam -> Map.of("id", sam.getId(), "section", sam.getSection()))
+                        .collect(toList())
+        );
+
+        List<Map<String, ?>> locationsData = chainGet(findData, "locations");
+        assertThat(locationsData).containsExactlyInAnyOrderElementsOf(
+                Arrays.stream(locations)
+                        .map(loc -> Map.of("id", loc.getId(), "barcode", loc.getBarcode()))
+                        .collect(toList())
+        );
+
+        List<Map<String, ?>> labwareLocationsData = chainGet(findData, "labwareLocations");
+        assertThat(labwareLocationsData).containsExactlyInAnyOrderElementsOf(
+                IntStream.range(0, 2)
+                        .mapToObj(i -> nullableMapOf("labwareId", labware[i].getId(), "locationId", locations[i].getId(), "address", storageAddresses[i]))
+                        .collect(toList())
+        );
+    }
+
     private List<Map<String, String>> tsvToMap(String tsv) {
         String[] lines = tsv.split("\n");
         String[] headers = lines[0].split("\t");
@@ -401,5 +496,13 @@ public class IntegrationTests {
 
     private static <E> void swap(List<E> list, int i, int j) {
         list.set(i, list.set(j, list.get(i)));
+    }
+
+    private static <K, V> Map<K, V> nullableMapOf(K key1, V value1, K key2, V value2, K key3, V value3) {
+        Map<K, V> map = new HashMap<>(3);
+        map.put(key1, value1);
+        map.put(key2, value2);
+        map.put(key3, value3);
+        return map;
     }
 }

@@ -233,6 +233,12 @@ public class TestFindService {
                 .isEmpty();
         assertThat(findService.findByTissueIds(List.of(-400)))
                 .isEmpty();
+        // Check that unstorable labware are filtered out
+        labware[0].setReleased(true);
+        labware[1].setDiscarded(true);
+        labware[3].setDestroyed(true);
+        assertThat(findService.findByTissueIds(List.of(tissue1.getId(), tissue2.getId())))
+                .containsExactly(new LabwareSample(labware[2], samples[2]));
     }
 
     @Test
