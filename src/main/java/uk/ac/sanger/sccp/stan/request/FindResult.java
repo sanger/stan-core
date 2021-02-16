@@ -9,12 +9,14 @@ import java.util.Objects;
 
 /**
  * The result of a find request.
- * A list of {@link #getEntries entries} corresponding to the results of the find.
+ * <ul>
+ * <li>A list of {@link #getEntries entries} corresponding to the results of the find.
  * This contains ids of samples and labware.
- * A list of the relevant samples.
- * A list of the relevant labware.
- * A list of the locations of the labware, indicated by labware id and location id (and maybe address).
- * A list of the relevant locations.
+ * <li>A list of the relevant samples.
+ * <li>A list of the relevant labware.
+ * <li>A list of the locations of the labware, indicated by labware id and location id (and maybe address).
+ * <li>A list of the relevant locations.
+ * </ul>
  * @author dr6
  */
 public class FindResult {
@@ -37,50 +39,86 @@ public class FindResult {
         this.locations = locations;
     }
 
+    /**
+     * A list of sample ids and labware ids indicating the results of the search
+     */
     public List<FindEntry> getEntries() {
         return this.entries;
     }
 
+    /**
+     * Sets the entries indicating the results of the search
+     */
     public void setEntries(List<FindEntry> entries) {
         this.entries = entries;
     }
 
+    /**
+     * A list of the samples corresponding to the sample ids in the entries.
+     */
     public List<Sample> getSamples() {
         return this.samples;
     }
 
+    /**
+     * Sets the list of the samples corresponding to the sample ids in the entries.
+     */
     public void setSamples(List<Sample> samples) {
         this.samples = samples;
     }
 
+    /**
+     * A list of the labware corresponding to the labware ids in the entries.
+     */
     public List<Labware> getLabware() {
         return this.labware;
     }
 
+    /**
+     * Sets the list of the labware corresponding to the labware ids in the entries.
+     */
     public void setLabware(List<Labware> labware) {
         this.labware = labware;
     }
 
+    /**
+     * A list of the locations corresponding to the location ids in the LabwareLocations.
+     */
     public List<Location> getLocations() {
         return this.locations;
     }
 
+    /**
+     * Sets the list of the locations corresponding to the location ids in the LabwareLocations.
+     */
     public void setLocations(List<Location> locations) {
         this.locations = locations;
     }
 
+    /**
+     * The number of records found by this search, even if only a subset of those records are included.
+     */
     public int getNumRecords() {
         return this.numRecords;
     }
 
+    /**
+     * Sets the number of records found by this search.
+     */
     public void setNumRecords(int numRecords) {
         this.numRecords = numRecords;
     }
 
+    /**
+     * A list of labware ids, location ids and addresses indicating the locations of labware.
+     */
     public List<LabwareLocation> getLabwareLocations() {
         return this.labwareLocations;
     }
 
+    /**
+     * Sets the list of LabwareLocations that indicates the locations of the labware.
+     */
     public void setLabwareLocations(List<LabwareLocation> labwareLocations) {
         this.labwareLocations = labwareLocations;
     }
@@ -108,6 +146,11 @@ public class FindResult {
                  entries, labwareLocations);
     }
 
+    /**
+     * An individual entry from our results.
+     * This contains a sample id and a labware id. The objects referred to by those ids
+     * should be included in the appropriate fields of the result object.
+     */
     public static class FindEntry {
         private int sampleId;
         private int labwareId;
@@ -119,18 +162,22 @@ public class FindResult {
             this.labwareId = labwareId;
         }
 
+        /** The id of a sample */
         public int getSampleId() {
             return this.sampleId;
         }
 
+        /** Sets the sample id for this entry */
         public void setSampleId(int sampleId) {
             this.sampleId = sampleId;
         }
 
+        /** The id of an item of labware */
         public int getLabwareId() {
             return this.labwareId;
         }
 
+        /** Sets the labware id for this entry */
         public void setLabwareId(int labwareId) {
             this.labwareId = labwareId;
         }
@@ -155,6 +202,10 @@ public class FindResult {
         }
     }
 
+    /**
+     * A relationship between a labware and a location, indicated by their ids.
+     * The objects referred to by those ids should be included in the appropriate fields of the result object.
+     */
     public static class LabwareLocation {
         private int labwareId;
         private int locationId;
@@ -172,26 +223,32 @@ public class FindResult {
             this.address = address;
         }
 
+        /** The id of an item of labware */
         public int getLabwareId() {
             return this.labwareId;
         }
 
+        /** Sets the labware id for this object */
         public void setLabwareId(int labwareId) {
             this.labwareId = labwareId;
         }
 
+        /** The id of a location */
         public int getLocationId() {
             return this.locationId;
         }
 
+        /** Sets the location id for this object */
         public void setLocationId(int locationId) {
             this.locationId = locationId;
         }
 
+        /** The address of the labware in the location (may be null) */
         public Address getAddress() {
             return this.address;
         }
 
+        /** Sets the address for this object (null permitted) */
         public void setAddress(Address address) {
             this.address = address;
         }

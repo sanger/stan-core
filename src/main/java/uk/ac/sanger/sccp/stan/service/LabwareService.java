@@ -59,6 +59,13 @@ public class LabwareService {
         return labware;
     }
 
+    /**
+     * Gets all the labware containing any of the specified samples.
+     * Currently this is done by getting every slot containing any of the given samples,
+     * and then loading all the labware indicated by the slots.
+     * @param samples the samples to find labware for
+     * @return all the labware that contains any of the given samples
+     */
     public List<Labware> findBySample(Collection<Sample> samples) {
         List<Slot> slots = slotRepo.findDistinctBySamplesIn(samples);
         if (slots.isEmpty()) {

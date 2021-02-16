@@ -43,6 +43,11 @@ public class FindService {
         this.sampleRepo = sampleRepo;
     }
 
+    /**
+     * Perform the given find request
+     * @param request the specification of what to find
+     * @return the result
+     */
     public FindResult find(FindRequest request) {
         validateRequest(request);
         List<LabwareSample> labwareSamples;
@@ -60,12 +65,22 @@ public class FindService {
         return assembleResult(request, labwareSamples, storedItems);
     }
 
+    /**
+     * Checks if the given request is valid.
+     * @param request the request to validate
+     * @exception IllegalArgumentException if the request is invalid
+     */
     public void validateRequest(FindRequest request) {
         if (request.getDonorName()==null && request.getTissueExternalName()==null && request.getLabwareBarcode()==null) {
             throw new IllegalArgumentException("Donor name or external name or labware barcode must be specified.");
         }
     }
 
+    /**
+     * Finds LabwareSamples given a labware barcode.
+     * @param labwareBarcode the barcode of a piece of labware
+     * @return LabwareSamples for each sample in the specified labware
+     */
     public List<LabwareSample> findByLabwareBarcode(String labwareBarcode) {
         final Labware lw = labwareRepo.getByBarcode(labwareBarcode);
         return lw.getSlots().stream()
@@ -75,17 +90,32 @@ public class FindService {
                 .collect(toList());
     }
 
+    /**
+     * Finds LabwareSamples given a tissue external name
+     * @param externalName the external name of a tissue
+     * @return LabwareSamples for each labware containing samples for the specified tissue
+     */
     public List<LabwareSample> findByTissueExternalName(String externalName) {
         Tissue tissue = tissueRepo.getByExternalName(externalName);
         return findByTissueIds(List.of(tissue.getId()));
     }
 
+    /**
+     * Finds LabwareSamples given a donor name
+     * @param donorName the name of a donor
+     * @return LabwareSamples for each labware containing samples for the specified donor
+     */
     public List<LabwareSample> findByDonorName(String donorName) {
         Donor donor = donorRepo.getByDonorName(donorName);
         List<Tissue> tissues = tissueRepo.findByDonorId(donor.getId());
         return findByTissueIds(tissues.stream().map(Tissue::getId).collect(toList()));
     }
 
+    /**
+     * Finds LabwareSamples given ids of some tissues.
+     * @param tissueIds the ids of some tissues
+     * @return LabwareSamples for each labware containing samples for the specified tissues
+     */
     public List<LabwareSample> findByTissueIds(Collection<Integer> tissueIds) {
         List<Sample> samples = sampleRepo.findAllByTissueIdIn(tissueIds);
         if (samples.isEmpty()) {
@@ -103,6 +133,12 @@ public class FindService {
                 .collect(toList());
     }
 
+    /**
+     * Gets LabwareSamples for the given labware filtering with the given set of sample ids
+     * @param lw a piece of labware
+     * @param sampleIds some sample ids
+     * @return LabwareSamples for each sample in the given labware whose id is in the given set of sample ids
+     */
     private Stream<LabwareSample> labwareSamples(Labware lw, Set<Integer> sampleIds) {
         return lw.getSlots()
                 .stream()
@@ -112,11 +148,24 @@ public class FindService {
                 .map(sample -> new LabwareSample(lw, sample));
     }
 
+    /**
+     * Filters a list of labware samples according to the given find request.
+     * For example, if the labware samples were looked up using a donor name, and the request also
+     * specifies a tissue type, then the list is filtered to include only those of the appropriate tissue type.
+     * @param lss the LabwareSamples to filter
+     * @param request the request used to create the filter
+     * @return the filtered list of LabwareSamples
+     */
     public List<LabwareSample> filter(List<LabwareSample> lss, FindRequest request) {
         Predicate<LabwareSample> predicate = createFilter(request);
         return (predicate==null ? lss : lss.stream().filter(predicate).collect(toList()));
     }
 
+    /**
+     * Creates a predicate for filtering LabwareSamples based on the given request
+     * @param request the request specifying how to filter the data
+     * @return a predicate that will return true for elements that should be kept
+     */
     private static Predicate<LabwareSample> createFilter(FindRequest request) {
         Predicate<LabwareSample> predicate = null;
         final String labwareBarcode = request.getLabwareBarcode();
@@ -144,10 +193,24 @@ public class FindService {
         return predicate;
     }
 
+    /**
+     * Combines two predicates.
+     * If the first is null, the second is returned.
+     * Otherwise they are combined with {@link Predicate#and}.
+     * @param pred1 a predicate, or null
+     * @param pred2 a predicate
+     * @param <E> the parameter type of the predicate
+     * @return a combined predicate
+     */
     private static <E> Predicate<E> andPredicate(Predicate<E> pred1, Predicate<E> pred2) {
         return (pred1==null ? pred2 : pred1.and(pred2));
     }
 
+    /**
+     * Looks up storage info for the given labware samples
+     * @param labwareSamples the labware samples we need storage info for
+     * @return the stored items returned by the StoreService
+     */
     public List<StoredItem> getStoredItems(List<LabwareSample> labwareSamples) {
         Set<String> labwareBarcodes = labwareSamples.stream()
                 .map(ls -> ls.labware.getBarcode())
@@ -155,6 +218,17 @@ public class FindService {
         return storeService.getStored(labwareBarcodes);
     }
 
+    /**
+     * Puts together accumulated info into a FindResult.
+     * Of the LabwareSamples given, only the ones with storage locations will be included in the result,
+     * except if the labware is specified by its barcode in the request.
+     * If the request limits the number of records that should be returned, the result will include at most
+     * the number of entries specified
+     * @param request the original request
+     * @param labwareSamples the LabwareSamples that should be described in the result
+     * @param storedItems the storage info found for the labware involved
+     * @return the combined result
+     */
     public FindResult assembleResult(FindRequest request, List<LabwareSample> labwareSamples, List<StoredItem> storedItems) {
         Map<String, StoredItem> storedItemMap = storedItems.stream()
                 .collect(toMap(si -> si.getBarcode().toUpperCase(), si -> si));
@@ -198,6 +272,9 @@ public class FindService {
                 new ArrayList<>(locationMap.values()));
     }
 
+    /**
+     * A labware and a sample, used as an intermediate in finding results.
+     */
     static class LabwareSample {
         Labware labware;
         Sample sample;

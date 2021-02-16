@@ -5,7 +5,9 @@ import uk.ac.sanger.sccp.utils.BasicUtils;
 import java.util.Objects;
 
 /**
- * A request to find labware
+ * A request to find labware.
+ * Each individual string field may be null, but in combination the non-null fields must be sufficient to
+ * specify a valid search.
  * @author dr6
  */
 public class FindRequest {
@@ -27,34 +29,58 @@ public class FindRequest {
         this.maxRecords = maxRecords;
     }
 
+    /**
+     * A specific labware barcode to find
+     */
     public String getLabwareBarcode() {
         return this.labwareBarcode;
     }
 
+    /**
+     * Sets the specific labware barcode to find
+     */
     public void setLabwareBarcode(String labwareBarcode) {
         this.labwareBarcode = labwareBarcode;
     }
 
+    /**
+     * The name of a donor to find
+     */
     public String getDonorName() {
         return this.donorName;
     }
 
+    /**
+     * Sets the name of a donor to find
+     */
     public void setDonorName(String donorName) {
         this.donorName = donorName;
     }
 
+    /**
+     * A tissue external name to find
+     */
     public String getTissueExternalName() {
         return this.tissueExternalName;
     }
 
+    /**
+     * Sets the tissue external name to find
+     */
     public void setTissueExternalName(String tissueExternalName) {
         this.tissueExternalName = tissueExternalName;
     }
 
+    /**
+     * A tissue type name to find
+     */
     public String getTissueTypeName() {
         return this.tissueTypeName;
     }
 
+    /**
+     * Sets the tissue type name to find
+     */
     public void setTissueTypeName(String tissueTypeName) {
         this.tissueTypeName = tissueTypeName;
     }
