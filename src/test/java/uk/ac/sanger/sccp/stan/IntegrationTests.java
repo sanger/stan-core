@@ -26,6 +26,7 @@ import uk.ac.sanger.sccp.utils.GraphQLClient.GraphQLResponse;
 
 import javax.persistence.EntityManager;
 import javax.transaction.Transactional;
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.IntStream;
 
@@ -65,6 +66,10 @@ public class IntegrationTests {
     private OperationRepo opRepo;
     @Autowired
     private LabwareRepo lwRepo;
+    @Autowired
+    private DestructionRepo destructionRepo;
+    @Autowired
+    private DestructionReasonRepo destructionReasonRepo;
 
     @MockBean
     StorelightClient mockStorelightClient;
@@ -194,11 +199,7 @@ public class IntegrationTests {
                 .replace("DESTINATION", destination.getName())
                 .replace("RECIPIENT", recipient.getUsername());
 
-        ObjectMapper objectMapper = new ObjectMapper();
-        ObjectNode storelightDataNode = objectMapper.createObjectNode()
-                .set("unstoreBarcodes", objectMapper.createObjectNode().put("numUnstored", 2));
-        GraphQLResponse storelightResponse = new GraphQLResponse(storelightDataNode, null);
-        when(mockStorelightClient.postQuery(anyString(), anyString())).thenReturn(storelightResponse);
+        stubStorelightUnstore();
 
         Object result = tester.post(mutation);
 
@@ -214,10 +215,7 @@ public class IntegrationTests {
             assertTrue((boolean) chainGet(releaseItem, "labware", "released"));
         }
 
-        ArgumentCaptor<String> queryCaptor = ArgumentCaptor.forClass(String.class);
-        verify(mockStorelightClient).postQuery(queryCaptor.capture(), eq(user.getUsername()));
-        String storelightQuery = queryCaptor.getValue();
-        assertThat(storelightQuery).contains("STAN-001", "STAN-002");
+        verifyUnstored(List.of("STAN-001", "STAN-002"), user.getUsername());
 
         List<Integer> releaseIds = releaseData.stream()
                 .map(rd -> (Integer) rd.get("id"))
@@ -430,6 +428,66 @@ public class IntegrationTests {
                         .mapToObj(i -> nullableMapOf("labwareId", labware[i].getId(), "locationId", locations[i].getId(), "address", storageAddresses[i]))
                         .collect(toList())
         );
+    }
+
+    @Test
+    @Transactional
+    public void testDestroy() throws Exception {
+        Donor donor = entityCreator.createDonor("DONOR1");
+        Tissue tissue = entityCreator.createTissue(donor, "TISSUE1");
+        Sample sample = entityCreator.createSample(tissue, 1);
+        final List<String> barcodes = List.of("STAN-A1", "STAN-B2");
+        LabwareType lt = entityCreator.createLabwareType("lt", 1, 1);
+        Labware[] labware = barcodes.stream()
+                .map(bc -> entityCreator.createLabware(bc, lt, sample))
+                .toArray(Labware[]::new);
+        User user = entityCreator.createUser("user1");
+        tester.setUser(user);
+        DestructionReason reason = destructionReasonRepo.save(new DestructionReason(null, "Everything."));
+
+        String mutation = tester.readResource("graphql/destroy.graphql")
+                .replace("[]", "[\"STAN-A1\", \"STAN-B2\"]")
+                .replace("99", String.valueOf(reason.getId()));
+
+        stubStorelightUnstore();
+
+        Object response = tester.post(mutation);
+        entityManager.flush();
+
+        List<Map<String, ?>> destructionsData = chainGet(response, "data", "destroy", "destructions");
+        assertThat(destructionsData).hasSize(labware.length);
+        for (int i = 0; i < labware.length; ++i) {
+            Labware lw = labware[i];
+            Map<String, ?> destData = destructionsData.get(i);
+            assertEquals(lw.getBarcode(), chainGet(destData, "labware", "barcode"));
+            assertTrue((boolean) chainGet(destData, "labware", "destroyed"));
+            assertEquals(reason.getText(), chainGet(destData, "reason", "text"));
+            assertNotNull(destData.get("destroyed"));
+            assertEquals(user.getUsername(), chainGet(destData, "user", "username"));
+
+            entityManager.refresh(lw);
+            assertTrue(lw.isDestroyed());
+        }
+
+        List<Destruction> destructions = destructionRepo.findAllByLabwareIdIn(List.of(labware[0].getId(), labware[1].getId()));
+        assertEquals(labware.length, destructions.size());
+
+        verifyUnstored(barcodes, user.getUsername());
+    }
+
+    private void stubStorelightUnstore() throws IOException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        ObjectNode storelightDataNode = objectMapper.createObjectNode()
+                .set("unstoreBarcodes", objectMapper.createObjectNode().put("numUnstored", 2));
+        GraphQLResponse storelightResponse = new GraphQLResponse(storelightDataNode, null);
+        when(mockStorelightClient.postQuery(anyString(), anyString())).thenReturn(storelightResponse);
+    }
+
+    private void verifyUnstored(Collection<String> barcodes, String username) throws Exception {
+        ArgumentCaptor<String> queryCaptor = ArgumentCaptor.forClass(String.class);
+        verify(mockStorelightClient).postQuery(queryCaptor.capture(), eq(username));
+        String storelightQuery = queryCaptor.getValue();
+        assertThat(storelightQuery).contains(barcodes);
     }
 
     private List<Map<String, String>> tsvToMap(String tsv) {

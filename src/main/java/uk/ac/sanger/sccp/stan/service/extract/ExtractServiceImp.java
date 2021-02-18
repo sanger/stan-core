@@ -43,6 +43,7 @@ public class ExtractServiceImp implements ExtractService {
         this.bioStateRepo = bioStateRepo;
         this.sampleRepo = sampleRepo;
         this.slotRepo = slotRepo;
+        // TODO unstore discarded labware
     }
 
     @Override

@@ -899,4 +899,56 @@
         </loadData>
     </changeSet>
 
+    <changeSet id="500" author="dr6">
+        <createTable tableName="destruction_reason">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="text" type="VARCHAR(128)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValue="TRUE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="501" author="dr6">
+        <createTable tableName="destruction">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="destroyed" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="user_id" type="INT">
+                <constraints nullable="false" foreignKeyName="destruction_fk_user" referencedTableName="user" referencedColumnNames="id"/>
+            </column>
+            <column name="labware_id" type="INT">
+                <constraints nullable="false" foreignKeyName="destruction_fk_labware" referencedTableName="labware" referencedColumnNames="id"/>
+            </column>
+            <column name="reason_id" type="INT">
+                <constraints nullable="false" foreignKeyName="destruction_fk_reason" referencedTableName="destruction_reason" referencedColumnNames="id"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="502" author="dr6">
+        <loadData tableName="destruction_reason" file="db/destructionreasons.tsv" separator="\t">
+            <column name="text" header="text" type="string"/>
+        </loadData>
+    </changeSet>
+
 </databaseChangeLog>

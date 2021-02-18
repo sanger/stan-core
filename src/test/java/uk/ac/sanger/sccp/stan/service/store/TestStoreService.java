@@ -189,6 +189,20 @@ public class TestStoreService {
         );
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans={false, true})
+    public void testDiscardStorage(boolean successful) {
+        if (successful) {
+            doThrow(IllegalArgumentException.class).when(service).unstoreBarcodesWithoutValidatingThem(any(), any());
+        } else {
+            doReturn(0).when(service).unstoreBarcodesWithoutValidatingThem(any(), any());
+        }
+
+        List<String> barcodes = List.of("STAN-A1", "STAN-B2");
+        service.discardStorage(user, barcodes);
+        verify(service).unstoreBarcodesWithoutValidatingThem(user, barcodes);
+    }
+
     @Test
     public void testEmpty() throws IOException {
         String locationBarcode = "STO-ABC";

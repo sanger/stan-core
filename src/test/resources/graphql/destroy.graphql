@@ -1,0 +1,13 @@
+mutation {
+    destroy(request: {
+        barcodes: []
+        reasonId: 99
+    }) {
+        destructions {
+            labware { barcode destroyed }
+            reason { text }
+            destroyed
+            user { username }
+        }
+    }
+}

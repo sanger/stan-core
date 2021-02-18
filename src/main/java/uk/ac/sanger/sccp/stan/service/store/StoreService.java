@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
@@ -28,6 +30,8 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
  */
 @Service
 public class StoreService {
+    Logger log = LoggerFactory.getLogger(StoreService.class);
+
     private final StorelightClient storelightClient;
     private final LabwareRepo labwareRepo;
     private final ObjectMapper objectMapper;
@@ -74,6 +78,22 @@ public class StoreService {
         Map<?, ?> result = send(user, "unstoreBarcodes", new String[] { "[]" }, new Object[] { barcodes },
                 Map.class);
         return (int) result.get("numUnstored");
+    }
+
+    /**
+     * This is called after some operation is performed that renders labware unstorable.
+     * Any corresponding labware that is stored becomes unstored. Any exception is caught and logged,
+     * but the method still completes successfully
+     * @param user the user responsible for the operation
+     * @param barcodes the barcodes to unstore
+     */
+    public void discardStorage(User user, Collection<String> barcodes) {
+        try {
+            unstoreBarcodesWithoutValidatingThem(user, barcodes);
+        } catch (RuntimeException e) {
+            log.error("Caught exception during discardStorage, user: "+(user==null ? null : user.getUsername())
+                    +", barcodes: "+barcodes, e);
+        }
     }
 
     public UnstoreResult empty(User user, String locationBarcode) {

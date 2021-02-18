@@ -76,6 +76,7 @@ public class GraphQLProvider {
                         .dataFetcher("releaseDestinations", graphQLDataFetchers.getReleaseDestinations())
                         .dataFetcher("releaseRecipients", graphQLDataFetchers.getReleaseRecipients())
                         .dataFetcher("find", graphQLDataFetchers.find())
+                        .dataFetcher("destructionReasons", graphQLDataFetchers.getDestructionReasons())
 
                         .dataFetcher("location", graphQLStore.getLocation())
                         .dataFetcher("stored", graphQLStore.getStored())
@@ -89,6 +90,7 @@ public class GraphQLProvider {
                         .dataFetcher("confirmOperation", transact(graphQLMutation.confirmOperation()))
                         .dataFetcher("release", graphQLMutation.release()) // transaction handled in service
                         .dataFetcher("extract", transact(graphQLMutation.extract()))
+                        .dataFetcher("destroy", graphQLMutation.destroy()) // transaction handled in service
 
                         .dataFetcher("storeBarcode", transact(graphQLStore.storeBarcode()))
                         .dataFetcher("unstoreBarcode", transact(graphQLStore.unstoreBarcode()))
