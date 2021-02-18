@@ -82,7 +82,8 @@ public class EntityCreator {
     }
 
     public Sample createSample(Tissue tissue, Integer section) {
-        return createSample(tissue, section, getAny(bioStateRepo));
+        BioState bs = bioStateRepo.getByName("Tissue");
+        return createSample(tissue, section, bs);
     }
 
     public Sample createSample(Tissue tissue, Integer section, BioState bioState) {

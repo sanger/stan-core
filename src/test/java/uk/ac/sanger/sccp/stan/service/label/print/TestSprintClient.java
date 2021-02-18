@@ -44,11 +44,11 @@ public class TestSprintClient {
                         List.of(new LabelContent("DONOR1", "TISSUE1", 1, 2),
                                 new LabelContent("DONOR2", "TISSUE2", 3, 4))),
                         new LabwareLabelData("STAN-2", "None",
-                                List.of(new LabelContent("DONOR3", "TISSUE3", 5, null))))
+                                List.of(new LabelContent("DONOR3", "TISSUE3", 5))))
         );
         StringTemplate template = new StringTemplate("{\"barcode\":\"#barcode#\", " +
-                "\"contents\":[\"#donor[0]#\", \"#tissue[0]#\", \"#replicate[0]#\", \"#section[0]#\"," +
-                "\"#donor[1]#\", \"#tissue[1]#\", \"#replicate[1]#\", \"#section[1]#\"]}", "#", "#");
+                "\"contents\":[\"#donor[0]#\", \"#tissue[0]#\", \"#replicate[0]#\", \"#state[0]#\"," +
+                "\"#donor[1]#\", \"#tissue[1]#\", \"#replicate[1]#\", \"#state[1]#\"]}", "#", "#");
         when(mockSprintConfig.getTemplate(eq(labelType.getName()), anyInt())).thenReturn(template);
 
         JsonNode result = sprintClient.toJson("printer1", request);

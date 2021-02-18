@@ -18,7 +18,7 @@ public class TestLabwareLabelData {
         LabwareLabelData data = new LabwareLabelData(
                 "STAN-123", "Butter",
                 List.of(
-                        new LabelContent("DONOR1", "TISSUE1", 1, null),
+                        new LabelContent("DONOR1", "TISSUE1", 1),
                         new LabelContent("DONOR2", "TISSUE2", 2, 3)
                 )
         );
@@ -34,7 +34,7 @@ public class TestLabwareLabelData {
                 "donor[1]", "DONOR2",
                 "tissue[1]", "TISSUE2",
                 "replicate[1]", "R:2",
-                "section[1]", "S003"
+                "state[1]", "S003"
         ));
     }
 }

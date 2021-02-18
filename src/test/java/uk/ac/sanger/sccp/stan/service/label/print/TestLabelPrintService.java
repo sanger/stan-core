@@ -76,7 +76,7 @@ public class TestLabelPrintService {
                         new LabelContent("DONOR2", "TISSUE2", 3, 4)
                 )),
                 new LabwareLabelData(labware.get(1).getBarcode(), "None", List.of(
-                        new LabelContent("DONOR3", "TISSUE3", 4, null)
+                        new LabelContent("DONOR3", "TISSUE3", 4)
                 ))
         );
         LabelPrintRequest expectedRequest = new LabelPrintRequest(labware.get(0).getLabwareType().getLabelType(), labelData);
