@@ -35,6 +35,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final CommentRepo commentRepo;
     final ReleaseDestinationRepo releaseDestinationRepo;
     final ReleaseRecipientRepo releaseRecipientRepo;
+    final DestructionReasonRepo destructionReasonRepo;
     final LabelPrintService labelPrintService;
     final FindService findService;
 
@@ -45,6 +46,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                MediumRepo mediumRepo, FixativeRepo fixativeRepo, MouldSizeRepo mouldSizeRepo,
                                HmdmcRepo hmdmcRepo, LabwareRepo labwareRepo, CommentRepo commentRepo,
                                ReleaseDestinationRepo releaseDestinationRepo, ReleaseRecipientRepo releaseRecipientRepo,
+                               DestructionReasonRepo destructionReasonRepo,
                                LabelPrintService labelPrintService, FindService findService) {
         super(objectMapper, authComp, userRepo);
         this.sessionConfig = sessionConfig;
@@ -58,6 +60,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.commentRepo = commentRepo;
         this.releaseDestinationRepo = releaseDestinationRepo;
         this.releaseRecipientRepo = releaseRecipientRepo;
+        this.destructionReasonRepo = destructionReasonRepo;
         this.labelPrintService = labelPrintService;
         this.findService = findService;
     }
@@ -130,6 +133,10 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
 
     public DataFetcher<Iterable<ReleaseRecipient>> getReleaseRecipients() {
         return dfe -> releaseRecipientRepo.findAllByEnabled(true);
+    }
+
+    public DataFetcher<Iterable<DestructionReason>> getDestructionReasons() {
+        return dfe -> destructionReasonRepo.findAllByEnabled(true);
     }
 
     public DataFetcher<FindResult> find() {

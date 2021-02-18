@@ -14,8 +14,7 @@ import uk.ac.sanger.sccp.stan.request.confirm.ConfirmOperationRequest;
 import uk.ac.sanger.sccp.stan.request.confirm.ConfirmOperationResult;
 import uk.ac.sanger.sccp.stan.request.plan.PlanRequest;
 import uk.ac.sanger.sccp.stan.request.plan.PlanResult;
-import uk.ac.sanger.sccp.stan.service.LDAPService;
-import uk.ac.sanger.sccp.stan.service.ReleaseService;
+import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.extract.ExtractService;
 import uk.ac.sanger.sccp.stan.service.label.print.LabelPrintService;
 import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmOperationService;
@@ -37,6 +36,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final ConfirmOperationService confirmOperationService;
     final ReleaseService releaseService;
     final ExtractService extractService;
+    final DestructionService destructionService;
 
     @Autowired
     public GraphQLMutation(ObjectMapper objectMapper, AuthenticationComponent authComp,
@@ -44,7 +44,8 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            RegisterService registerService, PlanService planService,
                            LabelPrintService labelPrintService,
                            ConfirmOperationService confirmOperationService,
-                           UserRepo userRepo, ReleaseService releaseService, ExtractService extractService) {
+                           UserRepo userRepo, ReleaseService releaseService, ExtractService extractService,
+                           DestructionService destructionService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
@@ -54,6 +55,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.confirmOperationService = confirmOperationService;
         this.releaseService = releaseService;
         this.extractService = extractService;
+        this.destructionService = destructionService;
     }
 
 
@@ -130,6 +132,14 @@ public class GraphQLMutation extends BaseGraphQLResource {
             User user = checkUser();
             ExtractRequest request = arg(dfe, "request", ExtractRequest.class);
             return extractService.extract(user, request);
+        };
+    }
+
+    public DataFetcher<DestroyResult> destroy() {
+        return dfe -> {
+            User user = checkUser();
+            DestroyRequest request = arg(dfe, "request", DestroyRequest.class);
+            return destructionService.destroyAndUnstore(user, request);
         };
     }
 }

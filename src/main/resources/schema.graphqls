@@ -244,6 +244,27 @@ type OperationResult {
     operations: [Operation!]!
 }
 
+type DestructionReason {
+    id: Int!
+    text: String!
+}
+
+type Destruction {
+    labware: Labware
+    user: User
+    destroyed: Timestamp
+    reason: DestructionReason
+}
+
+type DestroyResult {
+    destructions: [Destruction!]!
+}
+
+input DestroyRequest {
+    barcodes: [String!]!
+    reasonId: Int!
+}
+
 type StoredItem {
     barcode: String!
     location: Location!
@@ -334,6 +355,7 @@ type Query {
     comments(category: String): [Comment!]!
     releaseDestinations: [ReleaseDestination!]!
     releaseRecipients: [ReleaseRecipient!]!
+    destructionReasons: [DestructionReason!]!
     find(request: FindRequest!): FindResult!
 
     location(locationBarcode: String!): Location!
@@ -349,6 +371,7 @@ type Mutation {
     confirmOperation(request: ConfirmOperationRequest!): ConfirmOperationResult!
     release(request: ReleaseRequest!): ReleaseResult!
     extract(request: ExtractRequest!): OperationResult!
+    destroy(request: DestroyRequest!): DestroyResult!
 
     storeBarcode(barcode: String!, locationBarcode: String!, address: Address): StoredItem!
     unstoreBarcode(barcode: String!): UnstoredItem
