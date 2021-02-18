@@ -75,6 +75,8 @@ public class GraphQLProvider {
                         .dataFetcher("comments", graphQLDataFetchers.getComments())
                         .dataFetcher("releaseDestinations", graphQLDataFetchers.getReleaseDestinations())
                         .dataFetcher("releaseRecipients", graphQLDataFetchers.getReleaseRecipients())
+                        .dataFetcher("find", graphQLDataFetchers.find())
+
                         .dataFetcher("location", graphQLStore.getLocation())
                         .dataFetcher("stored", graphQLStore.getStored())
                 )

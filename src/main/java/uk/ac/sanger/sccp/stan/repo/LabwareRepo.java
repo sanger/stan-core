@@ -22,13 +22,15 @@ public interface LabwareRepo extends CrudRepository<Labware, Integer> {
 
     List<Labware> findByBarcodeIn(Collection<String> barcodes);
 
+    List<Labware> findAllByIdIn(Collection<Integer> ids);
+
     /**
      * Gets an exact sequence of labware identified by barcodes.
      * @param barcodes the barcodes to find
      * @return the matching labware, in the same order as the barcodes, including repetitions
      * @exception EntityNotFoundException some barcodes could not be found
      */
-    default List<Labware> getByBarcodeIn(Collection<String> barcodes) {
+    default List<Labware> getByBarcodeIn(Collection<String> barcodes) throws EntityNotFoundException {
         if (barcodes.isEmpty()) {
             return List.of();
         }

@@ -21,7 +21,7 @@ public interface ReleaseRepo extends CrudRepository<Release, Integer> {
      * @return the releases in the order of the corresponding ids
      * @exception EntityNotFoundException any ids were not found
      */
-    default List<Release> getAllByIdIn(Collection<Integer> ids) {
+    default List<Release> getAllByIdIn(Collection<Integer> ids) throws EntityNotFoundException {
         Map<Integer, Release> releaseIdMap = findAllByIdIn(ids).stream()
                 .collect(toMap(Release::getId, r -> r));
 

@@ -8,8 +8,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 
 import javax.persistence.EntityManager;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -105,5 +104,42 @@ public class LabwareServiceTest {
                     assertEquals(slot.getLabwareId(), lw.getId());
                     assertNotNull(slot.getId());
                 });
+    }
+
+    @Test
+    public void testFindBySample() {
+        Sample sample1 = EntityFactory.getSample();
+        Sample sample2 = new Sample(sample1.getId() + 1, 100, sample1.getTissue(), sample1.getBioState());
+
+        LabwareType lt = EntityFactory.getTubeType();
+        LabwareType lt2 = EntityFactory.makeLabwareType(1, 2);
+        Labware[] labware = {
+                EntityFactory.makeLabware(lt, sample1),
+                EntityFactory.makeLabware(lt, sample2),
+                EntityFactory.makeLabware(lt2, sample1, sample1),
+                EntityFactory.makeLabware(lt2, sample1, sample2),
+                EntityFactory.makeEmptyLabware(lt),
+        };
+        when(mockSlotRepo.findDistinctBySamplesIn(any())).then(invocation -> {
+            Collection<Sample> samples = invocation.getArgument(0);
+            return Arrays.stream(labware).flatMap(lw -> lw.getSlots().stream())
+                    .filter(slot -> slot.getSamples().stream()
+                            .anyMatch(samples::contains))
+                    .collect(toList());
+        });
+        when(mockLabwareRepo.findAllByIdIn(any())).then(invocation -> {
+            Collection<Integer> labwareIds = invocation.getArgument(0);
+            return Arrays.stream(labware).filter(lw -> labwareIds.contains(lw.getId()))
+                    .collect(toList());
+        });
+
+        assertThat(labwareService.findBySample(List.of(sample1)))
+                .containsExactlyInAnyOrder(labware[0], labware[2], labware[3]);
+        assertThat(labwareService.findBySample(List.of(sample2)))
+                .containsExactlyInAnyOrder(labware[1], labware[3]);
+        assertThat(labwareService.findBySample(List.of(sample1, sample2)))
+                .containsExactlyInAnyOrder(labware[0], labware[1], labware[2], labware[3]);
+        assertThat(labwareService.findBySample(List.of()))
+                .isEmpty();
     }
 }

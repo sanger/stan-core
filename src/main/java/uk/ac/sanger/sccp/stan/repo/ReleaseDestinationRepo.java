@@ -12,7 +12,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 public interface ReleaseDestinationRepo extends CrudRepository<ReleaseDestination, Integer> {
     List<ReleaseDestination> findAllByEnabled(boolean enabled);
     Optional<ReleaseDestination> findByName(String name);
-    default ReleaseDestination getByName(String name) {
+    default ReleaseDestination getByName(String name) throws EntityNotFoundException {
         return findByName(name).orElseThrow(() -> new EntityNotFoundException("No release destination found with name "+repr(name)));
     }
 }

@@ -101,7 +101,7 @@ public class TestStoreService {
 
         verifyQueryMatches("mutation { storeBarcode(barcode: \""+itemBarcode+"\", location: {barcode: \""
                 + locationBarcode+"\"}, address: " + quote(address) + ") { barcode address location " +
-                "{ barcode description address size { numRows numColumns } " +
+                "{ id barcode description address size { numRows numColumns } " +
                 "children { barcode description address } " +
                 "stored { barcode address }" +
                 "parent { barcode description address }" +
@@ -221,7 +221,7 @@ public class TestStoreService {
         Location result = service.setLocationCustomName(user, barcode, newCustomName);
         verifyQueryMatches("mutation { editLocation(location:{barcode:"+json(barcode)
                 +"}, change: {description:"+json(alteredLocation.getDescription())+"}) {" +
-                "barcode description address size {numRows numColumns } " +
+                "id barcode description address size {numRows numColumns } " +
                 "children { barcode description address }" +
                 "stored { barcode address } " +
                 "parent { barcode description address }" +
@@ -259,6 +259,7 @@ public class TestStoreService {
         Location result = service.getLocation(barcode);
         verifyQueryMatches("{" +
                         "    location(location: {barcode:\""+barcode+"\"}) {" +
+                        "        id" +
                         "        barcode" +
                         "        description" +
                         "        address" +
@@ -322,6 +323,7 @@ public class TestStoreService {
                 "        barcode" +
                 "        address" +
                 "        location {" +
+                "            id" +
                 "            barcode" +
                 "            description" +
                 "            address" +

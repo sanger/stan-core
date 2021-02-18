@@ -5,6 +5,8 @@ import com.google.common.base.MoreObjects;
 import javax.persistence.*;
 import java.util.*;
 
+import static uk.ac.sanger.sccp.utils.BasicUtils.newArrayList;
+
 /**
  * @author dr6
  */
@@ -36,9 +38,9 @@ public class Slot {
         this.id = id;
         this.labwareId = labwareId;
         this.address = address;
-        this.samples = samples;
         this.blockSampleId = blockSampleId;
         this.blockHighestSection = blockHighestSection;
+        setSamples(samples);
     }
 
     public Integer getId() {
@@ -70,7 +72,7 @@ public class Slot {
     }
 
     public void setSamples(List<Sample> samples) {
-        this.samples = samples;
+        this.samples = newArrayList(samples);
     }
 
     public Integer getBlockSampleId() {

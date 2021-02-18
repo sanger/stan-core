@@ -10,11 +10,20 @@ import java.util.function.Function;
  * @author dr6
  */
 public class Location extends LinkedLocation {
+    private Integer id;
     private LinkedLocation parent;
     private List<StoredItem> stored = new ArrayList<>();
     private List<LinkedLocation> children = new ArrayList<>();
     private Size size;
     private GridDirection direction;
+
+    public Integer getId() {
+        return this.id;
+    }
+
+    public void setId(Integer id) {
+        this.id = id;
+    }
 
     public List<StoredItem> getStored() {
         return this.stored;
@@ -74,7 +83,8 @@ public class Location extends LinkedLocation {
         if (!equalsLinkedLocation(that)) {
             return false;
         }
-        return (Objects.equals(this.size, that.size) &&
+        return (Objects.equals(this.id, that.id) &&
+                Objects.equals(this.size, that.size) &&
                 Objects.equals(this.parentBarcode(), that.parentBarcode()) &&
                 this.direction==that.direction &&
                 alike(this.stored, that.stored, StoredItem::getBarcode, StoredItem::getAddress) &&
@@ -107,6 +117,6 @@ public class Location extends LinkedLocation {
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), parent, stored, children, size, direction);
+        return id!=null ? id.hashCode() : Objects.hash(super.hashCode(), parent, stored, children, size, direction);
     }
 }

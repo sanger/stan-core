@@ -1,5 +1,6 @@
 mutation {
     editLocation(location: {barcode:"LOCATIONBARCODE"}, change: {description:"DESCRIPTION"}) {
+        id
         barcode
         description
         address

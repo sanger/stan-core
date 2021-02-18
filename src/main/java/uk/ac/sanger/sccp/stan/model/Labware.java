@@ -1,7 +1,12 @@
 package uk.ac.sanger.sccp.stan.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import javax.persistence.*;
-import java.util.*;
+import java.util.List;
+import java.util.Objects;
+
+import static uk.ac.sanger.sccp.utils.BasicUtils.newArrayList;
 
 /**
  * @author dr6
@@ -31,7 +36,7 @@ public class Labware {
         this.id = id;
         this.barcode = barcode;
         this.labwareType = labwareType;
-        this.slots = (slots==null ? new ArrayList<>() : slots);
+        setSlots(slots);
     }
 
     public Integer getId() {
@@ -63,7 +68,7 @@ public class Labware {
     }
 
     public void setSlots(List<Slot> slots) {
-        this.slots = slots;
+        this.slots = newArrayList(slots);
     }
 
     public Slot getFirstSlot() {
@@ -134,4 +139,8 @@ public class Labware {
         return (id!=null ? id.hashCode() : barcode!=null ? barcode.hashCode() : 0);
     }
 
+    @JsonIgnore
+    public boolean isUsable() {
+        return !(isReleased() || isDestroyed() || isDiscarded());
+    }
 }

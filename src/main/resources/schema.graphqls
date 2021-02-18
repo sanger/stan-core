@@ -269,6 +269,7 @@ enum GridDirection {
 }
 
 type Location {
+    id: Int!
     barcode: String!
     name: String
     customName: String
@@ -292,6 +293,34 @@ type UnstoreResult {
     unstored: [UnstoredItem!]!
 }
 
+type FindEntry {
+    sampleId: Int!
+    labwareId: Int!
+}
+
+type LabwareLocationEntry {
+    labwareId: Int!
+    locationId: Int!
+    address: Address
+}
+
+type FindResult {
+    entries: [FindEntry!]!
+    samples: [Sample!]!
+    labware: [Labware!]!
+    locations: [Location!]!
+    labwareLocations: [LabwareLocationEntry!]!
+    numRecords: Int!
+}
+
+input FindRequest {
+    labwareBarcode: String
+    donorName: String
+    tissueExternalName: String
+    tissueType: String
+    maxRecords: Int
+}
+
 type Query {
     user: User
     tissueTypes: [TissueType!]!
@@ -305,6 +334,7 @@ type Query {
     comments(category: String): [Comment!]!
     releaseDestinations: [ReleaseDestination!]!
     releaseRecipients: [ReleaseRecipient!]!
+    find(request: FindRequest!): FindResult!
 
     location(locationBarcode: String!): Location!
     stored(barcodes: [String!]!): [StoredItem!]!
