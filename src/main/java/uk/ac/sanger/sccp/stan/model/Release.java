@@ -6,9 +6,8 @@ import org.hibernate.annotations.GenerationTime;
 
 import javax.persistence.*;
 import java.sql.Timestamp;
-import java.util.*;
+import java.util.Objects;
 
-import static uk.ac.sanger.sccp.utils.BasicUtils.newArrayList;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
@@ -37,26 +36,22 @@ public class Release {
     @Generated(GenerationTime.INSERT)
     private Timestamp released;
 
-    @OneToMany
-    @JoinColumn(name="release_id")
-    private List<ReleaseDetail> details;
+    private Integer snapshotId;
 
-    public Release() {
-        this(null, null, null, null, null, null);
+    public Release() {}
+
+    public Release(Labware labware, User user, ReleaseDestination destination, ReleaseRecipient recipient, Integer snapshotId) {
+        this(null, labware, user, destination, recipient, snapshotId, null);
     }
 
-    public Release(Labware labware, User user, ReleaseDestination destination, ReleaseRecipient recipient) {
-        this(null, labware, user, destination, recipient, null);
-    }
-
-    public Release(Integer id, Labware labware, User user, ReleaseDestination destination, ReleaseRecipient recipient, Timestamp released) {
+    public Release(Integer id, Labware labware, User user, ReleaseDestination destination, ReleaseRecipient recipient, Integer snapshotId, Timestamp released) {
         this.id = id;
         this.labware = labware;
         this.user = user;
         this.destination = destination;
         this.recipient = recipient;
         this.released = released;
-        this.details = new ArrayList<>();
+        this.snapshotId = snapshotId;
     }
 
     public Integer getId() {
@@ -107,12 +102,12 @@ public class Release {
         this.user = user;
     }
 
-    public List<ReleaseDetail> getDetails() {
-        return this.details;
+    public Integer getSnapshotId() {
+        return this.snapshotId;
     }
 
-    public void setDetails(Iterable<ReleaseDetail> details) {
-        this.details = newArrayList(details);
+    public void setSnapshotId(Integer snapshotId) {
+        this.snapshotId = snapshotId;
     }
 
     @Override
@@ -126,7 +121,7 @@ public class Release {
                 && Objects.equals(this.recipient, that.recipient)
                 && Objects.equals(this.released, that.released)
                 && Objects.equals(this.user, that.user)
-                && Objects.equals(this.details, that.details));
+                && Objects.equals(this.snapshotId, that.snapshotId));
     }
 
     @Override
@@ -143,7 +138,7 @@ public class Release {
                 .add("destination", destination)
                 .add("recipient", recipient)
                 .add("released", released)
-                .add("details", details)
+                .add("snapshotId", snapshotId)
                 .toString();
     }
 }

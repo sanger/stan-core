@@ -816,6 +816,55 @@
     </changeSet>
 
     <changeSet id="402" author="dr6">
+        <createTable tableName="snapshot">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="labware_id" type="INT">
+                <constraints nullable="false" foreignKeyName="snapshot_fk_labware" referencedTableName="labware" referencedColumnNames="id"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="403" author="dr6">
+        <createTable tableName="snapshot_element">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="snapshot_id" type="INT">
+                <constraints nullable="false" foreignKeyName="snapshot_element_fk_snapshot" referencedTableName="snapshot" referencedColumnNames="id"/>
+            </column>
+            <column name="slot_id" type="INT">
+                <constraints nullable="false" foreignKeyName="snapshot_element_fk_slot" referencedTableName="slot" referencedColumnNames="id"/>
+            </column>
+            <column name="sample_id" type="INT">
+                <constraints nullable="false" foreignKeyName="snapshot_element_fk_sample" referencedTableName="sample" referencedColumnNames="id"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="snapshot_element" indexName="snapshot_element_key_snapshot_slot_sample" unique="true">
+            <column name="snapshot_id"/>
+            <column name="slot_id"/>
+            <column name="sample_id"/>
+        </createIndex>
+        <rollback>
+            <dropAllForeignKeyConstraints baseTableName="snapshot_element"/>
+            <dropTable tableName="snapshot_element"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="404" author="dr6">
         <createTable tableName="labware_release">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
@@ -835,6 +884,9 @@
             <column name="recipient_id" type="INT">
                 <constraints nullable="false" foreignKeyName="labware_release_fk_recipient" referencedTableName="release_recipient" referencedColumnNames="id"/>
             </column>
+            <column name="snapshot_id" type="INT">
+                <constraints nullable="false" foreignKeyName="labware_release_fk_snapshot" referencedTableName="snapshot" referencedColumnNames="id"/>
+            </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
             </column>
@@ -844,39 +896,7 @@
         </createTable>
     </changeSet>
 
-    <changeSet id="403" author="dr6">
-        <createTable tableName="release_detail">
-            <column name="id" type="INT" autoIncrement="true">
-                <constraints nullable="false" primaryKey="true"/>
-            </column>
-            <column name="release_id" type="INT">
-                <constraints nullable="false" foreignKeyName="release_detail_fk_release" referencedTableName="labware_release" referencedColumnNames="id"/>
-            </column>
-            <column name="slot_id" type="INT">
-                <constraints nullable="false" foreignKeyName="release_detail_fk_slot" referencedTableName="slot" referencedColumnNames="id"/>
-            </column>
-            <column name="sample_id" type="INT">
-                <constraints nullable="false" foreignKeyName="release_detail_fk_sample" referencedTableName="sample" referencedColumnNames="id"/>
-            </column>
-            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
-                <constraints nullable="false"/>
-            </column>
-            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
-                <constraints nullable="false"/>
-            </column>
-        </createTable>
-        <createIndex tableName="release_detail" indexName="release_detail_key_release_slot_sample" unique="true">
-            <column name="release_id"/>
-            <column name="slot_id"/>
-            <column name="sample_id"/>
-        </createIndex>
-        <rollback>
-            <dropAllForeignKeyConstraints baseTableName="release_detail"/>
-            <dropTable tableName="release_detail"/>
-        </rollback>
-    </changeSet>
-
-    <changeSet id="404" author="dr6">
+    <changeSet id="405" author="dr6">
         <addColumn tableName="labware">
             <column name="released" type="BOOLEAN" defaultValue="FALSE">
                 <constraints nullable="false"/>
@@ -887,13 +907,13 @@
         </addColumn>
     </changeSet>
 
-    <changeSet id="405" author="dr6">
+    <changeSet id="406" author="dr6">
         <loadData tableName="release_destination" file="db/releasedestinations.tsv" separator="\t">
             <column name="name" header="name" type="string"/>
         </loadData>
     </changeSet>
 
-    <changeSet id="406" author="dr6">
+    <changeSet id="407" author="dr6">
         <loadData tableName="release_recipient" file="db/releaserecipients.tsv" separator="\t">
             <column name="username" header="username" type="string"/>
         </loadData>
