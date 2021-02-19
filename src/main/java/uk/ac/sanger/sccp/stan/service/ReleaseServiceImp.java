@@ -1,7 +1,5 @@
 package uk.ac.sanger.sccp.stan.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.Transactor;
@@ -11,7 +9,6 @@ import uk.ac.sanger.sccp.stan.request.ReleaseRequest;
 import uk.ac.sanger.sccp.stan.request.ReleaseResult;
 import uk.ac.sanger.sccp.stan.service.store.StoreService;
 
-import javax.persistence.EntityManager;
 import java.util.*;
 
 import static java.util.stream.Collectors.toList;
@@ -22,41 +19,37 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.newArrayList;
  */
 @Service
 public class ReleaseServiceImp implements ReleaseService {
-    Logger log = LoggerFactory.getLogger(ReleaseServiceImp.class);
-
     private final Transactor transactor;
     private final ReleaseDestinationRepo destinationRepo;
     private final ReleaseRecipientRepo recipientRepo;
     private final LabwareRepo labwareRepo;
     private final StoreService storeService;
     private final ReleaseRepo releaseRepo;
-    private final ReleaseDetailRepo releaseDetailRepo;
-    private final EntityManager entityManager;
+    private final SnapshotService snapshotService;
 
     @Autowired
     public ReleaseServiceImp(Transactor transactor,
                              ReleaseDestinationRepo destinationRepo, ReleaseRecipientRepo recipientRepo,
                              LabwareRepo labwareRepo, StoreService storeService, ReleaseRepo releaseRepo,
-                             ReleaseDetailRepo releaseDetailRepo, EntityManager entityManager) {
+                             SnapshotService snapshotService) {
         this.transactor = transactor;
         this.destinationRepo = destinationRepo;
         this.recipientRepo = recipientRepo;
         this.labwareRepo = labwareRepo;
         this.storeService = storeService;
         this.releaseRepo = releaseRepo;
-        this.releaseDetailRepo = releaseDetailRepo;
-        this.entityManager = entityManager;
+        this.snapshotService = snapshotService;
     }
 
     @Override
     public ReleaseResult releaseAndUnstore(User user, ReleaseRequest request) {
         List<Release> releases = transactRelease(user, request);
-        unstore(user, request.getBarcodes());
+        storeService.discardStorage(user, request.getBarcodes());
         return new ReleaseResult(releases);
     }
 
     /**
-     * Transactionally validates and performs the release request (not including {@link #unstore}).
+     * Transactionally validates and performs the release request (not including unstoring).
      * @param user the user responsible for the release
      * @param request the details of the release
      * @return the created releases
@@ -153,7 +146,7 @@ public class ReleaseServiceImp implements ReleaseService {
     }
 
     /**
-     * Records a release to the database (including all the details of the current contents of the labware).
+     * Records a release to the database (including snapshotting the current contents of the labware).
      * @param user the user responsible for the release
      * @param destination the release destination
      * @param recipient the release recipient
@@ -161,15 +154,8 @@ public class ReleaseServiceImp implements ReleaseService {
      * @return the newly recorded release
      */
     public Release recordRelease(User user, ReleaseDestination destination, ReleaseRecipient recipient, Labware labware) {
-        Release release = releaseRepo.save(new Release(labware, user, destination, recipient));
-        final Integer releaseId = release.getId();
-        List<ReleaseDetail> details = labware.getSlots().stream()
-                .flatMap(slot -> slot.getSamples().stream()
-                .map(sample -> new ReleaseDetail(null, releaseId, slot.getId(), sample.getId())))
-                .collect(toList());
-        releaseDetailRepo.saveAll(details);
-        entityManager.refresh(release);
-        return release;
+        Snapshot snapshot = snapshotService.createSnapshot(labware);
+        return releaseRepo.save(new Release(labware, user, destination, recipient, snapshot.getId()));
     }
 
     /**
@@ -181,20 +167,5 @@ public class ReleaseServiceImp implements ReleaseService {
         labware.forEach(lw -> lw.setReleased(true));
         Iterable<Labware> saved = labwareRepo.saveAll(labware);
         return (saved instanceof Collection ? (Collection<Labware>) saved : newArrayList(saved));
-    }
-
-    /**
-     * Tries to unstore the barcodes, but catches exceptions so the operation can still go ahead if
-     * unstoring fails.
-     * @param user the user unstoring
-     * @param barcodes the barcodes to unstore
-     */
-    public void unstore(User user, Collection<String> barcodes) {
-        try {
-            storeService.unstoreBarcodesWithoutValidatingThem(user, barcodes);
-        } catch (RuntimeException e) { // e.g. StoreException, UncheckedIOException
-            log.error("Exception when unstoring during unrelease, " +
-                    "username: " + user.getUsername() + ", barcodes: " + barcodes, e);
-        }
     }
 }

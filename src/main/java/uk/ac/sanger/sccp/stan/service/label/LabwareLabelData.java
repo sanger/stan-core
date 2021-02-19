@@ -66,8 +66,8 @@ public class LabwareLabelData {
             if (content.getReplicate()!=null) {
                 addField(fields, "replicate", index, "R:"+content.getReplicate());
             }
-            if (content.getSection()!=null) {
-                addField(fields, "section", index, String.format("S%03d", content.getSection()));
+            if (content.getStateDesc()!=null) {
+                addField(fields, "state", index, content.getStateDesc());
             }
             ++index;
         }
@@ -84,13 +84,22 @@ public class LabwareLabelData {
         private final String donorName;
         private final String tissueDesc;
         private final Integer replicate;
-        private final Integer section;
+        private final String stateDesc;
+
+        public LabelContent(String donorName, String tissueDesc, Integer replicate) {
+            this(donorName, tissueDesc, replicate, (String) null);
+        }
+
 
         public LabelContent(String donorName, String tissueDesc, Integer replicate, Integer section) {
+            this(donorName, tissueDesc, replicate, section==null ? null : String.format("S%03d", section));
+        }
+
+        public LabelContent(String donorName, String tissueDesc, Integer replicate, String stateDesc) {
             this.donorName = donorName;
             this.tissueDesc = tissueDesc;
             this.replicate = replicate;
-            this.section = section;
+            this.stateDesc = stateDesc;
         }
 
         public String getDonorName() {
@@ -105,8 +114,8 @@ public class LabwareLabelData {
             return this.replicate;
         }
 
-        public Integer getSection() {
-            return this.section;
+        public String getStateDesc() {
+            return this.stateDesc;
         }
 
         @Override
@@ -117,12 +126,12 @@ public class LabwareLabelData {
             return (Objects.equals(this.donorName, that.donorName)
                     && Objects.equals(this.tissueDesc, that.tissueDesc)
                     && Objects.equals(this.replicate, that.replicate)
-                    && Objects.equals(this.section, that.section));
+                    && Objects.equals(this.stateDesc, that.stateDesc));
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(donorName, tissueDesc, replicate, section);
+            return Objects.hash(donorName, tissueDesc, replicate, stateDesc);
         }
 
         @Override
@@ -131,7 +140,7 @@ public class LabwareLabelData {
                     .add("donorName", donorName)
                     .add("tissueDesc", tissueDesc)
                     .add("replicate", replicate)
-                    .add("section", section)
+                    .add("stateDesc", stateDesc)
                     .toString();
         }
     }

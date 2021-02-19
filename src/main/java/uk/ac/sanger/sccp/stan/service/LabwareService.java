@@ -6,10 +6,12 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 
 import javax.persistence.EntityManager;
-import java.util.ArrayList;
+import java.util.*;
+
+import static java.util.stream.Collectors.toSet;
 
 /**
- * Service to create labware (complete with the appropriate slots).
+ * Service to help with labware, including creating labware with appropriate slots.
  * @author dr6
  */
 @Service
@@ -55,5 +57,23 @@ public class LabwareService {
         }
         entityManager.refresh(labware);
         return labware;
+    }
+
+    /**
+     * Gets all the labware containing any of the specified samples.
+     * Currently this is done by getting every slot containing any of the given samples,
+     * and then loading all the labware indicated by the slots.
+     * @param samples the samples to find labware for
+     * @return all the labware that contains any of the given samples
+     */
+    public List<Labware> findBySample(Collection<Sample> samples) {
+        List<Slot> slots = slotRepo.findDistinctBySamplesIn(samples);
+        if (slots.isEmpty()) {
+            return List.of();
+        }
+        Set<Integer> labwareIds = slots.stream()
+                .map(Slot::getLabwareId)
+                .collect(toSet());
+        return labwareRepo.findAllByIdIn(labwareIds);
     }
 }

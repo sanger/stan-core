@@ -10,10 +10,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 
 import javax.persistence.EntityManager;
 import javax.transaction.Transactional;
-import java.util.List;
-import java.util.stream.Collectors;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
@@ -30,14 +27,12 @@ public class TestReleaseRepo {
 
     @Autowired
     ReleaseRepo releaseRepo;
-    @Autowired
-    ReleaseDetailRepo releaseDetailRepo;
 
     @Autowired
     EntityManager entityManager;
 
     /**
-     * Tests creating a release in {@link ReleaseRepo} and {@link ReleaseDetailRepo}
+     * Tests creating a release
      */
     @Test
     @Transactional
@@ -51,15 +46,11 @@ public class TestReleaseRepo {
         ReleaseRecipient recipient = entityCreator.createReleaseRecipient("Mekon");
         LabwareType lwtype = entityCreator.createLabwareType("plate4", 1, 4);
         Labware labware = entityCreator.createLabware("STAN-123", lwtype, sample, sample, sample1);
-        Release release = new Release(labware, user, destination, recipient);
+        Snapshot snap = entityCreator.createSnapshot(labware);
+        Release release = new Release(labware, user, destination, recipient, snap.getId());
         Release saved = releaseRepo.save(release);
         Integer releaseId = saved.getId();
         assertNotNull(releaseId);
-        List<ReleaseDetail> newDetails = labware.getSlots().stream()
-                .flatMap(slot -> slot.getSamples().stream()
-                        .map(sm -> new ReleaseDetail(null, releaseId, slot.getId(), sm.getId())))
-                .collect(Collectors.toList());
-        releaseDetailRepo.saveAll(newDetails);
 
         entityManager.refresh(saved);
         for (int i = 0; i < 2; ++i) {
@@ -75,17 +66,7 @@ public class TestReleaseRepo {
             assertEquals(labware, rel.getLabware());
             assertEquals(destination, rel.getDestination());
             assertEquals(recipient, rel.getRecipient());
-            var details = rel.getDetails();
-            assertThat(details).hasSize(newDetails.size());
-            for (ReleaseDetail expected : newDetails) {
-                ReleaseDetail actual = details.stream()
-                        .filter(det -> det.getSampleId().equals(expected.getSampleId())
-                                && det.getSlotId().equals(expected.getSlotId()))
-                        .findAny()
-                        .orElseThrow();
-                assertNotNull(actual.getId());
-                assertEquals(releaseId, actual.getReleaseId());
-            }
+            assertEquals(snap.getId(), rel.getSnapshotId());
         }
     }
 

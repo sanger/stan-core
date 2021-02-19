@@ -4,17 +4,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
-import org.mockito.InOrder;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.Transactor;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.ReleaseRequest;
 import uk.ac.sanger.sccp.stan.request.ReleaseResult;
-import uk.ac.sanger.sccp.stan.service.store.StoreException;
 import uk.ac.sanger.sccp.stan.service.store.StoreService;
 
-import javax.persistence.EntityManager;
 import java.sql.Timestamp;
 import java.util.*;
 import java.util.function.Supplier;
@@ -34,9 +31,8 @@ public class TestReleaseService {
     private LabwareRepo mockLabwareRepo;
     private StoreService mockStoreService;
     private ReleaseRepo mockReleaseRepo;
-    private ReleaseDetailRepo mockReleaseDetailRepo;
-    private EntityManager mockEntityManager;
     private Transactor mockTransactor;
+    private SnapshotService mockSnapshotService;
 
     private ReleaseDestination destination;
     private ReleaseRecipient recipient;
@@ -54,8 +50,7 @@ public class TestReleaseService {
         mockLabwareRepo = mock(LabwareRepo.class);
         mockStoreService = mock(StoreService.class);
         mockReleaseRepo = mock(ReleaseRepo.class);
-        mockReleaseDetailRepo = mock(ReleaseDetailRepo.class);
-        mockEntityManager = mock(EntityManager.class);
+        mockSnapshotService = mock(SnapshotService.class);
         user = new User(10, "user1");
         destination = new ReleaseDestination(20, "Venus");
         recipient = new ReleaseRecipient(30, "Mekon");
@@ -67,7 +62,7 @@ public class TestReleaseService {
         labwareType = EntityFactory.makeLabwareType(1,4);
 
         service = spy(new ReleaseServiceImp(mockTransactor, mockDestinationRepo, mockRecipientRepo, mockLabwareRepo, mockStoreService,
-                mockReleaseRepo, mockReleaseDetailRepo, mockEntityManager));
+                mockReleaseRepo, mockSnapshotService));
 
         when(mockTransactor.transact(any(), any())).then(invocation -> {
             Supplier<List<Release>> supplier = invocation.getArgument(1);
@@ -82,16 +77,15 @@ public class TestReleaseService {
         Timestamp timestamp = new Timestamp(System.currentTimeMillis());
         List<String> barcodes = List.of(lw1.getBarcode(), lw2.getBarcode());
         ReleaseRequest request = new ReleaseRequest(barcodes, "Venus", "Mekon");
-        List<Release> releases = List.of(new Release(1, lw1, user, destination, recipient, timestamp),
-                new Release(2, lw2, user, destination, recipient, timestamp));
+        List<Release> releases = List.of(new Release(1, lw1, user, destination, recipient, 1, timestamp),
+                new Release(2, lw2, user, destination, recipient, 2, timestamp));
 
         doReturn(releases).when(service).release(any(), any());
-        doNothing().when(service).unstore(any(), any());
 
         assertEquals(new ReleaseResult(releases), service.releaseAndUnstore(user, request));
 
         verify(service).release(user, request);
-        verify(service).unstore(user, barcodes);
+        verify(mockStoreService).discardStorage(user, barcodes);
     }
 
     @ParameterizedTest
@@ -152,7 +146,7 @@ public class TestReleaseService {
         doReturn(labware).when(service).updateReleasedLabware(any());
         Timestamp timestamp = new Timestamp(System.currentTimeMillis());
         List<Release> releases = labware.stream()
-                .map(lw -> new Release(10+lw.getId(), lw, user, destination, recipient, timestamp))
+                .map(lw -> new Release(10+lw.getId(), lw, user, destination, recipient, 1, timestamp))
                 .collect(toList());
         doReturn(releases).when(service).recordReleases(any(), any(), any(), any());
 
@@ -244,7 +238,7 @@ public class TestReleaseService {
                 .collect(toList());
         Timestamp timestamp = new Timestamp(System.currentTimeMillis());
         List<Release> releases = labware.stream()
-                .map(lw -> new Release(10, lw, user, destination, recipient, timestamp))
+                .map(lw -> new Release(10, lw, user, destination, recipient, 1, timestamp))
                 .collect(toList());
 
         doReturn(releases.get(0)).when(service).recordRelease(user, destination, recipient, labware.get(0));
@@ -261,27 +255,17 @@ public class TestReleaseService {
         lw.getSlots().get(1).getSamples().add(sample1);
 
         final int releaseId = 10;
-        Release release = new Release(releaseId, lw, user, destination, recipient, new Timestamp(System.currentTimeMillis()));
+        Release release = new Release(releaseId, lw, user, destination, recipient, 1, new Timestamp(System.currentTimeMillis()));
 
         when(mockReleaseRepo.save(any())).thenReturn(release);
 
+        Snapshot snap = EntityFactory.makeSnapshot(lw);
+        when(mockSnapshotService.createSnapshot(any())).thenReturn(snap);
+
         assertSame(release, service.recordRelease(user, destination, recipient, lw));
 
-        final int slot0Id = lw.getSlots().get(0).getId();
-        final int slot1Id = lw.getSlots().get(1).getId();
-        final int sampleId = sample.getId();
-        final int sample1Id = sample1.getId();
-        List<ReleaseDetail> expectedDetails = List.of(
-                new ReleaseDetail(null, releaseId, slot0Id, sampleId),
-                new ReleaseDetail(null, releaseId, slot0Id, sample1Id),
-                new ReleaseDetail(null, releaseId, slot1Id, sample1Id)
-        );
-
-        InOrder order = inOrder(mockReleaseRepo, mockReleaseDetailRepo, mockEntityManager);
-
-        order.verify(mockReleaseRepo).save(new Release(lw, user, destination, recipient));
-        order.verify(mockReleaseDetailRepo).saveAll(expectedDetails);
-        order.verify(mockEntityManager).refresh(release);
+        verify(mockSnapshotService).createSnapshot(lw);
+        verify(mockReleaseRepo).save(new Release(lw, user, destination, recipient, snap.getId()));
     }
 
     @Test
@@ -296,17 +280,4 @@ public class TestReleaseService {
         assertSame(savedLabware, service.updateReleasedLabware(labware));
         labware.forEach(lw -> assertTrue(lw.isReleased()));
     }
-
-    @ParameterizedTest
-    @ValueSource(booleans={true, false})
-    public void testUnstore(boolean successful) {
-        List<String> barcodes = List.of("STAN-001", "STAN-002");
-        if (!successful) {
-            when(mockStoreService.unstoreBarcodesWithoutValidatingThem(any(), any())).thenThrow(StoreException.class);
-        }
-
-        service.unstore(user, barcodes);
-        verify(mockStoreService).unstoreBarcodesWithoutValidatingThem(user, barcodes);
-    }
-
 }

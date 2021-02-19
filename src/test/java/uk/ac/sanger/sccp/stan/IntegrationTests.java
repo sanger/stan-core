@@ -1,6 +1,7 @@
 package uk.ac.sanger.sccp.stan;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -14,6 +15,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import uk.ac.sanger.sccp.stan.model.*;
+import uk.ac.sanger.sccp.stan.model.store.Location;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.service.label.LabelPrintRequest;
 import uk.ac.sanger.sccp.stan.service.label.LabwareLabelData;
@@ -24,6 +26,7 @@ import uk.ac.sanger.sccp.utils.GraphQLClient.GraphQLResponse;
 
 import javax.persistence.EntityManager;
 import javax.transaction.Transactional;
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.IntStream;
 
@@ -63,6 +66,10 @@ public class IntegrationTests {
     private OperationRepo opRepo;
     @Autowired
     private LabwareRepo lwRepo;
+    @Autowired
+    private DestructionRepo destructionRepo;
+    @Autowired
+    private DestructionReasonRepo destructionReasonRepo;
 
     @MockBean
     StorelightClient mockStorelightClient;
@@ -139,10 +146,11 @@ public class IntegrationTests {
         PrintClient<LabelPrintRequest> mockPrintClient = mock(PrintClient.class);
         when(tester.mockPrintClientFactory.getClient(any())).thenReturn(mockPrintClient);
         tester.setUser(entityCreator.createUser("dr6"));
+        BioState rna = bioStateRepo.getByName("RNA");
         Tissue tissue = entityCreator.createTissue(entityCreator.createDonor("DONOR1", LifeStage.adult), "TISSUE1");
         Labware lw = entityCreator.createLabware("STAN-SLIDE", entityCreator.createLabwareType("slide6", 3, 2),
                 entityCreator.createSample(tissue, 1), entityCreator.createSample(tissue, 2),
-                entityCreator.createSample(tissue, 3), entityCreator.createSample(tissue, 4));
+                entityCreator.createSample(tissue, 3), entityCreator.createSample(tissue, 4, rna));
         Printer printer = entityCreator.createPrinter("stub");
         String mutation = "mutation { printLabware(barcodes: [\"STAN-SLIDE\"], printer: \"stub\") }";
         assertThat(tester.<Map<?,?>>post(mutation)).isEqualTo(Map.of("data", Map.of("printLabware", "OK")));
@@ -156,7 +164,7 @@ public class IntegrationTests {
                                 new LabelContent(donorName, tissueDesc, replicate, 1),
                                 new LabelContent(donorName, tissueDesc, replicate, 2),
                                 new LabelContent(donorName, tissueDesc, replicate, 3),
-                                new LabelContent(donorName, tissueDesc, replicate, 4)
+                                new LabelContent(donorName, tissueDesc, replicate, "RNA")
                         ))
                 ))
         );
@@ -192,11 +200,7 @@ public class IntegrationTests {
                 .replace("DESTINATION", destination.getName())
                 .replace("RECIPIENT", recipient.getUsername());
 
-        ObjectMapper objectMapper = new ObjectMapper();
-        ObjectNode storelightDataNode = objectMapper.createObjectNode()
-                .set("unstoreBarcodes", objectMapper.createObjectNode().put("numUnstored", 2));
-        GraphQLResponse storelightResponse = new GraphQLResponse(storelightDataNode, null);
-        when(mockStorelightClient.postQuery(anyString(), anyString())).thenReturn(storelightResponse);
+        stubStorelightUnstore();
 
         Object result = tester.post(mutation);
 
@@ -212,10 +216,7 @@ public class IntegrationTests {
             assertTrue((boolean) chainGet(releaseItem, "labware", "released"));
         }
 
-        ArgumentCaptor<String> queryCaptor = ArgumentCaptor.forClass(String.class);
-        verify(mockStorelightClient).postQuery(queryCaptor.capture(), eq(user.getUsername()));
-        String storelightQuery = queryCaptor.getValue();
-        assertThat(storelightQuery).contains("STAN-001", "STAN-002");
+        verifyUnstored(List.of("STAN-001", "STAN-002"), user.getUsername());
 
         List<Integer> releaseIds = releaseData.stream()
                 .map(rd -> (Integer) rd.get("id"))
@@ -337,6 +338,159 @@ public class IntegrationTests {
         }
     }
 
+    @Test
+    @Transactional
+    public void testFind() throws Exception {
+        Donor donor = entityCreator.createDonor("DONOR1");
+        Tissue tissue1 = entityCreator.createTissue(donor, "TISSUE1");
+        BioState bs = entityCreator.anyBioState();
+        Tissue tissue2 = entityCreator.createTissue(donor, "TISSUE2", 2);
+
+        Sample[] samples = {
+                entityCreator.createSample(tissue1, 1, bs),
+                entityCreator.createSample(tissue1, 2, bs),
+                entityCreator.createSample(tissue2, 3, bs),
+        };
+
+        LabwareType lt1 = entityCreator.createLabwareType("lt1", 1, 1);
+
+        Labware[] labware = {
+                entityCreator.createLabware("STAN-01", lt1, samples[0]),
+                entityCreator.createLabware("STAN-02", lt1, samples[1]),
+                entityCreator.createLabware("STAN-03", lt1, samples[2]),
+        };
+
+        Location[] locations = {
+                new Location(), new Location()
+        };
+        locations[0].setId(10);
+        locations[0].setBarcode("STO-10");
+        locations[1].setId(20);
+        locations[1].setBarcode("STO-20");
+
+        String[] storageAddresses = {null, "B3"};
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        ObjectNode[] locationNodes = Arrays.stream(locations)
+                .map(loc -> objectMapper.createObjectNode()
+                        .put("id", loc.getId())
+                        .put("barcode", loc.getBarcode()))
+                .toArray(ObjectNode[]::new);
+        ObjectNode[] storedItemNodes = IntStream.range(0, 2)
+                .<ObjectNode>mapToObj(i -> objectMapper.createObjectNode()
+                        .put("barcode", labware[i].getBarcode())
+                        .put("address", storageAddresses[i])
+                        .set("location", locationNodes[i])
+                )
+                .toArray(ObjectNode[]::new);
+        ArrayNode storedItemArray = objectMapper.createArrayNode()
+                .addAll(Arrays.asList(storedItemNodes));
+        ObjectNode storelightDataNode = objectMapper.createObjectNode()
+                .set("stored", storedItemArray);
+        GraphQLResponse storelightResponse = new GraphQLResponse(storelightDataNode, null);
+        when(mockStorelightClient.postQuery(anyString(), any())).thenReturn(storelightResponse);
+
+        String query = tester.readResource("graphql/find_tissue.graphql").replace("TISSUE_NAME", tissue1.getExternalName());
+
+        Object response = tester.post(query);
+        final Object findData = chainGet(response, "data", "find");
+
+        List<Map<String, ?>> entriesData = chainGet(findData, "entries");
+        assertThat(entriesData).containsExactlyInAnyOrderElementsOf(
+                IntStream.range(0, 2)
+                        .mapToObj(i -> Map.of("labwareId", labware[i].getId(), "sampleId", samples[i].getId()))
+                        .collect(toList())
+        );
+
+        List<Map<String, ?>> lwData = chainGet(findData, "labware");
+        assertThat(lwData).containsExactlyInAnyOrderElementsOf(
+                Arrays.stream(labware, 0, 2)
+                        .map(lw -> Map.of("id", lw.getId(), "barcode", lw.getBarcode()))
+                        .collect(toList())
+        );
+
+        List<Map<String, ?>> samplesData = chainGet(findData, "samples");
+        assertThat(samplesData).containsExactlyInAnyOrderElementsOf(
+                Arrays.stream(samples, 0, 2)
+                        .map(sam -> Map.of("id", sam.getId(), "section", sam.getSection()))
+                        .collect(toList())
+        );
+
+        List<Map<String, ?>> locationsData = chainGet(findData, "locations");
+        assertThat(locationsData).containsExactlyInAnyOrderElementsOf(
+                Arrays.stream(locations)
+                        .map(loc -> Map.of("id", loc.getId(), "barcode", loc.getBarcode()))
+                        .collect(toList())
+        );
+
+        List<Map<String, ?>> labwareLocationsData = chainGet(findData, "labwareLocations");
+        assertThat(labwareLocationsData).containsExactlyInAnyOrderElementsOf(
+                IntStream.range(0, 2)
+                        .mapToObj(i -> nullableMapOf("labwareId", labware[i].getId(), "locationId", locations[i].getId(), "address", storageAddresses[i]))
+                        .collect(toList())
+        );
+    }
+
+    @Test
+    @Transactional
+    public void testDestroy() throws Exception {
+        Donor donor = entityCreator.createDonor("DONOR1");
+        Tissue tissue = entityCreator.createTissue(donor, "TISSUE1");
+        Sample sample = entityCreator.createSample(tissue, 1);
+        final List<String> barcodes = List.of("STAN-A1", "STAN-B2");
+        LabwareType lt = entityCreator.createLabwareType("lt", 1, 1);
+        Labware[] labware = barcodes.stream()
+                .map(bc -> entityCreator.createLabware(bc, lt, sample))
+                .toArray(Labware[]::new);
+        User user = entityCreator.createUser("user1");
+        tester.setUser(user);
+        DestructionReason reason = destructionReasonRepo.save(new DestructionReason(null, "Everything."));
+
+        String mutation = tester.readResource("graphql/destroy.graphql")
+                .replace("[]", "[\"STAN-A1\", \"STAN-B2\"]")
+                .replace("99", String.valueOf(reason.getId()));
+
+        stubStorelightUnstore();
+
+        Object response = tester.post(mutation);
+        entityManager.flush();
+
+        List<Map<String, ?>> destructionsData = chainGet(response, "data", "destroy", "destructions");
+        assertThat(destructionsData).hasSize(labware.length);
+        for (int i = 0; i < labware.length; ++i) {
+            Labware lw = labware[i];
+            Map<String, ?> destData = destructionsData.get(i);
+            assertEquals(lw.getBarcode(), chainGet(destData, "labware", "barcode"));
+            assertTrue((boolean) chainGet(destData, "labware", "destroyed"));
+            assertEquals(reason.getText(), chainGet(destData, "reason", "text"));
+            assertNotNull(destData.get("destroyed"));
+            assertEquals(user.getUsername(), chainGet(destData, "user", "username"));
+
+            entityManager.refresh(lw);
+            assertTrue(lw.isDestroyed());
+        }
+
+        List<Destruction> destructions = destructionRepo.findAllByLabwareIdIn(List.of(labware[0].getId(), labware[1].getId()));
+        assertEquals(labware.length, destructions.size());
+
+        verifyUnstored(barcodes, user.getUsername());
+    }
+
+    private void stubStorelightUnstore() throws IOException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        ObjectNode storelightDataNode = objectMapper.createObjectNode()
+                .set("unstoreBarcodes", objectMapper.createObjectNode().put("numUnstored", 2));
+        GraphQLResponse storelightResponse = new GraphQLResponse(storelightDataNode, null);
+        when(mockStorelightClient.postQuery(anyString(), anyString())).thenReturn(storelightResponse);
+    }
+
+    private void verifyUnstored(Collection<String> barcodes, String username) throws Exception {
+        ArgumentCaptor<String> queryCaptor = ArgumentCaptor.forClass(String.class);
+        verify(mockStorelightClient).postQuery(queryCaptor.capture(), eq(username));
+        String storelightQuery = queryCaptor.getValue();
+        assertThat(storelightQuery).contains(barcodes);
+    }
+
     private List<Map<String, String>> tsvToMap(String tsv) {
         String[] lines = tsv.split("\n");
         String[] headers = lines[0].split("\t");
@@ -401,5 +555,13 @@ public class IntegrationTests {
 
     private static <E> void swap(List<E> list, int i, int j) {
         list.set(i, list.set(j, list.get(i)));
+    }
+
+    private static <K, V> Map<K, V> nullableMapOf(K key1, V value1, K key2, V value2, K key3, V value3) {
+        Map<K, V> map = new HashMap<>(3);
+        map.put(key1, value1);
+        map.put(key2, value2);
+        map.put(key3, value3);
+        return map;
     }
 }

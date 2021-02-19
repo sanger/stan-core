@@ -6,29 +6,26 @@ import javax.persistence.*;
 import java.util.Objects;
 
 /**
+ * A record of a particular slot and sample in a snapshot
  * @author dr6
  */
 @Entity
-@Table(name = "release_detail")
-public class ReleaseDetail {
+@Table(name="snapshot_element")
+public class SnapshotElement {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy=GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(name="release_id")
-    private Integer releaseId;
-
-    @Column(name="slot_id")
+    @Column(name="snapshot_id")
+    private Integer snapshotId;
     private Integer slotId;
-
-    @Column(name="sample_id")
     private Integer sampleId;
 
-    public ReleaseDetail() {}
+    public SnapshotElement() {}
 
-    public ReleaseDetail(Integer id, Integer releaseId, Integer slotId, Integer sampleId) {
+    public SnapshotElement(Integer id, Integer snapshotId, Integer slotId, Integer sampleId) {
         this.id = id;
-        this.releaseId = releaseId;
+        this.snapshotId = snapshotId;
         this.slotId = slotId;
         this.sampleId = sampleId;
     }
@@ -41,12 +38,12 @@ public class ReleaseDetail {
         this.id = id;
     }
 
-    public Integer getReleaseId() {
-        return this.releaseId;
+    public Integer getSnapshotId() {
+        return this.snapshotId;
     }
 
-    public void setReleaseId(Integer releaseId) {
-        this.releaseId = releaseId;
+    public void setSnapshotId(Integer snapshotId) {
+        this.snapshotId = snapshotId;
     }
 
     public Integer getSlotId() {
@@ -69,23 +66,23 @@ public class ReleaseDetail {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        ReleaseDetail that = (ReleaseDetail) o;
+        SnapshotElement that = (SnapshotElement) o;
         return (Objects.equals(this.id, that.id)
-                && Objects.equals(this.releaseId, that.releaseId)
+                && Objects.equals(this.snapshotId, that.snapshotId)
                 && Objects.equals(this.slotId, that.slotId)
                 && Objects.equals(this.sampleId, that.sampleId));
     }
 
     @Override
     public int hashCode() {
-        return (id!=null ? id.hashCode() : Objects.hash(releaseId, slotId, sampleId));
+        return (id!=null ? id.hashCode() : Objects.hash(snapshotId, slotId, sampleId));
     }
 
     @Override
     public String toString() {
         return MoreObjects.toStringHelper(this)
                 .add("id", id)
-                .add("releaseId", releaseId)
+                .add("snapshotId", snapshotId)
                 .add("slotId", slotId)
                 .add("sampleId", sampleId)
                 .toString();

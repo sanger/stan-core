@@ -84,7 +84,7 @@ public class TestLabwareLabelDataService {
 
         LabwareLabelData actual = service.getLabelData(labware);
         List<LabelContent> expectedContents = List.of(
-                new LabelContent(donor1.getDonorName(), tissueString(tissue1), tissue1.getReplicate(), null),
+                new LabelContent(donor1.getDonorName(), tissueString(tissue1), tissue1.getReplicate()),
                 new LabelContent(donor1.getDonorName(), tissueString(tissue1), tissue1.getReplicate(), 7),
                 new LabelContent(donor2.getDonorName(), tissueString(tissue2), tissue2.getReplicate(), 5),
                 new LabelContent(donor2.getDonorName(), tissueString(tissue2), tissue2.getReplicate(), 14)

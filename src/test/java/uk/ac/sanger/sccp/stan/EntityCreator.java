@@ -56,6 +56,10 @@ public class EntityCreator {
     private ReleaseRecipientRepo releaseRecipientRepo;
     @Autowired
     private BioStateRepo bioStateRepo;
+    @Autowired
+    private SnapshotRepo snapshotRepo;
+    @Autowired
+    private SnapshotElementRepo snapshotElementRepo;
 
     @Autowired
     private EntityManager entityManager;
@@ -64,17 +68,26 @@ public class EntityCreator {
         return userRepo.save(new User(null, username));
     }
 
+    public Donor createDonor(String donorName) {
+        return createDonor(donorName, LifeStage.adult);
+    }
+
     public Donor createDonor(String donorName, LifeStage lifeStage) {
         return donorRepo.save(new Donor(null, donorName, lifeStage));
     }
 
     public Tissue createTissue(Donor donor, String externalName) {
-        return tissueRepo.save(new Tissue(null, externalName, 1, getAny(slRepo), donor, getAny(mouldSizeRepo),
+        return createTissue(donor, externalName, 1);
+    }
+
+    public Tissue createTissue(Donor donor, String externalName, Integer replicate) {
+        return tissueRepo.save(new Tissue(null, externalName, replicate, getAny(slRepo), donor, getAny(mouldSizeRepo),
                 getAny(mediumRepo), getAny(fixativeRepo), getAny(hmdmcRepo)));
     }
 
     public Sample createSample(Tissue tissue, Integer section) {
-        return createSample(tissue, section, getAny(bioStateRepo));
+        BioState bs = bioStateRepo.getByName("Tissue");
+        return createSample(tissue, section, bs);
     }
 
     public Sample createSample(Tissue tissue, Integer section, BioState bioState) {
@@ -114,6 +127,16 @@ public class EntityCreator {
 
     public LabwareType createLabwareType(String name, int rows, int columns) {
         return ltRepo.save(new LabwareType(null, name, rows, columns, getAny(labelTypeRepo), false));
+    }
+
+    public Snapshot createSnapshot(Labware lw) {
+        Snapshot snap = snapshotRepo.save(new Snapshot(lw.getId()));
+        Iterable<SnapshotElement> elements = snapshotElementRepo.saveAll(lw.getSlots().stream()
+                .flatMap(slot -> slot.getSamples().stream().map(sam ->
+                    new SnapshotElement(null, snap.getId(), slot.getId(), sam.getId())
+                )).collect(Collectors.toList()));
+        snap.setElements(elements);
+        return snap;
     }
 
     public OperationType createOpType(String opTypeName, OperationTypeFlag... opTypeFlags) {
@@ -157,6 +180,10 @@ public class EntityCreator {
     public ReleaseDestination createReleaseDestination(String name) {
         ReleaseDestination dest = new ReleaseDestination(null, name);
         return releaseDestinationRepo.save(dest);
+    }
+
+    public BioState anyBioState() {
+        return getAny(bioStateRepo);
     }
 
     public <E> E getAny(CrudRepository<E, ?> repo) {

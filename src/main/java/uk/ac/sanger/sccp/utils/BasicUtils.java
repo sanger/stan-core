@@ -138,4 +138,22 @@ public class BasicUtils {
     public static <T> Collector<T, ?, LinkedHashSet<T>> toLinkedHashSet() {
         return Collectors.toCollection(LinkedHashSet::new);
     }
+
+    /**
+     * Gets a describer to help generate the toString description for an object.
+     * @param name the name of the object (e.g. its type)
+     * @return a describer
+     */
+    public static ObjectDescriber describe(String name) {
+        return new ObjectDescriber(name);
+    }
+
+    /**
+     * Gets a describer to help generate the toString description for an object.
+     * @param object the object being described
+     * @return a describer
+     */
+    public static ObjectDescriber describe(Object object) {
+        return describe(object.getClass().getSimpleName());
+    }
 }

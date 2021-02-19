@@ -3,6 +3,7 @@
         barcode
         address
         location {
+            id
             barcode
             description
             address

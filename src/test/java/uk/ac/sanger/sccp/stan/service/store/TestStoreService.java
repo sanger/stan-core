@@ -101,7 +101,7 @@ public class TestStoreService {
 
         verifyQueryMatches("mutation { storeBarcode(barcode: \""+itemBarcode+"\", location: {barcode: \""
                 + locationBarcode+"\"}, address: " + quote(address) + ") { barcode address location " +
-                "{ barcode description address size { numRows numColumns } " +
+                "{ id barcode description address size { numRows numColumns } " +
                 "children { barcode description address } " +
                 "stored { barcode address }" +
                 "parent { barcode description address }" +
@@ -189,6 +189,20 @@ public class TestStoreService {
         );
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans={false, true})
+    public void testDiscardStorage(boolean successful) {
+        if (successful) {
+            doThrow(IllegalArgumentException.class).when(service).unstoreBarcodesWithoutValidatingThem(any(), any());
+        } else {
+            doReturn(0).when(service).unstoreBarcodesWithoutValidatingThem(any(), any());
+        }
+
+        List<String> barcodes = List.of("STAN-A1", "STAN-B2");
+        service.discardStorage(user, barcodes);
+        verify(service).unstoreBarcodesWithoutValidatingThem(user, barcodes);
+    }
+
     @Test
     public void testEmpty() throws IOException {
         String locationBarcode = "STO-ABC";
@@ -221,7 +235,7 @@ public class TestStoreService {
         Location result = service.setLocationCustomName(user, barcode, newCustomName);
         verifyQueryMatches("mutation { editLocation(location:{barcode:"+json(barcode)
                 +"}, change: {description:"+json(alteredLocation.getDescription())+"}) {" +
-                "barcode description address size {numRows numColumns } " +
+                "id barcode description address size {numRows numColumns } " +
                 "children { barcode description address }" +
                 "stored { barcode address } " +
                 "parent { barcode description address }" +
@@ -259,6 +273,7 @@ public class TestStoreService {
         Location result = service.getLocation(barcode);
         verifyQueryMatches("{" +
                         "    location(location: {barcode:\""+barcode+"\"}) {" +
+                        "        id" +
                         "        barcode" +
                         "        description" +
                         "        address" +
@@ -322,6 +337,7 @@ public class TestStoreService {
                 "        barcode" +
                 "        address" +
                 "        location {" +
+                "            id" +
                 "            barcode" +
                 "            description" +
                 "            address" +

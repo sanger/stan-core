@@ -239,6 +239,16 @@ public class EntityFactory {
         return new Timestamp(System.currentTimeMillis());
     }
 
+    public static Snapshot makeSnapshot(Labware lw) {
+        Integer snapId = ++idCounter;
+        final int[] elId = {100 * snapId};
+        List<SnapshotElement> elements = lw.getSlots().stream()
+                .flatMap(slot -> slot.getSamples().stream()
+                        .map(sam -> new SnapshotElement(++elId[0], snapId, slot.getId(), sam.getId())))
+                .collect(toList());
+        return new Snapshot(snapId, lw.getId(), elements);
+    }
+
     private static List<Slot> toFirstSlots(Collection<Labware> labware) {
         return labware.stream().map(Labware::getFirstSlot).collect(toList());
     }

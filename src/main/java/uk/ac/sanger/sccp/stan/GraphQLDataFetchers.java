@@ -11,6 +11,9 @@ import org.springframework.stereotype.Component;
 import uk.ac.sanger.sccp.stan.config.SessionConfig;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.request.FindRequest;
+import uk.ac.sanger.sccp.stan.request.FindResult;
+import uk.ac.sanger.sccp.stan.service.FindService;
 import uk.ac.sanger.sccp.stan.service.label.print.LabelPrintService;
 
 import javax.persistence.EntityNotFoundException;
@@ -32,7 +35,9 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final CommentRepo commentRepo;
     final ReleaseDestinationRepo releaseDestinationRepo;
     final ReleaseRecipientRepo releaseRecipientRepo;
+    final DestructionReasonRepo destructionReasonRepo;
     final LabelPrintService labelPrintService;
+    final FindService findService;
 
     @Autowired
     public GraphQLDataFetchers(ObjectMapper objectMapper, AuthenticationComponent authComp, UserRepo userRepo,
@@ -41,7 +46,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                MediumRepo mediumRepo, FixativeRepo fixativeRepo, MouldSizeRepo mouldSizeRepo,
                                HmdmcRepo hmdmcRepo, LabwareRepo labwareRepo, CommentRepo commentRepo,
                                ReleaseDestinationRepo releaseDestinationRepo, ReleaseRecipientRepo releaseRecipientRepo,
-                               LabelPrintService labelPrintService) {
+                               DestructionReasonRepo destructionReasonRepo,
+                               LabelPrintService labelPrintService, FindService findService) {
         super(objectMapper, authComp, userRepo);
         this.sessionConfig = sessionConfig;
         this.tissueTypeRepo = tissueTypeRepo;
@@ -54,7 +60,9 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.commentRepo = commentRepo;
         this.releaseDestinationRepo = releaseDestinationRepo;
         this.releaseRecipientRepo = releaseRecipientRepo;
+        this.destructionReasonRepo = destructionReasonRepo;
         this.labelPrintService = labelPrintService;
+        this.findService = findService;
     }
 
     public DataFetcher<User> getUser() {
@@ -125,6 +133,17 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
 
     public DataFetcher<Iterable<ReleaseRecipient>> getReleaseRecipients() {
         return dfe -> releaseRecipientRepo.findAllByEnabled(true);
+    }
+
+    public DataFetcher<Iterable<DestructionReason>> getDestructionReasons() {
+        return dfe -> destructionReasonRepo.findAllByEnabled(true);
+    }
+
+    public DataFetcher<FindResult> find() {
+        return dfe -> {
+            FindRequest request = arg(dfe, "request", FindRequest.class);
+            return findService.find(request);
+        };
     }
 
     private boolean requestsField(DataFetchingEnvironment dfe, String childName) {
