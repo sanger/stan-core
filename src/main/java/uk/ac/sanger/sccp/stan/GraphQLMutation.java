@@ -131,7 +131,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         return dfe -> {
             User user = checkUser();
             ExtractRequest request = arg(dfe, "request", ExtractRequest.class);
-            return extractService.extract(user, request);
+            return extractService.extractAndUnstore(user, request);
         };
     }
 

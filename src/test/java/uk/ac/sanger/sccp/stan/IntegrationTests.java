@@ -253,6 +253,8 @@ public class IntegrationTests {
                 .mapToObj(i -> entityCreator.createLabware(barcodes[i], lwType, samples[i]))
                 .toArray(Labware[]::new);
 
+        stubStorelightUnstore();
+
         String mutation = tester.readResource("graphql/extract.graphql")
                 .replace("[]", "[\"STAN-A1\", \"STAN-A2\"]")
                 .replace("LWTYPE", lwType.getName());
@@ -336,6 +338,8 @@ public class IntegrationTests {
             assertEquals(sample, action.getSample());
             assertNotNull(op.getPerformed());
         }
+
+        verifyUnstored(List.of(sources[0].getBarcode(), sources[1].getBarcode()), user.getUsername());
     }
 
     @Test

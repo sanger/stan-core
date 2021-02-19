@@ -89,13 +89,13 @@ public class GraphQLProvider {
                         .dataFetcher("printLabware", graphQLMutation.printLabware()) // not transacted
                         .dataFetcher("confirmOperation", transact(graphQLMutation.confirmOperation()))
                         .dataFetcher("release", graphQLMutation.release()) // transaction handled in service
-                        .dataFetcher("extract", transact(graphQLMutation.extract()))
+                        .dataFetcher("extract", graphQLMutation.extract()) // transaction handled in service
                         .dataFetcher("destroy", graphQLMutation.destroy()) // transaction handled in service
 
-                        .dataFetcher("storeBarcode", transact(graphQLStore.storeBarcode()))
-                        .dataFetcher("unstoreBarcode", transact(graphQLStore.unstoreBarcode()))
-                        .dataFetcher("empty", transact(graphQLStore.empty()))
-                        .dataFetcher("setLocationCustomName", transact(graphQLStore.setLocationCustomName()))
+                        .dataFetcher("storeBarcode", graphQLStore.storeBarcode())
+                        .dataFetcher("unstoreBarcode", graphQLStore.unstoreBarcode())
+                        .dataFetcher("empty", graphQLStore.empty())
+                        .dataFetcher("setLocationCustomName", graphQLStore.setLocationCustomName())
                 )
                 .scalar(GraphQLCustomTypes.ADDRESS)
                 .scalar(GraphQLCustomTypes.TIMESTAMP)

@@ -143,4 +143,9 @@ public class Labware {
     public boolean isUsable() {
         return !(isReleased() || isDestroyed() || isDiscarded());
     }
+
+    @JsonIgnore
+    public boolean isEmpty() {
+        return this.slots.stream().allMatch(slot -> slot.getSamples().isEmpty());
+    }
 }

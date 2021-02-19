@@ -162,6 +162,7 @@ public class StoreService {
         if (lw.isDestroyed()) return "destroyed";
         if (lw.isReleased()) return "released";
         if (lw.isDiscarded()) return "discarded";
+        if (lw.isEmpty()) return "empty";
         return null;
         // In CGAP storing discarded labware automatically reactivates it.
         // The behaviour of stan wrt discarded labware is not yet established.

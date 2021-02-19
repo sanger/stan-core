@@ -76,7 +76,7 @@ public class ConfirmOperationValidationImp implements ConfirmOperationValidation
                 addProblem("Labware %s is already discarded.", col.getBarcode());
             }
 
-            if (lw.getSlots().stream().anyMatch(slot -> !slot.getSamples().isEmpty())) {
+            if (!lw.isEmpty()) {
                 addProblem("Labware %s already has contents.", col.getBarcode());
             }
             labware.put(bc, lw);
