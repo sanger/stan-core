@@ -8,6 +8,7 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.Ancestry;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
 
+import javax.persistence.EntityNotFoundException;
 import java.sql.Timestamp;
 import java.util.*;
 import java.util.stream.IntStream;
@@ -28,6 +29,7 @@ public class TestReleaseFileService {
     SampleRepo mockSampleRepo;
     LabwareRepo mockLabwareRepo;
     MeasurementRepo mockMeasurementRepo;
+    SnapshotRepo mockSnapshotRepo;
     Ancestoriser mockAncestoriser;
 
     ReleaseFileService service;
@@ -38,6 +40,7 @@ public class TestReleaseFileService {
     private Sample sample, sample1;
     private Labware lw1, lw2;
     private Release release1, release2;
+    private Snapshot snap1, snap2;
 
     @BeforeEach
     void setup() {
@@ -45,10 +48,11 @@ public class TestReleaseFileService {
         mockSampleRepo = mock(SampleRepo.class);
         mockLabwareRepo = mock(LabwareRepo.class);
         mockMeasurementRepo = mock(MeasurementRepo.class);
+        mockSnapshotRepo = mock(SnapshotRepo.class);
         mockAncestoriser = mock(Ancestoriser.class);
 
         service = spy(new ReleaseFileService(mockReleaseRepo, mockSampleRepo, mockLabwareRepo,
-                mockMeasurementRepo, mockAncestoriser));
+                mockMeasurementRepo, mockSnapshotRepo, mockAncestoriser));
 
         user = EntityFactory.getUser();
         destination = new ReleaseDestination(50, "Venus");
@@ -72,17 +76,18 @@ public class TestReleaseFileService {
         if (lw1==null) {
             setupLabware();
         }
-        release1 = release(1, lw1);
-        release2 = release(2, lw2);
+        snap1 = EntityFactory.makeSnapshot(lw1);
+        snap2 = EntityFactory.makeSnapshot(lw2);
+        release1 = release(1, lw1, snap1);
+        release2 = release(2, lw2, snap2);
     }
 
-    private Release release(int id, Labware lw) {
-        Release rel = new Release(id, lw, user, destination, recipient, new Timestamp(System.currentTimeMillis()));
-        final List<ReleaseDetail> details = rel.getDetails();
+    private Map<Integer, Snapshot> snapMap() {
+        return Map.of(snap1.getId(), snap1, snap2.getId(), snap2);
+    }
 
-        lw.getSlots().forEach(slot -> slot.getSamples()
-                .forEach(sample -> details.add(new ReleaseDetail(10*id+details.size(), id, slot.getId(), sample.getId()))));
-        return rel;
+    private Release release(int id, Labware lw, Snapshot snap) {
+        return new Release(id, lw, user, destination, recipient, snap.getId(), new Timestamp(System.currentTimeMillis()));
     }
 
     @Test
@@ -90,6 +95,8 @@ public class TestReleaseFileService {
         assertThat(service.getReleaseEntries(List.of())).isEmpty();
 
         setupReleases();
+        final Map<Integer, Snapshot> snapshots = snapMap();
+        doReturn(snapshots).when(service).loadSnapshots(any());
         List<Release> releases = List.of(this.release1, release2);
         doReturn(releases).when(service).getReleases(anyCollection());
         List<ReleaseEntry> entries = List.of(
@@ -98,9 +105,9 @@ public class TestReleaseFileService {
                 new ReleaseEntry(lw2, lw2.getFirstSlot(), sample)
         );
         Map<Integer, Sample> sampleMap = Map.of(sample.getId(), sample, sample1.getId(), sample1);
-        doReturn(sampleMap).when(service).loadSamples(anyCollection());
-        doReturn(entries.subList(0,2).stream()).when(service).toReleaseEntries(this.release1, sampleMap);
-        doReturn(entries.subList(2,3).stream()).when(service).toReleaseEntries(release2, sampleMap);
+        doReturn(sampleMap).when(service).loadSamples(anyCollection(), any());
+        doReturn(entries.subList(0,2).stream()).when(service).toReleaseEntries(this.release1, sampleMap, snapshots);
+        doReturn(entries.subList(2,3).stream()).when(service).toReleaseEntries(release2, sampleMap, snapshots);
         var ancestry = makeAncestry(lw1, sample1, lw2, sample);
         doReturn(ancestry).when(service).findAncestry(any());
         doNothing().when(service).loadLastSection(any());
@@ -111,9 +118,9 @@ public class TestReleaseFileService {
         assertEquals(entries, service.getReleaseEntries(releaseIds));
 
         verify(service).getReleases(releaseIds);
-        verify(service).loadSamples(releases);
-        verify(service).toReleaseEntries(release1, sampleMap);
-        verify(service).toReleaseEntries(release2, sampleMap);
+        verify(service).loadSamples(releases, snapshots);
+        verify(service).toReleaseEntries(release1, sampleMap, snapshots);
+        verify(service).toReleaseEntries(release2, sampleMap, snapshots);
         verify(service).loadLastSection(entries);
         verify(service).findAncestry(entries);
         verify(service).loadOriginalBarcodes(entries, ancestry);
@@ -145,9 +152,10 @@ public class TestReleaseFileService {
         Integer otherSampleId = otherSample.getId();
         Set<Integer> otherSampleIds = Set.of(otherSampleId);
         when(mockSampleRepo.getAllByIdIn(otherSampleIds)).thenReturn(List.of(otherSample));
-        release1.getDetails().add(new ReleaseDetail(50, release1.getId(), 800, otherSampleId));
+        var snapshots = snapMap();
+        snap1.getElements().add(new SnapshotElement(200, snap1.getId(), 800, otherSampleId));
 
-        Map<Integer, Sample> result = service.loadSamples(List.of(release1, release2));
+        Map<Integer, Sample> result = service.loadSamples(List.of(release1, release2), snapshots);
 
         verify(mockSampleRepo).getAllByIdIn(otherSampleIds);
 
@@ -155,6 +163,22 @@ public class TestReleaseFileService {
         Stream.of(sample, sample1, otherSample).forEach(
                 sam -> assertEquals(sam, result.get(sam.getId()))
         );
+    }
+
+    @Test
+    public void testLoadSnapshots() {
+        setupReleases();
+        when(mockSnapshotRepo.findAllByIdIn(any())).then(invocation -> {
+            Collection<Integer> snapIds = invocation.getArgument(0);
+            return Stream.of(snap1, snap2).filter(snap -> snapIds.contains(snap.getId()))
+                    .collect(toList());
+        });
+
+        assertEquals(snapMap(), service.loadSnapshots(List.of(release1, release2)));
+
+        release2.setSnapshotId(-1);
+        assertThat(assertThrows(EntityNotFoundException.class, () -> service.loadSnapshots(List.of(release1, release2))))
+                .hasMessage("Labware snapshot missing for release ids: ["+release2.getId()+"]");
     }
 
     @Test
@@ -203,7 +227,8 @@ public class TestReleaseFileService {
         setupReleases();
         Map<Integer, Sample> sampleMap = Stream.of(sample, sample1)
                 .collect(toMap(Sample::getId, s -> s));
-        List<ReleaseEntry> entries = service.toReleaseEntries(release1, sampleMap).collect(toList());
+
+        List<ReleaseEntry> entries = service.toReleaseEntries(release1, sampleMap, snapMap()).collect(toList());
         assertThat(entries).containsOnly(
                 new ReleaseEntry(lw1, lw1.getFirstSlot(), sample),
                 new ReleaseEntry(lw1, lw1.getFirstSlot(), sample1),

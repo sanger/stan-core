@@ -7,6 +7,7 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.Ancestry;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
 
+import javax.persistence.EntityNotFoundException;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
@@ -23,15 +24,17 @@ public class ReleaseFileService {
     private final SampleRepo sampleRepo;
     private final LabwareRepo labwareRepo;
     private final MeasurementRepo measurementRepo;
+    private final SnapshotRepo snapshotRepo;
     private final Ancestoriser ancestoriser;
 
     @Autowired
     public ReleaseFileService(ReleaseRepo releaseRepo, SampleRepo sampleRepo, LabwareRepo labwareRepo,
-                              MeasurementRepo measurementRepo, Ancestoriser ancestoriser) {
+                              MeasurementRepo measurementRepo, SnapshotRepo snapshotRepo, Ancestoriser ancestoriser) {
         this.releaseRepo = releaseRepo;
         this.sampleRepo = sampleRepo;
         this.labwareRepo = labwareRepo;
         this.measurementRepo = measurementRepo;
+        this.snapshotRepo = snapshotRepo;
         this.ancestoriser = ancestoriser;
     }
 
@@ -47,10 +50,11 @@ public class ReleaseFileService {
         }
         List<Release> releases = getReleases(releaseIds);
 
-        Map<Integer, Sample> samples = loadSamples(releases);
+        Map<Integer, Snapshot> snapshots = loadSnapshots(releases);
+        Map<Integer, Sample> samples = loadSamples(releases, snapshots);
 
         List<ReleaseEntry> entries = releases.stream()
-                .flatMap(r -> toReleaseEntries(r, samples))
+                .flatMap(r -> toReleaseEntries(r, samples, snapshots))
                 .collect(toList());
 
         loadLastSection(entries);
@@ -79,9 +83,10 @@ public class ReleaseFileService {
      * Those that are available are taken from the labware included in each release.
      * The rest are loaded from the database.
      * @param releases the releases we are describing
+     * @param snapshots the snapshots for the releases
      * @return a map of sample id to sample
      */
-    public Map<Integer, Sample> loadSamples(Collection<Release> releases) {
+    public Map<Integer, Sample> loadSamples(Collection<Release> releases, Map<Integer, Snapshot> snapshots) {
         final Map<Integer, Sample> sampleMap = new HashMap<>();
         Consumer<Sample> addSample = sam -> sampleMap.put(sam.getId(), sam);
         releases.stream()
@@ -89,13 +94,30 @@ public class ReleaseFileService {
                 .flatMap(slot -> slot.getSamples().stream())
                 .forEach(addSample);
         Set<Integer> sampleIds = releases.stream()
-                .flatMap(r -> r.getDetails().stream().map(ReleaseDetail::getSampleId))
+                .flatMap(r -> snapshots.get(r.getSnapshotId()).getElements().stream().map(SnapshotElement::getSampleId))
                 .filter(sid -> !sampleMap.containsKey(sid))
                 .collect(toSet());
         if (!sampleIds.isEmpty()) {
             sampleRepo.getAllByIdIn(sampleIds).forEach(addSample);
         }
         return sampleMap;
+    }
+
+    public Map<Integer, Snapshot> loadSnapshots(Collection<Release> releases) {
+        Map<Integer, Snapshot> snapshots = snapshotRepo.findAllByIdIn(
+                releases.stream().map(Release::getSnapshotId)
+                        .collect(toList())
+        ).stream().collect(toMap(Snapshot::getId, snap -> snap));
+        if (snapshots.size() < releases.size()) {
+            List<Integer> missingReleaseIds = releases.stream()
+                    .filter(rel -> snapshots.get(rel.getSnapshotId())==null)
+                    .map(Release::getId)
+                    .collect(toList());
+            if (!missingReleaseIds.isEmpty()) {
+                throw new EntityNotFoundException("Labware snapshot missing for release ids: "+missingReleaseIds);
+            }
+        }
+        return snapshots;
     }
 
     /**
@@ -132,14 +154,16 @@ public class ReleaseFileService {
      * One entry per slot/sample in combination.
      * @param release the release
      * @param sampleIdMap a map to look up samples in
+     * @param snapshots a map to look up snapshots in
      * @return a stream of release entries
      */
-    public Stream<ReleaseEntry> toReleaseEntries(final Release release, Map<Integer, Sample> sampleIdMap) {
+    public Stream<ReleaseEntry> toReleaseEntries(final Release release, Map<Integer, Sample> sampleIdMap,
+                                                 Map<Integer, Snapshot> snapshots) {
         final Labware labware = release.getLabware();
         final Map<Integer, Slot> slotIdMap = labware.getSlots().stream()
                 .collect(toMap(Slot::getId, slot -> slot));
-        return release.getDetails().stream()
-                .map(rd -> new ReleaseEntry(release.getLabware(), slotIdMap.get(rd.getSlotId()), sampleIdMap.get(rd.getSampleId())));
+        return snapshots.get(release.getSnapshotId()).getElements().stream()
+                .map(el -> new ReleaseEntry(release.getLabware(), slotIdMap.get(el.getSlotId()), sampleIdMap.get(el.getSampleId())));
     }
 
     /**
