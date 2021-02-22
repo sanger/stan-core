@@ -2,11 +2,13 @@ package uk.ac.sanger.sccp.stan.service.extract;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import uk.ac.sanger.sccp.stan.Transactor;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.ExtractRequest;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.service.*;
+import uk.ac.sanger.sccp.stan.service.store.StoreService;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -19,9 +21,11 @@ import static java.util.Objects.requireNonNull;
  */
 @Service
 public class ExtractServiceImp implements ExtractService {
+    private final Transactor transactor;
     private final LabwareValidatorFactory labwareValidatorFactory;
     private final LabwareService labwareService;
     private final OperationService opService;
+    private final StoreService storeService;
     private final LabwareRepo labwareRepo;
     private final LabwareTypeRepo lwTypeRepo;
     private final OperationTypeRepo opTypeRepo;
@@ -30,23 +34,40 @@ public class ExtractServiceImp implements ExtractService {
     private final SlotRepo slotRepo;
 
     @Autowired
-    public ExtractServiceImp(LabwareValidatorFactory labwareValidatorFactory, LabwareService labwareService,
-                             OperationService opService,
-                             LabwareRepo labwareRepo, LabwareTypeRepo lwTypeRepo, OperationTypeRepo opTypeRepo,
+    public ExtractServiceImp(Transactor transactor, LabwareValidatorFactory labwareValidatorFactory,
+                             LabwareService labwareService, OperationService opService,
+                             StoreService storeService, LabwareRepo labwareRepo, LabwareTypeRepo lwTypeRepo, OperationTypeRepo opTypeRepo,
                              BioStateRepo bioStateRepo, SampleRepo sampleRepo, SlotRepo slotRepo) {
+        this.transactor = transactor;
         this.labwareValidatorFactory = labwareValidatorFactory;
         this.labwareService = labwareService;
         this.opService = opService;
+        this.storeService = storeService;
         this.labwareRepo = labwareRepo;
         this.lwTypeRepo = lwTypeRepo;
         this.opTypeRepo = opTypeRepo;
         this.bioStateRepo = bioStateRepo;
         this.sampleRepo = sampleRepo;
         this.slotRepo = slotRepo;
-        // TODO unstore discarded labware
     }
 
     @Override
+    public OperationResult extractAndUnstore(User user, ExtractRequest request) {
+        OperationResult result = transactExtract(user, request);
+        storeService.discardStorage(user, request.getBarcodes());
+        return result;
+    }
+
+    public OperationResult transactExtract(User user, ExtractRequest request) {
+        return transactor.transact("Extract transaction", () -> extract(user, request));
+    }
+
+    /**
+     * Performs the extraction, creating and update labware.
+     * @param user the user responsible for the operation
+     * @param request the specification of the extraction
+     * @return the result of the extraction
+     */
     public OperationResult extract(User user, ExtractRequest request) {
         requireNonNull(user, "User is null");
         requireNonNull(request, "Request is null");

@@ -209,7 +209,7 @@ public class LabwareValidator {
      * Adds an error for labware that is empty.
      */
     public void validateNonEmpty() {
-        validateState(lw -> lw.getSlots().stream().allMatch(slot -> slot.getSamples().isEmpty()), "empty");
+        validateState(Labware::isEmpty, "empty");
     }
 
     /**

@@ -217,17 +217,21 @@ public class TestReleaseService {
         destroyed.setDestroyed(true);
         Labware released = EntityFactory.makeLabware(lt, sample);
         released.setReleased(true);
+        Labware discarded = EntityFactory.makeLabware(lt, sample);
+        discarded.setDiscarded(true);
 
         String emptyError = "Cannot release empty labware: [" + empty.getBarcode()+"]";
         String releasedError = "Labware has already been released: ["+released.getBarcode()+"]";
         String destroyedError = "Labware cannot be released because it is destroyed: ["+destroyed.getBarcode()+"]";
+        String discardedError = "Labware cannot be released because it is discarded: ["+discarded.getBarcode()+"]";
         return Stream.of(
                 Arguments.of(List.of(good), null),
                 Arguments.of(List.of(good, empty), emptyError),
                 Arguments.of(List.of(empty, good), emptyError),
                 Arguments.of(List.of(destroyed), destroyedError),
                 Arguments.of(List.of(good, destroyed), destroyedError),
-                Arguments.of(List.of(released), releasedError)
+                Arguments.of(List.of(released), releasedError),
+                Arguments.of(List.of(discarded), discardedError)
         );
     }
 

@@ -2,15 +2,21 @@ package uk.ac.sanger.sccp.stan.service.extract;
 
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.function.Executable;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.InOrder;
 import uk.ac.sanger.sccp.stan.EntityFactory;
+import uk.ac.sanger.sccp.stan.Transactor;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.ExtractRequest;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.service.*;
+import uk.ac.sanger.sccp.stan.service.store.StoreService;
 
 import java.sql.Timestamp;
 import java.util.*;
+import java.util.function.Supplier;
 import java.util.stream.IntStream;
 
 import static java.util.stream.Collectors.toMap;
@@ -23,9 +29,11 @@ import static org.mockito.Mockito.*;
  * @author dr6
  */
 public class TestExtractService {
+    private Transactor mockTransactor;
     private LabwareValidatorFactory mockLabwareValidatorFactory;
     private LabwareService mockLwService;
     private OperationService mockOpService;
+    private StoreService mockStoreService;
     private LabwareRepo mockLwRepo;
     private LabwareTypeRepo mockLtRepo;
     private OperationTypeRepo mockOpTypeRepo;
@@ -45,9 +53,11 @@ public class TestExtractService {
 
     @BeforeEach
     void setup() {
+        mockTransactor = mock(Transactor.class);
         mockLabwareValidatorFactory = mock(LabwareValidatorFactory.class);
         mockLwService = mock(LabwareService.class);
         mockOpService = mock(OperationService.class);
+        mockStoreService = mock(StoreService.class);
         mockLwRepo = mock(LabwareRepo.class);
         mockLtRepo = mock(LabwareTypeRepo.class);
         mockOpTypeRepo = mock(OperationTypeRepo.class);
@@ -59,8 +69,53 @@ public class TestExtractService {
         rnaBioState = new BioState(2, "RNA");
         lwType = new LabwareType(6, "lwtype", 1, 1, EntityFactory.getLabelType(), false);
 
-        service = spy(new ExtractServiceImp(mockLabwareValidatorFactory, mockLwService, mockOpService,
-                mockLwRepo, mockLtRepo, mockOpTypeRepo, mockBioStateRepo, mockSampleRepo, mockSlotRepo));
+        service = spy(new ExtractServiceImp(mockTransactor, mockLabwareValidatorFactory, mockLwService, mockOpService,
+                mockStoreService, mockLwRepo, mockLtRepo, mockOpTypeRepo, mockBioStateRepo, mockSampleRepo, mockSlotRepo));
+    }
+
+    @Test
+    public void testExtractAndUnstore() {
+        User user = EntityFactory.getUser();
+        ExtractRequest request = new ExtractRequest(List.of("STAN-A1"), "lt");
+        OperationResult result = new OperationResult();
+        doReturn(result).when(service).transactExtract(any(), any());
+
+        assertSame(result, service.extractAndUnstore(user, request));
+
+        InOrder inOrder = inOrder(service, mockStoreService);
+        inOrder.verify(service).transactExtract(user, request);
+        inOrder.verify(mockStoreService).discardStorage(user, request.getBarcodes());
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans={false, true})
+    public void testTransactExtract(boolean successful) {
+        User user = EntityFactory.getUser();
+        ExtractRequest request = new ExtractRequest(List.of("STAN-A1"), "lt");
+        OperationResult opResult;
+        IllegalArgumentException exception;
+        if (successful) {
+            opResult = new OperationResult();
+            exception = null;
+            doReturn(opResult).when(service).extract(any(), any());
+        } else {
+            opResult = null;
+            exception = new IllegalArgumentException();
+            doThrow(exception).when(service).extract(any(), any());
+        }
+        when(mockTransactor.transact(any(), any())).then(invocation -> {
+            Supplier<?> supplier = invocation.getArgument(1);
+            return supplier.get();
+        });
+
+        if (successful) {
+            assertSame(opResult, service.transactExtract(user, request));
+        } else {
+            assertSame(exception, assertThrows(exception.getClass(), () -> service.transactExtract(user, request)));
+        }
+
+        verify(service).extract(user, request);
+        verify(mockTransactor).transact(anyString(), any());
     }
 
     @Test

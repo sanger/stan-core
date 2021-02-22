@@ -78,7 +78,7 @@ public class TestStoreService {
     @ValueSource(booleans={false, true})
     public void testStoreBarcode(boolean withAddress) throws IOException {
         Address address = withAddress ? new Address(2,3) : null;
-        Labware lw = EntityFactory.makeEmptyLabware(EntityFactory.getTubeType());
+        Labware lw = EntityFactory.makeLabware(EntityFactory.getTubeType(), EntityFactory.getSample());
         String itemBarcode = lw.getBarcode();
         when(mockLabwareRepo.getByBarcode(itemBarcode)).thenReturn(lw);
         String locationBarcode = "STO-ABC";
@@ -171,7 +171,9 @@ public class TestStoreService {
 
     static Stream<Arguments> validateBarcodeForStorageArgs() {
         LabwareType lt = EntityFactory.getTubeType();
-        Labware okLabware = EntityFactory.makeEmptyLabware(lt);
+        Sample sample = EntityFactory.getSample();
+        Labware okLabware = EntityFactory.makeLabware(lt, sample);
+        Labware emptyLabware = EntityFactory.makeEmptyLabware(lt);
         Labware releasedLabware = EntityFactory.makeEmptyLabware(lt);
         releasedLabware.setReleased(true);
         Labware destroyedLabware = EntityFactory.makeEmptyLabware(lt);
@@ -185,7 +187,8 @@ public class TestStoreService {
                 Arguments.of(okLabware, null),
                 Arguments.of(releasedLabware, "Labware %bc cannot be stored because it is released."),
                 Arguments.of(destroyedLabware, "Labware %bc cannot be stored because it is destroyed."),
-                Arguments.of(discardedLabware, "Labware %bc cannot be stored because it is discarded.")
+                Arguments.of(discardedLabware, "Labware %bc cannot be stored because it is discarded."),
+                Arguments.of(emptyLabware, "Labware %bc cannot be stored because it is empty.")
         );
     }
 
