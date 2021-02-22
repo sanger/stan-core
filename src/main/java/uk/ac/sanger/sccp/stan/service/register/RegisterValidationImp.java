@@ -9,9 +9,13 @@ import uk.ac.sanger.sccp.stan.service.Validator;
 import java.util.*;
 import java.util.function.Function;
 
+import static uk.ac.sanger.sccp.utils.BasicUtils.pluralise;
+import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
+
 /**
  * @author dr6
  */
+// This might have been a nice idea, but in practice it's unnecessarily complicated.
 public class RegisterValidationImp implements RegisterValidation {
     private final RegisterRequest request;
     private final DonorRepo donorRepo;
@@ -22,11 +26,13 @@ public class RegisterValidationImp implements RegisterValidation {
     private final MediumRepo mediumRepo;
     private final FixativeRepo fixativeRepo;
     private final TissueRepo tissueRepo;
+    private final SpeciesRepo speciesRepo;
     private final Validator<String> donorNameValidation;
     private final Validator<String> externalNameValidation;
 
     final Map<String, Donor> donorMap = new HashMap<>();
     final Map<String, Hmdmc> hmdmcMap = new HashMap<>();
+    final Map<String, Species> speciesMap = new HashMap<>();
     final Map<StringIntKey, SpatialLocation> spatialLocationMap = new HashMap<>();
     final Map<String, LabwareType> labwareTypeMap = new HashMap<>();
     final Map<String, MouldSize> mouldSizeMap = new HashMap<>();
@@ -37,7 +43,7 @@ public class RegisterValidationImp implements RegisterValidation {
     public RegisterValidationImp(RegisterRequest request, DonorRepo donorRepo,
                                  HmdmcRepo hmdmcRepo, TissueTypeRepo ttRepo, LabwareTypeRepo ltRepo,
                                  MouldSizeRepo mouldSizeRepo, MediumRepo mediumRepo,
-                                 FixativeRepo fixativeRepo, TissueRepo tissueRepo,
+                                 FixativeRepo fixativeRepo, TissueRepo tissueRepo, SpeciesRepo speciesRepo,
                                  Validator<String> donorNameValidation, Validator<String> externalNameValidation) {
         this.request = request;
         this.donorRepo = donorRepo;
@@ -48,6 +54,7 @@ public class RegisterValidationImp implements RegisterValidation {
         this.mediumRepo = mediumRepo;
         this.fixativeRepo = fixativeRepo;
         this.tissueRepo = tissueRepo;
+        this.speciesRepo = speciesRepo;
         this.donorNameValidation = donorNameValidation;
         this.externalNameValidation = externalNameValidation;
     }
@@ -71,6 +78,7 @@ public class RegisterValidationImp implements RegisterValidation {
     public void validateDonors() {
         for (BlockRegisterRequest block : blocks()) {
             boolean skip = false;
+            Species species = null;
             if (block.getDonorIdentifier()==null || block.getDonorIdentifier().isEmpty()) {
                 skip = true;
                 addProblem("Missing donor identifier.");
@@ -78,8 +86,20 @@ public class RegisterValidationImp implements RegisterValidation {
                 donorNameValidation.validate(block.getDonorIdentifier(), this::addProblem);
             }
             if (block.getLifeStage()==null) {
-                skip = true;
                 addProblem("Missing life stage.");
+            }
+            if (block.getSpecies()==null || block.getSpecies().isEmpty()) {
+                addProblem("Missing species.");
+            } else {
+                String speciesUc = block.getSpecies().toUpperCase();
+                species = speciesMap.get(speciesUc);
+                if (species==null && !speciesMap.containsKey(speciesUc)) {
+                    species = speciesRepo.findByName(speciesUc).orElse(null);
+                    speciesMap.put(speciesUc, species);
+                    if (species==null) {
+                        addProblem("Unknown species: "+repr(block.getSpecies()));
+                    }
+                }
             }
             if (skip) {
                 continue;
@@ -87,11 +107,14 @@ public class RegisterValidationImp implements RegisterValidation {
             String donorNameUc = block.getDonorIdentifier().toUpperCase();
             Donor donor = donorMap.get(donorNameUc);
             if (donor==null) {
-                donor = new Donor(null, block.getDonorIdentifier(), block.getLifeStage());
+                donor = new Donor(null, block.getDonorIdentifier(), block.getLifeStage(), species);
                 donorMap.put(donorNameUc, donor);
             } else {
-                if (donor.getLifeStage()!=block.getLifeStage()) {
+                if (block.getLifeStage()!=null && donor.getLifeStage()!=block.getLifeStage()) {
                     addProblem("Multiple different life stages specified for donor "+donor.getDonorName());
+                }
+                if (species!=null && !species.equals(donor.getSpecies())) {
+                    addProblem("Multiple different species specified for donor "+donor.getDonorName());
                 }
             }
         }
@@ -101,8 +124,12 @@ public class RegisterValidationImp implements RegisterValidation {
                 continue;
             }
             Donor realDonor = optDonor.get();
-            if (realDonor.getLifeStage()!=entry.getValue().getLifeStage()) {
+            Donor newDonor = entry.getValue();
+            if (newDonor.getLifeStage()!=null && realDonor.getLifeStage()!=newDonor.getLifeStage()) {
                 addProblem("Wrong life stage given for existing donor "+realDonor.getDonorName());
+            }
+            if (newDonor.getSpecies()!=null && !newDonor.getSpecies().equals(realDonor.getSpecies())) {
+                addProblem("Wrong species given for existing donor "+realDonor.getDonorName());
             }
             entry.setValue(realDonor);
         }
@@ -153,7 +180,47 @@ public class RegisterValidationImp implements RegisterValidation {
     }
 
     public void validateHmdmcs() {
-        validateByName("HMDMC", BlockRegisterRequest::getHmdmc, hmdmcRepo::findByHmdmc, hmdmcMap);
+        Set<String> unknownHmdmcs = new LinkedHashSet<>();
+        boolean unwanted = false;
+        boolean missing = false;
+        for (BlockRegisterRequest block : blocks()) {
+            boolean needsHmdmc = false;
+            boolean needsNoHmdmc = false;
+            if (block.getSpecies()!=null && !block.getSpecies().isEmpty()) {
+                needsHmdmc = block.getSpecies().equalsIgnoreCase("Human");
+                needsNoHmdmc = !needsHmdmc;
+            }
+            String hmdmcString = block.getHmdmc();
+            if (hmdmcString==null || hmdmcString.isEmpty()) {
+                if (needsHmdmc) {
+                    missing = true;
+                }
+                continue;
+            }
+            if (needsNoHmdmc) {
+                unwanted = true;
+                continue;
+            }
+
+            String hmdmcUc = hmdmcString.toUpperCase();
+            if (hmdmcMap.containsKey(hmdmcUc)) {
+                continue;
+            }
+            Hmdmc hmdmc = hmdmcRepo.findByHmdmc(hmdmcString).orElse(null);
+            hmdmcMap.put(hmdmcUc, hmdmc);
+            if (hmdmc==null) {
+                unknownHmdmcs.add(hmdmcString);
+            }
+        }
+        if (missing) {
+            addProblem("Missing HMDMC number.");
+        }
+        if (unwanted) {
+            addProblem("Non-human tissue should not have an HMDMC number.");
+        }
+        if (!unknownHmdmcs.isEmpty()) {
+            addProblem(pluralise("Unknown HMDMC number{s}: ", unknownHmdmcs.size()) + unknownHmdmcs);
+        }
     }
 
     public void validateLabwareTypes() {

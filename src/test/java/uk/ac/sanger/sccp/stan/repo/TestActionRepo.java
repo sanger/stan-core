@@ -32,7 +32,7 @@ public class TestActionRepo {
     @Test
     public void testFindAllByDestinationIn() {
         User user = entityCreator.createUser("user1");
-        Donor donor = entityCreator.createDonor("DONOR1", LifeStage.adult);
+        Donor donor = entityCreator.createDonor("DONOR1");
         Tissue tissue = entityCreator.createTissue(donor, "TISSUE1");
         Sample sample = entityCreator.createSample(tissue, null);
 

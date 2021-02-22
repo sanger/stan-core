@@ -22,6 +22,7 @@ public class BlockRegisterRequest {
     private String medium;
     private String mouldSize;
     private String fixative;
+    private String species;
 
     public String getDonorIdentifier() {
         return this.donorIdentifier;
@@ -119,6 +120,14 @@ public class BlockRegisterRequest {
         this.mouldSize = mouldSize;
     }
 
+    public String getSpecies() {
+        return this.species;
+    }
+
+    public void setSpecies(String species) {
+        this.species = species;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -135,7 +144,8 @@ public class BlockRegisterRequest {
                 && Objects.equals(this.labwareType, that.labwareType)
                 && Objects.equals(this.medium, that.medium)
                 && Objects.equals(this.fixative, that.fixative)
-                && Objects.equals(this.mouldSize, that.mouldSize));
+                && Objects.equals(this.mouldSize, that.mouldSize)
+                && Objects.equals(this.species, that.species));
     }
 
     @Override
@@ -158,6 +168,7 @@ public class BlockRegisterRequest {
                 .add("medium", medium)
                 .add("fixative", fixative)
                 .add("mouldSize", mouldSize)
+                .add("species", species)
                 .toString();
     }
 }

@@ -18,12 +18,16 @@ public class Donor {
     @Enumerated(EnumType.STRING)
     private LifeStage lifeStage;
 
+    @ManyToOne
+    private Species species;
+
     public Donor() {}
 
-    public Donor(Integer id, String donorName, LifeStage lifeStage) {
+    public Donor(Integer id, String donorName, LifeStage lifeStage, Species species) {
         this.id = id;
         this.donorName = donorName;
         this.lifeStage = lifeStage;
+        this.species = species;
     }
 
     public Integer getId() {
@@ -50,12 +54,21 @@ public class Donor {
         this.lifeStage = lifeStage;
     }
 
+    public Species getSpecies() {
+        return this.species;
+    }
+
+    public void setSpecies(Species species) {
+        this.species = species;
+    }
+
     @Override
     public String toString() {
         return MoreObjects.toStringHelper(this)
                 .add("id", id)
                 .add("donorName", donorName)
                 .add("lifeStage", lifeStage)
+                .add("species", species)
                 .toString();
     }
 
@@ -66,7 +79,8 @@ public class Donor {
         Donor that = (Donor) o;
         return (Objects.equals(this.id, that.id)
                 && Objects.equals(this.donorName, that.donorName)
-                && this.lifeStage == that.lifeStage);
+                && this.lifeStage == that.lifeStage
+                && Objects.equals(this.species, that.species));
     }
 
     @Override

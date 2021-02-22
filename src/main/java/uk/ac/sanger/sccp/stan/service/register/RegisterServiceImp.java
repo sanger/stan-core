@@ -81,6 +81,22 @@ public class RegisterServiceImp implements RegisterService {
         BioState bioState = bioStateRepo.getByName("Tissue");
 
         for (BlockRegisterRequest block : request.getBlocks()) {
+            Donor donor = donors.get(block.getDonorIdentifier().toUpperCase());
+            Hmdmc hmdmc;
+            if (block.getHmdmc()!=null && !block.getHmdmc().isEmpty()) {
+                hmdmc = validation.getHmdmc(block.getHmdmc());
+                if (hmdmc==null) {
+                    throw new IllegalArgumentException("Unknown HMDMC number: "+block.getHmdmc());
+                }
+            } else {
+                hmdmc = null;
+            }
+            if (donor.getSpecies().requiresHmdmc() && hmdmc==null) {
+                throw new IllegalArgumentException("No HMDMC number given for tissue "+block.getExternalIdentifier());
+            }
+            if (!donor.getSpecies().requiresHmdmc() && hmdmc!=null) {
+                throw new IllegalArgumentException("HMDMC number given for non-human tissue "+block.getExternalIdentifier());
+            }
             Tissue tissue = new Tissue(null, block.getExternalIdentifier(), block.getReplicateNumber(),
                     validation.getSpatialLocation(block.getTissueType(), block.getSpatialLocation()),
                     donors.get(block.getDonorIdentifier().toUpperCase()),

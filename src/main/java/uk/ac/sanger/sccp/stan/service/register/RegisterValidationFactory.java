@@ -17,21 +17,22 @@ import java.util.Set;
  */
 @Component
 public class RegisterValidationFactory {
-    private DonorRepo donorRepo;
-    private HmdmcRepo hmdmcRepo;
-    private TissueTypeRepo ttRepo;
-    private LabwareTypeRepo ltRepo;
-    private MouldSizeRepo mouldSizeRepo;
-    private MediumRepo mediumRepo;
-    private FixativeRepo fixativeRepo;
-    private TissueRepo tissueRepo;
-    private Validator<String> donorNameValidation;
-    private Validator<String> externalNameValidation;
+    private final DonorRepo donorRepo;
+    private final HmdmcRepo hmdmcRepo;
+    private final TissueTypeRepo ttRepo;
+    private final LabwareTypeRepo ltRepo;
+    private final MouldSizeRepo mouldSizeRepo;
+    private final MediumRepo mediumRepo;
+    private final FixativeRepo fixativeRepo;
+    private final TissueRepo tissueRepo;
+    private final SpeciesRepo speciesRepo;
+    private final Validator<String> donorNameValidation;
+    private final Validator<String> externalNameValidation;
 
     @Autowired
     public RegisterValidationFactory(DonorRepo donorRepo, HmdmcRepo hmdmcRepo, TissueTypeRepo ttRepo,
                                      LabwareTypeRepo ltRepo, MouldSizeRepo mouldSizeRepo, MediumRepo mediumRepo,
-                                     FixativeRepo fixativeRepo, TissueRepo tissueRepo) {
+                                     FixativeRepo fixativeRepo, TissueRepo tissueRepo, SpeciesRepo speciesRepo) {
         this.donorRepo = donorRepo;
         this.hmdmcRepo = hmdmcRepo;
         this.ttRepo = ttRepo;
@@ -40,6 +41,7 @@ public class RegisterValidationFactory {
         this.mediumRepo = mediumRepo;
         this.fixativeRepo = fixativeRepo;
         this.tissueRepo = tissueRepo;
+        this.speciesRepo = speciesRepo;
         Set<CharacterType> charTypes = EnumSet.of(
                 CharacterType.UPPER, CharacterType.LOWER, CharacterType.DIGIT, CharacterType.HYPHEN, CharacterType.UNDERSCORE
         ) ;
@@ -49,6 +51,6 @@ public class RegisterValidationFactory {
 
     public RegisterValidation createRegisterValidation(RegisterRequest request) {
         return new RegisterValidationImp(request, donorRepo, hmdmcRepo, ttRepo, ltRepo, mouldSizeRepo, mediumRepo,
-                fixativeRepo, tissueRepo, donorNameValidation, externalNameValidation);
+                fixativeRepo, tissueRepo, speciesRepo, donorNameValidation, externalNameValidation);
     }
 }

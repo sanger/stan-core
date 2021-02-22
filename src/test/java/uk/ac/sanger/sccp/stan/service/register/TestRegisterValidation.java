@@ -39,6 +39,7 @@ public class TestRegisterValidation {
     private MediumRepo mockMediumRepo;
     private FixativeRepo mockFixativeRepo;
     private TissueRepo mockTissueRepo;
+    private SpeciesRepo mockSpeciesRepo;
     private Validator<String> mockDonorNameValidation;
     private Validator<String> mockExternalNameValidation;
 
@@ -52,15 +53,23 @@ public class TestRegisterValidation {
         mockMediumRepo = mock(MediumRepo.class);
         mockTissueRepo = mock(TissueRepo.class);
         mockFixativeRepo = mock(FixativeRepo.class);
+        mockSpeciesRepo = mock(SpeciesRepo.class);
         //noinspection unchecked
         mockDonorNameValidation = mock(Validator.class);
         //noinspection unchecked
         mockExternalNameValidation = mock(Validator.class);
     }
 
+    private void loadSpecies(final Collection<Species> specieses) {
+        when(mockSpeciesRepo.findByName(any())).then(invocation -> {
+            String name = invocation.getArgument(0);
+            return specieses.stream().filter(sp -> sp.getName().equalsIgnoreCase(name)).findAny();
+        });
+    }
+
     private RegisterValidationImp create(RegisterRequest request) {
         return spy(new RegisterValidationImp(request, mockDonorRepo, mockHmdmcRepo, mockTtRepo, mockLtRepo,
-                mockMouldSizeRepo, mockMediumRepo, mockFixativeRepo, mockTissueRepo, mockDonorNameValidation, mockExternalNameValidation));
+                mockMouldSizeRepo, mockMediumRepo, mockFixativeRepo, mockTissueRepo, mockSpeciesRepo, mockDonorNameValidation, mockExternalNameValidation));
     }
 
     private void stubValidationMethods(RegisterValidationImp validation) {
@@ -119,18 +128,22 @@ public class TestRegisterValidation {
 
     @ParameterizedTest
     @MethodSource("donorData")
-    public void testValidateDonors(List<String> donorNames, List<LifeStage> lifeStages,
-                                   List<Donor> knownDonors, List<Donor> expectedDonors,
+    public void testValidateDonors(List<String> donorNames, List<LifeStage> lifeStages, List<String> speciesNames,
+                                   List<Donor> knownDonors, List<Species> knownSpecies, List<Donor> expectedDonors,
                                    List<String> expectedProblems) {
-        @SuppressWarnings("UnstableApiUsage")
+        loadSpecies(knownSpecies);
+        Iterator<LifeStage> lifeStageIter = lifeStages.listIterator();
+        Iterator<String> speciesIter = speciesNames.iterator();
         RegisterRequest request = new RegisterRequest(
-                Streams.zip(donorNames.stream(), lifeStages.stream(),
-                        (name, lifeStage) -> {
+                donorNames.stream()
+                        .map(donorName -> {
                             BlockRegisterRequest br = new BlockRegisterRequest();
-                            br.setDonorIdentifier(name);
-                            br.setLifeStage(lifeStage);
+                            br.setDonorIdentifier(donorName);
+                            br.setLifeStage(lifeStageIter.next());
+                            br.setSpecies(speciesIter.next());
                             return br;
-                        }).collect(toList())
+                        })
+                        .collect(toList())
         );
         when(mockDonorRepo.findByDonorName(any())).then(invocation -> {
             final String name = invocation.getArgument(0);
@@ -158,12 +171,14 @@ public class TestRegisterValidation {
             }
             return true;
         });
+        loadSpecies(List.of(EntityFactory.getHuman()));
         RegisterRequest request = new RegisterRequest(
                 Stream.of("Alpha", "Beta", "Gamma*", "Delta*", "Gamma*")
                 .map(s -> {
                     BlockRegisterRequest br = new BlockRegisterRequest();
                     br.setDonorIdentifier(s);
                     br.setLifeStage(LifeStage.adult);
+                    br.setSpecies("Human");
                     return br;
                 })
                 .collect(toList())
@@ -205,15 +220,36 @@ public class TestRegisterValidation {
 
     @ParameterizedTest
     @MethodSource("hmdmcData")
-    public void testValidateHmdmcs(List<Hmdmc> knownHmdmcs, List<String> givenHmdmcs,
+    public void testValidateHmdmcs(List<Hmdmc> knownHmdmcs, List<String> givenHmdmcs, List<String> speciesNames,
                                    List<Hmdmc> expectedHmdmcs, List<String> expectedProblems) {
         when(mockHmdmcRepo.findByHmdmc(any())).then(invocation -> {
             final String arg = invocation.getArgument(0);
             return knownHmdmcs.stream().filter(h -> arg.equalsIgnoreCase(h.getHmdmc())).findAny();
         });
-        testValidateSimpleField(givenHmdmcs, expectedHmdmcs, expectedProblems,
-                RegisterValidationImp::validateHmdmcs, Hmdmc::getHmdmc, BlockRegisterRequest::setHmdmc,
-                v -> v.hmdmcMap, RegisterValidationImp::getHmdmc);
+
+        //noinspection UnstableApiUsage
+        RegisterRequest request = new RegisterRequest(
+                Streams.zip(givenHmdmcs.stream(), speciesNames.stream(),
+                        (hmdmc, species) -> {
+                            BlockRegisterRequest br = new BlockRegisterRequest();
+                            br.setHmdmc(hmdmc);
+                            br.setSpecies(species);
+                            return br;
+                        })
+                        .collect(toList())
+        );
+
+        RegisterValidationImp validation = create(request);
+        validation.validateHmdmcs();
+        assertThat(validation.getProblems()).hasSameElementsAs(expectedProblems);
+        Map<String, Hmdmc> expectedItemMap = expectedHmdmcs.stream().collect(toMap(item -> item.getHmdmc().toUpperCase(), h -> h));
+        Map<String, Hmdmc> actualMap = validation.hmdmcMap.entrySet().stream()
+                .filter(e -> e.getValue() != null)
+                .collect(toMap(Map.Entry::getKey, Map.Entry::getValue));
+        assertEquals(expectedItemMap, actualMap);
+        for (Hmdmc hmdmc : expectedHmdmcs) {
+            assertEquals(hmdmc, validation.getHmdmc(hmdmc.getHmdmc()));
+        }
     }
 
     @ParameterizedTest
@@ -407,43 +443,75 @@ public class TestRegisterValidation {
         validationFunction.accept(validation);
         assertThat(validation.getProblems()).hasSameElementsAs(expectedProblems);
         Map<String, E> expectedItemMap = expectedItems.stream().collect(toMap(item -> stringFn.apply(item).toUpperCase(), h -> h));
-        assertEquals(expectedItemMap, mapFunction.apply(validation));
+        Map<String, E> actualMap = mapFunction.apply(validation).entrySet().stream()
+                .filter(e -> e.getValue()!=null)
+                .collect(toMap(Map.Entry::getKey, Map.Entry::getValue));
+        assertEquals(expectedItemMap, actualMap);
         for (E item : expectedItems) {
             assertEquals(item, getter.apply(validation, stringFn.apply(item)));
         }
     }
 
     private static Stream<Arguments> donorData() {
-        Donor dirk = new Donor(1, "Dirk", LifeStage.adult);
-        Donor jeff = new Donor(2, "Jeff", LifeStage.fetal);
+        Species human = new Species(1, "Human");
+        Species hamster = new Species(2, "Hamster");
+        List<Species> knownSpecies = List.of(human, hamster);
+        Donor dirk = new Donor(1, "Dirk", LifeStage.adult, human);
+        Donor jeff = new Donor(2, "Jeff", LifeStage.fetal, hamster);
+        // List<String> donorNames, List<LifeStage> lifeStages, List<String> speciesNames,
+        // List<Donor> knownDonors, List<Species> knownSpecies, List<Donor> expectedDonors,
+        // List<String> expectedProblems
         return Stream.of(
                 // Valid:
                 Arguments.of(List.of("DONOR1", "Donor2"), List.of(LifeStage.adult, LifeStage.fetal),
-                        List.of(), List.of(new Donor(null, "DONOR1", LifeStage.adult),
-                                new Donor(null, "Donor2", LifeStage.fetal)),
+                        List.of("human", "hamster"),
+                        List.of(), knownSpecies,
+                        List.of(new Donor(null, "DONOR1", LifeStage.adult, human),
+                                new Donor(null, "Donor2", LifeStage.fetal, hamster)),
                         List.of()),
                 Arguments.of(List.of("Donor1", "DONOR1"), List.of(LifeStage.adult, LifeStage.adult),
-                        List.of(), List.of(new Donor(null, "Donor1", LifeStage.adult)),
+                        List.of("human", "human"),
+                        List.of(), knownSpecies,
+                        List.of(new Donor(null, "Donor1", LifeStage.adult, human)),
                         List.of()),
                 Arguments.of(List.of("DIRK", "jeff"),
-                        List.of(dirk.getLifeStage(), jeff.getLifeStage()),
-                        List.of(dirk, jeff), List.of(dirk, jeff),
+                        List.of(dirk.getLifeStage(), jeff.getLifeStage()), List.of("human", "hamster"),
+                        List.of(dirk, jeff), knownSpecies, List.of(dirk, jeff),
                         List.of()),
 
                 // Invalid:
                 Arguments.of(List.of("Dirk", "jeff"), List.of(LifeStage.adult, LifeStage.paediatric),
-                        List.of(dirk, jeff), List.of(dirk, jeff),
+                        List.of("human", "hamster"),
+                        List.of(dirk, jeff), knownSpecies, List.of(dirk, jeff),
                         List.of("Wrong life stage given for existing donor Jeff")),
                 Arguments.of(List.of("Donor1", "DONOR1"), List.of(LifeStage.adult, LifeStage.fetal),
-                        List.of(), List.of(new Donor(null, "Donor1", LifeStage.adult)),
+                        List.of("human", "human"),
+                        List.of(), knownSpecies, List.of(new Donor(null, "Donor1", LifeStage.adult, human)),
                         List.of("Multiple different life stages specified for donor Donor1")),
                 Arguments.of(Arrays.asList(null, null), Arrays.asList(null, null),
-                        List.of(), List.of(), List.of("Missing donor identifier.", "Missing life stage.")),
+                        List.of("human", "human"),
+                        List.of(), knownSpecies, List.of(), List.of("Missing donor identifier.", "Missing life stage.")),
                 Arguments.of(List.of(""), List.of(LifeStage.adult),
-                        List.of(), List.of(), List.of("Missing donor identifier.")),
+                        List.of("human", "human"),
+                        List.of(), knownSpecies, List.of(), List.of("Missing donor identifier.")),
+                Arguments.of(List.of("Donor1"), List.of(LifeStage.adult),
+                        List.of(""), List.of(), knownSpecies, List.of(new Donor(null, "Donor1", LifeStage.adult, null)),
+                        List.of("Missing species.")),
+                Arguments.of(List.of("Donor1"), List.of(LifeStage.adult), List.of("Bananas"),
+                        List.of(), knownSpecies, List.of(new Donor(null, "Donor1", LifeStage.adult, null)),
+                                List.of("Unknown species: \"Bananas\"")),
+                Arguments.of(List.of("Donor1", "DONOR1"), List.of(LifeStage.adult, LifeStage.adult),
+                        List.of("human", "hamster"),
+                        List.of(), knownSpecies, List.of(new Donor(null, "Donor1", LifeStage.adult, human)),
+                        List.of("Multiple different species specified for donor Donor1")),
+                Arguments.of(List.of("Donor1", "Jeff"), List.of(LifeStage.adult, LifeStage.fetal),
+                        List.of("human", "human"),
+                        List.of(jeff), knownSpecies, List.of(jeff, new Donor(null, "Donor1", LifeStage.adult, human)),
+                        List.of("Wrong species given for existing donor Jeff")),
                 Arguments.of(List.of("Donor1", "DONOR1", "jeff", "dirk", "", ""),
                         List.of(LifeStage.adult, LifeStage.fetal, LifeStage.paediatric, LifeStage.paediatric, LifeStage.adult, LifeStage.adult),
-                        List.of(dirk, jeff), List.of(new Donor(null, "Donor1", LifeStage.adult), dirk, jeff),
+                        List.of("human", "human", "hamster", "human", "human", "human"),
+                        List.of(dirk, jeff),knownSpecies, List.of(new Donor(null, "Donor1", LifeStage.adult, human), dirk, jeff),
                         List.of("Multiple different life stages specified for donor Donor1",
                                 "Wrong life stage given for existing donor Dirk",
                                 "Wrong life stage given for existing donor Jeff",
@@ -481,11 +549,20 @@ public class TestRegisterValidation {
     private static Stream<Arguments> hmdmcData() {
         Hmdmc h0 = new Hmdmc(20000, "20/000");
         Hmdmc h1 = new Hmdmc(20001, "20/001");
+        // List<Hmdmc> knownHmdmcs, List<String> givenHmdmcs, List<String> speciesNames,
+        // List<Hmdmc> expectedHmdmcs, List<String> expectedProblems
         return Stream.of(
-                Arguments.of(List.of(h0, h1), List.of("20/001", "20/000", "20/000"), List.of(h0, h1), List.of()),
-                Arguments.of(List.of(h0, h1), List.of("20/001", "20/404", "20/405"), List.of(h1), List.of("Unknown HMDMCs: [20/404, 20/405]")),
-                Arguments.of(List.of(h0), Arrays.asList(null, "20/000", null), List.of(h0), List.of("Missing HMDMC.")),
-                Arguments.of(List.of(h0, h1), List.of("20/000", "20/001", "20/000", "", "", "20/404"), List.of(h0, h1), List.of("Missing HMDMC.", "Unknown HMDMC: [20/404]"))
+                Arguments.of(List.of(h0, h1), List.of("20/001", "20/000", "20/000", ""), List.of("Human", "Human", "Human", "Hamster"),
+                        List.of(h0, h1), List.of()),
+                Arguments.of(List.of(h0, h1), List.of("20/001", "20/404", "20/405"), List.of("Human", "Human", "Human"),
+                        List.of(h1), List.of("Unknown HMDMC numbers: [20/404, 20/405]")),
+                Arguments.of(List.of(h0), Arrays.asList(null, "20/000", null), List.of("Human", "Human", "Human"),
+                        List.of(h0), List.of("Missing HMDMC number.")),
+                Arguments.of(List.of(h0, h1), List.of("20/000", "20/001"), List.of("Human", "Hamster"),
+                        List.of(h0), List.of("Non-human tissue should not have an HMDMC number.")),
+                Arguments.of(List.of(h0, h1), List.of("20/000", "20/001", "20/000", "", "", "20/404"),
+                        List.of("Human", "Human", "Human", "Human", "Human", "Human"),
+                        List.of(h0, h1), List.of("Missing HMDMC number.", "Unknown HMDMC number: [20/404]"))
         );
     }
 
