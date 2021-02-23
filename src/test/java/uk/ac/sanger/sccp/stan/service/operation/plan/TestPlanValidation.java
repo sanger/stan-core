@@ -212,6 +212,9 @@ public class TestPlanValidation {
         Labware releasedLw = EntityFactory.makeLabware(lt, sample);
         releasedLw.setReleased(true);
 
+        Labware discardedLw = EntityFactory.makeLabware(lt, sample);
+        discardedLw.setDiscarded(true);
+
         Address A1 = new Address(1,1);
 
         OperationType sectionOpType = EntityFactory.makeOperationType("Section", OperationTypeFlag.SOURCE_IS_BLOCK);
@@ -229,6 +232,7 @@ public class TestPlanValidation {
 
                 Arguments.of(destroyedLw.getBarcode(), A1, sectionSampleId, destroyedLw, otherOpType, "Labware already destroyed: ["+destroyedLw.getBarcode()+"]"),
                 Arguments.of(releasedLw.getBarcode(), A1, sectionSampleId, releasedLw, otherOpType, "Labware already released: ["+releasedLw.getBarcode()+"]"),
+                Arguments.of(discardedLw.getBarcode(), A1, sectionSampleId, discardedLw, otherOpType, "Labware already discarded: ["+discardedLw.getBarcode()+"]"),
                 Arguments.of(null, A1, blockSampleId, block, sectionOpType, "Missing source barcode."),
                 Arguments.of("", A1, blockSampleId, block, sectionOpType, "Missing source barcode."),
                 Arguments.of("404", A1, blockSampleId, block, sectionOpType, "Unknown labware barcode: [404]"),

@@ -108,7 +108,7 @@ public class ReleaseServiceImp implements ReleaseService {
      */
     public void validateLabware(Collection<Labware> labware) {
         List<String> emptyLabwareBarcodes = labware.stream()
-                .filter(lw -> lw.getSlots().stream().allMatch(slot -> slot.getSamples().isEmpty()))
+                .filter(Labware::isEmpty)
                 .map(Labware::getBarcode)
                 .collect(toList());
         if (!emptyLabwareBarcodes.isEmpty()) {
@@ -127,6 +127,13 @@ public class ReleaseServiceImp implements ReleaseService {
                 .collect(toList());
         if (!destroyedLabwareBarcodes.isEmpty()) {
             throw new IllegalArgumentException("Labware cannot be released because it is destroyed: "+destroyedLabwareBarcodes);
+        }
+        List<String> discardedLabwareBarcodes = labware.stream()
+                .filter(Labware::isDiscarded)
+                .map(Labware::getBarcode)
+                .collect(toList());
+        if (!discardedLabwareBarcodes.isEmpty()) {
+            throw new IllegalArgumentException("Labware cannot be released because it is discarded: "+discardedLabwareBarcodes);
         }
     }
 
