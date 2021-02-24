@@ -14,6 +14,8 @@ import uk.ac.sanger.sccp.stan.request.confirm.ConfirmOperationRequest;
 import uk.ac.sanger.sccp.stan.request.confirm.ConfirmOperationResult;
 import uk.ac.sanger.sccp.stan.request.plan.PlanRequest;
 import uk.ac.sanger.sccp.stan.request.plan.PlanResult;
+import uk.ac.sanger.sccp.stan.request.register.RegisterRequest;
+import uk.ac.sanger.sccp.stan.request.register.RegisterResult;
 import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.extract.ExtractService;
 import uk.ac.sanger.sccp.stan.service.label.print.LabelPrintService;

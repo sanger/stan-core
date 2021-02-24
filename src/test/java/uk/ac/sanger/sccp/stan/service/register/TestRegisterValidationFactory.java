@@ -2,7 +2,7 @@ package uk.ac.sanger.sccp.stan.service.register;
 
 import org.junit.jupiter.api.Test;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.RegisterRequest;
+import uk.ac.sanger.sccp.stan.request.register.RegisterRequest;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;

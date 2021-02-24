@@ -3,7 +3,7 @@ package uk.ac.sanger.sccp.stan.service.register;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.RegisterRequest;
+import uk.ac.sanger.sccp.stan.request.register.RegisterRequest;
 import uk.ac.sanger.sccp.stan.service.StringValidator;
 import uk.ac.sanger.sccp.stan.service.StringValidator.CharacterType;
 import uk.ac.sanger.sccp.stan.service.Validator;
