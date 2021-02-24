@@ -48,9 +48,14 @@ type LabwareType {
     labelType: LabelType,
 }
 
+type Species {
+    name: String!
+}
+
 type Donor {
-    donorName: String!,
-    lifeStage: LifeStage!,
+    donorName: String!
+    lifeStage: LifeStage!
+    species: Species!
 }
 
 type Tissue {
@@ -58,7 +63,7 @@ type Tissue {
     replicate: Int!,
     spatialLocation: SpatialLocation!,
     donor: Donor!,
-    hmdmc: Hmdmc!,
+    hmdmc: Hmdmc,
     mouldSize: MouldSize!,
     medium: Medium!,
     fixative: Fixative!,
@@ -95,18 +100,19 @@ enum LifeStage {
 }
 
 input BlockRegisterRequest {
-    donorIdentifier: String!,
-    lifeStage: LifeStage!,
-    hmdmc: String!,
-    tissueType: String!,
-    spatialLocation: Int!,
-    replicateNumber: Int!,
-    externalIdentifier: String!,
-    highestSection: Int!,
-    labwareType: String!,
-    medium: String!,
-    fixative: String!,
-    mouldSize: String!,
+    donorIdentifier: String!
+    lifeStage: LifeStage!
+    hmdmc: String
+    tissueType: String!
+    spatialLocation: Int!
+    replicateNumber: Int!
+    externalIdentifier: String!
+    highestSection: Int!
+    labwareType: String!
+    medium: String!
+    fixative: String!
+    mouldSize: String!
+    species: String!
 }
 
 input RegisterRequest {
@@ -350,6 +356,7 @@ type Query {
     mediums: [Medium!]!
     fixatives: [Fixative!]!
     mouldSizes: [MouldSize!]!
+    species: [Species!]!
     labware(barcode: String!): Labware!
     printers(labelType: String): [Printer!]!
     comments(category: String): [Comment!]!

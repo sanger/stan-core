@@ -42,7 +42,7 @@ public class TestSlotRepo {
     @Test
     @Transactional
     public void testFindDistinctBySamplesIn() {
-        Tissue tissue = entityCreator.createTissue(entityCreator.createDonor("DONOR1", LifeStage.adult),
+        Tissue tissue = entityCreator.createTissue(entityCreator.createDonor("DONOR1"),
                 "TISSUE1");
         BioState bioState = entityCreator.anyBioState();
         List<Sample> samples = IntStream.range(0,3)

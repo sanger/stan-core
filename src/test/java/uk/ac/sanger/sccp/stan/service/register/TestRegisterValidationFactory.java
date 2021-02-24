@@ -17,7 +17,7 @@ public class TestRegisterValidationFactory {
         RegisterValidationFactory rgf = new RegisterValidationFactory(
                 mock(DonorRepo.class), mock(HmdmcRepo.class), mock(TissueTypeRepo.class),
                 mock(LabwareTypeRepo.class), mock(MouldSizeRepo.class), mock(MediumRepo.class),
-                mock(FixativeRepo.class), mock(TissueRepo.class));
+                mock(FixativeRepo.class), mock(TissueRepo.class), mock(SpeciesRepo.class));
         assertNotNull(rgf.createRegisterValidation(new RegisterRequest()));
     }
 }

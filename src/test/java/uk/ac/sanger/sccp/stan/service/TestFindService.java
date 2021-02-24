@@ -287,10 +287,11 @@ public class TestFindService {
         Tissue tissue1 = sample1.getTissue();
         Donor donor1 = tissue1.getDonor();
         TissueType tt1 = tissue1.getTissueType();
+        Species species = new Species(1, "Human");
 
         TissueType tt2 = new TissueType(200, "Jelly", "JLY");
         SpatialLocation sl2 = new SpatialLocation(201, "SL2", 2, tt2);
-        Donor donor2 = new Donor(null, "DONOR2", LifeStage.fetal);
+        Donor donor2 = new Donor(null, "DONOR2", LifeStage.fetal, species);
         Tissue tissue2 = new Tissue(201, "TISSUE2", 4, sl2, donor2, tissue1.getMouldSize(), tissue1.getMedium(),
                 tissue1.getFixative(), tissue1.getHmdmc());
         Sample sample2 = new Sample(202, 2, tissue2, EntityFactory.getBioState());

@@ -4,6 +4,7 @@ mutation {
             {
                 labwareType:"proviasette",
                 donorIdentifier:"DONOR1",
+                species: "Human",
                 externalIdentifier:"TISSUE1",
                 lifeStage:adult,
                 hmdmc:"20/0002",
@@ -22,6 +23,9 @@ mutation {
         }
         tissue {
             externalName
+            donor {
+                species { name }
+            }
         }
     }
 }
