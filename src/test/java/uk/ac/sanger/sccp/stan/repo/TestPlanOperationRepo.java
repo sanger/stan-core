@@ -30,7 +30,7 @@ public class TestPlanOperationRepo {
     @Test
     @Transactional
     public void testFindAllByDestinationIdIn() {
-        Tissue tissue = entityCreator.createTissue(entityCreator.createDonor("DONOR1", LifeStage.adult), "TISSUE1");
+        Tissue tissue = entityCreator.createTissue(entityCreator.createDonor("DONOR1"), "TISSUE1");
         Labware block = entityCreator.createBlock("STAN-BLOCK", entityCreator.createSample(tissue, null));
         Slot source = block.getFirstSlot();
         LabwareType lt = entityCreator.createLabwareType("1x2", 1, 2);

@@ -24,11 +24,13 @@ import static org.mockito.Mockito.when;
 public class TestLabwareLabelDataService {
     private PlanActionRepo mockPlanActionRepo;
     private LabwareLabelDataService service;
+    private Species species;
 
     @BeforeEach
     void setup() {
         mockPlanActionRepo = mock(PlanActionRepo.class);
         service = new LabwareLabelDataService(mockPlanActionRepo);
+        species = new Species(1, "Human");
     }
 
     @Test
@@ -58,8 +60,8 @@ public class TestLabwareLabelDataService {
 
     @Test
     public void testLabwareDataPlannedContents() {
-        Donor donor1 = new Donor(null, "DONOR1", LifeStage.adult);
-        Donor donor2 = new Donor(null, "DONOR2", LifeStage.fetal);
+        Donor donor1 = new Donor(null, "DONOR1", LifeStage.adult, species);
+        Donor donor2 = new Donor(null, "DONOR2", LifeStage.fetal, species);
         TissueType ttype1 = new TissueType(null, "Skellington", "SKE");
         SpatialLocation sl1 = new SpatialLocation(null, "SL4", 4, ttype1);
         TissueType ttype2 = new TissueType(null, "Bananas", "BNN");
@@ -95,7 +97,7 @@ public class TestLabwareLabelDataService {
     @ParameterizedTest
     @EnumSource(LifeStage.class)
     public void testGetTissueDesc(LifeStage lifeStage) {
-        Donor donor = new Donor(null, "DONOR", lifeStage);
+        Donor donor = new Donor(null, "DONOR", lifeStage, species);
         TissueType tt = new TissueType(null, "Xylophone", "XYL");
         SpatialLocation sl = new SpatialLocation(null, "SL-6", 6, tt);
         Tissue tissue = EntityFactory.makeTissue(donor, sl);

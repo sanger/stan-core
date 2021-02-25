@@ -34,7 +34,7 @@ public class TestSampleRepo {
     @Transactional
     public void testFindMaxSectionForTissueId() {
         assertThat(sampleRepo.findMaxSectionForTissueId(-1)).isEmpty();
-        Donor donor = entityCreator.createDonor("DONOR", LifeStage.adult);
+        Donor donor = entityCreator.createDonor("DONOR");
         Tissue tissue = entityCreator.createTissue(donor, "TISSUE1");
         BioState bioState = entityCreator.anyBioState();
 
@@ -47,7 +47,7 @@ public class TestSampleRepo {
     @Test
     @Transactional
     public void testFindAllByTissueIdIn() {
-        Donor donor = entityCreator.createDonor("DONOR1", LifeStage.adult);
+        Donor donor = entityCreator.createDonor("DONOR1");
         Tissue tissue1 = entityCreator.createTissue(donor, "TISSUE1", 1);
         Tissue tissue2 = entityCreator.createTissue(donor, "TISSUE2", 2);
         Sample sample10 = entityCreator.createSample(tissue1, null);

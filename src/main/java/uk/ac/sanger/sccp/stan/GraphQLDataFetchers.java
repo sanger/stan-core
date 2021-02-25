@@ -30,6 +30,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final MediumRepo mediumRepo;
     final FixativeRepo fixativeRepo;
     final MouldSizeRepo mouldSizeRepo;
+    final SpeciesRepo speciesRepo;
     final HmdmcRepo hmdmcRepo;
     final LabwareRepo labwareRepo;
     final CommentRepo commentRepo;
@@ -44,7 +45,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                SessionConfig sessionConfig,
                                TissueTypeRepo tissueTypeRepo, LabwareTypeRepo labwareTypeRepo,
                                MediumRepo mediumRepo, FixativeRepo fixativeRepo, MouldSizeRepo mouldSizeRepo,
-                               HmdmcRepo hmdmcRepo, LabwareRepo labwareRepo, CommentRepo commentRepo,
+                               SpeciesRepo speciesRepo, HmdmcRepo hmdmcRepo, LabwareRepo labwareRepo, CommentRepo commentRepo,
                                ReleaseDestinationRepo releaseDestinationRepo, ReleaseRecipientRepo releaseRecipientRepo,
                                DestructionReasonRepo destructionReasonRepo,
                                LabelPrintService labelPrintService, FindService findService) {
@@ -55,6 +56,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.mediumRepo = mediumRepo;
         this.fixativeRepo = fixativeRepo;
         this.mouldSizeRepo = mouldSizeRepo;
+        this.speciesRepo = speciesRepo;
         this.hmdmcRepo = hmdmcRepo;
         this.labwareRepo = labwareRepo;
         this.commentRepo = commentRepo;
@@ -89,6 +91,10 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
 
     public DataFetcher<Iterable<MouldSize>> getMouldSizes() {
         return dfe -> mouldSizeRepo.findAll();
+    }
+
+    public DataFetcher<Iterable<Species>> getSpecies() {
+        return dfe -> speciesRepo.findAll();
     }
 
     public DataFetcher<Iterable<Hmdmc>> getHmdmcs() {

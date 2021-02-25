@@ -4,8 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
-import uk.ac.sanger.sccp.stan.model.Donor;
-import uk.ac.sanger.sccp.stan.model.LifeStage;
+import uk.ac.sanger.sccp.stan.model.*;
 
 import javax.persistence.EntityNotFoundException;
 import javax.transaction.Transactional;
@@ -24,10 +23,14 @@ public class TestDonorRepo {
     @Autowired
     DonorRepo donorRepo;
 
+    @Autowired
+    SpeciesRepo speciesRepo;
+
     @Test
     @Transactional
     public void testGetByDonorName() {
-        Donor donor1 = donorRepo.save(new Donor(null, "DONOR1", LifeStage.adult));
+        Species species = speciesRepo.findByName("Human").orElseThrow();
+        Donor donor1 = donorRepo.save(new Donor(null, "DONOR1", LifeStage.adult, species));
 
         assertEquals(donor1, donorRepo.getByDonorName("donor1"));
 

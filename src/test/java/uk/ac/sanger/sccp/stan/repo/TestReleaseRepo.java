@@ -37,7 +37,7 @@ public class TestReleaseRepo {
     @Test
     @Transactional
     public void testSaveRelease() {
-        Donor donor = entityCreator.createDonor("DONOR1", LifeStage.adult);
+        Donor donor = entityCreator.createDonor("DONOR1");
         Tissue tissue = entityCreator.createTissue(donor, "TISSUE1");
         Sample sample = entityCreator.createSample(tissue, null);
         Sample sample1 = entityCreator.createSample(tissue, 1);

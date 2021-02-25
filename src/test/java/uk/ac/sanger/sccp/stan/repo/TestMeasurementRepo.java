@@ -36,7 +36,7 @@ public class TestMeasurementRepo {
         Operation op = opRepo.save(new Operation(null, opType, null, List.of(), user));
         Integer opId = op.getId();
 
-        Donor donor = entityCreator.createDonor("DONOR1", LifeStage.adult);
+        Donor donor = entityCreator.createDonor("DONOR1");
         Tissue tissue = entityCreator.createTissue(donor, "TISSUE1");
         Sample sample = entityCreator.createSample(tissue, null);
         LabwareType lt = entityCreator.createLabwareType("lt", 1, 3);

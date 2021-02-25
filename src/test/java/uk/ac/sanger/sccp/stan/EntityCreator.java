@@ -60,6 +60,8 @@ public class EntityCreator {
     private SnapshotRepo snapshotRepo;
     @Autowired
     private SnapshotElementRepo snapshotElementRepo;
+    @Autowired
+    private SpeciesRepo speciesRepo;
 
     @Autowired
     private EntityManager entityManager;
@@ -69,11 +71,11 @@ public class EntityCreator {
     }
 
     public Donor createDonor(String donorName) {
-        return createDonor(donorName, LifeStage.adult);
+        return createDonor(donorName, LifeStage.adult, getHuman());
     }
 
-    public Donor createDonor(String donorName, LifeStage lifeStage) {
-        return donorRepo.save(new Donor(null, donorName, lifeStage));
+    public Donor createDonor(String donorName, LifeStage lifeStage, Species species) {
+        return donorRepo.save(new Donor(null, donorName, lifeStage, species));
     }
 
     public Tissue createTissue(Donor donor, String externalName) {
@@ -184,6 +186,10 @@ public class EntityCreator {
 
     public BioState anyBioState() {
         return getAny(bioStateRepo);
+    }
+
+    public Species getHuman() {
+        return speciesRepo.findByName("Human").orElseThrow();
     }
 
     public <E> E getAny(CrudRepository<E, ?> repo) {

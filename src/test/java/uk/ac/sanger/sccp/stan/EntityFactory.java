@@ -29,6 +29,7 @@ public class EntityFactory {
     private static Medium medium;
     private static Fixative fixative;
     private static Printer printer;
+    private static Species human;
     private static int idCounter = 10_000;
 
     public static User getUser() {
@@ -50,6 +51,13 @@ public class EntityFactory {
             bioState = new BioState(30, "Tissue");
         }
         return bioState;
+    }
+
+    public static Species getHuman() {
+        if (human==null) {
+            human = new Species(1, "Human");
+        }
+        return human;
     }
 
     public static SpatialLocation getSpatialLocation() {
@@ -86,7 +94,7 @@ public class EntityFactory {
 
     public static Donor getDonor() {
         if (donor==null) {
-            donor = new Donor(70, "dirk", LifeStage.adult);
+            donor = new Donor(70, "dirk", LifeStage.adult, getHuman());
         }
         return donor;
     }

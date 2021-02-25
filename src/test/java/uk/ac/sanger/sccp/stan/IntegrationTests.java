@@ -82,13 +82,14 @@ public class IntegrationTests {
         Map<String, Map<String, Map<String, List<Map<String, String>>>>> result = tester.post(mutation);
         assertNotNull(result.get("data").get("register").get("labware").get(0).get("barcode"));
         assertEquals("TISSUE1", result.get("data").get("register").get("tissue").get(0).get("externalName"));
+        assertEquals("Human", chainGet(result, "data", "register", "tissue", 0, "donor", "species", "name"));
     }
 
     @Test
     @Transactional
     public void testPlanAndRecordOperation() throws Exception {
         tester.setUser(entityCreator.createUser("dr6"));
-        Sample sample = entityCreator.createSample(entityCreator.createTissue(entityCreator.createDonor("DONOR1", LifeStage.adult), "TISSUE1"), null);
+        Sample sample = entityCreator.createSample(entityCreator.createTissue(entityCreator.createDonor("DONOR1"), "TISSUE1"), null);
         Labware sourceBlock = entityCreator.createBlock("STAN-B70C", sample);
         String mutation = tester.readResource("graphql/plan.graphql");
         mutation = mutation.replace("$sampleId", String.valueOf(sample.getId()));
@@ -147,7 +148,7 @@ public class IntegrationTests {
         when(tester.mockPrintClientFactory.getClient(any())).thenReturn(mockPrintClient);
         tester.setUser(entityCreator.createUser("dr6"));
         BioState rna = bioStateRepo.getByName("RNA");
-        Tissue tissue = entityCreator.createTissue(entityCreator.createDonor("DONOR1", LifeStage.adult), "TISSUE1");
+        Tissue tissue = entityCreator.createTissue(entityCreator.createDonor("DONOR1"), "TISSUE1");
         Labware lw = entityCreator.createLabware("STAN-SLIDE", entityCreator.createLabwareType("slide6", 3, 2),
                 entityCreator.createSample(tissue, 1), entityCreator.createSample(tissue, 2),
                 entityCreator.createSample(tissue, 3), entityCreator.createSample(tissue, 4, rna));
@@ -184,7 +185,7 @@ public class IntegrationTests {
     @Test
     @Transactional
     public void testRelease() throws Exception {
-        Donor donor = entityCreator.createDonor("DONOR1", LifeStage.adult);
+        Donor donor = entityCreator.createDonor("DONOR1");
         Tissue tissue = entityCreator.createTissue(donor, "TISSUE1");
         Sample sample = entityCreator.createSample(tissue, null);
         Sample sample1 = entityCreator.createSample(tissue, 1);
@@ -241,7 +242,7 @@ public class IntegrationTests {
     @Test
     @Transactional
     public void testExtract() throws Exception {
-        Donor donor = entityCreator.createDonor("DONOR1", LifeStage.adult);
+        Donor donor = entityCreator.createDonor("DONOR1");
         Tissue tissue = entityCreator.createTissue(donor, "TISSUE");
         BioState tissueBs = bioStateRepo.getByName("Tissue");
         Sample[] samples = IntStream.range(0,2)
