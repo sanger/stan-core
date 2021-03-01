@@ -1,0 +1,14 @@
+mutation {
+    release(request: {
+        barcodes: []
+        destination: "DESTINATION"
+        recipient: "RECIPIENT"
+    }) {
+        releases {
+            id
+            destination { name }
+            recipient { username }
+            labware { barcode, released }
+        }
+    }
+}

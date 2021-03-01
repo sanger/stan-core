@@ -1,0 +1,17 @@
+mutation {
+    storeBarcode(barcode: "BARCODE", location: {barcode: "LOCATIONBARCODE"}, address: "ADDRESS") {
+        barcode
+        address
+        location {
+            id
+            barcode
+            description
+            address
+            size { numRows numColumns }
+            children { barcode description address }
+            stored { barcode address }
+            parent { barcode description address }
+            direction
+        }
+    }
+}

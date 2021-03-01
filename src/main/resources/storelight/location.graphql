@@ -1,0 +1,13 @@
+{
+    location(location: {barcode:"LOCATIONBARCODE"}) {
+        id
+        barcode
+        description
+        address
+        size { numRows numColumns}
+        children { barcode description address }
+        stored { barcode address }
+        parent { barcode description address }
+        direction
+    }
+}

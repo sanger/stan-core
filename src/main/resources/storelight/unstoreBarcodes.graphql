@@ -1,0 +1,5 @@
+mutation {
+    unstoreBarcodes(barcodes: []) {
+        numUnstored
+    }
+}

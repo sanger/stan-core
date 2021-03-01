@@ -1,21 +1,5 @@
-## Required Types
-#type Query {
-#    # Get the list of printers, optionally filtered by label type
-#    printers(labelType: String): [Printer!]!
-#    # Get the list of printer types
-#    printerTypes: [PrinterType!]!
-#    # Get the status of a print job
-#    printStatus(jobId: String!): PrintStatus!
-#    # Get the list of label types
-#    labelTypes: [LabelType!]!
-#}
-#
-## Mutations
-#type Mutation {
-#    # Print some labels.
-#    # If the printer is not in config, the printerType must be specified
-#    print(printRequest: PrintRequest!, printer: String!, printerType: String): PrintResult
-#}
+scalar Address
+scalar Timestamp
 
 type User {
     username: String!,
@@ -26,11 +10,378 @@ type LoginResult {
     user: User,
 }
 
+type Medium {
+    name: String!,
+}
+
+type Fixative {
+    name: String!,
+}
+
+type MouldSize {
+    name: String!,
+}
+
+type TissueType {
+    name: String!,
+    spatialLocations: [SpatialLocation!]!,
+}
+
+type SpatialLocation {
+    name: String!,
+    code: Int!,
+    tissueType: TissueType!,
+}
+
+type Hmdmc {
+    hmdmc: String!,
+}
+
+type LabelType {
+    name: String!,
+}
+
+type LabwareType {
+    name: String!,
+    numRows: Int!,
+    numColumns: Int!,
+    labelType: LabelType,
+}
+
+type Species {
+    name: String!
+}
+
+type Donor {
+    donorName: String!
+    lifeStage: LifeStage!
+    species: Species!
+}
+
+type Tissue {
+    externalName: String!,
+    replicate: Int!,
+    spatialLocation: SpatialLocation!,
+    donor: Donor!,
+    hmdmc: Hmdmc,
+    mouldSize: MouldSize!,
+    medium: Medium!,
+    fixative: Fixative!,
+}
+
+type Sample {
+    id: Int!,
+    section: Int,
+    tissue: Tissue!,
+}
+
+type Slot {
+    address: Address!,
+    labwareId: Int!,
+    samples: [Sample!]!,
+    block: Boolean!,
+    highestSection: Int,
+}
+
+type Labware {
+    id: Int!
+    barcode: String!
+    labwareType: LabwareType!
+    slots: [Slot!]!
+    released: Boolean!
+    destroyed: Boolean!
+    discarded: Boolean!
+}
+
+enum LifeStage {
+    adult
+    paediatric
+    fetal
+}
+
+input BlockRegisterRequest {
+    donorIdentifier: String!
+    lifeStage: LifeStage!
+    hmdmc: String
+    tissueType: String!
+    spatialLocation: Int!
+    replicateNumber: Int!
+    externalIdentifier: String!
+    highestSection: Int!
+    labwareType: String!
+    medium: String!
+    fixative: String!
+    mouldSize: String!
+    species: String!
+}
+
+input RegisterRequest {
+    blocks: [BlockRegisterRequest!]!,
+}
+
+type RegisterResult {
+    labware: [Labware!]!,
+    tissue: [Tissue!]!,
+}
+
+input PlanRequestSource {
+    barcode: String!,
+    address: Address,
+}
+
+type OperationType {
+    name: String!,
+}
+
+type PlanAction {
+    source: Slot!,
+    destination: Slot!,
+    sample: Sample!,
+    newSection: Int,
+}
+
+type PlanOperation {
+    operationType: OperationType,
+    planActions: [PlanAction!]!,
+}
+
+input PlanRequestAction {
+    address: Address!,
+    sampleId: Int!,
+    sampleThickness: Int,
+    source: PlanRequestSource!,
+}
+
+input PlanRequestLabware {
+    labwareType: String!,
+    barcode: String,
+    actions: [PlanRequestAction!]!,
+}
+
+input PlanRequest {
+    operationType: String!,
+    labware: [PlanRequestLabware!]!,
+}
+
+input AddressCommentInput {
+    address: Address!,
+    commentId: Int!,
+}
+
+input ConfirmOperationLabware {
+    barcode: String!,
+    cancelled: Boolean,
+    cancelledAddresses: [Address!],
+    addressComments: [AddressCommentInput!],
+}
+
+input ConfirmOperationRequest {
+    labware: [ConfirmOperationLabware!]!,
+}
+
+type Action {
+    source: Slot!,
+    destination: Slot!,
+    operationId: Int!,
+    sample: Sample!,
+}
+
+type Operation {
+    id: Int!
+    operationType: OperationType!
+    actions: [Action!]!
+    user: User!
+    performed: Timestamp!
+}
+
+type ConfirmOperationResult {
+    labware: [Labware!]!,
+    operations: [Operation!]!,
+}
+
+type PlanResult {
+    labware: [Labware!]!,
+    operations: [PlanOperation!]!,
+}
+
+type Printer {
+    name: String!,
+    labelType: LabelType!,
+}
+
+type Comment {
+    id: Int!,
+    text: String!,
+    category: String!,
+}
+
+type ReleaseDestination {
+    name: String!
+}
+
+type ReleaseRecipient {
+    username: String!
+}
+
+type Release {
+    id: Int!
+    labware: Labware!
+    destination: ReleaseDestination!
+    recipient: ReleaseRecipient!
+}
+
+type ReleaseResult {
+    releases: [Release!]!
+}
+
+input ReleaseRequest {
+    barcodes: [String!]!
+    destination: String!
+    recipient: String!
+}
+
+input ExtractRequest {
+    barcodes: [String!]!
+    labwareType: String!
+}
+
+type OperationResult {
+    labware: [Labware!]!
+    operations: [Operation!]!
+}
+
+type DestructionReason {
+    id: Int!
+    text: String!
+}
+
+type Destruction {
+    labware: Labware
+    user: User
+    destroyed: Timestamp
+    reason: DestructionReason
+}
+
+type DestroyResult {
+    destructions: [Destruction!]!
+}
+
+input DestroyRequest {
+    barcodes: [String!]!
+    reasonId: Int!
+}
+
+type StoredItem {
+    barcode: String!
+    location: Location!
+    address: Address
+}
+
+type UnstoredItem {
+    barcode: String!
+    address: Address
+}
+
+type Size {
+    numRows: Int!
+    numColumns: Int!
+}
+
+"""A traversal order for a grid."""
+enum GridDirection {
+    """Right across the top row, then down to the next row, etc."""
+    RightDown
+    """Down the leftmost column, then right to the next column, etc."""
+    DownRight
+}
+
+type Location {
+    id: Int!
+    barcode: String!
+    name: String
+    customName: String
+    address: Address
+    size: Size
+    parent: LinkedLocation
+    stored: [StoredItem!]!
+    children: [LinkedLocation!]!
+    direction: GridDirection
+}
+
+type LinkedLocation {
+    barcode: String!
+    name: String
+    customName: String
+    address: Address
+}
+
+type UnstoreResult {
+    numUnstored: Int!
+    unstored: [UnstoredItem!]!
+}
+
+type FindEntry {
+    sampleId: Int!
+    labwareId: Int!
+}
+
+type LabwareLocationEntry {
+    labwareId: Int!
+    locationId: Int!
+    address: Address
+}
+
+type FindResult {
+    entries: [FindEntry!]!
+    samples: [Sample!]!
+    labware: [Labware!]!
+    locations: [Location!]!
+    labwareLocations: [LabwareLocationEntry!]!
+    numRecords: Int!
+}
+
+input FindRequest {
+    labwareBarcode: String
+    donorName: String
+    tissueExternalName: String
+    tissueType: String
+    maxRecords: Int
+}
+
 type Query {
-    user: User,
+    user: User
+    tissueTypes: [TissueType!]!
+    labwareTypes: [LabwareType!]!
+    hmdmcs: [Hmdmc!]!
+    mediums: [Medium!]!
+    fixatives: [Fixative!]!
+    mouldSizes: [MouldSize!]!
+    species: [Species!]!
+    labware(barcode: String!): Labware!
+    printers(labelType: String): [Printer!]!
+    comments(category: String): [Comment!]!
+    releaseDestinations: [ReleaseDestination!]!
+    releaseRecipients: [ReleaseRecipient!]!
+    destructionReasons: [DestructionReason!]!
+    find(request: FindRequest!): FindResult!
+
+    location(locationBarcode: String!): Location!
+    stored(barcodes: [String!]!): [StoredItem!]!
 }
 
 type Mutation {
-    login(username: String!, password: String!): LoginResult!,
-    logout: String,
+    login(username: String!, password: String!): LoginResult!
+    logout: String
+    register(request: RegisterRequest!): RegisterResult!
+    plan(request: PlanRequest!): PlanResult!
+    printLabware(printer: String!, barcodes: [String!]!): String
+    confirmOperation(request: ConfirmOperationRequest!): ConfirmOperationResult!
+    release(request: ReleaseRequest!): ReleaseResult!
+    extract(request: ExtractRequest!): OperationResult!
+    destroy(request: DestroyRequest!): DestroyResult!
+
+    storeBarcode(barcode: String!, locationBarcode: String!, address: Address): StoredItem!
+    unstoreBarcode(barcode: String!): UnstoredItem
+    empty(locationBarcode: String!): UnstoreResult!
+    setLocationCustomName(locationBarcode: String!, customName: String): Location!
 }

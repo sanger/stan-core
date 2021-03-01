@@ -1,0 +1,31 @@
+mutation {
+    register(request:{
+        blocks:[
+            {
+                labwareType:"proviasette",
+                donorIdentifier:"DONOR1",
+                species: "Human",
+                externalIdentifier:"TISSUE1",
+                lifeStage:adult,
+                hmdmc:"20/0002",
+                spatialLocation:0,
+                tissueType:"Bone",
+                replicateNumber:1,
+                medium:"None",
+                mouldSize:"None",
+                fixative:"None",
+                highestSection:0,
+            }
+        ]
+    }) {
+        labware {
+            barcode
+        }
+        tissue {
+            externalName
+            donor {
+                species { name }
+            }
+        }
+    }
+}

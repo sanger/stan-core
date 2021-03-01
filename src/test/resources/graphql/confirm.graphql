@@ -1,0 +1,44 @@
+mutation {
+    confirmOperation(request: {
+        labware: [
+            {
+                barcode: "$BARCODE",
+                addressComments: [
+                    {
+                        address: "A1"
+                        commentId: 1
+                    }
+                ]
+            }
+        ]
+    }) {
+        labware {
+            barcode
+            slots {
+                samples {
+                    id
+                    section
+                }
+            }
+        }
+        operations {
+            performed
+            operationType { name }
+            actions {
+                source {
+                    address
+                    labwareId
+                }
+                destination {
+                    address
+                    labwareId
+                }
+                sample {
+                    id
+                    tissue { externalName }
+                    section
+                }
+            }
+        }
+    }
+}

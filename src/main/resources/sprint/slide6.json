@@ -1,0 +1,174 @@
+{
+  "labelSize": {
+    "width": 23,
+    "height": 19,
+    "displacement": 22
+  },
+  "barcodeFields":[
+    {
+      "value": "#barcode#",
+      "barcodeType": "datamatrix",
+      "cellWidth": 0.25,
+      "x": 17,
+      "y": 1
+    }
+  ],
+  "textFields":[
+    {
+      "value": "#barcode#",
+      "fontSize": 2.2,
+      "x": 1,
+      "y": 3
+    },
+    {
+      "value": "#medium#",
+      "fontSize": 1.3,
+      "x": 11,
+      "y": 5
+    },
+    {
+      "value": "#donor[0]#",
+      "fontSize": 1.3,
+      "x": 1,
+      "y": 7
+    },
+    {
+      "value": "#tissue[0]#",
+      "fontSize": 1.3,
+      "x": 9,
+      "y": 7
+    },
+    {
+      "value": "#replicate[0]#",
+      "fontSize": 1.3,
+      "x": 15,
+      "y": 7
+    },
+    {
+      "value": "#state[0]#",
+      "fontSize": 1.3,
+      "x": 18,
+      "y": 7
+    },
+    {
+      "value": "#donor[1]#",
+      "fontSize": 1.3,
+      "x": 1,
+      "y": 9
+    },
+    {
+      "value": "#tissue[1]#",
+      "fontSize": 1.3,
+      "x": 9,
+      "y": 9
+    },
+    {
+      "value": "#replicate[1]#",
+      "fontSize": 1.3,
+      "x": 15,
+      "y": 9
+    },
+    {
+      "value": "#state[1]#",
+      "fontSize": 1.3,
+      "x": 18,
+      "y": 9
+    },
+    {
+      "value": "#donor[2]#",
+      "fontSize": 1.3,
+      "x": 1,
+      "y": 11
+    },
+    {
+      "value": "#tissue[2]#",
+      "fontSize": 1.3,
+      "x": 9,
+      "y": 11
+    },
+    {
+      "value": "#replicate[2]#",
+      "fontSize": 1.3,
+      "x": 15,
+      "y": 11
+    },
+    {
+      "value": "#state[2]#",
+      "fontSize": 1.3,
+      "x": 18,
+      "y": 11
+    },
+    {
+      "value": "#donor[3]#",
+      "fontSize": 1.3,
+      "x": 1,
+      "y": 13
+    },
+    {
+      "value": "#tissue[3]#",
+      "fontSize": 1.3,
+      "x": 9,
+      "y": 13
+    },
+    {
+      "value": "#replicate[3]#",
+      "fontSize": 1.3,
+      "x": 15,
+      "y": 13
+    },
+    {
+      "value": "#state[3]#",
+      "fontSize": 1.3,
+      "x": 18,
+      "y": 13
+    },
+    {
+      "value": "#donor[4]#",
+      "fontSize": 1.3,
+      "x": 1,
+      "y": 15
+    },
+    {
+      "value": "#tissue[4]#",
+      "fontSize": 1.3,
+      "x": 9,
+      "y": 15
+    },
+    {
+      "value": "#replicate[4]#",
+      "fontSize": 1.3,
+      "x": 15,
+      "y": 15
+    },
+    {
+      "value": "#state[4]#",
+      "fontSize": 1.3,
+      "x": 18,
+      "y": 15
+    },
+    {
+      "value": "#donor[5]#",
+      "fontSize": 1.3,
+      "x": 1,
+      "y": 17
+    },
+    {
+      "value": "#tissue[5]#",
+      "fontSize": 1.3,
+      "x": 9,
+      "y": 17
+    },
+    {
+      "value": "#replicate[5]#",
+      "fontSize": 1.3,
+      "x": 15,
+      "y": 17
+    },
+    {
+      "value": "#state[5]#",
+      "fontSize": 1.3,
+      "x": 18,
+      "y": 17
+    }
+  ]
+}

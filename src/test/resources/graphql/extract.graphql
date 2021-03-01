@@ -1,0 +1,38 @@
+mutation {
+    extract(request: {barcodes: [], labwareType: "LWTYPE"}) {
+        labware {
+            id
+            barcode
+            slots {
+                samples {
+                    id
+                    tissue {
+                        externalName
+                    }
+                }
+            }
+            labwareType { name }
+        }
+        operations {
+            id
+            operationType { name }
+            performed
+            actions {
+                sample {
+                    id
+                }
+                destination {
+                    labwareId
+                    address
+                    samples {
+                        id
+                    }
+                }
+                source {
+                    labwareId
+                    address
+                }
+            }
+        }
+    }
+}

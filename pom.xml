@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>uk.ac.sanger.sccp</groupId>
 	<artifactId>stan</artifactId>
-	<version>0.1.0</version>
+	<version>0.6.1</version>
 	<name>stan</name>
 	<description>Spatial Genomics LIMS</description>
 
@@ -29,6 +29,12 @@
 			<id>prod</id>
 			<properties>
 				<activatedProperties>prod</activatedProperties>
+			</properties>
+		</profile>
+		<profile>
+			<id>test</id>
+			<properties>
+				<activatedProperties>test</activatedProperties>
 			</properties>
 		</profile>
 	</profiles>
@@ -123,7 +129,19 @@
 			<artifactId>liquibase-core</artifactId>
 			<version>4.1.1</version>
 		</dependency>
-	</dependencies>
+
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-test</artifactId>
+			<version>5.2.8.RELEASE</version>
+			<scope>test</scope>
+		</dependency>
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>20201115</version>
+        </dependency>
+    </dependencies>
 
 	<build>
 		<plugins>

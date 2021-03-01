@@ -3,6 +3,7 @@ package uk.ac.sanger.sccp.stan;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
 import graphql.GraphQL;
+import graphql.schema.DataFetcher;
 import graphql.schema.GraphQLSchema;
 import graphql.schema.idl.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,11 +24,18 @@ public class GraphQLProvider {
 
     private GraphQL graphQL;
 
+    final Transactor transactor;
     final GraphQLDataFetchers graphQLDataFetchers;
+    final GraphQLMutation graphQLMutation;
+    final GraphQLStore graphQLStore;
 
     @Autowired
-    public GraphQLProvider(GraphQLDataFetchers graphQLDataFetchers) {
+    public GraphQLProvider(Transactor transactor,
+                           GraphQLDataFetchers graphQLDataFetchers, GraphQLMutation graphQLMutation, GraphQLStore graphQLStore) {
+        this.transactor = transactor;
         this.graphQLDataFetchers = graphQLDataFetchers;
+        this.graphQLMutation = graphQLMutation;
+        this.graphQLStore = graphQLStore;
     }
 
     @Bean
@@ -56,11 +64,46 @@ public class GraphQLProvider {
         return RuntimeWiring.newRuntimeWiring()
                 .type(newTypeWiring("Query")
                         .dataFetcher("user", graphQLDataFetchers.getUser())
+                        .dataFetcher("tissueTypes", graphQLDataFetchers.getTissueTypes())
+                        .dataFetcher("hmdmcs", graphQLDataFetchers.getHmdmcs())
+                        .dataFetcher("labwareTypes", graphQLDataFetchers.getLabwareTypes())
+                        .dataFetcher("mediums", graphQLDataFetchers.getMediums())
+                        .dataFetcher("fixatives", graphQLDataFetchers.getFixatives())
+                        .dataFetcher("mouldSizes", graphQLDataFetchers.getMouldSizes())
+                        .dataFetcher("species", graphQLDataFetchers.getSpecies())
+                        .dataFetcher("labware", graphQLDataFetchers.findLabwareByBarcode())
+                        .dataFetcher("printers", graphQLDataFetchers.findPrinters())
+                        .dataFetcher("comments", graphQLDataFetchers.getComments())
+                        .dataFetcher("releaseDestinations", graphQLDataFetchers.getReleaseDestinations())
+                        .dataFetcher("releaseRecipients", graphQLDataFetchers.getReleaseRecipients())
+                        .dataFetcher("find", graphQLDataFetchers.find())
+                        .dataFetcher("destructionReasons", graphQLDataFetchers.getDestructionReasons())
+
+                        .dataFetcher("location", graphQLStore.getLocation())
+                        .dataFetcher("stored", graphQLStore.getStored())
                 )
                 .type(newTypeWiring("Mutation")
-                        .dataFetcher("login", graphQLDataFetchers.logIn())
-                        .dataFetcher("logout", graphQLDataFetchers.logOut())
+                        .dataFetcher("login", graphQLMutation.logIn())
+                        .dataFetcher("logout", graphQLMutation.logOut())
+                        .dataFetcher("register", transact(graphQLMutation.register()))
+                        .dataFetcher("plan", transact(graphQLMutation.recordPlan()))
+                        .dataFetcher("printLabware", graphQLMutation.printLabware()) // not transacted
+                        .dataFetcher("confirmOperation", transact(graphQLMutation.confirmOperation()))
+                        .dataFetcher("release", graphQLMutation.release()) // transaction handled in service
+                        .dataFetcher("extract", graphQLMutation.extract()) // transaction handled in service
+                        .dataFetcher("destroy", graphQLMutation.destroy()) // transaction handled in service
+
+                        .dataFetcher("storeBarcode", graphQLStore.storeBarcode())
+                        .dataFetcher("unstoreBarcode", graphQLStore.unstoreBarcode())
+                        .dataFetcher("empty", graphQLStore.empty())
+                        .dataFetcher("setLocationCustomName", graphQLStore.setLocationCustomName())
                 )
+                .scalar(GraphQLCustomTypes.ADDRESS)
+                .scalar(GraphQLCustomTypes.TIMESTAMP)
                 .build();
+    }
+
+    private <T> DataFetcher<T> transact(DataFetcher<T> dataFetcher) {
+        return transactor.dataFetcher("Mutation transaction", dataFetcher);
     }
 }
