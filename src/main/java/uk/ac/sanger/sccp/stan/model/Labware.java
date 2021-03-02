@@ -17,6 +17,7 @@ public class Labware {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
     private String barcode;
+    private String externalBarcode;
 
     @ManyToOne
     private LabwareType labwareType;
@@ -53,6 +54,14 @@ public class Labware {
 
     public void setBarcode(String barcode) {
         this.barcode = barcode;
+    }
+
+    public String getExternalBarcode() {
+        return this.externalBarcode;
+    }
+
+    public void setExternalBarcode(String externalBarcode) {
+        this.externalBarcode = externalBarcode;
     }
 
     public LabwareType getLabwareType() {
@@ -127,6 +136,7 @@ public class Labware {
         Labware that = (Labware) o;
         return (Objects.equals(this.id, that.id)
                 && Objects.equals(this.barcode, that.barcode)
+                && Objects.equals(this.externalBarcode, that.externalBarcode)
                 && Objects.equals(this.labwareType, that.labwareType)
                 && Objects.equals(this.slots, that.slots)
                 && this.discarded == that.discarded

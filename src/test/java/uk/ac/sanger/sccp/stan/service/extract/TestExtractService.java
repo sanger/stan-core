@@ -183,7 +183,7 @@ public class TestExtractService {
         Labware src2 = EntityFactory.makeEmptyLabware(lwType);
         Labware dst1 = EntityFactory.makeEmptyLabware(lwType);
         Labware dst2 = EntityFactory.makeEmptyLabware(lwType);
-        when(mockLwService.create(any())).thenReturn(dst1, dst2);
+        when(mockLwService.create(any(LabwareType.class))).thenReturn(dst1, dst2);
 
         assertEquals(Map.of(src1, dst1, src2, dst2), service.createNewLabware(lwType, List.of(src1, src2)));
         verify(mockLwService, times(2)).create(lwType);

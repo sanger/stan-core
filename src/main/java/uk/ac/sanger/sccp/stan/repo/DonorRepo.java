@@ -4,7 +4,7 @@ import org.springframework.data.repository.CrudRepository;
 import uk.ac.sanger.sccp.stan.model.Donor;
 
 import javax.persistence.EntityNotFoundException;
-import java.util.Optional;
+import java.util.*;
 
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
@@ -16,4 +16,6 @@ public interface DonorRepo extends CrudRepository<Donor, Integer> {
                 () -> new EntityNotFoundException("Donor name not found: "+repr(donorName))
         );
     }
+
+    List<Donor> findAllByDonorNameIn(Collection<String> donorNames);
 }

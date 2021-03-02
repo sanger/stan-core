@@ -665,7 +665,7 @@ public class TestRegisterValidation {
         );
     }
 
-    static class ValidateTissueTestData {
+    private static class ValidateTissueTestData {
         String externalName;
         int replicate = 1;
         String donorName = "D";

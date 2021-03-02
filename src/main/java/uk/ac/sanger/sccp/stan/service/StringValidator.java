@@ -66,6 +66,7 @@ public class StringValidator implements Validator<String> {
      * @param problemConsumer a function to receive information about the problems
      * @return true if the string is valid; false if problems were found
      */
+    @Override
     public boolean validate(String string, Consumer<String> problemConsumer) {
         boolean ok = true;
         int sl = string.length();

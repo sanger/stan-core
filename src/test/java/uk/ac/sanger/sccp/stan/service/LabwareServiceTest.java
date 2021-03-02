@@ -80,21 +80,23 @@ public class LabwareServiceTest {
         String barcode = "STAN-ABC";
         when(mockBarcodeSeedRepo.createStanBarcode()).thenReturn(barcode);
         Labware lw = EntityFactory.getTube();
-        doReturn(lw).when(labwareService).create(any(), anyString());
         LabwareType lt = lw.getLabwareType();
+        doReturn(lw).when(labwareService).create(any(Labware.class));
         Labware result = labwareService.create(lt);
+        verify(labwareService).create(new Labware(null, null, lt, null));
         assertSame(lw, result);
-        verify(labwareService).create(lt, barcode);
     }
 
     @Test
     public void testCreateWithBarcode() {
         LabwareType lt = EntityFactory.makeLabwareType(2, 3);
         String barcode = "STAN-ABC";
-        Labware lw = labwareService.create(lt, barcode);
+        String externalBarcode = "EXT-11";
+        Labware lw = labwareService.create(lt, barcode, externalBarcode);
         assertNotNull(lw.getId());
-        assertEquals(lw.getBarcode(), barcode);
-        assertEquals(lw.getLabwareType(), lt);
+        assertEquals(barcode, lw.getBarcode());
+        assertEquals(externalBarcode, lw.getExternalBarcode());
+        assertEquals(lt, lw.getLabwareType());
         assertThat(savedLabware).hasSize(1).contains(lw);
         assertThat(savedSlots).hasSameElementsAs(lw.getSlots());
         //noinspection UnstableApiUsage

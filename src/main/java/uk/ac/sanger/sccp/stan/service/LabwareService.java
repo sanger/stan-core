@@ -31,22 +31,39 @@ public class LabwareService {
     }
 
     /**
-     * Create new empty labware of the given type, with a new stan barcode.
+     * Creates new empty labware of the given type, with a new stan barcode.
      * @param labwareType the labware type
      * @return the new labware
      */
     public Labware create(LabwareType labwareType) {
-        return create(labwareType, barcodeSeedRepo.createStanBarcode());
+        return create(labwareType, null, null);
     }
 
     /**
-     * Create new empty labware of the given type with the given barcode.
+     * Creates new empty labware of the given type with the given barcode.
      * @param labwareType the labware type
      * @param barcode the barcode for the labware
+     * @param externalBarcode the external barcode, if any
      * @return the new labware
      */
-    public Labware create(LabwareType labwareType, String barcode) {
-        Labware labware = labwareRepo.save(new Labware(null, barcode, labwareType, null));
+    public Labware create(LabwareType labwareType, String barcode, String externalBarcode) {
+        Labware unsaved = new Labware(null, barcode, labwareType, null);
+        unsaved.setExternalBarcode(externalBarcode);
+        return create(unsaved);
+    }
+
+    /**
+     * Creates new empty labware with slots from the given unsaved labware object.
+     * If the given labware does not specify a barcode, one will be created.
+     * @param unsaved an unsaved labware object
+     * @return the new labware, complete with its slots
+     */
+    public Labware create(Labware unsaved) {
+        if (unsaved.getBarcode()==null) {
+            unsaved.setBarcode(barcodeSeedRepo.createStanBarcode());
+        }
+        Labware labware = labwareRepo.save(unsaved);
+        LabwareType labwareType = unsaved.getLabwareType();
         final int numRows = labwareType.getNumRows();
         final int numColumns = labwareType.getNumColumns();
         for (int row = 1; row <= numRows; ++row) {

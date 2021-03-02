@@ -4,8 +4,7 @@ import org.springframework.data.repository.CrudRepository;
 import uk.ac.sanger.sccp.stan.model.Tissue;
 
 import javax.persistence.EntityNotFoundException;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
@@ -26,4 +25,6 @@ public interface TissueRepo extends CrudRepository<Tissue, Integer> {
     }
 
     List<Tissue> findByDonorId(int donorId);
+
+    List<Tissue> findAllByExternalNameIn(Collection<String> externalNames);
 }

@@ -14,14 +14,14 @@ import uk.ac.sanger.sccp.stan.request.confirm.ConfirmOperationRequest;
 import uk.ac.sanger.sccp.stan.request.confirm.ConfirmOperationResult;
 import uk.ac.sanger.sccp.stan.request.plan.PlanRequest;
 import uk.ac.sanger.sccp.stan.request.plan.PlanResult;
-import uk.ac.sanger.sccp.stan.request.register.RegisterRequest;
-import uk.ac.sanger.sccp.stan.request.register.RegisterResult;
+import uk.ac.sanger.sccp.stan.request.register.*;
 import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.extract.ExtractService;
 import uk.ac.sanger.sccp.stan.service.label.print.LabelPrintService;
 import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmOperationService;
 import uk.ac.sanger.sccp.stan.service.operation.plan.PlanService;
 import uk.ac.sanger.sccp.stan.service.register.RegisterService;
+import uk.ac.sanger.sccp.stan.service.register.SectionRegisterService;
 
 import java.util.*;
 
@@ -33,6 +33,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final LDAPService ldapService;
     final SessionConfig sessionConfig;
     final RegisterService registerService;
+    final SectionRegisterService sectionRegisterService;
     final PlanService planService;
     final LabelPrintService labelPrintService;
     final ConfirmOperationService confirmOperationService;
@@ -43,7 +44,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     @Autowired
     public GraphQLMutation(ObjectMapper objectMapper, AuthenticationComponent authComp,
                            LDAPService ldapService, SessionConfig sessionConfig,
-                           RegisterService registerService, PlanService planService,
+                           RegisterService registerService, SectionRegisterService sectionRegisterService, PlanService planService,
                            LabelPrintService labelPrintService,
                            ConfirmOperationService confirmOperationService,
                            UserRepo userRepo, ReleaseService releaseService, ExtractService extractService,
@@ -52,6 +53,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
         this.registerService = registerService;
+        this.sectionRegisterService = sectionRegisterService;
         this.planService = planService;
         this.labelPrintService = labelPrintService;
         this.confirmOperationService = confirmOperationService;
@@ -92,6 +94,14 @@ public class GraphQLMutation extends BaseGraphQLResource {
             User user = checkUser();
             RegisterRequest request = arg(dfe, "request", RegisterRequest.class);
             return registerService.register(request, user);
+        };
+    }
+
+    public DataFetcher<RegisterResult> sectionRegister() {
+        return dfe -> {
+            User user = checkUser();
+            SectionRegisterRequest request = arg(dfe, "request", SectionRegisterRequest.class);
+            return sectionRegisterService.register(user, request);
         };
     }
 
