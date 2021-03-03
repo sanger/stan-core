@@ -179,7 +179,7 @@ public class SectionRegisterServiceImp implements SectionRegisterService {
                                  UCMap<Sample> sampleMap) {
         LabwareType lt = labwareTypes.get(srl.getLabwareType());
         String externalBarcode = srl.getExternalBarcode();
-        Labware lw = lwService.create(null, lt.isPrebarcoded() ? externalBarcode : null, externalBarcode);
+        Labware lw = lwService.create(lt, lt.isPrebarcoded() ? externalBarcode : null, externalBarcode);
         for (var content : srl.getContents()) {
             Slot slot = lw.getSlot(content.getAddress());
             Sample sample = sampleMap.get(content.getExternalIdentifier());

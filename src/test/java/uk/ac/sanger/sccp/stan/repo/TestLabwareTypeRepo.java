@@ -8,10 +8,11 @@ import uk.ac.sanger.sccp.stan.model.LabwareType;
 
 import javax.persistence.EntityNotFoundException;
 import javax.transaction.Transactional;
+import java.util.List;
 
+import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Tests for {@link LabwareTypeRepo}
@@ -34,5 +35,13 @@ public class TestLabwareTypeRepo {
         assertNotNull(lt);
         assertThat(lt.getName()).isEqualToIgnoringCase("Proviasette");
         assertThrows(EntityNotFoundException.class, () -> labwareTypeRepo.getByName("Bananas"));
+    }
+
+    @Test
+    @Transactional
+    public void testFindAllByNameIn() {
+        List<LabwareType> lwTypes = labwareTypeRepo.findAllByNameIn(List.of("proviasette", "tube", "Bananas"));
+        assertThat(lwTypes).hasSize(2);
+        assertEquals(List.of("Proviasette", "Tube"), lwTypes.stream().map(LabwareType::getName).collect(toList()));
     }
 }

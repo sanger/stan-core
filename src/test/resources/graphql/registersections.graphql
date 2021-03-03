@@ -1,0 +1,73 @@
+mutation {
+    registerSections(request: {
+        labware: [
+            {
+                labwareType: "slide"
+                externalBarcode: "EXT1"
+                contents: [
+                    {
+                        address: "A1"
+                        donorIdentifier: "DONOR1"
+                        species: "Human"
+                        hmdmc: "20/0002"
+                        fixative: "None"
+                        medium: "None"
+                        replicateNumber: 7
+                        sectionNumber: 8
+                        sectionThickness: 12
+                        lifeStage: adult
+                        externalIdentifier: "TISSUE1"
+                        spatialLocation: 1
+                        tissueType: "Heart"
+                    }
+                    {
+                        address: "A1"
+                        donorIdentifier: "DONOR2"
+                        species: "Hamster"
+                        fixative: "None"
+                        medium: "None"
+                        replicateNumber: 9
+                        sectionNumber: 10
+                        sectionThickness: 13
+                        lifeStage: adult
+                        externalIdentifier: "TISSUE2"
+                        spatialLocation: 1
+                        tissueType: "Lung"
+                    }
+                    {
+                        address: "B2"
+                        donorIdentifier: "DONOR1"
+                        species: "Human"
+                        hmdmc: "20/0002"
+                        fixative: "None"
+                        medium: "None"
+                        replicateNumber: 8
+                        sectionNumber: 11
+                        sectionThickness: 14
+                        lifeStage: adult
+                        externalIdentifier: "TISSUE3"
+                        spatialLocation: 1
+                        tissueType: "Heart"
+                    }
+                ]
+            }
+        ]
+    }) {
+        labware {
+            barcode
+            slots {
+                address
+                samples {
+                    tissue {
+                        externalName
+                        donor { donorName }
+                    }
+                }
+            }
+        }
+        tissue {
+            externalName
+            donor { donorName }
+        }
+    }
+}

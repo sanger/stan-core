@@ -70,6 +70,8 @@ public class IntegrationTests {
     private DestructionRepo destructionRepo;
     @Autowired
     private DestructionReasonRepo destructionReasonRepo;
+    @Autowired
+    private MeasurementRepo measurementRepo;
 
     @MockBean
     StorelightClient mockStorelightClient;
@@ -481,6 +483,90 @@ public class IntegrationTests {
         verifyUnstored(barcodes, user.getUsername());
     }
 
+    @Test
+    @Transactional
+    public void testSectionRegister() throws Exception {
+        String mutation = tester.readResource("graphql/registersections.graphql");
+        User user = entityCreator.createUser("user1");
+        tester.setUser(user);
+
+        Map<String, ?> response = tester.post(mutation);
+
+        assertNull(response.get("errors"));
+        Map<String,?> data = chainGet(response, "data", "registerSections");
+        List<Map<String,?>> tissueData = chainGet(data, "tissue");
+        assertThat(tissueData).hasSize(3);
+        for (int i = 0; i < 3; ++i) {
+            assertEquals("TISSUE"+(i+1), tissueData.get(i).get("externalName"));
+            assertEquals(i==1 ? "DONOR2" : "DONOR1", chainGet(tissueData.get(i), "donor", "donorName"));
+        }
+
+        List<Map<String,?>> labwareData = chainGet(data, "labware");
+        assertThat(labwareData).hasSize(1);
+        Map<String, ?> lwData = labwareData.get(0);
+        String barcode = (String) lwData.get("barcode");
+        assertNotNull(barcode);
+        List<Map<String, ?>> slotsData = chainGetList(lwData, "slots");
+        assertThat(slotsData).hasSize(6);
+        Map<String, List<String>> addressExtNames = new HashMap<>(4);
+        Map<String, List<String>> addressDonorNames = new HashMap<>(4);
+        for (var slotData : slotsData) {
+            String ad = (String) slotData.get("address");
+            assertFalse(addressExtNames.containsKey(ad));
+            List<Map<String,?>> samplesData = chainGet(slotData, "samples");
+            addressExtNames.put(ad, new ArrayList<>(samplesData.size()));
+            addressDonorNames.put(ad, new ArrayList<>(samplesData.size()));
+            for (var sampleData : samplesData) {
+                addressExtNames.get(ad).add(chainGet(sampleData, "tissue", "externalName"));
+                addressDonorNames.get(ad).add(chainGet(sampleData, "tissue", "donor", "donorName"));
+            }
+        }
+        Map<String, List<String>> expectedExtNames = Map.of(
+                "A1", List.of("TISSUE1", "TISSUE2"),
+                "A2", List.of(),
+                "B1", List.of(),
+                "B2", List.of("TISSUE3"),
+                "C1", List.of(),
+                "C2", List.of()
+        );
+        Map<String, List<String>> expectedDonorNames = Map.of(
+                "A1", List.of("DONOR1", "DONOR2"),
+                "A2", List.of(),
+                "B1", List.of(),
+                "B2", List.of("DONOR1"),
+                "C1", List.of(),
+                "C2", List.of()
+        );
+        assertEquals(expectedExtNames, addressExtNames);
+        assertEquals(expectedDonorNames, addressDonorNames);
+
+        entityManager.flush();
+
+        Labware labware = lwRepo.getByBarcode(barcode);
+
+        assertThat(labware.getSlot(new Address(1,1)).getSamples()).hasSize(2);
+        final Slot slotB2 = labware.getSlot(new Address(2, 2));
+        assertThat(slotB2.getSamples()).hasSize(1);
+        Sample sample = slotB2.getSamples().get(0);
+        assertEquals("TISSUE3", sample.getTissue().getExternalName());
+        assertEquals("DONOR1", sample.getTissue().getDonor().getDonorName());
+        assertEquals(8, sample.getTissue().getReplicate());
+        assertEquals(11, sample.getSection());
+
+        List<Measurement> measurements = measurementRepo.findAllBySlotIdIn(List.of(slotB2.getId()));
+        assertThat(measurements).hasSize(1);
+        Measurement measurement = measurements.get(0);
+        assertNotNull(measurement.getId());
+        assertEquals("Thickness", measurement.getName());
+        assertEquals("14", measurement.getValue());
+        assertEquals(sample.getId(), measurement.getSampleId());
+        assertNotNull(measurement.getOperationId());
+        Operation op = opRepo.findById(measurement.getOperationId()).orElseThrow();
+        assertEquals("Register", op.getOperationType().getName());
+        assertThat(op.getActions()).hasSize(3);
+        assertEquals(user, op.getUser());
+    }
+
     private void stubStorelightUnstore() throws IOException {
         ObjectMapper objectMapper = new ObjectMapper();
         ObjectNode storelightDataNode = objectMapper.createObjectNode()
@@ -556,6 +642,10 @@ public class IntegrationTests {
             container = item;
         }
         return (T) container;
+    }
+
+    private static <T> List<T> chainGetList(Object container, Object... accessors) {
+        return chainGet(container, accessors);
     }
 
     private static <E> void swap(List<E> list, int i, int j) {

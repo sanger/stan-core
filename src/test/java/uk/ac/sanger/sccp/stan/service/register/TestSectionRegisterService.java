@@ -281,7 +281,7 @@ public class TestSectionRegisterService {
 
         Labware result = regService.createLabware(srl, ltMap, UCMap.from(sam -> sam.getTissue().getExternalName(), sample1, sample2, sample3));
 
-        verify(mockLwService).create(null, prebarcode ? xb : null, xb);
+        verify(mockLwService).create(lt, prebarcode ? xb : null, xb);
 
         verify(mockSlotRepo, times(2)).save(lw.getSlot(A1));
         verify(mockSlotRepo).save(lw.getSlot(B2));

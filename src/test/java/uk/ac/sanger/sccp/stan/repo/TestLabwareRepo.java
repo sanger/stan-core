@@ -63,4 +63,18 @@ public class TestLabwareRepo {
         assertThat(labwareRepo.findAllByIdIn(List.of(-100, -101)))
                 .isEmpty();
     }
+
+    @Test
+    @Transactional
+    public void testExistsByExternalBarcode() {
+        LabwareType lt = labwareTypeRepo.getByName("Proviasette");
+
+        String xb = "EXT-11";
+        Labware lw = new Labware(null, "STAN-001A", lt, null);
+        lw.setExternalBarcode(xb);
+        labwareRepo.save(lw);
+        assertTrue(labwareRepo.existsByExternalBarcode(xb));
+        assertTrue(labwareRepo.existsByExternalBarcode(xb.toLowerCase()));
+        assertFalse(labwareRepo.existsByExternalBarcode("STAN-001A"));
+    }
 }

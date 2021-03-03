@@ -10,6 +10,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 
 import javax.persistence.EntityNotFoundException;
 import javax.transaction.Transactional;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -97,5 +98,16 @@ public class TestTissueRepo {
         assertThat(tissueRepo.findByDonorId(donor1.getId())).containsExactlyInAnyOrder(tissue1A, tissue1B);
         assertThat(tissueRepo.findByDonorId(donor2.getId())).containsExactly(tissue2);
         assertThat(tissueRepo.findByDonorId(-400)).isEmpty();
+    }
+
+    @Test
+    @Transactional
+    public void testFindAllByExternalNameIn() {
+        Donor donor = entityCreator.createDonor("DONOR1");
+        Tissue tissue1 = entityCreator.createTissue(donor, "TISSUE1", 1);
+        Tissue tissue2 = entityCreator.createTissue(donor, "TISSUE2", 1);
+        entityCreator.createTissue(donor, "TISSUE3", 1);
+
+        assertThat(tissueRepo.findAllByExternalNameIn(List.of("tissue1", "Tissue2"))).containsExactlyInAnyOrder(tissue1, tissue2);
     }
 }
