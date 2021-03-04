@@ -364,12 +364,12 @@ public class SectionRegisterValidation {
             } else if (content.getSectionNumber() < 0) {
                 addProblem("Section number cannot be negative.");
             }
-            if (content.getSectionThickness()==null) {
-                addProblem("Missing section thickness.");
-            } else if (content.getSectionThickness()==0) {
-                addProblem("Section thickness cannot be zero.");
-            } else if (content.getSectionThickness() < 0) {
-                addProblem("Section thickness cannot be negative.");
+            if (content.getSectionThickness()!=null) {
+                if (content.getSectionThickness()==0) {
+                    addProblem("Section thickness cannot be zero.");
+                } else if (content.getSectionThickness() < 0) {
+                    addProblem("Section thickness cannot be negative.");
+                }
             }
             if (!problems.isEmpty()) {
                 continue;

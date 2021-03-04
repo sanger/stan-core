@@ -558,13 +558,13 @@ public class TestSectionRegisterValidation {
         return Stream.of(
                 Arguments.of(content("TISSUE1", 2, 4), tissues, null,
                         new Sample(null, 2, tissue1, bs), bs),
+                Arguments.of(content("TISSUE1", 2, null), tissues, null,
+                        new Sample(null, 2, tissue1, bs), bs),
 
                 Arguments.of(content("TISSUE1", null, 4), tissues,
                         "Missing section number.", null, bs),
                 Arguments.of(content("TISSUE1", -2, 4), tissues,
                         "Section number cannot be negative.", null, bs),
-                Arguments.of(content("TISSUE1", 4, null), tissues,
-                        "Missing section thickness.", null, bs),
                 Arguments.of(content("TISSUE1", 4, 0), tissues,
                         "Section thickness cannot be zero.", null, bs),
                 Arguments.of(content("TISSUE1", 4, -3), tissues,
@@ -572,8 +572,8 @@ public class TestSectionRegisterValidation {
                 Arguments.of(content("TISSUE1", 2, 4), tissues,
                         "Bio state \"Tissue\" not found.", null, null),
 
-                Arguments.of(content("TISSUE1", null, null), tissues,
-                        List.of("Missing section number.", "Missing section thickness.",
+                Arguments.of(content("TISSUE1", null, 0), tissues,
+                        List.of("Missing section number.", "Section thickness cannot be zero.",
                                 "Bio state \"Tissue\" not found."), null, null)
         );
     }
