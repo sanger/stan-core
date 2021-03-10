@@ -65,9 +65,5 @@ mutation {
                 }
             }
         }
-        tissue {
-            externalName
-            donor { donorName }
-        }
     }
 }

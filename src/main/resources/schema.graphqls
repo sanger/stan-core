@@ -113,6 +113,7 @@ input BlockRegisterRequest {
     fixative: String!
     mouldSize: String!
     species: String!
+    existingTissue: Boolean
 }
 
 input RegisterRequest {
@@ -145,9 +146,14 @@ input SectionRegisterRequest {
     labware: [SectionRegisterLabware!]!
 }
 
+type RegisterClash {
+    tissue: Tissue!
+    labware: [Labware!]!
+}
+
 type RegisterResult {
-    labware: [Labware!]!,
-    tissue: [Tissue!]!,
+    labware: [Labware!]!
+    clashes: [RegisterClash!]!
 }
 
 input PlanRequestSource {

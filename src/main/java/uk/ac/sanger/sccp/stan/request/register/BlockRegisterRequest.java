@@ -23,6 +23,7 @@ public class BlockRegisterRequest {
     private String mouldSize;
     private String fixative;
     private String species;
+    private boolean existingTissue;
 
     public String getDonorIdentifier() {
         return this.donorIdentifier;
@@ -128,6 +129,14 @@ public class BlockRegisterRequest {
         this.species = species;
     }
 
+    public boolean isExistingTissue() {
+        return this.existingTissue;
+    }
+
+    public void setExistingTissue(boolean existingTissue) {
+        this.existingTissue = existingTissue;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -136,6 +145,7 @@ public class BlockRegisterRequest {
         return (this.spatialLocation == that.spatialLocation
                 && this.replicateNumber == that.replicateNumber
                 && this.highestSection == that.highestSection
+                && this.existingTissue == that.existingTissue
                 && Objects.equals(this.donorIdentifier, that.donorIdentifier)
                 && this.lifeStage == that.lifeStage
                 && Objects.equals(this.hmdmc, that.hmdmc)
@@ -169,6 +179,7 @@ public class BlockRegisterRequest {
                 .add("fixative", fixative)
                 .add("mouldSize", mouldSize)
                 .add("species", species)
+                .add("existingTissue", existingTissue)
                 .toString();
     }
 }

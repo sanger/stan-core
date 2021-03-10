@@ -25,13 +25,14 @@ public class RegisterServiceImp implements RegisterService {
     private final BioStateRepo bioStateRepo;
     private final LabwareService labwareService;
     private final OperationService operationService;
+    private final RegisterClashChecker clashChecker;
 
     @Autowired
     public RegisterServiceImp(EntityManager entityManager, RegisterValidationFactory validationFactory,
                               DonorRepo donorRepo, TissueRepo tissueRepo,
                               SampleRepo sampleRepo, SlotRepo slotRepo,
                               OperationTypeRepo opTypeRepo, BioStateRepo bioStateRepo,
-                              LabwareService labwareService, OperationService operationService) {
+                              LabwareService labwareService, OperationService operationService, RegisterClashChecker clashChecker) {
         this.entityManager = entityManager;
         this.validationFactory = validationFactory;
         this.donorRepo = donorRepo;
@@ -42,12 +43,17 @@ public class RegisterServiceImp implements RegisterService {
         this.bioStateRepo = bioStateRepo;
         this.labwareService = labwareService;
         this.operationService = operationService;
+        this.clashChecker = clashChecker;
     }
 
     @Override
     public RegisterResult register(RegisterRequest request, User user) {
         if (request.getBlocks().isEmpty()) {
             return new RegisterResult(); // nothing to do
+        }
+        List<RegisterClash> clashes = clashChecker.findClashes(request);
+        if (!clashes.isEmpty()) {
+            return RegisterResult.clashes(clashes);
         }
         RegisterValidation validation = validationFactory.createRegisterValidation(request);
         Collection<String> problems = validation.validate();
@@ -72,24 +78,28 @@ public class RegisterServiceImp implements RegisterService {
         return donors;
     }
 
-    public RegisterResult create(RegisterRequest request, User user, RegisterValidation validation) {
+    public Map<String, Tissue> createTissues(RegisterRequest request, RegisterValidation validation) {
         Map<String, Donor> donors = createDonors(request, validation);
-
-        List<Tissue> tissueList = new ArrayList<>(request.getBlocks().size());
-
-        List<Labware> labwareList = new ArrayList<>(request.getBlocks().size());
-        BioState bioState = bioStateRepo.getByName("Tissue");
-
+        Map<String, Tissue> tissueMap = new HashMap<>(request.getBlocks().size());
         for (BlockRegisterRequest block : request.getBlocks()) {
+            final String tissueKey =  block.getExternalIdentifier().toUpperCase();
+            Tissue existingTissue = validation.getTissue(tissueKey);
+            if (tissueMap.get(tissueKey)!=null) {
+                continue;
+            }
+            if (existingTissue!=null) {
+                tissueMap.put(tissueKey, existingTissue);
+                continue;
+            }
             Donor donor = donors.get(block.getDonorIdentifier().toUpperCase());
             Hmdmc hmdmc;
-            if (block.getHmdmc()!=null && !block.getHmdmc().isEmpty()) {
+            if (block.getHmdmc()==null || block.getHmdmc().isEmpty()) {
+                hmdmc = null;
+            } else {
                 hmdmc = validation.getHmdmc(block.getHmdmc());
                 if (hmdmc==null) {
                     throw new IllegalArgumentException("Unknown HMDMC number: "+block.getHmdmc());
                 }
-            } else {
-                hmdmc = null;
             }
             if (donor.getSpecies().requiresHmdmc() && hmdmc==null) {
                 throw new IllegalArgumentException("No HMDMC number given for tissue "+block.getExternalIdentifier());
@@ -99,13 +109,24 @@ public class RegisterServiceImp implements RegisterService {
             }
             Tissue tissue = new Tissue(null, block.getExternalIdentifier(), block.getReplicateNumber(),
                     validation.getSpatialLocation(block.getTissueType(), block.getSpatialLocation()),
-                    donors.get(block.getDonorIdentifier().toUpperCase()),
+                    donor,
                     validation.getMouldSize(block.getMouldSize()),
                     validation.getMedium(block.getMedium()),
                     validation.getFixative(block.getFixative()),
-                    validation.getHmdmc(block.getHmdmc()));
-            tissue = tissueRepo.save(tissue);
-            tissueList.add(tissue);
+                    hmdmc);
+            tissueMap.put(tissueKey, tissueRepo.save(tissue));
+        }
+        return tissueMap;
+    }
+
+    public RegisterResult create(RegisterRequest request, User user, RegisterValidation validation) {
+        Map<String, Tissue> tissues = createTissues(request, validation);
+
+        List<Labware> labwareList = new ArrayList<>(request.getBlocks().size());
+        BioState bioState = bioStateRepo.getByName("Tissue");
+
+        for (BlockRegisterRequest block : request.getBlocks()) {
+            Tissue tissue = tissues.get(block.getExternalIdentifier().toUpperCase());
             Sample sample = sampleRepo.save(new Sample(null, null, tissue, bioState));
             LabwareType labwareType = validation.getLabwareType(block.getLabwareType());
             Labware labware = labwareService.create(labwareType);
@@ -120,7 +141,7 @@ public class RegisterServiceImp implements RegisterService {
             operationService.createOperationInPlace(operationType, user, slot, sample);
         }
 
-        return new RegisterResult(labwareList, tissueList);
+        return new RegisterResult(labwareList);
     }
 
 }

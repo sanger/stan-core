@@ -80,14 +80,10 @@ public class SectionRegisterServiceImp implements SectionRegisterService {
     public RegisterResult assembleResult(SectionRegisterRequest request, UCMap<Labware> labwareMap,
                                          UCMap<Tissue> tissueMap) {
         List<Labware> labware = new ArrayList<>(request.getLabware().size());
-        List<Tissue> tissues = new ArrayList<>(tissueMap.size());
         for (SectionRegisterLabware srl : request.getLabware()) {
             labware.add(labwareMap.get(srl.getExternalBarcode()));
-            for (var content : srl.getContents()) {
-                tissues.add(tissueMap.get(content.getExternalIdentifier()));
-            }
         }
-        return new RegisterResult(labware, tissues);
+        return new RegisterResult(labware);
     }
 
     /**

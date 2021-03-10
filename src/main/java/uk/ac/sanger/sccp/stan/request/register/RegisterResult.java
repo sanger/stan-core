@@ -2,27 +2,21 @@ package uk.ac.sanger.sccp.stan.request.register;
 
 import com.google.common.base.MoreObjects;
 import uk.ac.sanger.sccp.stan.model.Labware;
-import uk.ac.sanger.sccp.stan.model.Tissue;
 
 import java.util.List;
 import java.util.Objects;
-
-import static java.util.Collections.emptyList;
 
 /**
  * @author dr6
  */
 public class RegisterResult {
-    private List<Labware> labware;
-    private List<Tissue> tissue;
+    private List<Labware> labware = List.of();
+    private List<RegisterClash> clashes = List.of();
 
-    public RegisterResult() {
-        this(emptyList(), emptyList());
-    }
+    public RegisterResult() {}
 
-    public RegisterResult(List<Labware> labware, List<Tissue> tissue) {
+    public RegisterResult(List<Labware> labware) {
         this.labware = labware;
-        this.tissue = tissue;
     }
 
     public List<Labware> getLabware() {
@@ -33,12 +27,18 @@ public class RegisterResult {
         this.labware = labware;
     }
 
-    public List<Tissue> getTissue() {
-        return this.tissue;
+    public List<RegisterClash> getClashes() {
+        return this.clashes;
     }
 
-    public void setTissue(List<Tissue> tissue) {
-        this.tissue = tissue;
+    public void setClashes(List<RegisterClash> clashes) {
+        this.clashes = clashes;
+    }
+
+    public static RegisterResult clashes(List<RegisterClash> clashes) {
+        RegisterResult r = new RegisterResult();
+        r.setClashes(clashes);
+        return r;
     }
 
     @Override
@@ -47,19 +47,20 @@ public class RegisterResult {
         if (o == null || getClass() != o.getClass()) return false;
         RegisterResult that = (RegisterResult) o;
         return (Objects.equals(this.labware, that.labware)
-                && Objects.equals(this.tissue, that.tissue));
+                && Objects.equals(this.clashes, that.clashes));
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(labware, tissue);
+        return Objects.hash(labware, clashes);
     }
 
     @Override
     public String toString() {
         return MoreObjects.toStringHelper(this)
                 .add("labware", labware)
-                .add("tissue", tissue)
+                .add("clashes", clashes)
+                .omitNullValues()
                 .toString();
     }
 }

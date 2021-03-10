@@ -32,12 +32,13 @@ public class RegisterValidationFactory {
     private final Validator<String> donorNameValidation;
     private final Validator<String> externalNameValidation;
     private final Validator<String> externalBarcodeValidation;
+    private final TissueFieldChecker tissueFieldChecker;
 
     @Autowired
     public RegisterValidationFactory(DonorRepo donorRepo, HmdmcRepo hmdmcRepo, TissueTypeRepo ttRepo,
                                      LabwareTypeRepo ltRepo, MouldSizeRepo mouldSizeRepo, MediumRepo mediumRepo,
                                      FixativeRepo fixativeRepo, TissueRepo tissueRepo, SpeciesRepo speciesRepo,
-                                     LabwareRepo labwareRepo, BioStateRepo bioStateRepo) {
+                                     LabwareRepo labwareRepo, BioStateRepo bioStateRepo, TissueFieldChecker tissueFieldChecker) {
         this.donorRepo = donorRepo;
         this.hmdmcRepo = hmdmcRepo;
         this.ttRepo = ttRepo;
@@ -49,6 +50,7 @@ public class RegisterValidationFactory {
         this.speciesRepo = speciesRepo;
         this.labwareRepo = labwareRepo;
         this.bioStateRepo = bioStateRepo;
+        this.tissueFieldChecker = tissueFieldChecker;
         Set<CharacterType> charTypes = EnumSet.of(
                 CharacterType.UPPER, CharacterType.LOWER, CharacterType.DIGIT, CharacterType.HYPHEN, CharacterType.UNDERSCORE
         ) ;
@@ -59,7 +61,7 @@ public class RegisterValidationFactory {
 
     public RegisterValidation createRegisterValidation(RegisterRequest request) {
         return new RegisterValidationImp(request, donorRepo, hmdmcRepo, ttRepo, ltRepo, mouldSizeRepo, mediumRepo,
-                fixativeRepo, tissueRepo, speciesRepo, donorNameValidation, externalNameValidation);
+                fixativeRepo, tissueRepo, speciesRepo, donorNameValidation, externalNameValidation, tissueFieldChecker);
     }
 
     public SectionRegisterValidation createSectionRegisterValidation(SectionRegisterRequest request) {

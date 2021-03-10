@@ -77,7 +77,7 @@ public class TestSectionRegisterService {
         ValidatedSections valSec = new ValidatedSections(new UCMap<>(), new UCMap<>(), new UCMap<>());
         when(mockValidation.validate()).thenReturn(valSec);
 
-        RegisterResult result = new RegisterResult(List.of(), List.of());
+        RegisterResult result = new RegisterResult(List.of());
         doReturn(result).when(regService).execute(any(), any(), any());
 
         assertSame(result, regService.register(user, request));
@@ -96,7 +96,7 @@ public class TestSectionRegisterService {
         UCMap<Tissue> tissueMap = UCMap.from(Tissue::getExternalName, EntityFactory.getTissue());
         UCMap<Sample> sampleMap = UCMap.from(sam -> sam.getTissue().getExternalName(), EntityFactory.getSample());
         UCMap<Labware> lwMap = UCMap.from(Labware::getExternalBarcode, EntityFactory.getTube());
-        RegisterResult regResult = new RegisterResult(List.of(), List.of());
+        RegisterResult regResult = new RegisterResult(List.of());
 
         doReturn(donorMap).when(regService).createDonors(valSec.getDonorMap().values());
         doReturn(tissueMap).when(regService).createTissues(valSec.getSampleMap().values(), donorMap);
@@ -144,7 +144,6 @@ public class TestSectionRegisterService {
 
         RegisterResult result = regService.assembleResult(request, lwMap, tissueMap);
         assertThat(result.getLabware()).containsExactly(lw1, lw2);
-        assertThat(result.getTissue()).containsExactly(tissue1, tissue2, tissue3);
     }
 
     @Test

@@ -65,6 +65,8 @@ public class IntegrationTests {
     @Autowired
     private OperationRepo opRepo;
     @Autowired
+    private SlotRepo slotRepo;
+    @Autowired
     private LabwareRepo lwRepo;
     @Autowired
     private DestructionRepo destructionRepo;
@@ -81,10 +83,22 @@ public class IntegrationTests {
     public void testRegister() throws Exception {
         tester.setUser(entityCreator.createUser("dr6"));
         String mutation = tester.readResource("graphql/register.graphql");
-        Map<String, Map<String, Map<String, List<Map<String, String>>>>> result = tester.post(mutation);
-        assertNotNull(result.get("data").get("register").get("labware").get(0).get("barcode"));
-        assertEquals("TISSUE1", result.get("data").get("register").get("tissue").get(0).get("externalName"));
-        assertEquals("Human", chainGet(result, "data", "register", "tissue", 0, "donor", "species", "name"));
+        Object result = tester.post(mutation);
+        Object data = chainGet(result, "data", "register");
+        assertThat(chainGetList(data, "clashes")).isEmpty();
+        String barcode = chainGet(data, "labware", 0, "barcode");
+        assertNotNull(barcode);
+        Map<String, ?> tissueData = chainGet(data, "labware", 0, "slots", 0, "samples", 0, "tissue");
+        assertEquals("TISSUE1", tissueData.get("externalName"));
+        assertEquals("Human", chainGet(tissueData, "donor", "species", "name"));
+
+        result = tester.post(mutation);
+        data = chainGet(result, "data", "register");
+        assertThat(chainGetList(data, "labware")).isEmpty();
+        List<Map<String, ?>> clashes = chainGet(data, "clashes");
+        assertThat(clashes).hasSize(1);
+        assertEquals("TISSUE1", chainGet(clashes, 0, "tissue", "externalName"));
+        assertEquals(barcode, chainGet(clashes, 0, "labware", 0, "barcode"));
     }
 
     @Test
@@ -193,6 +207,11 @@ public class IntegrationTests {
         Sample sample1 = entityCreator.createSample(tissue, 1);
         LabwareType lwtype = entityCreator.createLabwareType("lwtype4", 1, 4);
         Labware block = entityCreator.createBlock("STAN-001", sample);
+        Slot blockSlot = block.getFirstSlot();
+        blockSlot.setBlockSampleId(sample.getId());
+        blockSlot.setBlockHighestSection(6);
+        blockSlot = slotRepo.save(blockSlot);
+        block.getSlots().set(0, blockSlot);
         Labware lw = entityCreator.createLabware("STAN-002", lwtype, sample, sample, null, sample1);
         ReleaseDestination destination = entityCreator.createReleaseDestination("Venus");
         ReleaseRecipient recipient = entityCreator.createReleaseRecipient("Mekon");
@@ -233,7 +252,7 @@ public class IntegrationTests {
         var row0 = tsvMaps.get(0);
         assertEquals(block.getBarcode(), row0.get("Barcode"));
         assertEquals(block.getLabwareType().getName(), row0.get("Labware type"));
-        assertEquals("1", row0.get("Last section number"));
+        assertEquals("6", row0.get("Last section number"));
         for (int i = 1; i < 4; ++i) {
             var row = tsvMaps.get(i);
             assertEquals(lw.getBarcode(), row.get("Barcode"));
@@ -494,12 +513,6 @@ public class IntegrationTests {
 
         assertNull(response.get("errors"));
         Map<String,?> data = chainGet(response, "data", "registerSections");
-        List<Map<String,?>> tissueData = chainGet(data, "tissue");
-        assertThat(tissueData).hasSize(3);
-        for (int i = 0; i < 3; ++i) {
-            assertEquals("TISSUE"+(i+1), tissueData.get(i).get("externalName"));
-            assertEquals(i==1 ? "DONOR2" : "DONOR1", chainGet(tissueData.get(i), "donor", "donorName"));
-        }
 
         List<Map<String,?>> labwareData = chainGet(data, "labware");
         assertThat(labwareData).hasSize(1);

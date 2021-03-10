@@ -185,7 +185,6 @@ public class TestReleaseFileService {
     public void testLoadLastSection() {
         LabwareType lt = EntityFactory.getTubeType();
         Sample sampleA = EntityFactory.getSample();
-        Tissue tissueA = sampleA.getTissue();
         Tissue tissueB = EntityFactory.makeTissue(EntityFactory.getDonor(), EntityFactory.getSpatialLocation());
         Sample sampleB = new Sample(60, null, tissueB, EntityFactory.getBioState());
         Sample[] samples = { sampleA, sampleB, sampleA, sampleA, sampleB, sampleA };
@@ -207,16 +206,13 @@ public class TestReleaseFileService {
                 })
                 .toArray(Labware[]::new);
 
-        when(mockSampleRepo.findMaxSectionForTissueId(tissueA.getId())).thenReturn(OptionalInt.of(4));
-        when(mockSampleRepo.findMaxSectionForTissueId(tissueB.getId())).thenReturn(OptionalInt.empty());
-
         List<ReleaseEntry> entries = Arrays.stream(labware)
                 .map(lw -> new ReleaseEntry(lw, lw.getFirstSlot(), lw.getFirstSlot().getSamples().get(0)))
                 .collect(toList());
 
         service.loadLastSection(entries);
 
-        Integer[] expectedLastSection = {6, 6, 4, 4, null, null};
+        Integer[] expectedLastSection = {6, 6, 2, null, null, null};
         IntStream.range(0, expectedLastSection.length).forEach(i ->
             assertEquals(expectedLastSection[i], entries.get(i).getLastSection(), "element "+i)
         );

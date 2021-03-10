@@ -70,8 +70,9 @@ public class TestPlanActionRepo {
 
     @Test
     @Transactional
-    public void testFindMaxPlannedSectionForTissueId() {
+    public void testFindMaxPlannedSection() {
         assertThat(planActionRepo.findMaxPlannedSectionForTissueId(-1)).isEmpty();
+        assertThat(planActionRepo.findMaxPlannedSectionFromSlotId(-1)).isEmpty();
         Donor donor = new Donor(null, "DONOR", LifeStage.adult, entityCreator.getHuman());
         donorRepo.save(donor);
         Tissue tissue = new Tissue(null, "TISSUE1", 1, any(slRepo), donor, any(mouldSizeRepo),
@@ -100,6 +101,8 @@ public class TestPlanActionRepo {
         planActionRepo.save(new PlanAction(null, plan.getId(), slot2, slot2, sample, 18, null, null));
         planActionRepo.save(new PlanAction(null, plan.getId(), slot3, slot3, sample, 4, null, null));
         assertThat(planActionRepo.findMaxPlannedSectionForTissueId(tissue.getId())).hasValue(18);
+        assertThat(planActionRepo.findMaxPlannedSectionFromSlotId(slot1.getId())).hasValue(3);
+        assertThat(planActionRepo.findMaxPlannedSectionFromSlotId(slot2.getId())).hasValue(18);
     }
 
     @Test

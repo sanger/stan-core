@@ -2,8 +2,7 @@ package uk.ac.sanger.sccp.utils;
 
 import java.util.*;
 import java.util.function.*;
-import java.util.stream.Collector;
-import java.util.stream.Collectors;
+import java.util.stream.*;
 
 /**
  * Much copied from the corresponding class in CGAP lims
@@ -44,6 +43,27 @@ public class BasicUtils {
         return o.toString();
     }
 
+    /**
+     * Reprs each item in a stream and returns a joined string.
+     * @param stream a stream of strings
+     * @return a comma-space-separated string in square brackets.
+     */
+    public static String reprStream(Stream<String> stream) {
+        return stream.map(BasicUtils::repr).collect(Collectors.joining(", ", "[", "]"));
+    }
+
+    /**
+     * Reprs each item in a collection and returns a joined string.
+     * If the collection is null, returns {@code "null"}
+     * @param items a collection of strings
+     * @return a comma-space-separated string in square brackets.
+     */
+    public static String reprCollection(Collection<String> items) {
+        if (items==null) {
+            return "null";
+        }
+        return reprStream(items.stream());
+    }
 
     /**
      * Pluralise a message with {@link MessageVar} and add an unordered list.
