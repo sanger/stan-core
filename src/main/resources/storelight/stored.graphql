@@ -5,11 +5,11 @@
         location {
             id
             barcode
-            description
+            name
             address
             size { numRows numColumns}
-            children { barcode description address }
-            parent { barcode description address }
+            children { barcode name address }
+            parent { barcode name address }
             stored { barcode address }
             direction
         }

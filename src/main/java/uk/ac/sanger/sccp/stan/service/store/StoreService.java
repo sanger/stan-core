@@ -109,8 +109,8 @@ public class StoreService {
         Location location = getLocation(locationBarcode);
         location.setCustomName(customName);
         return send(user, "editLocation",
-                new String[] {"\"LOCATIONBARCODE\"", "\"DESCRIPTION\""},
-                new Object[] { location.getBarcode(), location.getDescription() },
+                new String[] {"\"LOCATIONBARCODE\"", "\"NAME\""},
+                new Object[] { location.getBarcode(), location.getName() },
                 Location.class).fixInternalLinks();
     }
 

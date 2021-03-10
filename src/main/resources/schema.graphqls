@@ -298,7 +298,7 @@ enum GridDirection {
 type Location {
     id: Int!
     barcode: String!
-    name: String
+    fixedName: String
     customName: String
     address: Address
     size: Size
@@ -310,7 +310,7 @@ type Location {
 
 type LinkedLocation {
     barcode: String!
-    name: String
+    fixedName: String
     customName: String
     address: Address
 }
