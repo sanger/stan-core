@@ -177,12 +177,12 @@ public class EntityFactory {
         return lw;
     }
 
-    public static OperationType makeOperationType(String name, OperationTypeFlag... flags) {
+    public static OperationType makeOperationType(String name, BioState newBioState, OperationTypeFlag... flags) {
         int flagbits = 0;
         for (OperationTypeFlag flag : flags) {
             flagbits |= flag.bit();
         }
-        return new OperationType(++idCounter, name, flagbits);
+        return new OperationType(++idCounter, name, flagbits, newBioState);
     }
 
     public static Tissue makeTissue(Donor donor, SpatialLocation sl) {

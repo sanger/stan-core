@@ -141,12 +141,12 @@ public class EntityCreator {
         return snap;
     }
 
-    public OperationType createOpType(String opTypeName, OperationTypeFlag... opTypeFlags) {
+    public OperationType createOpType(String opTypeName, BioState newBioState, OperationTypeFlag... opTypeFlags) {
         int flags = 0;
         for (OperationTypeFlag flag : opTypeFlags) {
             flags |= flag.bit();
         }
-        return opTypeRepo.save(new OperationType(null, opTypeName, flags));
+        return opTypeRepo.save(new OperationType(null, opTypeName, flags, newBioState));
     }
 
     public PlanOperation createPlan(OperationType opType, User user, Slot... slots) {

@@ -43,8 +43,6 @@ public class TestRegisterService {
     @Mock
     private OperationTypeRepo mockOpTypeRepo;
     @Mock
-    private BioStateRepo mockBioStateRepo;
-    @Mock
     private LabwareService mockLabwareService;
     @Mock
     private OperationService mockOpService;
@@ -64,12 +62,12 @@ public class TestRegisterService {
         MockitoAnnotations.initMocks(this);
         user = EntityFactory.getUser();
         when(mockValidationFactory.createRegisterValidation(any())).thenReturn(mockValidation);
-        opType = new OperationType(99, "Register");
+        BioState bs = EntityFactory.getBioState();
+        opType = new OperationType(1, "Register", 0, bs);
         when(mockOpTypeRepo.getByName(opType.getName())).thenReturn(opType);
-        when(mockBioStateRepo.getByName("Tissue")).thenReturn(EntityFactory.getBioState());
 
         registerService = spy(new RegisterServiceImp(mockEntityManager, mockValidationFactory, mockDonorRepo, mockTissueRepo,
-                mockSampleRepo, mockSlotRepo, mockOpTypeRepo, mockBioStateRepo, mockLabwareService, mockOpService, mockClashChecker));
+                mockSampleRepo, mockSlotRepo, mockOpTypeRepo, mockLabwareService, mockOpService, mockClashChecker));
     }
 
     @Test
@@ -317,7 +315,7 @@ public class TestRegisterService {
                         sls[1], donor2, mouldSize, medium, fixative, null),
         };
 
-        BioState bioState = EntityFactory.getBioState();
+        BioState bioState = opType.getNewBioState();
         Sample[] samples = new Sample[]{
                 new Sample(6000, null, tissues[0], bioState),
                 new Sample(6001, null, tissues[1], bioState),
@@ -419,7 +417,7 @@ public class TestRegisterService {
         final Tissue tissue = new Tissue(5000, block.getExternalIdentifier(), block.getReplicateNumber(),
                 sl, donor, mouldSize, medium, fixative, hmdmc);
 
-        BioState bioState = EntityFactory.getBioState();
+        BioState bioState = opType.getNewBioState();
         Sample sample = new Sample(6000, null, tissue, bioState);
 
         when(mockTissueRepo.save(any())).thenReturn(tissue);

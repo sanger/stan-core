@@ -211,6 +211,18 @@ input ConfirmOperationRequest {
     labware: [ConfirmOperationLabware!]!,
 }
 
+input SlotCopyContent {
+    sourceBarcode: String!
+    sourceAddress: Address!
+    destinationAddress: Address!
+}
+
+input SlotCopyRequest {
+    labwareType: String!
+    operationType: String!
+    contents: [SlotCopyContent!]!
+}
+
 type Action {
     source: Slot!,
     destination: Slot!,
@@ -412,6 +424,7 @@ type Mutation {
     release(request: ReleaseRequest!): ReleaseResult!
     extract(request: ExtractRequest!): OperationResult!
     destroy(request: DestroyRequest!): DestroyResult!
+    slotCopyOperation(request: SlotCopyRequest!): Labware!
 
     storeBarcode(barcode: String!, locationBarcode: String!, address: Address): StoredItem!
     unstoreBarcode(barcode: String!): UnstoredItem
