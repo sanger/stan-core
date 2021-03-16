@@ -1,0 +1,36 @@
+mutation {
+    slotCopy(request: {
+        operationType: "Visium cDNA"
+        labwareType: "96 well plate"
+        contents: [
+            {
+                sourceBarcode: "STAN-01"
+                sourceAddress: "A1"
+                destinationAddress: "A1"
+            }
+            {
+                sourceBarcode: "STAN-01"
+                sourceAddress: "B1"
+                destinationAddress: "A2"
+            }
+        ]
+    }) {
+        operations {
+            id
+            operationType { name }
+            actions {
+                source { address labwareId }
+                destination { address labwareId }
+                sample { id bioState { name } }
+            }
+        }
+        labware {
+            id
+            barcode
+            slots {
+                address
+                samples { id }
+            }
+        }
+    }
+}

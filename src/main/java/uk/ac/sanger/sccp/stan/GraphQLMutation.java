@@ -40,6 +40,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final ReleaseService releaseService;
     final ExtractService extractService;
     final DestructionService destructionService;
+    final SlotCopyService slotCopyService;
 
     @Autowired
     public GraphQLMutation(ObjectMapper objectMapper, AuthenticationComponent authComp,
@@ -48,7 +49,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            LabelPrintService labelPrintService,
                            ConfirmOperationService confirmOperationService,
                            UserRepo userRepo, ReleaseService releaseService, ExtractService extractService,
-                           DestructionService destructionService) {
+                           DestructionService destructionService, SlotCopyService slotCopyService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
@@ -60,6 +61,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.releaseService = releaseService;
         this.extractService = extractService;
         this.destructionService = destructionService;
+        this.slotCopyService = slotCopyService;
     }
 
 
@@ -152,6 +154,14 @@ public class GraphQLMutation extends BaseGraphQLResource {
             User user = checkUser();
             DestroyRequest request = arg(dfe, "request", DestroyRequest.class);
             return destructionService.destroyAndUnstore(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> slotCopy() {
+        return dfe -> {
+            User user = checkUser();
+            SlotCopyRequest request = arg(dfe, "request", SlotCopyRequest.class);
+            return slotCopyService.perform(user, request);
         };
     }
 }
