@@ -92,6 +92,7 @@ public class GraphQLProvider {
                         .dataFetcher("release", graphQLMutation.release()) // transaction handled in service
                         .dataFetcher("extract", graphQLMutation.extract()) // transaction handled in service
                         .dataFetcher("destroy", graphQLMutation.destroy()) // transaction handled in service
+                        .dataFetcher("registerSections", transact(graphQLMutation.sectionRegister()))
 
                         .dataFetcher("storeBarcode", graphQLStore.storeBarcode())
                         .dataFetcher("unstoreBarcode", graphQLStore.unstoreBarcode())

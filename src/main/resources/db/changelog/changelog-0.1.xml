@@ -303,17 +303,6 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
-        <createIndex tableName="tissue" indexName="tissue_key_donor_spatial_location_medium_fixative_replicate" unique="true">
-            <column name="donor_id"/>
-            <column name="spatial_location_id"/>
-            <column name="medium_id"/>
-            <column name="fixative_id"/>
-            <column name="replicate"/>
-        </createIndex>
-        <rollback>
-            <dropAllForeignKeyConstraints baseTableName="tissue"/>
-            <dropTable tableName="tissue"/>
-        </rollback>
     </changeSet>
 
     <changeSet id="16" author="dr6">
@@ -346,6 +335,9 @@
             </column>
             <column name="barcode" type="VARCHAR(32)">
                 <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="external_barcode" type="VARCHAR(32)">
+                <constraints nullable="true" unique="true"/>
             </column>
             <column name="labware_type_id" type="INT">
                 <constraints nullable="false" foreignKeyName="labware_fk_labware_type" referencedTableName="labware_type" referencedColumnNames="id"/>

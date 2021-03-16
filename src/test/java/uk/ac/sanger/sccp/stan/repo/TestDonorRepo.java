@@ -8,6 +8,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 
 import javax.persistence.EntityNotFoundException;
 import javax.transaction.Transactional;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -36,5 +37,16 @@ public class TestDonorRepo {
 
         assertThat(assertThrows(EntityNotFoundException.class, () -> donorRepo.getByDonorName("donorX")))
                 .hasMessage("Donor name not found: \"donorX\"");
+    }
+
+    @Test
+    @Transactional
+    public void testFindAllByDonorNameIn() {
+        Species species = speciesRepo.findByName("Human").orElseThrow();
+        Donor donor1 = donorRepo.save(new Donor(null, "DONOR1", LifeStage.adult, species));
+        Donor donor2 = donorRepo.save(new Donor(null, "DONOR2", LifeStage.adult, species));
+        donorRepo.save(new Donor(null, "DONOR3", LifeStage.adult, species));
+
+        assertThat(donorRepo.findAllByDonorNameIn(List.of("donor1", "Donor2"))).containsExactlyInAnyOrder(donor1, donor2);
     }
 }

@@ -16,6 +16,8 @@ public interface LabwareRepo extends CrudRepository<Labware, Integer> {
     }
     boolean existsByBarcode(String barcode);
 
+    boolean existsByExternalBarcode(String externalBarcode);
+
     default Labware getById(final Integer id) throws EntityNotFoundException {
         return findById(id).orElseThrow(() -> new EntityNotFoundException("No labware found with id "+id));
     }

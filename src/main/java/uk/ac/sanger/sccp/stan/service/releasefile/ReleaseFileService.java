@@ -123,29 +123,15 @@ public class ReleaseFileService {
     /**
      * Figures and sets the last section field for release entries.
      * The last section is only set on entries that specify a block.
-     * The last section is the maximum of the {@link Slot#getBlockHighestSection} highest section
-     * listed for the slot, and the highest section number created from the tissue
-     * (for whichever of those two are non-null).
+     * The last section is {@link Slot#getBlockHighestSection}
      * @param entries the release entries under construction
      */
     public void loadLastSection(Collection<ReleaseEntry> entries) {
-        Map<Integer, Integer> tissueIdToMaxSection = new HashMap<>();
         for (ReleaseEntry entry : entries) {
             if (!entry.getSlot().isBlock() || !entry.getSlot().getBlockSampleId().equals(entry.getSample().getId())) {
                 continue;
             }
-            Integer tissueId = entry.getSample().getTissue().getId();
-            Integer tissueMaxSection = tissueIdToMaxSection.get(tissueId);
-            if (tissueMaxSection==null && !tissueIdToMaxSection.containsKey(tissueId)) {
-                OptionalInt opMaxSection = sampleRepo.findMaxSectionForTissueId(tissueId);
-                tissueMaxSection = (opMaxSection.isPresent() ? (Integer) opMaxSection.getAsInt() : null);
-                tissueIdToMaxSection.put(tissueId, tissueMaxSection);
-            }
-            Integer maxSection = entry.getSlot().getBlockHighestSection();
-            if (maxSection==null || tissueMaxSection!=null && tissueMaxSection > maxSection) {
-                maxSection = tissueMaxSection;
-            }
-            entry.setLastSection(maxSection);
+            entry.setLastSection(entry.getSlot().getBlockHighestSection());
         }
     }
 

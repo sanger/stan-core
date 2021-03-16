@@ -2,15 +2,15 @@ package uk.ac.sanger.sccp.stan.service.register;
 
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.BlockRegisterRequest;
-import uk.ac.sanger.sccp.stan.request.RegisterRequest;
+import uk.ac.sanger.sccp.stan.request.register.BlockRegisterRequest;
+import uk.ac.sanger.sccp.stan.request.register.RegisterRequest;
 import uk.ac.sanger.sccp.stan.service.Validator;
 
 import java.util.*;
 import java.util.function.Function;
 
-import static uk.ac.sanger.sccp.utils.BasicUtils.pluralise;
-import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
+import static java.util.stream.Collectors.toList;
+import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 /**
  * @author dr6
@@ -29,8 +29,10 @@ public class RegisterValidationImp implements RegisterValidation {
     private final SpeciesRepo speciesRepo;
     private final Validator<String> donorNameValidation;
     private final Validator<String> externalNameValidation;
+    private final TissueFieldChecker tissueFieldChecker;
 
     final Map<String, Donor> donorMap = new HashMap<>();
+    final Map<String, Tissue> tissueMap = new HashMap<>();
     final Map<String, Hmdmc> hmdmcMap = new HashMap<>();
     final Map<String, Species> speciesMap = new HashMap<>();
     final Map<StringIntKey, SpatialLocation> spatialLocationMap = new HashMap<>();
@@ -44,7 +46,8 @@ public class RegisterValidationImp implements RegisterValidation {
                                  HmdmcRepo hmdmcRepo, TissueTypeRepo ttRepo, LabwareTypeRepo ltRepo,
                                  MouldSizeRepo mouldSizeRepo, MediumRepo mediumRepo,
                                  FixativeRepo fixativeRepo, TissueRepo tissueRepo, SpeciesRepo speciesRepo,
-                                 Validator<String> donorNameValidation, Validator<String> externalNameValidation) {
+                                 Validator<String> donorNameValidation, Validator<String> externalNameValidation,
+                                 TissueFieldChecker tissueFieldChecker) {
         this.request = request;
         this.donorRepo = donorRepo;
         this.hmdmcRepo = hmdmcRepo;
@@ -57,6 +60,7 @@ public class RegisterValidationImp implements RegisterValidation {
         this.speciesRepo = speciesRepo;
         this.donorNameValidation = donorNameValidation;
         this.externalNameValidation = externalNameValidation;
+        this.tissueFieldChecker = tissueFieldChecker;
     }
 
     @Override
@@ -71,7 +75,8 @@ public class RegisterValidationImp implements RegisterValidation {
         validateMouldSizes();
         validateMediums();
         validateFixatives();
-        validateTissues();
+        validateExistingTissues();
+        validateNewTissues();
         return problems;
     }
 
@@ -239,10 +244,51 @@ public class RegisterValidationImp implements RegisterValidation {
         validateByName("fixative", BlockRegisterRequest::getFixative, fixativeRepo::findByName, fixativeMap);
     }
 
-    public void validateTissues() {
+    public void validateExistingTissues() {
+        List<BlockRegisterRequest> blocksForExistingTissues = blocks().stream()
+                .filter(BlockRegisterRequest::isExistingTissue)
+                .collect(toList());
+        if (blocksForExistingTissues.isEmpty()) {
+            return;
+        }
+        if (blocksForExistingTissues.stream().map(BlockRegisterRequest::getExternalIdentifier).anyMatch(xn -> xn==null || xn.isEmpty())) {
+            addProblem("Missing external identifier.");
+        }
+        Set<String> xns = blocksForExistingTissues.stream()
+                .map(BlockRegisterRequest::getExternalIdentifier)
+                .filter(Objects::nonNull)
+                .collect(toLinkedHashSet());
+        if (xns.isEmpty()) {
+            return;
+        }
+        tissueRepo.findAllByExternalNameIn(xns).forEach(t -> tissueMap.put(t.getExternalName().toUpperCase(), t));
+
+        Set<String> missing = xns.stream()
+                .filter(xn -> !tissueMap.containsKey(xn.toUpperCase()))
+                .collect(toLinkedHashSet());
+        if (!missing.isEmpty()) {
+            addProblem("Existing external identifiers not recognised: " + reprCollection(missing));
+        }
+
+        for (BlockRegisterRequest br : blocksForExistingTissues) {
+            String xn = br.getExternalIdentifier();
+            if (xn == null || xn.isEmpty()) {
+                continue;
+            }
+            Tissue tissue = tissueMap.get(xn.toUpperCase());
+            if (tissue!=null) {
+                tissueFieldChecker.check(this::addProblem, br, tissue);
+            }
+        }
+    }
+
+    public void validateNewTissues() {
+        // NB repeated new external identifier in one request is still disallowed
         Set<String> externalNames = new HashSet<>();
-        Set<TissueKey> tissueKeys = new HashSet<>();
         for (BlockRegisterRequest block : blocks()) {
+            if (block.isExistingTissue()) {
+                continue;
+            }
             if (block.getReplicateNumber() < 0) {
                 addProblem("Replicate number cannot be negative.");
             }
@@ -262,41 +308,7 @@ public class RegisterValidationImp implements RegisterValidation {
                             block.getExternalIdentifier()));
                 }
             }
-            TissueKey tissueKey = new TissueKey(block);
-            if (tissueKey.isComplete()) {
-                if (!tissueKeys.add(tissueKey)) {
-                    addProblem("Repeated combination of fields: "+tissueKey);
-                } else if (anySimilarTissuesInDatabase(block.getDonorIdentifier(), block.getTissueType(), block.getSpatialLocation(),
-                        block.getMedium(), block.getFixative(), block.getReplicateNumber())) {
-                    addProblem("There is already similar tissue in the database: "+tissueKey);
-                }
-            }
         }
-    }
-
-    public boolean anySimilarTissuesInDatabase(String donorName, String tissueTypeName, int spatialLocationCode,
-                                               String mediumName, String fixativeName, int replicate) {
-        Donor donor = getDonor(donorName);
-        if (donor==null || donor.getId()==null) {
-            return false;
-        }
-        if (tissueTypeName==null || tissueTypeName.isEmpty()) {
-            return false;
-        }
-        SpatialLocation sl = spatialLocationMap.get(new StringIntKey(tissueTypeName, spatialLocationCode));
-        if (sl==null) {
-            return false;
-        }
-        Medium medium = getMedium(mediumName);
-        if (medium==null) {
-            return false;
-        }
-        Fixative fixative = getFixative(fixativeName);
-        if (fixative==null) {
-            return false;
-        }
-        return tissueRepo.findByDonorIdAndSpatialLocationIdAndMediumIdAndFixativeIdAndReplicate(
-                donor.getId(), sl.getId(), medium.getId(), fixative.getId(), replicate).isPresent();
     }
 
     private <E> void validateByName(String entityName,
@@ -380,6 +392,11 @@ public class RegisterValidationImp implements RegisterValidation {
         return ucGet(this.fixativeMap, name);
     }
 
+    @Override
+    public Tissue getTissue(String externalName) {
+        return ucGet(this.tissueMap, externalName);
+    }
+
     private static <E> E ucGet(Map<String, E> map, String key) {
         return (key==null ? null : map.get(key.toUpperCase()));
     }
@@ -412,60 +429,4 @@ public class RegisterValidationImp implements RegisterValidation {
         }
     }
 
-    static class TissueKey {
-        String donorName;
-        String mediumName;
-        String fixativeName;
-        String tissueTypeName;
-        int spatialLocation;
-        int replicate;
-
-        public TissueKey(String donorName, String mediumName, String fixativeName, String tissueTypeName,
-                         int spatialLocation, int replicate) {
-            this.donorName = uc(donorName);
-            this.mediumName = uc(mediumName);
-            this.tissueTypeName = uc(tissueTypeName);
-            this.fixativeName = uc(fixativeName);
-            this.spatialLocation = spatialLocation;
-            this.replicate = replicate;
-        }
-
-        public TissueKey(BlockRegisterRequest br) {
-            this(br.getDonorIdentifier(), br.getMedium(), br.getFixative(), br.getTissueType(),
-                    br.getSpatialLocation(), br.getReplicateNumber());
-        }
-
-        private static String uc(String value) {
-            return (value==null || value.isEmpty() ? null : value.toUpperCase());
-        }
-
-        public boolean isComplete() {
-            return (this.donorName!=null && this.tissueTypeName!=null
-                    && this.mediumName!=null && this.fixativeName!=null);
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            TissueKey that = (TissueKey) o;
-            return (this.spatialLocation == that.spatialLocation
-                    && this.replicate == that.replicate
-                    && Objects.equals(this.donorName, that.donorName)
-                    && Objects.equals(this.mediumName, that.mediumName)
-                    && Objects.equals(this.fixativeName, that.fixativeName)
-                    && Objects.equals(this.tissueTypeName, that.tissueTypeName));
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(donorName, mediumName, fixativeName,tissueTypeName, spatialLocation, replicate);
-        }
-
-        @Override
-        public String toString() {
-            return String.format("{donor=%s, medium=%s, fixative=%s, tissue type=%s, spatial location=%s, replicate=%s}",
-                    donorName, mediumName, fixativeName, tissueTypeName, spatialLocation, replicate);
-        }
-    }
 }

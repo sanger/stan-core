@@ -113,15 +113,47 @@ input BlockRegisterRequest {
     fixative: String!
     mouldSize: String!
     species: String!
+    existingTissue: Boolean
 }
 
 input RegisterRequest {
     blocks: [BlockRegisterRequest!]!,
 }
 
+input SectionRegisterContent {
+    address: Address!
+    species: String!
+    hmdmc: String
+    donorIdentifier: String!
+    lifeStage: LifeStage!
+    externalIdentifier: String!
+    tissueType: String!
+    spatialLocation: Int!
+    replicateNumber: Int!
+    fixative: String!
+    medium: String!
+    sectionNumber: Int!
+    sectionThickness: Int
+}
+
+input SectionRegisterLabware {
+    labwareType: String!
+    externalBarcode: String!
+    contents: [SectionRegisterContent!]!
+}
+
+input SectionRegisterRequest {
+    labware: [SectionRegisterLabware!]!
+}
+
+type RegisterClash {
+    tissue: Tissue!
+    labware: [Labware!]!
+}
+
 type RegisterResult {
-    labware: [Labware!]!,
-    tissue: [Tissue!]!,
+    labware: [Labware!]!
+    clashes: [RegisterClash!]!
 }
 
 input PlanRequestSource {
@@ -373,6 +405,7 @@ type Mutation {
     login(username: String!, password: String!): LoginResult!
     logout: String
     register(request: RegisterRequest!): RegisterResult!
+    registerSections(request: SectionRegisterRequest): RegisterResult!
     plan(request: PlanRequest!): PlanResult!
     printLabware(printer: String!, barcodes: [String!]!): String
     confirmOperation(request: ConfirmOperationRequest!): ConfirmOperationResult!

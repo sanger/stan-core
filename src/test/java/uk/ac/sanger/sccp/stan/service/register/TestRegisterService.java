@@ -5,10 +5,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.*;
+import uk.ac.sanger.sccp.stan.request.register.*;
 import uk.ac.sanger.sccp.stan.service.*;
 
 import javax.persistence.EntityManager;
@@ -26,17 +28,30 @@ import static uk.ac.sanger.sccp.stan.Matchers.eqCi;
  * @author dr6
  */
 public class TestRegisterService {
+    @Mock
     private EntityManager mockEntityManager;
+    @Mock
     private RegisterValidationFactory mockValidationFactory;
+    @Mock
     private DonorRepo mockDonorRepo;
+    @Mock
     private TissueRepo mockTissueRepo;
+    @Mock
     private SampleRepo mockSampleRepo;
+    @Mock
     private SlotRepo mockSlotRepo;
+    @Mock
     private OperationTypeRepo mockOpTypeRepo;
+    @Mock
     private BioStateRepo mockBioStateRepo;
+    @Mock
     private LabwareService mockLabwareService;
+    @Mock
     private OperationService mockOpService;
+    @Mock
     private RegisterValidation mockValidation;
+    @Mock
+    private RegisterClashChecker mockClashChecker;
 
     private User user;
     private OperationType opType;
@@ -46,17 +61,7 @@ public class TestRegisterService {
 
     @BeforeEach
     void setup() {
-        mockEntityManager = mock(EntityManager.class);
-        mockValidationFactory = mock(RegisterValidationFactory.class);
-        mockDonorRepo = mock(DonorRepo.class);
-        mockTissueRepo = mock(TissueRepo.class);
-        mockSampleRepo = mock(SampleRepo.class);
-        mockSlotRepo = mock(SlotRepo.class);
-        mockOpTypeRepo = mock(OperationTypeRepo.class);
-        mockLabwareService = mock(LabwareService.class);
-        mockOpService = mock(OperationService.class);
-        mockValidation = mock(RegisterValidation.class);
-        mockBioStateRepo = mock(BioStateRepo.class);
+        MockitoAnnotations.initMocks(this);
         user = EntityFactory.getUser();
         when(mockValidationFactory.createRegisterValidation(any())).thenReturn(mockValidation);
         opType = new OperationType(99, "Register");
@@ -64,14 +69,13 @@ public class TestRegisterService {
         when(mockBioStateRepo.getByName("Tissue")).thenReturn(EntityFactory.getBioState());
 
         registerService = spy(new RegisterServiceImp(mockEntityManager, mockValidationFactory, mockDonorRepo, mockTissueRepo,
-                mockSampleRepo, mockSlotRepo, mockOpTypeRepo, mockBioStateRepo, mockLabwareService, mockOpService));
+                mockSampleRepo, mockSlotRepo, mockOpTypeRepo, mockBioStateRepo, mockLabwareService, mockOpService, mockClashChecker));
     }
 
     @Test
     public void testRegisterNoBlocks() {
         RegisterResult result = registerService.register(new RegisterRequest(List.of()), user);
         assertThat(result.getLabware()).isEmpty();
-        assertThat(result.getTissue()).isEmpty();
         verifyNoInteractions(mockValidationFactory);
         verify(registerService, never()).create(any(), any(), any());
     }
@@ -80,14 +84,27 @@ public class TestRegisterService {
     public void testRegisterValidBlocks() {
         RegisterRequest request = new RegisterRequest(List.of(new BlockRegisterRequest()));
         when(mockValidation.validate()).thenReturn(Set.of());
-        final RegisterResult result = new RegisterResult(List.of(EntityFactory.getTube()), List.of(EntityFactory.getTissue()));
+        final RegisterResult result = new RegisterResult(List.of(EntityFactory.getTube()));
         doReturn(result).when(registerService).create(any(), any(), any());
+        when(mockClashChecker.findClashes(any())).thenReturn(List.of());
 
         assertSame(result, registerService.register(request, user));
 
+        verify(mockClashChecker).findClashes(request);
         verify(mockValidationFactory).createRegisterValidation(request);
         verify(mockValidation).validate();
         verify(registerService).create(request, user, mockValidation);
+    }
+
+    @Test
+    public void testRegisterWithClashes() {
+        RegisterRequest request = new RegisterRequest(List.of(new BlockRegisterRequest()));
+        List<RegisterClash> clashes = List.of(new RegisterClash(EntityFactory.getTissue(), List.of()));
+        when(mockClashChecker.findClashes(any())).thenReturn(clashes);
+        assertEquals(RegisterResult.clashes(clashes), registerService.register(request, user));
+        verifyNoInteractions(mockValidationFactory);
+        verifyNoInteractions(mockValidation);
+        verify(registerService, never()).create(any(), any(), any());
     }
 
     @Test
@@ -139,6 +156,99 @@ public class TestRegisterService {
         verifyNoMoreInteractions(mockDonorRepo);
     }
 
+    @Test
+    public void testCreateTissues() {
+        Tissue existingTissue = EntityFactory.getTissue();
+        Species human = EntityFactory.getHuman();
+        Species hamster = new Species(2, "Hamster");
+        Donor donor1 = existingTissue.getDonor();
+        Donor donor2 = new Donor(2, "DONOR2", LifeStage.adult, human);
+        Donor donor3 = new Donor(3, "DONOR3", LifeStage.fetal, hamster);
+        Map<String, Donor> donorMap = Stream.of(donor1, donor2, donor3)
+                .collect(toMap(d -> d.getDonorName().toUpperCase(), d -> d));
+        doReturn(donorMap).when(registerService).createDonors(any(), any());
+        when(mockTissueRepo.save(any())).then(invocation -> {
+            Tissue tissue = invocation.getArgument(0);
+            assertNull(tissue.getId());
+            tissue.setId(++idCounter);
+            return tissue;
+        });
+        Hmdmc hmdmc = EntityFactory.getHmdmc();
+        MouldSize ms = EntityFactory.getMouldSize();
+        SpatialLocation sl = EntityFactory.getSpatialLocation();
+        Medium medium = EntityFactory.getMedium();
+        Fixative fix = EntityFactory.getFixative();
+
+        when(mockValidation.getTissue(existingTissue.getExternalName().toUpperCase())).thenReturn(existingTissue);
+        when(mockValidation.getHmdmc(hmdmc.getHmdmc())).thenReturn(hmdmc);
+        when(mockValidation.getMouldSize(ms.getName())).thenReturn(ms);
+        when(mockValidation.getSpatialLocation(sl.getTissueType().getName(), sl.getCode())).thenReturn(sl);
+        when(mockValidation.getMedium(medium.getName())).thenReturn(medium);
+        when(mockValidation.getFixative(fix.getName())).thenReturn(fix);
+
+        List<BlockRegisterRequest> brs = List.of(
+                makeBrr(existingTissue.getExternalName(), donor1.getDonorName(),
+                        existingTissue.getHmdmc().getHmdmc(), donor1.getSpecies().getName(),
+                        existingTissue.getReplicate(), existingTissue.getSpatialLocation(),
+                        existingTissue.getMouldSize().getName(),
+                        existingTissue.getMedium().getName(), existingTissue.getFixative().getName()),
+                makeBrr("TISSUE2", donor2.getDonorName(),
+                        hmdmc.getHmdmc(), human.getName(),
+                        7, sl, ms.getName(), medium.getName(), fix.getName()),
+                makeBrr("TISSUE3", donor3.getDonorName(),
+                        null, hamster.getName(),
+                        14, sl, ms.getName(), medium.getName(), fix.getName())
+        );
+        RegisterRequest request = new RegisterRequest(brs);
+
+        Map<String, Tissue> tissueMap = registerService.createTissues(request, mockValidation);
+
+        assertThat(tissueMap).hasSize(3);
+        assertEquals(3L, tissueMap.values().stream().map(Tissue::getId).distinct().count());
+
+        assertSame(existingTissue, tissueMap.get(existingTissue.getExternalName().toUpperCase()));
+
+        for (String xn : new String[] {"TISSUE2", "TISSUE3"}) {
+            Tissue tissue = tissueMap.get(xn);
+            assertNotNull(tissue);
+            assertEquals(xn, tissue.getExternalName());
+            if (xn.equals("TISSUE2")) {
+                assertEquals(donor2, tissue.getDonor());
+                assertEquals(hmdmc, tissue.getHmdmc());
+                assertEquals(7, tissue.getReplicate());
+            } else {
+                assertEquals(donor3, tissue.getDonor());
+                assertNull(tissue.getHmdmc());
+                assertEquals(14, tissue.getReplicate());
+            }
+            assertEquals(sl, tissue.getSpatialLocation());
+            assertEquals(ms, tissue.getMouldSize());
+            assertEquals(medium, tissue.getMedium());
+            assertEquals(fix, tissue.getFixative());
+
+            verify(mockTissueRepo).save(tissue);
+        }
+    }
+
+    private BlockRegisterRequest makeBrr(String externalName, String donorName,
+                                         String hmdmc, String species,
+                                         int replicate, SpatialLocation sl,
+                                         String mouldName, String mediumName, String fixName) {
+        BlockRegisterRequest br = new BlockRegisterRequest();
+        br.setExternalIdentifier(externalName);
+        br.setDonorIdentifier(donorName);
+        br.setHmdmc(hmdmc);
+        br.setSpecies(species);
+        br.setReplicateNumber(replicate);
+        br.setTissueType(sl.getTissueType().getName());
+        br.setSpatialLocation(sl.getCode());
+        br.setMouldSize(mouldName);
+        br.setMedium(mediumName);
+        br.setFixative(fixName);
+        return br;
+    }
+
+    // This test does not mock out createTissues() so it is actually testing more thoroughly than it needs to
     @Test
     public void testCreate() {
         Species hamster = new Species(2, "Hamster");
@@ -220,7 +330,7 @@ public class TestRegisterService {
 
         RegisterResult result = registerService.create(request, user, mockValidation);
 
-        assertEquals(result, new RegisterResult(Arrays.asList(lws), Arrays.asList(tissues)));
+        assertEquals(result, new RegisterResult(Arrays.asList(lws)));
 
         verify(registerService).createDonors(request, mockValidation);
 

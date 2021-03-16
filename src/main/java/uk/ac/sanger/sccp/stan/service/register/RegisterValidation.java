@@ -20,4 +20,6 @@ public interface RegisterValidation {
     Medium getMedium(String name);
 
     Fixative getFixative(String name);
+
+    Tissue getTissue(String externalName);
 }
