@@ -27,6 +27,7 @@ import uk.ac.sanger.sccp.utils.GraphQLClient.GraphQLResponse;
 import javax.persistence.EntityManager;
 import javax.transaction.Transactional;
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.IntStream;
 
@@ -168,6 +169,7 @@ public class IntegrationTests {
         Labware lw = entityCreator.createLabware("STAN-SLIDE", entityCreator.createLabwareType("slide6", 3, 2),
                 entityCreator.createSample(tissue, 1), entityCreator.createSample(tissue, 2),
                 entityCreator.createSample(tissue, 3), entityCreator.createSample(tissue, 4, rna));
+        lw.setCreated(LocalDateTime.of(2021,3,17,15,57));
         Printer printer = entityCreator.createPrinter("stub");
         String mutation = "mutation { printLabware(barcodes: [\"STAN-SLIDE\"], printer: \"stub\") }";
         assertThat(tester.<Map<?,?>>post(mutation)).isEqualTo(Map.of("data", Map.of("printLabware", "OK")));
@@ -176,7 +178,7 @@ public class IntegrationTests {
         Integer replicate = tissue.getReplicate();
         verify(mockPrintClient).print("stub", new LabelPrintRequest(
                 lw.getLabwareType().getLabelType(),
-                List.of(new LabwareLabelData(lw.getBarcode(), tissue.getMedium().getName(),
+                List.of(new LabwareLabelData(lw.getBarcode(), tissue.getMedium().getName(), "2021-03-17",
                         List.of(
                                 new LabelContent(donorName, tissueDesc, replicate, 1),
                                 new LabelContent(donorName, tissueDesc, replicate, 2),

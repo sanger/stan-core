@@ -671,9 +671,6 @@
             <column name="name" type="VARCHAR(64)">
                 <constraints nullable="false" unique="true"/>
             </column>
-            <column name="label_type_id" type="INT">
-                <constraints nullable="false" foreignKeyName="fk_printer_label_type" referencedTableName="label_type" referencedColumnNames="id"/>
-            </column>
             <column name="service" type="ENUM('sprint')">
                 <constraints nullable="false"/>
             </column>
@@ -687,6 +684,22 @@
     </changeSet>
 
     <changeSet id="204" author="dr6">
+        <createTable tableName="printer_label_type">
+            <column name="printer_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_printer_label_type_printer" referencedTableName="printer" referencedColumnNames="id"/>
+            </column>
+            <column name="label_type_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_printer_label_type_label_type" referencedTableName="label_type" referencedColumnNames="id"/>
+            </column>
+        </createTable>
+        <addPrimaryKey tableName="printer_label_type" columnNames="printer_id,label_type_id"/>
+        <rollback>
+            <dropAllForeignKeyConstraints baseTableName="printer_label_type"/>
+            <dropTable tableName="printer_label_type"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="205" author="dr6">
         <createTable tableName="labware_print">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
@@ -987,6 +1000,10 @@
         <loadData tableName="destruction_reason" file="db/destructionreasons.tsv" separator="\t">
             <column name="text" header="text" type="string"/>
         </loadData>
+    </changeSet>
+
+    <changeSet id="503" author="dr6">
+        <customChange class="uk.ac.sanger.sccp.stan.db.FillPrinters" />
     </changeSet>
 
 </databaseChangeLog>

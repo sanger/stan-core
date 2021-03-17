@@ -166,7 +166,7 @@ public class EntityCreator {
     }
 
     public Printer createPrinter(String name, LabelType labelType) {
-        Printer printer = new Printer(null, name, labelType, Printer.Service.sprint);
+        Printer printer = new Printer(null, name, List.of(labelType), Printer.Service.sprint);
         return printerRepo.save(printer);
     }
 

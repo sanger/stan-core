@@ -149,7 +149,7 @@ public class EntityFactory {
     public static Printer getPrinter() {
         if (printer==null) {
             int id = ++idCounter;
-            printer = new Printer(id, "printer"+id, getLabelType(), Printer.Service.sprint);
+            printer = new Printer(id, "printer"+id, List.of(getLabelType()), Printer.Service.sprint);
         }
         return printer;
     }

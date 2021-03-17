@@ -9,6 +9,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.PlanActionRepo;
 import uk.ac.sanger.sccp.stan.service.label.LabwareLabelData.LabelContent;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -42,6 +43,7 @@ public class TestLabwareLabelDataService {
         Sample sample1 = new Sample(null, null, tissue, bioState);
         Sample sample2 = new Sample(null, 5, tissue, bioState);
         Labware lw = EntityFactory.makeEmptyLabware(EntityFactory.makeLabwareType(1, 2));
+        lw.setCreated(LocalDateTime.of(2021,3,17,15,44));
         lw.getSlots().get(1).getSamples().addAll(List.of(sample1, sample2));
 
         LabwareLabelData actual = service.getLabelData(lw);
@@ -50,12 +52,13 @@ public class TestLabwareLabelDataService {
                 .map(sam -> new LabelContent(sam.getTissue().getDonor().getDonorName(),
                         tissueString(sam.getTissue()), sam.getTissue().getReplicate(), sam.getSection()))
                 .collect(toList());
-        LabwareLabelData expected = new LabwareLabelData(lw.getBarcode(), tissue.getMedium().getName(), expectedContents);
+        LabwareLabelData expected = new LabwareLabelData(lw.getBarcode(), tissue.getMedium().getName(), "2021-03-17", expectedContents);
         assertEquals(expected, actual);
 
         Labware emptyLabware = EntityFactory.makeEmptyLabware(EntityFactory.getTubeType());
+        emptyLabware.setCreated(LocalDateTime.of(2021,3,17,12,0));
         when(mockPlanActionRepo.findAllByDestinationLabwareId(emptyLabware.getId())).thenReturn(List.of());
-        assertEquals(new LabwareLabelData(emptyLabware.getBarcode(), null, List.of()), service.getLabelData(emptyLabware));
+        assertEquals(new LabwareLabelData(emptyLabware.getBarcode(), null, "2021-03-17", List.of()), service.getLabelData(emptyLabware));
     }
 
     @Test
@@ -72,6 +75,7 @@ public class TestLabwareLabelDataService {
         Sample sample1 = new Sample(null, null, tissue1, bioState);
         Sample sample2 = new Sample(null, 5, tissue2, bioState);
         Labware labware = EntityFactory.makeEmptyLabware(EntityFactory.makeLabwareType(1, 4));
+        labware.setCreated(LocalDateTime.of(2021,3,17,15,45));
         List<Slot> slots = labware.getSlots();
         PlanOperation plan = new PlanOperation();
         final int planId = 400;
@@ -91,7 +95,7 @@ public class TestLabwareLabelDataService {
                 new LabelContent(donor2.getDonorName(), tissueString(tissue2), tissue2.getReplicate(), 5),
                 new LabelContent(donor2.getDonorName(), tissueString(tissue2), tissue2.getReplicate(), 14)
         );
-        assertEquals(new LabwareLabelData(labware.getBarcode(), tissue1.getMedium().getName(), expectedContents), actual);
+        assertEquals(new LabwareLabelData(labware.getBarcode(), tissue1.getMedium().getName(), "2021-03-17", expectedContents), actual);
     }
 
     @ParameterizedTest

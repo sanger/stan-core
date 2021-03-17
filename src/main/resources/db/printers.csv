@@ -1,3 +1,4 @@
-name,label_type_id,service
-cgaptestbc,1,sprint
-slidelabel,2,sprint
+name,label_type,service
+cgaptestbc,tiny,sprint
+cgaptestbc,plate,sprint
+slidelabel,slide,sprint
