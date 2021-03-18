@@ -12,7 +12,7 @@ import uk.ac.sanger.sccp.stan.request.ReleaseRequest;
 import uk.ac.sanger.sccp.stan.request.ReleaseResult;
 import uk.ac.sanger.sccp.stan.service.store.StoreService;
 
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
@@ -74,7 +74,7 @@ public class TestReleaseService {
     public void testReleaseAndUnstore() {
         Labware lw1 = EntityFactory.makeLabware(labwareType, sample, sample, sample1);
         Labware lw2 = EntityFactory.makeLabware(labwareType, sample1);
-        Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+        LocalDateTime timestamp = LocalDateTime.now();
         List<String> barcodes = List.of(lw1.getBarcode(), lw2.getBarcode());
         ReleaseRequest request = new ReleaseRequest(barcodes, "Venus", "Mekon");
         List<Release> releases = List.of(new Release(1, lw1, user, destination, recipient, 1, timestamp),
@@ -144,7 +144,7 @@ public class TestReleaseService {
         doReturn(labware).when(service).loadLabware(any());
         doNothing().when(service).validateLabware(any());
         doReturn(labware).when(service).updateReleasedLabware(any());
-        Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+        LocalDateTime timestamp = LocalDateTime.now();
         List<Release> releases = labware.stream()
                 .map(lw -> new Release(10+lw.getId(), lw, user, destination, recipient, 1, timestamp))
                 .collect(toList());
@@ -240,7 +240,7 @@ public class TestReleaseService {
         List<Labware> labware = IntStream.range(0,2)
                 .mapToObj(i -> EntityFactory.makeLabware(labwareType, sample, sample1))
                 .collect(toList());
-        Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+        LocalDateTime timestamp = LocalDateTime.now();
         List<Release> releases = labware.stream()
                 .map(lw -> new Release(10, lw, user, destination, recipient, 1, timestamp))
                 .collect(toList());
@@ -259,7 +259,7 @@ public class TestReleaseService {
         lw.getSlots().get(1).getSamples().add(sample1);
 
         final int releaseId = 10;
-        Release release = new Release(releaseId, lw, user, destination, recipient, 1, new Timestamp(System.currentTimeMillis()));
+        Release release = new Release(releaseId, lw, user, destination, recipient, 1, LocalDateTime.now());
 
         when(mockReleaseRepo.save(any())).thenReturn(release);
 

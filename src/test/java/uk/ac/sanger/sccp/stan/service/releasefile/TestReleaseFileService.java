@@ -9,7 +9,7 @@ import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.Ancestry;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
 
 import javax.persistence.EntityNotFoundException;
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -87,7 +87,7 @@ public class TestReleaseFileService {
     }
 
     private Release release(int id, Labware lw, Snapshot snap) {
-        return new Release(id, lw, user, destination, recipient, snap.getId(), new Timestamp(System.currentTimeMillis()));
+        return new Release(id, lw, user, destination, recipient, snap.getId(), LocalDateTime.now());
     }
 
     @Test

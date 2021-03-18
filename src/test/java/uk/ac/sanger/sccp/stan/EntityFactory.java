@@ -2,7 +2,7 @@ package uk.ac.sanger.sccp.stan;
 
 import uk.ac.sanger.sccp.stan.model.*;
 
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.BiFunction;
 import java.util.stream.IntStream;
@@ -243,8 +243,8 @@ public class EntityFactory {
         return makeOpLike(opType, sources, destinations, user, Operation::new, EntityFactory::makeAction);
     }
 
-    public static Timestamp now() {
-        return new Timestamp(System.currentTimeMillis());
+    public static LocalDateTime now() {
+        return LocalDateTime.now();
     }
 
     public static Snapshot makeSnapshot(Labware lw) {
@@ -267,7 +267,7 @@ public class EntityFactory {
 
     @FunctionalInterface
     private interface OpLikeMaker<C, A> {
-        C make(int id, OperationType opType, Timestamp timestamp, List<A> actions, User user);
+        C make(int id, OperationType opType, LocalDateTime timestamp, List<A> actions, User user);
     }
 
     @FunctionalInterface

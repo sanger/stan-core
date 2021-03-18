@@ -9,7 +9,7 @@ import uk.ac.sanger.sccp.stan.service.label.*;
 import uk.ac.sanger.sccp.stan.service.label.LabwareLabelData.LabelContent;
 
 import java.io.IOException;
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.IntStream;
 
@@ -123,7 +123,7 @@ public class TestLabelPrintService {
 
     @Test
     public void testRecordPrint() {
-        Timestamp now = new Timestamp(System.currentTimeMillis());
+        LocalDateTime now = LocalDateTime.now();
         List<LabwarePrint> results = List.of(
                 new LabwarePrint(10, printer, labware.get(0), user, now),
                 new LabwarePrint(11, printer, labware.get(1), user, now)

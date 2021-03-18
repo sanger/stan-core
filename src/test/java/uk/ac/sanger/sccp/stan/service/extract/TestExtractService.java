@@ -14,7 +14,7 @@ import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.store.StoreService;
 
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
@@ -282,7 +282,7 @@ public class TestExtractService {
             List<Action> actions = invocation.getArgument(2);
             Integer planId = invocation.getArgument(3);
             int opId = 100 + createdOps.size();
-            Operation op = new Operation(opId, opType, new Timestamp(System.currentTimeMillis()), actions, user, planId);
+            Operation op = new Operation(opId, opType, LocalDateTime.now(), actions, user, planId);
             createdOps.add(op);
             return op;
         });
