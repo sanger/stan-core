@@ -177,7 +177,7 @@ public class TestSlotCopyService {
                         new SlotCopyContent("Beta", null, null),
                         new SlotCopyContent("ALPHA", null, null)));
         service.unstoreSources(user, request);
-        verify(storeService).unstoreBarcodesWithoutValidatingThem(user, Set.of("ALPHA", "BETA"));
+        verify(storeService).discardStorage(user, Set.of("ALPHA", "BETA"));
     }
 
     @ParameterizedTest

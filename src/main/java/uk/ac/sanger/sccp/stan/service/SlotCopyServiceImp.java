@@ -82,7 +82,7 @@ public class SlotCopyServiceImp implements SlotCopyService {
         Set<String> sourceBarcodes = request.getContents().stream()
                 .map(c -> c.getSourceBarcode().toUpperCase())
                 .collect(toSet());
-        storeService.unstoreBarcodesWithoutValidatingThem(user, sourceBarcodes);
+        storeService.discardStorage(user, sourceBarcodes);
     }
 
     // region Loading and validating
