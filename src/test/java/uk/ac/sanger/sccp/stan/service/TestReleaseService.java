@@ -143,6 +143,7 @@ public class TestReleaseService {
         }
         doReturn(labware).when(service).loadLabware(any());
         doNothing().when(service).validateLabware(any());
+        doNothing().when(service).validateContents(any());
         doReturn(labware).when(service).updateReleasedLabware(any());
         LocalDateTime timestamp = LocalDateTime.now();
         List<Release> releases = labware.stream()
@@ -154,6 +155,7 @@ public class TestReleaseService {
 
         verify(service).loadLabware(barcodes);
         verify(service).validateLabware(labware);
+        verify(service).validateContents(labware);
         verify(service).updateReleasedLabware(labware);
         verify(service).recordReleases(user, destination, recipient, labware);
     }
@@ -232,6 +234,34 @@ public class TestReleaseService {
                 Arguments.of(List.of(good, destroyed), destroyedError),
                 Arguments.of(List.of(released), releasedError),
                 Arguments.of(List.of(discarded), discardedError)
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("validateContentsArgs")
+    public void testValidateContents(Collection<Labware> labware, String expectedErrorMessage) {
+        if (expectedErrorMessage==null) {
+            service.validateContents(labware);
+        } else {
+            assertThat(assertThrows(IllegalArgumentException.class, () -> service.validateContents(labware)))
+                    .hasMessage(expectedErrorMessage);
+        }
+    }
+
+    static Stream<Arguments> validateContentsArgs() {
+        LabwareType lt = EntityFactory.getTubeType();
+        Tissue tissue = EntityFactory.getTissue();
+        BioState bs1 = new BioState(1, "Tissue");
+        BioState bs2 = new BioState(2, "RNA");
+        BioState cdna = new BioState(3, "cDNA");
+        Labware[] lw = IntStream.range(1, 5).mapToObj(i -> {
+            Sample sample = new Sample(i, i, tissue, i==1 ? bs1 : i==2 ? bs2 : cdna);
+            return EntityFactory.makeLabware(lt, sample);
+        }).toArray(Labware[]::new);
+        return Stream.of(
+                Arguments.of(List.of(lw[0], lw[1]), null),
+                Arguments.of(List.of(lw[2], lw[3]), null),
+                Arguments.of(List.of(lw[0], lw[2]), "Cannot release a mix of cDNA and other bio states.")
         );
     }
 

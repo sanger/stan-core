@@ -15,7 +15,7 @@ import java.util.stream.Stream;
 import static java.util.stream.Collectors.*;
 
 /**
- * Service for helping with release files
+ * Service loading data for release files
  * @author dr6
  */
 @Service
@@ -44,14 +44,15 @@ public class ReleaseFileService {
      * @param releaseIds the ids of the releases
      * @return the release entries from the specified releases
      */
-    public List<ReleaseEntry> getReleaseEntries(Collection<Integer> releaseIds) {
+    public ReleaseFileContent getReleaseFileContent(Collection<Integer> releaseIds) {
         if (releaseIds.isEmpty()) {
-            return List.of();
+            return new ReleaseFileContent(ReleaseFileMode.NORMAL, List.of());
         }
         List<Release> releases = getReleases(releaseIds);
 
         Map<Integer, Snapshot> snapshots = loadSnapshots(releases);
         Map<Integer, Sample> samples = loadSamples(releases, snapshots);
+        ReleaseFileMode mode = checkMode(samples.values());
 
         List<ReleaseEntry> entries = releases.stream()
                 .flatMap(r -> toReleaseEntries(r, samples, snapshots))
@@ -59,9 +60,38 @@ public class ReleaseFileService {
 
         loadLastSection(entries);
         Ancestry ancestry = findAncestry(entries);
-        loadOriginalBarcodes(entries, ancestry);
+        loadSources(entries, ancestry, mode);
         loadSectionThickness(entries, ancestry);
-        return entries;
+        return new ReleaseFileContent(mode, entries);
+    }
+
+    /**
+     * Checks that all the samples can be listed together in one release file.
+     * Samples of cDNA cannot be listed together with samples in other bio states.
+     * @param samples the samples
+     * @return the single mode valid with all the samples
+     * @exception IllegalArgumentException if the samples cannot be listed together in one release file
+     */
+    public ReleaseFileMode checkMode(Collection<Sample> samples) {
+        Set<ReleaseFileMode> modes = samples.stream().map(this::mode).collect(toSet());
+        if (modes.size() > 1) {
+            throw new IllegalArgumentException("Cannot create a release file with a mix of " +
+                    "cDNA and other bio states.");
+        }
+        return modes.stream().findAny().orElse(ReleaseFileMode.NORMAL);
+    }
+
+    /**
+     * Gets the release mode for a sample.
+     * This is {@code CDNA} if the bio state is cDNA; otherwise {@code NORMAL}
+     * @param sample the sample
+     * @return the mode appropriate for the sample
+     */
+    private ReleaseFileMode mode(Sample sample) {
+        if (sample.getBioState().getName().equalsIgnoreCase("cDNA")) {
+            return ReleaseFileMode.CDNA;
+        }
+        return ReleaseFileMode.NORMAL;
     }
 
     /**
@@ -103,6 +133,13 @@ public class ReleaseFileService {
         return sampleMap;
     }
 
+    /**
+     * Loads and returns a map of snapshot id to shapshot.
+     * Errors if any shapshots cannot be found.
+     * @param releases the releases indicating the snapshots
+     * @return a map of snapshots keyed by their id
+     * @exception EntityNotFoundException if any snapshots could not be found
+     */
     public Map<Integer, Snapshot> loadSnapshots(Collection<Release> releases) {
         Map<Integer, Snapshot> snapshots = snapshotRepo.findAllByIdIn(
                 releases.stream().map(Release::getSnapshotId)
@@ -162,6 +199,20 @@ public class ReleaseFileService {
     }
 
     /**
+     * Loads the "sources", whatever that means for the release mode.
+     * @param entries the contents of the things that were released
+     * @param ancestry the ancestors of the released things
+     * @param mode the release file mode
+     */
+    public void loadSources(Collection<ReleaseEntry> entries, Ancestry ancestry, ReleaseFileMode mode) {
+        if (mode==ReleaseFileMode.CDNA) {
+            loadSourcesForCDNA(entries, ancestry);
+        } else {
+            loadOriginalBarcodes(entries, ancestry);
+        }
+    }
+
+    /**
      * Sets the original (block) barcodes for the release entries.
      * Follows the slot/sample combinations through the given ancestry to find the original
      * slot, and looks up the barcode.
@@ -186,7 +237,31 @@ public class ReleaseFileService {
                 bc = labwareRepo.getById(lwId).getBarcode();
                 labwareIdBarcode.put(lwId, bc);
             }
-            entry.setOriginalBarcode(bc);
+            entry.setSourceBarcode(bc);
+        }
+    }
+
+    /**
+     * Sets the source barcode and source address to the tissue that originated it
+     * @param entries the release entries
+     * @param ancestry the ancestry info for the samples and labware involved
+     */
+    public void loadSourcesForCDNA(Collection<ReleaseEntry> entries, Ancestry ancestry) {
+        Map<Integer, String> labwareIdBarcode = new HashMap<>();
+        for (ReleaseEntry entry : entries) {
+            for (SlotSample ss : ancestry.ancestors(new SlotSample(entry.getSlot(), entry.getSample()))) {
+                if (!ss.getSample().getBioState().getName().equalsIgnoreCase("cDNA")) {
+                    Slot slot = ss.getSlot();
+                    final Integer labwareId = slot.getLabwareId();
+                    String barcode = labwareIdBarcode.get(labwareId);
+                    if (barcode==null) {
+                        barcode = labwareRepo.getById(labwareId).getBarcode();
+                        labwareIdBarcode.put(labwareId, barcode);
+                    }
+                    entry.setSourceBarcode(barcode);
+                    entry.setSourceAddress(slot.getAddress());
+                }
+            }
         }
     }
 
