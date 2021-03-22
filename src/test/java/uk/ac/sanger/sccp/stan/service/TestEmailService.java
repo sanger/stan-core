@@ -52,6 +52,13 @@ public class TestEmailService {
         verify(mockMailSender).send(message);
     }
 
+    @Test
+    public void testGetServiceDescription() {
+        String desc = "Stan test";
+        when(mockMailConfig.getServiceDescription()).thenReturn(desc);
+        assertEquals(desc, service.getServiceDescription());
+    }
+
     @ParameterizedTest
     @CsvSource(value={
             "false, recipients@sanger.ac.uk, true",

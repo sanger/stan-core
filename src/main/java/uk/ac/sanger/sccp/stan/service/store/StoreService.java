@@ -86,7 +86,8 @@ public class StoreService {
     /**
      * This is called after some operation is performed that renders labware unstorable.
      * Any corresponding labware that is stored becomes unstored. Any exception is caught and logged,
-     * but the method still completes successfully
+     * but the method still completes successfully.
+     * This method {@link EmailService#tryAndSendAlert tries to send an alert email} if the request fails.
      * @param user the user responsible for the operation
      * @param barcodes the barcodes to unstore
      */
@@ -96,8 +97,9 @@ public class StoreService {
         } catch (RuntimeException e) {
             log.error("Caught exception during discardStorage, user: "+(user==null ? null : user.getUsername())
                     +", barcodes: "+barcodes, e);
-            emailService.tryAndSendAlert("Stan was unable to discard storage",
-                    "Stan failed to discard storage for the following barcodes: "+barcodes);
+            String serviceDescription = emailService.getServiceDescription();
+            emailService.tryAndSendAlert(serviceDescription+" was unable to discard storage",
+                    serviceDescription+" failed to discard storage for the following barcodes: "+barcodes);
         }
     }
 

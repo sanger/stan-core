@@ -62,4 +62,12 @@ public class EmailService {
             return false;
         }
     }
+
+    /**
+     * A description of this service (e.g. "Stan UAT") for inclusion in emails
+     * @return a description of this service
+     */
+    public String getServiceDescription() {
+        return mailConfig.getServiceDescription();
+    }
 }
