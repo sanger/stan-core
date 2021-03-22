@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.store.*;
 import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
+import uk.ac.sanger.sccp.stan.service.EmailService;
 import uk.ac.sanger.sccp.utils.GraphQLClient.GraphQLResponse;
 
 import javax.persistence.EntityNotFoundException;
@@ -35,11 +36,13 @@ public class StoreService {
     private final StorelightClient storelightClient;
     private final LabwareRepo labwareRepo;
     private final ObjectMapper objectMapper;
+    private final EmailService emailService;
 
     @Autowired
-    public StoreService(StorelightClient storelightClient, LabwareRepo labwareRepo) {
+    public StoreService(StorelightClient storelightClient, LabwareRepo labwareRepo, EmailService emailService) {
         this.storelightClient = storelightClient;
         this.labwareRepo = labwareRepo;
+        this.emailService = emailService;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -93,6 +96,8 @@ public class StoreService {
         } catch (RuntimeException e) {
             log.error("Caught exception during discardStorage, user: "+(user==null ? null : user.getUsername())
                     +", barcodes: "+barcodes, e);
+            emailService.tryAndSendAlert("Stan was unable to discard storage",
+                    "Stan failed to discard storage for the following barcodes: "+barcodes);
         }
     }
 
