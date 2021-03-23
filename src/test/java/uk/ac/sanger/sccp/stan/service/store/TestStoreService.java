@@ -14,6 +14,7 @@ import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.store.*;
 import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
+import uk.ac.sanger.sccp.stan.service.EmailService;
 import uk.ac.sanger.sccp.utils.GraphQLClient.GraphQLResponse;
 
 import javax.persistence.EntityNotFoundException;
@@ -40,13 +41,15 @@ public class TestStoreService {
     private User user;
     private ObjectMapper objectMapper;
     private LabwareRepo mockLabwareRepo;
+    private EmailService mockEmailService;
 
     @BeforeEach
     void setup() throws IOException {
         mockClient = mock(StorelightClient.class);
         mockLabwareRepo = mock(LabwareRepo.class);
+        mockEmailService = mock(EmailService.class);
         user = new User("dr6");
-        service = spy(new StoreService(mockClient, mockLabwareRepo));
+        service = spy(new StoreService(mockClient, mockLabwareRepo, mockEmailService));
         objectMapper = new ObjectMapper();
     }
 
@@ -101,10 +104,10 @@ public class TestStoreService {
 
         verifyQueryMatches("mutation { storeBarcode(barcode: \""+itemBarcode+"\", location: {barcode: \""
                 + locationBarcode+"\"}, address: " + quote(address) + ") { barcode address location " +
-                "{ id barcode description address size { numRows numColumns } " +
-                "children { barcode description address } " +
+                "{ id barcode name address size { numRows numColumns } " +
+                "children { barcode name address } " +
                 "stored { barcode address }" +
-                "parent { barcode description address }" +
+                "parent { barcode name address }" +
                 "direction}}}");
         verify(service).checkErrors(response);
         assertEquals(item, result);
@@ -196,14 +199,17 @@ public class TestStoreService {
     @ValueSource(booleans={false, true})
     public void testDiscardStorage(boolean successful) {
         if (successful) {
-            doThrow(IllegalArgumentException.class).when(service).unstoreBarcodesWithoutValidatingThem(any(), any());
-        } else {
             doReturn(0).when(service).unstoreBarcodesWithoutValidatingThem(any(), any());
+        } else {
+            doThrow(IllegalArgumentException.class).when(service).unstoreBarcodesWithoutValidatingThem(any(), any());
         }
 
         List<String> barcodes = List.of("STAN-A1", "STAN-B2");
         service.discardStorage(user, barcodes);
         verify(service).unstoreBarcodesWithoutValidatingThem(user, barcodes);
+        if (!successful) {
+            verify(mockEmailService).tryAndSendAlert(any(), any());
+        }
     }
 
     @Test
@@ -232,21 +238,21 @@ public class TestStoreService {
         Location alteredLocation = new Location();
         alteredLocation.setNameAndCustomName(name, newCustomName);
         ObjectNode returnedNode = objectMapper.valueToTree(alteredLocation);
-        returnedNode.remove("name");
+        returnedNode.remove("fixedName");
         returnedNode.remove("customName");
         GraphQLResponse response = setupResponse("editLocation", returnedNode);
         Location result = service.setLocationCustomName(user, barcode, newCustomName);
         verifyQueryMatches("mutation { editLocation(location:{barcode:"+json(barcode)
-                +"}, change: {description:"+json(alteredLocation.getDescription())+"}) {" +
-                "id barcode description address size {numRows numColumns } " +
-                "children { barcode description address }" +
+                +"}, change: {name:"+json(alteredLocation.getName())+"}) {" +
+                "id barcode name address size {numRows numColumns } " +
+                "children { barcode name address }" +
                 "stored { barcode address } " +
-                "parent { barcode description address }" +
+                "parent { barcode name address }" +
                 "direction }}");
         verify(service).checkErrors(response);
         assertEquals(alteredLocation, result);
         assertEquals(newCustomName, alteredLocation.getCustomName());
-        assertEquals(name, alteredLocation.getName());
+        assertEquals(name, alteredLocation.getFixedName());
     }
 
     @Test
@@ -270,7 +276,7 @@ public class TestStoreService {
         location.getChildren().add(child);
 
         ObjectNode returnedNode = objectMapper.valueToTree(location);
-        returnedNode.remove("name");
+        returnedNode.remove("fixedName");
         returnedNode.remove("customName");
         GraphQLResponse response = setupResponse("location", returnedNode);
         Location result = service.getLocation(barcode);
@@ -278,12 +284,12 @@ public class TestStoreService {
                         "    location(location: {barcode:\""+barcode+"\"}) {" +
                         "        id" +
                         "        barcode" +
-                        "        description" +
+                        "        name" +
                         "        address" +
                         "        size { numRows numColumns}" +
-                        "        children { barcode description address }" +
+                        "        children { barcode name address }" +
                         "        stored { barcode address }" +
-                        "        parent { barcode description address }" +
+                        "        parent { barcode name address }" +
                         "        direction" +
                         "    }}",
 
@@ -342,11 +348,11 @@ public class TestStoreService {
                 "        location {" +
                 "            id" +
                 "            barcode" +
-                "            description" +
+                "            name" +
                 "            address" +
                 "            size { numRows numColumns}" +
-                "            children { barcode description address }" +
-                "            parent { barcode description address }" +
+                "            children { barcode name address }" +
+                "            parent { barcode name address }" +
                 "            stored { barcode address }" +
                 "            direction" +
                 "        }}}",
