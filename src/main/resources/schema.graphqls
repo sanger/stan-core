@@ -254,8 +254,8 @@ type PlanResult {
 }
 
 type Printer {
-    name: String!,
-    labelType: LabelType!,
+    name: String!
+    labelTypes: [LabelType!]!
 }
 
 type Comment {
