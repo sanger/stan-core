@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.store.*;
 import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
+import uk.ac.sanger.sccp.stan.service.EmailService;
 import uk.ac.sanger.sccp.utils.GraphQLClient.GraphQLResponse;
 
 import javax.persistence.EntityNotFoundException;
@@ -35,11 +36,13 @@ public class StoreService {
     private final StorelightClient storelightClient;
     private final LabwareRepo labwareRepo;
     private final ObjectMapper objectMapper;
+    private final EmailService emailService;
 
     @Autowired
-    public StoreService(StorelightClient storelightClient, LabwareRepo labwareRepo) {
+    public StoreService(StorelightClient storelightClient, LabwareRepo labwareRepo, EmailService emailService) {
         this.storelightClient = storelightClient;
         this.labwareRepo = labwareRepo;
+        this.emailService = emailService;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -83,7 +86,8 @@ public class StoreService {
     /**
      * This is called after some operation is performed that renders labware unstorable.
      * Any corresponding labware that is stored becomes unstored. Any exception is caught and logged,
-     * but the method still completes successfully
+     * but the method still completes successfully.
+     * This method {@link EmailService#tryAndSendAlert tries to send an alert email} if the request fails.
      * @param user the user responsible for the operation
      * @param barcodes the barcodes to unstore
      */
@@ -93,6 +97,9 @@ public class StoreService {
         } catch (RuntimeException e) {
             log.error("Caught exception during discardStorage, user: "+(user==null ? null : user.getUsername())
                     +", barcodes: "+barcodes, e);
+            String serviceDescription = emailService.getServiceDescription();
+            emailService.tryAndSendAlert(serviceDescription+" was unable to discard storage",
+                    serviceDescription+" failed to discard storage for the following barcodes: "+barcodes);
         }
     }
 

@@ -14,6 +14,7 @@ import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.store.*;
 import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
+import uk.ac.sanger.sccp.stan.service.EmailService;
 import uk.ac.sanger.sccp.utils.GraphQLClient.GraphQLResponse;
 
 import javax.persistence.EntityNotFoundException;
@@ -40,13 +41,15 @@ public class TestStoreService {
     private User user;
     private ObjectMapper objectMapper;
     private LabwareRepo mockLabwareRepo;
+    private EmailService mockEmailService;
 
     @BeforeEach
     void setup() throws IOException {
         mockClient = mock(StorelightClient.class);
         mockLabwareRepo = mock(LabwareRepo.class);
+        mockEmailService = mock(EmailService.class);
         user = new User("dr6");
-        service = spy(new StoreService(mockClient, mockLabwareRepo));
+        service = spy(new StoreService(mockClient, mockLabwareRepo, mockEmailService));
         objectMapper = new ObjectMapper();
     }
 
@@ -196,14 +199,17 @@ public class TestStoreService {
     @ValueSource(booleans={false, true})
     public void testDiscardStorage(boolean successful) {
         if (successful) {
-            doThrow(IllegalArgumentException.class).when(service).unstoreBarcodesWithoutValidatingThem(any(), any());
-        } else {
             doReturn(0).when(service).unstoreBarcodesWithoutValidatingThem(any(), any());
+        } else {
+            doThrow(IllegalArgumentException.class).when(service).unstoreBarcodesWithoutValidatingThem(any(), any());
         }
 
         List<String> barcodes = List.of("STAN-A1", "STAN-B2");
         service.discardStorage(user, barcodes);
         verify(service).unstoreBarcodesWithoutValidatingThem(user, barcodes);
+        if (!successful) {
+            verify(mockEmailService).tryAndSendAlert(any(), any());
+        }
     }
 
     @Test
