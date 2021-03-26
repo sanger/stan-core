@@ -3,6 +3,8 @@ package uk.ac.sanger.sccp.stan;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import graphql.schema.DataFetcher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import uk.ac.sanger.sccp.stan.model.Address;
 import uk.ac.sanger.sccp.stan.model.User;
@@ -12,12 +14,16 @@ import uk.ac.sanger.sccp.stan.service.store.StoreService;
 
 import java.util.List;
 
+import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
+
 /**
  * GraphQL operations for storage
  * @author dr6
  */
 @Component
 public class GraphQLStore extends BaseGraphQLResource {
+    Logger log = LoggerFactory.getLogger(GraphQLStore.class);
+
     final StoreService storeService;
 
     public GraphQLStore(ObjectMapper objectMapper, AuthenticationComponent authComp, UserRepo userRepo,
@@ -26,12 +32,25 @@ public class GraphQLStore extends BaseGraphQLResource {
         this.storeService = storeService;
     }
 
+    private void logRequest(String name, User user, Object request) {
+        if (log.isInfoEnabled()) {
+            if (request instanceof String) {
+                request = repr(request);
+            }
+            log.info("{} requested by {}: {}", name, (user==null ? null : repr(user.getUsername())), request);
+        }
+    }
+
     public DataFetcher<StoredItem> storeBarcode() {
         return dfe -> {
             User user = checkUser();
             String itemBarcode = dfe.getArgument("barcode");
             String locationBarcode = dfe.getArgument("locationBarcode");
             Address address = dfe.getArgument("address");
+            if (log.isInfoEnabled()) {
+                log.info("Store barcode request from {}: barcode: {}, locationBarcode: {}, address: {}",
+                        user.getUsername(), repr(itemBarcode), repr(locationBarcode), address);
+            }
             return storeService.storeBarcode(user, itemBarcode, locationBarcode, address);
         };
     }
@@ -40,6 +59,7 @@ public class GraphQLStore extends BaseGraphQLResource {
         return dfe -> {
             User user = checkUser();
             String itemBarcode = dfe.getArgument("barcode");
+            logRequest("UnstoreBarcode", user, itemBarcode);
             return storeService.unstoreBarcode(user, itemBarcode);
         };
     }
@@ -48,6 +68,7 @@ public class GraphQLStore extends BaseGraphQLResource {
         return dfe -> {
             User user = checkUser();
             String locationBarcode = dfe.getArgument("locationBarcode");
+            logRequest("Empty", user, locationBarcode);
             return storeService.empty(user, locationBarcode);
         };
     }
@@ -57,6 +78,10 @@ public class GraphQLStore extends BaseGraphQLResource {
             User user = checkUser();
             String locationBarcode = dfe.getArgument("locationBarcode");
             String customName = dfe.getArgument("customName");
+            if (log.isInfoEnabled()) {
+                log.info("Set location custom name requested by {}: locationBarcode={}, customName={}",
+                        repr(user.getUsername()), repr(locationBarcode), repr(customName));
+            }
             return storeService.setLocationCustomName(user, locationBarcode, customName);
         };
     }

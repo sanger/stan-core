@@ -2,6 +2,8 @@ package uk.ac.sanger.sccp.stan;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import graphql.schema.DataFetcher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -25,11 +27,14 @@ import uk.ac.sanger.sccp.stan.service.register.SectionRegisterService;
 
 import java.util.*;
 
+import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
+
 /**
  * @author dr6
  */
 @Component
 public class GraphQLMutation extends BaseGraphQLResource {
+    Logger log = LoggerFactory.getLogger(GraphQLMutation.class);
     final LDAPService ldapService;
     final SessionConfig sessionConfig;
     final RegisterService registerService;
@@ -64,10 +69,18 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.slotCopyService = slotCopyService;
     }
 
+    private void logRequest(String name, User user, Object request) {
+        if (log.isInfoEnabled()) {
+            log.info("{} requested by {}: {}", name, (user==null ? null : repr(user.getUsername())), request);
+        }
+    }
 
     public DataFetcher<LoginResult> logIn() {
         return dataFetchingEnvironment -> {
             String username = dataFetchingEnvironment.getArgument("username");
+            if (log.isInfoEnabled()) {
+                log.info("Login attempt by {}", repr(username));
+            }
             Optional<User> optUser = userRepo.findByUsername(username);
             if (optUser.isEmpty()) {
                 return new LoginResult("Username not in database.", null);
@@ -79,13 +92,27 @@ public class GraphQLMutation extends BaseGraphQLResource {
 
             Authentication authentication = new UsernamePasswordAuthenticationToken(username, password, new ArrayList<>());
             authComp.setAuthentication(authentication, sessionConfig.getMaxInactiveMinutes());
+            log.info("Login succeeded for user {}", optUser.get());
             return new LoginResult("OK", optUser.get());
         };
     }
 
+    private String loggedInUsername() {
+        var auth = authComp.getAuthentication();
+        if (auth != null) {
+            var princ = auth.getPrincipal();
+            if (princ != null) {
+                return princ.toString();
+            }
+        }
+        return null;
+    }
 
     public DataFetcher<String> logOut() {
         return dataFetchingEnvironment -> {
+            if (log.isInfoEnabled()) {
+                log.info("Logout requested by {}", repr(loggedInUsername()));
+            }
             authComp.setAuthentication(null, 0);
             return "OK";
         };
@@ -95,6 +122,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         return dfe -> {
             User user = checkUser();
             RegisterRequest request = arg(dfe, "request", RegisterRequest.class);
+            logRequest("Register", user, request);
             return registerService.register(request, user);
         };
     }
@@ -103,6 +131,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         return dfe -> {
             User user = checkUser();
             SectionRegisterRequest request = arg(dfe, "request", SectionRegisterRequest.class);
+            logRequest("Section register", user, request);
             return sectionRegisterService.register(user, request);
         };
     }
@@ -111,6 +140,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         return dfe -> {
             User user = checkUser();
             PlanRequest request = arg(dfe, "request", PlanRequest.class);
+            logRequest("Record plan", user, request);
             return planService.recordPlan(user, request);
         };
     }
@@ -120,6 +150,9 @@ public class GraphQLMutation extends BaseGraphQLResource {
             User user = checkUser();
             List<String> barcodes = dfe.getArgument("barcodes");
             String printerName = dfe.getArgument("printer");
+            if (log.isInfoEnabled()) {
+                logRequest("Print labware", user, "Printer: " + repr(printerName) + ", barcodes: " + barcodes);
+            }
             labelPrintService.printLabwareBarcodes(user, printerName, barcodes);
             return "OK";
         };
@@ -129,6 +162,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         return dfe -> {
             User user = checkUser();
             ConfirmOperationRequest request = arg(dfe, "request", ConfirmOperationRequest.class);
+            logRequest("Confirm operation", user, request);
             return confirmOperationService.confirmOperation(user, request);
         };
     }
@@ -137,6 +171,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         return dfe -> {
             User user = checkUser();
             ReleaseRequest request = arg(dfe, "request", ReleaseRequest.class);
+            logRequest("Release", user, request);
             return releaseService.releaseAndUnstore(user, request);
         };
     }
@@ -145,6 +180,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         return dfe -> {
             User user = checkUser();
             ExtractRequest request = arg(dfe, "request", ExtractRequest.class);
+            logRequest("Extract", user, request);
             return extractService.extractAndUnstore(user, request);
         };
     }
@@ -153,6 +189,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         return dfe -> {
             User user = checkUser();
             DestroyRequest request = arg(dfe, "request", DestroyRequest.class);
+            logRequest("Destroy", user, request);
             return destructionService.destroyAndUnstore(user, request);
         };
     }
@@ -161,6 +198,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         return dfe -> {
             User user = checkUser();
             SlotCopyRequest request = arg(dfe, "request", SlotCopyRequest.class);
+            logRequest("SlotCopy", user, request);
             return slotCopyService.perform(user, request);
         };
     }
