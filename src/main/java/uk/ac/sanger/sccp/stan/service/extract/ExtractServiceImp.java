@@ -29,7 +29,6 @@ public class ExtractServiceImp implements ExtractService {
     private final LabwareRepo labwareRepo;
     private final LabwareTypeRepo lwTypeRepo;
     private final OperationTypeRepo opTypeRepo;
-    private final BioStateRepo bioStateRepo;
     private final SampleRepo sampleRepo;
     private final SlotRepo slotRepo;
 
@@ -37,7 +36,7 @@ public class ExtractServiceImp implements ExtractService {
     public ExtractServiceImp(Transactor transactor, LabwareValidatorFactory labwareValidatorFactory,
                              LabwareService labwareService, OperationService opService,
                              StoreService storeService, LabwareRepo labwareRepo, LabwareTypeRepo lwTypeRepo, OperationTypeRepo opTypeRepo,
-                             BioStateRepo bioStateRepo, SampleRepo sampleRepo, SlotRepo slotRepo) {
+                             SampleRepo sampleRepo, SlotRepo slotRepo) {
         this.transactor = transactor;
         this.labwareValidatorFactory = labwareValidatorFactory;
         this.labwareService = labwareService;
@@ -46,7 +45,6 @@ public class ExtractServiceImp implements ExtractService {
         this.labwareRepo = labwareRepo;
         this.lwTypeRepo = lwTypeRepo;
         this.opTypeRepo = opTypeRepo;
-        this.bioStateRepo = bioStateRepo;
         this.sampleRepo = sampleRepo;
         this.slotRepo = slotRepo;
     }
@@ -79,10 +77,11 @@ public class ExtractServiceImp implements ExtractService {
         }
         LabwareType labwareType = lwTypeRepo.getByName(request.getLabwareType());
         OperationType opType = opTypeRepo.getByName("Extract");
-        BioState bioState = bioStateRepo.getByName("RNA");
+        BioState bioState = opType.getNewBioState();
         List<Labware> sources = loadAndValidateLabware(request.getBarcodes());
-
-        sources = discardSources(sources);
+        if (opType.discardSource()) {
+            sources = discardSources(sources);
+        }
         Map<Labware, Labware> labwareMap = createNewLabware(labwareType, sources);
         createSamples(labwareMap, bioState);
         List<Operation> ops = createOperations(user, opType, labwareMap);
@@ -145,7 +144,7 @@ public class ExtractServiceImp implements ExtractService {
             Slot slot = sourceSlot(entry.getKey());
             Sample oldSample = slot.getSamples().get(0);
             Sample newSample;
-            if (oldSample.getBioState().equals(bioState)) {
+            if (bioState==null || oldSample.getBioState().equals(bioState)) {
                 newSample = oldSample;
             } else {
                 newSample = sampleRepo.save(new Sample(null, oldSample.getSection(), oldSample.getTissue(), bioState));

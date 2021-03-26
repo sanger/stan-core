@@ -39,8 +39,8 @@ public class TestOperationRepo {
     @Test
     @Transactional
     public void testFindAllByOperationTypeAndSampleIdIn() {
-        OperationType opType1 = entityCreator.createOpType("Alpha");
-        OperationType opType2 = entityCreator.createOpType("Beta");
+        OperationType opType1 = entityCreator.createOpType("Alpha", null);
+        OperationType opType2 = entityCreator.createOpType("Beta", null);
 
         Donor donor = entityCreator.createDonor("DONOR1");
         Tissue tissue = entityCreator.createTissue(donor, "TISSUE1");

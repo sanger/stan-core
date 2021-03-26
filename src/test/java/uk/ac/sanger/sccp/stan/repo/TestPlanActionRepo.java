@@ -114,7 +114,7 @@ public class TestPlanActionRepo {
         LabwareType lt = entityCreator.createLabwareType("2x2", 2, 2);
         Labware labware = entityCreator.createLabware("STAN-001", lt);
         User user = entityCreator.createUser("dr6");
-        OperationType opType = entityCreator.createOpType("Paint");
+        OperationType opType = entityCreator.createOpType("Paint", null);
         List<Slot> slots = labware.getSlots();
         PlanOperation plan = entityCreator.createPlan(opType, user, sourceSlot, slots.get(0), sourceSlot, slots.get(1));
         List<PlanAction> actual = planActionRepo.findAllByDestinationLabwareId(labware.getId());

@@ -22,7 +22,6 @@ public class RegisterServiceImp implements RegisterService {
     private final SampleRepo sampleRepo;
     private final SlotRepo slotRepo;
     private final OperationTypeRepo opTypeRepo;
-    private final BioStateRepo bioStateRepo;
     private final LabwareService labwareService;
     private final OperationService operationService;
     private final RegisterClashChecker clashChecker;
@@ -31,7 +30,7 @@ public class RegisterServiceImp implements RegisterService {
     public RegisterServiceImp(EntityManager entityManager, RegisterValidationFactory validationFactory,
                               DonorRepo donorRepo, TissueRepo tissueRepo,
                               SampleRepo sampleRepo, SlotRepo slotRepo,
-                              OperationTypeRepo opTypeRepo, BioStateRepo bioStateRepo,
+                              OperationTypeRepo opTypeRepo,
                               LabwareService labwareService, OperationService operationService, RegisterClashChecker clashChecker) {
         this.entityManager = entityManager;
         this.validationFactory = validationFactory;
@@ -40,7 +39,6 @@ public class RegisterServiceImp implements RegisterService {
         this.sampleRepo = sampleRepo;
         this.slotRepo = slotRepo;
         this.opTypeRepo = opTypeRepo;
-        this.bioStateRepo = bioStateRepo;
         this.labwareService = labwareService;
         this.operationService = operationService;
         this.clashChecker = clashChecker;
@@ -123,7 +121,8 @@ public class RegisterServiceImp implements RegisterService {
         Map<String, Tissue> tissues = createTissues(request, validation);
 
         List<Labware> labwareList = new ArrayList<>(request.getBlocks().size());
-        BioState bioState = bioStateRepo.getByName("Tissue");
+        OperationType opType = opTypeRepo.getByName("Register");
+        BioState bioState = opType.getNewBioState();
 
         for (BlockRegisterRequest block : request.getBlocks()) {
             Tissue tissue = tissues.get(block.getExternalIdentifier().toUpperCase());
@@ -137,8 +136,7 @@ public class RegisterServiceImp implements RegisterService {
             slot = slotRepo.save(slot);
             entityManager.refresh(labware);
             labwareList.add(labware);
-            OperationType operationType = opTypeRepo.getByName("Register");
-            operationService.createOperationInPlace(operationType, user, slot, sample);
+            operationService.createOperationInPlace(opType, user, slot, sample);
         }
 
         return new RegisterResult(labwareList);

@@ -395,7 +395,7 @@ public class TestSectionRegisterService {
         slotB1.getSamples().add(samples[2]);
         slotB2.getSamples().add(samples[3]);
 
-        Operation op = new Operation(200, new OperationType(1, "Register"), null, null, null);
+        Operation op = new Operation(200, new OperationType(1, "Register", 0, bs), null, null, null);
 
         List<SectionRegisterContent> contents = List.of(
                 content(A1, xns[0], 14),

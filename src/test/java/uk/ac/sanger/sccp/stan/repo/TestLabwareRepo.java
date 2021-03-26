@@ -9,11 +9,14 @@ import uk.ac.sanger.sccp.stan.model.LabwareType;
 
 import javax.persistence.EntityNotFoundException;
 import javax.transaction.Transactional;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -42,6 +45,9 @@ public class TestLabwareRepo {
 
         assertEquals(labwareRepo.getByBarcode(barcode), lw);
         assertTrue(labwareRepo.existsByBarcode(barcode));
+        LocalDateTime created = lw.getCreated();
+        assertNotNull(created);
+        assertThat(created).isCloseToUtcNow(within(1, ChronoUnit.MINUTES));
 
         assertThrows(EntityNotFoundException.class, () -> labwareRepo.getByBarcode("STAN-404"));
         assertFalse(labwareRepo.existsByBarcode("STAN-404"));

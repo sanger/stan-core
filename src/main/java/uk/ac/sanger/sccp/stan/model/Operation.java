@@ -5,7 +5,7 @@ import org.hibernate.annotations.*;
 
 import javax.persistence.Entity;
 import javax.persistence.*;
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 
@@ -23,7 +23,7 @@ public class Operation {
     private OperationType operationType;
 
     @Generated(GenerationTime.INSERT)
-    private Timestamp performed;
+    private LocalDateTime performed;
 
     @OneToMany
     @JoinColumn(name="operation_id")
@@ -36,7 +36,7 @@ public class Operation {
 
     public Operation() {}
 
-    public Operation(Integer id, OperationType operationType, Timestamp performed, List<Action> actions, User user,
+    public Operation(Integer id, OperationType operationType, LocalDateTime performed, List<Action> actions, User user,
                      Integer planOperationId) {
         this.id = id;
         this.operationType = operationType;
@@ -46,7 +46,7 @@ public class Operation {
         this.planOperationId = planOperationId;
     }
 
-    public Operation(Integer id, OperationType operationType, Timestamp performed, List<Action> actions, User user) {
+    public Operation(Integer id, OperationType operationType, LocalDateTime performed, List<Action> actions, User user) {
         this(id, operationType, performed, actions, user, null);
     }
 
@@ -58,11 +58,11 @@ public class Operation {
         this.id = id;
     }
 
-    public Timestamp getPerformed() {
+    public LocalDateTime getPerformed() {
         return this.performed;
     }
 
-    public void setPerformed(Timestamp performed) {
+    public void setPerformed(LocalDateTime performed) {
         this.performed = performed;
     }
 

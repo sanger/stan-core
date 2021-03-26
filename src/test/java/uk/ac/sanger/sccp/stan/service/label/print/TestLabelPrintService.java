@@ -9,7 +9,7 @@ import uk.ac.sanger.sccp.stan.service.label.*;
 import uk.ac.sanger.sccp.stan.service.label.LabwareLabelData.LabelContent;
 
 import java.io.IOException;
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.IntStream;
 
@@ -71,11 +71,11 @@ public class TestLabelPrintService {
     public void testPrintLabwareSuccessful() throws IOException {
         when(mockPrinterRepo.getByName(printer.getName())).thenReturn(printer);
         List<LabwareLabelData> labelData = List.of(
-                new LabwareLabelData(labware.get(0).getBarcode(), "None", List.of(
+                new LabwareLabelData(labware.get(0).getBarcode(), "None", "2021-03-17", List.of(
                         new LabelContent("DONOR1", "TISSUE1", 2, 3),
                         new LabelContent("DONOR2", "TISSUE2", 3, 4)
                 )),
-                new LabwareLabelData(labware.get(1).getBarcode(), "None", List.of(
+                new LabwareLabelData(labware.get(1).getBarcode(), "None", "2021-03-16", List.of(
                         new LabelContent("DONOR3", "TISSUE3", 4)
                 ))
         );
@@ -123,7 +123,7 @@ public class TestLabelPrintService {
 
     @Test
     public void testRecordPrint() {
-        Timestamp now = new Timestamp(System.currentTimeMillis());
+        LocalDateTime now = LocalDateTime.now();
         List<LabwarePrint> results = List.of(
                 new LabwarePrint(10, printer, labware.get(0), user, now),
                 new LabwarePrint(11, printer, labware.get(1), user, now)
@@ -139,11 +139,11 @@ public class TestLabelPrintService {
     public void testFindPrinters() {
         LabelType labelType = EntityFactory.getLabelType();
         when(mockLabelTypeRepo.getByName(labelType.getName())).thenReturn(labelType);
-        Printer printer2 = new Printer(2, "printer 2", new LabelType(2, "label type 2"), Printer.Service.sprint);
+        Printer printer2 = new Printer(2, "printer 2", List.of(new LabelType(2, "label type 2")), Printer.Service.sprint);
         List<Printer> allPrinters = List.of(this.printer, printer2);
         when(mockPrinterRepo.findAll()).thenReturn(allPrinters);
         List<Printer> somePrinters = List.of(this.printer);
-        when(mockPrinterRepo.findAllByLabelType(labelType)).thenReturn(somePrinters);
+        when(mockPrinterRepo.findAllByLabelTypes(labelType)).thenReturn(somePrinters);
 
         assertSame(allPrinters, labelPrintService.findPrinters(null));
         assertSame(somePrinters, labelPrintService.findPrinters(labelType.getName()));

@@ -3,7 +3,11 @@ package uk.ac.sanger.sccp.stan.service.releasefile;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.utils.tsv.TsvColumn;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.function.Function;
+
+import static java.util.stream.Collectors.toList;
 
 public enum ReleaseColumn implements TsvColumn<ReleaseEntry> {
     Barcode(Compose.labware, Labware::getBarcode),
@@ -15,14 +19,24 @@ public enum ReleaseColumn implements TsvColumn<ReleaseEntry> {
     Spatial_location(Compose.tissue, Tissue::getSpatialLocation, SpatialLocation::getCode),
     Replicate_number(Compose.tissue, Tissue::getReplicate),
     Section_number(Compose.sample, Sample::getSection),
-    Last_section_number(ReleaseEntry::getLastSection),
-    Source_barcode(ReleaseEntry::getOriginalBarcode),
+    Last_section_number(ReleaseEntry::getLastSection, ReleaseFileMode.NORMAL),
+    Source_barcode(ReleaseEntry::getSourceBarcode),
+    Source_address(ReleaseEntry::getSourceAddress, ReleaseFileMode.CDNA),
     Section_thickness(ReleaseEntry::getSectionThickness),
     ;
 
-    ReleaseColumn(Function<ReleaseEntry, ?> function) {
+    private final Function<ReleaseEntry, ?> function;
+    private final ReleaseFileMode mode;
+
+    ReleaseColumn(Function<ReleaseEntry, ?> function, ReleaseFileMode mode) {
         this.function = function;
+        this.mode = mode;
     }
+
+    ReleaseColumn(Function<ReleaseEntry, ?> function) {
+        this(function, (ReleaseFileMode) null);
+    }
+
 
     <E> ReleaseColumn(Function<ReleaseEntry, E> composition, Function<E, ?> function) {
         this(composition.andThen(Compose.skipNull(function)));
@@ -32,7 +46,9 @@ public enum ReleaseColumn implements TsvColumn<ReleaseEntry> {
         this(composition.andThen(Compose.skipNull(func1)).andThen(Compose.skipNull(func2)));
     }
 
-    private final Function<ReleaseEntry, ?> function;
+    public ReleaseFileMode getMode() {
+        return this.mode;
+    }
 
     @Override
     public String get(ReleaseEntry entry) {
@@ -43,6 +59,10 @@ public enum ReleaseColumn implements TsvColumn<ReleaseEntry> {
     @Override
     public String toString() {
         return this.name().replace('_',' ');
+    }
+
+    public static List<ReleaseColumn> forMode(ReleaseFileMode mode) {
+        return Arrays.stream(values()).filter(rc -> rc.mode==null || rc.mode==mode).collect(toList());
     }
 
     private static class Compose {

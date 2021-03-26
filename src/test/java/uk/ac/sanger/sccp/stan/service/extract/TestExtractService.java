@@ -14,7 +14,7 @@ import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.store.StoreService;
 
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
@@ -37,7 +37,6 @@ public class TestExtractService {
     private LabwareRepo mockLwRepo;
     private LabwareTypeRepo mockLtRepo;
     private OperationTypeRepo mockOpTypeRepo;
-    private BioStateRepo mockBioStateRepo;
     private SampleRepo mockSampleRepo;
     private SlotRepo mockSlotRepo;
 
@@ -61,16 +60,15 @@ public class TestExtractService {
         mockLwRepo = mock(LabwareRepo.class);
         mockLtRepo = mock(LabwareTypeRepo.class);
         mockOpTypeRepo = mock(OperationTypeRepo.class);
-        mockBioStateRepo = mock(BioStateRepo.class);
         mockSampleRepo = mock(SampleRepo.class);
         mockSlotRepo = mock(SlotRepo.class);
 
-        opType = new OperationType(10, "Extract");
         rnaBioState = new BioState(2, "RNA");
+        opType = EntityFactory.makeOperationType("Extract", rnaBioState, OperationTypeFlag.DISCARD_SOURCE);
         lwType = new LabwareType(6, "lwtype", 1, 1, EntityFactory.getLabelType(), false);
 
         service = spy(new ExtractServiceImp(mockTransactor, mockLabwareValidatorFactory, mockLwService, mockOpService,
-                mockStoreService, mockLwRepo, mockLtRepo, mockOpTypeRepo, mockBioStateRepo, mockSampleRepo, mockSlotRepo));
+                mockStoreService, mockLwRepo, mockLtRepo, mockOpTypeRepo, mockSampleRepo, mockSlotRepo));
     }
 
     @Test
@@ -124,7 +122,6 @@ public class TestExtractService {
         User user = EntityFactory.getUser();
         when(mockLtRepo.getByName(ltName)).thenReturn(lwType);
         when(mockOpTypeRepo.getByName(opType.getName())).thenReturn(opType);
-        when(mockBioStateRepo.getByName(rnaBioState.getName())).thenReturn(rnaBioState);
 
         Labware src = EntityFactory.getTube();
         Labware dst = EntityFactory.makeEmptyLabware(lwType);
@@ -285,7 +282,7 @@ public class TestExtractService {
             List<Action> actions = invocation.getArgument(2);
             Integer planId = invocation.getArgument(3);
             int opId = 100 + createdOps.size();
-            Operation op = new Operation(opId, opType, new Timestamp(System.currentTimeMillis()), actions, user, planId);
+            Operation op = new Operation(opId, opType, LocalDateTime.now(), actions, user, planId);
             createdOps.add(op);
             return op;
         });

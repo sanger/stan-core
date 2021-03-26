@@ -65,8 +65,8 @@ public class TestPlanValidation {
 
     @Test
     public void testValidateOperation() {
-        OperationType sectionOpType = EntityFactory.makeOperationType("Section", OperationTypeFlag.SOURCE_IS_BLOCK);
-        OperationType registerOpType = EntityFactory.makeOperationType("Register", OperationTypeFlag.IN_PLACE);
+        OperationType sectionOpType = EntityFactory.makeOperationType("Section", null, OperationTypeFlag.SOURCE_IS_BLOCK);
+        OperationType registerOpType = EntityFactory.makeOperationType("Register", null, OperationTypeFlag.IN_PLACE);
         final List<OperationType> opTypes = List.of(sectionOpType, registerOpType);
         when(mockOpTypeRepo.findByName(anyString())).then(invocation -> {
             final String name = invocation.getArgument(0);
@@ -130,7 +130,7 @@ public class TestPlanValidation {
     public void testValidateSourcesNoLabware() {
         PlanRequest request = new PlanRequest("Section", List.of());
         PlanValidationImp validation = makeValidation(request);
-        validation.validateSources(EntityFactory.makeOperationType("Section"));
+        validation.validateSources(EntityFactory.makeOperationType("Section", null));
         assertThat(validation.problems).isEmpty();
     }
 
@@ -217,12 +217,12 @@ public class TestPlanValidation {
 
         Address A1 = new Address(1,1);
 
-        OperationType sectionOpType = EntityFactory.makeOperationType("Section", OperationTypeFlag.SOURCE_IS_BLOCK);
+        OperationType sectionOpType = EntityFactory.makeOperationType("Section", null, OperationTypeFlag.SOURCE_IS_BLOCK);
         OperationType nonSectionOpType = mock(OperationType.class);
         when(nonSectionOpType.getName()).thenReturn("Nonsection");
         when(nonSectionOpType.canPrelabel()).thenReturn(true);
         when(nonSectionOpType.canCreateSection()).thenReturn(false);
-        OperationType otherOpType = EntityFactory.makeOperationType("Other");
+        OperationType otherOpType = EntityFactory.makeOperationType("Other", null);
 
         return Stream.of(
                 Arguments.of(List.of(), List.of(), null, null, sectionOpType, null),

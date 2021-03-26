@@ -5,7 +5,7 @@ import org.hibernate.annotations.Generated;
 import org.hibernate.annotations.GenerationTime;
 
 import javax.persistence.*;
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.Objects;
 
 /**
@@ -24,11 +24,11 @@ public class LabwarePrint {
     @ManyToOne
     private User user;
     @Generated(GenerationTime.INSERT)
-    private Timestamp printed;
+    private LocalDateTime printed;
 
     public LabwarePrint() {}
 
-    public LabwarePrint(Integer id, Printer printer, Labware labware, User user, Timestamp printed) {
+    public LabwarePrint(Integer id, Printer printer, Labware labware, User user, LocalDateTime printed) {
         this.id = id;
         this.printer = printer;
         this.labware = labware;
@@ -72,11 +72,11 @@ public class LabwarePrint {
         this.user = user;
     }
 
-    public Timestamp getPrinted() {
+    public LocalDateTime getPrinted() {
         return this.printed;
     }
 
-    public void setPrinted(Timestamp printed) {
+    public void setPrinted(LocalDateTime printed) {
         this.printed = printed;
     }
 

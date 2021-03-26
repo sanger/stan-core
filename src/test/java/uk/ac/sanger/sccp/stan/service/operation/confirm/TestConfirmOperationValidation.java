@@ -153,7 +153,7 @@ public class TestConfirmOperationValidation {
         List<Labware> labware = IntStream.range(0, 3).mapToObj(i -> EntityFactory.makeEmptyLabware(lt)).collect(toList());
         Labware otherLabware = EntityFactory.makeEmptyLabware(lt);
         Labware source = EntityFactory.makeLabware(lt, EntityFactory.getSample());
-        OperationType opType = EntityFactory.makeOperationType("Section");
+        OperationType opType = EntityFactory.makeOperationType("Section", null);
         PlanOperation plan1 = EntityFactory.makePlanForLabware(opType, List.of(source), List.of(labware.get(0), otherLabware));
         PlanOperation plan2 = EntityFactory.makePlanForLabware(opType, List.of(source), labware.subList(0,2));
         when(mockPlanOpRepo.findAllByDestinationIdIn(any())).thenReturn(List.of(plan1, plan2));
@@ -173,7 +173,7 @@ public class TestConfirmOperationValidation {
         LabwareType lt = EntityFactory.getTubeType();
         List<Labware> labware = IntStream.range(0, 2).mapToObj(i -> EntityFactory.makeEmptyLabware(lt)).collect(toList());
         Labware source = EntityFactory.makeLabware(lt, EntityFactory.getSample());
-        OperationType opType = EntityFactory.makeOperationType("Section");
+        OperationType opType = EntityFactory.makeOperationType("Section", null);
         PlanOperation plan = EntityFactory.makePlanForLabware(opType, List.of(source), labware.subList(0, 1));
         Map<Integer, PlanOperation> planMap = Map.of(labware.get(0).getId(), plan);
 
@@ -199,7 +199,7 @@ public class TestConfirmOperationValidation {
         String bc = lw.getBarcode();
         Labware otherLabware = EntityFactory.makeEmptyLabware(lt);
         Labware source = EntityFactory.makeLabware(EntityFactory.getTubeType(), EntityFactory.getSample());
-        OperationType opType = EntityFactory.makeOperationType("Section");
+        OperationType opType = EntityFactory.makeOperationType("Section", null);
         PlanOperation plan = EntityFactory.makePlanForSlots(opType, List.of(source.getFirstSlot()),
                 List.of(lw.getFirstSlot(), otherLabware.getFirstSlot(), otherLabware.getSlots().get(1)),
                 null);

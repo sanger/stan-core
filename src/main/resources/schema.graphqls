@@ -58,6 +58,10 @@ type Donor {
     species: Species!
 }
 
+type BioState {
+    name: String!
+}
+
 type Tissue {
     externalName: String!,
     replicate: Int!,
@@ -70,9 +74,10 @@ type Tissue {
 }
 
 type Sample {
-    id: Int!,
-    section: Int,
-    tissue: Tissue!,
+    id: Int!
+    section: Int
+    tissue: Tissue!
+    bioState: BioState!
 }
 
 type Slot {
@@ -211,6 +216,18 @@ input ConfirmOperationRequest {
     labware: [ConfirmOperationLabware!]!,
 }
 
+input SlotCopyContent {
+    sourceBarcode: String!
+    sourceAddress: Address!
+    destinationAddress: Address!
+}
+
+input SlotCopyRequest {
+    labwareType: String!
+    operationType: String!
+    contents: [SlotCopyContent!]!
+}
+
 type Action {
     source: Slot!,
     destination: Slot!,
@@ -237,8 +254,8 @@ type PlanResult {
 }
 
 type Printer {
-    name: String!,
-    labelType: LabelType!,
+    name: String!
+    labelTypes: [LabelType!]!
 }
 
 type Comment {
@@ -412,6 +429,7 @@ type Mutation {
     release(request: ReleaseRequest!): ReleaseResult!
     extract(request: ExtractRequest!): OperationResult!
     destroy(request: DestroyRequest!): DestroyResult!
+    slotCopy(request: SlotCopyRequest!): OperationResult!
 
     storeBarcode(barcode: String!, locationBarcode: String!, address: Address): StoredItem!
     unstoreBarcode(barcode: String!): UnstoredItem

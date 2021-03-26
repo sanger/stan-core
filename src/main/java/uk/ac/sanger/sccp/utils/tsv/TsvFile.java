@@ -9,16 +9,16 @@ import java.util.List;
 public class TsvFile<E> implements TsvData<TsvColumn<E>, String> {
     private final String filename;
     private final List<E> entries;
-    private final List<TsvColumn<E>> columns;
+    private final List<? extends TsvColumn<E>> columns;
 
-    public TsvFile(String filename, List<E> entries, List<TsvColumn<E>> columns) {
+    public TsvFile(String filename, List<E> entries, List<? extends TsvColumn<E>> columns) {
         this.filename = filename;
         this.entries = entries;
         this.columns = columns;
     }
 
     @Override
-    public List<TsvColumn<E>> getColumns() {
+    public List<? extends TsvColumn<E>> getColumns() {
         return this.columns;
     }
 

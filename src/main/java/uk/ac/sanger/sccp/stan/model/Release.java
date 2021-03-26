@@ -5,7 +5,7 @@ import org.hibernate.annotations.Generated;
 import org.hibernate.annotations.GenerationTime;
 
 import javax.persistence.*;
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.Objects;
 
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
@@ -34,7 +34,7 @@ public class Release {
     private ReleaseRecipient recipient;
 
     @Generated(GenerationTime.INSERT)
-    private Timestamp released;
+    private LocalDateTime released;
 
     private Integer snapshotId;
 
@@ -44,7 +44,7 @@ public class Release {
         this(null, labware, user, destination, recipient, snapshotId, null);
     }
 
-    public Release(Integer id, Labware labware, User user, ReleaseDestination destination, ReleaseRecipient recipient, Integer snapshotId, Timestamp released) {
+    public Release(Integer id, Labware labware, User user, ReleaseDestination destination, ReleaseRecipient recipient, Integer snapshotId, LocalDateTime released) {
         this.id = id;
         this.labware = labware;
         this.user = user;
@@ -86,11 +86,11 @@ public class Release {
         this.recipient = recipient;
     }
 
-    public Timestamp getReleased() {
+    public LocalDateTime getReleased() {
         return this.released;
     }
 
-    public void setReleased(Timestamp released) {
+    public void setReleased(LocalDateTime released) {
         this.released = released;
     }
 

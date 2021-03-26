@@ -1,8 +1,11 @@
 package uk.ac.sanger.sccp.stan.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import org.hibernate.annotations.Generated;
+import org.hibernate.annotations.GenerationTime;
 
 import javax.persistence.*;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 
@@ -30,6 +33,9 @@ public class Labware {
     private boolean discarded;
     private boolean released;
     private boolean destroyed;
+
+    @Generated(GenerationTime.INSERT)
+    private LocalDateTime created;
 
     public Labware() {}
 
@@ -82,6 +88,14 @@ public class Labware {
 
     public Slot getFirstSlot() {
         return this.slots.get(0);
+    }
+
+    public void setCreated(LocalDateTime created) {
+        this.created = created;
+    }
+
+    public LocalDateTime getCreated() {
+        return this.created;
     }
 
     /**

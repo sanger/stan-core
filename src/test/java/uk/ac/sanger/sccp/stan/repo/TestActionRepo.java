@@ -41,7 +41,7 @@ public class TestActionRepo {
         Labware lw2 = entityCreator.createLabware("STAN-02", lt, sample);
         Slot slot1 = lw1.getFirstSlot();
         Slot slot2 = lw2.getFirstSlot();
-        OperationType opType = entityCreator.createOpType("optype");
+        OperationType opType = entityCreator.createOpType("optype", null);
         Operation op = opRepo.save(new Operation(null, opType, null, null, user));
         Action action = actionRepo.save(new Action(null, op.getId(), slot1, slot2, sample, sample));
 
