@@ -1,6 +1,7 @@
 package uk.ac.sanger.sccp.stan.model;
 
 import javax.persistence.*;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -15,8 +16,10 @@ public class Printer {
     private Integer id;
 
     private String name;
-    @ManyToOne
-    private LabelType labelType;
+    @ManyToMany
+    @JoinTable(name = "printer_label_type", inverseJoinColumns = @JoinColumn(name="label_type_id"))
+    @OrderBy("id")
+    private List<LabelType> labelTypes;
 
     @Column(columnDefinition = "enum('sprint')")
     @Enumerated(EnumType.STRING)
@@ -24,10 +27,10 @@ public class Printer {
 
     public Printer() {}
 
-    public Printer(Integer id, String name, LabelType labelType, Service service) {
+    public Printer(Integer id, String name, List<LabelType> labelTypes, Service service) {
         this.id = id;
         this.name = name;
-        this.labelType = labelType;
+        this.labelTypes = labelTypes;
         this.service = service;
     }
 
@@ -47,12 +50,12 @@ public class Printer {
         this.name = name;
     }
 
-    public LabelType getLabelType() {
-        return this.labelType;
+    public List<LabelType> getLabelTypes() {
+        return this.labelTypes;
     }
 
-    public void setLabelType(LabelType labelType) {
-        this.labelType = labelType;
+    public void setLabelTypes(List<LabelType> labelTypes) {
+        this.labelTypes = labelTypes;
     }
 
     public Service getService() {
@@ -70,7 +73,7 @@ public class Printer {
         Printer that = (Printer) o;
         return (Objects.equals(this.id, that.id)
                 && Objects.equals(this.name, that.name)
-                && Objects.equals(this.labelType, that.labelType)
+                && Objects.equals(this.labelTypes, that.labelTypes)
                 && this.service == that.service);
     }
 

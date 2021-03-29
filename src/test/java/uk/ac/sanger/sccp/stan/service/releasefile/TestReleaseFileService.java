@@ -2,6 +2,8 @@ package uk.ac.sanger.sccp.stan.service.releasefile;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.*;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
@@ -9,7 +11,7 @@ import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.Ancestry;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
 
 import javax.persistence.EntityNotFoundException;
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -87,12 +89,12 @@ public class TestReleaseFileService {
     }
 
     private Release release(int id, Labware lw, Snapshot snap) {
-        return new Release(id, lw, user, destination, recipient, snap.getId(), new Timestamp(System.currentTimeMillis()));
+        return new Release(id, lw, user, destination, recipient, snap.getId(), LocalDateTime.now());
     }
 
     @Test
-    public void testGetReleaseEntries() {
-        assertThat(service.getReleaseEntries(List.of())).isEmpty();
+    public void testGetReleaseFileContent() {
+        assertThat(service.getReleaseFileContent(List.of()).getEntries()).isEmpty();
 
         setupReleases();
         final Map<Integer, Snapshot> snapshots = snapMap();
@@ -110,12 +112,16 @@ public class TestReleaseFileService {
         doReturn(entries.subList(2,3).stream()).when(service).toReleaseEntries(release2, sampleMap, snapshots);
         var ancestry = makeAncestry(lw1, sample1, lw2, sample);
         doReturn(ancestry).when(service).findAncestry(any());
+        ReleaseFileMode mode = ReleaseFileMode.NORMAL;
+        doReturn(mode).when(service).checkMode(any());
         doNothing().when(service).loadLastSection(any());
-        doNothing().when(service).loadOriginalBarcodes(any(), any());
+        doNothing().when(service).loadSources(any(), any(), any());
         doNothing().when(service).loadSectionThickness(any(), any());
 
         List<Integer> releaseIds = List.of(this.release1.getId(), release2.getId());
-        assertEquals(entries, service.getReleaseEntries(releaseIds));
+        ReleaseFileContent rfc = service.getReleaseFileContent(releaseIds);
+        assertEquals(entries, rfc.getEntries());
+        assertEquals(mode, rfc.getMode());
 
         verify(service).getReleases(releaseIds);
         verify(service).loadSamples(releases, snapshots);
@@ -123,8 +129,38 @@ public class TestReleaseFileService {
         verify(service).toReleaseEntries(release2, sampleMap, snapshots);
         verify(service).loadLastSection(entries);
         verify(service).findAncestry(entries);
-        verify(service).loadOriginalBarcodes(entries, ancestry);
+        verify(service).loadSources(entries, ancestry, mode);
         verify(service).loadSectionThickness(entries, ancestry);
+    }
+
+    @ParameterizedTest
+    @MethodSource("checkModeArgs")
+    public void testCheckMode(Collection<Sample> samples, Object expectedOutcome) {
+        if (expectedOutcome instanceof String) {
+            String expectedErrorMessage = (String) expectedOutcome;
+            assertThat(
+                    assertThrows(IllegalArgumentException.class, () -> service.checkMode(samples))
+            ).hasMessage(expectedErrorMessage);
+        } else {
+            assertEquals(expectedOutcome, service.checkMode(samples));
+        }
+    }
+
+    static Stream<Arguments> checkModeArgs() {
+        Tissue tissue = EntityFactory.getTissue();
+        String errorMessage = "Cannot create a release file with a mix of " +
+                "cDNA and other bio states.";
+        BioState[] bss = IntStream.range(1, 4)
+                .mapToObj(i -> new BioState(i, i==1 ? "Tissue" : i==2 ? "RNA" : "cDNA"))
+                .toArray(BioState[]::new);
+        Sample[] samples = IntStream.range(1,5)
+                .mapToObj(i -> new Sample(i, i, tissue, bss[Math.min(i, bss.length)-1]))
+                .toArray(Sample[]::new);
+        return Stream.of(
+                Arguments.of(List.of(samples[0], samples[1]), ReleaseFileMode.NORMAL),
+                Arguments.of(List.of(samples[2], samples[3]), ReleaseFileMode.CDNA),
+                Arguments.of(List.of(samples[0], samples[2]), errorMessage)
+        );
     }
 
     @Test
@@ -185,7 +221,6 @@ public class TestReleaseFileService {
     public void testLoadLastSection() {
         LabwareType lt = EntityFactory.getTubeType();
         Sample sampleA = EntityFactory.getSample();
-        Tissue tissueA = sampleA.getTissue();
         Tissue tissueB = EntityFactory.makeTissue(EntityFactory.getDonor(), EntityFactory.getSpatialLocation());
         Sample sampleB = new Sample(60, null, tissueB, EntityFactory.getBioState());
         Sample[] samples = { sampleA, sampleB, sampleA, sampleA, sampleB, sampleA };
@@ -207,16 +242,13 @@ public class TestReleaseFileService {
                 })
                 .toArray(Labware[]::new);
 
-        when(mockSampleRepo.findMaxSectionForTissueId(tissueA.getId())).thenReturn(OptionalInt.of(4));
-        when(mockSampleRepo.findMaxSectionForTissueId(tissueB.getId())).thenReturn(OptionalInt.empty());
-
         List<ReleaseEntry> entries = Arrays.stream(labware)
                 .map(lw -> new ReleaseEntry(lw, lw.getFirstSlot(), lw.getFirstSlot().getSamples().get(0)))
                 .collect(toList());
 
         service.loadLastSection(entries);
 
-        Integer[] expectedLastSection = {6, 6, 4, 4, null, null};
+        Integer[] expectedLastSection = {6, 6, 2, null, null, null};
         IntStream.range(0, expectedLastSection.length).forEach(i ->
             assertEquals(expectedLastSection[i], entries.get(i).getLastSection(), "element "+i)
         );
@@ -246,6 +278,23 @@ public class TestReleaseFileService {
         assertSame(releases, service.getReleases(releaseIds));
     }
 
+    @ParameterizedTest
+    @EnumSource(ReleaseFileMode.class)
+    public void testLoadSources(ReleaseFileMode mode) {
+        setupLabware();
+        List<ReleaseEntry> entries = List.of(
+                new ReleaseEntry(lw1, lw1.getFirstSlot(), sample)
+        );
+        var ancestry = makeAncestry(
+                lw2, sample, lw1, sample
+        );
+        doNothing().when(service).loadOriginalBarcodes(any(), any());
+        doNothing().when(service).loadSourcesForCDNA(any(), any());
+        service.loadSources(entries, ancestry, mode);
+        verify(service, times(mode==ReleaseFileMode.NORMAL ? 1 : 0)).loadOriginalBarcodes(entries, ancestry);
+        verify(service, times(mode==ReleaseFileMode.CDNA ? 1 : 0)).loadSourcesForCDNA(entries, ancestry);
+    }
+
     @Test
     public void testLoadOriginalBarcodes() {
         setupLabware();
@@ -261,9 +310,40 @@ public class TestReleaseFileService {
                 new ReleaseEntry(lw1, lw1.getFirstSlot(), sample)
         );
         service.loadOriginalBarcodes(entries, ancestry);
-        assertEquals(lw0.getBarcode(), entries.get(0).getOriginalBarcode());
-        assertEquals(lw1.getBarcode(), entries.get(1).getOriginalBarcode());
-        assertEquals(lw0.getBarcode(), entries.get(2).getOriginalBarcode());
+        assertEquals(lw0.getBarcode(), entries.get(0).getSourceBarcode());
+        assertEquals(lw1.getBarcode(), entries.get(1).getSourceBarcode());
+        assertEquals(lw0.getBarcode(), entries.get(2).getSourceBarcode());
+    }
+
+    @Test
+    public void testLoadSourcesForCDNA() {
+        BioState bs = new BioState(1, "Tissue");
+        BioState cdna = new BioState(3, "cDNA");
+        Tissue tissue = EntityFactory.getTissue();
+        Sample[] samples = {
+                new Sample(1, 1, tissue, bs),
+                new Sample(2, 1, tissue, cdna),
+                new Sample(3, 1, tissue, cdna),
+        };
+        LabwareType lt = EntityFactory.getTubeType();
+        Labware[] labware = Arrays.stream(samples)
+                .map(sam -> EntityFactory.makeLabware(lt, sam))
+                .toArray(Labware[]::new);
+        var ancestry = makeAncestry(
+                labware[1], samples[1], labware[0], samples[0],
+                labware[2], samples[2], labware[1], samples[1]
+        );
+        Arrays.stream(labware).forEach(lw -> when(mockLabwareRepo.getById(lw.getId())).thenReturn(lw));
+        List<ReleaseEntry> entries = List.of(
+                new ReleaseEntry(labware[1], labware[1].getFirstSlot(), samples[1]),
+                new ReleaseEntry(labware[2], labware[2].getFirstSlot(), samples[2])
+        );
+        service.loadSourcesForCDNA(entries, ancestry);
+        final Address A1 = new Address(1, 1);
+        for (var entry : entries) {
+            assertEquals(labware[0].getBarcode(), entry.getSourceBarcode());
+            assertEquals(A1, entry.getSourceAddress());
+        }
     }
 
     @Test

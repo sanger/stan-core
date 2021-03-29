@@ -94,6 +94,6 @@ public class LabelPrintService {
             return printerRepo.findAll();
         }
         LabelType labelType = labelTypeRepo.getByName(labelTypeName);
-        return printerRepo.findAllByLabelType(labelType);
+        return printerRepo.findAllByLabelTypes(labelType);
     }
 }

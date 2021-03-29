@@ -5,7 +5,7 @@ import org.hibernate.annotations.*;
 
 import javax.persistence.Entity;
 import javax.persistence.*;
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 
@@ -24,7 +24,7 @@ public class PlanOperation {
     private OperationType operationType;
 
     @Generated(GenerationTime.INSERT)
-    private Timestamp planned;
+    private LocalDateTime planned;
 
     @OneToMany
     @JoinColumn(name="plan_operation_id")
@@ -35,7 +35,7 @@ public class PlanOperation {
 
     public PlanOperation() {}
 
-    public PlanOperation(Integer id, OperationType opType, Timestamp planned, List<PlanAction> planActions, User user) {
+    public PlanOperation(Integer id, OperationType opType, LocalDateTime planned, List<PlanAction> planActions, User user) {
         this.id = id;
         this.operationType = opType;
         this.planned = planned;
@@ -67,11 +67,11 @@ public class PlanOperation {
         this.planActions = planActions;
     }
 
-    public Timestamp getPlanned() {
+    public LocalDateTime getPlanned() {
         return this.planned;
     }
 
-    public void setPlanned(Timestamp planned) {
+    public void setPlanned(LocalDateTime planned) {
         this.planned = planned;
     }
 

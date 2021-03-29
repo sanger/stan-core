@@ -91,7 +91,8 @@ public class PlanServiceImp implements PlanService {
             if (prlw.getBarcode()==null || prlw.getBarcode().isEmpty()) {
                 lw = lwService.create(lt);
             } else {
-                lw = lwService.create(lt, prlw.getBarcode().toUpperCase());
+                String externalBarcode = prlw.getBarcode().toUpperCase();
+                lw = lwService.create(lt, externalBarcode, externalBarcode);
             }
             newLabware.add(lw);
         }

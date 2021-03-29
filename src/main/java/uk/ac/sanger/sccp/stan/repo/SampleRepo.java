@@ -22,6 +22,7 @@ public interface SampleRepo extends CrudRepository<Sample, Integer> {
      *
      * @param tissueId the id of tissue
      * @return the highest section number of any section with that tissue id
+     * @deprecated no current use case
      */
     default OptionalInt findMaxSectionForTissueId(int tissueId) {
         Integer maxInteger = _findMaxSectionForTissueId(tissueId);

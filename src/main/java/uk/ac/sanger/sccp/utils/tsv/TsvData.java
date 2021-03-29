@@ -12,7 +12,7 @@ public interface TsvData<C, E> {
      * but they are specified as a generic type to allow for them to be (for instance) an enum.
      * @return the columns of this tsv data
      */
-    List<C> getColumns();
+    List<? extends C> getColumns();
 
     /**
      * The number of rows (excluding the header row) of tsv data

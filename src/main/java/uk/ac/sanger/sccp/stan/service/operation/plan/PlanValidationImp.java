@@ -151,6 +151,8 @@ public class PlanValidationImp implements PlanValidation {
             checkActions(lw, lt);
             if (gotBarcode && !alreadySeen && labwareRepo.existsByBarcode(lw.getBarcode())) {
                 addProblem("Labware with the barcode "+lw.getBarcode()+" already exists in the database.");
+            } else if (gotBarcode && !alreadySeen && labwareRepo.existsByExternalBarcode(lw.getBarcode())) {
+                addProblem("Labware with the external barcode "+lw.getBarcode()+" already exists in the database.");
             }
         }
         if (!unknownTypes.isEmpty()) {

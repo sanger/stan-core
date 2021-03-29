@@ -1,13 +1,13 @@
 mutation {
-    editLocation(location: {barcode:"LOCATIONBARCODE"}, change: {description:"DESCRIPTION"}) {
+    editLocation(location: {barcode:"LOCATIONBARCODE"}, change: {name:"NAME"}) {
         id
         barcode
-        description
+        name
         address
         size { numRows numColumns }
-        children { barcode description address }
+        children { barcode name address }
         stored { barcode address }
-        parent { barcode description address }
+        parent { barcode name address }
         direction
     }
 }

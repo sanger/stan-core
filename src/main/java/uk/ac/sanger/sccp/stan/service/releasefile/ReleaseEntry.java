@@ -12,8 +12,9 @@ public class ReleaseEntry {
     private final Slot slot;
     private final Sample sample;
     private Integer lastSection;
-    private String originalBarcode;
+    private String sourceBarcode;
     private String sectionThickness;
+    private Address sourceAddress;
 
     public ReleaseEntry(Labware labware, Slot slot, Sample sample) {
         this.labware = labware;
@@ -41,12 +42,12 @@ public class ReleaseEntry {
         this.lastSection = lastSection;
     }
 
-    public void setOriginalBarcode(String originalBarcode) {
-        this.originalBarcode = originalBarcode;
+    public void setSourceBarcode(String sourceBarcode) {
+        this.sourceBarcode = sourceBarcode;
     }
 
-    public String getOriginalBarcode() {
-        return this.originalBarcode;
+    public String getSourceBarcode() {
+        return this.sourceBarcode;
     }
 
     public String getSectionThickness() {
@@ -55,6 +56,14 @@ public class ReleaseEntry {
 
     public void setSectionThickness(String sectionThickness) {
         this.sectionThickness = sectionThickness;
+    }
+
+    public Address getSourceAddress() {
+        return this.sourceAddress;
+    }
+
+    public void setSourceAddress(Address sourceAddress) {
+        this.sourceAddress = sourceAddress;
     }
 
     @Override
@@ -66,7 +75,8 @@ public class ReleaseEntry {
                 && Objects.equals(this.slot, that.slot)
                 && Objects.equals(this.sample, that.sample)
                 && Objects.equals(this.lastSection, that.lastSection)
-                && Objects.equals(this.originalBarcode, that.originalBarcode)
+                && Objects.equals(this.sourceBarcode, that.sourceBarcode)
+                && Objects.equals(this.sourceAddress, that.sourceAddress)
                 && Objects.equals(this.sectionThickness, that.sectionThickness));
     }
 

@@ -59,6 +59,7 @@ public class SprintClient extends BaseHttpClient implements PrintClient<LabelPri
     }
 
     // expose for mockery
+    @Override
     protected <T> T postJson(URL url, Object data, Class<T> jsonReturnType) throws IOException {
         return super.postJson(url, data, jsonReturnType);
     }

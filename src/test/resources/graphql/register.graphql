@@ -20,12 +20,20 @@ mutation {
     }) {
         labware {
             barcode
-        }
-        tissue {
-            externalName
-            donor {
-                species { name }
+            slots {
+                samples {
+                    tissue {
+                        externalName
+                        donor {
+                            species { name }
+                        }
+                    }
+                }
             }
+        }
+        clashes {
+            tissue { externalName }
+            labware { barcode }
         }
     }
 }

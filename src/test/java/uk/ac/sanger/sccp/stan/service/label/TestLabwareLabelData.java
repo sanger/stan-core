@@ -16,7 +16,7 @@ public class TestLabwareLabelData {
     @Test
     public void testFields() {
         LabwareLabelData data = new LabwareLabelData(
-                "STAN-123", "Butter",
+                "STAN-123", "Butter", "2021-03-17",
                 List.of(
                         new LabelContent("DONOR1", "TISSUE1", 1),
                         new LabelContent("DONOR2", "TISSUE2", 2, 3)
@@ -26,6 +26,7 @@ public class TestLabwareLabelData {
         assertThat(fields).isEqualTo(Map.of(
                 "barcode", "STAN-123",
                 "medium", "Butter",
+                "date", "2021-03-17",
 
                 "donor[0]", "DONOR1",
                 "tissue[0]", "TISSUE1",

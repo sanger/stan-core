@@ -1,8 +1,11 @@
 package uk.ac.sanger.sccp.stan.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import org.hibernate.annotations.Generated;
+import org.hibernate.annotations.GenerationTime;
 
 import javax.persistence.*;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 
@@ -17,6 +20,7 @@ public class Labware {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
     private String barcode;
+    private String externalBarcode;
 
     @ManyToOne
     private LabwareType labwareType;
@@ -29,6 +33,9 @@ public class Labware {
     private boolean discarded;
     private boolean released;
     private boolean destroyed;
+
+    @Generated(GenerationTime.INSERT)
+    private LocalDateTime created;
 
     public Labware() {}
 
@@ -55,6 +62,14 @@ public class Labware {
         this.barcode = barcode;
     }
 
+    public String getExternalBarcode() {
+        return this.externalBarcode;
+    }
+
+    public void setExternalBarcode(String externalBarcode) {
+        this.externalBarcode = externalBarcode;
+    }
+
     public LabwareType getLabwareType() {
         return this.labwareType;
     }
@@ -73,6 +88,14 @@ public class Labware {
 
     public Slot getFirstSlot() {
         return this.slots.get(0);
+    }
+
+    public void setCreated(LocalDateTime created) {
+        this.created = created;
+    }
+
+    public LocalDateTime getCreated() {
+        return this.created;
     }
 
     /**
@@ -127,6 +150,7 @@ public class Labware {
         Labware that = (Labware) o;
         return (Objects.equals(this.id, that.id)
                 && Objects.equals(this.barcode, that.barcode)
+                && Objects.equals(this.externalBarcode, that.externalBarcode)
                 && Objects.equals(this.labwareType, that.labwareType)
                 && Objects.equals(this.slots, that.slots)
                 && this.discarded == that.discarded

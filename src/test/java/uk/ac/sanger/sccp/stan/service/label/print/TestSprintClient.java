@@ -40,13 +40,14 @@ public class TestSprintClient {
     public void testToJson() throws IOException {
         final LabelType labelType = EntityFactory.getLabelType();
         LabelPrintRequest request = new LabelPrintRequest(labelType,
-                List.of(new LabwareLabelData("STAN-1", "None",
+                List.of(new LabwareLabelData("STAN-1", "None", "2021-03-17",
                         List.of(new LabelContent("DONOR1", "TISSUE1", 1, 2),
                                 new LabelContent("DONOR2", "TISSUE2", 3, 4))),
-                        new LabwareLabelData("STAN-2", "None",
+                        new LabwareLabelData("STAN-2", "None", "2021-03-16",
                                 List.of(new LabelContent("DONOR3", "TISSUE3", 5))))
         );
         StringTemplate template = new StringTemplate("{\"barcode\":\"#barcode#\", " +
+                "\"date\":\"#date#\", " +
                 "\"contents\":[\"#donor[0]#\", \"#tissue[0]#\", \"#replicate[0]#\", \"#state[0]#\"," +
                 "\"#donor[1]#\", \"#tissue[1]#\", \"#replicate[1]#\", \"#state[1]#\"]}", "#", "#");
         when(mockSprintConfig.getTemplate(eq(labelType.getName()), anyInt())).thenReturn(template);
@@ -56,8 +57,10 @@ public class TestSprintClient {
                 "{  print(printer: $printer, printRequest: $printRequest) {    jobId  }}\"," +
                 "\"variables\":{\"printer\":\"printer1\"," +
                 "\"printRequest\":{\"layouts\":[{\"barcode\":\"STAN-1\"," +
+                "\"date\":\"2021-03-17\"," +
                 "\"contents\":[\"DONOR1\",\"TISSUE1\",\"R:1\",\"S002\",\"DONOR2\",\"TISSUE2\",\"R:3\",\"S004\"]}," +
                 "{\"barcode\":\"STAN-2\"," +
+                "\"date\":\"2021-03-16\"," +
                 "\"contents\":[\"DONOR3\",\"TISSUE3\",\"R:5\",\"\",\"\",\"\",\"\",\"\"]}]}}}";
 
         assertEquals(expected, result.toString());

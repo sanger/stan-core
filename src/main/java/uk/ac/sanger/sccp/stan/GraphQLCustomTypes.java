@@ -6,13 +6,17 @@ import graphql.schema.*;
 import uk.ac.sanger.sccp.stan.model.Address;
 
 import java.sql.Timestamp;
-import java.time.LocalDateTime;
+import java.time.*;
+import java.time.format.DateTimeFormatter;
+import java.time.format.ResolverStyle;
 import java.util.Date;
 
 /**
  * @author dr6
  */
 public class GraphQLCustomTypes {
+    private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss").withResolverStyle(ResolverStyle.STRICT);
+
     public static final GraphQLScalarType ADDRESS = GraphQLScalarType.newScalar()
             .name("Address")
             .description("A 1-indexed row and column, in the form \"B12\" (row 2, column 12) or \"32,15\" (row 32, column 15).")
@@ -54,13 +58,13 @@ public class GraphQLCustomTypes {
     public static final GraphQLScalarType TIMESTAMP = GraphQLScalarType.newScalar()
             .name("Timestamp")
             .description("A scalar type representing a point in time.")
-            .coercing(new Coercing<Timestamp, String>() {
+            .coercing(new Coercing<LocalDateTime, String>() {
                 @Override
                 public String serialize(Object dataFetcherResult) throws CoercingSerializeException {
                     try {
-                        Timestamp ts = toTimestamp(dataFetcherResult);
-                        if (ts != null) {
-                            return ts.toString();
+                        LocalDateTime d = toLocalDateTime(dataFetcherResult);
+                        if (d != null) {
+                            return d.format(DATE_TIME_FORMAT);
                         }
                     } catch (RuntimeException rte) {
                         throw new CoercingSerializeException("Unable to serialize " + dataFetcherResult + " as a timestamp", rte);
@@ -69,11 +73,11 @@ public class GraphQLCustomTypes {
                 }
 
                 @Override
-                public Timestamp parseValue(Object input) throws CoercingParseValueException {
+                public LocalDateTime parseValue(Object input) throws CoercingParseValueException {
                     try {
-                        Timestamp ts = toTimestamp(input);
-                        if (ts != null) {
-                            return ts;
+                        LocalDateTime d = toLocalDateTime(input);
+                        if (d != null) {
+                            return d;
                         }
                     } catch (RuntimeException rte) {
                         throw new CoercingParseValueException("Unable to parse value " + input + " as a timestamp.", rte);
@@ -82,11 +86,11 @@ public class GraphQLCustomTypes {
                 }
 
                 @Override
-                public Timestamp parseLiteral(Object input) throws CoercingParseLiteralException {
+                public LocalDateTime parseLiteral(Object input) throws CoercingParseLiteralException {
                     try {
-                        Timestamp ts = toTimestamp(input);
-                        if (ts != null) {
-                            return ts;
+                        LocalDateTime d = toLocalDateTime(input);
+                        if (d != null) {
+                            return d;
                         }
                     } catch (RuntimeException rte) {
                         throw new CoercingParseLiteralException("Unable to parse literal " + input + " as a timestamp.", rte);
@@ -96,27 +100,28 @@ public class GraphQLCustomTypes {
             })
             .build();
 
-    private static Timestamp toTimestamp(Object value) {
-        if (value instanceof Timestamp) {
-            return (Timestamp) value;
+    private static LocalDateTime toLocalDateTime(Object value) {
+        if (value instanceof LocalDateTime) {
+            return (LocalDateTime) value;
         }
         if (value instanceof StringValue) {
-            return Timestamp.valueOf(((StringValue) value).getValue());
+            return LocalDateTime.parse(((StringValue) value).getValue(), DATE_TIME_FORMAT);
         }
         if (value instanceof IntValue) {
-            return new Timestamp(((IntValue) value).getValue().longValueExact());
+            long epoch = ((IntValue) value).getValue().longValueExact();
+            return Instant.ofEpochMilli(epoch).atZone(ZoneId.systemDefault()).toLocalDateTime();
         }
         if (value instanceof String) {
-            return Timestamp.valueOf((String) value);
+            return LocalDateTime.parse((String) value, DATE_TIME_FORMAT);
         }
         if (value instanceof Long) {
-            return new Timestamp((Long) value);
+            return Instant.ofEpochMilli((long) value).atZone(ZoneId.systemDefault()).toLocalDateTime();
+        }
+        if (value instanceof Timestamp) {
+            return ((Timestamp) value).toLocalDateTime();
         }
         if (value instanceof Date) {
-            return new Timestamp(((Date) value).getTime());
-        }
-        if (value instanceof LocalDateTime) {
-            return Timestamp.valueOf((LocalDateTime) value);
+            return ((Date) value).toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
         }
         return null;
     }

@@ -1,8 +1,6 @@
 package uk.ac.sanger.sccp.stan.model.store;
 
 import com.google.common.base.MoreObjects;
-import org.json.JSONException;
-import org.json.JSONObject;
 import uk.ac.sanger.sccp.stan.model.Address;
 
 import java.util.Objects;
@@ -14,79 +12,78 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
  * @author dr6
  */
 public class LinkedLocation {
-    private static final String NAME_FIELD = "name";
-    private static final String CUSTOM_NAME_FIELD = "customName";
+    private static final String NAME_SEP = ": ";
     private String barcode;
-    private String description;
+    private String name;
     private Address address;
 
     public String getBarcode() {
         return this.barcode;
     }
 
-    public String getDescription() {
-        return this.description;
+    public void setBarcode(String barcode) {
+        this.barcode = barcode;
+    }
+
+    public String getName() {
+        return this.name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public Address getAddress() {
         return this.address;
     }
 
-    public void setBarcode(String barcode) {
-        this.barcode = barcode;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
     public void setAddress(Address address) {
         this.address = address;
     }
 
-    public String getName() {
-        if (description==null || description.isEmpty()) {
+    public String getFixedName() {
+        if (name ==null || name.isEmpty()) {
             return null;
         }
-        try {
-            JSONObject jo = new JSONObject(description);
-            return jo.getString(NAME_FIELD);
-        } catch (JSONException je) {
+        int n = name.indexOf(NAME_SEP);
+        if (n < 0) {
+            return name;
+        }
+        if (n==0) {
             return null;
         }
+        return name.substring(0, n);
     }
 
     public String getCustomName() {
-        if (description==null || description.isEmpty()) {
+        if (name ==null || name.isEmpty()) {
             return null;
         }
-        try {
-            JSONObject jo = new JSONObject(description);
-            return jo.getString(CUSTOM_NAME_FIELD);
-        } catch (JSONException je) {
+        int n = name.indexOf(NAME_SEP);
+        if (n < 0) {
             return null;
         }
+        return name.substring(n + NAME_SEP.length());
     }
 
-    public void setName(String name) {
+    public void setFixedName(String name) {
         setNameAndCustomName(name, getCustomName());
     }
 
     public void setCustomName(String customName) {
-        setNameAndCustomName(getName(), customName);
+        setNameAndCustomName(getFixedName(), customName);
     }
 
-    public void setNameAndCustomName(String name, String customName) {
-        name = sanitise(name);
+    public void setNameAndCustomName(String fixedName, String customName) {
+        fixedName = sanitise(fixedName);
         customName = sanitise(customName);
-        if (name==null && customName==null) {
-            setDescription(null);
-            return;
+        if (customName==null) {
+            this.name = fixedName;
+        } else if (fixedName==null) {
+            this.name = NAME_SEP + customName;
+        } else {
+            this.name = fixedName + NAME_SEP + customName;
         }
-        JSONObject jo = new JSONObject();
-        jo.put(NAME_FIELD, name);
-        jo.put(CUSTOM_NAME_FIELD, customName);
-        setDescription(jo.toString());
     }
 
     private static String sanitise(String string) {
@@ -108,7 +105,7 @@ public class LinkedLocation {
 
     protected boolean equalsLinkedLocation(LinkedLocation that) {
         return (Objects.equals(this.barcode, that.barcode)
-                && Objects.equals(this.description, that.description)
+                && Objects.equals(this.name, that.name)
                 && Objects.equals(this.address, that.address));
     }
 
@@ -121,10 +118,9 @@ public class LinkedLocation {
     public String toString() {
         return MoreObjects.toStringHelper(this)
                 .add("barcode", repr(barcode))
-                .add("description", repr(description))
+                .add("name", repr(name))
                 .add("address", address)
                 .omitNullValues()
-                .toString()
-                ;
+                .toString();
     }
 }

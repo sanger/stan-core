@@ -94,7 +94,7 @@ public class TestConfirmOperationService {
         Labware source = EntityFactory.makeLabware(lt, EntityFactory.getSample());
         List<Labware> labware = IntStream.range(0,2).mapToObj(i -> EntityFactory.makeEmptyLabware(lt)).collect(toList());
         Map<String, Labware> labwareMap = bcMap(labware);
-        OperationType opType = EntityFactory.makeOperationType("Section");
+        OperationType opType = EntityFactory.makeOperationType("Section", null);
         Map<Integer, PlanOperation> planMap = labware.stream()
                 .collect(toMap(Labware::getId, lw -> EntityFactory.makePlanForLabware(opType, List.of(source), List.of(lw))));
 
@@ -153,7 +153,7 @@ public class TestConfirmOperationService {
         LabwareType lt = EntityFactory.getTubeType();
         Labware source = EntityFactory.makeLabware(lt, EntityFactory.getSample());
         List<Labware> labware = List.of(EntityFactory.getTube(), EntityFactory.makeEmptyLabware(lt));
-        OperationType opType = EntityFactory.makeOperationType("Section");
+        OperationType opType = EntityFactory.makeOperationType("Section", null);
         List<PlanOperation> plans = labware.stream()
                 .map(lw -> EntityFactory.makePlanForLabware(opType, List.of(source), List.of(lw)))
                 .collect(toList());
@@ -233,7 +233,7 @@ public class TestConfirmOperationService {
     }
 
     static Stream<Arguments> performConfirmationArguments() {
-        OperationType opType = EntityFactory.makeOperationType("Section");
+        OperationType opType = EntityFactory.makeOperationType("Section", null);
         LabwareType lt = EntityFactory.makeLabwareType(2,2);
         String bc = "STAN-DST";
         List<Address> planDestAddresses = List.of(
