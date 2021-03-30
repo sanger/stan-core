@@ -11,7 +11,7 @@ import uk.ac.sanger.sccp.stan.request.SlotCopyRequest;
 public interface SlotCopyService {
     /**
      * In a transaction, validates and records the operation, creating new labware.
-     * Post-transaction, unstored the source labware.
+     * Post-transaction, unstores the source labware.
      * @param user the user responsible for the operation
      * @param request the specification of the operation
      * @return the result

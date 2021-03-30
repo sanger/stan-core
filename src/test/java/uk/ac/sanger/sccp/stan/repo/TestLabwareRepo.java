@@ -47,7 +47,7 @@ public class TestLabwareRepo {
         assertTrue(labwareRepo.existsByBarcode(barcode));
         LocalDateTime created = lw.getCreated();
         assertNotNull(created);
-        assertThat(created).isCloseToUtcNow(within(1, ChronoUnit.MINUTES));
+        assertThat(created).isCloseTo(LocalDateTime.now(), within(1, ChronoUnit.MINUTES));
 
         assertThrows(EntityNotFoundException.class, () -> labwareRepo.getByBarcode("STAN-404"));
         assertFalse(labwareRepo.existsByBarcode("STAN-404"));
