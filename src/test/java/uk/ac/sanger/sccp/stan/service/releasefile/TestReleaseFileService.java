@@ -322,8 +322,9 @@ public class TestReleaseFileService {
         Tissue tissue = EntityFactory.getTissue();
         Sample[] samples = {
                 new Sample(1, 1, tissue, bs),
-                new Sample(2, 1, tissue, cdna),
+                new Sample(2, 1, tissue, bs),
                 new Sample(3, 1, tissue, cdna),
+                new Sample(4, 1, tissue, cdna),
         };
         LabwareType lt = EntityFactory.getTubeType();
         Labware[] labware = Arrays.stream(samples)
@@ -331,17 +332,17 @@ public class TestReleaseFileService {
                 .toArray(Labware[]::new);
         var ancestry = makeAncestry(
                 labware[1], samples[1], labware[0], samples[0],
-                labware[2], samples[2], labware[1], samples[1]
+                labware[2], samples[2], labware[1], samples[1],
+                labware[3], samples[3], labware[2], samples[2]
         );
         Arrays.stream(labware).forEach(lw -> when(mockLabwareRepo.getById(lw.getId())).thenReturn(lw));
-        List<ReleaseEntry> entries = List.of(
-                new ReleaseEntry(labware[1], labware[1].getFirstSlot(), samples[1]),
-                new ReleaseEntry(labware[2], labware[2].getFirstSlot(), samples[2])
-        );
+        List<ReleaseEntry> entries = IntStream.of(2,3)
+                .mapToObj(i -> new ReleaseEntry(labware[i], labware[i].getFirstSlot(), samples[i]))
+                .collect(toList());
         service.loadSourcesForCDNA(entries, ancestry);
         final Address A1 = new Address(1, 1);
         for (var entry : entries) {
-            assertEquals(labware[0].getBarcode(), entry.getSourceBarcode());
+            assertEquals(labware[1].getBarcode(), entry.getSourceBarcode());
             assertEquals(A1, entry.getSourceAddress());
         }
     }
