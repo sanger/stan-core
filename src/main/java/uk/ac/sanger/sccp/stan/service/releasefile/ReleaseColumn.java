@@ -15,6 +15,7 @@ public enum ReleaseColumn implements TsvColumn<ReleaseEntry> {
     Address(Compose.slot, Slot::getAddress),
     Donor_name(Compose.donor, Donor::getDonorName),
     Life_stage(Compose.donor, Donor::getLifeStage),
+    External_identifier(Compose.tissue, Tissue::getExternalName),
     Tissue_type(Compose.tissue, Tissue::getTissueType, TissueType::getCode),
     Spatial_location(Compose.tissue, Tissue::getSpatialLocation, SpatialLocation::getCode),
     Replicate_number(Compose.tissue, Tissue::getReplicate),

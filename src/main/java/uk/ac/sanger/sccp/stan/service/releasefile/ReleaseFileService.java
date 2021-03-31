@@ -249,20 +249,28 @@ public class ReleaseFileService {
     public void loadSourcesForCDNA(Collection<ReleaseEntry> entries, Ancestry ancestry) {
         Map<Integer, String> labwareIdBarcode = new HashMap<>();
         for (ReleaseEntry entry : entries) {
-            for (SlotSample ss : ancestry.ancestors(new SlotSample(entry.getSlot(), entry.getSample()))) {
-                if (!ss.getSample().getBioState().getName().equalsIgnoreCase("cDNA")) {
-                    Slot slot = ss.getSlot();
-                    final Integer labwareId = slot.getLabwareId();
-                    String barcode = labwareIdBarcode.get(labwareId);
-                    if (barcode==null) {
-                        barcode = labwareRepo.getById(labwareId).getBarcode();
-                        labwareIdBarcode.put(labwareId, barcode);
-                    }
-                    entry.setSourceBarcode(barcode);
-                    entry.setSourceAddress(slot.getAddress());
+            SlotSample ss = selectSourceForCDNA(entry, ancestry);
+            if (ss!=null) {
+                Slot slot = ss.getSlot();
+                final Integer labwareId = slot.getLabwareId();
+                String barcode = labwareIdBarcode.get(labwareId);
+                if (barcode==null) {
+                    barcode = labwareRepo.getById(labwareId).getBarcode();
+                    labwareIdBarcode.put(labwareId, barcode);
                 }
+                entry.setSourceBarcode(barcode);
+                entry.setSourceAddress(slot.getAddress());
             }
         }
+    }
+
+    public SlotSample selectSourceForCDNA(ReleaseEntry entry, Ancestry ancestry) {
+        for (SlotSample ss : ancestry.ancestors(new SlotSample(entry.getSlot(), entry.getSample()))) {
+            if (!ss.getSample().getBioState().getName().equalsIgnoreCase("cDNA")) {
+                return ss;
+            }
+        }
+        return null;
     }
 
     /**
