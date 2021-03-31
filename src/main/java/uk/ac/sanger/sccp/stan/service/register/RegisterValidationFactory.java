@@ -11,6 +11,7 @@ import uk.ac.sanger.sccp.stan.service.Validator;
 
 import java.util.EnumSet;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * Factory for {@link RegisterValidation}
@@ -32,6 +33,7 @@ public class RegisterValidationFactory {
     private final Validator<String> donorNameValidation;
     private final Validator<String> externalNameValidation;
     private final Validator<String> externalBarcodeValidation;
+    private final Validator<String> visiumLpSlideBarcodeValidation;
     private final TissueFieldChecker tissueFieldChecker;
 
     @Autowired
@@ -57,6 +59,8 @@ public class RegisterValidationFactory {
         this.donorNameValidation = new StringValidator("Donor identifier", 3, 64, charTypes);
         this.externalNameValidation = new StringValidator("External identifier", 3, 64, charTypes);
         this.externalBarcodeValidation = new StringValidator("External barcode", 3, 32, charTypes);
+        Pattern pattern = Pattern.compile("[0-9]{7}[0-9A-Z]+-[0-9]+-[0-9]+-[0-9]+", Pattern.CASE_INSENSITIVE);
+        this.visiumLpSlideBarcodeValidation = new StringValidator("Visium LP barcode", 14, 32, charTypes, pattern);
     }
 
     public RegisterValidation createRegisterValidation(RegisterRequest request) {
@@ -67,6 +71,6 @@ public class RegisterValidationFactory {
     public SectionRegisterValidation createSectionRegisterValidation(SectionRegisterRequest request) {
         return new SectionRegisterValidation(request, donorRepo, speciesRepo, ltRepo, labwareRepo,
                 mouldSizeRepo, hmdmcRepo, ttRepo, fixativeRepo, mediumRepo, tissueRepo, bioStateRepo,
-                externalBarcodeValidation, donorNameValidation, externalNameValidation);
+                externalBarcodeValidation, donorNameValidation, externalNameValidation, visiumLpSlideBarcodeValidation);
     }
 }

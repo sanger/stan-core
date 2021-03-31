@@ -39,6 +39,7 @@ public class SectionRegisterValidation {
     private final Validator<String> externalBarcodeValidation;
     private final Validator<String> donorNameValidation;
     private final Validator<String> externalNameValidation;
+    private final Validator<String> visiumLpBarcodeValidation;
 
     public SectionRegisterValidation(SectionRegisterRequest request,
                                      DonorRepo donorRepo, SpeciesRepo speciesRepo, LabwareTypeRepo lwTypeRepo,
@@ -46,7 +47,7 @@ public class SectionRegisterValidation {
                                      TissueTypeRepo tissueTypeRepo, FixativeRepo fixativeRepo, MediumRepo mediumRepo,
                                      TissueRepo tissueRepo, BioStateRepo bioStateRepo,
                                      Validator<String> externalBarcodeValidation, Validator<String> donorNameValidation,
-                                     Validator<String> externalNameValidation) {
+                                     Validator<String> externalNameValidation, Validator<String> visiumLpBarcodeValidation) {
         this.request = request;
         this.donorRepo = donorRepo;
         this.speciesRepo = speciesRepo;
@@ -62,6 +63,7 @@ public class SectionRegisterValidation {
         this.externalBarcodeValidation = externalBarcodeValidation;
         this.donorNameValidation = donorNameValidation;
         this.externalNameValidation = externalNameValidation;
+        this.visiumLpBarcodeValidation = visiumLpBarcodeValidation;
     }
 
     public ValidatedSections validate() {
@@ -207,7 +209,8 @@ public class SectionRegisterValidation {
                 bcProblem.accept("Invalid external barcode prefix", bc);
                 continue;
             }
-            externalBarcodeValidation.validate(bc, this::addProblem);
+            boolean isVisiumLp = (lw.getLabwareType()!=null && lw.getLabwareType().equalsIgnoreCase("Visium LP"));
+            (isVisiumLp ? visiumLpBarcodeValidation : externalBarcodeValidation).validate(bc, this::addProblem);
             if (lwRepo.existsByExternalBarcode(bc)) {
                 bcProblem.accept("External barcode{s} already used", bc);
             } else if (lwRepo.existsByBarcode(bc)) {
