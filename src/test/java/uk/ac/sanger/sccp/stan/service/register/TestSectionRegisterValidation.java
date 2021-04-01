@@ -43,6 +43,7 @@ public class TestSectionRegisterValidation {
     private Validator<String> mockExternalBarcodeValidation;
     private Validator<String> mockDonorNameValidation;
     private Validator<String> mockExternalNameValidation;
+    private Validator<String> mockVisiumLpBarcodeValidation;
 
     @SuppressWarnings("unchecked")
     @BeforeEach
@@ -61,6 +62,7 @@ public class TestSectionRegisterValidation {
         mockExternalBarcodeValidation = mock(Validator.class);
         mockDonorNameValidation = mock(Validator.class);
         mockExternalNameValidation = mock(Validator.class);
+        mockVisiumLpBarcodeValidation = mock(Validator.class);
     }
 
     private SectionRegisterValidation makeValidation(Object requestObj) {
@@ -85,7 +87,8 @@ public class TestSectionRegisterValidation {
         }
         return spy(new SectionRegisterValidation(request, mockDonorRepo, mockSpeciesRepo, mockLwTypeRepo, mockLwRepo,
                 mockMouldSizeRepo, mockHmdmcRepo, mockTissueTypeRepo, mockFixativeRepo, mockMediumRepo,
-                mockTissueRepo, mockBioStateRepo, mockExternalBarcodeValidation, mockDonorNameValidation, mockExternalNameValidation));
+                mockTissueRepo, mockBioStateRepo,
+                mockExternalBarcodeValidation, mockDonorNameValidation, mockExternalNameValidation, mockVisiumLpBarcodeValidation));
     }
 
     private void mockValidator(Validator<String> validator) {
@@ -96,6 +99,8 @@ public class TestSectionRegisterValidation {
             desc = "Bad external barcode: ";
         } else if (validator==mockExternalNameValidation) {
             desc = "Bad external name: ";
+        } else if (validator==mockVisiumLpBarcodeValidation) {
+            desc = "Bad visium barcode: ";
         } else {
             desc = "Bad string: ";
         }
@@ -345,12 +350,12 @@ public class TestSectionRegisterValidation {
 
     @ParameterizedTest
     @MethodSource("validateBarcodesArgs")
-    public void testValidateBarcodes(Object barcodesObj, Object expectedProblemsObj, Object existingExternalBarcodesObj,
+    public void testValidateBarcodes(Object barcodesObj, String labwareType, Object expectedProblemsObj, Object existingExternalBarcodesObj,
                                      Object existingLabwareBarcodes) {
         Collection<String> barcodes = objToCollection(barcodesObj);
         Collection<String> expectedProblems = objToCollection(expectedProblemsObj);
         SectionRegisterRequest request = new SectionRegisterRequest(barcodes.stream()
-                .map(bc -> new SectionRegisterLabware(bc, "lt", null))
+                .map(bc -> new SectionRegisterLabware(bc, labwareType, null))
                 .collect(toList()));
 
         if (existingExternalBarcodesObj!=null) {
@@ -366,6 +371,7 @@ public class TestSectionRegisterValidation {
             }
         }
         mockValidator(mockExternalBarcodeValidation);
+        mockValidator(mockVisiumLpBarcodeValidation);
 
         SectionRegisterValidation validation = makeValidation(request);
         validation.validateBarcodes();
@@ -374,18 +380,19 @@ public class TestSectionRegisterValidation {
 
     static Stream<Arguments> validateBarcodesArgs() {
         return Stream.of(
-                Arguments.of("Alpha", null, null, null),
-                Arguments.of(Collections.singletonList(null), "Missing external barcode.", null, null),
-                Arguments.of(List.of("", "X123"), "Missing external barcode.", null, null),
-                Arguments.of(List.of("X11", "!ABC"), "Bad external barcode: !ABC", null, null),
-                Arguments.of(List.of("Alpha", "Beta", "ALPHA", "BETA", "Gamma"), "Repeated barcodes: [ALPHA, BETA]", null, null),
-                Arguments.of(List.of("X11", "X12", "X13"), "External barcodes already used: [X11, X12]",
+                Arguments.of("Alpha", "lt", null, null, null),
+                Arguments.of(Collections.singletonList(null), "lt", "Missing external barcode.", null, null),
+                Arguments.of(List.of("", "X123"), "lt", "Missing external barcode.", null, null),
+                Arguments.of(List.of("X11", "!ABC"), "lt", "Bad external barcode: !ABC", null, null),
+                Arguments.of(List.of("X11", "!ABC"), "Visium LP", "Bad visium barcode: !ABC", null, null),
+                Arguments.of(List.of("Alpha", "Beta", "ALPHA", "BETA", "Gamma"), "lt", "Repeated barcodes: [ALPHA, BETA]", null, null),
+                Arguments.of(List.of("X11", "X12", "X13"), "lt", "External barcodes already used: [X11, X12]",
                         List.of("X11", "X12"), null),
-                Arguments.of(List.of("X11", "X12", "X13"), "Labware barcodes already used: [X12, X13]",
+                Arguments.of(List.of("X11", "X12", "X13"), "lt", "Labware barcodes already used: [X12, X13]",
                         null, List.of("X12", "X13")),
-                Arguments.of(List.of("stan-ABC", "STO-123"), "Invalid external barcode prefix: [stan-ABC, STO-123]",
+                Arguments.of(List.of("stan-ABC", "STO-123"), "lt", "Invalid external barcode prefix: [stan-ABC, STO-123]",
                         null, null),
-                Arguments.of(List.of("", "!ABC", "Alpha", "ALPHA", "X11", "Y11", "STO-123"),
+                Arguments.of(List.of("", "!ABC", "Alpha", "ALPHA", "X11", "Y11", "STO-123"), "lt",
                         List.of("Missing external barcode.", "Bad external barcode: !ABC",
                                 "Repeated barcode: [ALPHA]", "External barcode already used: [X11]",
                                 "Labware barcode already used: [Y11]",

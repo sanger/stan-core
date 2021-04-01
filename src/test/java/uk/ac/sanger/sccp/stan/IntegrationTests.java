@@ -255,7 +255,7 @@ public class IntegrationTests {
         var tsvMaps = tsvToMap(tsvString);
         assertEquals(tsvMaps.size(), 4);
         assertThat(tsvMaps.get(0).keySet()).containsOnly("Barcode", "Labware type", "Address", "Donor name",
-                "Life stage", "Tissue type", "Spatial location", "Replicate number", "Section number",
+                "Life stage", "External identifier", "Tissue type", "Spatial location", "Replicate number", "Section number",
                 "Last section number", "Source barcode", "Section thickness");
         var row0 = tsvMaps.get(0);
         assertEquals(block.getBarcode(), row0.get("Barcode"));
