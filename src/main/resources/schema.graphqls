@@ -205,11 +205,17 @@ input AddressCommentInput {
     commentId: Int!,
 }
 
+input CancelPlanAction {
+    destinationAddress: Address!
+    sampleId: Int!
+    newSection: Int
+}
+
 input ConfirmOperationLabware {
-    barcode: String!,
-    cancelled: Boolean,
-    cancelledAddresses: [Address!],
-    addressComments: [AddressCommentInput!],
+    barcode: String!
+    cancelled: Boolean
+    cancelledActions: [CancelPlanAction!]
+    addressComments: [AddressCommentInput!]
 }
 
 input ConfirmOperationRequest {
