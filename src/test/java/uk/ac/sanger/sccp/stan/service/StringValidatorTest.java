@@ -9,7 +9,7 @@ import java.util.*;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests for {@link StringValidator}
@@ -24,21 +24,38 @@ public class StringValidatorTest {
         StringValidator validator = new StringValidator("X", 3, 8,
                 CharacterType.UPPER, CharacterType.DIGIT);
         final boolean ok = validator.validate(string, problems::add);
-        if (expectedProblems.isEmpty()) {
-            assertTrue(ok);
-            assertEquals(problems, List.of());
-        } else {
-            assertFalse(ok);
-            assertThat(problems).hasSize(expectedProblems.size()).hasSameElementsAs(expectedProblems);
-        }
+        assertThat(problems).containsExactlyInAnyOrderElementsOf(expectedProblems);
+        assertEquals(expectedProblems.isEmpty(), ok);
     }
 
-    private static Stream<Arguments> validatorStrings() {
+    static Stream<Arguments> validatorStrings() {
         return Arrays.stream(new String[][]{
                 {"A", "X \"A\" is shorter than the minimum length 3."},
                 {"AAAAAAAAA", "X \"AAAAAAAAA\" is longer than the maximum length 8."},
                 {"abcabc", "X \"abcabc\" contains invalid characters \"abc\"."},
                 {"*", "X \"*\" is shorter than the minimum length 3.", "X \"*\" contains invalid characters \"*\"."},
+        }).map(arr -> Arguments.of(arr[0], Arrays.asList(arr).subList(1, arr.length)));
+    }
+
+    @ParameterizedTest
+    @MethodSource("checkWhitespaceArgs")
+    public void testCheckWhitespace(String string, List<String> expectedProblems) {
+        List<String> problems = new ArrayList<>();
+        StringValidator validator = new StringValidator("X", 3, 16,
+                CharacterType.UPPER, CharacterType.LOWER, CharacterType.SPACE);
+        final boolean ok = validator.validate(string, problems::add);
+        assertThat(problems).containsExactlyInAnyOrderElementsOf(expectedProblems);
+        assertEquals(expectedProblems.isEmpty(), ok);
+    }
+
+    static Stream<Arguments> checkWhitespaceArgs() {
+        return Arrays.stream(new String[][] {
+                {"ABCD"},
+                {"AB C D"},
+                {" AB C", "X \" AB C\" has leading space."},
+                {"AB C  ", "X \"AB C  \" has trailing spaces."},
+                {"AB  C", "X \"AB  C\" contains consecutive spaces."},
+                {" A  B C  ", "X \" A  B C  \" has leading and trailing spaces.", "X \" A  B C  \" contains consecutive spaces."},
         }).map(arr -> Arguments.of(arr[0], Arrays.asList(arr).subList(1, arr.length)));
     }
 

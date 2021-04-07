@@ -3,6 +3,7 @@ package uk.ac.sanger.sccp.stan.service.operation.plan;
 import org.junit.jupiter.api.Test;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.plan.PlanRequest;
+import uk.ac.sanger.sccp.stan.service.Validator;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -19,7 +20,9 @@ public class TestPlanValidationFactory {
         LabwareRepo lwRepo = mock(LabwareRepo.class);
         LabwareTypeRepo ltRepo = mock(LabwareTypeRepo.class);
         OperationTypeRepo opTypeRepo = mock(OperationTypeRepo.class);
-        PlanValidationFactory factory = new PlanValidationFactory(lwRepo, ltRepo, opTypeRepo);
+        //noinspection unchecked
+        Validator<String> mockStringValidator = mock(Validator.class);
+        PlanValidationFactory factory = new PlanValidationFactory(lwRepo, ltRepo, opTypeRepo, mockStringValidator);
         PlanRequest request = new PlanRequest();
         PlanValidation validation = factory.createPlanValidation(request);
         assertThat(validation).isInstanceOf(PlanValidationImp.class);
