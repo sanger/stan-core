@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.register.RegisterRequest;
 import uk.ac.sanger.sccp.stan.request.register.SectionRegisterRequest;
+import uk.ac.sanger.sccp.stan.service.Validator;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;
@@ -17,11 +18,14 @@ public class TestRegisterValidationFactory {
     RegisterValidationFactory registerValidationFactory;
     @BeforeEach
     void setup() {
+        //noinspection unchecked
+        Validator<String> mockStringValidator = mock(Validator.class);
         registerValidationFactory = new RegisterValidationFactory(
                 mock(DonorRepo.class), mock(HmdmcRepo.class), mock(TissueTypeRepo.class),
                 mock(LabwareTypeRepo.class), mock(MouldSizeRepo.class), mock(MediumRepo.class),
                 mock(FixativeRepo.class), mock(TissueRepo.class), mock(SpeciesRepo.class), mock(LabwareRepo.class),
-                mock(BioStateRepo.class), mock(TissueFieldChecker.class));
+                mock(BioStateRepo.class), mockStringValidator, mockStringValidator, mockStringValidator, mockStringValidator,
+                mock(TissueFieldChecker.class));
     }
 
     @Test

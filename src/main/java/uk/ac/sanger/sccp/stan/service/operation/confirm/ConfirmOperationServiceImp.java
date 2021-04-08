@@ -147,15 +147,16 @@ public class ConfirmOperationServiceImp implements ConfirmOperationService {
         }
         final int labwareId = lw.getId();
 
-        final Predicate<Slot> destinationFilter;
-        if (col.getCancelledAddresses()!=null && !col.getCancelledAddresses().isEmpty()) {
-            final Set<Address> cancelledAddresses = col.getCancelledAddresses();
-            destinationFilter = dest -> dest.getLabwareId()==labwareId && !cancelledAddresses.contains(dest.getAddress());
+        final Predicate<PlanAction> planActionFilter;
+        final Set<CancelPlanAction> cpas = col.getCancelledActions();
+        if (cpas!=null && !cpas.isEmpty()) {
+            planActionFilter = pa -> (pa.getDestination().getLabwareId()==labwareId
+                    && !cpas.contains(CancelPlanAction.forPlanAction(pa)));
         } else {
-            destinationFilter = dest -> dest.getLabwareId()==labwareId;
+            planActionFilter = pa -> pa.getDestination().getLabwareId()==labwareId;
         }
         List<PlanAction> planActions = plan.getPlanActions().stream()
-                .filter(pa -> destinationFilter.test(pa.getDestination()))
+                .filter(planActionFilter)
                 .collect(toList());
         if (planActions.isEmpty()) {
             // effectively whole lw is cancelled
@@ -167,6 +168,8 @@ public class ConfirmOperationServiceImp implements ConfirmOperationService {
 
         List<Measurement> measurements = new ArrayList<>();
 
+        Set<Slot> slotsToSave = new HashSet<>();
+
         for (PlanAction pa : planActions) {
             // update the slot object inside the labware, in case we have multiple identical slot instances
             // whose updates might clobber each other
@@ -175,12 +178,13 @@ public class ConfirmOperationServiceImp implements ConfirmOperationService {
             Action action = makeAction(pa, dest, sample);
             actions.add(action);
             dest.getSamples().add(sample);
-            slotRepo.save(dest);
+            slotsToSave.add(dest);
             if (pa.getSampleThickness()!=null) {
                 measurements.add(new Measurement(null, "Thickness", String.valueOf(pa.getSampleThickness()),
                         sample.getId(), null, dest.getId()));
             }
         }
+        slotRepo.saveAll(slotsToSave);
         entityManager.refresh(lw);
         Operation op = operationService.createOperation(plan.getOperationType(), user, actions, plan.getId());
         if (!measurements.isEmpty()) {

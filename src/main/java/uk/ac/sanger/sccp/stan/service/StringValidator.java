@@ -4,8 +4,10 @@ import java.util.*;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
+import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
+
 /**
- * A tool to perform simple validation on a string
+ * A tool to perform simple validation on a string.
  * @author dr6
  */
 public class StringValidator implements Validator<String> {
@@ -19,6 +21,7 @@ public class StringValidator implements Validator<String> {
     private final int maxLength;
     private final Set<CharacterType> characterTypes;
     private final Pattern pattern;
+    private final boolean badSpaceAllowed;
 
     /**
      * Creates a new string validator
@@ -26,15 +29,18 @@ public class StringValidator implements Validator<String> {
      * @param minLength the minimum length of the field
      * @param maxLength the maximum length of the field
      * @param characterTypes the types of characters allowed in the field
+     * @param badSpaceAllowed is whitespace permitted at the start or end of the string?
+     *                        Is consecutive repeated whitespace permitted?
      * @param pattern regular expression pattern to match against string (optional)
      */
     public StringValidator(String fieldName, int minLength, int maxLength, Set<CharacterType> characterTypes,
-                           Pattern pattern) {
+                           boolean badSpaceAllowed, Pattern pattern) {
         this.fieldName = fieldName;
         this.minLength = minLength;
         this.maxLength = maxLength;
         this.characterTypes = characterTypes;
         this.pattern = pattern;
+        this.badSpaceAllowed = badSpaceAllowed;
     }
 
     /**
@@ -45,7 +51,7 @@ public class StringValidator implements Validator<String> {
      * @param characterTypes the types of characters allowed in the field
      */
     public StringValidator(String fieldName, int minLength, int maxLength, Set<CharacterType> characterTypes) {
-        this(fieldName, minLength, maxLength, characterTypes, null);
+        this(fieldName, minLength, maxLength, characterTypes, false, null);
     }
 
 
@@ -71,11 +77,11 @@ public class StringValidator implements Validator<String> {
         boolean ok = true;
         int sl = string.length();
         if (sl < minLength) {
-            problemConsumer.accept(String.format("%s \"%s\" is shorter than the minimum length %s.", fieldName, string, minLength));
+            addProblem(problemConsumer, string, "is shorter than the minimum length "+minLength+".");
             ok = false;
         }
         if (sl > maxLength) {
-            problemConsumer.accept(String.format("%s \"%s\" is longer than the maximum length %s.", fieldName, string, maxLength));
+            addProblem(problemConsumer, string, "is longer than the maximum length "+maxLength+".");
             ok = false;
         }
         Set<Character> invalidCharacterSet = null;
@@ -91,13 +97,70 @@ public class StringValidator implements Validator<String> {
         if (invalidCharacterSet!=null && !invalidCharacterSet.isEmpty()) {
             StringBuilder sb = new StringBuilder(invalidCharacterSet.size());
             invalidCharacterSet.stream().sorted().forEach(sb::append);
-            problemConsumer.accept(String.format("%s \"%s\" contains invalid characters \"%s\".", fieldName, string, sb));
+            addProblem(problemConsumer, string, "contains invalid characters \""+sb+"\".");
             ok = false;
+        }
+        if (!isBadSpaceAllowed() && characterTypes!=null && characterTypes.contains(CharacterType.SPACE)) {
+            ok &= checkWhitespace(string, problemConsumer);
         }
         if (ok && pattern!=null) {
             if (!pattern.matcher(string).matches()) {
-                problemConsumer.accept(String.format("%s \"%s\" does not match the expected format.", fieldName, string));
+                addProblem(problemConsumer, string, "does not match the expected format.");
                 ok = false;
+            }
+        }
+        return ok;
+    }
+
+    public boolean isBadSpaceAllowed() {
+        return this.badSpaceAllowed;
+    }
+
+    private String problem(String string, String desc) {
+        return fieldName + " " + repr(string) + " " + desc;
+    }
+
+    private void addProblem(Consumer<String> problemConsumer, String string, String desc) {
+        problemConsumer.accept(problem(string, desc));
+    }
+
+    /**
+     * Checks for leading, trailing spaces and internal runs of spaces. Literal space character only,
+     * since any other whitespace is always disallowed in identifiers.
+     * @param string the string to validate
+     * @param problemConsumer a function to receive information about the problems
+     * @return true if the string is valid; false if problems were found
+     */
+    private boolean checkWhitespace(String string, Consumer<String> problemConsumer) {
+        if (string==null || string.isEmpty()) {
+            return true;
+        }
+        final int len = string.length();
+        int leadingSpaces = 0;
+        while (leadingSpaces < len && string.charAt(leadingSpaces)==' ') {
+            ++leadingSpaces;
+        }
+        if (leadingSpaces==len) {
+            problemConsumer.accept(problem(string, "is all space."));
+            return false;
+        }
+        int trailingSpaces = 0;
+        while (trailingSpaces < len && string.charAt(len-trailingSpaces-1)==' ') {
+            ++trailingSpaces;
+        }
+        boolean ok = true;
+        if (leadingSpaces > 0 || trailingSpaces > 0) {
+            String desc = (leadingSpaces==0) ? "trailing" : (trailingSpaces==0) ? "leading" : "leading and trailing";
+            desc += (leadingSpaces + trailingSpaces > 1) ? " spaces." : " space.";
+            problemConsumer.accept(problem(string, "has "+desc));
+            ok = false;
+        }
+        int end = len - 1 - trailingSpaces;
+        for (int i = leadingSpaces + 2; i < end; ++i) {
+            if (string.charAt(i)==' ' && string.charAt(i-1)==' ') {
+                problemConsumer.accept(problem(string, "contains consecutive spaces."));
+                ok = false;
+                break;
             }
         }
         return ok;

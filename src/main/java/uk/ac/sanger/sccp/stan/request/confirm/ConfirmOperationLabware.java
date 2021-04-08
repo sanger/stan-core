@@ -5,6 +5,8 @@ import uk.ac.sanger.sccp.stan.model.Address;
 
 import java.util.*;
 
+import static uk.ac.sanger.sccp.utils.BasicUtils.newArrayList;
+
 /**
  * The part of a {@link ConfirmOperationRequest confirmation request} applying to a single piece of labware
  * @author dr6
@@ -12,7 +14,7 @@ import java.util.*;
 public class ConfirmOperationLabware {
     private String barcode;
     private boolean cancelled;
-    private Set<Address> cancelledAddresses;
+    private Set<CancelPlanAction> cancelledActions;
     private List<AddressCommentId> addressComments;
 
     public ConfirmOperationLabware() {
@@ -23,11 +25,11 @@ public class ConfirmOperationLabware {
         this(barcode, false, null, null);
     }
 
-    public ConfirmOperationLabware(String barcode, boolean cancelled, Collection<Address> cancelledAddresses,
+    public ConfirmOperationLabware(String barcode, boolean cancelled, Collection<CancelPlanAction> cancelledActions,
                                    Collection<AddressCommentId> addressComments) {
         setBarcode(barcode);
         setCancelled(cancelled);
-        setCancelledAddresses(cancelledAddresses);
+        setCancelledActions(cancelledActions);
         setAddressComments(addressComments);
     }
 
@@ -47,12 +49,12 @@ public class ConfirmOperationLabware {
         this.cancelled = cancelled;
     }
 
-    public Set<Address> getCancelledAddresses() {
-        return this.cancelledAddresses;
+    public Set<CancelPlanAction> getCancelledActions() {
+        return this.cancelledActions;
     }
 
-    public void setCancelledAddresses(Collection<Address> cancelledAddresses) {
-        this.cancelledAddresses = (cancelledAddresses==null ? new HashSet<>() : new HashSet<>(cancelledAddresses));
+    public void setCancelledActions(Collection<CancelPlanAction> cancelledActions) {
+        this.cancelledActions = (cancelledActions==null ? new HashSet<>() : new HashSet<>(cancelledActions));
     }
 
     public List<AddressCommentId> getAddressComments() {
@@ -60,7 +62,7 @@ public class ConfirmOperationLabware {
     }
 
     public void setAddressComments(Collection<AddressCommentId> addressComments) {
-        this.addressComments = (addressComments==null ? new ArrayList<>() : new ArrayList<>(addressComments));
+        this.addressComments = newArrayList(addressComments);
     }
 
     @Override
@@ -68,7 +70,7 @@ public class ConfirmOperationLabware {
         return MoreObjects.toStringHelper(this)
                 .add("barcode", barcode)
                 .add("cancelled", cancelled)
-                .add("cancelledAddresses", cancelledAddresses)
+                .add("cancelledActions", cancelledActions)
                 .add("addressComments", addressComments)
                 .toString();
     }
@@ -80,7 +82,7 @@ public class ConfirmOperationLabware {
         ConfirmOperationLabware that = (ConfirmOperationLabware) o;
         return (this.cancelled == that.cancelled
                 && Objects.equals(this.barcode, that.barcode)
-                && Objects.equals(this.cancelledAddresses, that.cancelledAddresses)
+                && Objects.equals(this.cancelledActions, that.cancelledActions)
                 && Objects.equals(this.addressComments, that.addressComments));
     }
 

@@ -651,11 +651,12 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
-        <createIndex tableName="plan_action" indexName="uk_plan_action_plan_sample_slots" unique="true">
+        <createIndex tableName="plan_action" indexName="uk_plan_action_plan_sample_slots_section" unique="true">
             <column name="plan_operation_id"/>
             <column name="sample_id"/>
             <column name="source_slot_id"/>
             <column name="dest_slot_id"/>
+            <column name="new_section"/>
         </createIndex>
         <rollback>
             <dropAllForeignKeyConstraints baseTableName="plan_action"/>
