@@ -47,6 +47,12 @@ public class LabwareService {
      * @return the new labware
      */
     public Labware create(LabwareType labwareType, String barcode, String externalBarcode) {
+        if (barcode!=null) {
+            barcode = barcode.toUpperCase();
+        }
+        if (externalBarcode!=null) {
+            externalBarcode = externalBarcode.toUpperCase();
+        }
         Labware unsaved = new Labware(null, barcode, labwareType, null);
         unsaved.setExternalBarcode(externalBarcode);
         return create(unsaved);
