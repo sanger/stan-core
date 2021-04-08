@@ -109,7 +109,7 @@ public class IntegrationTests {
         Sample sample = entityCreator.createSample(entityCreator.createTissue(entityCreator.createDonor("DONOR1"), "TISSUE1"), null);
         Labware sourceBlock = entityCreator.createBlock("STAN-B70C", sample);
         String mutation = tester.readResource("graphql/plan.graphql");
-        mutation = mutation.replace("$sampleId", String.valueOf(sample.getId()));
+        mutation = mutation.replace("55555", String.valueOf(sample.getId()));
         Map<String, ?> result = tester.post(mutation);
         assertNull(result.get("errors"));
         Object resultPlan = chainGet(result, "data", "plan");
@@ -122,7 +122,7 @@ public class IntegrationTests {
         assertEquals(resultOps.size(), 1);
         assertEquals("Section", chainGet(resultOps, 0, "operationType", "name"));
         List<?> resultActions = chainGet(resultOps, 0, "planActions");
-        assertEquals(1, resultActions.size());
+        assertEquals(2, resultActions.size());
         Map<String, ?> resultAction = chainGet(resultActions, 0);
         assertEquals("A1", chainGet(resultAction, "source", "address"));
         assertEquals(sourceBlock.getId(), chainGet(resultAction, "source", "labwareId"));
@@ -143,7 +143,10 @@ public class IntegrationTests {
         List<?> slots = chainGet(resultLabware, 0, "slots");
         assertEquals(1, slots.size());
         assertEquals((Integer) 1, chainGet(slots, 0, "samples", 0, "section"));
+        assertThat(chainGetList(slots, 0, "samples")).hasSize(2);
         assertNotNull(chainGet(slots, 0, "samples", 0, "id"));
+        assertEquals((Integer) 1, chainGet(slots, 0, "samples", 0, "section"));
+        assertEquals((Integer) 2, chainGet(slots, 0, "samples", 1, "section"));
 
         resultOps = chainGet(resultConfirm, "operations");
         assertEquals(resultOps.size(), 1);
@@ -151,9 +154,12 @@ public class IntegrationTests {
         assertNotNull(chainGet(resultOp, "performed"));
         assertEquals("Section", chainGet(resultOp, "operationType", "name"));
         List<?> actions = chainGet(resultOp, "actions");
-        assertEquals(1, actions.size());
+        assertEquals(2, actions.size());
         Object action = actions.get(0);
         assertEquals((Integer) 1, chainGet(action, "sample", "section"));
+        assertEquals("A1", chainGet(action, "destination", "address").toString());
+        action = actions.get(1);
+        assertEquals((Integer) 2, chainGet(action, "sample", "section"));
         assertEquals("A1", chainGet(action, "destination", "address").toString());
     }
 

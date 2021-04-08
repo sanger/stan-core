@@ -32,20 +32,26 @@ public class PlanValidationImp implements PlanValidation {
     @Override
     public Collection<String> validate() {
         OperationType opType = validateOperation();
-        validateSources(opType);
-        validateDestinations();
+        Map<ActionKey, Slot> actionSources = validateSources(opType);
+        validateDestinations(actionSources);
         return problems;
     }
 
-    public void validateSources(OperationType opType) {
+    /**
+     * Checks the sources. Returns a map of {@link ActionKey} to source slot for each action.
+     * @param opType the type of operation
+     * @return a map of {@code ActionKey} to source slot
+     */
+    public Map<ActionKey, Slot> validateSources(OperationType opType) {
         if (request.getLabware().isEmpty()) {
-            return;
+            return Map.of();
         }
         Map<String, Labware> labwareMap = new HashMap<>();
         Set<String> unfoundBarcodes = new LinkedHashSet<>();
         Set<String> destroyedBarcodes = new LinkedHashSet<>();
         Set<String> releasedBarcodes = new LinkedHashSet<>();
         Set<String> discardedBarcodes = new LinkedHashSet<>();
+        Map<ActionKey, Slot> actionSources = new HashMap<>();
         for (PlanRequestAction action : (Iterable<PlanRequestAction>) (actions()::iterator)) {
             PlanRequestSource source = action.getSource();
             if (source==null || source.getBarcode()==null || source.getBarcode().isEmpty()) {
@@ -79,6 +85,8 @@ public class PlanValidationImp implements PlanValidation {
                 continue;
             }
             Slot slot = lw.getSlot(address);
+            ActionKey actionKey = new ActionKey(action);
+            actionSources.put(actionKey, slot);
             Sample sample = slot.getSamples().stream().filter(sam -> sam.getId()==action.getSampleId())
                     .findAny().orElse(null);
             if (sample==null) {
@@ -104,9 +112,10 @@ public class PlanValidationImp implements PlanValidation {
         if (!discardedBarcodes.isEmpty()) {
             addProblem("Labware already discarded: "+discardedBarcodes);
         }
+        return actionSources;
     }
 
-    public void validateDestinations() {
+    public void validateDestinations(Map<ActionKey, Slot> actionSources) {
         if (request.getLabware().isEmpty()) {
             addProblem("No labware are specified in the plan request.");
             return;
@@ -148,7 +157,7 @@ public class PlanValidationImp implements PlanValidation {
                 addProblem("%s barcode supplied for new labware of type %s.",
                         gotBarcode ? "Unexpected":"No", lt.getName());
             }
-            checkActions(lw, lt);
+            checkActions(lw, lt, actionSources);
             if (gotBarcode && !alreadySeen && labwareRepo.existsByBarcode(lw.getBarcode())) {
                 addProblem("Labware with the barcode "+lw.getBarcode()+" already exists in the database.");
             } else if (gotBarcode && !alreadySeen && labwareRepo.existsByExternalBarcode(lw.getBarcode())) {
@@ -177,7 +186,7 @@ public class PlanValidationImp implements PlanValidation {
         return opType;
     }
 
-    public void checkActions(PlanRequestLabware lw, LabwareType lt) {
+    public void checkActions(PlanRequestLabware lw, LabwareType lt, Map<ActionKey, Slot> actionSources) {
         if (lw.getActions().isEmpty()) {
             addProblem("No actions specified for labware %s.", lwErrorDesc(lw));
             return;
@@ -193,7 +202,11 @@ public class PlanValidationImp implements PlanValidation {
             }
             ActionKey key = new ActionKey(ac);
             if (key.isComplete() && !keys.add(key)) {
-                addProblem("Actions for labware %s contain duplicate action: %s", lwErrorDesc(lw), key);
+                Slot slot = actionSources.get(key);
+                if (slot!=null && !slot.isBlock()) {
+                    // We allow duplicate actions from a block, because we can create multiple sections
+                    addProblem("Actions for labware %s contain duplicate action: %s", lwErrorDesc(lw), key);
+                }
             }
         }
     }
@@ -220,7 +233,7 @@ public class PlanValidationImp implements PlanValidation {
         addProblem(String.format(format, args));
     }
 
-    private static class ActionKey {
+    static class ActionKey {
         String sourceBarcode;
         Address sourceAddress;
         int sampleId;

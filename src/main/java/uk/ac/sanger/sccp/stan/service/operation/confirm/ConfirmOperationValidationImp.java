@@ -2,9 +2,8 @@ package uk.ac.sanger.sccp.stan.service.operation.confirm;
 
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.confirm.ConfirmOperationLabware;
+import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.request.confirm.ConfirmOperationLabware.AddressCommentId;
-import uk.ac.sanger.sccp.stan.request.confirm.ConfirmOperationRequest;
 
 import java.util.*;
 import java.util.function.Function;
@@ -134,8 +133,40 @@ public class ConfirmOperationValidationImp implements ConfirmOperationValidation
             if (lw!=null) {
                 PlanOperation plan = labwarePlans.get(lw.getId());
                 if (plan!=null) {
-                    validateAddresses(col, lw, plan);
+                    validateCommentAddresses(col.getAddressComments(), lw, plan);
+                    validateCancelledActions(col.getCancelledActions(), lw, plan);
                 }
+            }
+        }
+    }
+
+    public void validateCancelledActions(Collection<CancelPlanAction> cancelledActions, Labware lw, PlanOperation plan) {
+        if (cancelledActions.isEmpty()) {
+            return;
+        }
+        final Integer labwareId = lw.getId();
+        LabwareType lt = lw.getLabwareType();
+        final Set<CancelPlanAction> candidates = plan.getPlanActions().stream()
+                .filter(pa -> pa.getDestination().getLabwareId().equals(labwareId))
+                .map(CancelPlanAction::new)
+                .collect(toSet());
+        for (CancelPlanAction cpa : cancelledActions) {
+            boolean ok = true;
+            final Address address = cpa.getDestinationAddress();
+            if (address ==null) {
+                addProblem("No address specified in cancelled plan action.");
+                ok = false;
+            } else if (lt.indexOf(address) < 0) {
+                addProblem("Invalid address %s in cancelled plan action for labware %s.", address, lw.getBarcode());
+                ok = false;
+            }
+            if (cpa.getSampleId()==null) {
+                addProblem("No sample id specified in cancelled plan action.");
+                ok = false;
+            }
+            if (ok && !candidates.contains(cpa)) {
+                addProblem("Cancelled plan action does not match any action in the plan: %s",
+                        cpa.describeWithBarcode(lw.getBarcode()));
             }
         }
     }
@@ -144,25 +175,21 @@ public class ConfirmOperationValidationImp implements ConfirmOperationValidation
      * Validates the addresses for one confirm-labware request.
      * Adds any problems found.
      * This should not be called when the labware or the plan is not found.
-     * @param col the confirm-labware request
+     * @param addressComments the requested address comments
      * @param lw the labware for this request
      * @param plan the plan for this request
      */
-    public void validateAddresses(ConfirmOperationLabware col, Labware lw, PlanOperation plan) {
+    public void validateCommentAddresses(Collection<AddressCommentId> addressComments, Labware lw, PlanOperation plan) {
+        if (addressComments.isEmpty()) {
+            return;
+        }
+        final Integer labwareId = lw.getId();
         Set<Address> planAddresses = plan.getPlanActions().stream()
-                .filter(planAction -> planAction.getDestination().getLabwareId().equals(lw.getId()))
+                .filter(planAction -> planAction.getDestination().getLabwareId().equals(labwareId))
                 .map(planAction -> planAction.getDestination().getAddress())
                 .collect(toSet());
         LabwareType lt = lw.getLabwareType();
-        for (Address ad : col.getCancelledAddresses()) {
-            if (lt.indexOf(ad) < 0) {
-                addProblem("Invalid address %s in cancelled addresses for labware %s.", ad, lw.getBarcode());
-            } else if (!planAddresses.contains(ad)) {
-                addProblem("No planned action recorded for address %s in labware %s, specified as cancelled.",
-                        ad, lw.getBarcode());
-            }
-        }
-        for (AddressCommentId adcom : col.getAddressComments()) {
+        for (AddressCommentId adcom : addressComments) {
             Address ad = adcom.getAddress();
             if (ad==null) {
                 addProblem("Comment specified with no address for labware %s.", lw.getBarcode());
