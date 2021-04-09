@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import graphql.schema.DataFetchingEnvironment;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import org.springframework.security.authentication.InsufficientAuthenticationException;
 import org.springframework.security.core.Authentication;
 import uk.ac.sanger.sccp.stan.model.User;
 import uk.ac.sanger.sccp.stan.repo.UserRepo;
@@ -23,12 +24,16 @@ abstract class BaseGraphQLResource {
         this.userRepo = userRepo;
     }
 
-    protected User checkUser() {
+    protected User checkUser(User.Role role) {
         Authentication auth = authComp.getAuthentication();
         if (auth != null) {
             Object principal = auth.getPrincipal();
             if (principal instanceof User) {
-                return (User) principal;
+                User user = (User) principal;
+                if (!user.hasRole(role)) {
+                    throw new InsufficientAuthenticationException("Requires role: "+role);
+                }
+                return user;
             }
         }
         throw new AuthenticationCredentialsNotFoundException("Not logged in");
