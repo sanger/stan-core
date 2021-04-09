@@ -37,14 +37,15 @@ public class TestLogin {
     @Test
     public void testLogin() throws Exception {
         when(mockLdapService.verifyCredentials("dr6", "42")).thenReturn(true);
-        when(mockUserRepo.findByUsername("dr6")).thenReturn(Optional.of(new User(10, "dr6")));
-        String mutation = "mutation { login(username: \"dr6\", password: \"42\")  { user { username } } }";
+        final User user = new User(10, "dr6", User.Role.admin);
+        when(mockUserRepo.findByUsername("dr6")).thenReturn(Optional.of(user));
+        String mutation = "mutation { login(username: \"dr6\", password: \"42\")  { user { username role } } }";
         Object result = tester.post(mutation);
-        Map<String, ?> expectedResult = Map.of("data", Map.of("login", Map.of("user", Map.of("username", "dr6"))));
+        Map<String, ?> expectedResult = Map.of("data", Map.of("login", Map.of("user", Map.of("username", "dr6", "role", "admin"))));
         assertEquals(expectedResult, result);
         verify(mockLdapService).verifyCredentials("dr6", "42");
         verify(mockUserRepo).findByUsername("dr6");
-        verify(tester.mockAuthComp).setAuthentication(eq(new UsernamePasswordAuthenticationToken("dr6", "42", new ArrayList<>())), anyInt());
+        verify(tester.mockAuthComp).setAuthentication(eq(new UsernamePasswordAuthenticationToken(user, "42", new ArrayList<>())), anyInt());
     }
 
     @Test
@@ -56,12 +57,12 @@ public class TestLogin {
 
     @Test
     public void testGetUser() throws Exception {
-        final String query = "{ user { username } }";
+        final String query = "{ user { username role } }";
         Map<String, Map<String, Map<String, String>>> noUserResult = tester.post(query);
         assertEquals(Map.of("data", singletonMap("user", null)), noUserResult);
 
-        tester.setUser("dr6");
+        tester.setUser(new User("dr6", User.Role.normal));
         Map<String, Map<String, Map<String, String>>> userResult = tester.post(query);
-        assertEquals(Map.of("data", Map.of("user", Map.of("username", "dr6"))), userResult);
+        assertEquals(Map.of("data", Map.of("user", Map.of("username", "dr6", "role", "normal"))), userResult);
     }
 }

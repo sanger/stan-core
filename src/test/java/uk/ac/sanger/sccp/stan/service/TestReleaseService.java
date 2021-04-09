@@ -51,7 +51,7 @@ public class TestReleaseService {
         mockStoreService = mock(StoreService.class);
         mockReleaseRepo = mock(ReleaseRepo.class);
         mockSnapshotService = mock(SnapshotService.class);
-        user = new User(10, "user1");
+        user = EntityFactory.getUser();
         destination = new ReleaseDestination(20, "Venus");
         recipient = new ReleaseRecipient(30, "Mekon");
         when(mockDestinationRepo.getByName(destination.getName())).thenReturn(destination);

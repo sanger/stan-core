@@ -67,7 +67,7 @@ public class EntityCreator {
     private EntityManager entityManager;
 
     public User createUser(String username) {
-        return userRepo.save(new User(null, username));
+        return userRepo.save(new User(null, username, User.Role.admin));
     }
 
     public Donor createDonor(String donorName) {

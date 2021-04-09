@@ -85,15 +85,18 @@ public class GraphQLMutation extends BaseGraphQLResource {
             if (optUser.isEmpty()) {
                 return new LoginResult("Username not in database.", null);
             }
+            User user = optUser.get();
+            if (user.getRole()==User.Role.disabled) {
+                return new LoginResult("Username is disabled.", null);
+            }
             String password = dataFetchingEnvironment.getArgument("password");
             if (!ldapService.verifyCredentials(username, password)) {
                 return new LoginResult("Login failed", null);
             }
-
-            Authentication authentication = new UsernamePasswordAuthenticationToken(username, password, new ArrayList<>());
+            Authentication authentication = new UsernamePasswordAuthenticationToken(user, password, new ArrayList<>());
             authComp.setAuthentication(authentication, sessionConfig.getMaxInactiveMinutes());
-            log.info("Login succeeded for user {}", optUser.get());
-            return new LoginResult("OK", optUser.get());
+            log.info("Login succeeded for user {}", user);
+            return new LoginResult("OK", user);
         };
     }
 
@@ -101,8 +104,8 @@ public class GraphQLMutation extends BaseGraphQLResource {
         var auth = authComp.getAuthentication();
         if (auth != null) {
             var princ = auth.getPrincipal();
-            if (princ != null) {
-                return princ.toString();
+            if (princ instanceof User) {
+                return ((User) princ).getUsername();
             }
         }
         return null;
