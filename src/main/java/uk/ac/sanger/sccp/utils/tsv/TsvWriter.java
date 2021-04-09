@@ -33,7 +33,7 @@ public class TsvWriter implements Closeable {
     }
 
     public <C, V> void write(TsvData<C, V> data) throws IOException {
-        final List<C> columns = data.getColumns();
+        final List<? extends C> columns = data.getColumns();
         writeLn(columns.stream().map(Object::toString).iterator());
         final int numRows = data.getNumRows();
         for (int i = 0; i < numRows; ++i) {

@@ -31,7 +31,7 @@ public class TestMeasurementRepo {
     @Transactional
     @Test
     public void testFindAllBySlotIdIn() {
-        OperationType opType = entityCreator.createOpType("DoStuff");
+        OperationType opType = entityCreator.createOpType("DoStuff", null);
         User user = entityCreator.createUser("user1");
         Operation op = opRepo.save(new Operation(null, opType, null, List.of(), user));
         Integer opId = op.getId();

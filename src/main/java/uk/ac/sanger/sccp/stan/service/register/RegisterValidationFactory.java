@@ -1,15 +1,12 @@
 package uk.ac.sanger.sccp.stan.service.register;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.RegisterRequest;
-import uk.ac.sanger.sccp.stan.service.StringValidator;
-import uk.ac.sanger.sccp.stan.service.StringValidator.CharacterType;
+import uk.ac.sanger.sccp.stan.request.register.RegisterRequest;
+import uk.ac.sanger.sccp.stan.request.register.SectionRegisterRequest;
 import uk.ac.sanger.sccp.stan.service.Validator;
-
-import java.util.EnumSet;
-import java.util.Set;
 
 /**
  * Factory for {@link RegisterValidation}
@@ -26,13 +23,24 @@ public class RegisterValidationFactory {
     private final FixativeRepo fixativeRepo;
     private final TissueRepo tissueRepo;
     private final SpeciesRepo speciesRepo;
+    private final LabwareRepo labwareRepo;
+    private final BioStateRepo bioStateRepo;
     private final Validator<String> donorNameValidation;
     private final Validator<String> externalNameValidation;
+    private final Validator<String> externalBarcodeValidation;
+    private final Validator<String> visiumLpSlideBarcodeValidation;
+    private final TissueFieldChecker tissueFieldChecker;
 
     @Autowired
     public RegisterValidationFactory(DonorRepo donorRepo, HmdmcRepo hmdmcRepo, TissueTypeRepo ttRepo,
                                      LabwareTypeRepo ltRepo, MouldSizeRepo mouldSizeRepo, MediumRepo mediumRepo,
-                                     FixativeRepo fixativeRepo, TissueRepo tissueRepo, SpeciesRepo speciesRepo) {
+                                     FixativeRepo fixativeRepo, TissueRepo tissueRepo, SpeciesRepo speciesRepo,
+                                     LabwareRepo labwareRepo, BioStateRepo bioStateRepo,
+                                     @Qualifier("donorNameValidator") Validator<String> donorNameValidation,
+                                     @Qualifier("externalNameValidator") Validator<String> externalNameValidation,
+                                     @Qualifier("externalBarcodeValidator") Validator<String> externalBarcodeValidation,
+                                     @Qualifier("visiumLPBarcodeValidator") Validator<String> visiumLpSlideBarcodeValidation,
+                                     TissueFieldChecker tissueFieldChecker) {
         this.donorRepo = donorRepo;
         this.hmdmcRepo = hmdmcRepo;
         this.ttRepo = ttRepo;
@@ -42,15 +50,23 @@ public class RegisterValidationFactory {
         this.fixativeRepo = fixativeRepo;
         this.tissueRepo = tissueRepo;
         this.speciesRepo = speciesRepo;
-        Set<CharacterType> charTypes = EnumSet.of(
-                CharacterType.UPPER, CharacterType.LOWER, CharacterType.DIGIT, CharacterType.HYPHEN, CharacterType.UNDERSCORE
-        ) ;
-        this.donorNameValidation = new StringValidator("Donor identifier", 3, 64, charTypes);
-        this.externalNameValidation = new StringValidator("External identifier", 3, 64, charTypes);
+        this.labwareRepo = labwareRepo;
+        this.bioStateRepo = bioStateRepo;
+        this.donorNameValidation = donorNameValidation;
+        this.externalNameValidation = externalNameValidation;
+        this.externalBarcodeValidation = externalBarcodeValidation;
+        this.visiumLpSlideBarcodeValidation = visiumLpSlideBarcodeValidation;
+        this.tissueFieldChecker = tissueFieldChecker;
     }
 
     public RegisterValidation createRegisterValidation(RegisterRequest request) {
         return new RegisterValidationImp(request, donorRepo, hmdmcRepo, ttRepo, ltRepo, mouldSizeRepo, mediumRepo,
-                fixativeRepo, tissueRepo, speciesRepo, donorNameValidation, externalNameValidation);
+                fixativeRepo, tissueRepo, speciesRepo, donorNameValidation, externalNameValidation, tissueFieldChecker);
+    }
+
+    public SectionRegisterValidation createSectionRegisterValidation(SectionRegisterRequest request) {
+        return new SectionRegisterValidation(request, donorRepo, speciesRepo, ltRepo, labwareRepo,
+                mouldSizeRepo, hmdmcRepo, ttRepo, fixativeRepo, mediumRepo, tissueRepo, bioStateRepo,
+                externalBarcodeValidation, donorNameValidation, externalNameValidation, visiumLpSlideBarcodeValidation);
     }
 }

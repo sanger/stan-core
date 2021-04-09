@@ -11,11 +11,14 @@ import java.util.*;
 public class LabwareLabelData {
     private final String barcode;
     private final String medium;
+    private final String date;
+
     private final List<LabelContent> contents;
 
-    public LabwareLabelData(String barcode, String medium, List<LabelContent> contents) {
+    public LabwareLabelData(String barcode, String medium, String date, List<LabelContent> contents) {
         this.barcode = barcode;
         this.medium = medium;
+        this.date = date;
         this.contents = List.copyOf(contents);
     }
 
@@ -25,6 +28,10 @@ public class LabwareLabelData {
 
     public String getMedium() {
         return this.medium;
+    }
+
+    public String getDate() {
+        return this.date;
     }
 
     public List<LabelContent> getContents() {
@@ -38,6 +45,7 @@ public class LabwareLabelData {
         LabwareLabelData that = (LabwareLabelData) o;
         return (Objects.equals(this.barcode, that.barcode)
                 && Objects.equals(this.medium, that.medium)
+                && Objects.equals(this.date, that.date)
                 && Objects.equals(this.contents, that.contents));
     }
 
@@ -51,14 +59,16 @@ public class LabwareLabelData {
         return MoreObjects.toStringHelper(this)
                 .add("barcode", barcode)
                 .add("medium", medium)
+                .add("date", date)
                 .add("contents", contents)
                 .toString();
     }
 
     public Map<String, String> getFields() {
-        HashMap<String, String> fields = new HashMap<>(2 + 4 * contents.size());
+        HashMap<String, String> fields = new HashMap<>(3 + 4 * contents.size());
         fields.put("barcode", getBarcode());
         fields.put("medium", getMedium());
+        fields.put("date", getDate());
         int index = 0;
         for (LabelContent content : contents) {
             addField(fields, "donor", index, content.getDonorName());

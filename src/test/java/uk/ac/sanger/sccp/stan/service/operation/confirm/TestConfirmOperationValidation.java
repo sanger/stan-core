@@ -8,9 +8,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.confirm.ConfirmOperationLabware;
+import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.request.confirm.ConfirmOperationLabware.AddressCommentId;
-import uk.ac.sanger.sccp.stan.request.confirm.ConfirmOperationRequest;
 
 import java.util.*;
 import java.util.stream.IntStream;
@@ -153,7 +152,7 @@ public class TestConfirmOperationValidation {
         List<Labware> labware = IntStream.range(0, 3).mapToObj(i -> EntityFactory.makeEmptyLabware(lt)).collect(toList());
         Labware otherLabware = EntityFactory.makeEmptyLabware(lt);
         Labware source = EntityFactory.makeLabware(lt, EntityFactory.getSample());
-        OperationType opType = EntityFactory.makeOperationType("Section");
+        OperationType opType = EntityFactory.makeOperationType("Section", null);
         PlanOperation plan1 = EntityFactory.makePlanForLabware(opType, List.of(source), List.of(labware.get(0), otherLabware));
         PlanOperation plan2 = EntityFactory.makePlanForLabware(opType, List.of(source), labware.subList(0,2));
         when(mockPlanOpRepo.findAllByDestinationIdIn(any())).thenReturn(List.of(plan1, plan2));
@@ -173,7 +172,7 @@ public class TestConfirmOperationValidation {
         LabwareType lt = EntityFactory.getTubeType();
         List<Labware> labware = IntStream.range(0, 2).mapToObj(i -> EntityFactory.makeEmptyLabware(lt)).collect(toList());
         Labware source = EntityFactory.makeLabware(lt, EntityFactory.getSample());
-        OperationType opType = EntityFactory.makeOperationType("Section");
+        OperationType opType = EntityFactory.makeOperationType("Section", null);
         PlanOperation plan = EntityFactory.makePlanForLabware(opType, List.of(source), labware.subList(0, 1));
         Map<Integer, PlanOperation> planMap = Map.of(labware.get(0).getId(), plan);
 
@@ -185,41 +184,76 @@ public class TestConfirmOperationValidation {
 
         ConfirmOperationValidationImp validation = makeValidation(request);
 
-        doNothing().when(validation).validateAddresses(any(), any(), any());
+        doNothing().when(validation).validateCancelledActions(any(), any(), any());
+        doNothing().when(validation).validateCommentAddresses(any(), any(), any());
 
         validation.validateOperations(bcMap(labware), planMap);
 
-        verify(validation).validateAddresses(request.getLabware().get(0), labware.get(0), plan);
+        verify(validation).validateCancelledActions(request.getLabware().get(0).getCancelledActions(), labware.get(0), plan);
+        verify(validation).validateCommentAddresses(request.getLabware().get(0).getAddressComments(), labware.get(0), plan);
     }
 
     @Test
-    public void testValidateAddresses() {
+    public void testValidateCancelledActions() {
+        final Address A1 = new Address(1,1);
+        final Address A2 = new Address(1, 2);
+        final Address B1 = new Address(2, 1);
+        LabwareType lt = EntityFactory.makeLabwareType(1, 2);
+        Labware lw = EntityFactory.makeEmptyLabware(lt);
+        String bc = lw.getBarcode();
+        Labware otherLabware = EntityFactory.makeEmptyLabware(lt);
+        final Sample sample = EntityFactory.getSample();
+        Labware source = EntityFactory.makeLabware(EntityFactory.getTubeType(), sample);
+        Slot srcSlot = source.getFirstSlot();
+        OperationType opType = EntityFactory.makeOperationType("Section", null);
+        int planId = 200;
+        List<PlanAction> planActions = List.of(
+                new PlanAction(201, planId, srcSlot, lw.getFirstSlot(), sample, 1, null, null),
+                new PlanAction(202, planId, srcSlot, lw.getFirstSlot(), sample, 2, null, null),
+                new PlanAction(203, planId, srcSlot, otherLabware.getSlot(A2), sample, 1, null, null)
+        );
+        PlanOperation plan = new PlanOperation(planId, opType, null, planActions, EntityFactory.getUser());
+        final Integer sampleId = sample.getId();
+        List<CancelPlanAction> cpas = List.of(
+                new CancelPlanAction(A1, sampleId, 1),
+                new CancelPlanAction(A2, sampleId, 1),
+                new CancelPlanAction(B1, sampleId, 1),
+                new CancelPlanAction(null, null, null)
+        );
+
+        ConfirmOperationValidationImp validation = makeValidation();
+        validation.validateCancelledActions(cpas, lw, plan);
+        assertThat(validation.getProblems()).containsExactlyInAnyOrder(
+                String.format("Cancelled plan action does not match any action in the plan: (barcode=%s, address=A2, sampleId=%s, newSection=1)",
+                        bc, sampleId),
+                String.format("Invalid address B1 in cancelled plan action for labware %s.", bc),
+                "No address specified in cancelled plan action.",
+                "No sample id specified in cancelled plan action."
+        );
+    }
+
+    @Test
+    public void testValidateCommentAddresses() {
         LabwareType lt = EntityFactory.makeLabwareType(1, 2);
         Labware lw = EntityFactory.makeEmptyLabware(lt);
         String bc = lw.getBarcode();
         Labware otherLabware = EntityFactory.makeEmptyLabware(lt);
         Labware source = EntityFactory.makeLabware(EntityFactory.getTubeType(), EntityFactory.getSample());
-        OperationType opType = EntityFactory.makeOperationType("Section");
+        OperationType opType = EntityFactory.makeOperationType("Section", null);
         PlanOperation plan = EntityFactory.makePlanForSlots(opType, List.of(source.getFirstSlot()),
                 List.of(lw.getFirstSlot(), otherLabware.getFirstSlot(), otherLabware.getSlots().get(1)),
                 null);
-        List<Address> cancelledAddresses = List.of(new Address(1,1), new Address(1,2),
-                new Address(2,1));
         List<AddressCommentId> addressCommentIds = List.of(
                 new AddressCommentId(new Address(1,1), 1),
                 new AddressCommentId(new Address(1,2), 2),
                 new AddressCommentId(new Address(2,3), 3),
                 new AddressCommentId(null, 4)
         );
-        ConfirmOperationLabware col = new ConfirmOperationLabware(lw.getBarcode(), false, cancelledAddresses,
-                addressCommentIds);
 
         ConfirmOperationValidationImp validation = makeValidation();
-        validation.validateAddresses(col, lw, plan);
+        validation.validateCommentAddresses(addressCommentIds, lw, plan);
 
         assertThat(validation.getProblems()).containsOnly(
-                "Invalid address B1 in cancelled addresses for labware "+bc+".",
-                "No planned action recorded for address A2 in labware "+bc+", specified as cancelled.",
                 "Comment specified with no address for labware "+bc+".",
                 "Invalid address B3 in comments for labware "+bc+".",
                 "No planned action recorded for address A2 in labware "+bc+", specified in comments."

@@ -5,7 +5,7 @@ import org.hibernate.annotations.Generated;
 import org.hibernate.annotations.GenerationTime;
 
 import javax.persistence.*;
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.Objects;
 
 /**
@@ -25,14 +25,14 @@ public class Destruction {
     private User user;
 
     @Generated(GenerationTime.INSERT)
-    private Timestamp destroyed;
+    private LocalDateTime destroyed;
 
     @ManyToOne
     private DestructionReason reason;
 
     public Destruction() {}
 
-    public Destruction(Integer id, Labware labware, User user, Timestamp destroyed, DestructionReason reason) {
+    public Destruction(Integer id, Labware labware, User user, LocalDateTime destroyed, DestructionReason reason) {
         this.id = id;
         this.labware = labware;
         this.user = user;
@@ -64,11 +64,11 @@ public class Destruction {
         this.user = user;
     }
 
-    public Timestamp getDestroyed() {
+    public LocalDateTime getDestroyed() {
         return this.destroyed;
     }
 
-    public void setDestroyed(Timestamp destroyed) {
+    public void setDestroyed(LocalDateTime destroyed) {
         this.destroyed = destroyed;
     }
 

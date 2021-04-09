@@ -114,26 +114,6 @@
     </changeSet>
 
     <changeSet id="8" author="dr6">
-        <createTable tableName="operation_type">
-            <column name="id" type="INT" autoIncrement="true">
-                <constraints nullable="false" primaryKey="true"/>
-            </column>
-            <column name="name" type="VARCHAR(64)">
-                <constraints nullable="false" unique="true"/>
-            </column>
-            <column name="flags" type="INT UNSIGNED" defaultValueNumeric="0">
-                <constraints nullable="false"/>
-            </column>
-            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
-                <constraints nullable="false"/>
-            </column>
-            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
-                <constraints nullable="false"/>
-            </column>
-        </createTable>
-    </changeSet>
-
-    <changeSet id="9" author="dr6">
         <createTable tableName="fixative">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
@@ -150,13 +130,36 @@
         </createTable>
     </changeSet>
 
-    <changeSet id="10" author="dr6">
+    <changeSet id="9" author="dr6">
         <createTable tableName="bio_state">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
             </column>
             <column name="name" type="VARCHAR(64)">
                 <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="10" author="dr6">
+        <createTable tableName="operation_type">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="name" type="VARCHAR(64)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="flags" type="INT UNSIGNED" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="new_bio_state_id" type="INT">
+                <constraints nullable="true" foreignKeyName="fk_operation_type_new_bio_state" referencedTableName="bio_state" referencedColumnNames="id"/>
             </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
@@ -190,7 +193,7 @@
                 <constraints nullable="false" primaryKey="true"/>
             </column>
             <column name="tissue_type_id" type="INT">
-                <constraints nullable="false" foreignKeyName="spatial_location_fk_tissue_type" referencedTableName="tissue_type" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_spatial_location_tissue_type" referencedTableName="tissue_type" referencedColumnNames="id"/>
             </column>
             <column name="name" type="VARCHAR(64)">
                 <constraints nullable="false" unique="false"/>
@@ -205,7 +208,7 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
-        <createIndex tableName="spatial_location" indexName="spatial_location_key_tissue_type_code" unique="true">
+        <createIndex tableName="spatial_location" indexName="uk_spatial_location_tissue_type_code" unique="true">
             <column name="tissue_type_id"/>
             <column name="code"/>
         </createIndex>
@@ -230,7 +233,7 @@
                 <constraints nullable="false"/>
             </column>
             <column name="label_type_id" type="INT">
-                <constraints nullable="true" foreignKeyName="labware_type_fk_label_type" referencedTableName="label_type" referencedColumnNames="id"/>
+                <constraints nullable="true" foreignKeyName="fk_labware_type_label_type" referencedTableName="label_type" referencedColumnNames="id"/>
             </column>
             <column name="prebarcoded" type="BOOLEAN" defaultValue="FALSE">
                 <constraints nullable="false"/>
@@ -256,7 +259,7 @@
                 <constraints nullable="false"/>
             </column>
             <column name="species_id" type="INT">
-                <constraints nullable="false" foreignKeyName="donor_fk_species" referencedTableName="species" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_donor_species" referencedTableName="species" referencedColumnNames="id"/>
             </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
@@ -279,22 +282,22 @@
                 <constraints nullable="false"/>
             </column>
             <column name="medium_id" type="INT">
-                <constraints nullable="false" foreignKeyName="tissue_fk_medium" referencedTableName="medium" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_tissue_medium" referencedTableName="medium" referencedColumnNames="id"/>
             </column>
             <column name="mould_size_id" type="INT">
-                <constraints nullable="false" foreignKeyName="tissue_fk_mould_size" referencedTableName="mould_size" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_tissue_mould_size" referencedTableName="mould_size" referencedColumnNames="id"/>
             </column>
             <column name="spatial_location_id" type="INT">
-                <constraints nullable="false" foreignKeyName="tissue_fk_spatial_location" referencedTableName="spatial_location" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_tissue_spatial_location" referencedTableName="spatial_location" referencedColumnNames="id"/>
             </column>
             <column name="hmdmc_id" type="INT">
-                <constraints nullable="true" foreignKeyName="tissue_fk_hmdmc" referencedTableName="hmdmc" referencedColumnNames="id"/>
+                <constraints nullable="true" foreignKeyName="fk_tissue_hmdmc" referencedTableName="hmdmc" referencedColumnNames="id"/>
             </column>
             <column name="donor_id" type="INT">
-                <constraints nullable="false" foreignKeyName="tissue_fk_donor" referencedTableName="donor" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_tissue_donor" referencedTableName="donor" referencedColumnNames="id"/>
             </column>
             <column name="fixative_id" type="INT">
-                <constraints nullable="false" foreignKeyName="tissue_fk_fixative" referencedTableName="fixative" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_tissue_fixative" referencedTableName="fixative" referencedColumnNames="id"/>
             </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
@@ -303,17 +306,6 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
-        <createIndex tableName="tissue" indexName="tissue_key_donor_spatial_location_medium_fixative_replicate" unique="true">
-            <column name="donor_id"/>
-            <column name="spatial_location_id"/>
-            <column name="medium_id"/>
-            <column name="fixative_id"/>
-            <column name="replicate"/>
-        </createIndex>
-        <rollback>
-            <dropAllForeignKeyConstraints baseTableName="tissue"/>
-            <dropTable tableName="tissue"/>
-        </rollback>
     </changeSet>
 
     <changeSet id="16" author="dr6">
@@ -325,10 +317,10 @@
                 <constraints nullable="true"/>
             </column>
             <column name="tissue_id" type="INT">
-                <constraints nullable="false" foreignKeyName="sample_fk_tissue" referencedTableName="tissue" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_sample_tissue" referencedTableName="tissue" referencedColumnNames="id"/>
             </column>
             <column name="bio_state_id" type="INT">
-                <constraints nullable="false" foreignKeyName="sample_fk_bio_state" referencedTableName="bio_state" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_sample_bio_state" referencedTableName="bio_state" referencedColumnNames="id"/>
             </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
@@ -347,10 +339,19 @@
             <column name="barcode" type="VARCHAR(32)">
                 <constraints nullable="false" unique="true"/>
             </column>
+            <column name="external_barcode" type="VARCHAR(32)">
+                <constraints nullable="true" unique="true"/>
+            </column>
             <column name="labware_type_id" type="INT">
-                <constraints nullable="false" foreignKeyName="labware_fk_labware_type" referencedTableName="labware_type" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_labware_labware_type" referencedTableName="labware_type" referencedColumnNames="id"/>
             </column>
             <column name="discarded" type="BOOLEAN" defaultValue="FALSE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="released" type="BOOLEAN" defaultValue="FALSE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="destroyed" type="BOOLEAN" defaultValue="FALSE">
                 <constraints nullable="false"/>
             </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
@@ -374,7 +375,7 @@
                 <constraints nullable="false"/>
             </column>
             <column name="labware_id" type="INT">
-                <constraints nullable="false" foreignKeyName="slot_fk_labware" referencedTableName="labware" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_slot_labware" referencedTableName="labware" referencedColumnNames="id"/>
             </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
@@ -383,7 +384,7 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
-        <createIndex tableName="slot" indexName="slot_key_labware_row_col" unique="true">
+        <createIndex tableName="slot" indexName="uk_slot_labware_row_col" unique="true">
             <column name="labware_id"/>
             <column name="row_index"/>
             <column name="col_index"/>
@@ -397,10 +398,10 @@
     <changeSet id="19" author="dr6">
         <createTable tableName="slot_sample">
             <column name="slot_id" type="INT">
-                <constraints nullable="false" foreignKeyName="slot_sample_fk_slot" referencedTableName="slot" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_slot_sample_slot" referencedTableName="slot" referencedColumnNames="id"/>
             </column>
             <column name="sample_id" type="INT">
-                <constraints nullable="false" foreignKeyName="slot_sample_fk_sample" referencedTableName="sample" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_slot_sample_sample" referencedTableName="sample" referencedColumnNames="id"/>
             </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
@@ -419,10 +420,10 @@
     <changeSet id="20" author="dr6">
         <createTable tableName="block_info">
             <column name="slot_id" type="INT">
-                <constraints nullable="false" foreignKeyName="block_info_fk_slot" referencedTableName="slot" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_block_info_slot" referencedTableName="slot" referencedColumnNames="id"/>
             </column>
             <column name="sample_id" type="INT">
-                <constraints nullable="false" foreignKeyName="block_info_fk_sample" referencedTableName="sample" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_block_info_sample" referencedTableName="sample" referencedColumnNames="id"/>
             </column>
             <column name="highest_section" type="INT">
                 <constraints nullable="false"/>
@@ -450,10 +451,10 @@
                 <constraints nullable="false"/>
             </column>
             <column name="operation_type_id" type="INT">
-                <constraints nullable="false" foreignKeyName="operation_fk_operation_type" referencedTableName="operation_type" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_operation_operation_type" referencedTableName="operation_type" referencedColumnNames="id"/>
             </column>
             <column name="user_id" type="INT">
-                <constraints nullable="false" foreignKeyName="operation_fk_user" referencedTableName="user" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_operation_user" referencedTableName="user" referencedColumnNames="id"/>
             </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
@@ -470,19 +471,19 @@
                 <constraints nullable="false" primaryKey="true"/>
             </column>
             <column name="operation_id" type="INT">
-                <constraints nullable="false" foreignKeyName="action_fk_operation" referencedTableName="operation" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_action_operation" referencedTableName="operation" referencedColumnNames="id"/>
             </column>
             <column name="sample_id" type="INT">
-                <constraints nullable="false" foreignKeyName="action_fk_sample" referencedTableName="sample" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_action_sample" referencedTableName="sample" referencedColumnNames="id"/>
             </column>
             <column name="source_slot_id" type="INT">
-                <constraints nullable="false" foreignKeyName="action_fk_source_slot" referencedTableName="slot" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_action_source_slot" referencedTableName="slot" referencedColumnNames="id"/>
             </column>
             <column name="dest_slot_id" type="INT">
-                <constraints nullable="false" foreignKeyName="action_fk_dest_slot" referencedTableName="slot" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_action_dest_slot" referencedTableName="slot" referencedColumnNames="id"/>
             </column>
             <column name="source_sample_id" type="INT">
-                <constraints nullable="false" foreignKeyName="action_fk_source_sample" referencedTableName="sample" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_action_source_sample" referencedTableName="sample" referencedColumnNames="id"/>
             </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
@@ -491,7 +492,7 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
-        <createIndex tableName="action" indexName="action_key_operation_sample_source_slot_dest_slot" unique="true">
+        <createIndex tableName="action" indexName="uk_action_op_sample_slots" unique="true">
             <column name="operation_id"/>
             <column name="sample_id"/>
             <column name="source_slot_id"/>
@@ -512,9 +513,9 @@
     </changeSet>
 
     <changeSet id="101" author="dr6">
-        <loadData tableName="operation_type" file="db/operationtypes.tsv" separator="\t">
+        <loadData tableName="bio_state" file="db/biostates.tsv" separator="\t">
+            <column name="id" header="id" type="numeric"/>
             <column name="name" header="name" type="string"/>
-            <column name="flags" header="flags" type="numeric"/>
         </loadData>
     </changeSet>
 
@@ -573,8 +574,10 @@
     </changeSet>
 
     <changeSet id="111" author="dr6">
-        <loadData tableName="bio_state" file="db/biostates.tsv" separator="\t">
+        <loadData tableName="operation_type" file="db/operationtypes.tsv" separator="\t">
             <column name="name" header="name" type="string"/>
+            <column name="flags" header="flags" type="numeric"/>
+            <column name="new_bio_state_id" header="new_bio_state_id" type="numeric"/>
         </loadData>
     </changeSet>
 
@@ -593,10 +596,10 @@
                 <constraints nullable="false"/>
             </column>
             <column name="operation_type_id" type="INT">
-                <constraints nullable="false" foreignKeyName="plan_operation_fk_operation_type" referencedTableName="operation_type" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_plan_operation_operation_type" referencedTableName="operation_type" referencedColumnNames="id"/>
             </column>
             <column name="user_id" type="INT">
-                <constraints nullable="false" foreignKeyName="plan_operation_fk_user" referencedTableName="user" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_plan_operation_user" referencedTableName="user" referencedColumnNames="id"/>
             </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
@@ -621,19 +624,19 @@
                 <constraints nullable="false" primaryKey="true"/>
             </column>
             <column name="plan_operation_id" type="INT">
-                <constraints nullable="false" foreignKeyName="plan_action_fk_plan_operation" referencedTableName="plan_operation" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_plan_action_plan_operation" referencedTableName="plan_operation" referencedColumnNames="id"/>
             </column>
             <column name="sample_id" type="INT">
-                <constraints nullable="false" foreignKeyName="plan_action_fk_sample" referencedTableName="sample" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_plan_action_sample" referencedTableName="sample" referencedColumnNames="id"/>
             </column>
             <column name="source_slot_id" type="INT">
-                <constraints nullable="false" foreignKeyName="plan_action_fk_source_slot" referencedTableName="slot" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_plan_action_source_slot" referencedTableName="slot" referencedColumnNames="id"/>
             </column>
             <column name="dest_slot_id" type="INT">
-                <constraints nullable="false" foreignKeyName="plan_action_fk_dest_slot" referencedTableName="slot" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_plan_action_dest_slot" referencedTableName="slot" referencedColumnNames="id"/>
             </column>
             <column name="new_bio_state_id" type="INT">
-                <constraints nullable="true" foreignKeyName="plan_action_fk_new_bio_state" referencedTableName="bio_state" referencedColumnNames="id"/>
+                <constraints nullable="true" foreignKeyName="fk_plan_action_new_bio_state" referencedTableName="bio_state" referencedColumnNames="id"/>
             </column>
             <column name="new_section" type="INT">
                 <constraints nullable="true"/>
@@ -648,11 +651,12 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
-        <createIndex tableName="plan_action" indexName="plan_action_key_plan_operation_sample_source_slot_dest_slot" unique="true">
+        <createIndex tableName="plan_action" indexName="uk_plan_action_plan_sample_slots_section" unique="true">
             <column name="plan_operation_id"/>
             <column name="sample_id"/>
             <column name="source_slot_id"/>
             <column name="dest_slot_id"/>
+            <column name="new_section"/>
         </createIndex>
         <rollback>
             <dropAllForeignKeyConstraints baseTableName="plan_action"/>
@@ -668,9 +672,6 @@
             <column name="name" type="VARCHAR(64)">
                 <constraints nullable="false" unique="true"/>
             </column>
-            <column name="label_type_id" type="INT">
-                <constraints nullable="false" foreignKeyName="printer_fk_label_type" referencedTableName="label_type" referencedColumnNames="id"/>
-            </column>
             <column name="service" type="ENUM('sprint')">
                 <constraints nullable="false"/>
             </column>
@@ -684,18 +685,34 @@
     </changeSet>
 
     <changeSet id="204" author="dr6">
+        <createTable tableName="printer_label_type">
+            <column name="printer_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_printer_label_type_printer" referencedTableName="printer" referencedColumnNames="id"/>
+            </column>
+            <column name="label_type_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_printer_label_type_label_type" referencedTableName="label_type" referencedColumnNames="id"/>
+            </column>
+        </createTable>
+        <addPrimaryKey tableName="printer_label_type" columnNames="printer_id,label_type_id"/>
+        <rollback>
+            <dropAllForeignKeyConstraints baseTableName="printer_label_type"/>
+            <dropTable tableName="printer_label_type"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="205" author="dr6">
         <createTable tableName="labware_print">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
             </column>
             <column name="user_id" type="INT">
-                <constraints nullable="false" foreignKeyName="labware_print_fk_user" referencedTableName="user" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_labware_print_user" referencedTableName="user" referencedColumnNames="id"/>
             </column>
             <column name="labware_id" type="INT">
-                <constraints nullable="false" foreignKeyName="labware_print_fk_labware" referencedTableName="labware" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_labware_print_labware" referencedTableName="labware" referencedColumnNames="id"/>
             </column>
             <column name="printer_id" type="INT">
-                <constraints nullable="false" foreignKeyName="labware_print_fk_printer" referencedTableName="printer" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_labware_print_printer" referencedTableName="printer" referencedColumnNames="id"/>
             </column>
             <column name="printed" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
@@ -721,13 +738,13 @@
                 <constraints nullable="false"/>
             </column>
             <column name="sample_id" type="INT">
-                <constraints nullable="false" foreignKeyName="measurement_fk_sample" referencedTableName="sample" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_measurement_sample" referencedTableName="sample" referencedColumnNames="id"/>
             </column>
             <column name="operation_id" type="INT">
-                <constraints nullable="false" foreignKeyName="measurement_fk_operation" referencedTableName="operation" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_measurement_operation" referencedTableName="operation" referencedColumnNames="id"/>
             </column>
             <column name="slot_id" type="INT">
-                <constraints nullable="false" foreignKeyName="measurement_fk_slot" referencedTableName="slot" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_measurement_slot" referencedTableName="slot" referencedColumnNames="id"/>
             </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
@@ -759,7 +776,7 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
-        <createIndex tableName="comment" indexName="comment_key_category_text" unique="true">
+        <createIndex tableName="comment" indexName="uk_comment_category_text" unique="true">
             <column name="category"/>
             <column name="text"/>
         </createIndex>
@@ -771,19 +788,19 @@
                 <constraints nullable="false" primaryKey="true"/>
             </column>
             <column name="comment_id" type="INT">
-                <constraints nullable="false" foreignKeyName="operation_comment_fk_comment" referencedTableName="comment" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_operation_comment_comment" referencedTableName="comment" referencedColumnNames="id"/>
             </column>
             <column name="operation_id" type="INT">
-                <constraints nullable="true" foreignKeyName="operation_comment_fk_operation" referencedTableName="operation" referencedColumnNames="id"/>
+                <constraints nullable="true" foreignKeyName="fk_operation_comment_operation" referencedTableName="operation" referencedColumnNames="id"/>
             </column>
             <column name="sample_id" type="INT">
-                <constraints nullable="true" foreignKeyName="operation_comment_fk_sample" referencedTableName="sample" referencedColumnNames="id"/>
+                <constraints nullable="true" foreignKeyName="fk_operation_comment_sample" referencedTableName="sample" referencedColumnNames="id"/>
             </column>
             <column name="slot_id" type="INT">
-                <constraints nullable="true" foreignKeyName="operation_comment_fk_slot" referencedTableName="slot" referencedColumnNames="id"/>
+                <constraints nullable="true" foreignKeyName="fk_operation_comment_slot" referencedTableName="slot" referencedColumnNames="id"/>
             </column>
             <column name="labware_id" type="INT">
-                <constraints nullable="true" foreignKeyName="operation_comment_fk_labware" referencedTableName="labware" referencedColumnNames="id"/>
+                <constraints nullable="true" foreignKeyName="fk_operation_comment_labware" referencedTableName="labware" referencedColumnNames="id"/>
             </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
@@ -847,7 +864,7 @@
                 <constraints nullable="false" primaryKey="true"/>
             </column>
             <column name="labware_id" type="INT">
-                <constraints nullable="false" foreignKeyName="snapshot_fk_labware" referencedTableName="labware" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_snapshot_labware" referencedTableName="labware" referencedColumnNames="id"/>
             </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
@@ -864,13 +881,13 @@
                 <constraints nullable="false" primaryKey="true"/>
             </column>
             <column name="snapshot_id" type="INT">
-                <constraints nullable="false" foreignKeyName="snapshot_element_fk_snapshot" referencedTableName="snapshot" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_snapshot_element_snapshot" referencedTableName="snapshot" referencedColumnNames="id"/>
             </column>
             <column name="slot_id" type="INT">
-                <constraints nullable="false" foreignKeyName="snapshot_element_fk_slot" referencedTableName="slot" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_snapshot_element_slot" referencedTableName="slot" referencedColumnNames="id"/>
             </column>
             <column name="sample_id" type="INT">
-                <constraints nullable="false" foreignKeyName="snapshot_element_fk_sample" referencedTableName="sample" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_snapshot_element_sample" referencedTableName="sample" referencedColumnNames="id"/>
             </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
@@ -879,7 +896,7 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
-        <createIndex tableName="snapshot_element" indexName="snapshot_element_key_snapshot_slot_sample" unique="true">
+        <createIndex tableName="snapshot_element" indexName="uk_snapshot_element_snapshot_slot_sample" unique="true">
             <column name="snapshot_id"/>
             <column name="slot_id"/>
             <column name="sample_id"/>
@@ -899,19 +916,19 @@
                 <constraints nullable="false"/>
             </column>
             <column name="user_id" type="INT">
-                <constraints nullable="false" foreignKeyName="labware_release_fk_user" referencedTableName="user" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_labware_release_user" referencedTableName="user" referencedColumnNames="id"/>
             </column>
             <column name="labware_id" type="INT">
-                <constraints nullable="false" foreignKeyName="labware_release_fk_labware" referencedTableName="labware" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_labware_release_labware" referencedTableName="labware" referencedColumnNames="id"/>
             </column>
             <column name="destination_id" type="INT">
-                <constraints nullable="false" foreignKeyName="labware_release_fk_destination" referencedTableName="release_destination" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_labware_release_destination" referencedTableName="release_destination" referencedColumnNames="id"/>
             </column>
             <column name="recipient_id" type="INT">
-                <constraints nullable="false" foreignKeyName="labware_release_fk_recipient" referencedTableName="release_recipient" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_labware_release_recipient" referencedTableName="release_recipient" referencedColumnNames="id"/>
             </column>
             <column name="snapshot_id" type="INT">
-                <constraints nullable="false" foreignKeyName="labware_release_fk_snapshot" referencedTableName="snapshot" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_labware_release_snapshot" referencedTableName="snapshot" referencedColumnNames="id"/>
             </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
@@ -920,17 +937,6 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
-    </changeSet>
-
-    <changeSet id="405" author="dr6">
-        <addColumn tableName="labware">
-            <column name="released" type="BOOLEAN" defaultValue="FALSE">
-                <constraints nullable="false"/>
-            </column>
-            <column name="destroyed" type="BOOLEAN" defaultValue="FALSE">
-                <constraints nullable="false"/>
-            </column>
-        </addColumn>
     </changeSet>
 
     <changeSet id="406" author="dr6">
@@ -974,13 +980,13 @@
                 <constraints nullable="false"/>
             </column>
             <column name="user_id" type="INT">
-                <constraints nullable="false" foreignKeyName="destruction_fk_user" referencedTableName="user" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_destruction_user" referencedTableName="user" referencedColumnNames="id"/>
             </column>
             <column name="labware_id" type="INT">
-                <constraints nullable="false" foreignKeyName="destruction_fk_labware" referencedTableName="labware" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_destruction_labware" referencedTableName="labware" referencedColumnNames="id"/>
             </column>
             <column name="reason_id" type="INT">
-                <constraints nullable="false" foreignKeyName="destruction_fk_reason" referencedTableName="destruction_reason" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_destruction_reason" referencedTableName="destruction_reason" referencedColumnNames="id"/>
             </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
@@ -995,6 +1001,10 @@
         <loadData tableName="destruction_reason" file="db/destructionreasons.tsv" separator="\t">
             <column name="text" header="text" type="string"/>
         </loadData>
+    </changeSet>
+
+    <changeSet id="503" author="dr6">
+        <customChange class="uk.ac.sanger.sccp.stan.db.FillPrinters" />
     </changeSet>
 
 </databaseChangeLog>

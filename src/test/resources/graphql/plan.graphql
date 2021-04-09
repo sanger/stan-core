@@ -3,13 +3,18 @@ mutation {
         operationType: "Section",
         labware:[{
             labwareType:"Tube",
-            actions:[{
-                source:{
-                    barcode:"STAN-B70C",
-                },
-                address:"A1",
-                sampleId:$sampleId,
-            }],
+            actions:[
+                {
+                    source:{ barcode:"STAN-B70C" }
+                    address: "A1"
+                    sampleId: 55555
+                }
+                {
+                    source: { barcode: "STAN-B70C" }
+                    address: "A1"
+                    sampleId: 55555
+                }
+            ]
         }]
     }) {
         labware {

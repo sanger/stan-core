@@ -13,17 +13,20 @@ public class OperationType {
     private Integer id;
     private String name;
     private int flags;
+    @ManyToOne
+    private BioState newBioState;
 
     public OperationType() {}
 
     public OperationType(Integer id, String name) {
-        this(id, name, 0);
+        this(id, name, 0, null);
     }
 
-    public OperationType(Integer id, String name, int flags) {
+    public OperationType(Integer id, String name, int flags, BioState newBioState) {
         this.id = id;
         this.name = name;
         this.flags = flags;
+        this.newBioState = newBioState;
     }
 
     public Integer getId() {
@@ -50,11 +53,19 @@ public class OperationType {
         this.flags = flags;
     }
 
+    public BioState getNewBioState() {
+        return this.newBioState;
+    }
+
+    public void setNewBioState(BioState newBioState) {
+        this.newBioState = newBioState;
+    }
+
+    //region operation behaviour
     public boolean has(OperationTypeFlag flag) {
         return (this.flags & flag.bit()) != 0;
     }
 
-    //region operation behaviour
     public boolean inPlace() {
         return this.has(OperationTypeFlag.IN_PLACE);
     }
@@ -70,6 +81,10 @@ public class OperationType {
     public boolean sourceMustBeBlock() {
         return this.has(OperationTypeFlag.SOURCE_IS_BLOCK);
     }
+
+    public boolean discardSource() {
+        return this.has(OperationTypeFlag.DISCARD_SOURCE);
+    }
     //endregion
 
     @Override
@@ -79,7 +94,8 @@ public class OperationType {
         OperationType that = (OperationType) o;
         return (Objects.equals(this.id, that.id)
                 && Objects.equals(this.name, that.name)
-                && this.flags==that.flags);
+                && this.flags==that.flags
+                && Objects.equals(this.newBioState, that.newBioState));
     }
 
     @Override

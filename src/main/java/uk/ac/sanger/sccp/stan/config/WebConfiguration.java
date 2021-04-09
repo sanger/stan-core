@@ -22,6 +22,6 @@ public class WebConfiguration implements WebMvcConfigurer {
 
     @Override
     public void configureMessageConverters(List<HttpMessageConverter<?>> converters) {
-        converters.add(new TsvFileConverter<>());
+        converters.add(new TsvFileConverter());
     }
 }

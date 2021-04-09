@@ -2,12 +2,12 @@
     location(location: {barcode:"LOCATIONBARCODE"}) {
         id
         barcode
-        description
+        name
         address
         size { numRows numColumns}
-        children { barcode description address }
+        children { barcode name address }
         stored { barcode address }
-        parent { barcode description address }
+        parent { barcode name address }
         direction
     }
 }

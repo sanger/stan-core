@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>uk.ac.sanger.sccp</groupId>
 	<artifactId>stan</artifactId>
-	<version>0.6.1</version>
+	<version>1.0.0</version>
 	<name>stan</name>
 	<description>Spatial Genomics LIMS</description>
 
@@ -141,6 +141,11 @@
             <artifactId>json</artifactId>
             <version>20201115</version>
         </dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-mail</artifactId>
+			<version>2.4.3</version>
+		</dependency>
     </dependencies>
 
 	<build>

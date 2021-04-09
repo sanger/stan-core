@@ -9,7 +9,7 @@ import java.io.IOException;
 /**
  * @author dr6
  */
-public class TsvFileConverter<E> extends AbstractHttpMessageConverter<TsvFile<?>> {
+public class TsvFileConverter extends AbstractHttpMessageConverter<TsvFile<?>> {
     public static final MediaType MEDIA_TYPE = new MediaType("text", "tsv");
 
     public TsvFileConverter() {

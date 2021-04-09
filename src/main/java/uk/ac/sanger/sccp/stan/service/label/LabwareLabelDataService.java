@@ -6,6 +6,8 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.PlanActionRepo;
 import uk.ac.sanger.sccp.stan.service.label.LabwareLabelData.LabelContent;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 import static java.util.stream.Collectors.toList;
@@ -42,7 +44,12 @@ public class LabwareLabelDataService {
             }
         }
         String medium = (mediums.size()==1 ? mediums.iterator().next() : null);
-        return new LabwareLabelData(labware.getBarcode(), medium, content);
+        LocalDateTime created = labware.getCreated();
+        if (created==null) {
+            created = LocalDateTime.now();
+        }
+        String dateString = created.format(DateTimeFormatter.ISO_LOCAL_DATE);
+        return new LabwareLabelData(labware.getBarcode(), medium, dateString, content);
     }
 
     public LabelContent getContent(Sample sample) {

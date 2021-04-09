@@ -7,7 +7,6 @@ import liquibase.resource.ResourceAccessor;
 import liquibase.statement.SqlStatement;
 import liquibase.statement.core.*;
 
-import java.io.*;
 import java.util.*;
 
 import static java.util.stream.Collectors.toList;
@@ -28,6 +27,11 @@ public class FillTissueTypesAndSpatialLocations implements CustomSqlChange {
         Column(String heading) {
             this.heading = heading;
         }
+
+        @Override
+        public String toString() {
+            return this.heading;
+        }
     }
 
     private ResourceAccessor resourceAccessor;
@@ -36,7 +40,7 @@ public class FillTissueTypesAndSpatialLocations implements CustomSqlChange {
     @Override
     public SqlStatement[] generateStatements(Database db) throws CustomChangeException {
         try {
-            List<Map<Column, String>> slRows = readData("db/tissue_types_and_spatial_locations.tsv");
+            List<Map<Column, String>> slRows = CsvResourceReader.readData(Column.class, "\t", resourceAccessor, "db/tissue_types_and_spatial_locations.tsv");
             List<Map<Column, String>> ttRows = slRows.stream()
                     .map(row -> {
                         EnumMap<Column, String> tissueTypeData = new EnumMap<>(Column.class);
@@ -86,48 +90,6 @@ public class FillTissueTypesAndSpatialLocations implements CustomSqlChange {
         } catch (Exception e) {
             e.printStackTrace();
             throw new CustomChangeException(e);
-        }
-    }
-
-    private Map<Column, Integer> columnIndexes(String hline) {
-        String[] headings = hline.split("\t");
-        Map<Column, Integer> indexes = new EnumMap<>(Column.class);
-        Column[] columns = Column.values();
-        for (int i = 0; i < headings.length; ++i) {
-            String heading = headings[i];
-            for (Column column : columns) {
-                if (column.heading.equalsIgnoreCase(heading)) {
-                    indexes.put(column, i);
-                }
-            }
-        }
-        for (Column column : columns) {
-            if (indexes.get(column)==null) {
-                throw new IllegalArgumentException("Missing heading in file: "+column.heading);
-            }
-        }
-        return indexes;
-    }
-
-    private Map<Column, String> toColumnData(Map<Column, Integer> indexes, String line) {
-        String[] parts = line.split("\t");
-        Map<Column, String> data = new EnumMap<>(Column.class);
-        for (Map.Entry<Column, Integer> entry : indexes.entrySet()) {
-            int index = entry.getValue();
-            if (index >= 0 && index < parts.length) {
-                data.put(entry.getKey(), parts[index]);
-            }
-        }
-        return data;
-    }
-
-    public List<Map<Column, String>> readData(String path) throws IOException {
-        try (BufferedReader in = new BufferedReader(new InputStreamReader(
-                resourceAccessor.openStream(null, path)))) {
-            Map<Column, Integer> indexes = columnIndexes(in.readLine());
-            return in.lines().filter(line -> !line.trim().isEmpty())
-                    .map(line -> toColumnData(indexes, line))
-                    .collect(toList());
         }
     }
 

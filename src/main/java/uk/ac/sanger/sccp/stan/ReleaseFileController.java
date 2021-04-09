@@ -6,7 +6,6 @@ import org.springframework.web.bind.annotation.*;
 import uk.ac.sanger.sccp.stan.service.releasefile.*;
 import uk.ac.sanger.sccp.utils.tsv.TsvFile;
 
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -25,7 +24,7 @@ public class ReleaseFileController {
     @RequestMapping(value="/release", method = RequestMethod.GET, produces = "text/tsv")
     @ResponseBody
     public TsvFile<ReleaseEntry> getReleaseFile(@RequestParam(name="id") List<Integer> ids) {
-        List<ReleaseEntry> entries = releaseFileService.getReleaseEntries(ids);
-        return new TsvFile<>("releases.tsv", entries, Arrays.asList(ReleaseColumn.values()));
+        ReleaseFileContent rfc = releaseFileService.getReleaseFileContent(ids);
+        return new TsvFile<>("releases.tsv", rfc.getEntries(), ReleaseColumn.forMode(rfc.getMode()));
     }
 }

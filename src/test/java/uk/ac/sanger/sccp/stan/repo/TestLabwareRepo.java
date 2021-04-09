@@ -9,11 +9,14 @@ import uk.ac.sanger.sccp.stan.model.LabwareType;
 
 import javax.persistence.EntityNotFoundException;
 import javax.transaction.Transactional;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -42,6 +45,9 @@ public class TestLabwareRepo {
 
         assertEquals(labwareRepo.getByBarcode(barcode), lw);
         assertTrue(labwareRepo.existsByBarcode(barcode));
+        LocalDateTime created = lw.getCreated();
+        assertNotNull(created);
+        assertThat(created).isCloseTo(LocalDateTime.now(), within(1, ChronoUnit.MINUTES));
 
         assertThrows(EntityNotFoundException.class, () -> labwareRepo.getByBarcode("STAN-404"));
         assertFalse(labwareRepo.existsByBarcode("STAN-404"));
@@ -62,5 +68,19 @@ public class TestLabwareRepo {
                 .containsExactlyInAnyOrder(labware[0], labware[1]);
         assertThat(labwareRepo.findAllByIdIn(List.of(-100, -101)))
                 .isEmpty();
+    }
+
+    @Test
+    @Transactional
+    public void testExistsByExternalBarcode() {
+        LabwareType lt = labwareTypeRepo.getByName("Proviasette");
+
+        String xb = "EXT-11";
+        Labware lw = new Labware(null, "STAN-001A", lt, null);
+        lw.setExternalBarcode(xb);
+        labwareRepo.save(lw);
+        assertTrue(labwareRepo.existsByExternalBarcode(xb));
+        assertTrue(labwareRepo.existsByExternalBarcode(xb.toLowerCase()));
+        assertFalse(labwareRepo.existsByExternalBarcode("STAN-001A"));
     }
 }

@@ -1,4 +1,4 @@
-package uk.ac.sanger.sccp.stan.request;
+package uk.ac.sanger.sccp.stan.request.register;
 
 import com.google.common.base.MoreObjects;
 

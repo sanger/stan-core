@@ -38,7 +38,7 @@ public class TestPlanOperationRepo {
         Labware lw2 = entityCreator.createLabware("STAN-2", lt);
         Labware lw3 = entityCreator.createLabware("STAN-3", lt);
         User user = entityCreator.createUser("user");
-        OperationType opType = entityCreator.createOpType("Transmit");
+        OperationType opType = entityCreator.createOpType("Transmit", null);
         PlanOperation plan1 = entityCreator.createPlan(opType, user,
                 source, lw1.getFirstSlot(), source, lw2.getFirstSlot(), source, lw1.getSlots().get(1),
                 source, lw2.getSlots().get(1));

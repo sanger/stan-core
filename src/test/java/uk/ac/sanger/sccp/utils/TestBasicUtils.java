@@ -89,4 +89,9 @@ public class TestBasicUtils {
         result = messageAndList(template, Arrays.asList("Alpha", "Beta"), String::toUpperCase);
         assertEquals(result, "The following 2 bananas were eaten by monkeys:<ul><li>ALPHA<li>BETA</ul>");
     }
+
+    @Test
+    public void testReprCollection() {
+        assertEquals("[\"Alpha\", \"Beta\\t\"]", reprCollection(List.of("Alpha", "Beta\t")));
+    }
 }
