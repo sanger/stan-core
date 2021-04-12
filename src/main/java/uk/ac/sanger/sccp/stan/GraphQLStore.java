@@ -75,7 +75,7 @@ public class GraphQLStore extends BaseGraphQLResource {
 
     public DataFetcher<Location> setLocationCustomName() {
         return dfe -> {
-            User user = checkUser(User.Role.admin);
+            User user = checkUser(User.Role.normal);
             String locationBarcode = dfe.getArgument("locationBarcode");
             String customName = dfe.getArgument("customName");
             if (log.isInfoEnabled()) {
