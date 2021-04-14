@@ -1,0 +1,6 @@
+mutation {
+    addUser(username: "Ford") {
+        username
+        role
+    }
+}

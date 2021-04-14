@@ -9,4 +9,6 @@ public interface SpeciesRepo extends CrudRepository<Species, Integer> {
     Optional<Species> findByName(String name);
 
     List<Species> findAllByNameIn(Collection<String> names);
+
+    Iterable<Species> findAllByEnabled(boolean enabled);
 }

@@ -9,7 +9,7 @@ import java.util.Objects;
  * @author dr6
  */
 @Entity
-public class Comment {
+public class Comment implements HasEnabled {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
@@ -55,10 +55,12 @@ public class Comment {
         this.category = category;
     }
 
+    @Override
     public boolean isEnabled() {
         return this.enabled;
     }
 
+    @Override
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
     }

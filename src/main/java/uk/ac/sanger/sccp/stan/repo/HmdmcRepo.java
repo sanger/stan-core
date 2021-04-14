@@ -9,4 +9,6 @@ public interface HmdmcRepo extends CrudRepository<Hmdmc, Integer> {
     Optional<Hmdmc> findByHmdmc(String hmdmc);
 
     List<Hmdmc> findAllByHmdmcIn(Collection<String> hmdmcs);
+
+    Iterable<Hmdmc> findAllByEnabled(boolean enabled);
 }

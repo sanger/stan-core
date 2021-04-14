@@ -41,7 +41,8 @@ type SpatialLocation {
 }
 
 type Hmdmc {
-    hmdmc: String!,
+    hmdmc: String!
+    enabled: Boolean!
 }
 
 type LabelType {
@@ -57,6 +58,7 @@ type LabwareType {
 
 type Species {
     name: String!
+    enabled: Boolean!
 }
 
 type Donor {
@@ -272,17 +274,20 @@ type Printer {
 }
 
 type Comment {
-    id: Int!,
-    text: String!,
-    category: String!,
+    id: Int!
+    text: String!
+    category: String!
+    enabled: Boolean!
 }
 
 type ReleaseDestination {
     name: String!
+    enabled: Boolean!
 }
 
 type ReleaseRecipient {
     username: String!
+    enabled: Boolean!
 }
 
 type Release {
@@ -315,6 +320,7 @@ type OperationResult {
 type DestructionReason {
     id: Int!
     text: String!
+    enabled: Boolean!
 }
 
 type Destruction {
@@ -414,17 +420,18 @@ type Query {
     user: User
     tissueTypes: [TissueType!]!
     labwareTypes: [LabwareType!]!
-    hmdmcs: [Hmdmc!]!
+    hmdmcs(includeDisabled: Boolean): [Hmdmc!]!
     mediums: [Medium!]!
     fixatives: [Fixative!]!
     mouldSizes: [MouldSize!]!
-    species: [Species!]!
+    species(includeDisabled: Boolean): [Species!]!
     labware(barcode: String!): Labware!
     printers(labelType: String): [Printer!]!
-    comments(category: String): [Comment!]!
-    releaseDestinations: [ReleaseDestination!]!
-    releaseRecipients: [ReleaseRecipient!]!
-    destructionReasons: [DestructionReason!]!
+    comments(category: String, includeDisabled: Boolean): [Comment!]!
+    releaseDestinations(includeDisabled: Boolean): [ReleaseDestination!]!
+    releaseRecipients(includeDisabled: Boolean): [ReleaseRecipient!]!
+    destructionReasons(includeDisabled: Boolean): [DestructionReason!]!
+    users(includeDisabled: Boolean): [User!]!
     find(request: FindRequest!): FindResult!
 
     location(locationBarcode: String!): Location!
@@ -443,6 +450,20 @@ type Mutation {
     extract(request: ExtractRequest!): OperationResult!
     destroy(request: DestroyRequest!): DestroyResult!
     slotCopy(request: SlotCopyRequest!): OperationResult!
+    addComment(category: String!, text: String!): Comment!
+    setCommentEnabled(commentId: Int!, enabled: Boolean!): Comment!
+    addDestructionReason(text: String!): DestructionReason!
+    setDestructionReasonEnabled(text: String!, enabled: Boolean!): DestructionReason!
+    addHmdmc(hmdmc: String!): Hmdmc!
+    setHmdmcEnabled(hmdmc: String!, enabled: Boolean!): Hmdmc!
+    addReleaseDestination(name: String!): ReleaseDestination!
+    setReleaseDestinationEnabled(name: String!, enabled: Boolean!): ReleaseDestination!
+    addReleaseRecipient(username: String!): ReleaseRecipient!
+    setReleaseRecipientEnabled(username: String!, enabled: Boolean!): ReleaseRecipient!
+    addSpecies(name: String!): Species!
+    setSpeciesEnabled(name: String!, enabled: Boolean!): Species!
+    addUser(username: String!): User!
+    setUserRole(username: String!, role: UserRole!): User!
 
     storeBarcode(barcode: String!, locationBarcode: String!, address: Address): StoredItem!
     unstoreBarcode(barcode: String!): UnstoredItem

@@ -13,10 +13,15 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.FindRequest;
 import uk.ac.sanger.sccp.stan.request.FindResult;
+import uk.ac.sanger.sccp.stan.service.CommentAdminService;
 import uk.ac.sanger.sccp.stan.service.FindService;
 import uk.ac.sanger.sccp.stan.service.label.print.LabelPrintService;
 
 import javax.persistence.EntityNotFoundException;
+import java.util.function.Supplier;
+import java.util.stream.StreamSupport;
+
+import static java.util.stream.Collectors.toList;
 
 /**
  * @author dr6
@@ -39,6 +44,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final DestructionReasonRepo destructionReasonRepo;
     final LabelPrintService labelPrintService;
     final FindService findService;
+    final CommentAdminService commentAdminService;
 
     @Autowired
     public GraphQLDataFetchers(ObjectMapper objectMapper, AuthenticationComponent authComp, UserRepo userRepo,
@@ -48,7 +54,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                SpeciesRepo speciesRepo, HmdmcRepo hmdmcRepo, LabwareRepo labwareRepo, CommentRepo commentRepo,
                                ReleaseDestinationRepo releaseDestinationRepo, ReleaseRecipientRepo releaseRecipientRepo,
                                DestructionReasonRepo destructionReasonRepo,
-                               LabelPrintService labelPrintService, FindService findService) {
+                               LabelPrintService labelPrintService, FindService findService, CommentAdminService commentAdminService) {
         super(objectMapper, authComp, userRepo);
         this.sessionConfig = sessionConfig;
         this.tissueTypeRepo = tissueTypeRepo;
@@ -65,6 +71,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.destructionReasonRepo = destructionReasonRepo;
         this.labelPrintService = labelPrintService;
         this.findService = findService;
+        this.commentAdminService = commentAdminService;
     }
 
     public DataFetcher<User> getUser() {
@@ -98,11 +105,11 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     }
 
     public DataFetcher<Iterable<Species>> getSpecies() {
-        return dfe -> speciesRepo.findAll();
+        return allOrEnabled(speciesRepo::findAll, speciesRepo::findAllByEnabled);
     }
 
     public DataFetcher<Iterable<Hmdmc>> getHmdmcs() {
-        return dfe -> hmdmcRepo.findAll();
+        return allOrEnabled(hmdmcRepo::findAll, hmdmcRepo::findAllByEnabled);
     }
 
     public DataFetcher<Iterable<Fixative>> getFixatives() {
@@ -130,23 +137,34 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     public DataFetcher<Iterable<Comment>> getComments() {
         return dfe -> {
             String category = dfe.getArgument("category");
-            if (category==null) {
-                return commentRepo.findAllByEnabled(true);
-            }
-            return commentRepo.findAllByCategoryAndEnabled(category, true);
+            boolean includeDisabled = argOrFalse(dfe, "includeDisabled");
+            return commentAdminService.getComments(category, includeDisabled);
         };
     }
 
     public DataFetcher<Iterable<ReleaseDestination>> getReleaseDestinations() {
-        return dfe -> releaseDestinationRepo.findAllByEnabled(true);
+        return allOrEnabled(releaseDestinationRepo::findAll, releaseDestinationRepo::findAllByEnabled);
     }
 
     public DataFetcher<Iterable<ReleaseRecipient>> getReleaseRecipients() {
-        return dfe -> releaseRecipientRepo.findAllByEnabled(true);
+        return allOrEnabled(releaseRecipientRepo::findAll, releaseRecipientRepo::findAllByEnabled);
     }
 
     public DataFetcher<Iterable<DestructionReason>> getDestructionReasons() {
-        return dfe -> destructionReasonRepo.findAllByEnabled(true);
+        return allOrEnabled(destructionReasonRepo::findAll, destructionReasonRepo::findAllByEnabled);
+    }
+
+    public DataFetcher<Iterable<User>> getUsers() {
+        return dfe -> {
+            boolean includeDisabled = argOrFalse(dfe,"includeDisabled");
+            Iterable<User> users = userRepo.findAll();
+            if (includeDisabled) {
+                return users;
+            }
+            return StreamSupport.stream(users.spliterator(), false)
+                        .filter(user -> user.getRole()!= User.Role.disabled)
+                        .collect(toList());
+        };
     }
 
     public DataFetcher<FindResult> find() {
@@ -156,8 +174,26 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         };
     }
 
+    private boolean argOrFalse(DataFetchingEnvironment dfe, String argName) {
+        Boolean arg = dfe.getArgument(argName);
+        return Boolean.TRUE.equals(arg);
+    }
+
+    private <E> DataFetcher<Iterable<E>> allOrEnabled(Supplier<? extends Iterable<E>> findAll,
+                                                      BoolObjFunction<? extends Iterable<E>> findByEnabled) {
+        return dfe -> {
+            boolean includeDisabled = argOrFalse(dfe, "includeDisabled");
+            return includeDisabled ? findAll.get() : findByEnabled.apply(true);
+        };
+    }
+
     private boolean requestsField(DataFetchingEnvironment dfe, String childName) {
         return dfe.getField().getSelectionSet().getChildren().stream()
                 .anyMatch(f -> ((Field) f).getName().equals(childName));
+    }
+
+    @FunctionalInterface
+    private interface BoolObjFunction<E> {
+        E apply(boolean arg);
     }
 }

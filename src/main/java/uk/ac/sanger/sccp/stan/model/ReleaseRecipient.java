@@ -9,7 +9,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
  * @author dr6
  */
 @Entity
-public class ReleaseRecipient {
+public class ReleaseRecipient implements HasEnabled {
     @Id
     @GeneratedValue(strategy=GenerationType.IDENTITY)
     private Integer id;
@@ -40,10 +40,12 @@ public class ReleaseRecipient {
         this.username = username;
     }
 
+    @Override
     public boolean isEnabled() {
         return this.enabled;
     }
 
+    @Override
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
     }
