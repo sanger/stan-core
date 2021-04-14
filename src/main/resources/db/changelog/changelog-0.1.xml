@@ -4,11 +4,14 @@
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
     <changeSet author="dr6" id="1">
         <createTable tableName="user">
-            <column autoIncrement="true" name="id" type="INT">
+            <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
             </column>
             <column name="username" type="VARCHAR(32)">
                 <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="role" type="ENUM('disabled', 'normal', 'admin')" defaultValue="normal">
+                <constraints nullable="false"/>
             </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>

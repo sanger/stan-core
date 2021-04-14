@@ -1,8 +1,15 @@
 scalar Address
 scalar Timestamp
 
+enum UserRole {
+    disabled
+    normal
+    admin
+}
+
 type User {
-    username: String!,
+    username: String!
+    role: UserRole!
 }
 
 type LoginResult {

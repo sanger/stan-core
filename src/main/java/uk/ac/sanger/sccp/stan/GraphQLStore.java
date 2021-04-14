@@ -43,7 +43,7 @@ public class GraphQLStore extends BaseGraphQLResource {
 
     public DataFetcher<StoredItem> storeBarcode() {
         return dfe -> {
-            User user = checkUser();
+            User user = checkUser(User.Role.normal);
             String itemBarcode = dfe.getArgument("barcode");
             String locationBarcode = dfe.getArgument("locationBarcode");
             Address address = dfe.getArgument("address");
@@ -57,7 +57,7 @@ public class GraphQLStore extends BaseGraphQLResource {
 
     public DataFetcher<UnstoredItem> unstoreBarcode() {
         return dfe -> {
-            User user = checkUser();
+            User user = checkUser(User.Role.normal);
             String itemBarcode = dfe.getArgument("barcode");
             logRequest("UnstoreBarcode", user, itemBarcode);
             return storeService.unstoreBarcode(user, itemBarcode);
@@ -66,7 +66,7 @@ public class GraphQLStore extends BaseGraphQLResource {
 
     public DataFetcher<UnstoreResult> empty() {
         return dfe -> {
-            User user = checkUser();
+            User user = checkUser(User.Role.normal);
             String locationBarcode = dfe.getArgument("locationBarcode");
             logRequest("Empty", user, locationBarcode);
             return storeService.empty(user, locationBarcode);
@@ -75,7 +75,7 @@ public class GraphQLStore extends BaseGraphQLResource {
 
     public DataFetcher<Location> setLocationCustomName() {
         return dfe -> {
-            User user = checkUser();
+            User user = checkUser(User.Role.normal);
             String locationBarcode = dfe.getArgument("locationBarcode");
             String customName = dfe.getArgument("customName");
             if (log.isInfoEnabled()) {

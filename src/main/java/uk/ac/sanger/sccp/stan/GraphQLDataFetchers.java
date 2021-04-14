@@ -73,7 +73,11 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
             if (auth==null || auth instanceof AnonymousAuthenticationToken || auth.getPrincipal()==null) {
                 return null;
             }
-            return new User(auth.getPrincipal().toString());
+            Object princ = auth.getPrincipal();
+            if (princ instanceof User) {
+                return (User) princ;
+            }
+            return null;
         };
     }
 
