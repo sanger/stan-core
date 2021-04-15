@@ -103,6 +103,8 @@ public class RegisterValidationImp implements RegisterValidation {
                     speciesMap.put(speciesUc, species);
                     if (species==null) {
                         addProblem("Unknown species: "+repr(block.getSpecies()));
+                    } else if (!species.isEnabled()) {
+                        addProblem("Species is not enabled: "+species.getName());
                     }
                 }
             }
@@ -225,6 +227,13 @@ public class RegisterValidationImp implements RegisterValidation {
         }
         if (!unknownHmdmcs.isEmpty()) {
             addProblem(pluralise("Unknown HMDMC number{s}: ", unknownHmdmcs.size()) + unknownHmdmcs);
+        }
+        List<String> disabledHmdmcs = hmdmcMap.values().stream()
+                .filter(h -> h!=null && !h.isEnabled())
+                .map(Hmdmc::getHmdmc)
+                .collect(toList());
+        if (!disabledHmdmcs.isEmpty()) {
+            addProblem(pluralise("HMDMC number{s} not enabled: ", disabledHmdmcs.size()) + disabledHmdmcs);
         }
     }
 

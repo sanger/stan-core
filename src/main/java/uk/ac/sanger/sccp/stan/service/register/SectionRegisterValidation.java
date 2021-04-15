@@ -8,10 +8,10 @@ import uk.ac.sanger.sccp.stan.service.Validator;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
-import java.util.function.BiConsumer;
-import java.util.function.Function;
+import java.util.function.*;
 import java.util.stream.Stream;
 
+import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static uk.ac.sanger.sccp.utils.BasicUtils.pluralise;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
@@ -100,6 +100,8 @@ public class SectionRegisterValidation {
                 Donor::getDonorName, donorRepo::findAllByDonorNameIn);
         UCMap<Species> speciesMap = loadAllFromSectionsToStringMap(request, SectionRegisterContent::getSpecies,
                 Species::getName, speciesRepo::findAllByNameIn);
+
+        checkEntitiesEnabled(speciesMap.values(), "Species", Species::getName);
 
         for (SectionRegisterContent content : contents()) {
             boolean skip = false;
@@ -236,6 +238,7 @@ public class SectionRegisterValidation {
         MouldSize mouldSize = mouldSizeOpt.orElse(null);
         UCMap<Hmdmc> hmdmcMap = loadAllFromSectionsToStringMap(request, SectionRegisterContent::getHmdmc,
                 Hmdmc::getHmdmc, hmdmcRepo::findAllByHmdmcIn);
+        checkEntitiesEnabled(hmdmcMap.values(), "HMDMC", Hmdmc::getHmdmc);
         UCMap<TissueType> tissueTypeMap = loadAllFromSectionsToStringMap(request, SectionRegisterContent::getTissueType,
                 TissueType::getName, tissueTypeRepo::findAllByNameIn);
         UCMap<Fixative> fixativeMap = loadAllFromSectionsToStringMap(request, SectionRegisterContent::getFixative,
@@ -427,5 +430,24 @@ public class SectionRegisterValidation {
             return new UCMap<>(0);
         }
         return lookupFunction.apply(strings).stream().collect(toUCMap(entityFunction));
+    }
+
+    private <E extends HasEnabled> boolean checkEntitiesEnabled(Collection<? extends E> items, String name,
+                                                        Function<? super E, String> stringFunction) {
+        return checkEntitiesUsable(items, name+" not enabled: ", stringFunction, HasEnabled::isEnabled);
+    }
+
+    private <E> boolean checkEntitiesUsable(Collection<E> items, String message, Function<? super E, String> stringFunction,
+                                       Predicate<? super E> enabledPredicate) {
+        List<String> notUsable = items.stream()
+                .filter(x -> x!=null && !enabledPredicate.test(x))
+                .map(stringFunction)
+                .sorted()
+                .collect(toList());
+        if (notUsable.isEmpty()) {
+            return true;
+        }
+        addProblem(message + notUsable);
+        return false;
     }
 }

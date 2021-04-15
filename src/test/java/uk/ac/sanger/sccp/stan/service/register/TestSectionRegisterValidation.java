@@ -198,10 +198,13 @@ public class TestSectionRegisterValidation {
         assertEquals(objToUCMap(expectedDonorsObj, Donor::getDonorName), donorMap);
     }
 
+    /** @see #testValidateDonors */
     static Stream<Arguments> validateDonorsArgs() {
         Species human = EntityFactory.getHuman();
         Species hamster = new Species(2, "Hamster");
-        List<Species> knownSpecies = List.of(human, hamster);
+        Species dodo = new Species(3, "Dodo");
+        dodo.setEnabled(false);
+        List<Species> knownSpecies = List.of(human, hamster, dodo);
 
         Donor donor1 = new Donor(1, "DONOR1", LifeStage.adult, human);
         List<Donor> knownDonors = List.of(donor1);
@@ -239,6 +242,11 @@ public class TestSectionRegisterValidation {
                 Arguments.of(
                         new SectionRegisterContent("DONOR2", LifeStage.adult, "Unicorn"),
                         "Unknown species: \"Unicorn\"", new Donor(null, "DONOR2", LifeStage.adult, null),
+                        knownDonors, knownSpecies
+                ),
+                Arguments.of(
+                        new SectionRegisterContent("DONOR2", LifeStage.adult, "Dodo"),
+                        "Species not enabled: [Dodo]", new Donor(null, "DONOR2", LifeStage.adult, dodo),
                         knownDonors, knownSpecies
                 ),
                 Arguments.of(
@@ -424,10 +432,15 @@ public class TestSectionRegisterValidation {
         }
     }
 
+    /** @see #testValidateTissues */
     static Stream<ValidateTissueTestData> validateTissuesArgs() {
         final Hmdmc hmdmc1 = new Hmdmc(1, "2021/01");
         final Hmdmc hmdmc2 = new Hmdmc(2, "2021/02");
-        List<Hmdmc> hmdmcs = List.of(hmdmc1, hmdmc2);
+        final Hmdmc hmdmc3 = new Hmdmc(3, "2021/03");
+        final Hmdmc hmdmc4 = new Hmdmc(4, "2021/04");
+        hmdmc3.setEnabled(false);
+        hmdmc4.setEnabled(false);
+        List<Hmdmc> hmdmcs = List.of(hmdmc1, hmdmc2, hmdmc3, hmdmc4);
         final TissueType ARM = makeTissueType(1, "Arm", "ARM");
         final TissueType LEG = makeTissueType(2, "Leg", "LEG");
         List<TissueType> tissueTypes = List.of(ARM, LEG);
@@ -474,6 +487,10 @@ public class TestSectionRegisterValidation {
                 testData.get()
                         .content("EXT1", 4, "ARM", 1, "Donor2", "None", "None", "2021/01", "Hamster")
                         .problem("Unexpected HMDMC number received for non-human tissue."),
+                testData.get()
+                        .content("EXT1", 4, "ARM", 1, "Donor2", "None", "None", "2021/03", "Human")
+                        .content("EXT2", 4, "ARM", 1, "Donor2", "None", "None", "2021/04", "Human")
+                        .problem("HMDMC not enabled: [2021/03, 2021/04]"),
                 testData.get()
                         .content(null, 4, "ARM", 1, "Donor1", "None", "None", "2021/01", "Human")
                         .problem("Missing external identifier."),

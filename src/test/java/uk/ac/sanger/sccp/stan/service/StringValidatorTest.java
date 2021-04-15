@@ -89,19 +89,22 @@ public class StringValidatorTest {
 
     @ParameterizedTest
     @MethodSource("characterTypes")
-    public void testCharacterType(String chars, CharacterType ct) {
+    public void testCharacterType(String chars, CharacterType characterType) {
         for (int i = 0; i < chars.length(); ++i) {
-            assertEquals(ct, StringValidator.characterType(chars.charAt(i)));
+            assertEquals(characterType, StringValidator.characterType(chars.charAt(i)));
         }
     }
 
     private static Stream<Arguments> characterTypes() {
         return Arrays.stream(new Object[][]{
-                {"ABZabc", CharacterType.ALPHA},
+                {"ABZabz", CharacterType.ALPHA},
                 {"019", CharacterType.DIGIT},
                 {"-", CharacterType.HYPHEN},
                 {"_", CharacterType.UNDERSCORE},
                 {" ", CharacterType.SPACE},
+                {"()", CharacterType.PAREN},
+                {"/", CharacterType.SLASH},
+                {"'", CharacterType.APOSTROPHE},
                 {"@[`{", null},
         }).map(Arguments::of);
     }

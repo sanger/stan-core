@@ -109,6 +109,8 @@ public class TestDestructionService {
 
     static Stream<Arguments> destroyArgs() {
         DestructionReason reason = new DestructionReason(1, "All wrong.");
+        DestructionReason disabledReason = new DestructionReason(1, "We're not ready yet.");
+        disabledReason.setEnabled(false);
         List<Labware> labware = List.of(EntityFactory.getTube());
         List<String> barcodes = List.of(labware.get(0).getBarcode());
         DestroyRequest request = new DestroyRequest(barcodes, 1);
@@ -120,6 +122,7 @@ public class TestDestructionService {
                 Arguments.of(new DestroyRequest(barcodes, null), labware, reason, "No reason id supplied."),
                 Arguments.of(request, labware, null, EntityNotFoundException.class),
                 Arguments.of(request, null, reason, IllegalArgumentException.class),
+                Arguments.of(request, labware, disabledReason, "Specified destruction reason is not enabled."),
                 Arguments.of(request, labware, reason, destroyResult)
         );
     }
