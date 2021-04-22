@@ -1,0 +1,6 @@
+mutation {
+    addSpecies(name: "Unicorn") {
+        name
+        enabled
+    }
+}

@@ -9,6 +9,8 @@ import java.util.*;
 import java.util.function.Function;
 
 import static java.util.stream.Collectors.*;
+import static uk.ac.sanger.sccp.utils.BasicUtils.pluralise;
+import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
  * Tool for validating a {@link ConfirmOperationRequest}.
@@ -219,10 +221,17 @@ public class ConfirmOperationValidationImp implements ConfirmOperationValidation
         if (commentIds.isEmpty()) {
             return;
         }
-        Set<Integer> foundCommentIds = commentRepo.findIdByIdIn(commentIds);
-        commentIds.removeAll(foundCommentIds);
+        List<Comment> comments = commentRepo.findAllByIdIn(commentIds);
+        comments.forEach(c -> commentIds.remove(c.getId()));
         if (!commentIds.isEmpty()) {
             addProblem("Unknown comment IDs: "+commentIds);
+        }
+        List<String> disabledComments = comments.stream()
+                .filter(c -> !c.isEnabled())
+                .map(c -> String.format("(category=%s, text=%s)", c.getCategory(), repr(c.getText())))
+                .collect(toList());
+        if (!disabledComments.isEmpty()) {
+            addProblem(pluralise("Comment{s} not enabled: ", disabledComments.size())+disabledComments);
         }
     }
 

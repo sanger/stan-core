@@ -22,7 +22,7 @@ public class StringValidatorTest {
     @MethodSource("validatorStrings")
     public void testStringValidator(String string, List<String> expectedProblems) {
         StringValidator validator = new StringValidator("X", 3, 8,
-                CharacterType.UPPER, CharacterType.DIGIT);
+                CharacterType.ALPHA, CharacterType.DIGIT);
         testValidate(validator, string, expectedProblems);
     }
 
@@ -30,7 +30,7 @@ public class StringValidatorTest {
         return argStream(new String[][]{
                 {"A", "X \"A\" is shorter than the minimum length 3."},
                 {"AAAAAAAAA", "X \"AAAAAAAAA\" is longer than the maximum length 8."},
-                {"abcabc", "X \"abcabc\" contains invalid characters \"abc\"."},
+                {"%=%=%", "X \"%=%=%\" contains invalid characters \"%=\"."},
                 {"*", "X \"*\" is shorter than the minimum length 3.", "X \"*\" contains invalid characters \"*\"."},
         });
     }
@@ -39,7 +39,7 @@ public class StringValidatorTest {
     @MethodSource("checkWhitespaceArgs")
     public void testCheckWhitespace(String string, List<String> expectedProblems) {
         StringValidator validator = new StringValidator("X", 3, 16,
-                CharacterType.UPPER, CharacterType.LOWER, CharacterType.SPACE);
+                CharacterType.ALPHA, CharacterType.SPACE);
         testValidate(validator, string, expectedProblems);
     }
 
@@ -60,7 +60,7 @@ public class StringValidatorTest {
     @MethodSource("patternArgs")
     public void testPattern(String string, List<String> expectedProblems) {
         StringValidator validator = new StringValidator("X", 3, 8,
-                EnumSet.of(CharacterType.UPPER, CharacterType.LOWER, CharacterType.DIGIT, CharacterType.HYPHEN), false,
+                EnumSet.of(CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN), false,
                 Pattern.compile("[A-Z]+-\\d+", Pattern.CASE_INSENSITIVE));
         testValidate(validator, string, expectedProblems);
     }
@@ -89,20 +89,22 @@ public class StringValidatorTest {
 
     @ParameterizedTest
     @MethodSource("characterTypes")
-    public void testCharacterType(String chars, CharacterType ct) {
+    public void testCharacterType(String chars, CharacterType characterType) {
         for (int i = 0; i < chars.length(); ++i) {
-            assertEquals(ct, StringValidator.characterType(chars.charAt(i)));
+            assertEquals(characterType, StringValidator.characterType(chars.charAt(i)));
         }
     }
 
     private static Stream<Arguments> characterTypes() {
         return Arrays.stream(new Object[][]{
-                {"ABZ", CharacterType.UPPER},
-                {"abz", CharacterType.LOWER},
+                {"ABZabz", CharacterType.ALPHA},
                 {"019", CharacterType.DIGIT},
                 {"-", CharacterType.HYPHEN},
                 {"_", CharacterType.UNDERSCORE},
                 {" ", CharacterType.SPACE},
+                {"()", CharacterType.PAREN},
+                {"/", CharacterType.SLASH},
+                {"'", CharacterType.APOSTROPHE},
                 {"@[`{", null},
         }).map(Arguments::of);
     }

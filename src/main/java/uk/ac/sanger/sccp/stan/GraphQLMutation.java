@@ -9,7 +9,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 import uk.ac.sanger.sccp.stan.config.SessionConfig;
-import uk.ac.sanger.sccp.stan.model.User;
+import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.UserRepo;
 import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.request.confirm.ConfirmOperationRequest;
@@ -26,7 +26,10 @@ import uk.ac.sanger.sccp.stan.service.register.RegisterService;
 import uk.ac.sanger.sccp.stan.service.register.SectionRegisterService;
 
 import java.util.*;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
+import static java.util.Objects.requireNonNull;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
@@ -46,6 +49,13 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final ExtractService extractService;
     final DestructionService destructionService;
     final SlotCopyService slotCopyService;
+    final CommentAdminService commentAdminService;
+    final DestructionReasonAdminService destructionReasonAdminService;
+    final HmdmcAdminService hmdmcAdminService;
+    final ReleaseDestinationAdminService releaseDestinationAdminService;
+    final ReleaseRecipientAdminService releaseRecipientAdminService;
+    final SpeciesAdminService speciesAdminService;
+    final UserAdminService userAdminService;
 
     @Autowired
     public GraphQLMutation(ObjectMapper objectMapper, AuthenticationComponent authComp,
@@ -54,7 +64,11 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            LabelPrintService labelPrintService,
                            ConfirmOperationService confirmOperationService,
                            UserRepo userRepo, ReleaseService releaseService, ExtractService extractService,
-                           DestructionService destructionService, SlotCopyService slotCopyService) {
+                           DestructionService destructionService, SlotCopyService slotCopyService,
+                           CommentAdminService commentAdminService, DestructionReasonAdminService destructionReasonAdminService,
+                           HmdmcAdminService hmdmcAdminService, ReleaseDestinationAdminService releaseDestinationAdminService,
+                           ReleaseRecipientAdminService releaseRecipientAdminService, SpeciesAdminService speciesAdminService,
+                           UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
@@ -67,6 +81,13 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.extractService = extractService;
         this.destructionService = destructionService;
         this.slotCopyService = slotCopyService;
+        this.commentAdminService = commentAdminService;
+        this.destructionReasonAdminService = destructionReasonAdminService;
+        this.hmdmcAdminService = hmdmcAdminService;
+        this.releaseDestinationAdminService = releaseDestinationAdminService;
+        this.releaseRecipientAdminService = releaseRecipientAdminService;
+        this.speciesAdminService = speciesAdminService;
+        this.userAdminService = userAdminService;
     }
 
     private void logRequest(String name, User user, Object request) {
@@ -205,4 +226,101 @@ public class GraphQLMutation extends BaseGraphQLResource {
             return slotCopyService.perform(user, request);
         };
     }
+
+    public DataFetcher<Comment> addComment() {
+        return dfe -> {
+            User user = checkUser(User.Role.admin);
+            String category = dfe.getArgument("category");
+            String text = dfe.getArgument("text");
+            logRequest("AddComment", user, String.format("(category=%s, text=%s)", repr(category), repr(text)));
+            return commentAdminService.addComment(category, text);
+        };
+    }
+
+    public DataFetcher<Comment> setCommentEnabled() {
+        return dfe -> {
+            User user = checkUser(User.Role.admin);
+            Integer commentId = dfe.getArgument("commentId");
+            Boolean enabled = dfe.getArgument("enabled");
+            requireNonNull(commentId, "commentId not specified");
+            requireNonNull(enabled, "enabled not specified");
+            logRequest("SetCommentEnabled", user, String.format("(commentId=%s, enabled=%s)", commentId, enabled));
+            return commentAdminService.setCommentEnabled(commentId, enabled);
+        };
+    }
+
+    public DataFetcher<DestructionReason> addDestructionReason() {
+        return adminAdd(destructionReasonAdminService::addNew, "AddDestructionReason", "text");
+    }
+
+    public DataFetcher<DestructionReason> setDestructionReasonEnabled() {
+        return adminSetEnabled(destructionReasonAdminService::setEnabled, "SetDestructionReasonEnabled", "text");
+    }
+
+    public DataFetcher<Hmdmc> addHmdmc() {
+        return adminAdd(hmdmcAdminService::addNew, "AddHmdmc", "hmdmc");
+    }
+
+    public DataFetcher<Hmdmc> setHmdmcEnabled() {
+        return adminSetEnabled(hmdmcAdminService::setEnabled, "SetHmdmcEnabled", "hmdmc");
+    }
+
+    public DataFetcher<ReleaseDestination> addReleaseDestination() {
+        return adminAdd(releaseDestinationAdminService::addNew, "AddReleaseDestination", "name");
+    }
+
+    public DataFetcher<ReleaseDestination> setReleaseDestinationEnabled() {
+        return adminSetEnabled(releaseDestinationAdminService::setEnabled, "SetReleaseDestinationEnabled", "name");
+    }
+
+    public DataFetcher<ReleaseRecipient> addReleaseRecipient() {
+        return adminAdd(releaseRecipientAdminService::addNew, "AddReleaseRecipient", "username");
+    }
+
+    public DataFetcher<ReleaseRecipient> setReleaseRecipientEnabled() {
+        return adminSetEnabled(releaseRecipientAdminService::setEnabled, "SetReleaseRecipientEnabled", "username");
+    }
+
+    public DataFetcher<Species> addSpecies() {
+        return adminAdd(speciesAdminService::addNew, "AddSpecies", "name");
+    }
+
+    public DataFetcher<Species> setSpeciesEnabled() {
+        return adminSetEnabled(speciesAdminService::setEnabled, "SetSpeciesEnabled", "name");
+    }
+
+    public DataFetcher<User> addUser() {
+        return adminAdd(userAdminService::addUser, "AddUser", "username");
+    }
+
+    public DataFetcher<User> setUserRole() {
+        return dfe -> {
+            User user = checkUser(User.Role.admin);
+            String username = dfe.getArgument("username");
+            User.Role role = arg(dfe, "role", User.Role.class);
+            logRequest("SetUserRole", user, String.format("%s -> %s", repr(username), role));
+            return userAdminService.setUserRole(username, role);
+        };
+    }
+
+    private <E> DataFetcher<E> adminAdd(Function<String, E> addFunction, String functionName, String argName) {
+        return dfe -> {
+            User user = checkUser(User.Role.admin);
+            String arg = dfe.getArgument(argName);
+            logRequest(functionName, user, repr(arg));
+            return addFunction.apply(arg);
+        };
+    }
+
+    private <E> DataFetcher<E> adminSetEnabled(BiFunction<String, Boolean, E> setEnabledFunction, String functionName, String argName) {
+        return dfe -> {
+            User user = checkUser(User.Role.admin);
+            String arg = dfe.getArgument(argName);
+            Boolean enabled = dfe.getArgument("enabled");
+            requireNonNull(enabled, "enabled not specified.");
+            logRequest(functionName, user, String.format("arg: %s, enabled: %s", repr(arg), enabled));
+            return setEnabledFunction.apply(arg, enabled);
+        };
+    }
+
 }

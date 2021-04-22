@@ -2,6 +2,7 @@ package uk.ac.sanger.sccp.utils;
 
 import java.util.*;
 import java.util.function.*;
+import java.util.regex.Pattern;
 import java.util.stream.*;
 
 /**
@@ -9,6 +10,11 @@ import java.util.stream.*;
  * @author dr6
  */
 public class BasicUtils {
+    /**
+     * The pattern used in {@link #trimAndRequire} to identify runs of whitespace
+     */
+    private static final Pattern RUN_OF_WHITESPACE = Pattern.compile("\\s+");
+
     private BasicUtils() {}
 
     /**
@@ -223,5 +229,22 @@ public class BasicUtils {
      */
     public static ObjectDescriber describe(Object object) {
         return describe(object.getClass().getSimpleName());
+    }
+
+    /**
+     * Trims a string, replaces runs of whitespace with a space, and checks that it is non-null and nonempty.
+     * @param text the string
+     * @return the adjusted string
+     * @exception IllegalArgumentException if the string is null or empty (after trimming)
+     */
+    public static String trimAndRequire(String text, String message) throws IllegalArgumentException {
+        if (text==null) {
+            throw new IllegalArgumentException(message);
+        }
+        text = RUN_OF_WHITESPACE.matcher(text.trim()).replaceAll(" ");
+        if (text.isEmpty()) {
+            throw new IllegalArgumentException(message);
+        }
+        return text;
     }
 }

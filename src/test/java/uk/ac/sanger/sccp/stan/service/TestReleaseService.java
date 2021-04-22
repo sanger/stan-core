@@ -12,6 +12,7 @@ import uk.ac.sanger.sccp.stan.request.ReleaseRequest;
 import uk.ac.sanger.sccp.stan.request.ReleaseResult;
 import uk.ac.sanger.sccp.stan.service.store.StoreService;
 
+import javax.persistence.EntityNotFoundException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Supplier;
@@ -41,11 +42,13 @@ public class TestReleaseService {
     private LabwareType labwareType;
 
     private ReleaseServiceImp service;
+    private ReleaseDestinationRepo mockDestinationRepo;
+    private ReleaseRecipientRepo mockRecipientRepo;
 
     @BeforeEach
     void setup() {
-        ReleaseDestinationRepo mockDestinationRepo = mock(ReleaseDestinationRepo.class);
-        ReleaseRecipientRepo mockRecipientRepo = mock(ReleaseRecipientRepo.class);
+        mockDestinationRepo = mock(ReleaseDestinationRepo.class);
+        mockRecipientRepo = mock(ReleaseRecipientRepo.class);
         mockTransactor = mock(Transactor.class);
         mockLabwareRepo = mock(LabwareRepo.class);
         mockStoreService = mock(StoreService.class);
@@ -117,8 +120,8 @@ public class TestReleaseService {
     }
 
     @ParameterizedTest
-    @MethodSource("releaseArgs")
-    public void testRelease(Integer numBarcodes) {
+    @CsvSource({",", "0", "1", "2"})
+    public void testRelease_numBarcodes(Integer numBarcodes) {
         List<Labware> labware;
         List<String> barcodes;
         if (numBarcodes==null) {
@@ -160,8 +163,69 @@ public class TestReleaseService {
         verify(service).recordReleases(user, destination, recipient, labware);
     }
 
-    static Stream<Integer> releaseArgs() {
-        return Stream.of(null, 0, 1, 2);
+    @ParameterizedTest
+    @MethodSource("releaseDestAndRecipient")
+    public void testRelease_destAndRecipient(ReleaseDestination dest, ReleaseRecipient rec, String expectedExceptionMessage) {
+        Labware lw = EntityFactory.makeLabware(EntityFactory.getTubeType(), sample);
+        List<Labware> labware = List.of(lw);
+        String destName = (dest==null ? "Venus" : dest.getName());
+        String recName = (rec==null ? "mekon" : rec.getUsername());
+        Class<? extends Exception> expectedExceptionClass = (expectedExceptionMessage==null ? null : IllegalArgumentException.class);
+
+        if (dest!=null) {
+            when(mockDestinationRepo.getByName(destName)).thenReturn(dest);
+        } else {
+            when(mockDestinationRepo.getByName(destName)).thenThrow(new EntityNotFoundException("Release destination not found: \"Venus\"."));
+            expectedExceptionClass = EntityNotFoundException.class;
+        }
+        if (rec!=null) {
+            when(mockRecipientRepo.getByUsername(recName)).thenReturn(rec);
+        } else {
+            when(mockRecipientRepo.getByUsername(recName)).thenThrow(new EntityNotFoundException("Release recipient not found: \"mekon\"."));
+            expectedExceptionClass = EntityNotFoundException.class;
+        }
+
+        final List<String> barcodes = List.of(lw.getBarcode());
+        ReleaseRequest request = new ReleaseRequest(barcodes, destName, recName);
+        doReturn(labware).when(service).loadLabware(barcodes);
+
+        if (expectedExceptionMessage!=null) {
+            assertThat(assertThrows(expectedExceptionClass, () -> service.release(user, request)))
+                    .hasMessage(expectedExceptionMessage);
+            verify(service, never()).recordReleases(any(), any(), any(), any());
+            return;
+        }
+
+        doNothing().when(service).validateLabware(any());
+        doNothing().when(service).validateContents(any());
+        doReturn(labware).when(service).updateReleasedLabware(any());
+        List<Release> releases = List.of(new Release(200, lw, user, dest, rec, 1, LocalDateTime.now()));
+        doReturn(releases).when(service).recordReleases(any(), any(), any(), any());
+
+        assertSame(releases, service.release(user, request));
+        verify(service).loadLabware(barcodes);
+        verify(service).validateLabware(labware);
+        verify(service).validateContents(labware);
+        verify(service).updateReleasedLabware(labware);
+        verify(service).recordReleases(user, dest, rec, labware);
+    }
+
+    static Stream<Arguments> releaseDestAndRecipient() {
+        ReleaseDestination goodDest = new ReleaseDestination(1, "Mars");
+        ReleaseDestination badDest = new ReleaseDestination(2, "Venus");
+        badDest.setEnabled(false);
+
+        ReleaseRecipient goodRec = new ReleaseRecipient(3, "digby");
+        ReleaseRecipient badRec = new ReleaseRecipient(4, "mekon");
+        badRec.setEnabled(false);
+
+        return Stream.of(
+                Arguments.of(goodDest, goodRec, null),
+                Arguments.of(goodDest, null, "Release recipient not found: \"mekon\"."),
+                Arguments.of(null, goodRec, "Release destination not found: \"Venus\"."),
+                Arguments.of(goodDest, badRec, "Release recipient mekon is not enabled."),
+                Arguments.of(badDest, goodRec, "Release destination Venus is not enabled.")
+        );
     }
 
     @ParameterizedTest

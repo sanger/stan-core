@@ -66,8 +66,12 @@ public class EntityCreator {
     @Autowired
     private EntityManager entityManager;
 
+    public User createUser(String username, User.Role role) {
+        return userRepo.save(new User(null, username, role));
+    }
+
     public User createUser(String username) {
-        return userRepo.save(new User(null, username, User.Role.admin));
+        return createUser(username, User.Role.admin);
     }
 
     public Donor createDonor(String donorName) {

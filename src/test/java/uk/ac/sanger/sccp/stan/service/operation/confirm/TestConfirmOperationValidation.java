@@ -262,6 +262,13 @@ public class TestConfirmOperationValidation {
 
     @Test
     public void testValidateComments() {
+
+        List<Comment> comments = List.of(
+                new Comment(1, "Alpha", "section"),
+                new Comment(2, "Beta", "section"),
+                new Comment(3, "Gamma", "section", false)
+        );
+
         ConfirmOperationValidationImp validation = makeValidation(
                 new ConfirmOperationLabware("STAN-A", false, List.of(),
                         List.of(new AddressCommentId(new Address(1,1), 1),
@@ -269,25 +276,27 @@ public class TestConfirmOperationValidation {
                                 new AddressCommentId(new Address(1,2), 2))),
                 new ConfirmOperationLabware("STAN-B", false, List.of(),
                         List.of(new AddressCommentId(new Address(1,1), 2),
+                                new AddressCommentId(new Address(1,1), 4),
                                 new AddressCommentId(new Address(1,1), 3),
                                 new AddressCommentId(new Address(1,2), null)))
         );
 
-        Set<Integer> idsGivenAsArgument = new HashSet<>();
-        when(mockCommentRepo.findIdByIdIn(any())).then(invocation -> {
+        final Set<Integer> idsGivenAsArgument = new HashSet<>();
+        when(mockCommentRepo.findAllByIdIn(any())).then(invocation -> {
             Collection<Integer> ids = invocation.getArgument(0);
             idsGivenAsArgument.addAll(ids);
-            return Set.of(1,2);
+            return comments;
         });
 
         validation.validateComments();
         assertThat(validation.getProblems()).containsOnly(
                 "Null given as ID for comment.",
-                "Unknown comment IDs: "+List.of(3)
+                "Unknown comment IDs: [4]",
+                "Comment not enabled: [(category=section, text=\"Gamma\")]"
         );
-        verify(mockCommentRepo).findIdByIdIn(any());
+        verify(mockCommentRepo).findAllByIdIn(any());
         // verify(mockCommentRepo).findIdByIdIn(Set.of(1,2,3)); -- doesn't work because the method under test modifies the set
-        assertEquals(Set.of(1, 2, 3), idsGivenAsArgument);
+        assertEquals(Set.of(1, 2, 3, 4), idsGivenAsArgument);
     }
 
     @Test

@@ -29,7 +29,9 @@ import javax.transaction.Transactional;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.IntStream;
+import java.util.stream.StreamSupport;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
@@ -70,11 +72,23 @@ public class IntegrationTests {
     @Autowired
     private LabwareRepo lwRepo;
     @Autowired
+    private SpeciesRepo speciesRepo;
+    @Autowired
+    private ReleaseDestinationRepo releaseDestinationRepo;
+    @Autowired
+    private ReleaseRecipientRepo releaseRecipientRepo;
+    @Autowired
+    private HmdmcRepo hmdmcRepo;
+    @Autowired
     private DestructionRepo destructionRepo;
     @Autowired
     private DestructionReasonRepo destructionReasonRepo;
     @Autowired
     private MeasurementRepo measurementRepo;
+    @Autowired
+    private CommentRepo commentRepo;
+    @Autowired
+    private UserRepo userRepo;
 
     @MockBean
     StorelightClient mockStorelightClient;
@@ -673,6 +687,142 @@ public class IntegrationTests {
         assertTrue(newLabware.getSlot(A2).getSamples().stream().allMatch(sam -> sam.getBioState().getName().equals("cDNA")));
 
         verifyUnstored(List.of("STAN-01"), user.getUsername());
+    }
+
+    @Test
+    @Transactional
+    public void testAddCommentNonAdmin() throws Exception {
+        String mutation = tester.readResource("graphql/addnewcomment.graphql");
+        tester.setUser(entityCreator.createUser("normo", User.Role.normal));
+        Object result = tester.post(mutation);
+        String errorMessage = chainGet(result, "errors", 0, "message");
+        assertThat(errorMessage).contains("Requires role: admin");
+        assertThat(commentRepo.findByCategoryAndText("section", "Fell in the bin.")).isEmpty();
+    }
+
+    @Test
+    @Transactional
+    public void testAddCommentAdmin() throws Exception {
+        final String category = "section";
+        final String text = "Fell in the bin.";
+        String mutation = tester.readResource("graphql/addnewcomment.graphql");
+        tester.setUser(entityCreator.createUser("admo", User.Role.admin));
+        Object result = tester.post(mutation);
+        assertEquals(Map.of("category", category, "text", text, "enabled", true),
+                chainGet(result, "data", "addComment"));
+        Comment comment = commentRepo.findByCategoryAndText(category, text).orElseThrow();
+        assertEquals(category, comment.getCategory());
+        assertEquals(text, comment.getText());
+        assertTrue(comment.isEnabled());
+    }
+
+    @Test
+    @Transactional
+    public void testSetCommentEnabled() throws Exception {
+        Comment comment = StreamSupport.stream(commentRepo.findAll().spliterator(), false)
+                .filter(Comment::isEnabled)
+                .findAny()
+                .orElseThrow();
+        String mutation = tester.readResource("graphql/setcommentenabled.graphql")
+                .replace("666", String.valueOf(comment.getId()));
+        tester.setUser(entityCreator.createUser("admo"));
+        Object result = tester.post(mutation);
+        assertEquals(Map.of("category", comment.getCategory(), "text", comment.getText(), "enabled", false),
+                chainGet(result, "data", "setCommentEnabled"));
+
+        assertFalse(commentRepo.getById(comment.getId()).isEnabled());
+    }
+
+    public <E extends HasEnabled> void testGenericAddNewAndSetEnabled(String entityTypeName, String fieldName,
+                                                                      String string,
+                                                                      Function<String, Optional<E>> findFunction,
+                                                                      Function<E, String> stringFunction,
+                                                                      String queryString) throws Exception {
+        String mutation = tester.readResource("graphql/genericaddnew.graphql")
+                .replace("Species", entityTypeName).replace("name", fieldName)
+                .replace("Unicorn", string);
+        tester.setUser(entityCreator.createUser("dr6"));
+        Object result = tester.post(mutation);
+        Map<String, ?> newEntityMap = Map.of(fieldName, string, "enabled", true);
+        assertEquals(newEntityMap, chainGet(result, "data", "add"+entityTypeName));
+        E entity = findFunction.apply(string).orElseThrow();
+        assertEquals(string, stringFunction.apply(entity));
+        assertTrue(entity.isEnabled());
+
+        result = tester.post(String.format("query { %s { %s, enabled }}", queryString, fieldName));
+        assertThat(chainGetList(result, "data", queryString)).contains(newEntityMap);
+
+        mutation = tester.readResource("graphql/genericsetenabled.graphql")
+                .replace("Species", entityTypeName).replace("name", fieldName).replace("Unicorn", string);
+        result = tester.post(mutation);
+        newEntityMap = Map.of(fieldName, string, "enabled", false);
+        assertEquals(newEntityMap, chainGet(result, "data", "set"+entityTypeName+"Enabled"));
+        entity = findFunction.apply(string).orElseThrow();
+        assertFalse(entity.isEnabled());
+    }
+
+    @Test
+    @Transactional
+    public void testAddSpeciesAndSetEnabled() throws Exception {
+        testGenericAddNewAndSetEnabled("Species", "name", "Unicorn", speciesRepo::findByName, Species::getName, "species");
+    }
+    @Test
+    @Transactional
+    public void testAddReleaseDestinationAndSetEnabled() throws Exception {
+        testGenericAddNewAndSetEnabled("ReleaseDestination", "name", "Venus", releaseDestinationRepo::findByName, ReleaseDestination::getName, "releaseDestinations");
+    }
+    @Test
+    @Transactional
+    public void testAddReleaseRecipientAndSetEnabled() throws Exception {
+        testGenericAddNewAndSetEnabled("ReleaseRecipient", "username", "mekon", releaseRecipientRepo::findByUsername, ReleaseRecipient::getUsername, "releaseRecipients");
+    }
+    @Test
+    @Transactional
+    public void testAddHmdmcAndSetEnabled() throws Exception {
+        testGenericAddNewAndSetEnabled("Hmdmc", "hmdmc", "12/345", hmdmcRepo::findByHmdmc, Hmdmc::getHmdmc, "hmdmcs");
+    }
+    @Test
+    @Transactional
+    public void testAddDestructionReasonAndSetEnabled() throws Exception {
+        testGenericAddNewAndSetEnabled("DestructionReason", "text", "Dropped.", destructionReasonRepo::findByText, DestructionReason::getText, "destructionReasons");
+    }
+
+    @Test
+    @Transactional
+    public void testAddUserNonAdmin() throws Exception {
+        tester.setUser(entityCreator.createUser("normo", User.Role.normal));
+        String mutation = tester.readResource("graphql/adduser.graphql");
+        Object result = tester.post(mutation);
+        String errorMessage = chainGet(result, "errors", 0, "message");
+        assertThat(errorMessage).contains("Requires role: admin");
+        assertThat(userRepo.findByUsername("ford")).isEmpty();
+    }
+
+    @Test
+    @Transactional
+    public void testAddUserAndSetRole() throws Exception {
+        tester.setUser(entityCreator.createUser("admo", User.Role.admin));
+        String mutation = tester.readResource("graphql/adduser.graphql");
+        Object result = tester.post(mutation);
+        Map<String, String> userMap = Map.of("username", "ford", "role", "normal");
+        assertEquals(userMap, chainGet(result, "data", "addUser"));
+        final String userQuery = "query { users { username, role }}";
+        result = tester.post(userQuery);
+        assertThat(chainGetList(result, "data", "users")).contains(userMap);
+
+        mutation = tester.readResource("graphql/setuserrole.graphql");
+        result = tester.post(mutation);
+        userMap = Map.of("username", "ford", "role", "disabled");
+        assertEquals(userMap, chainGet(result, "data", "setUserRole"));
+        result = tester.post(userQuery);
+        assertThat(chainGetList(result, "data", "users")).noneMatch(map -> "ford".equalsIgnoreCase((String) ((Map<?,?>) map).get("username")));
+
+        mutation = mutation.replace("disabled", "normal");
+        result = tester.post(mutation);
+        userMap = Map.of("username", "ford", "role", "normal");
+        assertEquals(userMap, chainGet(result, "data", "setUserRole"));
+        result = tester.post(userQuery);
+        assertThat(chainGetList(result, "data", "users")).contains(userMap);
     }
 
     private void stubStorelightUnstore() throws IOException {
