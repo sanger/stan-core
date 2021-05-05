@@ -48,7 +48,7 @@ public class TestStoreService {
         mockClient = mock(StorelightClient.class);
         mockLabwareRepo = mock(LabwareRepo.class);
         mockEmailService = mock(EmailService.class);
-        user = new User("dr6");
+        user = new User("dr6", User.Role.normal);
         service = spy(new StoreService(mockClient, mockLabwareRepo, mockEmailService));
         objectMapper = new ObjectMapper();
     }

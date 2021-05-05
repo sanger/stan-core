@@ -60,6 +60,9 @@ public class DestructionServiceImp implements DestructionService {
             throw new IllegalArgumentException("No reason id supplied.");
         }
         DestructionReason reason = destructionReasonRepo.getById(request.getReasonId());
+        if (!reason.isEnabled()) {
+            throw new IllegalArgumentException("Specified destruction reason is not enabled.");
+        }
         Iterable<Labware> labware = loadAndValidateLabware(request.getBarcodes());
         labware = destroyLabware(labware);
         List<Destruction> destructions = recordDestructions(user, reason, labware);

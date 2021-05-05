@@ -1,0 +1,7 @@
+mutation {
+    addComment(category: "section", text: "Fell in the bin.") {
+        category,
+        text,
+        enabled
+    }
+}

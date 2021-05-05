@@ -3,14 +3,15 @@ package uk.ac.sanger.sccp.utils;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.*;
 
 import java.util.*;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 /**
@@ -93,5 +94,24 @@ public class TestBasicUtils {
     @Test
     public void testReprCollection() {
         assertEquals("[\"Alpha\", \"Beta\\t\"]", reprCollection(List.of("Alpha", "Beta\t")));
+    }
+
+    @ParameterizedTest
+    @CsvSource(value={
+            "Alpha, Alpha",
+            "'   Alpha\t', Alpha",
+            "A  B  \t C, A B C",
+            ",",
+            "'',",
+            "'   ',",
+    })
+    public void testTrimAndRequire(String string, String expected) {
+        if (expected!=null) {
+            assertEquals(trimAndRequire(string, "Bananas"), expected);
+        } else {
+            String message = "String = bad";
+            assertThat(assertThrows(IllegalArgumentException.class, () -> trimAndRequire(string, message)))
+                    .hasMessage(message);
+        }
     }
 }

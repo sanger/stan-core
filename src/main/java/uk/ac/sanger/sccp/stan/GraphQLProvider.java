@@ -78,6 +78,7 @@ public class GraphQLProvider {
                         .dataFetcher("releaseRecipients", graphQLDataFetchers.getReleaseRecipients())
                         .dataFetcher("find", graphQLDataFetchers.find())
                         .dataFetcher("destructionReasons", graphQLDataFetchers.getDestructionReasons())
+                        .dataFetcher("users", graphQLDataFetchers.getUsers())
 
                         .dataFetcher("location", graphQLStore.getLocation())
                         .dataFetcher("stored", graphQLStore.getStored())
@@ -94,6 +95,21 @@ public class GraphQLProvider {
                         .dataFetcher("destroy", graphQLMutation.destroy()) // transaction handled in service
                         .dataFetcher("registerSections", transact(graphQLMutation.sectionRegister()))
                         .dataFetcher("slotCopy", graphQLMutation.slotCopy()) // transaction handled in service
+
+                        .dataFetcher("addComment", transact(graphQLMutation.addComment()))
+                        .dataFetcher("setCommentEnabled", transact(graphQLMutation.setCommentEnabled()))
+                        .dataFetcher("addHmdmc", transact(graphQLMutation.addHmdmc()))
+                        .dataFetcher("setHmdmcEnabled", transact(graphQLMutation.setHmdmcEnabled()))
+                        .dataFetcher("addDestructionReason", transact(graphQLMutation.addDestructionReason()))
+                        .dataFetcher("setDestructionReasonEnabled", transact(graphQLMutation.setDestructionReasonEnabled()))
+                        .dataFetcher("addReleaseDestination", transact(graphQLMutation.addReleaseDestination()))
+                        .dataFetcher("setReleaseDestinationEnabled", transact(graphQLMutation.setReleaseDestinationEnabled()))
+                        .dataFetcher("addReleaseRecipient", transact(graphQLMutation.addReleaseRecipient()))
+                        .dataFetcher("setReleaseRecipientEnabled", transact(graphQLMutation.setReleaseRecipientEnabled()))
+                        .dataFetcher("addSpecies", transact(graphQLMutation.addSpecies()))
+                        .dataFetcher("setSpeciesEnabled", transact(graphQLMutation.setSpeciesEnabled()))
+                        .dataFetcher("addUser", transact(graphQLMutation.addUser()))
+                        .dataFetcher("setUserRole", transact(graphQLMutation.setUserRole()))
 
                         .dataFetcher("storeBarcode", graphQLStore.storeBarcode())
                         .dataFetcher("unstoreBarcode", graphQLStore.unstoreBarcode())

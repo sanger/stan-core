@@ -3,10 +3,9 @@ package uk.ac.sanger.sccp.stan;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import graphql.schema.DataFetchingEnvironment;
-import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import org.springframework.security.authentication.InsufficientAuthenticationException;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import uk.ac.sanger.sccp.stan.model.User;
 import uk.ac.sanger.sccp.stan.repo.UserRepo;
 
@@ -25,13 +24,19 @@ abstract class BaseGraphQLResource {
         this.userRepo = userRepo;
     }
 
-    protected User checkUser() {
+    protected User checkUser(User.Role role) {
         Authentication auth = authComp.getAuthentication();
-        if (auth==null || auth instanceof AnonymousAuthenticationToken || auth.getPrincipal()==null) {
-            throw new AuthenticationCredentialsNotFoundException("Not logged in");
+        if (auth != null) {
+            Object principal = auth.getPrincipal();
+            if (principal instanceof User) {
+                User user = (User) principal;
+                if (!user.hasRole(role)) {
+                    throw new InsufficientAuthenticationException("Requires role: "+role);
+                }
+                return user;
+            }
         }
-        String username = auth.getPrincipal().toString();
-        return userRepo.findByUsername(username).orElseThrow(() -> new UsernameNotFoundException(username));
+        throw new AuthenticationCredentialsNotFoundException("Not logged in");
     }
 
     protected <E> E arg(DataFetchingEnvironment dfe, String name, Class<E> cls) {

@@ -436,12 +436,16 @@ public class TestRegisterValidation {
         }
     }
 
+    /** @see #testValidateDonors */
     private static Stream<Arguments> donorData() {
         Species human = new Species(1, "Human");
         Species hamster = new Species(2, "Hamster");
-        List<Species> knownSpecies = List.of(human, hamster);
+        Species dodo = new Species(3, "Dodo");
+        dodo.setEnabled(false);
+        List<Species> knownSpecies = List.of(human, hamster, dodo);
         Donor dirk = new Donor(1, "Dirk", LifeStage.adult, human);
         Donor jeff = new Donor(2, "Jeff", LifeStage.fetal, hamster);
+        Donor dodonor = new Donor(3, "Dodonor", LifeStage.adult, dodo);
         // List<String> donorNames, List<LifeStage> lifeStages, List<String> speciesNames,
         // List<Donor> knownDonors, List<Species> knownSpecies, List<Donor> expectedDonors,
         // List<String> expectedProblems
@@ -492,6 +496,14 @@ public class TestRegisterValidation {
                         List.of("human", "human"),
                         List.of(jeff), knownSpecies, List.of(jeff, new Donor(null, "Donor1", LifeStage.adult, human)),
                         List.of("Wrong species given for existing donor Jeff")),
+                Arguments.of(List.of("dodonor"),
+                        List.of(dodonor.getLifeStage()), List.of("dodo"),
+                        List.of(dodonor), knownSpecies, List.of(dodonor),
+                        List.of("Species is not enabled: Dodo")),
+                Arguments.of(List.of("Donor1"), List.of(LifeStage.adult), List.of("dodo"), List.of(), knownSpecies,
+                        List.of(new Donor(null, "Donor1", LifeStage.adult, dodo)),
+                        List.of("Species is not enabled: Dodo")),
+
                 Arguments.of(List.of("Donor1", "DONOR1", "jeff", "dirk", "", ""),
                         List.of(LifeStage.adult, LifeStage.fetal, LifeStage.paediatric, LifeStage.paediatric, LifeStage.adult, LifeStage.adult),
                         List.of("human", "human", "hamster", "human", "human", "human"),
@@ -530,9 +542,14 @@ public class TestRegisterValidation {
         );
     }
 
+    /** @see #testValidateHmdmcs */
     private static Stream<Arguments> hmdmcData() {
         Hmdmc h0 = new Hmdmc(20000, "20/000");
         Hmdmc h1 = new Hmdmc(20001, "20/001");
+        Hmdmc h2 = new Hmdmc(20002, "20/002");
+        Hmdmc h3 = new Hmdmc(20003, "20/003");
+        h2.setEnabled(false);
+        h3.setEnabled(false);
         // List<Hmdmc> knownHmdmcs, List<String> givenHmdmcs, List<String> speciesNames,
         // List<Hmdmc> expectedHmdmcs, List<String> expectedProblems
         return Stream.of(
@@ -544,9 +561,12 @@ public class TestRegisterValidation {
                         List.of(h0), List.of("Missing HMDMC number.")),
                 Arguments.of(List.of(h0, h1), List.of("20/000", "20/001"), List.of("Human", "Hamster"),
                         List.of(h0), List.of("Non-human tissue should not have an HMDMC number.")),
-                Arguments.of(List.of(h0, h1), List.of("20/000", "20/001", "20/000", "", "", "20/404"),
-                        List.of("Human", "Human", "Human", "Human", "Human", "Human"),
-                        List.of(h0, h1), List.of("Missing HMDMC number.", "Unknown HMDMC number: [20/404]"))
+                Arguments.of(List.of(h0, h2, h3), List.of("20/000", "20/002", "20/003", "20/002"), List.of("Human", "Human", "Human", "Human"),
+                        List.of(h0, h2, h3), List.of("HMDMC numbers not enabled: [20/002, 20/003]")),
+                Arguments.of(List.of(h0, h1, h2), List.of("20/000", "20/001", "20/000", "", "", "20/404", "20/002"),
+                        List.of("Human", "Human", "Human", "Human", "Human", "Human", "Human"),
+                        List.of(h0, h1, h2), List.of("Missing HMDMC number.", "Unknown HMDMC number: [20/404]",
+                                "HMDMC number not enabled: [20/002]"))
         );
     }
 

@@ -51,12 +51,8 @@ public class GraphQLTester {
         return this.mockMvc;
     }
 
-    public void setUser(String username) {
-        when(mockAuthComp.getAuthentication()).thenReturn(new UsernamePasswordAuthenticationToken(username, "42"));
-    }
-
     public void setUser(User user) {
-        setUser(user.getUsername());
+        when(mockAuthComp.getAuthentication()).thenReturn(new UsernamePasswordAuthenticationToken(user, "42"));
     }
 
     @SuppressWarnings("UnstableApiUsage")

@@ -34,7 +34,7 @@ public class EntityFactory {
 
     public static User getUser() {
         if (user==null) {
-            user = new User(10, "user");
+            user = new User(10, "user", User.Role.admin);
         }
         return user;
     }

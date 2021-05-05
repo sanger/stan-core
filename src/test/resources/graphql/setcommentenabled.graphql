@@ -1,0 +1,7 @@
+mutation {
+    setCommentEnabled(commentId: 666, enabled: false) {
+        category
+        text
+        enabled
+    }
+}

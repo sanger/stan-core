@@ -1,0 +1,6 @@
+mutation {
+    setSpeciesEnabled(name: "Unicorn", enabled: false) {
+        name
+        enabled
+    }
+}

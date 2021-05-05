@@ -8,7 +8,7 @@ import java.util.Objects;
  * @author dr6
  */
 @Entity
-public class DestructionReason {
+public class DestructionReason implements HasEnabled {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
@@ -39,10 +39,12 @@ public class DestructionReason {
         this.text = text;
     }
 
+    @Override
     public boolean isEnabled() {
         return this.enabled;
     }
 
+    @Override
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
     }

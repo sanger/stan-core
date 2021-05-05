@@ -62,6 +62,12 @@ public class ReleaseServiceImp implements ReleaseService {
         if (request.getBarcodes()==null || request.getBarcodes().isEmpty()) {
             throw new IllegalArgumentException("No barcodes supplied to release.");
         }
+        if (!recipient.isEnabled()) {
+            throw new IllegalArgumentException("Release recipient "+recipient.getUsername()+" is not enabled.");
+        }
+        if (!destination.isEnabled()) {
+            throw new IllegalArgumentException("Release destination "+destination.getName()+" is not enabled.");
+        }
         Collection<Labware> labware = loadLabware(request.getBarcodes());
         validateLabware(labware);
         validateContents(labware);

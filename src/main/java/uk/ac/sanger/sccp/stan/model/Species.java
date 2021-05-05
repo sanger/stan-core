@@ -7,17 +7,19 @@ import java.util.Objects;
  * @author dr6
  */
 @Entity
-public class Species {
+public class Species implements HasEnabled {
     @Id
     @GeneratedValue(strategy=GenerationType.IDENTITY)
     private Integer id;
     private String name;
+    private boolean enabled;
 
     public Species() {}
 
     public Species(Integer id, String name) {
         this.id = id;
         this.name = name;
+        this.enabled = true;
     }
 
     public Integer getId() {
@@ -37,12 +39,23 @@ public class Species {
     }
 
     @Override
+    public boolean isEnabled() {
+        return this.enabled;
+    }
+
+    @Override
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Species that = (Species) o;
         return (Objects.equals(this.id, that.id)
-                && Objects.equals(this.name, that.name));
+                && Objects.equals(this.name, that.name)
+                && this.enabled==that.enabled);
     }
 
     @Override

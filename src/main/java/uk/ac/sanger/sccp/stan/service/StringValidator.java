@@ -13,7 +13,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 public class StringValidator implements Validator<String> {
 
     public enum CharacterType {
-        UPPER, LOWER, DIGIT, HYPHEN, UNDERSCORE, SPACE
+        ALPHA, DIGIT, HYPHEN, UNDERSCORE, SPACE, SLASH, PAREN, FULL_STOP, APOSTROPHE
     }
 
     private final String fieldName;
@@ -181,13 +181,16 @@ public class StringValidator implements Validator<String> {
      * @return the character type matched, or null
      */
     public static CharacterType characterType(char ch) {
-        if (ch >= 'A' && ch <= 'Z') return CharacterType.UPPER;
-        if (ch >= 'a' && ch <= 'z') return CharacterType.LOWER;
+        if (ch >= 'A' && ch <= 'Z' || ch >= 'a' && ch <= 'z') return CharacterType.ALPHA;
         if (ch >= '0' && ch <= '9') return CharacterType.DIGIT;
         switch (ch) {
             case '-': return CharacterType.HYPHEN;
             case '_': return CharacterType.UNDERSCORE;
             case ' ': return CharacterType.SPACE;
+            case '/': return CharacterType.SLASH;
+            case '(': case ')': return CharacterType.PAREN;
+            case '.': return CharacterType.FULL_STOP;
+            case '\'': return CharacterType.APOSTROPHE;
         }
         return null;
     }
