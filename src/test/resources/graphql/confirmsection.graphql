@@ -1,0 +1,68 @@
+mutation {
+    confirmSection(request: {
+        labware: [
+            {
+                barcode: "$BARCODE",
+                confirmSections: [
+                    {
+                        destinationAddress: "A1"
+                        newSection: 14
+                        sampleId: 55555
+                    }
+                    {
+                        destinationAddress: "A1"
+                        newSection: 15
+                        sampleId: 55555
+                    }
+                    {
+                        destinationAddress: "A1"
+                        newSection: 15
+                        sampleId: 55556
+                    }
+                    {
+                        destinationAddress: "B2"
+                        newSection: 17
+                        sampleId: 55556
+                    }
+                ]
+                addressComments: [
+                    {
+                        address: "A1"
+                        commentId: 1
+                    }
+                ]
+            }
+        ]
+    }) {
+        labware {
+            barcode
+            slots {
+                address
+                samples {
+                    id
+                    tissue { externalName }
+                    section
+                }
+            }
+        }
+        operations {
+            performed
+            operationType { name }
+            actions {
+                source {
+                    address
+                    labwareId
+                }
+                destination {
+                    address
+                    labwareId
+                }
+                sample {
+                    id
+                    tissue { externalName }
+                    section
+                }
+            }
+        }
+    }
+}

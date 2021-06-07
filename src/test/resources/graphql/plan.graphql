@@ -2,7 +2,7 @@ mutation {
     plan(request:{
         operationType: "Section",
         labware:[{
-            labwareType:"Tube",
+            labwareType:"Slide",
             actions:[
                 {
                     source:{ barcode:"STAN-B70C" }
@@ -10,9 +10,19 @@ mutation {
                     sampleId: 55555
                 }
                 {
-                    source: { barcode: "STAN-B70C" }
+                    source: { barcode: "STAN-B70D" }
                     address: "A1"
+                    sampleId: 55556
+                }
+                {
+                    source: { barcode: "STAN-B70C" }
+                    address: "B1"
                     sampleId: 55555
+                }
+                {
+                    source: { barcode: "STAN-B70D" }
+                    address: "B2"
+                    sampleId: 55556
                 }
             ]
         }]
