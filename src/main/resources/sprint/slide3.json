@@ -39,7 +39,7 @@
       "y": 10
     },
     {
-      "value": "#replicate[1]#",
+      "value": "#replicate[0]#",
       "fontSize": 1.8,
       "x": 12,
       "y": 10
