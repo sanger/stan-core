@@ -90,6 +90,7 @@ public class GraphQLProvider {
                         .dataFetcher("plan", transact(graphQLMutation.recordPlan()))
                         .dataFetcher("printLabware", graphQLMutation.printLabware()) // not transacted
                         .dataFetcher("confirmOperation", transact(graphQLMutation.confirmOperation()))
+                        .dataFetcher("confirmSection", transact(graphQLMutation.confirmSection()))
                         .dataFetcher("release", graphQLMutation.release()) // transaction handled in service
                         .dataFetcher("extract", graphQLMutation.extract()) // transaction handled in service
                         .dataFetcher("destroy", graphQLMutation.destroy()) // transaction handled in service

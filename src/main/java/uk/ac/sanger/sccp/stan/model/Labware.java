@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Objects;
 
 import static uk.ac.sanger.sccp.utils.BasicUtils.newArrayList;
+import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
  * @author dr6
@@ -156,6 +157,11 @@ public class Labware {
                 && this.discarded == that.discarded
                 && this.released == that.released
                 && this.destroyed == that.destroyed);
+    }
+
+    @Override
+    public String toString() {
+        return String.format("Labware(%s)", repr(barcode));
     }
 
     @Override

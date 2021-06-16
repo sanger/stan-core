@@ -8,7 +8,8 @@ import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.plan.*;
-import uk.ac.sanger.sccp.stan.service.*;
+import uk.ac.sanger.sccp.stan.service.LabwareService;
+import uk.ac.sanger.sccp.stan.service.ValidationException;
 
 import java.util.List;
 import java.util.Map;
@@ -32,7 +33,6 @@ public class TestPlanService {
     private PlanValidationFactory mockPlanValidationFactory;
     private PlanValidation mockPlanValidation;
     private LabwareService mockLwService;
-    private SampleService mockSampleService;
 
     private PlanOperationRepo mockPlanRepo;
     private PlanActionRepo mockPlanActionRepo;
@@ -47,7 +47,6 @@ public class TestPlanService {
         mockPlanValidationFactory = mock(PlanValidationFactory.class);
         mockPlanValidation = mock(PlanValidation.class);
         mockLwService = mock(LabwareService.class);
-        mockSampleService = mock(SampleService.class);
         mockPlanRepo = mock(PlanOperationRepo.class);
         mockPlanActionRepo = mock(PlanActionRepo.class);
         mockOpTypeRepo = mock(OperationTypeRepo.class);
@@ -58,7 +57,7 @@ public class TestPlanService {
 
         when(mockPlanValidationFactory.createPlanValidation(any())).thenReturn(mockPlanValidation);
 
-        planService = spy(new PlanServiceImp(mockPlanValidationFactory, mockLwService, mockSampleService, mockPlanRepo,
+        planService = spy(new PlanServiceImp(mockPlanValidationFactory, mockLwService, mockPlanRepo,
                 mockPlanActionRepo, mockOpTypeRepo, mockLwRepo, mockLtRepo));
     }
 
@@ -239,9 +238,9 @@ public class TestPlanService {
                 ));
 
         List<PlanAction> expectedActions = List.of(
-                new PlanAction(21, planId, sources.get(0).getFirstSlot(), destinations.get(0).getFirstSlot(), samples.get(0), 5, null, bioState),
-                new PlanAction(22, planId, sources.get(0).getFirstSlot(), destinations.get(0).getSlot(SECOND), samples.get(0), 6, 1, bioState),
-                new PlanAction(23, planId, sources.get(0).getFirstSlot(), destinations.get(1).getFirstSlot(), samples.get(0), 7, 2, bioState),
+                new PlanAction(21, planId, sources.get(0).getFirstSlot(), destinations.get(0).getFirstSlot(), samples.get(0), null, null, bioState),
+                new PlanAction(22, planId, sources.get(0).getFirstSlot(), destinations.get(0).getSlot(SECOND), samples.get(0), null, 1, bioState),
+                new PlanAction(23, planId, sources.get(0).getFirstSlot(), destinations.get(1).getFirstSlot(), samples.get(0), null, 2, bioState),
                 new PlanAction(24, planId, sources.get(1).getSlot(SECOND), destinations.get(1).getSlot(SECOND), samples.get(1), null, 3, bioState)
         );
 
@@ -251,9 +250,6 @@ public class TestPlanService {
             plac.setId(++planActionIdCounter[0]);
             return plac;
         });
-
-        final int[] newSectionCounter = {4};
-        when(mockSampleService.nextSection(any())).then(invocation -> (++newSectionCounter[0]));
 
         final List<PlanAction> actions = planService.createActions(request, planId, sourceMap, destinations, bioState);
         assertEquals(expectedActions, actions);
