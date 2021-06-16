@@ -12,8 +12,7 @@ import uk.ac.sanger.sccp.stan.config.SessionConfig;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.UserRepo;
 import uk.ac.sanger.sccp.stan.request.*;
-import uk.ac.sanger.sccp.stan.request.confirm.ConfirmOperationRequest;
-import uk.ac.sanger.sccp.stan.request.confirm.ConfirmOperationResult;
+import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.request.plan.PlanRequest;
 import uk.ac.sanger.sccp.stan.request.plan.PlanResult;
 import uk.ac.sanger.sccp.stan.request.register.*;
@@ -21,6 +20,7 @@ import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.extract.ExtractService;
 import uk.ac.sanger.sccp.stan.service.label.print.LabelPrintService;
 import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmOperationService;
+import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmSectionService;
 import uk.ac.sanger.sccp.stan.service.operation.plan.PlanService;
 import uk.ac.sanger.sccp.stan.service.register.RegisterService;
 import uk.ac.sanger.sccp.stan.service.register.SectionRegisterService;
@@ -45,6 +45,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final PlanService planService;
     final LabelPrintService labelPrintService;
     final ConfirmOperationService confirmOperationService;
+    final ConfirmSectionService confirmSectionService;
     final ReleaseService releaseService;
     final ExtractService extractService;
     final DestructionService destructionService;
@@ -63,7 +64,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            RegisterService registerService, SectionRegisterService sectionRegisterService, PlanService planService,
                            LabelPrintService labelPrintService,
                            ConfirmOperationService confirmOperationService,
-                           UserRepo userRepo, ReleaseService releaseService, ExtractService extractService,
+                           UserRepo userRepo, ConfirmSectionService confirmSectionService, ReleaseService releaseService, ExtractService extractService,
                            DestructionService destructionService, SlotCopyService slotCopyService,
                            CommentAdminService commentAdminService, DestructionReasonAdminService destructionReasonAdminService,
                            HmdmcAdminService hmdmcAdminService, ReleaseDestinationAdminService releaseDestinationAdminService,
@@ -77,6 +78,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.planService = planService;
         this.labelPrintService = labelPrintService;
         this.confirmOperationService = confirmOperationService;
+        this.confirmSectionService = confirmSectionService;
         this.releaseService = releaseService;
         this.extractService = extractService;
         this.destructionService = destructionService;
@@ -188,6 +190,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             ConfirmOperationRequest request = arg(dfe, "request", ConfirmOperationRequest.class);
             logRequest("Confirm operation", user, request);
             return confirmOperationService.confirmOperation(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> confirmSection() {
+        return dfe -> {
+            User user = checkUser(User.Role.normal);
+            ConfirmSectionRequest request = arg(dfe, "request", ConfirmSectionRequest.class);
+            logRequest("Confirm section", user, request);
+            return confirmSectionService.confirmOperation(user, request);
         };
     }
 

@@ -34,12 +34,8 @@ public class Matchers {
         return argThat(new OrderInsensitiveCollectionMatcher<>(collection));
     }
 
-    public static <T> Answer<T> returnArgument(int index) {
-        return invocation -> invocation.getArgument(index);
-    }
-
     public static <T> Answer<T> returnArgument() {
-        return returnArgument(0);
+        return invocation -> invocation.getArgument(0);
     }
 
     private static class CaseInsensitiveStringMatcher implements ArgumentMatcher<String> {
