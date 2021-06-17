@@ -14,7 +14,6 @@ import uk.ac.sanger.sccp.utils.UCMap;
 import javax.persistence.EntityManager;
 import java.util.*;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.*;
@@ -252,8 +251,13 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
      * @return a map from {@code PlanActionKey} to {@code PlanAction}
      */
     public Map<PlanActionKey, PlanAction> getPlanActionMap(Collection<PlanAction> planActions, final int lwId) {
-        return planActions.stream().filter(pa -> pa.getDestination().getLabwareId()==lwId)
-                .collect(Collectors.toMap(PlanActionKey::new, Function.identity()));
+        Map<PlanActionKey, PlanAction> planActionMap = new HashMap<>(planActions.size());
+        for (PlanAction pa : planActions) {
+            if (pa.getDestination().getLabwareId()==lwId) {
+                planActionMap.putIfAbsent(new PlanActionKey(pa), pa);
+            }
+        }
+        return planActionMap;
     }
 
     /**
