@@ -234,7 +234,7 @@ input ConfirmOperationRequest {
 input ConfirmSection {
     destinationAddress: Address!
     sampleId: Int!
-    newSection: Int
+    newSection: Int!
 }
 
 input ConfirmSectionLabware {
