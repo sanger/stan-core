@@ -231,6 +231,23 @@ input ConfirmOperationRequest {
     labware: [ConfirmOperationLabware!]!,
 }
 
+input ConfirmSection {
+    destinationAddress: Address!
+    sampleId: Int!
+    newSection: Int!
+}
+
+input ConfirmSectionLabware {
+    barcode: String!
+    cancelled: Boolean
+    confirmSections: [ConfirmSection!]
+    addressComments: [AddressCommentInput!]
+}
+
+input ConfirmSectionRequest {
+    labware: [ConfirmSectionLabware!]!
+}
+
 input SlotCopyContent {
     sourceBarcode: String!
     sourceAddress: Address!
@@ -446,6 +463,7 @@ type Mutation {
     plan(request: PlanRequest!): PlanResult!
     printLabware(printer: String!, barcodes: [String!]!): String
     confirmOperation(request: ConfirmOperationRequest!): ConfirmOperationResult!
+    confirmSection(request: ConfirmSectionRequest!): OperationResult!
     release(request: ReleaseRequest!): ReleaseResult!
     extract(request: ExtractRequest!): OperationResult!
     destroy(request: DestroyRequest!): DestroyResult!

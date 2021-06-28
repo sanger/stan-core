@@ -10,16 +10,13 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.plan.*;
 import uk.ac.sanger.sccp.stan.service.Validator;
-import uk.ac.sanger.sccp.stan.service.operation.plan.PlanValidationImp.ActionKey;
 
 import java.util.*;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -56,15 +53,14 @@ public class TestPlanValidation {
         PlanValidationImp validation = makeValidation(request);
         final OperationType opType = new OperationType(1, "Stir fry");
         doReturn(opType).when(validation).validateOperation();
-        Map<ActionKey, Slot> actionKeySlotMap = Map.of();
-        doReturn(actionKeySlotMap).when(validation).validateSources(any());
-        doNothing().when(validation).validateDestinations(any());
+        doNothing().when(validation).validateSources(any());
+        doNothing().when(validation).validateDestinations();
 
         assertSame(validation.validate(), validation.problems);
 
         verify(validation).validateOperation();
         verify(validation).validateSources(opType);
-        verify(validation).validateDestinations(actionKeySlotMap);
+        verify(validation).validateDestinations();
     }
 
     @Test
@@ -140,12 +136,12 @@ public class TestPlanValidation {
 
     @ParameterizedTest
     @MethodSource("actionsData")
-    public void testCheckActions(String barcode, boolean isBlock, Object planRequestActions, LabwareType labwareType, Object expectedProblems) {
+    public void testCheckActions(String barcode, Object planRequestActions, LabwareType labwareType, Object expectedProblems) {
         final List<PlanRequestAction> placs = objToList(planRequestActions);
         PlanRequestLabware prlw = new PlanRequestLabware(labwareType==null ? null : labwareType.getName(), barcode, placs);
 
         PlanValidationImp validation = makeValidation(new PlanRequest());
-        validation.checkActions(prlw, labwareType, makeActionSources(placs, isBlock));
+        validation.checkActions(prlw, labwareType);
 
         assertProblems(expectedProblems, validation.problems);
     }
@@ -157,7 +153,7 @@ public class TestPlanValidation {
         PlanRequest request = new PlanRequest("opType", objToList(planRequestLabware));
 
         PlanValidationImp validation = makeValidation(request);
-        doNothing().when(validation).checkActions(any(), any(), any());
+        doNothing().when(validation).checkActions(any(), any());
 
         when(mockLabwareTypeRepo.findByName(anyString())).thenReturn(Optional.empty());
         if (labwareTypes!=null && !labwareTypes.isEmpty()) {
@@ -180,14 +176,12 @@ public class TestPlanValidation {
             when(mockLabwareRepo.existsByBarcode(eqCi("extant"))).thenReturn(true);
         }
 
-        Map<ActionKey, Slot> actionSources = Map.of();
-
-        validation.validateDestinations(actionSources);
+        validation.validateDestinations();
 
         assertProblems(expectedProblems, validation.problems);
 
         if (expectedProblems==null) {
-            verify(validation, times(request.getLabware().size())).checkActions(any(), any(), any());
+            verify(validation, times(request.getLabware().size())).checkActions(any(), any());
             for (PlanRequestLabware prlw : request.getLabware()) {
                 if (prlw.getBarcode()!=null) {
                     verify(mockPrebarcodeValidator).validate(eqCi(prlw.getBarcode()), any());
@@ -266,44 +260,39 @@ public class TestPlanValidation {
         PlanRequestSource src3 = new PlanRequestSource("STAN-000", SECOND);
 
         return Stream.of(
-                Arguments.of("STAN-100", true, List.of(new PlanRequestAction(FIRST, 4, src, null),
+                Arguments.of("STAN-100", List.of(new PlanRequestAction(FIRST, 4, src, null),
                         new PlanRequestAction(FIRST, 5, src, null),
                         new PlanRequestAction(SECOND, 4, src, null),
                         new PlanRequestAction(FIRST, 4, src2, null),
                         new PlanRequestAction(FIRST, 4, src3, null)),
                         lt, null),
-                Arguments.of(null, true, List.of(new PlanRequestAction(FIRST, 4, src, null),
+                Arguments.of(null, List.of(new PlanRequestAction(FIRST, 4, src, null),
                         new PlanRequestAction(FIRST, 5, src, null),
                         new PlanRequestAction(SECOND, 4, src, null),
                         new PlanRequestAction(FIRST, 4, src2, null),
                         new PlanRequestAction(FIRST, 4, src3, null)),
                         lt, null),
 
-                Arguments.of("STAN-100", true, List.of(), lt, "No actions specified for labware STAN-100."),
-                Arguments.of(null, true, List.of(), lt, "No actions specified for labware of type "+lt.getName()+"."),
-                Arguments.of(null, true, List.of(), null, "No actions specified for labware of unspecified type."),
-                // Duplicate actions from a block source
-                Arguments.of("STAN-100", true, List.of(new PlanRequestAction(FIRST, 4, src, null),
-                        new PlanRequestAction(FIRST, 4, src, null),
-                        new PlanRequestAction(SECOND, 4, srcAlt, null)),
-                        lt, null), // no problem
-                //Duplicate actions from a non-block source
-                Arguments.of("STAN-100", false, List.of(new PlanRequestAction(FIRST, 4, src, null),
+                Arguments.of("STAN-100", List.of(), lt, "No actions specified for labware STAN-100."),
+                Arguments.of(null, List.of(), lt, "No actions specified for labware of type "+lt.getName()+"."),
+                Arguments.of(null, List.of(), null, "No actions specified for labware of unspecified type."),
+                //Duplicate actions
+                Arguments.of("STAN-100", List.of(new PlanRequestAction(FIRST, 4, src, null),
                         new PlanRequestAction(FIRST, 4, src, null),
                         new PlanRequestAction(SECOND, 4, srcAlt, null)),
                         lt, "Actions for labware STAN-100 contain duplicate action: (address=A1, sampleId=4, source={STAN-000, A1})"),
                 //Duplicate actions from a non-block source without a barcode
-                Arguments.of(null, false, List.of(new PlanRequestAction(FIRST, 4, src, null),
+                Arguments.of(null, List.of(new PlanRequestAction(FIRST, 4, src, null),
                         new PlanRequestAction(FIRST, 4, src, null),
                         new PlanRequestAction(SECOND, 4, src, null)),
                         lt, "Actions for labware of type "+lt.getName()+" contain duplicate action: (address=A1, sampleId=4, source={STAN-000, A1})"),
-                Arguments.of("STAN-100", true, new PlanRequestAction(null, 4, src, null), lt,
+                Arguments.of("STAN-100", new PlanRequestAction(null, 4, src, null), lt,
                         "Missing destination address."),
-                Arguments.of(null, true, new PlanRequestAction(null, 4, src, null), lt,
+                Arguments.of(null, new PlanRequestAction(null, 4, src, null), lt,
                         "Missing destination address."),
-                Arguments.of("STAN-100", true, new PlanRequestAction(new Address(2,4), 4, src, null), lt,
+                Arguments.of("STAN-100", new PlanRequestAction(new Address(2,4), 4, src, null), lt,
                         "Invalid address B4 given for labware type "+lt.getName()+"."),
-                Arguments.of(null, true, new PlanRequestAction(new Address(4,7), 4, src, null), lt,
+                Arguments.of(null, new PlanRequestAction(new Address(4,7), 4, src, null), lt,
                         "Invalid address D7 given for labware type "+lt.getName()+".")
         );
     }
@@ -356,15 +345,6 @@ public class TestPlanValidation {
             //noinspection unchecked
             assertThat(problems).hasSameElementsAs((Iterable<String>) expectedProblems);
         }
-    }
-
-    private Map<ActionKey, Slot> makeActionSources(Collection<PlanRequestAction> planRequestActions, boolean isBlock) {
-        final Slot mockSlot = mock(Slot.class);
-        when(mockSlot.isBlock()).thenReturn(isBlock);
-        return planRequestActions.stream()
-                .map(ActionKey::new)
-                .distinct()
-                .collect(toMap(Function.identity(), k -> mockSlot));
     }
 
     @SuppressWarnings("unchecked")

@@ -5,7 +5,8 @@ import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.plan.*;
-import uk.ac.sanger.sccp.stan.service.*;
+import uk.ac.sanger.sccp.stan.service.LabwareService;
+import uk.ac.sanger.sccp.stan.service.ValidationException;
 
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
@@ -20,7 +21,6 @@ import static java.util.stream.Collectors.toMap;
 public class PlanServiceImp implements PlanService {
     private final PlanValidationFactory planValidationFactory;
     private final LabwareService lwService;
-    private final SampleService sampleService;
     private final PlanOperationRepo planRepo;
     private final PlanActionRepo planActionRepo;
     private final OperationTypeRepo opTypeRepo;
@@ -29,12 +29,11 @@ public class PlanServiceImp implements PlanService {
 
     @Autowired
     public PlanServiceImp(PlanValidationFactory planValidationFactory,
-                          LabwareService lwService, SampleService sampleService,
+                          LabwareService lwService,
                           PlanOperationRepo planRepo, PlanActionRepo planActionRepo,
                           OperationTypeRepo opTypeRepo, LabwareRepo lwRepo, LabwareTypeRepo ltRepo) {
         this.planValidationFactory = planValidationFactory;
         this.lwService = lwService;
-        this.sampleService = sampleService;
         this.planRepo = planRepo;
         this.planActionRepo = planActionRepo;
         this.opTypeRepo = opTypeRepo;
@@ -122,14 +121,8 @@ public class PlanServiceImp implements PlanService {
                         .findAny()
                         .orElseThrow(() -> new EntityNotFoundException("Sample " + prac.getSampleId()
                                 + " not found in " + prac.getSource()));
-                Integer newSection;
-                if (originalSample.getSection()==null) {
-                    newSection = sampleService.nextSection(slot0);
-                } else {
-                    newSection = null; // Do not specify a new section in the plan action
-                }
                 PlanAction action = new PlanAction(null, planId, slot0, slot1, originalSample,
-                        newSection, prac.getSampleThickness(), newBioState);
+                        null, prac.getSampleThickness(), newBioState);
                 actions.add(planActionRepo.save(action));
             }
         }
