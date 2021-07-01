@@ -17,6 +17,11 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
  */
 @Entity
 public class Labware {
+
+    public enum State {
+        empty, active, discarded, released, destroyed
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
@@ -177,5 +182,14 @@ public class Labware {
     @JsonIgnore
     public boolean isEmpty() {
         return this.slots.stream().allMatch(slot -> slot.getSamples().isEmpty());
+    }
+
+    @JsonIgnore
+    public Labware.State getState() {
+        if (isDestroyed()) return State.destroyed;
+        if (isReleased()) return State.released;
+        if (isDiscarded()) return State.discarded;
+        if (isEmpty()) return State.empty;
+        return State.active;
     }
 }
