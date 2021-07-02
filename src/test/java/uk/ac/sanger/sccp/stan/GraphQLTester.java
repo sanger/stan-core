@@ -34,9 +34,12 @@ public class GraphQLTester {
     @Autowired
     private MockMvc mockMvc;
 
-    public <T> T post(String query) throws Exception {
+    public <T> T post(String query, Object variables) throws Exception {
         JSONObject jo = new JSONObject();
         jo.put("query", query);
+        if (variables!=null) {
+            jo.put("variables", variables);
+        }
         MvcResult result = mockMvc.perform(MockMvcRequestBuilders.post("/graphql")
                 .content(jo.toString())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -45,6 +48,10 @@ public class GraphQLTester {
                 .andReturn();
         //noinspection unchecked
         return (T) result.getAsyncResult();
+    }
+
+    public <T> T post(String query) throws Exception {
+        return post(query, null);
     }
 
     public MockMvc getMockMvc() {

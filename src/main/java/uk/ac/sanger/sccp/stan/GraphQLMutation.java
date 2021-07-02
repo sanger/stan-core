@@ -146,7 +146,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
 
     public DataFetcher<RegisterResult> register() {
         return dfe -> {
-            User user = checkUser(User.Role.normal);
+            User user = checkUser(dfe, User.Role.normal);
             RegisterRequest request = arg(dfe, "request", RegisterRequest.class);
             logRequest("Register", user, request);
             return registerService.register(request, user);
@@ -155,7 +155,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
 
     public DataFetcher<RegisterResult> sectionRegister() {
         return dfe -> {
-            User user = checkUser(User.Role.normal);
+            User user = checkUser(dfe, User.Role.normal);
             SectionRegisterRequest request = arg(dfe, "request", SectionRegisterRequest.class);
             logRequest("Section register", user, request);
             return sectionRegisterService.register(user, request);
@@ -164,7 +164,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
 
     public DataFetcher<PlanResult> recordPlan() {
         return dfe -> {
-            User user = checkUser(User.Role.normal);
+            User user = checkUser(dfe, User.Role.normal);
             PlanRequest request = arg(dfe, "request", PlanRequest.class);
             logRequest("Record plan", user, request);
             return planService.recordPlan(user, request);
@@ -173,7 +173,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
 
     public DataFetcher<String> printLabware() {
         return dfe -> {
-            User user = checkUser(User.Role.normal);
+            User user = checkUser(dfe, User.Role.normal);
             List<String> barcodes = dfe.getArgument("barcodes");
             String printerName = dfe.getArgument("printer");
             if (log.isInfoEnabled()) {
@@ -186,7 +186,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
 
     public DataFetcher<ConfirmOperationResult> confirmOperation() {
         return dfe -> {
-            User user = checkUser(User.Role.normal);
+            User user = checkUser(dfe, User.Role.normal);
             ConfirmOperationRequest request = arg(dfe, "request", ConfirmOperationRequest.class);
             logRequest("Confirm operation", user, request);
             return confirmOperationService.confirmOperation(user, request);
@@ -195,7 +195,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
 
     public DataFetcher<OperationResult> confirmSection() {
         return dfe -> {
-            User user = checkUser(User.Role.normal);
+            User user = checkUser(dfe, User.Role.normal);
             ConfirmSectionRequest request = arg(dfe, "request", ConfirmSectionRequest.class);
             logRequest("Confirm section", user, request);
             return confirmSectionService.confirmOperation(user, request);
@@ -204,7 +204,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
 
     public DataFetcher<ReleaseResult> release() {
         return dfe -> {
-            User user = checkUser(User.Role.normal);
+            User user = checkUser(dfe, User.Role.normal);
             ReleaseRequest request = arg(dfe, "request", ReleaseRequest.class);
             logRequest("Release", user, request);
             return releaseService.releaseAndUnstore(user, request);
@@ -213,7 +213,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
 
     public DataFetcher<OperationResult> extract() {
         return dfe -> {
-            User user = checkUser(User.Role.normal);
+            User user = checkUser(dfe, User.Role.normal);
             ExtractRequest request = arg(dfe, "request", ExtractRequest.class);
             logRequest("Extract", user, request);
             return extractService.extractAndUnstore(user, request);
@@ -222,7 +222,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
 
     public DataFetcher<DestroyResult> destroy() {
         return dfe -> {
-            User user = checkUser(User.Role.normal);
+            User user = checkUser(dfe, User.Role.normal);
             DestroyRequest request = arg(dfe, "request", DestroyRequest.class);
             logRequest("Destroy", user, request);
             return destructionService.destroyAndUnstore(user, request);
@@ -231,7 +231,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
 
     public DataFetcher<OperationResult> slotCopy() {
         return dfe -> {
-            User user = checkUser(User.Role.normal);
+            User user = checkUser(dfe, User.Role.normal);
             SlotCopyRequest request = arg(dfe, "request", SlotCopyRequest.class);
             logRequest("SlotCopy", user, request);
             return slotCopyService.perform(user, request);
@@ -240,7 +240,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
 
     public DataFetcher<Comment> addComment() {
         return dfe -> {
-            User user = checkUser(User.Role.admin);
+            User user = checkUser(dfe, User.Role.admin);
             String category = dfe.getArgument("category");
             String text = dfe.getArgument("text");
             logRequest("AddComment", user, String.format("(category=%s, text=%s)", repr(category), repr(text)));
@@ -250,7 +250,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
 
     public DataFetcher<Comment> setCommentEnabled() {
         return dfe -> {
-            User user = checkUser(User.Role.admin);
+            User user = checkUser(dfe, User.Role.admin);
             Integer commentId = dfe.getArgument("commentId");
             Boolean enabled = dfe.getArgument("enabled");
             requireNonNull(commentId, "commentId not specified");
@@ -306,7 +306,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
 
     public DataFetcher<User> setUserRole() {
         return dfe -> {
-            User user = checkUser(User.Role.admin);
+            User user = checkUser(dfe, User.Role.admin);
             String username = dfe.getArgument("username");
             User.Role role = arg(dfe, "role", User.Role.class);
             logRequest("SetUserRole", user, String.format("%s -> %s", repr(username), role));
@@ -316,7 +316,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
 
     private <E> DataFetcher<E> adminAdd(Function<String, E> addFunction, String functionName, String argName) {
         return dfe -> {
-            User user = checkUser(User.Role.admin);
+            User user = checkUser(dfe, User.Role.admin);
             String arg = dfe.getArgument(argName);
             logRequest(functionName, user, repr(arg));
             return addFunction.apply(arg);
@@ -325,7 +325,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
 
     private <E> DataFetcher<E> adminSetEnabled(BiFunction<String, Boolean, E> setEnabledFunction, String functionName, String argName) {
         return dfe -> {
-            User user = checkUser(User.Role.admin);
+            User user = checkUser(dfe, User.Role.admin);
             String arg = dfe.getArgument(argName);
             Boolean enabled = dfe.getArgument("enabled");
             requireNonNull(enabled, "enabled not specified.");

@@ -5,8 +5,6 @@ import graphql.language.Field;
 import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.authentication.AnonymousAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 import uk.ac.sanger.sccp.stan.config.SessionConfig;
 import uk.ac.sanger.sccp.stan.model.*;
@@ -75,17 +73,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     }
 
     public DataFetcher<User> getUser() {
-        return dataFetchingEnvironment -> {
-            Authentication auth = authComp.getAuthentication();
-            if (auth==null || auth instanceof AnonymousAuthenticationToken || auth.getPrincipal()==null) {
-                return null;
-            }
-            Object princ = auth.getPrincipal();
-            if (princ instanceof User) {
-                return (User) princ;
-            }
-            return null;
-        };
+        return this::getUser;
     }
 
     public DataFetcher<Iterable<TissueType>> getTissueTypes() {
