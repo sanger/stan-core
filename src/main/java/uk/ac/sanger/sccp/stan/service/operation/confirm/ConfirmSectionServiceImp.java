@@ -93,6 +93,7 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
             }
             resultLabware.add(clr.labware);
         }
+        updateSourceBlocks(operations);
         return new OperationResult(operations, resultLabware);
     }
 
@@ -258,6 +259,34 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
             }
         }
         return planActionMap;
+    }
+
+    /**
+     * Updates the highest section number for blocks following the creation of new sections from them
+     * @param ops the operations creating the new sections
+     */
+    public void updateSourceBlocks(Collection<Operation> ops) {
+        Map<Integer, Slot> slotsToUpdate = new HashMap<>();
+        for (Operation op : ops) {
+            for (Action action : op.getActions()) {
+                Slot src = action.getSource();
+                Sample sample = action.getSample();
+                if (src.isBlock() && sample.getSection() != null) {
+                    Integer alreadyHighestSection = src.getBlockHighestSection();
+                    Slot slotInMap = slotsToUpdate.get(src.getId());
+                    if (slotInMap!=null) {
+                        if (alreadyHighestSection==null || slotInMap.getBlockHighestSection() > alreadyHighestSection) {
+                            alreadyHighestSection = slotInMap.getBlockHighestSection();
+                        }
+                    }
+                    if (alreadyHighestSection == null || alreadyHighestSection < sample.getSection()) {
+                        src.setBlockHighestSection(sample.getSection());
+                        slotsToUpdate.put(src.getId(), src);
+                    }
+                }
+            }
+        }
+        slotRepo.saveAll(slotsToUpdate.values());
     }
 
     /**
