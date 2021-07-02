@@ -94,7 +94,7 @@ type Slot {
     labwareId: Int!,
     samples: [Sample!]!,
     block: Boolean!,
-    highestSection: Int,
+    blockHighestSection: Int,
 }
 
 type Labware {
