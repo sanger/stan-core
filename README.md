@@ -18,6 +18,6 @@ $ mysql -u root
 > create schema stan;
 > create user 'stan'@'%' identified by 'stanpassword';
 > grant delete, insert, execute, select, update on stan.* to 'stan'@'%';
-> create user 'stan_admin'@'%' identifyed by 'stanadminpassword';
+> create user 'stan_admin'@'%' identified by 'stanadminpassword';
 > grant all on stan.* to 'stan_admin'@'%';
 ```
