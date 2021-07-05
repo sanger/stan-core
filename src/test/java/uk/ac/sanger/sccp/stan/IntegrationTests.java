@@ -28,6 +28,7 @@ import javax.persistence.EntityManager;
 import javax.transaction.Transactional;
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.IntStream;
@@ -870,6 +871,27 @@ public class IntegrationTests {
         assertEquals(userMap, chainGet(result, "data", "setUserRole"));
         result = tester.post(userQuery);
         assertThat(chainGetList(result, "data", "users")).contains(userMap);
+    }
+
+    @Test
+    @Transactional
+    public void testLabwareQuery() throws Exception {
+        LabwareType lt = entityCreator.createLabwareType("pair", 2, 1);
+        Sample sample = entityCreator.createSample(entityCreator.createTissue(entityCreator.createDonor("DNR1"), "EXT1"),
+                25);
+        Labware lw = entityCreator.createLabware("STAN-100", lt, sample);
+
+        String query = tester.readResource("graphql/labware.graphql").replace("BARCODE", lw.getBarcode());
+        Object result = tester.post(query);
+        Map<String, ?> lwData = chainGet(result, "data", "labware");
+        assertEquals("active", lwData.get("state"));
+        assertEquals(lw.getCreated().format(DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss")), lwData.get("created"));
+        assertEquals(lt.getName(), chainGet(lwData, "labwareType", "name"));
+        List<Map<String, ?>> slotsData = chainGetList(lwData, "slots");
+        assertEquals(2, slotsData.size());
+        Map<String, ?> firstSlotData = slotsData.get(0);
+        assertEquals("A1", firstSlotData.get("address"));
+        assertEquals(1, chainGetList(firstSlotData, "samples").size());
     }
 
     private void stubStorelightUnstore() throws IOException {

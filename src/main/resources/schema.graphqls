@@ -7,6 +7,14 @@ enum UserRole {
     admin
 }
 
+enum LabwareState {
+    empty
+    active
+    discarded
+    released
+    destroyed
+}
+
 type User {
     username: String!
     role: UserRole!
@@ -105,6 +113,8 @@ type Labware {
     released: Boolean!
     destroyed: Boolean!
     discarded: Boolean!
+    state: LabwareState!
+    created: Timestamp!
 }
 
 enum LifeStage {

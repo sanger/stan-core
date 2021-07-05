@@ -1,0 +1,11 @@
+query {
+    labware(barcode:"BARCODE") {
+        state
+        created
+        labwareType { name }
+        slots {
+            address
+            samples { id }
+        }
+    }
+}
