@@ -217,6 +217,11 @@ public class IntegrationTests {
             assertEquals(expectedActionTissues[i], chainGet(action, "sample", "tissue", "externalName"));
             assertEquals(expectedActionSecNum[i], (int) chainGet(action, "sample", "section"));
         }
+        // Check that the source blocks' highest section numbers have been updated
+        entityManager.refresh(sourceBlock1);
+        entityManager.refresh(sourceBlock2);
+        assertEquals(15, sourceBlock1.getFirstSlot().getBlockHighestSection());
+        assertEquals(17, sourceBlock2.getFirstSlot().getBlockHighestSection());
     }
 
     @Test

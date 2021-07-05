@@ -141,6 +141,7 @@ public class TestConfirmSectionService {
         doReturn(clr2).when(service).confirmLabware(user, csl2, lw2, plan2);
 
         doNothing().when(service).recordComments(any(), any(), any());
+        doNothing().when(service).updateSourceBlocks(any());
 
         ConfirmSectionRequest request = new ConfirmSectionRequest(List.of(csl1, csl2));
         ConfirmSectionValidation validation = new ConfirmSectionValidation(UCMap.from(Labware::getBarcode, lw1, lw2),
@@ -154,6 +155,7 @@ public class TestConfirmSectionService {
         verify(service).confirmLabware(user, csl2, lw2, plan2);
         verify(service).recordComments(csl1, op1.getId(), lw1B);
         verify(service).recordComments(csl2, null, lw2B);
+        verify(service).updateSourceBlocks(result.getOperations());
     }
 
     @ValueSource(booleans={false, true})
@@ -400,5 +402,85 @@ public class TestConfirmSectionService {
         assertEquals(pas[0], map.get(new PlanActionKey(A1, samples[0].getId())));
         assertEquals(pas[1], map.get(new PlanActionKey(A1, samples[1].getId())));
         assertEquals(pas[2], map.get(new PlanActionKey(A2, samples[0].getId())));
+    }
+
+    /**
+     * This is a little complicated.
+     * I want to make sure that if the operations contain the source slots as separate objects,
+     * that the highest new section will still be written for each source slot record.
+     * So part way through this I make multiple identical slot objects.
+     */
+    @Test
+    public void testUpdateSourceBlocks() {
+        LabwareType tubeType = EntityFactory.getTubeType();
+        LabwareType slideType = EntityFactory.makeLabwareType(4,1);
+        Sample[] sourceSamples = new Sample[2];
+        Labware[] sourceLabware = new Labware[2];
+        final BioState bs = EntityFactory.getBioState();
+        final Tissue tissue = EntityFactory.getTissue();
+        for (int i = 0; i < sourceSamples.length; ++i) {
+            final int sampleId = 50 + i;
+            sourceSamples[i] = new Sample(sampleId, null, tissue, bs);
+            sourceLabware[i] = EntityFactory.makeLabware(tubeType, sourceSamples[i]);
+            final Slot slot = sourceLabware[i].getFirstSlot();
+            slot.setBlockSampleId(sampleId);
+            slot.setBlockHighestSection(10*i);
+        }
+        Sample[] sections = new Sample[4];
+        Labware[] destLabware = new Labware[2];
+
+        for (int i = 0; i < sections.length; ++i) {
+            sections[i] = new Sample(100+i, 20+i, tissue, bs);
+        }
+
+        destLabware[0] = EntityFactory.makeLabware(slideType, sections[0], sections[3]);
+        destLabware[1] = EntityFactory.makeLabware(slideType, sections[1], sections[2]);
+
+        OperationType opType = EntityFactory.makeOperationType("Section", null);
+        Operation[] ops = new Operation[2];
+        for (int i = 0; i < ops.length; ++i) {
+            ops[i] = new Operation(60+i, opType, null, null, null);
+        }
+
+        final Address A1 = new Address(1,1);
+        final Address B1 = new Address(2,1);
+        final Slot[] srcs = Arrays.stream(sourceLabware).map(Labware::getFirstSlot).toArray(Slot[]::new);
+
+        List<Action> op0Actions = List.of(
+                new Action(600, ops[0].getId(), srcs[0], destLabware[0].getSlot(A1), sections[0], sourceSamples[0]),
+                new Action(601, ops[0].getId(), srcs[1], destLabware[0].getSlot(B1), sections[3], sourceSamples[1])
+        );
+        ops[0].setActions(op0Actions);
+
+        // Just to make sure that if source slots have competing instances, they still get updated correctly:
+        for (int i = 0; i < srcs.length; ++i) {
+            Slot src = srcs[i];
+            srcs[i] = new Slot(src.getId(), src.getLabwareId(), src.getAddress(), src.getSamples(), src.getBlockSampleId(), src.getBlockHighestSection());
+        }
+
+        List<Action> op1Actions = List.of(
+                new Action(610, ops[1].getId(), srcs[0], destLabware[1].getSlot(A1), sections[1], sourceSamples[0]),
+                new Action(611, ops[1].getId(), srcs[1], destLabware[1].getSlot(B1), sections[2], sourceSamples[1])
+        );
+        ops[1].setActions(op1Actions);
+
+        final List<Slot> updatedSources = new ArrayList<>(2);
+        when(mockSlotRepo.saveAll(any())).then(invocation -> {
+            Collection<Slot> slots = invocation.getArgument(0);
+            updatedSources.addAll(slots);
+
+            return slots;
+        });
+
+        service.updateSourceBlocks(Arrays.asList(ops));
+
+        verify(mockSlotRepo).saveAll(any());
+
+        updatedSources.sort(Comparator.comparing(Slot::getId));
+        final List<Slot> expectedUpdatedSources = List.of(
+                new Slot(srcs[0].getId(), srcs[0].getLabwareId(), srcs[0].getAddress(), srcs[0].getSamples(), srcs[0].getBlockSampleId(), 21),
+                new Slot(srcs[1].getId(), srcs[1].getLabwareId(), srcs[1].getAddress(), srcs[1].getSamples(), srcs[1].getBlockSampleId(), 23)
+        );
+        assertEquals(expectedUpdatedSources, updatedSources);
     }
 }
