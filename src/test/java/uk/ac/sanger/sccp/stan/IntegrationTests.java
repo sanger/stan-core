@@ -3,6 +3,7 @@ package uk.ac.sanger.sccp.stan;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.json.JSONObject;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -892,6 +893,22 @@ public class IntegrationTests {
         Map<String, ?> firstSlotData = slotsData.get(0);
         assertEquals("A1", firstSlotData.get("address"));
         assertEquals(1, chainGetList(firstSlotData, "samples").size());
+    }
+
+    @Test
+    @Transactional
+    public void testApiKey() throws Exception {
+        userRepo.save(new User("patch", User.Role.admin));
+        JSONObject variables = new JSONObject();
+        variables.put("STAN-APIKEY", "devapikey");
+        Object data = tester.post("query { user { username, role }}", variables);
+        Map<String, ?> userData = chainGet(data, "data", "user");
+        assertEquals("patch", userData.get("username"));
+        assertEquals("admin", userData.get("role"));
+
+        String mutation = tester.readResource("graphql/addnewcomment.graphql");
+        data = tester.post(mutation, variables);
+        assertEquals("Fell in the bin.", chainGet(data, "data", "addComment", "text"));
     }
 
     private void stubStorelightUnstore() throws IOException {
