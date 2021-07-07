@@ -12,6 +12,7 @@ import uk.ac.sanger.sccp.stan.request.FindResult.FindEntry;
 import uk.ac.sanger.sccp.stan.request.FindResult.LabwareLocation;
 import uk.ac.sanger.sccp.stan.service.store.StoreService;
 
+import java.time.LocalDate;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
@@ -31,16 +32,19 @@ public class FindService {
     private final DonorRepo donorRepo;
     private final TissueRepo tissueRepo;
     private final SampleRepo sampleRepo;
+    private final TissueTypeRepo tissueTypeRepo;
 
     @Autowired
     public FindService(LabwareService labwareService, StoreService storeService,
-                       LabwareRepo labwareRepo, DonorRepo donorRepo, TissueRepo tissueRepo, SampleRepo sampleRepo) {
+                       LabwareRepo labwareRepo, DonorRepo donorRepo, TissueRepo tissueRepo, SampleRepo sampleRepo,
+                       TissueTypeRepo tissueTypeRepo) {
         this.labwareService = labwareService;
         this.storeService = storeService;
         this.labwareRepo = labwareRepo;
         this.donorRepo = donorRepo;
         this.tissueRepo = tissueRepo;
         this.sampleRepo = sampleRepo;
+        this.tissueTypeRepo = tissueTypeRepo;
     }
 
     /**
@@ -55,8 +59,10 @@ public class FindService {
             labwareSamples = findByLabwareBarcode(request.getLabwareBarcode());
         } else if (request.getTissueExternalName()!=null) {
             labwareSamples = findByTissueExternalName(request.getTissueExternalName());
-        } else {
+        } else if (request.getDonorName()!=null) {
             labwareSamples = findByDonorName(request.getDonorName());
+        } else {
+            labwareSamples = findByTissueType(request.getTissueTypeName());
         }
 
         labwareSamples = filter(labwareSamples, request);
@@ -71,8 +77,9 @@ public class FindService {
      * @exception IllegalArgumentException if the request is invalid
      */
     public void validateRequest(FindRequest request) {
-        if (request.getDonorName()==null && request.getTissueExternalName()==null && request.getLabwareBarcode()==null) {
-            throw new IllegalArgumentException("Donor name or external name or labware barcode must be specified.");
+        if (request.getDonorName()==null && request.getTissueExternalName()==null && request.getLabwareBarcode()==null
+                && request.getTissueTypeName()==null) {
+            throw new IllegalArgumentException("Donor name or external name or labware barcode or tissue type must be specified.");
         }
     }
 
@@ -108,6 +115,21 @@ public class FindService {
     public List<LabwareSample> findByDonorName(String donorName) {
         Donor donor = donorRepo.getByDonorName(donorName);
         List<Tissue> tissues = tissueRepo.findByDonorId(donor.getId());
+        return findByTissueIds(tissues.stream().map(Tissue::getId).collect(toList()));
+    }
+
+    /**
+     * Finds LabwareSamples given the name of a tissue type.
+     * If the name is unrecognised as a tissue type, an empty list is returned
+     * @param tissueTypeName the name of a tissue type
+     * @return LabwareSamples for each labware containing samples of the specified tissue type
+     */
+    public List<LabwareSample> findByTissueType(String tissueTypeName) {
+        TissueType tissueType = tissueTypeRepo.findByName(tissueTypeName).orElse(null);
+        if (tissueType==null) {
+            return List.of();
+        }
+        List<Tissue> tissues = tissueRepo.findByTissueTypeId(tissueType.getId());
         return findByTissueIds(tissues.stream().map(Tissue::getId).collect(toList()));
     }
 
@@ -190,20 +212,37 @@ public class FindService {
                     ls -> tissueTypeName.equalsIgnoreCase(ls.getSample().getTissue().getTissueType().getName())
             );
         }
+        predicate = andPredicate(predicate, datePredicate(request.getCreatedMin(), request.getCreatedMax()));
         return predicate;
+    }
+
+    private static Predicate<LabwareSample> datePredicate(LocalDate min, LocalDate max) {
+        if (min==null && max==null) {
+            return null;
+        }
+        if (min==null) {
+            return ls -> (ls.getLabware().getCreated().toLocalDate().compareTo(max) <= 0);
+        }
+        if (max==null) {
+            return ls -> (ls.getLabware().getCreated().toLocalDate().compareTo(min) >= 0);
+        }
+        return ls -> {
+            LocalDate d = ls.getLabware().getCreated().toLocalDate();
+            return (d.compareTo(min) >= 0 && d.compareTo(max) <= 0);
+        };
     }
 
     /**
      * Combines two predicates.
-     * If the first is null, the second is returned.
+     * If either is null, the other is returned.
      * Otherwise they are combined with {@link Predicate#and}.
      * @param pred1 a predicate, or null
-     * @param pred2 a predicate
+     * @param pred2 a predicate, or null
      * @param <E> the parameter type of the predicate
      * @return a combined predicate
      */
     private static <E> Predicate<E> andPredicate(Predicate<E> pred1, Predicate<E> pred2) {
-        return (pred1==null ? pred2 : pred1.and(pred2));
+        return (pred1==null ? pred2 : pred2==null ? pred1 : pred1.and(pred2));
     }
 
     /**

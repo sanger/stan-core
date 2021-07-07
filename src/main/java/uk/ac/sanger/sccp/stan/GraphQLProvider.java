@@ -119,6 +119,7 @@ public class GraphQLProvider {
                 )
                 .scalar(GraphQLCustomTypes.ADDRESS)
                 .scalar(GraphQLCustomTypes.TIMESTAMP)
+                .scalar(GraphQLCustomTypes.DATE)
                 .build();
     }
 
