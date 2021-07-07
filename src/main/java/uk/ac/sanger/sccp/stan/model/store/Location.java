@@ -16,6 +16,7 @@ public class Location extends LinkedLocation {
     private List<LinkedLocation> children = new ArrayList<>();
     private Size size;
     private GridDirection direction;
+    private String qualifiedNameWithFirstBarcode;
 
     public Integer getId() {
         return this.id;
@@ -65,6 +66,14 @@ public class Location extends LinkedLocation {
         this.direction = direction;
     }
 
+    public String getQualifiedNameWithFirstBarcode() {
+        return this.qualifiedNameWithFirstBarcode;
+    }
+
+    public void setQualifiedNameWithFirstBarcode(String qualifiedNameWithFirstBarcode) {
+        this.qualifiedNameWithFirstBarcode = qualifiedNameWithFirstBarcode;
+    }
+
     public Location fixInternalLinks() {
         if (stored!=null && !stored.isEmpty()) {
             for (StoredItem si : stored) {
@@ -86,6 +95,7 @@ public class Location extends LinkedLocation {
         return (Objects.equals(this.id, that.id) &&
                 Objects.equals(this.size, that.size) &&
                 Objects.equals(this.parentBarcode(), that.parentBarcode()) &&
+                Objects.equals(this.qualifiedNameWithFirstBarcode, that.qualifiedNameWithFirstBarcode) &&
                 this.direction==that.direction &&
                 alike(this.stored, that.stored, StoredItem::getBarcode, StoredItem::getAddress) &&
                 alike(this.children, that.children, LinkedLocation::getBarcode, LinkedLocation::getAddress));
