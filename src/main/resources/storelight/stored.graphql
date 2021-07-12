@@ -12,6 +12,7 @@
             parent { barcode name address }
             stored { barcode address }
             direction
+            qualifiedNameWithFirstBarcode
         }
     }
 }
