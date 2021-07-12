@@ -11,6 +11,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import javax.persistence.EntityNotFoundException;
 import javax.transaction.Transactional;
 import java.util.List;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -109,5 +110,27 @@ public class TestTissueRepo {
         entityCreator.createTissue(donor, "TISSUE3", 1);
 
         assertThat(tissueRepo.findAllByExternalNameIn(List.of("tissue1", "Tissue2"))).containsExactlyInAnyOrder(tissue1, tissue2);
+    }
+
+    @Test
+    @Transactional
+    public void testFindByTissueTypeId() {
+        Donor donor = entityCreator.createDonor("DONOR1");
+        TissueType tt1 = tissueTypeRepo.findByName("Heart").orElseThrow();
+        TissueType tt2 = tissueTypeRepo.findByName("Kidney").orElseThrow();
+        final SpatialLocation[] sls = {
+                tt1.getSpatialLocations().get(0),
+                tt1.getSpatialLocations().get(1),
+                tt2.getSpatialLocations().get(0),
+        };
+        Fixative fix = entityCreator.getAny(fixativeRepo);
+        Medium med = entityCreator.getAny(mediumRepo);
+        MouldSize mould = entityCreator.getAny(mouldSizeRepo);
+        Hmdmc hmdmc = entityCreator.getAny(hmdmcRepo);
+        Tissue[] tissues = IntStream.range(0, 3)
+                .mapToObj(i -> tissueRepo.save(new Tissue(null, "TISSUE"+i, i+1, sls[i],
+                        donor, mould, med, fix, hmdmc)))
+                .toArray(Tissue[]::new);
+        assertThat(tissueRepo.findByTissueTypeId(tt1.getId())).containsExactly(tissues[0], tissues[1]);
     }
 }
