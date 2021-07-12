@@ -2,6 +2,8 @@ package uk.ac.sanger.sccp.stan.request;
 
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
+import java.time.LocalDate;
+import java.time.LocalDate;
 import java.util.Objects;
 
 /**
@@ -15,18 +17,22 @@ public class FindRequest {
     private String donorName;
     private String tissueExternalName;
     private String tissueTypeName;
+    private LocalDate createdMin;
+    private LocalDate createdMax;
 
     private int maxRecords = -1;
 
     public FindRequest() {}
 
     public FindRequest(String labwareBarcode, String donorName, String tissueExternalName, String tissueTypeName,
-                       int maxRecords) {
+                       int maxRecords, LocalDate createdMin, LocalDate createdMax) {
         this.labwareBarcode = labwareBarcode;
         this.donorName = donorName;
         this.tissueExternalName = tissueExternalName;
         this.tissueTypeName = tissueTypeName;
         this.maxRecords = maxRecords;
+        this.createdMin = createdMin;
+        this.createdMax = createdMax;
     }
 
     /**
@@ -103,6 +109,22 @@ public class FindRequest {
         this.maxRecords = maxRecords;
     }
 
+    public LocalDate getCreatedMin() {
+        return this.createdMin;
+    }
+
+    public void setCreatedMin(LocalDate createdMin) {
+        this.createdMin = createdMin;
+    }
+
+    public LocalDate getCreatedMax() {
+        return this.createdMax;
+    }
+
+    public void setCreatedMax(LocalDate createdMax) {
+        this.createdMax = createdMax;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -128,6 +150,8 @@ public class FindRequest {
                 .add("tissueExternalName", tissueExternalName)
                 .add("tissueTypeName", tissueTypeName)
                 .add("maxRecords", maxRecords)
+                .add("createdMin", createdMin)
+                .add("createdMax", createdMax)
                 .omitNullValues()
                 .reprStringValues()
                 .toString();

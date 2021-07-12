@@ -1,5 +1,6 @@
 package uk.ac.sanger.sccp.stan.repo;
 
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
 import uk.ac.sanger.sccp.stan.model.Tissue;
 
@@ -27,4 +28,7 @@ public interface TissueRepo extends CrudRepository<Tissue, Integer> {
     List<Tissue> findByDonorId(int donorId);
 
     List<Tissue> findAllByExternalNameIn(Collection<String> externalNames);
+
+    @Query("select t from Tissue t join SpatialLocation sl on (t.spatialLocation=sl) where sl.tissueType.id=?1")
+    List<Tissue> findByTissueTypeId(int tissueTypeId);
 }

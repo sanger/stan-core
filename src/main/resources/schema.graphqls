@@ -1,5 +1,6 @@
 scalar Address
 scalar Timestamp
+scalar Date
 
 enum UserRole {
     disabled
@@ -401,6 +402,7 @@ type Location {
     stored: [StoredItem!]!
     children: [LinkedLocation!]!
     direction: GridDirection
+    qualifiedNameWithFirstBarcode: String!
 }
 
 type LinkedLocation {
@@ -439,8 +441,10 @@ input FindRequest {
     labwareBarcode: String
     donorName: String
     tissueExternalName: String
-    tissueType: String
+    tissueTypeName: String
     maxRecords: Int
+    createdMin: Date
+    createdMax: Date
 }
 
 type Query {

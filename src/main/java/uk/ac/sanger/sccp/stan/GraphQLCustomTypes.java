@@ -100,6 +100,51 @@ public class GraphQLCustomTypes {
             })
             .build();
 
+    public static final GraphQLScalarType DATE = GraphQLScalarType.newScalar()
+            .name("Date")
+            .description("A scalar type representing a date.")
+            .coercing(new Coercing<LocalDate, String>() {
+                @Override
+                public String serialize(Object dataFetcherResult) throws CoercingSerializeException {
+                    try {
+                        LocalDate d = toLocalDate(dataFetcherResult);
+                        if (d != null) {
+                            return d.toString();
+                        }
+                    } catch (RuntimeException rte) {
+                        throw new CoercingSerializeException("Unable to serialize " + dataFetcherResult + " as a date", rte);
+                    }
+                    throw new CoercingSerializeException("Unable to serialize " + dataFetcherResult + " as a date.");
+                }
+
+                @Override
+                public LocalDate parseValue(Object input) throws CoercingParseValueException {
+                    try {
+                        LocalDate d = toLocalDate(input);
+                        if (d != null) {
+                            return d;
+                        }
+                    } catch (RuntimeException rte) {
+                        throw new CoercingParseValueException("Unable to parse value " + input + " as a date.", rte);
+                    }
+                    throw new CoercingParseValueException("Unable to parse value " + input + " as a date.");
+                }
+
+                @Override
+                public LocalDate parseLiteral(Object input) throws CoercingParseLiteralException {
+                    try {
+                        LocalDate d = toLocalDate(input);
+                        if (d != null) {
+                            return d;
+                        }
+                    } catch (RuntimeException rte) {
+                        throw new CoercingParseLiteralException("Unable to parse literal " + input + " as a date.", rte);
+                    }
+                    throw new CoercingParseLiteralException("Unable to parse literal " + input + " as a date.");
+                }
+            })
+            .build();
+
     private static LocalDateTime toLocalDateTime(Object value) {
         if (value instanceof LocalDateTime) {
             return (LocalDateTime) value;
@@ -122,6 +167,25 @@ public class GraphQLCustomTypes {
         }
         if (value instanceof Date) {
             return ((Date) value).toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
+        }
+        return null;
+    }
+
+    private static LocalDate toLocalDate(Object value) {
+        if (value instanceof LocalDate) {
+            return (LocalDate) value;
+        }
+        if (value instanceof StringValue) {
+            return LocalDate.parse(((StringValue) value).getValue());
+        }
+        if (value instanceof String) {
+            return LocalDate.parse((String) value);
+        }
+        if (value instanceof java.sql.Date) {
+            return ((java.sql.Date) value).toLocalDate();
+        }
+        if (value instanceof Date) {
+            return ((Date) value).toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
         }
         return null;
     }
