@@ -9,11 +9,11 @@ import org.springframework.stereotype.Component;
 import uk.ac.sanger.sccp.stan.config.SessionConfig;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.FindRequest;
-import uk.ac.sanger.sccp.stan.request.FindResult;
+import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.service.CommentAdminService;
 import uk.ac.sanger.sccp.stan.service.FindService;
 import uk.ac.sanger.sccp.stan.service.label.print.LabelPrintService;
+import uk.ac.sanger.sccp.stan.service.operation.plan.PlanService;
 
 import javax.persistence.EntityNotFoundException;
 import java.util.function.Supplier;
@@ -43,6 +43,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final LabelPrintService labelPrintService;
     final FindService findService;
     final CommentAdminService commentAdminService;
+    final PlanService planService;
 
     @Autowired
     public GraphQLDataFetchers(ObjectMapper objectMapper, AuthenticationComponent authComp, UserRepo userRepo,
@@ -52,7 +53,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                SpeciesRepo speciesRepo, HmdmcRepo hmdmcRepo, LabwareRepo labwareRepo, CommentRepo commentRepo,
                                ReleaseDestinationRepo releaseDestinationRepo, ReleaseRecipientRepo releaseRecipientRepo,
                                DestructionReasonRepo destructionReasonRepo,
-                               LabelPrintService labelPrintService, FindService findService, CommentAdminService commentAdminService) {
+                               LabelPrintService labelPrintService, FindService findService,
+                               CommentAdminService commentAdminService, PlanService planService) {
         super(objectMapper, authComp, userRepo);
         this.sessionConfig = sessionConfig;
         this.tissueTypeRepo = tissueTypeRepo;
@@ -70,6 +72,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.labelPrintService = labelPrintService;
         this.findService = findService;
         this.commentAdminService = commentAdminService;
+        this.planService = planService;
     }
 
     public DataFetcher<User> getUser() {
@@ -160,6 +163,10 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
             FindRequest request = arg(dfe, "request", FindRequest.class);
             return findService.find(request);
         };
+    }
+
+    public DataFetcher<PlanData> getPlanData() {
+        return dfe -> planService.getPlanData(dfe.getArgument("barcode"));
     }
 
     private boolean argOrFalse(DataFetchingEnvironment dfe, String argName) {

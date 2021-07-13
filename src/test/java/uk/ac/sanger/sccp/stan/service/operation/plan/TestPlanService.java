@@ -3,16 +3,16 @@ package uk.ac.sanger.sccp.stan.service.operation.plan;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.*;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.request.PlanData;
 import uk.ac.sanger.sccp.stan.request.plan.*;
 import uk.ac.sanger.sccp.stan.service.LabwareService;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
 
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -255,5 +255,91 @@ public class TestPlanService {
         assertEquals(expectedActions, actions);
 
         actions.forEach(ac -> verify(mockPlanActionRepo).save(ac));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints={0,1,2})
+    public void testGetPlanData(int numPlansFound) {
+        LabwareType lt = EntityFactory.getTubeType();
+        Labware lw = EntityFactory.makeEmptyLabware(lt);
+        final String barcode = lw.getBarcode();
+        when(mockLwRepo.getByBarcode(barcode)).thenReturn(lw);
+        OperationType opType = EntityFactory.makeOperationType("Section", null);
+        List<PlanOperation> plans = IntStream.range(0, numPlansFound)
+                .mapToObj(i -> new PlanOperation(100+i, opType, null, null, null))
+                .collect(toList());
+        doNothing().when(planService).validateLabwareForPlanData(any());
+
+        when(mockPlanRepo.findAllByDestinationIdIn(any())).thenReturn(plans);
+
+        if (numPlansFound != 1) {
+            String expectedErrorMessage = String.format("%s found for labware %s.",
+                    numPlansFound==0 ? "No plan" : "Multiple plans", barcode);
+            assertThat(assertThrows(IllegalArgumentException.class, () -> planService.getPlanData(barcode)))
+                    .hasMessage(expectedErrorMessage);
+        } else {
+            PlanOperation plan = plans.get(0);
+            List<Labware> sources = List.of(EntityFactory.makeEmptyLabware(lt));
+            doReturn(sources).when(planService).getSources(any());
+
+            assertEquals(new PlanData(plan, sources, lw), planService.getPlanData(barcode));
+            verify(planService).getSources(plan);
+        }
+
+        verify(mockLwRepo).getByBarcode(barcode);
+        verify(planService).validateLabwareForPlanData(lw);
+        verify(mockPlanRepo).findAllByDestinationIdIn(List.of(lw.getId()));
+    }
+
+    @ParameterizedTest
+    @MethodSource("validateLabwareArgs")
+    public void testValidateLabwareForPlanData(Labware labware, String expectedErrorMessage) {
+        if (expectedErrorMessage==null) {
+            planService.validateLabwareForPlanData(labware);
+        } else {
+            assertThat(assertThrows(IllegalArgumentException.class, () -> planService.validateLabwareForPlanData(labware)))
+                    .hasMessage(expectedErrorMessage);
+        }
+    }
+
+    static Stream<Arguments> validateLabwareArgs() {
+        LabwareType lt = EntityFactory.getTubeType();
+        Labware[] labware = IntStream.range(0,5).mapToObj(i -> {
+            Labware lw = EntityFactory.makeEmptyLabware(lt);
+            lw.setBarcode("STAN-10"+i);
+            return lw;
+        }).toArray(Labware[]::new);
+        labware[1].getFirstSlot().getSamples().add(EntityFactory.getSample());
+        labware[2].setDestroyed(true);
+        labware[3].setReleased(true);
+        labware[4].setDiscarded(true);
+        return Arrays.stream(new Object[][] {
+                { labware[0], null },
+                { labware[1], "Labware STAN-101 already contains samples." },
+                { labware[2], "Labware STAN-102 is destroyed." },
+                { labware[3], "Labware STAN-103 is released." },
+                { labware[4], "Labware STAN-104 is discarded." },
+        }).map(Arguments::of);
+    }
+
+    @Test
+    public void testGetSources() {
+        Sample sample = EntityFactory.getSample();
+        LabwareType lt = EntityFactory.makeLabwareType(2,2);
+        Labware[] labware = IntStream.range(0,2)
+                .mapToObj(i -> EntityFactory.makeLabware(lt, sample, sample))
+                .toArray(Labware[]::new);
+        Labware dest = EntityFactory.makeEmptyLabware(lt);
+        OperationType opType = EntityFactory.makeOperationType("Section", null);
+        Address A1 = new Address(1,1);
+        Address A2 = new Address(1,2);
+        PlanOperation plan = EntityFactory.makePlanForSlots(opType,
+                List.of(labware[0].getSlot(A1), labware[0].getSlot(A2), labware[1].getSlot(A1)),
+                List.of(dest.getSlot(A1), dest.getSlot(A1), dest.getSlot(A2)),
+                null);
+        List<Labware> lwList = Arrays.asList(labware);
+        doReturn(lwList).when(mockLwRepo).findAllByIdIn(any());
+        assertEquals(lwList, planService.getSources(plan));
+        verify(mockLwRepo).findAllByIdIn(Set.of(labware[0].getId(), labware[1].getId()));
     }
 }

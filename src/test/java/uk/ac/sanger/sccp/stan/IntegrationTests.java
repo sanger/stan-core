@@ -126,6 +126,9 @@ public class IntegrationTests {
         Sample sample2 = entityCreator.createSample(entityCreator.createTissue(entityCreator.createDonor("DONOR2"), "TISSUE2"), null);
         Labware sourceBlock1 = entityCreator.createBlock("STAN-B70C", sample1);
         Labware sourceBlock2 = entityCreator.createBlock("STAN-B70D", sample2);
+
+        // Recording the plan
+
         String mutation = tester.readResource("graphql/plan.graphql");
         mutation = mutation.replace("55555", String.valueOf(sample1.getId()));
         mutation = mutation.replace("55556", String.valueOf(sample2.getId()));
@@ -153,6 +156,20 @@ public class IntegrationTests {
             assertEquals((Integer) expectedPlanSampleId[i], chainGet(resultAction, "sample", "id"));
             assertNotNull(chainGet(resultAction, "destination", "labwareId"));
         }
+
+        // Retrieving plan data
+
+        String planQuery = tester.readResource("graphql/plandata.graphql").replace("$BARCODE", barcode);
+        result = tester.post(planQuery);
+
+        Map<String, ?> planData = chainGet(result, "data", "planData");
+        assertEquals("Section", chainGet(planData, "plan", "operationType", "name"));
+        assertEquals(barcode, chainGet(planData, "destination", "barcode"));
+        assertThat(IntegrationTests.<Map<String, String>>chainGetList(planData, "sources").stream()
+                .map(m -> m.get("barcode"))
+                .collect(toList())).containsExactlyInAnyOrder("STAN-B70C", "STAN-B70D");
+
+        // Confirming
 
         String recordMutation = tester.readResource("graphql/confirmsection.graphql");
         recordMutation = recordMutation.replace("$BARCODE", barcode)
