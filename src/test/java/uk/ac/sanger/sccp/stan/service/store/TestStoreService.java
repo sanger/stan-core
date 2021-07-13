@@ -356,6 +356,7 @@ public class TestStoreService {
                 "            parent { barcode name address }" +
                 "            stored { barcode address }" +
                 "            direction" +
+                "            qualifiedNameWithFirstBarcode" +
                 "        }}}",
                 null);
 

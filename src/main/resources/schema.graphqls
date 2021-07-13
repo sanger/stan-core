@@ -402,7 +402,7 @@ type Location {
     stored: [StoredItem!]!
     children: [LinkedLocation!]!
     direction: GridDirection
-    qualifiedNameWithFirstBarcode: String!
+    qualifiedNameWithFirstBarcode: String
 }
 
 type LinkedLocation {
