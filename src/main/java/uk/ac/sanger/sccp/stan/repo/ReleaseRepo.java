@@ -14,6 +14,7 @@ import static java.util.stream.Collectors.toMap;
 public interface ReleaseRepo extends CrudRepository<Release, Integer> {
     List<Release> findAllByIdIn(Collection<Integer> ids);
 
+    List<Release> findAllByLabwareIdIn(Collection<Integer> labwareIds);
 
     /**
      * Gets the releases matching the corresponding ids.

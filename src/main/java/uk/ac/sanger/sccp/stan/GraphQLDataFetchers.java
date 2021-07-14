@@ -9,10 +9,10 @@ import org.springframework.stereotype.Component;
 import uk.ac.sanger.sccp.stan.config.SessionConfig;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.FindRequest;
-import uk.ac.sanger.sccp.stan.request.FindResult;
+import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.service.CommentAdminService;
 import uk.ac.sanger.sccp.stan.service.FindService;
+import uk.ac.sanger.sccp.stan.service.history.HistoryService;
 import uk.ac.sanger.sccp.stan.service.label.print.LabelPrintService;
 
 import javax.persistence.EntityNotFoundException;
@@ -43,6 +43,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final LabelPrintService labelPrintService;
     final FindService findService;
     final CommentAdminService commentAdminService;
+    final HistoryService historyService;
 
     @Autowired
     public GraphQLDataFetchers(ObjectMapper objectMapper, AuthenticationComponent authComp, UserRepo userRepo,
@@ -52,7 +53,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                SpeciesRepo speciesRepo, HmdmcRepo hmdmcRepo, LabwareRepo labwareRepo, CommentRepo commentRepo,
                                ReleaseDestinationRepo releaseDestinationRepo, ReleaseRecipientRepo releaseRecipientRepo,
                                DestructionReasonRepo destructionReasonRepo,
-                               LabelPrintService labelPrintService, FindService findService, CommentAdminService commentAdminService) {
+                               LabelPrintService labelPrintService, FindService findService,
+                               CommentAdminService commentAdminService, HistoryService historyService) {
         super(objectMapper, authComp, userRepo);
         this.sessionConfig = sessionConfig;
         this.tissueTypeRepo = tissueTypeRepo;
@@ -70,6 +72,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.labelPrintService = labelPrintService;
         this.findService = findService;
         this.commentAdminService = commentAdminService;
+        this.historyService = historyService;
     }
 
     public DataFetcher<User> getUser() {
@@ -159,6 +162,34 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         return dfe -> {
             FindRequest request = arg(dfe, "request", FindRequest.class);
             return findService.find(request);
+        };
+    }
+
+    public DataFetcher<History> historyForSampleId() {
+        return dfe -> {
+            int sampleId = dfe.getArgument("sampleId");
+            return historyService.getHistoryForSampleId(sampleId);
+        };
+    }
+
+    public DataFetcher<History> historyForExternalName() {
+        return dfe -> {
+            String externalName = dfe.getArgument("externalName");
+            return historyService.getHistoryForExternalName(externalName);
+        };
+    }
+
+    public DataFetcher<History> historyForDonorName() {
+        return dfe -> {
+            String donorName = dfe.getArgument("donorName");
+            return historyService.getHistoryForDonorName(donorName);
+        };
+    }
+
+    public DataFetcher<History> historyForLabwareBarcode() {
+        return dfe -> {
+            String barcode = dfe.getArgument("barcode");
+            return historyService.getHistoryForLabwareBarcode(barcode);
         };
     }
 
