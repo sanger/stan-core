@@ -16,17 +16,17 @@ public class HistoryEntry {
     private int sourceLabwareId;
     private int destinationLabwareId;
     private Integer sampleId;
-    private List<String> details;
+    private final List<String> details = new ArrayList<>();
 
     public HistoryEntry(int eventId, String type, LocalDateTime time, int sourceLabwareId, int destinationLabwareId,
-                        Integer sampleId, List<String> details) {
+                        Integer sampleId, Collection<String> details) {
         this.eventId = eventId;
         this.type = type;
         this.time = time;
         this.sourceLabwareId = sourceLabwareId;
         this.destinationLabwareId = destinationLabwareId;
         this.sampleId = sampleId;
-        this.details = details;
+        setDetails(details);
     }
 
     public HistoryEntry(int eventId, String type, LocalDateTime time, int sourceLabwareId, int destinationLabwareId,
@@ -88,14 +88,16 @@ public class HistoryEntry {
         return this.details;
     }
 
-    public void setDetails(List<String> details) {
-        this.details = details;
+    public void setDetails(Collection<String> details) {
+        if (details != this.details) {
+            this.details.clear();
+            if (details != null) {
+                this.details.addAll(details);
+            }
+        }
     }
 
     public void addDetail(String detail) {
-        if (this.details==null || !(this.details instanceof ArrayList)) {
-            this.details = BasicUtils.newArrayList(this.details);
-        }
         this.details.add(detail);
     }
 
