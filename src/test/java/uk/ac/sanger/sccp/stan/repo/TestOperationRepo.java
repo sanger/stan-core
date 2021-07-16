@@ -36,35 +36,58 @@ public class TestOperationRepo {
 
     User user;
 
+    OperationType opType1, opType2;
+    Sample[] samples;
+    Operation[] ops;
+
+    private void setUpOps() {
+        if (opType1==null) {
+            opType1 = entityCreator.createOpType("Alpha", null);
+        }
+        if (opType2==null) {
+            opType2 = entityCreator.createOpType("Beta", null);
+        }
+
+        if (samples==null) {
+            Donor donor = entityCreator.createDonor("DONOR1");
+            Tissue tissue = entityCreator.createTissue(donor, "TISSUE1");
+            samples = IntStream.range(1, 4)
+                    .mapToObj(i -> entityCreator.createSample(tissue, i))
+                    .toArray(Sample[]::new);
+        }
+
+        if (ops==null) {
+            LabwareType lt = entityCreator.createLabwareType("lt", 1, 1);
+            Labware[] lw = IntStream.range(0, 4)
+                    .mapToObj(i -> {
+                        Sample sample = samples[(i == 3) ? 2 : i];
+                        return entityCreator.createLabware("STAN-A" + i, lt, sample);
+                    })
+                    .toArray(Labware[]::new);
+
+            ops = new Operation[]{
+                    makeOp(opType1, lw[0]),
+                    makeOp(opType1, lw[1], lw[2]),
+                    makeOp(opType1, lw[2], lw[3]),
+                    makeOp(opType2, lw[1])
+            };
+        }
+    }
+
     @Test
     @Transactional
     public void testFindAllByOperationTypeAndSampleIdIn() {
-        OperationType opType1 = entityCreator.createOpType("Alpha", null);
-        OperationType opType2 = entityCreator.createOpType("Beta", null);
-
-        Donor donor = entityCreator.createDonor("DONOR1");
-        Tissue tissue = entityCreator.createTissue(donor, "TISSUE1");
-        Sample[] samples = IntStream.range(1, 4)
-                .mapToObj(i -> entityCreator.createSample(tissue, i))
-                .toArray(Sample[]::new);
-
-        LabwareType lt = entityCreator.createLabwareType("lt", 1, 1);
-        Labware[] lw = IntStream.range(0, 4)
-                .mapToObj(i -> {
-                    Sample sample = samples[(i==3) ? 2 : i];
-                    return entityCreator.createLabware("STAN-A"+i, lt, sample);
-                })
-                .toArray(Labware[]::new);
-
-        Operation[] ops = {
-                makeOp(opType1, lw[0]),
-                makeOp(opType1, lw[1], lw[2]),
-                makeOp(opType1, lw[2], lw[3]),
-                makeOp(opType2, lw[1])
-        };
-
+        setUpOps();
         List<Operation> foundOps = opRepo.findAllByOperationTypeAndSampleIdIn(opType1, List.of(samples[1].getId(), samples[2].getId()));
         assertThat(foundOps).containsExactlyInAnyOrder(ops[1], ops[2]);
+    }
+
+    @Test
+    @Transactional
+    public void testFindAllBySampleIdIn() {
+        setUpOps();
+        List<Operation> foundOps = opRepo.findAllBySampleIdIn(List.of(samples[1].getId(), samples[2].getId()));
+        assertThat(foundOps).containsExactlyInAnyOrder(ops[1], ops[2], ops[3]);
     }
 
     private Operation makeOp(OperationType opType, Labware... labware) {
