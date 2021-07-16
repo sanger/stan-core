@@ -1,5 +1,7 @@
 package uk.ac.sanger.sccp.stan.request.confirm;
 
+import uk.ac.sanger.sccp.utils.BasicUtils;
+
 import java.util.List;
 
 import static uk.ac.sanger.sccp.utils.BasicUtils.newArrayList;
@@ -38,5 +40,12 @@ public class ConfirmSectionRequest {
     @Override
     public int hashCode() {
         return labware.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return BasicUtils.describe("ConfirmSectionRequest")
+                .add("labware", labware)
+                .toString();
     }
 }
