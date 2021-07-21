@@ -3,6 +3,8 @@ package uk.ac.sanger.sccp.stan;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
 import graphql.GraphQL;
+import graphql.execution.AsyncExecutionStrategy;
+import graphql.execution.AsyncSerialExecutionStrategy;
 import graphql.schema.DataFetcher;
 import graphql.schema.GraphQLSchema;
 import graphql.schema.idl.*;
@@ -50,7 +52,10 @@ public class GraphQLProvider {
         //noinspection UnstableApiUsage
         String sdl = Resources.toString(url, Charsets.UTF_8);
         GraphQLSchema graphQLSchema = buildSchema(sdl);
-        this.graphQL = GraphQL.newGraphQL(graphQLSchema).build();
+        this.graphQL = GraphQL.newGraphQL(graphQLSchema)
+                .mutationExecutionStrategy(new AsyncSerialExecutionStrategy(new StanExceptionHandler()))
+                .queryExecutionStrategy(new AsyncExecutionStrategy(new StanExceptionHandler()))
+                .build();
     }
 
     private GraphQLSchema buildSchema(String sdl) {
