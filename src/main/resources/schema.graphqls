@@ -447,6 +447,12 @@ input FindRequest {
     createdMax: Date
 }
 
+type PlanData {
+    sources: [Labware!]!
+    plan: PlanOperation!
+    destination: Labware!
+}
+
 type Query {
     user: User
     tissueTypes: [TissueType!]!
@@ -464,6 +470,7 @@ type Query {
     destructionReasons(includeDisabled: Boolean): [DestructionReason!]!
     users(includeDisabled: Boolean): [User!]!
     find(request: FindRequest!): FindResult!
+    planData(barcode: String!): PlanData!
 
     location(locationBarcode: String!): Location!
     stored(barcodes: [String!]!): [StoredItem!]!

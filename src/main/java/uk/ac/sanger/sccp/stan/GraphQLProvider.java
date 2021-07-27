@@ -84,6 +84,7 @@ public class GraphQLProvider {
                         .dataFetcher("find", graphQLDataFetchers.find())
                         .dataFetcher("destructionReasons", graphQLDataFetchers.getDestructionReasons())
                         .dataFetcher("users", graphQLDataFetchers.getUsers())
+                        .dataFetcher("planData", graphQLDataFetchers.getPlanData())
 
                         .dataFetcher("location", graphQLStore.getLocation())
                         .dataFetcher("stored", graphQLStore.getStored())

@@ -1,0 +1,13 @@
+query {
+    planData(barcode: "$BARCODE") {
+        plan {
+            operationType { name }
+        }
+        destination {
+            barcode
+        }
+        sources {
+            barcode
+        }
+    }
+}
