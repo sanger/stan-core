@@ -114,7 +114,7 @@ public class HistoryServiceImp implements HistoryService {
         for (Operation op : ops) {
             for (Action action : op.getActions()) {
                 if (action.getSample()!=null && sampleIds.contains(action.getSample().getId())
-                        || action.getSourceSample()!=null && sampleIds.contains(action.getSample().getId())) {
+                        || action.getSourceSample()!=null && sampleIds.contains(action.getSourceSample().getId())) {
                     labwareIds.add(action.getDestination().getLabwareId());
                     labwareIds.add(action.getSource().getLabwareId());
                 }
