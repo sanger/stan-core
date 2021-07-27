@@ -463,6 +463,12 @@ type History {
     samples: [Sample!]!
 }
 
+type PlanData {
+    sources: [Labware!]!
+    plan: PlanOperation!
+    destination: Labware!
+}
+
 type Query {
     user: User
     tissueTypes: [TissueType!]!
@@ -480,6 +486,7 @@ type Query {
     destructionReasons(includeDisabled: Boolean): [DestructionReason!]!
     users(includeDisabled: Boolean): [User!]!
     find(request: FindRequest!): FindResult!
+    planData(barcode: String!): PlanData!
 
     historyForSampleId(sampleId: Int!): History!
     historyForExternalName(externalName: String!): History!

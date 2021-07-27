@@ -14,6 +14,7 @@ import uk.ac.sanger.sccp.stan.service.CommentAdminService;
 import uk.ac.sanger.sccp.stan.service.FindService;
 import uk.ac.sanger.sccp.stan.service.history.HistoryService;
 import uk.ac.sanger.sccp.stan.service.label.print.LabelPrintService;
+import uk.ac.sanger.sccp.stan.service.operation.plan.PlanService;
 
 import javax.persistence.EntityNotFoundException;
 import java.util.function.Supplier;
@@ -44,6 +45,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final FindService findService;
     final CommentAdminService commentAdminService;
     final HistoryService historyService;
+    final PlanService planService;
 
     @Autowired
     public GraphQLDataFetchers(ObjectMapper objectMapper, AuthenticationComponent authComp, UserRepo userRepo,
@@ -54,7 +56,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                ReleaseDestinationRepo releaseDestinationRepo, ReleaseRecipientRepo releaseRecipientRepo,
                                DestructionReasonRepo destructionReasonRepo,
                                LabelPrintService labelPrintService, FindService findService,
-                               CommentAdminService commentAdminService, HistoryService historyService) {
+                               CommentAdminService commentAdminService, HistoryService historyService, PlanService planService) {
         super(objectMapper, authComp, userRepo);
         this.sessionConfig = sessionConfig;
         this.tissueTypeRepo = tissueTypeRepo;
@@ -73,6 +75,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.findService = findService;
         this.commentAdminService = commentAdminService;
         this.historyService = historyService;
+        this.planService = planService;
     }
 
     public DataFetcher<User> getUser() {
@@ -191,6 +194,10 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
             String barcode = dfe.getArgument("barcode");
             return historyService.getHistoryForLabwareBarcode(barcode);
         };
+    }
+  
+    public DataFetcher<PlanData> getPlanData() {
+        return dfe -> planService.getPlanData(dfe.getArgument("barcode"));
     }
 
     private boolean argOrFalse(DataFetchingEnvironment dfe, String argName) {

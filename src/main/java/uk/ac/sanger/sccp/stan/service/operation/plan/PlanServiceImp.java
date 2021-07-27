@@ -4,15 +4,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.request.PlanData;
 import uk.ac.sanger.sccp.stan.request.plan.*;
 import uk.ac.sanger.sccp.stan.service.LabwareService;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
 
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
+import java.util.function.Predicate;
 
-import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toMap;
+import static java.util.stream.Collectors.*;
 
 /**
  * @author dr6
@@ -127,6 +128,44 @@ public class PlanServiceImp implements PlanService {
             }
         }
         return actions;
+    }
+
+    @Override
+    public PlanData getPlanData(String barcode) {
+        Labware destination = lwRepo.getByBarcode(barcode);
+        validateLabwareForPlanData(destination);
+        List<PlanOperation> plans = planRepo.findAllByDestinationIdIn(List.of(destination.getId()));
+        if (plans.isEmpty()) {
+            throw new IllegalArgumentException("No plan found for labware "+destination.getBarcode()+".");
+        }
+        if (plans.size() > 1) {
+            throw new IllegalArgumentException("Multiple plans found for labware "+destination.getBarcode()+".");
+        }
+        PlanOperation plan = plans.get(0);
+        List<Labware> sources = getSources(plan);
+        return new PlanData(plan, sources, destination);
+    }
+
+    public void validateLabwareForPlanData(Labware labware) {
+        String[] errors = { "already contains samples", "is destroyed", "is released", "is discarded" };
+        List<Predicate<Labware>> predicates = List.of(
+                lw -> !lw.isEmpty(),
+                Labware::isDestroyed,
+                Labware::isReleased,
+                Labware::isDiscarded
+        );
+        for (int i = 0; i < errors.length; ++i) {
+            if (predicates.get(i).test(labware)) {
+                throw new IllegalArgumentException(String.format("Labware %s %s.", labware.getBarcode(), errors[i]));
+            }
+        }
+    }
+
+    public List<Labware> getSources(PlanOperation plan) {
+        Set<Integer> labwareIds = plan.getPlanActions().stream()
+                .map(pa -> pa.getSource().getLabwareId())
+                .collect(toSet());
+        return lwRepo.findAllByIdIn(labwareIds);
     }
 
     private static List<PlanRequestAction> sortedActions(List<PlanRequestAction> pracs) {
