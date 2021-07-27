@@ -447,6 +447,22 @@ input FindRequest {
     createdMax: Date
 }
 
+type HistoryEntry {
+    eventId: Int!
+    type: String!
+    time: Timestamp!
+    sourceLabwareId: Int!
+    destinationLabwareId: Int!
+    sampleId: Int
+    details: [String!]!
+}
+
+type History {
+    entries: [HistoryEntry!]!
+    labware: [Labware!]!
+    samples: [Sample!]!
+}
+
 type PlanData {
     sources: [Labware!]!
     plan: PlanOperation!
@@ -471,6 +487,11 @@ type Query {
     users(includeDisabled: Boolean): [User!]!
     find(request: FindRequest!): FindResult!
     planData(barcode: String!): PlanData!
+
+    historyForSampleId(sampleId: Int!): History!
+    historyForExternalName(externalName: String!): History!
+    historyForDonorName(donorName: String!): History!
+    historyForLabwareBarcode(barcode: String!): History!
 
     location(locationBarcode: String!): Location!
     stored(barcodes: [String!]!): [StoredItem!]!

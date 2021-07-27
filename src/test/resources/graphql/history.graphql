@@ -1,0 +1,27 @@
+query {
+    historyForSampleId(sampleId: 1) {
+        entries {
+            eventId
+            type
+            sampleId
+            sourceLabwareId
+            destinationLabwareId
+            time
+            details
+        }
+        labware {
+            id
+            barcode
+            state
+        }
+        samples {
+            id
+            tissue {
+                spatialLocation { tissueType { name } }
+                externalName
+                donor { donorName }
+            }
+            section
+        }
+    }
+}

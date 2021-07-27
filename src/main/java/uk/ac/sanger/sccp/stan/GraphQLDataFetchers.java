@@ -12,6 +12,7 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.service.CommentAdminService;
 import uk.ac.sanger.sccp.stan.service.FindService;
+import uk.ac.sanger.sccp.stan.service.history.HistoryService;
 import uk.ac.sanger.sccp.stan.service.label.print.LabelPrintService;
 import uk.ac.sanger.sccp.stan.service.operation.plan.PlanService;
 
@@ -43,6 +44,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final LabelPrintService labelPrintService;
     final FindService findService;
     final CommentAdminService commentAdminService;
+    final HistoryService historyService;
     final PlanService planService;
 
     @Autowired
@@ -54,7 +56,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                ReleaseDestinationRepo releaseDestinationRepo, ReleaseRecipientRepo releaseRecipientRepo,
                                DestructionReasonRepo destructionReasonRepo,
                                LabelPrintService labelPrintService, FindService findService,
-                               CommentAdminService commentAdminService, PlanService planService) {
+                               CommentAdminService commentAdminService, HistoryService historyService, PlanService planService) {
         super(objectMapper, authComp, userRepo);
         this.sessionConfig = sessionConfig;
         this.tissueTypeRepo = tissueTypeRepo;
@@ -72,6 +74,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.labelPrintService = labelPrintService;
         this.findService = findService;
         this.commentAdminService = commentAdminService;
+        this.historyService = historyService;
         this.planService = planService;
     }
 
@@ -165,6 +168,34 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         };
     }
 
+    public DataFetcher<History> historyForSampleId() {
+        return dfe -> {
+            int sampleId = dfe.getArgument("sampleId");
+            return historyService.getHistoryForSampleId(sampleId);
+        };
+    }
+
+    public DataFetcher<History> historyForExternalName() {
+        return dfe -> {
+            String externalName = dfe.getArgument("externalName");
+            return historyService.getHistoryForExternalName(externalName);
+        };
+    }
+
+    public DataFetcher<History> historyForDonorName() {
+        return dfe -> {
+            String donorName = dfe.getArgument("donorName");
+            return historyService.getHistoryForDonorName(donorName);
+        };
+    }
+
+    public DataFetcher<History> historyForLabwareBarcode() {
+        return dfe -> {
+            String barcode = dfe.getArgument("barcode");
+            return historyService.getHistoryForLabwareBarcode(barcode);
+        };
+    }
+  
     public DataFetcher<PlanData> getPlanData() {
         return dfe -> planService.getPlanData(dfe.getArgument("barcode"));
     }

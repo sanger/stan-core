@@ -86,6 +86,11 @@ public class GraphQLProvider {
                         .dataFetcher("users", graphQLDataFetchers.getUsers())
                         .dataFetcher("planData", graphQLDataFetchers.getPlanData())
 
+                        .dataFetcher("historyForSampleId", graphQLDataFetchers.historyForSampleId())
+                        .dataFetcher("historyForExternalName", graphQLDataFetchers.historyForExternalName())
+                        .dataFetcher("historyForDonorName", graphQLDataFetchers.historyForDonorName())
+                        .dataFetcher("historyForLabwareBarcode", graphQLDataFetchers.historyForLabwareBarcode())
+
                         .dataFetcher("location", graphQLStore.getLocation())
                         .dataFetcher("stored", graphQLStore.getStored())
                 )
