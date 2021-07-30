@@ -965,6 +965,7 @@ public class IntegrationTests {
             int labwareId = (int) entry.get("sourceLabwareId");
             assertEquals(labwareId, entry.get("destinationLabwareId"));
             assertNotNull(entry.get("time"));
+            assertEquals("user1", entry.get("username"));
             assertEquals(List.of(), entry.get("details"));
 
             List<Map<String,?>> labwareData = chainGetList(historyData, "labware");

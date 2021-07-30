@@ -194,9 +194,10 @@ public class HistoryServiceImp implements HistoryService {
                     items.add(new SampleAndLabwareIds(sampleId, sourceId, destId));
                 }
             }
+            String username = op.getUser().getUsername();
             for (var item : items) {
                 HistoryEntry entry = new HistoryEntry(op.getId(), op.getOperationType().getName(),
-                        op.getPerformed(), item.sourceId, item.destId, item.sampleId);
+                        op.getPerformed(), item.sourceId, item.destId, item.sampleId, username);
                 comments.forEach(com -> {
                     if (doesCommentApply(com, item.sampleId, item.destId, slotIdMap)) {
                         String detail = com.getComment().getText();
@@ -228,9 +229,10 @@ public class HistoryServiceImp implements HistoryService {
             int labwareId = release.getLabware().getId();
             List<String> details = List.of("Destination: "+release.getDestination().getName(),
                     "Recipient: "+release.getRecipient().getUsername());
+            String username = release.getUser().getUsername();
             if (release.getSnapshotId()==null) {
                 entries.add(new HistoryEntry(release.getId(), "Release", release.getReleased(),
-                        labwareId, labwareId,null, details));
+                        labwareId, labwareId,null, username, details));
             } else {
                 Snapshot snap = snapshotMap.get(release.getSnapshotId());
                 Set<Integer> releaseSampleIds = snap.getElements().stream()
@@ -239,7 +241,7 @@ public class HistoryServiceImp implements HistoryService {
                         .collect(BasicUtils.toLinkedHashSet());
                 for (Integer sampleId : releaseSampleIds) {
                     entries.add(new HistoryEntry(release.getId(), "Release", release.getReleased(),
-                            labwareId, labwareId, sampleId, details));
+                            labwareId, labwareId, sampleId, username, details));
                 }
             }
         }
@@ -261,11 +263,12 @@ public class HistoryServiceImp implements HistoryService {
                     .filter(sampleIds::contains)
                     .collect(BasicUtils.toLinkedHashSet());
             if (!destructionSampleIds.isEmpty()) {
+                String username = destruction.getUser().getUsername();
                 int labwareId = labware.getId();
                 List<String> details = List.of("Reason: "+destruction.getReason().getText());
                 for (Integer sampleId : destructionSampleIds) {
                     entries.add(new HistoryEntry(destruction.getId(), "Destruction", destruction.getDestroyed(),
-                            labwareId, labwareId, sampleId, details));
+                            labwareId, labwareId, sampleId, username, details));
                 }
             }
         }

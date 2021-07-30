@@ -137,9 +137,9 @@ public class TestHistoryService {
         List<Destruction> destructions = List.of(new Destruction());
         List<Release> releases = List.of(new Release());
 
-        List<HistoryEntry> opEntries = List.of(new HistoryEntry(1, "op", null, 1, 1, null));
-        List<HistoryEntry> releaseEntries = List.of(new HistoryEntry(2, "release", null, 1, 1, null));
-        List<HistoryEntry> destructionEntries = List.of(new HistoryEntry(3, "destruction", null, 1, 1, null));
+        List<HistoryEntry> opEntries = List.of(new HistoryEntry(1, "op", null, 1, 1, null, "user1"));
+        List<HistoryEntry> releaseEntries = List.of(new HistoryEntry(2, "release", null, 1, 1, null, "user2"));
+        List<HistoryEntry> destructionEntries = List.of(new HistoryEntry(3, "destruction", null, 1, 1, null, "user3"));
 
         List<HistoryEntry> entries = List.of(opEntries.get(0), releaseEntries.get(0), destructionEntries.get(0));
 
@@ -189,6 +189,10 @@ public class TestHistoryService {
         }
     }
 
+    private User getUser() {
+        return EntityFactory.getUser();
+    }
+
     // Op 1: samples 0,1 from labware 0 to labware 1
     //       sample 1 from labware 0 to labware 2
     // Op 2: sample 2 from labware 0 to labware 3
@@ -203,8 +207,8 @@ public class TestHistoryService {
             OperationType opType = EntityFactory.makeOperationType("Catapult", null);
             ops = List.of(
                     EntityFactory.makeOpForSlots(opType, streamSlots(labware[0], A1, B1, B1).collect(toList()),
-                            Stream.concat(streamSlots(labware[1], A1, B1), streamSlots(labware[2], A1)).collect(toList()), null),
-                    EntityFactory.makeOpForSlots(opType, List.of(labware[0].getSlot(C1)), List.of(labware[3].getFirstSlot()), null)
+                            Stream.concat(streamSlots(labware[1], A1, B1), streamSlots(labware[2], A1)).collect(toList()), getUser()),
+                    EntityFactory.makeOpForSlots(opType, List.of(labware[0].getSlot(C1)), List.of(labware[3].getFirstSlot()), getUser())
             );
         }
     }
@@ -297,11 +301,12 @@ public class TestHistoryService {
         Set<Integer> sampleIds = Set.of(samples[0].getId(), samples[2].getId());
 
         String opTypeName = ops.get(0).getOperationType().getName();
+        String username = getUser().getUsername();
         List<HistoryEntry> expectedEntries = List.of(
                 new HistoryEntry(opIds[0], opTypeName, ops.get(0).getPerformed(), labware[0].getId(),
-                        labware[1].getId(), samples[0].getId(), List.of("Alabama", "A1: Alaska")),
+                        labware[1].getId(), samples[0].getId(), username, List.of("Alabama", "A1: Alaska")),
                 new HistoryEntry(opIds[1], opTypeName, ops.get(1).getPerformed(), labware[0].getId(),
-                        labware[3].getId(), samples[2].getId(), List.of("Arizona"))
+                        labware[3].getId(), samples[2].getId(), username, List.of("Arizona"))
         );
         assertThat(service.createEntriesForOps(ops, sampleIds, labwareList)).containsExactlyElementsOf(expectedEntries);
     }
@@ -320,19 +325,21 @@ public class TestHistoryService {
                 lw1.getSlots().stream().flatMap(slot -> slot.getSamples().stream()
                             .map(sample -> new SnapshotElement(null, 1, slot.getId(), sample.getId()))
                 ).collect(toList()));
-        Release rel1 = new Release(1, lw1, null, new ReleaseDestination(1, "Mercury"),
+        User user = getUser();
+        Release rel1 = new Release(1, lw1, user, new ReleaseDestination(1, "Mercury"),
                 new ReleaseRecipient(2, "jeff"), snap.getId(), makeTime(1));
-        Release rel2 = new Release(2, lw2, null, new ReleaseDestination(3, "Venus"),
+        Release rel2 = new Release(2, lw2, user, new ReleaseDestination(3, "Venus"),
                 new ReleaseRecipient(4, "dirk"), null, makeTime(2));
+        String username = user.getUsername();
 
         when(mockSnapshotRepo.findAllByIdIn(Set.of(1))).thenReturn(List.of(snap));
         List<HistoryEntry> expectedEntries = List.of(
                 new HistoryEntry(1, "Release", rel1.getReleased(), lw1.getId(), lw1.getId(), samples[0].getId(),
-                        List.of("Destination: Mercury", "Recipient: jeff")),
+                        username, List.of("Destination: Mercury", "Recipient: jeff")),
                 new HistoryEntry(1, "Release", rel1.getReleased(), lw1.getId(), lw1.getId(), samples[2].getId(),
-                        List.of("Destination: Mercury", "Recipient: jeff")),
+                        username, List.of("Destination: Mercury", "Recipient: jeff")),
                 new HistoryEntry(2, "Release", rel2.getReleased(), lw2.getId(), lw2.getId(), null,
-                        List.of("Destination: Venus", "Recipient: dirk"))
+                        username, List.of("Destination: Venus", "Recipient: dirk"))
         );
         assertThat(service.createEntriesForReleases(List.of(rel1, rel2), Set.of(samples[0].getId(), samples[2].getId())))
                 .containsExactlyElementsOf(expectedEntries);
@@ -344,18 +351,20 @@ public class TestHistoryService {
         LabwareType lt = EntityFactory.makeLabwareType(2,2);
         Labware lw1 = EntityFactory.makeLabware(lt, samples[0], samples[0], samples[1], samples[2]);
         Labware lw2 = EntityFactory.makeLabware(lt, samples[0], samples[1]);
-        Destruction d1 = new Destruction(1, lw1, null, makeTime(1),
+        User user = getUser();
+        Destruction d1 = new Destruction(1, lw1, user, makeTime(1),
                 new DestructionReason(1, "Dropped."));
-        Destruction d2 = new Destruction(2, lw2, null, makeTime(2),
+        Destruction d2 = new Destruction(2, lw2, user, makeTime(2),
                 new DestructionReason(2, "Sat on."));
+        String username = user.getUsername();
 
         List<HistoryEntry> expectedEntries = List.of(
                 new HistoryEntry(1, "Destruction", d1.getDestroyed(), lw1.getId(), lw1.getId(), samples[0].getId(),
-                        List.of("Reason: Dropped.")),
+                        username, List.of("Reason: Dropped.")),
                 new HistoryEntry(1, "Destruction", d1.getDestroyed(), lw1.getId(), lw1.getId(), samples[2].getId(),
-                        List.of("Reason: Dropped.")),
+                        username, List.of("Reason: Dropped.")),
                 new HistoryEntry(2, "Destruction", d2.getDestroyed(), lw2.getId(), lw2.getId(), samples[0].getId(),
-                        List.of("Reason: Sat on."))
+                        username, List.of("Reason: Sat on."))
         );
 
         assertThat(service.createEntriesForDestructions(List.of(d1, d2), Set.of(samples[0].getId(), samples[2].getId())))
@@ -366,18 +375,18 @@ public class TestHistoryService {
     @Test
     public void testAssembleEntries() {
         List<HistoryEntry> e1 = List.of(
-                new HistoryEntry(1, "Register", makeTime(0), 1, 1, 1),
-                new HistoryEntry(2, "Section", makeTime(2), 1, 2, 2),
-                new HistoryEntry(3, "Section", makeTime(4), 1, 3, 3),
-                new HistoryEntry(4, "Scoop", makeTime(6), 3, 4, 3)
+                new HistoryEntry(1, "Register", makeTime(0), 1, 1, 1, "user1"),
+                new HistoryEntry(2, "Section", makeTime(2), 1, 2, 2, "user2"),
+                new HistoryEntry(3, "Section", makeTime(4), 1, 3, 3, "user3"),
+                new HistoryEntry(4, "Scoop", makeTime(6), 3, 4, 3, "user4")
         );
         List<HistoryEntry> e2 = List.of(
-                new HistoryEntry(1, "Release", makeTime(3), 2, 2, 2),
-                new HistoryEntry(2, "Release", makeTime(8), 3, 3, 3)
+                new HistoryEntry(1, "Release", makeTime(3), 2, 2, 2, "user11"),
+                new HistoryEntry(2, "Release", makeTime(8), 3, 3, 3, "user12")
         );
         List<HistoryEntry> e3 = List.of(
-                new HistoryEntry(1, "Destruction", makeTime(5), 1, 1, 1),
-                new HistoryEntry(2, "Destruction", makeTime(9), 4, 4, 3)
+                new HistoryEntry(1, "Destruction", makeTime(5), 1, 1, 1, "user21"),
+                new HistoryEntry(2, "Destruction", makeTime(9), 4, 4, 3, "user22")
         );
 
         List<HistoryEntry> expectedEntries = List.of(

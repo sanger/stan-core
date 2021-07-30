@@ -16,22 +16,24 @@ public class HistoryEntry {
     private int sourceLabwareId;
     private int destinationLabwareId;
     private Integer sampleId;
+    private String username;
     private final List<String> details = new ArrayList<>();
 
     public HistoryEntry(int eventId, String type, LocalDateTime time, int sourceLabwareId, int destinationLabwareId,
-                        Integer sampleId, Collection<String> details) {
+                        Integer sampleId, String username, Collection<String> details) {
         this.eventId = eventId;
         this.type = type;
         this.time = time;
         this.sourceLabwareId = sourceLabwareId;
         this.destinationLabwareId = destinationLabwareId;
         this.sampleId = sampleId;
+        this.username = username;
         setDetails(details);
     }
 
     public HistoryEntry(int eventId, String type, LocalDateTime time, int sourceLabwareId, int destinationLabwareId,
-                        Integer sampleId) {
-        this(eventId, type, time, sourceLabwareId, destinationLabwareId, sampleId, null);
+                        Integer sampleId, String username) {
+        this(eventId, type, time, sourceLabwareId, destinationLabwareId, sampleId, username, null);
     }
 
     public HistoryEntry() {}
@@ -101,6 +103,14 @@ public class HistoryEntry {
         this.details.add(detail);
     }
 
+    public String getUsername() {
+        return this.username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -112,7 +122,8 @@ public class HistoryEntry {
                 && Objects.equals(this.sampleId, that.sampleId)
                 && Objects.equals(this.type, that.type)
                 && Objects.equals(this.time, that.time)
-                && Objects.equals(this.details, that.details));
+                && Objects.equals(this.details, that.details)
+                && Objects.equals(this.username, that.username));
     }
 
     @Override
@@ -131,6 +142,7 @@ public class HistoryEntry {
                 .add("destinationLabwareId", destinationLabwareId)
                 .add("sampleId", sampleId)
                 .add("details", details)
+                .addRepr("username", username)
                 .toString();
     }
 }
