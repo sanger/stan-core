@@ -1,0 +1,203 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <changeSet id="1600" author="dr6">
+        <createTable tableName="project">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="name" type="VARCHAR(64)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValue="TRUE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="1601" author="dr6">
+        <createTable tableName="cost_code">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="code" type="VARCHAR(10)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValue="TRUE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="1602" author="dr6">
+        <createTable tableName="sas_number">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="sas_number" type="VARCHAR(10)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="project_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_sas_number_project" referencedTableName="project" referencedColumnNames="id"/>
+            </column>
+            <column name="cost_code_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_sas_number_cost_code" referencedTableName="cost_code" referencedColumnNames="id"/>
+            </column>
+            <column name="status" type="ENUM('active', 'paused', 'completed', 'failed')">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="sas_number" indexName="ix_sas_number_status" unique="false">
+            <column name="status"/>
+        </createIndex>
+        <rollback>
+            <dropAllForeignKeyConstraints baseTableName="sas_number"/>
+            <dropTable tableName="sas_number"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="1603" author="dr6">
+        <createTable tableName="sas_event">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="type" type="ENUM('create', 'pause', 'resume', 'complete', 'fail')">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sas_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_sas_event_sas" referencedTableName="sas_number" referencedColumnNames="id"/>
+            </column>
+            <column name="user_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_sas_event_user" referencedTableName="user" referencedColumnNames="id"/>
+            </column>
+            <column name="comment_id" type="INT">
+                <constraints nullable="true" foreignKeyName="fk_sas_event_comment" referencedTableName="comment" referencedColumnNames="id"/>
+            </column>
+            <column name="performed" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="1604" author="dr6">
+        <createTable tableName="sas_op">
+            <column name="sas_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_sas_op_sas" referencedTableName="sas_number" referencedColumnNames="id"/>
+            </column>
+            <column name="operation_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_sas_op_operation" referencedTableName="operation" referencedColumnNames="id"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addPrimaryKey tableName="sas_op" columnNames="sas_id,operation_id"/>
+        <rollback>
+            <dropAllForeignKeyConstraints baseTableName="sas_op"/>
+            <dropTable tableName="sas_op"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="1605" author="dr6">
+        <createTable tableName="sas_sample">
+            <column name="sas_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_sas_sample_sas" referencedTableName="sas_number" referencedColumnNames="id"/>
+            </column>
+            <column name="sample_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_sas_sample_sample" referencedTableName="sample" referencedColumnNames="id"/>
+            </column>
+            <column name="slot_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_sas_sample_slot" referencedTableName="slot" referencedColumnNames="id"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addPrimaryKey tableName="sas_sample" columnNames="sas_id,sample_id,slot_id"/>
+        <rollback>
+            <dropAllForeignKeyConstraints baseTableName="sas_sample"/>
+            <dropTable tableName="sas_sample"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="1606" author="dr6">
+        <createTable tableName="sas_sequence">
+            <column name="prefix" type="CHAR(3)" autoIncrement="false">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="counter" type="INT UNSIGNED" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+
+    <changeSet id="1650" author="dr6">
+        <insert tableName="sas_sequence">
+            <column name="prefix" value="SAS"/>
+            <column name="counter" value="1000"/>
+        </insert>
+        <insert tableName="sas_sequence">
+            <column name="prefix" value="R&amp;D"/>
+            <column name="counter" value="10"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="1651" author="dr6">
+        <insert tableName="comment">
+            <column name="category" value="SAS status"/>
+            <column name="text" value="RIN number too low"/>
+        </insert>
+        <insert tableName="comment">
+            <column name="category" value="SAS status"/>
+            <column name="text" value="Poor quality tissue"/>
+        </insert>
+        <insert tableName="comment">
+            <column name="category" value="SAS status"/>
+            <column name="text" value="Waiting for reagents"/>
+        </insert>
+        <insert tableName="comment">
+            <column name="category" value="SAS status"/>
+            <column name="text" value="Waiting for customer"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="1652" author="dr6">
+        <insert tableName="project">
+            <column name="name" value="Genesis"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="1653" author="dr6">
+        <insert tableName="cost_code">
+            <column name="code" value="S1234"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>
