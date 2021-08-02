@@ -7,6 +7,7 @@ query {
             sourceLabwareId
             destinationLabwareId
             time
+            username
             details
         }
         labware {
