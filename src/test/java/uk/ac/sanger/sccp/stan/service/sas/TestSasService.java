@@ -3,12 +3,14 @@ package uk.ac.sanger.sccp.stan.service.sas;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.SasNumber.Status;
 import uk.ac.sanger.sccp.stan.repo.*;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -31,7 +33,7 @@ public class TestSasService {
         mockSasRepo = mock(SasNumberRepo.class);
         mockSasEventService = mock(SasEventService.class);
 
-        sasService = new SasServiceImp(mockProjectRepo, mockCostCodeRepo, mockSasRepo, mockSasEventService);
+        sasService = spy(new SasServiceImp(mockProjectRepo, mockCostCodeRepo, mockSasRepo, mockSasEventService));
     }
 
     @Test
@@ -49,6 +51,7 @@ public class TestSasService {
         when(mockSasRepo.save(any())).then(Matchers.returnArgument());
 
         SasNumber result = sasService.createSasNumber(user, prefix, projectName, code);
+        verify(sasService).checkPrefix(prefix);
         verify(mockSasRepo).createNumber(prefix);
         verify(mockSasRepo).save(result);
         verify(mockSasEventService).recordEvent(user, result, SasEvent.Type.create, null);
@@ -74,6 +77,23 @@ public class TestSasService {
             verify(mockSasRepo).save(sas);
             assertEquals(sas.getStatus(), newStatus);
         }
+    }
 
+    @ParameterizedTest
+    @CsvSource(value={
+            "sas, ",
+            "SAS, ",
+            "r&d, ",
+            "R&D, ",
+            ", No prefix supplied for SAS number.",
+            "Bananas, Invalid SAS number prefix: \"Bananas\"",
+    })
+    public void testCheckPrefix(String prefix, String expectedErrorMessage) {
+        if (expectedErrorMessage==null) {
+            sasService.checkPrefix(prefix);
+        } else {
+            IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> sasService.checkPrefix(prefix));
+            assertThat(ex).hasMessage(expectedErrorMessage);
+        }
     }
 }

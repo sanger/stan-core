@@ -22,7 +22,7 @@ import static org.mockito.Mockito.*;
  * @author dr6
  */
 abstract class AdminServiceTestUtils<E extends HasEnabled, R extends CrudRepository<E, ?>, S> {
-    private static final String MISSING_STRING_MESSAGE = "MISSING_STRING_MESSAGE";
+    static final String MISSING_STRING_MESSAGE = "MISSING_STRING_MESSAGE";
     private final String missingStringMessage;
     private final String entityTypeName;
     private final BiFunction<Integer, String, E> newEntityFunction;
@@ -79,6 +79,16 @@ abstract class AdminServiceTestUtils<E extends HasEnabled, R extends CrudReposit
                 Arguments.of("   \n", null, missingStringException, null),
                 Arguments.of("Alpha", "Alpha", new EntityExistsException("<ENTITY> already exists: Alpha"), null)
         );
+    }
+
+    static Stream<Arguments> addNewArgsUpCase() {
+        return addNewArgs().peek(args -> {
+            Object[] objs = args.get();
+            int i = objs.length - 1;
+            if (objs[i] instanceof String) {
+                objs[i] = ((String) objs[i]).toUpperCase();
+            }
+        });
     }
 
     void genericTestSetEnabled(TriFunction<S, String, Boolean, E> serviceSetEnabledFunction,

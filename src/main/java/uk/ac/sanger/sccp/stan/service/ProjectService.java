@@ -1,37 +1,32 @@
 package uk.ac.sanger.sccp.stan.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.Project;
 import uk.ac.sanger.sccp.stan.repo.ProjectRepo;
+
+import java.util.Optional;
 
 /**
  * Service for dealing with {@link Project}s
  * @author dr6
  */
 @Service
-public class ProjectService {
-    private final ProjectRepo projectRepo;
-
+public class ProjectService extends BaseAdminService<Project, ProjectRepo> {
     @Autowired
-    public ProjectService(ProjectRepo projectRepo) {
-        this.projectRepo = projectRepo;
+    public ProjectService(ProjectRepo projectRepo,
+                          @Qualifier("projectNameValidator") Validator<String> projectNameValidator) {
+        super(projectRepo, "Project", "Name", projectNameValidator);
     }
 
-    public Iterable<Project> getProjects(boolean includeDisabled) {
-        if (includeDisabled) {
-            return projectRepo.findAll();
-        }
-        return projectRepo.findAllByEnabled(true);
+    @Override
+    Project newEntity(String name) {
+        return new Project(null, name);
     }
 
-    public Project addProject(String projectName) {
-        return projectRepo.save(new Project(null, projectName));
-    }
-
-    public Project setProjectEnabled(String projectName, boolean enabled) {
-        Project project = projectRepo.getByName(projectName);
-        project.setEnabled(enabled);
-        return projectRepo.save(project);
+    @Override
+    Optional<Project> findEntity(ProjectRepo repo, String name) {
+        return repo.findByName(name);
     }
 }

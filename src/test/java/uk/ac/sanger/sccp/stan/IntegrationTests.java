@@ -86,6 +86,10 @@ public class IntegrationTests {
     @Autowired
     private DestructionReasonRepo destructionReasonRepo;
     @Autowired
+    private ProjectRepo projectRepo;
+    @Autowired
+    private CostCodeRepo costCodeRepo;
+    @Autowired
     private MeasurementRepo measurementRepo;
     @Autowired
     private CommentRepo commentRepo;
@@ -852,6 +856,16 @@ public class IntegrationTests {
     public void testAddDestructionReasonAndSetEnabled() throws Exception {
         testGenericAddNewAndSetEnabled("DestructionReason", "text", "Dropped.", destructionReasonRepo::findByText, DestructionReason::getText, "destructionReasons");
     }
+    @Test
+    @Transactional
+    public void testAddNewProjectAndSetEnabled() throws Exception {
+        testGenericAddNewAndSetEnabled("Project", "name", "Stargate", projectRepo::findByName, Project::getName, "projects");
+    }
+    @Test
+    @Transactional
+    public void testAddNewCostCodeAndSetEnabled() throws Exception {
+        testGenericAddNewAndSetEnabled("CostCode", "code", "S12345", costCodeRepo::findByCode, CostCode::getCode, "costCodes");
+    }
 
     @Test
     @Transactional
@@ -983,7 +997,42 @@ public class IntegrationTests {
             assertEquals("DONOR1", chainGet(sampleData, "tissue", "donor", "donorName"));
             assertNull(sampleData.get("section"));
         }
+    }
 
+    @Transactional
+    @Test
+    public void testSasNumbers() throws Exception {
+        Project project = projectRepo.save(new Project(null, "Stargate"));
+        CostCode cc = costCodeRepo.save(new CostCode(null, "S666"));
+        User user = entityCreator.createUser("user1", User.Role.normal);
+
+        String sasNumbersQuery  = "query { sasNumbers(status: [active]) { sasNumber, project {name}, costCode {code}, status } }";
+        Object data = tester.post(sasNumbersQuery);
+        List<Map<String,?>> sasNumbersData = chainGet(data, "data", "sasNumbers");
+        assertNotNull(sasNumbersData);
+        int startingNum = sasNumbersData.size();
+
+        tester.setUser(user);
+        data = tester.post(tester.readResource("graphql/createSasNumber.graphql"));
+
+        Map<String, ?> sasData = chainGet(data, "data", "createSasNumber");
+        String sasNumber = (String) sasData.get("sasNumber");
+        assertNotNull(sasNumber);
+        assertEquals(project.getName(), chainGet(sasData, "project", "name"));
+        assertEquals(cc.getCode(), chainGet(sasData, "costCode", "code"));
+        assertEquals("active", sasData.get("status"));
+
+        data = tester.post(sasNumbersQuery);
+        sasNumbersData = chainGet(data, "data", "sasNumbers");
+        assertEquals(startingNum+1, sasNumbersData.size());
+        assertThat(sasNumbersData).contains(sasData);
+
+        data = tester.post("mutation { updateSasNumberStatus(sasNumber: \""+sasNumber+"\", status: completed) {status} }");
+        assertEquals("completed", chainGet(data, "data", "updateSasNumberStatus", "status"));
+        data = tester.post(sasNumbersQuery);
+        sasNumbersData = chainGet(data, "data", "sasNumbers");
+        assertEquals(startingNum, sasNumbersData.size());
+        assertFalse(sasNumbersData.stream().anyMatch(d -> d.get("sasNumber").equals(sasNumber)));
     }
 
     private void stubStorelightUnstore() throws IOException {

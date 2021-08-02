@@ -1,0 +1,8 @@
+mutation {
+    createSasNumber(prefix: "SAS", project: "Stargate", costCode: "S666") {
+        sasNumber
+        project {name}
+        costCode {code}
+        status
+    }
+}

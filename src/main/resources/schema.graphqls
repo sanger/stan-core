@@ -469,6 +469,30 @@ type PlanData {
     destination: Labware!
 }
 
+type Project {
+    name: String!
+    enabled: Boolean!
+}
+
+type CostCode {
+    code: String!
+    enabled: Boolean!
+}
+
+enum SasStatus {
+    active
+    paused
+    completed
+    failed
+}
+
+type SasNumber {
+    project: Project!
+    costCode: CostCode!
+    sasNumber: String!
+    status: SasStatus!
+}
+
 type Query {
     user: User
     tissueTypes: [TissueType!]!
@@ -484,6 +508,10 @@ type Query {
     releaseDestinations(includeDisabled: Boolean): [ReleaseDestination!]!
     releaseRecipients(includeDisabled: Boolean): [ReleaseRecipient!]!
     destructionReasons(includeDisabled: Boolean): [DestructionReason!]!
+    projects(includeDisabled: Boolean): [Project!]!
+    costCodes(includeDisabled: Boolean): [CostCode!]!
+    sasNumbers(status: [SasStatus!]): [SasNumber!]!
+    sasNumber(sasNumber: String!): SasNumber!
     users(includeDisabled: Boolean): [User!]!
     find(request: FindRequest!): FindResult!
     planData(barcode: String!): PlanData!
@@ -522,6 +550,13 @@ type Mutation {
     setReleaseRecipientEnabled(username: String!, enabled: Boolean!): ReleaseRecipient!
     addSpecies(name: String!): Species!
     setSpeciesEnabled(name: String!, enabled: Boolean!): Species!
+    addProject(name: String!): Project!
+    setProjectEnabled(name: String!, enabled: Boolean!): Project!
+    addCostCode(code: String!): CostCode!
+    setCostCodeEnabled(code: String!, enabled: Boolean!): CostCode!
+    createSasNumber(prefix: String!, project: String!, costCode: String!): SasNumber!
+    updateSasNumberStatus(sasNumber: String!, status: SasStatus!, commentId: Int): SasNumber!
+
     addUser(username: String!): User!
     setUserRole(username: String!, role: UserRole!): User!
 

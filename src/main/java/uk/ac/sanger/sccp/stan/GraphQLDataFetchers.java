@@ -1,5 +1,6 @@
 package uk.ac.sanger.sccp.stan;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import graphql.language.Field;
 import graphql.schema.DataFetcher;
@@ -17,6 +18,8 @@ import uk.ac.sanger.sccp.stan.service.label.print.LabelPrintService;
 import uk.ac.sanger.sccp.stan.service.operation.plan.PlanService;
 
 import javax.persistence.EntityNotFoundException;
+import java.util.Collection;
+import java.util.List;
 import java.util.function.Supplier;
 import java.util.stream.StreamSupport;
 
@@ -41,6 +44,9 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final ReleaseDestinationRepo releaseDestinationRepo;
     final ReleaseRecipientRepo releaseRecipientRepo;
     final DestructionReasonRepo destructionReasonRepo;
+    final ProjectRepo projectRepo;
+    final CostCodeRepo costCodeRepo;
+    final SasNumberRepo sasNumberRepo;
     final LabelPrintService labelPrintService;
     final FindService findService;
     final CommentAdminService commentAdminService;
@@ -54,7 +60,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                MediumRepo mediumRepo, FixativeRepo fixativeRepo, MouldSizeRepo mouldSizeRepo,
                                SpeciesRepo speciesRepo, HmdmcRepo hmdmcRepo, LabwareRepo labwareRepo, CommentRepo commentRepo,
                                ReleaseDestinationRepo releaseDestinationRepo, ReleaseRecipientRepo releaseRecipientRepo,
-                               DestructionReasonRepo destructionReasonRepo,
+                               DestructionReasonRepo destructionReasonRepo, ProjectRepo projectRepo, CostCodeRepo costCodeRepo,
+                               SasNumberRepo sasNumberRepo,
                                LabelPrintService labelPrintService, FindService findService,
                                CommentAdminService commentAdminService, HistoryService historyService, PlanService planService) {
         super(objectMapper, authComp, userRepo);
@@ -71,6 +78,9 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.releaseDestinationRepo = releaseDestinationRepo;
         this.releaseRecipientRepo = releaseRecipientRepo;
         this.destructionReasonRepo = destructionReasonRepo;
+        this.projectRepo = projectRepo;
+        this.costCodeRepo = costCodeRepo;
+        this.sasNumberRepo = sasNumberRepo;
         this.labelPrintService = labelPrintService;
         this.findService = findService;
         this.commentAdminService = commentAdminService;
@@ -146,6 +156,28 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
 
     public DataFetcher<Iterable<DestructionReason>> getDestructionReasons() {
         return allOrEnabled(destructionReasonRepo::findAll, destructionReasonRepo::findAllByEnabled);
+    }
+
+    public DataFetcher<Iterable<Project>> getProjects() {
+        return allOrEnabled(projectRepo::findAll, projectRepo::findAllByEnabled);
+    }
+
+    public DataFetcher<Iterable<CostCode>> getCostCodes() {
+        return allOrEnabled(costCodeRepo::findAll, costCodeRepo::findAllByEnabled);
+    }
+
+    public DataFetcher<Iterable<SasNumber>> getSasNumbers() {
+        return dfe -> {
+            Collection<SasNumber.Status> statuses = arg(dfe, "status", new TypeReference<List<SasNumber.Status>>() {});
+            if (statuses==null) {
+                return sasNumberRepo.findAll();
+            }
+            return sasNumberRepo.findAllByStatusIn(statuses);
+        };
+    }
+
+    public DataFetcher<SasNumber> getSasNumber() {
+        return dfe -> sasNumberRepo.getBySasNumber(dfe.getArgument("sasNumber"));
     }
 
     public DataFetcher<Iterable<User>> getUsers() {

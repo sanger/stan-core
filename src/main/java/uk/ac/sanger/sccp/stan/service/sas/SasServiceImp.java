@@ -6,6 +6,8 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.SasNumber.Status;
 import uk.ac.sanger.sccp.stan.repo.*;
 
+import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
+
 @Service
 public class SasServiceImp implements SasService {
     private final ProjectRepo projectRepo;
@@ -22,8 +24,19 @@ public class SasServiceImp implements SasService {
         this.sasEventService = sasEventService;
     }
 
+    public void checkPrefix(String prefix) {
+        if (prefix==null || prefix.isBlank()) {
+            throw new IllegalArgumentException("No prefix supplied for SAS number.");
+        }
+        if (!prefix.equalsIgnoreCase("SAS") && !prefix.equalsIgnoreCase("R&D")) {
+            throw new IllegalArgumentException("Invalid SAS number prefix: "+repr(prefix));
+        }
+    }
+
     @Override
     public SasNumber createSasNumber(User user, String prefix, String projectName, String costCode) {
+        checkPrefix(prefix);
+
         Project project = projectRepo.getByName(projectName);
         CostCode cc = costCodeRepo.getByCode(costCode);
 

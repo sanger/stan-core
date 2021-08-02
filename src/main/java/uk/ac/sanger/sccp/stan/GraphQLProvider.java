@@ -83,6 +83,11 @@ public class GraphQLProvider {
                         .dataFetcher("releaseRecipients", graphQLDataFetchers.getReleaseRecipients())
                         .dataFetcher("find", graphQLDataFetchers.find())
                         .dataFetcher("destructionReasons", graphQLDataFetchers.getDestructionReasons())
+                        .dataFetcher("projects", graphQLDataFetchers.getProjects())
+                        .dataFetcher("costCodes", graphQLDataFetchers.getCostCodes())
+                        .dataFetcher("sasNumbers", graphQLDataFetchers.getSasNumbers())
+                        .dataFetcher("sasNumber", graphQLDataFetchers.getSasNumber())
+
                         .dataFetcher("users", graphQLDataFetchers.getUsers())
                         .dataFetcher("planData", graphQLDataFetchers.getPlanData())
 
@@ -120,6 +125,13 @@ public class GraphQLProvider {
                         .dataFetcher("setReleaseRecipientEnabled", transact(graphQLMutation.setReleaseRecipientEnabled()))
                         .dataFetcher("addSpecies", transact(graphQLMutation.addSpecies()))
                         .dataFetcher("setSpeciesEnabled", transact(graphQLMutation.setSpeciesEnabled()))
+                        .dataFetcher("addProject", transact(graphQLMutation.addProject()))
+                        .dataFetcher("setProjectEnabled", transact(graphQLMutation.setProjectEnabled()))
+                        .dataFetcher("addCostCode", transact(graphQLMutation.addCostCode()))
+                        .dataFetcher("setCostCodeEnabled", transact(graphQLMutation.setCostCodeEnabled()))
+                        .dataFetcher("createSasNumber", transact(graphQLMutation.createSasNumber()))
+                        .dataFetcher("updateSasNumberStatus", transact(graphQLMutation.updateSasNumberStatus()))
+
                         .dataFetcher("addUser", transact(graphQLMutation.addUser()))
                         .dataFetcher("setUserRole", transact(graphQLMutation.setUserRole()))
 
