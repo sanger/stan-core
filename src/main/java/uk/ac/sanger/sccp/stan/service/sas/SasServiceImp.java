@@ -3,9 +3,13 @@ package uk.ac.sanger.sccp.stan.service.sas;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
+import uk.ac.sanger.sccp.stan.model.SasNumber.SampleSlotId;
 import uk.ac.sanger.sccp.stan.model.SasNumber.Status;
 import uk.ac.sanger.sccp.stan.repo.*;
 
+import java.util.*;
+
+import static uk.ac.sanger.sccp.utils.BasicUtils.newArrayList;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 @Service
@@ -54,4 +58,41 @@ public class SasServiceImp implements SasService {
         return sasRepo.save(sas);
     }
 
+    @Override
+    public SasNumber link(String sasNumber, Collection<Operation> operations) {
+        SasNumber sas = sasRepo.getBySasNumber(sasNumber);
+        return link(sas, operations);
+    }
+
+    @Override
+    public SasNumber link(SasNumber sas, Collection<Operation> operations) {
+        if (operations.isEmpty()) {
+            return sas;
+        }
+        if (sas.getStatus()!=Status.active) {
+            throw new IllegalArgumentException(sas.getSasNumber()+" cannot be used because it is "+sas.getStatus()+".");
+        }
+        List<Integer> opIds = sas.getOperationIds();
+        if (!(opIds instanceof ArrayList)) {
+            opIds = newArrayList(opIds);
+        }
+        List<SampleSlotId> ssIds = sas.getSampleSlotIds();
+        if (!(ssIds instanceof ArrayList)) {
+            ssIds = newArrayList(ssIds);
+        }
+        Set<SampleSlotId> seenSsIds = new HashSet<>(ssIds);
+        for (Operation op : operations) {
+            opIds.add(op.getId());
+            for (Action action : op.getActions()) {
+                SampleSlotId ssId = new SampleSlotId(action.getSample().getId(), action.getDestination().getId());
+                if (seenSsIds.add(ssId)) {
+                    ssIds.add(ssId);
+                }
+            }
+        }
+
+        sas.setOperationIds(opIds);
+        sas.setSampleSlotIds(ssIds);
+        return sasRepo.save(sas);
+    }
 }

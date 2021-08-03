@@ -174,11 +174,13 @@ public class IntegrationTests {
                 .collect(toList())).containsExactlyInAnyOrder("STAN-B70C", "STAN-B70D");
 
         // Confirming
+        SasNumber sas = entityCreator.createSasNumber(null, null);
 
         String recordMutation = tester.readResource("graphql/confirmsection.graphql");
         recordMutation = recordMutation.replace("$BARCODE", barcode)
                 .replace("55555", String.valueOf(sample1.getId()))
-                .replace("55556", String.valueOf(sample2.getId()));
+                .replace("55556", String.valueOf(sample2.getId()))
+                .replace("SAS4000", sas.getSasNumber());
         result = tester.post(recordMutation);
         assertNull(result.get("errors"));
 
@@ -245,6 +247,10 @@ public class IntegrationTests {
         entityManager.refresh(sourceBlock2);
         assertEquals(15, sourceBlock1.getFirstSlot().getBlockHighestSection());
         assertEquals(17, sourceBlock2.getFirstSlot().getBlockHighestSection());
+        entityManager.flush();
+        entityManager.refresh(sas);
+        assertThat(sas.getOperationIds()).hasSize(1);
+        assertThat(sas.getSampleSlotIds()).hasSize(4);
     }
 
     @Test

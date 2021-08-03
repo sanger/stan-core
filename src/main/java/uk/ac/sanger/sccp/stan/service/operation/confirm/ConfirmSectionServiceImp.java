@@ -9,6 +9,7 @@ import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSectionLabware.AddressCommentId;
 import uk.ac.sanger.sccp.stan.service.OperationService;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
+import uk.ac.sanger.sccp.stan.service.sas.SasService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import javax.persistence.EntityManager;
@@ -26,6 +27,7 @@ import static org.hibernate.internal.util.NullnessHelper.coalesce;
 public class ConfirmSectionServiceImp implements ConfirmSectionService {
     private final ConfirmSectionValidationService validationService;
     private final OperationService opService;
+    private final SasService sasService;
     private final LabwareRepo lwRepo;
     private final SlotRepo slotRepo;
     private final MeasurementRepo measurementRepo;
@@ -37,11 +39,13 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
 
     @Autowired
     public ConfirmSectionServiceImp(ConfirmSectionValidationService validationService, OperationService opService,
+                                    SasService sasService,
                                     LabwareRepo lwRepo, SlotRepo slotRepo, MeasurementRepo measurementRepo,
                                     SampleRepo sampleRepo, CommentRepo commentRepo, OperationCommentRepo opCommentRepo,
                                     EntityManager entityManager) {
         this.validationService = validationService;
         this.opService = opService;
+        this.sasService = sasService;
         this.lwRepo = lwRepo;
         this.slotRepo = slotRepo;
         this.measurementRepo = measurementRepo;
@@ -92,6 +96,9 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
                 operations.add(clr.operation);
             }
             resultLabware.add(clr.labware);
+        }
+        if (request.getSasNumber()!=null) {
+            sasService.link(request.getSasNumber(), operations);
         }
         updateSourceBlocks(operations);
         return new OperationResult(operations, resultLabware);

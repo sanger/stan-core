@@ -239,7 +239,7 @@ input ConfirmOperationLabware {
 }
 
 input ConfirmOperationRequest {
-    labware: [ConfirmOperationLabware!]!,
+    labware: [ConfirmOperationLabware!]!
 }
 
 input ConfirmSection {
@@ -257,6 +257,7 @@ input ConfirmSectionLabware {
 
 input ConfirmSectionRequest {
     labware: [ConfirmSectionLabware!]!
+    sasNumber: String
 }
 
 input SlotCopyContent {

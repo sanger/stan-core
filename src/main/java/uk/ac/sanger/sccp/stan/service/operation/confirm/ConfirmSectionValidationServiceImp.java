@@ -3,8 +3,7 @@ package uk.ac.sanger.sccp.stan.service.operation.confirm;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
-import uk.ac.sanger.sccp.stan.repo.PlanOperationRepo;
+import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSectionLabware.AddressCommentId;
 import uk.ac.sanger.sccp.utils.UCMap;
@@ -22,11 +21,13 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidationService {
     private final LabwareRepo labwareRepo;
     private final PlanOperationRepo planOpRepo;
+    private final SasNumberRepo sasRepo;
 
     @Autowired
-    public ConfirmSectionValidationServiceImp(LabwareRepo labwareRepo, PlanOperationRepo planOpRepo) {
+    public ConfirmSectionValidationServiceImp(LabwareRepo labwareRepo, PlanOperationRepo planOpRepo, SasNumberRepo sasRepo) {
         this.labwareRepo = labwareRepo;
         this.planOpRepo = planOpRepo;
+        this.sasRepo = sasRepo;
     }
 
     @Override
@@ -40,6 +41,7 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
         UCMap<Labware> labware = validateLabware(problems, request.getLabware());
         Map<Integer, PlanOperation> plans = lookUpPlans(problems, labware.values());
         validateOperations(problems, request.getLabware(), labware, plans);
+        validateSasNumber(problems, request.getSasNumber());
         if (!problems.isEmpty()) {
             return new ConfirmSectionValidation(problems);
         }
@@ -277,6 +279,22 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
         Integer maxSection = sampleMaxSection.get(sampleId);
         if (maxSection != null && section <= maxSection) {
             addProblem(problems, "Section numbers from sample id %s must be greater than %s.", sampleId, maxSection);
+        }
+    }
+
+    public void validateSasNumber(Collection<String> problems, String sasNumber) {
+        if (sasNumber!=null) {
+            Optional<SasNumber> optSas = sasRepo.findBySasNumber(sasNumber);
+            if (optSas.isEmpty()) {
+                problems.add("The SAS number "+repr(sasNumber)+" is not recognised.");
+            } else {
+                SasNumber sas = optSas.get();
+                if (sas.getStatus() != SasNumber.Status.active) {
+                    String prefix = sas.getSasNumber().startsWith("R&D") ? "R&D" : "SAS";
+                    problems.add(String.format("%s number %s cannot be used because it is %s.",
+                            prefix, sas.getSasNumber(), sas.getStatus()));
+                }
+            }
         }
     }
 

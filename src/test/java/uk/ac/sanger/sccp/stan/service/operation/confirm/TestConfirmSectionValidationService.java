@@ -8,8 +8,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
-import uk.ac.sanger.sccp.stan.repo.PlanOperationRepo;
+import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSectionLabware.AddressCommentId;
 import uk.ac.sanger.sccp.utils.UCMap;
@@ -30,16 +29,20 @@ import static org.mockito.Mockito.*;
  */
 public class TestConfirmSectionValidationService {
     private ConfirmSectionValidationServiceImp service;
+
     @Mock
     LabwareRepo mockLwRepo;
     @Mock
     PlanOperationRepo mockPlanRepo;
+    @Mock
+    SasNumberRepo mockSasRepo;
+
     OperationType opType;
 
     @BeforeEach
     void setup() {
         MockitoAnnotations.initMocks(this);
-        service = spy(new ConfirmSectionValidationServiceImp(mockLwRepo, mockPlanRepo));
+        service = spy(new ConfirmSectionValidationServiceImp(mockLwRepo, mockPlanRepo, mockSasRepo));
         opType = new OperationType(2, "Section", OperationTypeFlag.SOURCE_IS_BLOCK.bit(), EntityFactory.getBioState());
     }
 
@@ -57,7 +60,8 @@ public class TestConfirmSectionValidationService {
     @ParameterizedTest
     public void testValidate(boolean valid) {
         Labware lw = EntityFactory.getTube();
-        ConfirmSectionRequest request = new ConfirmSectionRequest(List.of(new ConfirmSectionLabware(lw.getBarcode())));
+        ConfirmSectionRequest request = new ConfirmSectionRequest(List.of(new ConfirmSectionLabware(lw.getBarcode())),
+                "SAS9000");
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lw);
 
         PlanOperation plan = EntityFactory.makePlanForLabware(opType, List.of(), List.of());
@@ -85,6 +89,8 @@ public class TestConfirmSectionValidationService {
             return null;
         }).when(service).validateOperations(any(), any(), any(), any());
 
+        doNothing().when(service).validateSasNumber(any(), any());
+
         var validation = service.validate(request);
         if (valid) {
             assertThat(validation.getProblems()).isNullOrEmpty();
@@ -94,6 +100,7 @@ public class TestConfirmSectionValidationService {
             assertThat(validation.getProblems()).containsExactly("lw problem", "plan problem", "op problem");
         }
 
+        verify(service).validateSasNumber(any(), eq(request.getSasNumber()));
         verify(service).validateLabware(any(), eq(request.getLabware()));
         verify(service).lookUpPlans(any(), eq(lwMap.values()));
         verify(service).validateOperations(any(), eq(request.getLabware()), eq(lwMap), eq(planMap));
@@ -393,6 +400,42 @@ public class TestConfirmSectionValidationService {
                 { lw, new ConfirmSection(A1, aid, 20), plannedSampleIds, sampleMaxSection, Map.of(aid, new HashSet<>(List.of(18, 19))),
                         null, Map.of(aid, Set.of(18,19,20))},
         }).map(toListArguments(5));
+    }
+
+    @ParameterizedTest
+    @MethodSource("validateSasArgs")
+    public void testValidateSasNumber(Object arg, String expectedProblem) {
+        List<String> problems = new ArrayList<>(1);
+        String sasString;
+        if (arg instanceof SasNumber) {
+            SasNumber sas = (SasNumber) arg;
+            sasString = sas.getSasNumber();
+            when(mockSasRepo.findBySasNumber(sasString)).thenReturn(Optional.of(sas));
+        } else {
+            sasString = (String) arg;
+            when(mockSasRepo.findBySasNumber(any())).thenReturn(Optional.empty());
+        }
+        service.validateSasNumber(problems, sasString);
+        if (expectedProblem==null) {
+            assertThat(problems).isEmpty();
+        } else {
+            assertThat(problems).containsExactly(expectedProblem);
+        }
+    }
+
+    static Stream<Arguments> validateSasArgs() {
+        SasNumber activeSas = new SasNumber(1, "SAS1001", null, null, SasNumber.Status.active);
+        SasNumber pausedSas = new SasNumber(2, "SAS1002", null, null, SasNumber.Status.paused);
+        SasNumber failedSas = new SasNumber(3, "R&D1003", null, null, SasNumber.Status.failed);
+        SasNumber completedSas = new SasNumber(4, "SAS1004", null, null, SasNumber.Status.completed);
+        return Arrays.stream(new Object[][] {
+                { null, null },
+                { activeSas, null },
+                { pausedSas, "SAS number SAS1002 cannot be used because it is paused." },
+                { failedSas, "R&D number R&D1003 cannot be used because it is failed." },
+                { completedSas, "SAS number SAS1004 cannot be used because it is completed." },
+                { "SAS404", "The SAS number \"SAS404\" is not recognised." },
+        }).map(Arguments::of);
     }
 
     private static Function<Object[], Arguments> toListArguments(int... indexes) {

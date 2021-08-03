@@ -33,6 +33,7 @@ mutation {
                 ]
             }
         ]
+        sasNumber: "SAS4000"
     }) {
         labware {
             barcode

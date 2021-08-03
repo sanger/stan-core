@@ -1,8 +1,9 @@
 package uk.ac.sanger.sccp.stan.service.sas;
 
-import uk.ac.sanger.sccp.stan.model.SasNumber;
+import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.SasNumber.Status;
-import uk.ac.sanger.sccp.stan.model.User;
+
+import java.util.Collection;
 
 /**
  * Service for managing {@link SasNumber SAS numbers}.
@@ -30,4 +31,23 @@ public interface SasService {
      * @return the updated SAS number
      */
     SasNumber updateStatus(User user, String sasNum, Status newStatus, Integer commentId);
+
+    /**
+     * Updates the existing sas number linking them to the given operations and samples in slots in the ops' actions
+     * @param sasNumber the string identifying an existing sas number
+     * @param operations the operations to link
+     * @return the updated and saved sas number
+     * @exception javax.persistence.EntityNotFoundException if the sas number does not exist
+     * @exception IllegalArgumentException if the sas number is not active
+     */
+    SasNumber link(String sasNumber, Collection<Operation> operations);
+
+    /**
+     * Updates the existing sas number linking them to the given operations and samples in slots in the ops' actions
+     * @param sas the sas number
+     * @param operations the operations to link
+     * @return the updated and saved sas number
+     * @exception IllegalArgumentException if the sas number is not active
+     */
+    SasNumber link(SasNumber sas, Collection<Operation> operations);
 }
