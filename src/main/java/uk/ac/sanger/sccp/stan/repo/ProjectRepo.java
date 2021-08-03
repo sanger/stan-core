@@ -4,6 +4,7 @@ import org.springframework.data.repository.CrudRepository;
 import uk.ac.sanger.sccp.stan.model.Project;
 
 import javax.persistence.EntityNotFoundException;
+import java.util.List;
 import java.util.Optional;
 
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
@@ -15,5 +16,5 @@ public interface ProjectRepo extends CrudRepository<Project, Integer> {
         return findByName(name).orElseThrow(() -> new EntityNotFoundException("Project not found: "+repr(name)));
     }
 
-    Iterable<Project> findAllByEnabled(boolean enabled);
+    List<Project> findAllByEnabled(boolean enabled);
 }

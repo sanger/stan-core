@@ -14,10 +14,9 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.SasNumber.SampleSlotId;
 import uk.ac.sanger.sccp.stan.model.SasNumber.Status;
 
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceException;
+import javax.persistence.*;
 import javax.transaction.Transactional;
-import java.util.List;
+import java.util.*;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
 
@@ -93,6 +92,35 @@ public class TestSasNumberRepo {
         LabwareType lt = entityCreator.createLabwareType("lt "+number, 1, number);
         Labware lw = entityCreator.createLabware("LW-100", lt);
         return lw.getSlots().stream().map(Slot::getId).collect(toList());
+    }
+
+    @Transactional
+    @Test
+    public void testGetBySasNumber() {
+        Project pr = projectRepo.save(new Project(null, "Stargate"));
+        CostCode cc = costCodeRepo.save(new CostCode(null, "S5000"));
+        assertThrows(EntityNotFoundException.class, () -> sasRepo.getBySasNumber("SAS404"));
+        SasNumber sas = sasRepo.save(new SasNumber(null, "SAS404", pr, cc, Status.active));
+        assertEquals(sas, sasRepo.getBySasNumber("sas404"));
+    }
+
+    @Transactional
+    @Test
+    public void testFindAllByStatusIn() {
+        Project pr = projectRepo.save(new Project(null, "Stargate"));
+        CostCode cc = costCodeRepo.save(new CostCode(null, "S5000"));
+        Map<Status, SasNumber> sases = new EnumMap<>(Status.class);
+        final Status[] statuses = Status.values();
+        int n = 7000;
+        for (Status st : statuses) {
+            sases.put(st, sasRepo.save(new SasNumber(null, "SAS" + n, pr, cc, st)));
+            ++n;
+        }
+        for (Status st : statuses) {
+            assertThat(sasRepo.findAllByStatusIn(List.of(st))).containsExactly(sases.get(st));
+        }
+        assertThat(sasRepo.findAllByStatusIn(List.of(Status.active, Status.paused)))
+                .containsExactlyInAnyOrder(sases.get(Status.active), sases.get(Status.paused));
     }
 
     @Transactional
