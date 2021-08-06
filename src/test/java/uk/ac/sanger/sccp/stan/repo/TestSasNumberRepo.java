@@ -42,8 +42,6 @@ public class TestSasNumberRepo {
     private final OperationRepo opRepo;
     private final OperationTypeRepo opTypeRepo;
 
-    private final ProjectRepo projectRepo;
-    private final CostCodeRepo costCodeRepo;
     private final UserRepo userRepo;
 
     private OperationType opType;
@@ -53,15 +51,13 @@ public class TestSasNumberRepo {
     public TestSasNumberRepo(EntityManager entityManager, EntityCreator entityCreator,
                              PlatformTransactionManager transactionManager,
                              SasNumberRepo sasRepo, OperationRepo opRepo, OperationTypeRepo opTypeRepo,
-                             ProjectRepo projectRepo, CostCodeRepo costCodeRepo, UserRepo userRepo) {
+                             UserRepo userRepo) {
         this.entityManager = entityManager;
         this.entityCreator = entityCreator;
         this.transactionManager = transactionManager;
         this.sasRepo = sasRepo;
         this.opRepo = opRepo;
         this.opTypeRepo = opTypeRepo;
-        this.projectRepo = projectRepo;
-        this.costCodeRepo = costCodeRepo;
         this.userRepo = userRepo;
     }
 
@@ -97,23 +93,25 @@ public class TestSasNumberRepo {
     @Transactional
     @Test
     public void testGetBySasNumber() {
-        Project pr = projectRepo.save(new Project(null, "Stargate"));
-        CostCode cc = costCodeRepo.save(new CostCode(null, "S5000"));
+        Project pr = entityCreator.createProject("Stargate");
+        CostCode cc = entityCreator.createCostCode("S5000");
+        SasType sasType = entityCreator.createSasType("Drywalling");
         assertThrows(EntityNotFoundException.class, () -> sasRepo.getBySasNumber("SAS404"));
-        SasNumber sas = sasRepo.save(new SasNumber(null, "SAS404", pr, cc, Status.active));
+        SasNumber sas = sasRepo.save(new SasNumber(null, "SAS404", sasType, pr, cc, Status.active));
         assertEquals(sas, sasRepo.getBySasNumber("sas404"));
     }
 
     @Transactional
     @Test
     public void testFindAllByStatusIn() {
-        Project pr = projectRepo.save(new Project(null, "Stargate"));
-        CostCode cc = costCodeRepo.save(new CostCode(null, "S5000"));
+        Project pr = entityCreator.createProject("Stargate");
+        CostCode cc = entityCreator.createCostCode("S5000");
+        SasType type = entityCreator.createSasType("Drywalling");
         Map<Status, SasNumber> sases = new EnumMap<>(Status.class);
         final Status[] statuses = Status.values();
         int n = 7000;
         for (Status st : statuses) {
-            sases.put(st, sasRepo.save(new SasNumber(null, "SAS" + n, pr, cc, st)));
+            sases.put(st, sasRepo.save(new SasNumber(null, "SAS" + n, type, pr, cc, st)));
             ++n;
         }
         for (Status st : statuses) {
@@ -132,9 +130,10 @@ public class TestSasNumberRepo {
     // 3: invalid slot ids
     // All except case 0 should raise an exception.
     public void testEmbeddedCollections(int problem) {
-        CostCode cc = costCodeRepo.save(new CostCode(null, "S1000"));
-        Project project = projectRepo.save(new Project(null, "Stargate"));
-        SasNumber sas = sasRepo.save(new SasNumber(null, "SAS123", project, cc, Status.active));
+        CostCode cc = entityCreator.createCostCode("S1000");
+        Project project = entityCreator.createProject("Stargate");
+        SasType sasType = entityCreator.createSasType("Drywalling");
+        SasNumber sas = sasRepo.save(new SasNumber(null, "SAS123", sasType, project, cc, Status.active));
         assertNotNull(sas.getId());
         List<Integer> opIds;
         if (problem==1) {

@@ -72,6 +72,9 @@ public class SasNumber {
     private String sasNumber;
 
     @ManyToOne
+    private SasType sasType;
+
+    @ManyToOne
     private Project project;
 
     @ManyToOne
@@ -92,9 +95,10 @@ public class SasNumber {
 
     public SasNumber() {}
 
-    public SasNumber(Integer id, String sasNumber, Project project, CostCode costCode, Status status) {
+    public SasNumber(Integer id, String sasNumber, SasType sasType, Project project, CostCode costCode, Status status) {
         this.id = id;
         this.sasNumber = sasNumber;
+        this.sasType = sasType;
         this.project = project;
         this.costCode = costCode;
         this.status = status;
@@ -114,6 +118,14 @@ public class SasNumber {
 
     public void setSasNumber(String sasNumber) {
         this.sasNumber = sasNumber;
+    }
+
+    public SasType getSasType() {
+        return this.sasType;
+    }
+
+    public void setSasType(SasType sasType) {
+        this.sasType = sasType;
     }
 
     public Project getProject() {
@@ -172,6 +184,7 @@ public class SasNumber {
         if (o == null || getClass() != o.getClass()) return false;
         SasNumber that = (SasNumber) o;
         return (Objects.equals(this.id, that.id)
+                && Objects.equals(this.sasType, that.sasType)
                 && Objects.equals(this.sasNumber, that.sasNumber)
                 && Objects.equals(this.project, that.project)
                 && Objects.equals(this.costCode, that.costCode)

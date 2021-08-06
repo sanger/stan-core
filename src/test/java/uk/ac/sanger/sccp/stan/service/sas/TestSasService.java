@@ -29,6 +29,7 @@ public class TestSasService {
     private ProjectRepo mockProjectRepo;
     private CostCodeRepo mockCostCodeRepo;
     private SasNumberRepo mockSasRepo;
+    private SasTypeRepo mockSasTypeRepo;
     private SasEventService mockSasEventService;
 
     @BeforeEach
@@ -37,30 +38,34 @@ public class TestSasService {
         mockCostCodeRepo = mock(CostCodeRepo.class);
         mockSasRepo = mock(SasNumberRepo.class);
         mockSasEventService = mock(SasEventService.class);
+        mockSasTypeRepo = mock(SasTypeRepo.class);
 
-        sasService = spy(new SasServiceImp(mockProjectRepo, mockCostCodeRepo, mockSasRepo, mockSasEventService));
+        sasService = spy(new SasServiceImp(mockProjectRepo, mockCostCodeRepo, mockSasTypeRepo, mockSasRepo, mockSasEventService));
     }
 
     @Test
     public void testCreateSasNumber() {
         String projectName = "Stargate";
         String code = "S1234";
+        String sasTypeName = "Drywalling";
         Project project = new Project(10, projectName);
         when(mockProjectRepo.getByName(projectName)).thenReturn(project);
         CostCode cc = new CostCode(20, code);
         when(mockCostCodeRepo.getByCode(code)).thenReturn(cc);
+        SasType sasType = new SasType(30, sasTypeName);
+        when(mockSasTypeRepo.getByName(sasTypeName)).thenReturn(sasType);
         String prefix = "SAS";
         String sasNum = "SAS4000";
         when(mockSasRepo.createNumber(prefix)).thenReturn(sasNum);
         User user = new User(1, "user1", User.Role.admin);
         when(mockSasRepo.save(any())).then(Matchers.returnArgument());
 
-        SasNumber result = sasService.createSasNumber(user, prefix, projectName, code);
+        SasNumber result = sasService.createSasNumber(user, prefix, sasTypeName, projectName, code);
         verify(sasService).checkPrefix(prefix);
         verify(mockSasRepo).createNumber(prefix);
         verify(mockSasRepo).save(result);
         verify(mockSasEventService).recordEvent(user, result, SasEvent.Type.create, null);
-        assertEquals(new SasNumber(null, sasNum, project, cc, Status.active), result);
+        assertEquals(new SasNumber(null, sasNum, sasType, project, cc, Status.active), result);
     }
 
     @ParameterizedTest
@@ -70,7 +75,7 @@ public class TestSasService {
         String sasNum = "SAS4000";
         final Integer commentId = 99;
         Status newStatus = Status.paused;
-        SasNumber sas = new SasNumber(10, sasNum, null, null, Status.active);
+        SasNumber sas = new SasNumber(10, sasNum, null, null, null, Status.active);
         when(mockSasRepo.getBySasNumber(sasNum)).thenReturn(sas);
         if (!success) {
             doThrow(IllegalArgumentException.class).when(mockSasEventService).recordStatusChange(any(), any(), any(), any());
@@ -133,10 +138,10 @@ public class TestSasService {
     }
 
     static Stream<Arguments> linkVariousArgs() {
-        SasNumber activeSas = new SasNumber(1, "SAS1001", null, null, Status.active);
-        SasNumber pausedSas = new SasNumber(2, "R&D1002", null, null, Status.paused);
-        SasNumber completedSas = new SasNumber(3, "SAS1003", null, null, Status.completed);
-        SasNumber failedSas = new SasNumber(4, "SAS1004", null, null, Status.failed);
+        SasNumber activeSas = new SasNumber(1, "SAS1001", null, null, null, Status.active);
+        SasNumber pausedSas = new SasNumber(2, "R&D1002", null, null, null, Status.paused);
+        SasNumber completedSas = new SasNumber(3, "SAS1003", null, null, null, Status.completed);
+        SasNumber failedSas = new SasNumber(4, "SAS1004", null, null, null, Status.failed);
 
         return Arrays.stream(new Object[][] {
                 { activeSas, 0, null },
@@ -162,7 +167,7 @@ public class TestSasService {
         Operation op1 = makeOp(opType, 10, lw0, lw1);
         Operation op2 = makeOp(opType, 11, lw0, lw2);
 
-        SasNumber sas = new SasNumber(50, "SAS5000", null, null, Status.active);
+        SasNumber sas = new SasNumber(50, "SAS5000", null, null, null, Status.active);
 
         when(mockSasRepo.getBySasNumber(sas.getSasNumber())).thenReturn(sas);
         sas.setOperationIds(List.of(1,2,3));

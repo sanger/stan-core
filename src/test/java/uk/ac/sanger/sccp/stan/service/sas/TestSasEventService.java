@@ -43,7 +43,7 @@ public class TestSasEventService {
         User user = new User(1, "user1", User.Role.normal);
         Comment comment = new Comment(30, "Hi", "Bananas");
         SasEvent.Type type = SasEvent.Type.pause;
-        SasNumber sas = new SasNumber(20, "SAS4000", null, null, null);
+        SasNumber sas = new SasNumber(20, "SAS4000", null, null, null, null);
 
         SasEvent event = eventService.recordEvent(user, sas, type, comment);
         verify(mockSasEventRepo).save(event);
@@ -74,7 +74,7 @@ public class TestSasEventService {
     @MethodSource("recordStatusChangeArgs")
     public void testRecordStatusChange(Status oldStatus, Status newStatus, Integer commentId, String expectedErrorMessage) {
         User user = new User(1, "user1", User.Role.normal);
-        SasNumber sas = new SasNumber(20, "SAS4000", null, null, oldStatus);
+        SasNumber sas = new SasNumber(20, "SAS4000", null, null, null, oldStatus);
 
         Comment comment = (commentId==null ? null : new Comment(commentId, "Hello", "Bananas"));
         if (comment!=null) {

@@ -85,6 +85,7 @@ public class GraphQLProvider {
                         .dataFetcher("destructionReasons", graphQLDataFetchers.getDestructionReasons())
                         .dataFetcher("projects", graphQLDataFetchers.getProjects())
                         .dataFetcher("costCodes", graphQLDataFetchers.getCostCodes())
+                        .dataFetcher("sasTypes", graphQLDataFetchers.getSasTypes())
                         .dataFetcher("sasNumbers", graphQLDataFetchers.getSasNumbers())
                         .dataFetcher("sasNumber", graphQLDataFetchers.getSasNumber())
 
@@ -129,6 +130,8 @@ public class GraphQLProvider {
                         .dataFetcher("setProjectEnabled", transact(graphQLMutation.setProjectEnabled()))
                         .dataFetcher("addCostCode", transact(graphQLMutation.addCostCode()))
                         .dataFetcher("setCostCodeEnabled", transact(graphQLMutation.setCostCodeEnabled()))
+                        .dataFetcher("addSasType", transact(graphQLMutation.addSasType()))
+                        .dataFetcher("setSasTypeEnabled", transact(graphQLMutation.setSasTypeEnabled()))
                         .dataFetcher("createSasNumber", transact(graphQLMutation.createSasNumber()))
                         .dataFetcher("updateSasNumberStatus", transact(graphQLMutation.updateSasNumberStatus()))
 

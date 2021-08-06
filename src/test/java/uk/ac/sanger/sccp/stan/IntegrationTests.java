@@ -90,6 +90,8 @@ public class IntegrationTests {
     @Autowired
     private CostCodeRepo costCodeRepo;
     @Autowired
+    private SasTypeRepo sasTypeRepo;
+    @Autowired
     private MeasurementRepo measurementRepo;
     @Autowired
     private CommentRepo commentRepo;
@@ -174,7 +176,7 @@ public class IntegrationTests {
                 .collect(toList())).containsExactlyInAnyOrder("STAN-B70C", "STAN-B70D");
 
         // Confirming
-        SasNumber sas = entityCreator.createSasNumber(null, null);
+        SasNumber sas = entityCreator.createSasNumber(null, null, null);
 
         String recordMutation = tester.readResource("graphql/confirmsection.graphql");
         recordMutation = recordMutation.replace("$BARCODE", barcode)
@@ -872,6 +874,11 @@ public class IntegrationTests {
     public void testAddNewCostCodeAndSetEnabled() throws Exception {
         testGenericAddNewAndSetEnabled("CostCode", "code", "S12345", costCodeRepo::findByCode, CostCode::getCode, "costCodes");
     }
+    @Test
+    @Transactional
+    public void testAddNewSasTypeAndSetEnabled() throws Exception {
+        testGenericAddNewAndSetEnabled("SasType", "name", "Drywalling", sasTypeRepo::findByName, SasType::getName, "sasTypes");
+    }
 
     @Test
     @Transactional
@@ -1010,9 +1017,10 @@ public class IntegrationTests {
     public void testSasNumbers() throws Exception {
         Project project = projectRepo.save(new Project(null, "Stargate"));
         CostCode cc = costCodeRepo.save(new CostCode(null, "S666"));
+        SasType sasType = entityCreator.createSasType("Drywalling");
         User user = entityCreator.createUser("user1", User.Role.normal);
 
-        String sasNumbersQuery  = "query { sasNumbers(status: [active]) { sasNumber, project {name}, costCode {code}, status } }";
+        String sasNumbersQuery  = "query { sasNumbers(status: [active]) { sasNumber, sasType { name}, project {name}, costCode {code}, status } }";
         Object data = tester.post(sasNumbersQuery);
         List<Map<String,?>> sasNumbersData = chainGet(data, "data", "sasNumbers");
         assertNotNull(sasNumbersData);
@@ -1026,6 +1034,7 @@ public class IntegrationTests {
         assertNotNull(sasNumber);
         assertEquals(project.getName(), chainGet(sasData, "project", "name"));
         assertEquals(cc.getCode(), chainGet(sasData, "costCode", "code"));
+        assertEquals(sasType.getName(), chainGet(sasData, "sasType", "name"));
         assertEquals("active", sasData.get("status"));
 
         data = tester.post(sasNumbersQuery);

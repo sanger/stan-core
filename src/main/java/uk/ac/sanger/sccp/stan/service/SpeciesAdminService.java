@@ -20,12 +20,12 @@ public class SpeciesAdminService extends BaseAdminService<Species, SpeciesRepo> 
     }
 
     @Override
-    Species newEntity(String string) {
+    protected Species newEntity(String string) {
         return new Species(null, string);
     }
 
     @Override
-    Optional<Species> findEntity(SpeciesRepo repo, String string) {
+    protected Optional<Species> findEntity(SpeciesRepo repo, String string) {
         return repo.findByName(string);
     }
 }

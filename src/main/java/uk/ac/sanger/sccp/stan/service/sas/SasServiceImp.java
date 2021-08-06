@@ -16,14 +16,16 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 public class SasServiceImp implements SasService {
     private final ProjectRepo projectRepo;
     private final CostCodeRepo costCodeRepo;
+    private final SasTypeRepo sasTypeRepo;
     private final SasNumberRepo sasRepo;
     private final SasEventService sasEventService;
 
     @Autowired
-    public SasServiceImp(ProjectRepo projectRepo, CostCodeRepo costCodeRepo, SasNumberRepo sasRepo,
+    public SasServiceImp(ProjectRepo projectRepo, CostCodeRepo costCodeRepo, SasTypeRepo sasTypeRepo, SasNumberRepo sasRepo,
                          SasEventService sasEventService) {
         this.projectRepo = projectRepo;
         this.costCodeRepo = costCodeRepo;
+        this.sasTypeRepo = sasTypeRepo;
         this.sasRepo = sasRepo;
         this.sasEventService = sasEventService;
     }
@@ -38,14 +40,15 @@ public class SasServiceImp implements SasService {
     }
 
     @Override
-    public SasNumber createSasNumber(User user, String prefix, String projectName, String costCode) {
+    public SasNumber createSasNumber(User user, String prefix, String sasTypeName, String projectName, String costCode) {
         checkPrefix(prefix);
 
         Project project = projectRepo.getByName(projectName);
         CostCode cc = costCodeRepo.getByCode(costCode);
+        SasType type = sasTypeRepo.getByName(sasTypeName);
 
         String sasNum = sasRepo.createNumber(prefix);
-        SasNumber sas = sasRepo.save(new SasNumber(null, sasNum, project, cc, Status.active));
+        SasNumber sas = sasRepo.save(new SasNumber(null, sasNum, type, project, cc, Status.active));
         sasEventService.recordEvent(user, sas, SasEvent.Type.create, null);
         return sas;
     }

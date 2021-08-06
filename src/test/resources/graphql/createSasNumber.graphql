@@ -1,6 +1,7 @@
 mutation {
-    createSasNumber(prefix: "SAS", project: "Stargate", costCode: "S666") {
+    createSasNumber(prefix: "SAS", sasType: "Drywalling", project: "Stargate", costCode: "S666") {
         sasNumber
+        sasType {name}
         project {name}
         costCode {code}
         status

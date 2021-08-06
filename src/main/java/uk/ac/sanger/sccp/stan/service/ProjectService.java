@@ -21,12 +21,12 @@ public class ProjectService extends BaseAdminService<Project, ProjectRepo> {
     }
 
     @Override
-    Project newEntity(String name) {
+    protected Project newEntity(String name) {
         return new Project(null, name);
     }
 
     @Override
-    Optional<Project> findEntity(ProjectRepo repo, String name) {
+    protected Optional<Project> findEntity(ProjectRepo repo, String name) {
         return repo.findByName(name);
     }
 }

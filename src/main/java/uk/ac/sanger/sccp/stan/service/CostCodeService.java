@@ -21,12 +21,12 @@ public class CostCodeService extends BaseAdminService<CostCode, CostCodeRepo> {
     }
 
     @Override
-    CostCode newEntity(String code) {
+    protected CostCode newEntity(String code) {
         return new CostCode(null, code.toUpperCase());
     }
 
     @Override
-    Optional<CostCode> findEntity(CostCodeRepo repo, String code) {
+    protected Optional<CostCode> findEntity(CostCodeRepo repo, String code) {
         return repo.findByCode(code);
     }
 }

@@ -424,10 +424,10 @@ public class TestConfirmSectionValidationService {
     }
 
     static Stream<Arguments> validateSasArgs() {
-        SasNumber activeSas = new SasNumber(1, "SAS1001", null, null, SasNumber.Status.active);
-        SasNumber pausedSas = new SasNumber(2, "SAS1002", null, null, SasNumber.Status.paused);
-        SasNumber failedSas = new SasNumber(3, "R&D1003", null, null, SasNumber.Status.failed);
-        SasNumber completedSas = new SasNumber(4, "SAS1004", null, null, SasNumber.Status.completed);
+        SasNumber activeSas = new SasNumber(1, "SAS1001", null, null, null, SasNumber.Status.active);
+        SasNumber pausedSas = new SasNumber(2, "SAS1002", null, null, null, SasNumber.Status.paused);
+        SasNumber failedSas = new SasNumber(3, "R&D1003", null, null, null, SasNumber.Status.failed);
+        SasNumber completedSas = new SasNumber(4, "SAS1004", null, null, null, SasNumber.Status.completed);
         return Arrays.stream(new Object[][] {
                 { null, null },
                 { activeSas, null },

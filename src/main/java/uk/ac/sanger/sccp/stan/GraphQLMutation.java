@@ -25,6 +25,7 @@ import uk.ac.sanger.sccp.stan.service.operation.plan.PlanService;
 import uk.ac.sanger.sccp.stan.service.register.RegisterService;
 import uk.ac.sanger.sccp.stan.service.register.SectionRegisterService;
 import uk.ac.sanger.sccp.stan.service.sas.SasService;
+import uk.ac.sanger.sccp.stan.service.sas.SasTypeService;
 
 import java.util.*;
 import java.util.function.BiFunction;
@@ -59,6 +60,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final SpeciesAdminService speciesAdminService;
     final ProjectService projectService;
     final CostCodeService costCodeService;
+    final SasTypeService sasTypeService;
     final SasService sasService;
     final UserAdminService userAdminService;
 
@@ -73,7 +75,8 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            CommentAdminService commentAdminService, DestructionReasonAdminService destructionReasonAdminService,
                            HmdmcAdminService hmdmcAdminService, ReleaseDestinationAdminService releaseDestinationAdminService,
                            ReleaseRecipientAdminService releaseRecipientAdminService, SpeciesAdminService speciesAdminService,
-                           ProjectService projectService, CostCodeService costCodeService, SasService sasService,
+                           ProjectService projectService, CostCodeService costCodeService, SasTypeService sasTypeService,
+                           SasService sasService,
                            UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
@@ -96,6 +99,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.speciesAdminService = speciesAdminService;
         this.projectService = projectService;
         this.costCodeService = costCodeService;
+        this.sasTypeService = sasTypeService;
         this.sasService = sasService;
         this.userAdminService = userAdminService;
     }
@@ -324,13 +328,22 @@ public class GraphQLMutation extends BaseGraphQLResource {
         return adminSetEnabled(costCodeService::setEnabled, "SetCostCodeEnabled", "code");
     }
 
+    public DataFetcher<SasType> addSasType() {
+        return adminAdd(sasTypeService::addNew, "AddSasType", "name");
+    }
+
+    public DataFetcher<SasType> setSasTypeEnabled() {
+        return adminSetEnabled(sasTypeService::setEnabled, "SetSasTypeEnabled", "name");
+    }
+
     public DataFetcher<SasNumber> createSasNumber() {
         return dfe -> {
             User user = checkUser(dfe, User.Role.normal);
             String projectName = dfe.getArgument("project");
             String code = dfe.getArgument("costCode");
             String prefix = dfe.getArgument("prefix");
-            return sasService.createSasNumber(user, prefix, projectName, code);
+            String sasTypeName = dfe.getArgument("sasType");
+            return sasService.createSasNumber(user, prefix, sasTypeName, projectName, code);
         };
     }
 

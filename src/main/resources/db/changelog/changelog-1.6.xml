@@ -44,12 +44,35 @@
     </changeSet>
 
     <changeSet id="1602" author="dr6">
+        <createTable tableName="sas_type">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="name" type="VARCHAR(64)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValue="TRUE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="1603" author="dr6">
         <createTable tableName="sas_number">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
             </column>
             <column name="sas_number" type="VARCHAR(10)">
                 <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="sas_type_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_sas_number_sas_type" referencedTableName="sas_type" referencedColumnNames="id"/>
             </column>
             <column name="project_id" type="INT">
                 <constraints nullable="false" foreignKeyName="fk_sas_number_project" referencedTableName="project" referencedColumnNames="id"/>
@@ -76,7 +99,7 @@
         </rollback>
     </changeSet>
 
-    <changeSet id="1603" author="dr6">
+    <changeSet id="1604" author="dr6">
         <createTable tableName="sas_event">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
@@ -105,7 +128,7 @@
         </createTable>
     </changeSet>
 
-    <changeSet id="1604" author="dr6">
+    <changeSet id="1605" author="dr6">
         <createTable tableName="sas_op">
             <column name="sas_id" type="INT">
                 <constraints nullable="false" foreignKeyName="fk_sas_op_sas" referencedTableName="sas_number" referencedColumnNames="id"/>
@@ -124,7 +147,7 @@
         </rollback>
     </changeSet>
 
-    <changeSet id="1605" author="dr6">
+    <changeSet id="1606" author="dr6">
         <createTable tableName="sas_sample">
             <column name="sas_id" type="INT">
                 <constraints nullable="false" foreignKeyName="fk_sas_sample_sas" referencedTableName="sas_number" referencedColumnNames="id"/>
@@ -146,7 +169,7 @@
         </rollback>
     </changeSet>
 
-    <changeSet id="1606" author="dr6">
+    <changeSet id="1607" author="dr6">
         <createTable tableName="sas_sequence">
             <column name="prefix" type="CHAR(3)" autoIncrement="false">
                 <constraints nullable="false" primaryKey="true"/>
@@ -197,6 +220,15 @@
     <changeSet id="1653" author="dr6">
         <insert tableName="cost_code">
             <column name="code" value="S1234"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="1654" author="dr6">
+        <insert tableName="sas_type">
+            <column name="name" value="RNAscope"/>
+        </insert>
+        <insert tableName="sas_type">
+            <column name="name" value="Histology"/>
         </insert>
     </changeSet>
 

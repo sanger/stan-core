@@ -46,6 +46,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final DestructionReasonRepo destructionReasonRepo;
     final ProjectRepo projectRepo;
     final CostCodeRepo costCodeRepo;
+    final SasTypeRepo sasTypeRepo;
     final SasNumberRepo sasNumberRepo;
     final LabelPrintService labelPrintService;
     final FindService findService;
@@ -61,7 +62,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                SpeciesRepo speciesRepo, HmdmcRepo hmdmcRepo, LabwareRepo labwareRepo, CommentRepo commentRepo,
                                ReleaseDestinationRepo releaseDestinationRepo, ReleaseRecipientRepo releaseRecipientRepo,
                                DestructionReasonRepo destructionReasonRepo, ProjectRepo projectRepo, CostCodeRepo costCodeRepo,
-                               SasNumberRepo sasNumberRepo,
+                               SasTypeRepo sasTypeRepo, SasNumberRepo sasNumberRepo,
                                LabelPrintService labelPrintService, FindService findService,
                                CommentAdminService commentAdminService, HistoryService historyService, PlanService planService) {
         super(objectMapper, authComp, userRepo);
@@ -80,6 +81,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.destructionReasonRepo = destructionReasonRepo;
         this.projectRepo = projectRepo;
         this.costCodeRepo = costCodeRepo;
+        this.sasTypeRepo = sasTypeRepo;
         this.sasNumberRepo = sasNumberRepo;
         this.labelPrintService = labelPrintService;
         this.findService = findService;
@@ -164,6 +166,10 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
 
     public DataFetcher<Iterable<CostCode>> getCostCodes() {
         return allOrEnabled(costCodeRepo::findAll, costCodeRepo::findAllByEnabled);
+    }
+
+    public DataFetcher<Iterable<SasType>> getSasTypes() {
+        return allOrEnabled(sasTypeRepo::findAll, sasTypeRepo::findAllByEnabled);
     }
 
     public DataFetcher<Iterable<SasNumber>> getSasNumbers() {

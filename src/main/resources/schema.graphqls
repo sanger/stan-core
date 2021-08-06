@@ -480,6 +480,11 @@ type CostCode {
     enabled: Boolean!
 }
 
+type SasType {
+    name: String!
+    enabled: Boolean!
+}
+
 enum SasStatus {
     active
     paused
@@ -488,6 +493,7 @@ enum SasStatus {
 }
 
 type SasNumber {
+    sasType: SasType!
     project: Project!
     costCode: CostCode!
     sasNumber: String!
@@ -511,6 +517,7 @@ type Query {
     destructionReasons(includeDisabled: Boolean): [DestructionReason!]!
     projects(includeDisabled: Boolean): [Project!]!
     costCodes(includeDisabled: Boolean): [CostCode!]!
+    sasTypes(includeDisabled: Boolean): [SasType!]!
     sasNumbers(status: [SasStatus!]): [SasNumber!]!
     sasNumber(sasNumber: String!): SasNumber!
     users(includeDisabled: Boolean): [User!]!
@@ -555,7 +562,9 @@ type Mutation {
     setProjectEnabled(name: String!, enabled: Boolean!): Project!
     addCostCode(code: String!): CostCode!
     setCostCodeEnabled(code: String!, enabled: Boolean!): CostCode!
-    createSasNumber(prefix: String!, project: String!, costCode: String!): SasNumber!
+    addSasType(name: String!): SasType!
+    setSasTypeEnabled(name: String!, enabled: Boolean!): SasType!
+    createSasNumber(prefix: String!, sasType: String!, project: String!, costCode: String!): SasNumber!
     updateSasNumberStatus(sasNumber: String!, status: SasStatus!, commentId: Int): SasNumber!
 
     addUser(username: String!): User!

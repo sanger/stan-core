@@ -14,11 +14,12 @@ public interface SasService {
      * Creates a new sas number. Records a create event for the sas number linked to the specified user
      * @param user the user responsible for creating the sas number
      * @param prefix the prefix ({@code SAS} or {@code R&D}) for the SAS number
+     * @param sasTypeName the name of a SAS type for the SAS number
      * @param projectName the name of the project for the SAS number
      * @param costCode the code of the cost code for the SAS number
      * @return the new SAS number
      */
-    SasNumber createSasNumber(User user, String prefix, String projectName, String costCode);
+    SasNumber createSasNumber(User user, String prefix, String sasTypeName, String projectName, String costCode);
 
     /**
      * Updates the status of the sas number. Records a sas event for the change.
