@@ -12,5 +12,13 @@ public enum GridDirection {
      * Down the leftmost column, then right to the next column, etc.
      */
     DownRight,
+    /**
+     * Right across the bottom row, then up to the next row, etc.
+     */
+    RightUp,
+    /**
+     * Up the leftmost column, then right to the next column, etc.
+     */
+    UpRight,
     ;
 }
