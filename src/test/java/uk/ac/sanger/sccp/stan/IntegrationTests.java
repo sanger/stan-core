@@ -707,9 +707,12 @@ public class IntegrationTests {
         slotRepo.saveAll(List.of(slide1.getSlot(A1), slide1.getSlot(B1)));
 
         stubStorelightUnstore();
+
+        SasNumber sas = entityCreator.createSasNumber(null, null, null);
         User user = entityCreator.createUser("user1");
         tester.setUser(user);
         String mutation = tester.readResource("graphql/slotcopy.graphql");
+        mutation = mutation.replace("SAS5000", sas.getSasNumber());
         Object result = tester.post(mutation);
         Object data = chainGet(result, "data", "slotCopy");
         List<Map<String, ?>> lwsData = chainGet(data, "labware");
@@ -773,6 +776,9 @@ public class IntegrationTests {
         assertTrue(newLabware.getSlot(A2).getSamples().stream().allMatch(sam -> sam.getBioState().getName().equals("cDNA")));
 
         verifyUnstored(List.of("STAN-01"), user.getUsername());
+        entityManager.refresh(sas);
+        assertThat(sas.getOperationIds()).containsExactly(opId);
+        assertThat(sas.getSampleSlotIds()).hasSize(3);
     }
 
     @Test

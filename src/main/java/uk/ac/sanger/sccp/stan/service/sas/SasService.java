@@ -63,4 +63,15 @@ public interface SasService {
      * @exception NullPointerException if the given string is null
      */
     SasNumber getUsableSas(String sasNumber);
+
+    /**
+     * Validates the specified sas number as usable.
+     * If the sas number doesn't exist or cannot be used, adds a problem to the given problems receptacle.
+     * Returns null if the given string is null.
+     * @param problems a receptacle for any problems found
+     * @param sasNumber the string representing an existing sas number
+     * @return the active sas number corresponding to the given string
+     * @see SasNumber#isUsable
+     */
+    SasNumber validateUsableSas(Collection<String> problems, String sasNumber);
 }

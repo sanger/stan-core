@@ -18,6 +18,7 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
  * Tests {@link SasServiceImp}
@@ -188,8 +189,8 @@ public class TestSasService {
     }
 
     @ParameterizedTest
-    @MethodSource("getUsableSasArgs")
-    public void testGetUsableSas(String sasString, Status status, Class<? extends Exception> expectedExceptionType) {
+    @MethodSource("usableSasArgs")
+    public void testGetUsableSas(String sasString, Status status, Class<? extends Exception> expectedExceptionType, String expectedErrorMessage) {
         if (expectedExceptionType==null) {
             SasNumber sas = new SasNumber(14, sasString, null, null, null, status);
             when(mockSasRepo.getBySasNumber(sasString)).thenReturn(sas);
@@ -198,22 +199,46 @@ public class TestSasService {
         }
 
         if (status==null) {
-            when(mockSasRepo.getBySasNumber(sasString)).thenThrow(EntityNotFoundException.class);
+            when(mockSasRepo.getBySasNumber(sasString))
+                    .then(invocation -> {throw new EntityNotFoundException("SAS number not recognised: "+repr(sasString)); });
         } else {
             SasNumber sas = new SasNumber(14, sasString, null, null, null, status);
             when(mockSasRepo.getBySasNumber(sasString)).thenReturn(sas);
         }
-        assertThrows(expectedExceptionType, () -> sasService.getUsableSas(sasString));
+        assertThat(assertThrows(expectedExceptionType, () -> sasService.getUsableSas(sasString)))
+                .hasMessage(expectedErrorMessage);
     }
 
-    static Stream<Arguments> getUsableSasArgs() {
+    @ParameterizedTest
+    @MethodSource("usableSasArgs")
+    public void testValidateUsableSas(String sasString, Status status, Class<? extends Exception> unused, String expectedErrorMessage) {
+        List<String> problems = new ArrayList<>(1);
+        if (sasString==null) {
+            assertNull(sasService.validateUsableSas(problems, sasString));
+            assertThat(problems).isEmpty();
+            verifyNoInteractions(mockSasRepo);
+            return;
+        }
+
+        Optional<SasNumber> optSas = Optional.ofNullable(status).map(st -> new SasNumber(14, sasString, null, null, null, st));
+        when(mockSasRepo.findBySasNumber(sasString)).thenReturn(optSas);
+        assertSame(optSas.orElse(null), sasService.validateUsableSas(problems, sasString));
+
+        if (expectedErrorMessage==null) {
+            assertThat(problems).isEmpty();
+        } else {
+            assertThat(problems).containsExactly(expectedErrorMessage);
+        }
+    }
+
+    static Stream<Arguments> usableSasArgs() {
         return Arrays.stream(new Object[][] {
-                { "SAS5000", Status.active, null },
-                { "SAS5000", Status.paused, IllegalArgumentException.class },
-                { "SAS5000", Status.completed, IllegalArgumentException.class },
-                { "SAS5000", Status.failed, IllegalArgumentException.class },
-                { "SAS404", null, EntityNotFoundException.class },
-                { null, null, NullPointerException.class },
+                { "SAS5000", Status.active, null, null },
+                { "SAS5000", Status.paused, IllegalArgumentException.class, "SAS5000 cannot be used because it is paused." },
+                { "SAS5000", Status.completed, IllegalArgumentException.class, "SAS5000 cannot be used because it is completed."  },
+                { "SAS5000", Status.failed, IllegalArgumentException.class, "SAS5000 cannot be used because it is failed."  },
+                { "SAS404", null, EntityNotFoundException.class, "SAS number not recognised: \"SAS404\"" },
+                { null, null, NullPointerException.class, "SAS number is null." },
         }).map(Arguments::of);
     }
 

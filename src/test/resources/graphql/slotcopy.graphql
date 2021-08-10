@@ -2,6 +2,7 @@ mutation {
     slotCopy(request: {
         operationType: "Visium cDNA"
         labwareType: "96 well plate"
+        sasNumber: "SAS5000"
         contents: [
             {
                 sourceBarcode: "STAN-01"

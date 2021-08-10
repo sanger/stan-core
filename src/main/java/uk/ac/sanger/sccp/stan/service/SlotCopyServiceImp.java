@@ -8,6 +8,7 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.request.SlotCopyRequest;
 import uk.ac.sanger.sccp.stan.request.SlotCopyRequest.SlotCopyContent;
+import uk.ac.sanger.sccp.stan.service.sas.SasService;
 import uk.ac.sanger.sccp.stan.service.store.StoreService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
@@ -33,6 +34,7 @@ public class SlotCopyServiceImp implements SlotCopyService {
     private final LabwareService lwService;
     private final OperationService opService;
     private final StoreService storeService;
+    private final SasService sasService;
     private final LabwareValidatorFactory labwareValidatorFactory;
     private final EntityManager entityManager;
     private final Transactor transactor;
@@ -41,6 +43,7 @@ public class SlotCopyServiceImp implements SlotCopyService {
     public SlotCopyServiceImp(OperationTypeRepo opTypeRepo, LabwareTypeRepo lwTypeRepo, LabwareRepo lwRepo,
                               SampleRepo sampleRepo, SlotRepo slotRepo,
                               LabwareService lwService, OperationService opService, StoreService storeService,
+                              SasService sasService,
                               LabwareValidatorFactory labwareValidatorFactory, EntityManager entityManager,
                               Transactor transactor) {
         this.opTypeRepo = opTypeRepo;
@@ -51,6 +54,7 @@ public class SlotCopyServiceImp implements SlotCopyService {
         this.lwService = lwService;
         this.opService = opService;
         this.storeService = storeService;
+        this.sasService = sasService;
         this.labwareValidatorFactory = labwareValidatorFactory;
         this.entityManager = entityManager;
         this.transactor = transactor;
@@ -72,10 +76,11 @@ public class SlotCopyServiceImp implements SlotCopyService {
         UCMap<Labware> labwareMap = loadLabware(problems, request.getContents());
         validateLabware(problems, labwareMap.values());
         validateContents(problems, lwType, labwareMap, request.getContents());
+        SasNumber sas = sasService.validateUsableSas(problems, request.getSasNumber());
         if (!problems.isEmpty()) {
             throw new ValidationException("The operation could not be validated.", problems);
         }
-        return execute(user, request.getContents(), opType, lwType, labwareMap);
+        return execute(user, request.getContents(), opType, lwType, labwareMap, sas);
     }
 
     public void unstoreSources(User user, SlotCopyRequest request) {
@@ -203,10 +208,12 @@ public class SlotCopyServiceImp implements SlotCopyService {
      * @param opType the type of operation being performed
      * @param lwType the type of labware to create
      * @param labwareMap a map of the source labware from their barcodes
+     * @param sas the sas number (optional)
      * @return the result of the operation
      */
     public OperationResult execute(User user, Collection<SlotCopyContent> contents,
-                                   OperationType opType, LabwareType lwType, UCMap<Labware> labwareMap) {
+                                   OperationType opType, LabwareType lwType, UCMap<Labware> labwareMap,
+                                   SasNumber sas) {
         Labware emptyLabware = lwService.create(lwType);
         Map<Integer, Sample> oldSampleIdToNewSample = createSamples(contents, labwareMap, opType.getNewBioState());
         Labware filledLabware = fillLabware(emptyLabware, contents, labwareMap, oldSampleIdToNewSample);
@@ -214,7 +221,11 @@ public class SlotCopyServiceImp implements SlotCopyService {
             discardSources(labwareMap.values());
         }
         Operation op = createOperation(user, contents, opType, labwareMap, filledLabware, oldSampleIdToNewSample);
-        return new OperationResult(List.of(op), List.of(filledLabware));
+        List<Operation> ops = List.of(op);
+        if (sas!=null) {
+            sasService.link(sas, ops);
+        }
+        return new OperationResult(ops, List.of(filledLabware));
     }
 
     /**

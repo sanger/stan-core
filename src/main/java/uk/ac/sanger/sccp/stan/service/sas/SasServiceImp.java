@@ -105,7 +105,24 @@ public class SasServiceImp implements SasService {
         requireNonNull(sasNumber, "SAS number is null.");
         SasNumber sas = sasRepo.getBySasNumber(sasNumber);
         if (!sas.isUsable()) {
-            throw new IllegalArgumentException(sas+" cannot be used because it is "+sas.getStatus()+".");
+            throw new IllegalArgumentException(sas.getSasNumber()+" cannot be used because it is "+sas.getStatus()+".");
+        }
+        return sas;
+    }
+
+    @Override
+    public SasNumber validateUsableSas(Collection<String> problems, String sasNumber) {
+        if (sasNumber==null) {
+            return null;
+        }
+        Optional<SasNumber> optSas = sasRepo.findBySasNumber(sasNumber);
+        if (optSas.isEmpty()) {
+            problems.add("SAS number not recognised: "+repr(sasNumber));
+            return null;
+        }
+        SasNumber sas = optSas.get();
+        if (!sas.isUsable()) {
+            problems.add(sas.getSasNumber()+" cannot be used because it is "+sas.getStatus()+".");
         }
         return sas;
     }
