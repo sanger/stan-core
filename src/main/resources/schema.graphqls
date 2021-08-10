@@ -390,6 +390,10 @@ enum GridDirection {
     RightDown
     """Down the leftmost column, then right to the next column, etc."""
     DownRight
+    """Right across the bottom row, then up to the next row, etc."""
+    RightUp
+    """Up the leftmost column, then right to the next column, etc."""
+    UpRight
 }
 
 type Location {
@@ -455,6 +459,7 @@ type HistoryEntry {
     sourceLabwareId: Int!
     destinationLabwareId: Int!
     sampleId: Int
+    username: String!
     details: [String!]!
 }
 
