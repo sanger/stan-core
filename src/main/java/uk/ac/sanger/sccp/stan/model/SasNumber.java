@@ -178,6 +178,11 @@ public class SasNumber {
         return !isClosed();
     }
 
+    @JsonIgnore
+    public boolean isUsable() {
+        return (status==Status.active);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

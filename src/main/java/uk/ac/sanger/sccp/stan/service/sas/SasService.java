@@ -51,4 +51,16 @@ public interface SasService {
      * @exception IllegalArgumentException if the sas number is not active
      */
     SasNumber link(SasNumber sas, Collection<Operation> operations);
+
+    /**
+     * Gets the specified sas number.
+     * Errors if the sas number cannot be used.
+     * @param sasNumber the string representing an existing sas number
+     * @return the active sas number corresponding to the argument
+     * @see SasNumber#isUsable
+     * @exception javax.persistence.EntityNotFoundException if the sas number is unrecognised
+     * @exception IllegalArgumentException if the sas number is not usable
+     * @exception NullPointerException if the given string is null
+     */
+    SasNumber getUsableSas(String sasNumber);
 }

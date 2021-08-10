@@ -1,5 +1,5 @@
 mutation {
-    extract(request: {barcodes: [], labwareType: "LWTYPE"}) {
+    extract(request: {barcodes: [], labwareType: "LWTYPE", sasNumber: "SAS4000"}) {
         labware {
             id
             barcode

@@ -377,9 +377,12 @@ public class IntegrationTests {
 
         stubStorelightUnstore();
 
+        SasNumber sas = entityCreator.createSasNumber(null, null, null);
+
         String mutation = tester.readResource("graphql/extract.graphql")
                 .replace("[]", "[\"STAN-A1\", \"STAN-A2\"]")
-                .replace("LWTYPE", lwType.getName());
+                .replace("LWTYPE", lwType.getName())
+                .replace("SAS4000", sas.getSasNumber());
         User user = entityCreator.createUser("user1");
         tester.setUser(user);
         Object result = tester.post(mutation);
@@ -462,6 +465,11 @@ public class IntegrationTests {
         }
 
         verifyUnstored(List.of(sources[0].getBarcode(), sources[1].getBarcode()), user.getUsername());
+
+        entityManager.flush();
+        entityManager.refresh(sas);
+        assertThat(sas.getOperationIds()).containsExactlyInAnyOrderElementsOf(Arrays.stream(opIds).boxed().collect(toList()));
+        assertThat(sas.getSampleSlotIds()).hasSize(sampleIds.length);
     }
 
     @Test

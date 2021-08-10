@@ -187,6 +187,36 @@ public class TestSasService {
         );
     }
 
+    @ParameterizedTest
+    @MethodSource("getUsableSasArgs")
+    public void testGetUsableSas(String sasString, Status status, Class<? extends Exception> expectedExceptionType) {
+        if (expectedExceptionType==null) {
+            SasNumber sas = new SasNumber(14, sasString, null, null, null, status);
+            when(mockSasRepo.getBySasNumber(sasString)).thenReturn(sas);
+            assertSame(sas, sasService.getUsableSas(sasString));
+            return;
+        }
+
+        if (status==null) {
+            when(mockSasRepo.getBySasNumber(sasString)).thenThrow(EntityNotFoundException.class);
+        } else {
+            SasNumber sas = new SasNumber(14, sasString, null, null, null, status);
+            when(mockSasRepo.getBySasNumber(sasString)).thenReturn(sas);
+        }
+        assertThrows(expectedExceptionType, () -> sasService.getUsableSas(sasString));
+    }
+
+    static Stream<Arguments> getUsableSasArgs() {
+        return Arrays.stream(new Object[][] {
+                { "SAS5000", Status.active, null },
+                { "SAS5000", Status.paused, IllegalArgumentException.class },
+                { "SAS5000", Status.completed, IllegalArgumentException.class },
+                { "SAS5000", Status.failed, IllegalArgumentException.class },
+                { "SAS404", null, EntityNotFoundException.class },
+                { null, null, NullPointerException.class },
+        }).map(Arguments::of);
+    }
+
     private Operation makeOp(OperationType opType, int opId, Labware srcLw, Labware dstLw) {
         List<Action> actions = new ArrayList<>();
         int acId = 100*opId;

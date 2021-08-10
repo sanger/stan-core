@@ -9,6 +9,7 @@ import uk.ac.sanger.sccp.stan.repo.*;
 
 import java.util.*;
 
+import static java.util.Objects.requireNonNull;
 import static uk.ac.sanger.sccp.utils.BasicUtils.newArrayList;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
@@ -97,5 +98,15 @@ public class SasServiceImp implements SasService {
         sas.setOperationIds(opIds);
         sas.setSampleSlotIds(ssIds);
         return sasRepo.save(sas);
+    }
+
+    @Override
+    public SasNumber getUsableSas(String sasNumber) {
+        requireNonNull(sasNumber, "SAS number is null.");
+        SasNumber sas = sasRepo.getBySasNumber(sasNumber);
+        if (!sas.isUsable()) {
+            throw new IllegalArgumentException(sas+" cannot be used because it is "+sas.getStatus()+".");
+        }
+        return sas;
     }
 }
