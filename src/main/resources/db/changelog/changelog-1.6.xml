@@ -193,19 +193,19 @@
 
     <changeSet id="1651" author="dr6">
         <insert tableName="comment">
-            <column name="category" value="Work status"/>
+            <column name="category" value="work status"/>
             <column name="text" value="RIN number too low"/>
         </insert>
         <insert tableName="comment">
-            <column name="category" value="Work status"/>
+            <column name="category" value="work status"/>
             <column name="text" value="Poor quality tissue"/>
         </insert>
         <insert tableName="comment">
-            <column name="category" value="Work status"/>
+            <column name="category" value="work status"/>
             <column name="text" value="Waiting for reagents"/>
         </insert>
         <insert tableName="comment">
-            <column name="category" value="Work status"/>
+            <column name="category" value="work status"/>
             <column name="text" value="Waiting for customer"/>
         </insert>
     </changeSet>
