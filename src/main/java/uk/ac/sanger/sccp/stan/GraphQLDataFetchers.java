@@ -46,8 +46,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final DestructionReasonRepo destructionReasonRepo;
     final ProjectRepo projectRepo;
     final CostCodeRepo costCodeRepo;
-    final SasTypeRepo sasTypeRepo;
-    final SasNumberRepo sasNumberRepo;
+    final WorkTypeRepo workTypeRepo;
+    final WorkRepo workRepo;
     final LabelPrintService labelPrintService;
     final FindService findService;
     final CommentAdminService commentAdminService;
@@ -62,7 +62,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                SpeciesRepo speciesRepo, HmdmcRepo hmdmcRepo, LabwareRepo labwareRepo, CommentRepo commentRepo,
                                ReleaseDestinationRepo releaseDestinationRepo, ReleaseRecipientRepo releaseRecipientRepo,
                                DestructionReasonRepo destructionReasonRepo, ProjectRepo projectRepo, CostCodeRepo costCodeRepo,
-                               SasTypeRepo sasTypeRepo, SasNumberRepo sasNumberRepo,
+                               WorkTypeRepo workTypeRepo, WorkRepo workRepo,
                                LabelPrintService labelPrintService, FindService findService,
                                CommentAdminService commentAdminService, HistoryService historyService, PlanService planService) {
         super(objectMapper, authComp, userRepo);
@@ -81,8 +81,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.destructionReasonRepo = destructionReasonRepo;
         this.projectRepo = projectRepo;
         this.costCodeRepo = costCodeRepo;
-        this.sasTypeRepo = sasTypeRepo;
-        this.sasNumberRepo = sasNumberRepo;
+        this.workTypeRepo = workTypeRepo;
+        this.workRepo = workRepo;
         this.labelPrintService = labelPrintService;
         this.findService = findService;
         this.commentAdminService = commentAdminService;
@@ -168,22 +168,22 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         return allOrEnabled(costCodeRepo::findAll, costCodeRepo::findAllByEnabled);
     }
 
-    public DataFetcher<Iterable<SasType>> getSasTypes() {
-        return allOrEnabled(sasTypeRepo::findAll, sasTypeRepo::findAllByEnabled);
+    public DataFetcher<Iterable<WorkType>> getWorkTypes() {
+        return allOrEnabled(workTypeRepo::findAll, workTypeRepo::findAllByEnabled);
     }
 
-    public DataFetcher<Iterable<SasNumber>> getSasNumbers() {
+    public DataFetcher<Iterable<Work>> getWorks() {
         return dfe -> {
-            Collection<SasNumber.Status> statuses = arg(dfe, "status", new TypeReference<List<SasNumber.Status>>() {});
+            Collection<Work.Status> statuses = arg(dfe, "status", new TypeReference<List<Work.Status>>() {});
             if (statuses==null) {
-                return sasNumberRepo.findAll();
+                return workRepo.findAll();
             }
-            return sasNumberRepo.findAllByStatusIn(statuses);
+            return workRepo.findAllByStatusIn(statuses);
         };
     }
 
-    public DataFetcher<SasNumber> getSasNumber() {
-        return dfe -> sasNumberRepo.getBySasNumber(dfe.getArgument("sasNumber"));
+    public DataFetcher<Work> getWork() {
+        return dfe -> workRepo.getByWorkNumber(dfe.getArgument("workNumber"));
     }
 
     public DataFetcher<Iterable<User>> getUsers() {

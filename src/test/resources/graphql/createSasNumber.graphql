@@ -1,9 +1,0 @@
-mutation {
-    createSasNumber(prefix: "SAS", sasType: "Drywalling", project: "Stargate", costCode: "S666") {
-        sasNumber
-        sasType {name}
-        project {name}
-        costCode {code}
-        status
-    }
-}

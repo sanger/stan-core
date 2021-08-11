@@ -1,0 +1,9 @@
+mutation {
+    createWork(prefix: "SGP", workType: "Drywalling", project: "Stargate", costCode: "S666") {
+        workNumber
+        workType {name}
+        project {name}
+        costCode {code}
+        status
+    }
+}

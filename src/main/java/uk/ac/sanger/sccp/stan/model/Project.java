@@ -4,7 +4,7 @@ import javax.persistence.*;
 import java.util.Objects;
 
 /**
- * A project that may be linked to SAS numbers.
+ * A project that may be linked to work.
  * @author dr6
  */
 @Entity

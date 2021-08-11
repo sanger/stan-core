@@ -90,7 +90,7 @@ public class IntegrationTests {
     @Autowired
     private CostCodeRepo costCodeRepo;
     @Autowired
-    private SasTypeRepo sasTypeRepo;
+    private WorkTypeRepo workTypeRepo;
     @Autowired
     private MeasurementRepo measurementRepo;
     @Autowired
@@ -176,13 +176,13 @@ public class IntegrationTests {
                 .collect(toList())).containsExactlyInAnyOrder("STAN-B70C", "STAN-B70D");
 
         // Confirming
-        SasNumber sas = entityCreator.createSasNumber(null, null, null);
+        Work work = entityCreator.createWork(null, null, null);
 
         String recordMutation = tester.readResource("graphql/confirmsection.graphql");
         recordMutation = recordMutation.replace("$BARCODE", barcode)
                 .replace("55555", String.valueOf(sample1.getId()))
                 .replace("55556", String.valueOf(sample2.getId()))
-                .replace("SAS4000", sas.getSasNumber());
+                .replace("SGP4000", work.getWorkNumber());
         result = tester.post(recordMutation);
         assertNull(result.get("errors"));
 
@@ -250,9 +250,9 @@ public class IntegrationTests {
         assertEquals(15, sourceBlock1.getFirstSlot().getBlockHighestSection());
         assertEquals(17, sourceBlock2.getFirstSlot().getBlockHighestSection());
         entityManager.flush();
-        entityManager.refresh(sas);
-        assertThat(sas.getOperationIds()).hasSize(1);
-        assertThat(sas.getSampleSlotIds()).hasSize(4);
+        entityManager.refresh(work);
+        assertThat(work.getOperationIds()).hasSize(1);
+        assertThat(work.getSampleSlotIds()).hasSize(4);
     }
 
     @Test
@@ -377,12 +377,12 @@ public class IntegrationTests {
 
         stubStorelightUnstore();
 
-        SasNumber sas = entityCreator.createSasNumber(null, null, null);
+        Work work = entityCreator.createWork(null, null, null);
 
         String mutation = tester.readResource("graphql/extract.graphql")
                 .replace("[]", "[\"STAN-A1\", \"STAN-A2\"]")
                 .replace("LWTYPE", lwType.getName())
-                .replace("SAS4000", sas.getSasNumber());
+                .replace("SGP4000", work.getWorkNumber());
         User user = entityCreator.createUser("user1");
         tester.setUser(user);
         Object result = tester.post(mutation);
@@ -467,9 +467,9 @@ public class IntegrationTests {
         verifyUnstored(List.of(sources[0].getBarcode(), sources[1].getBarcode()), user.getUsername());
 
         entityManager.flush();
-        entityManager.refresh(sas);
-        assertThat(sas.getOperationIds()).containsExactlyInAnyOrderElementsOf(Arrays.stream(opIds).boxed().collect(toList()));
-        assertThat(sas.getSampleSlotIds()).hasSize(sampleIds.length);
+        entityManager.refresh(work);
+        assertThat(work.getOperationIds()).containsExactlyInAnyOrderElementsOf(Arrays.stream(opIds).boxed().collect(toList()));
+        assertThat(work.getSampleSlotIds()).hasSize(sampleIds.length);
     }
 
     @Test
@@ -708,11 +708,11 @@ public class IntegrationTests {
 
         stubStorelightUnstore();
 
-        SasNumber sas = entityCreator.createSasNumber(null, null, null);
+        Work work = entityCreator.createWork(null, null, null);
         User user = entityCreator.createUser("user1");
         tester.setUser(user);
         String mutation = tester.readResource("graphql/slotcopy.graphql");
-        mutation = mutation.replace("SAS5000", sas.getSasNumber());
+        mutation = mutation.replace("SGP5000", work.getWorkNumber());
         Object result = tester.post(mutation);
         Object data = chainGet(result, "data", "slotCopy");
         List<Map<String, ?>> lwsData = chainGet(data, "labware");
@@ -776,9 +776,9 @@ public class IntegrationTests {
         assertTrue(newLabware.getSlot(A2).getSamples().stream().allMatch(sam -> sam.getBioState().getName().equals("cDNA")));
 
         verifyUnstored(List.of("STAN-01"), user.getUsername());
-        entityManager.refresh(sas);
-        assertThat(sas.getOperationIds()).containsExactly(opId);
-        assertThat(sas.getSampleSlotIds()).hasSize(3);
+        entityManager.refresh(work);
+        assertThat(work.getOperationIds()).containsExactly(opId);
+        assertThat(work.getSampleSlotIds()).hasSize(3);
     }
 
     @Test
@@ -890,8 +890,8 @@ public class IntegrationTests {
     }
     @Test
     @Transactional
-    public void testAddNewSasTypeAndSetEnabled() throws Exception {
-        testGenericAddNewAndSetEnabled("SasType", "name", "Drywalling", sasTypeRepo::findByName, SasType::getName, "sasTypes");
+    public void testAddNewWorkTypeAndSetEnabled() throws Exception {
+        testGenericAddNewAndSetEnabled("WorkType", "name", "Drywalling", workTypeRepo::findByName, WorkType::getName, "workTypes");
     }
 
     @Test
@@ -1029,40 +1029,40 @@ public class IntegrationTests {
 
     @Transactional
     @Test
-    public void testSasNumbers() throws Exception {
+    public void testWork() throws Exception {
         Project project = projectRepo.save(new Project(null, "Stargate"));
         CostCode cc = costCodeRepo.save(new CostCode(null, "S666"));
-        SasType sasType = entityCreator.createSasType("Drywalling");
+        WorkType workType = entityCreator.createWorkType("Drywalling");
         User user = entityCreator.createUser("user1", User.Role.normal);
 
-        String sasNumbersQuery  = "query { sasNumbers(status: [active]) { sasNumber, sasType { name}, project {name}, costCode {code}, status } }";
-        Object data = tester.post(sasNumbersQuery);
-        List<Map<String,?>> sasNumbersData = chainGet(data, "data", "sasNumbers");
-        assertNotNull(sasNumbersData);
-        int startingNum = sasNumbersData.size();
+        String worksQuery  = "query { works(status: [active]) { workNumber, workType {name}, project {name}, costCode {code}, status } }";
+        Object data = tester.post(worksQuery);
+        List<Map<String,?>> worksData = chainGet(data, "data", "works");
+        assertNotNull(worksData);
+        int startingNum = worksData.size();
 
         tester.setUser(user);
-        data = tester.post(tester.readResource("graphql/createSasNumber.graphql"));
+        data = tester.post(tester.readResource("graphql/createWork.graphql"));
 
-        Map<String, ?> sasData = chainGet(data, "data", "createSasNumber");
-        String sasNumber = (String) sasData.get("sasNumber");
-        assertNotNull(sasNumber);
-        assertEquals(project.getName(), chainGet(sasData, "project", "name"));
-        assertEquals(cc.getCode(), chainGet(sasData, "costCode", "code"));
-        assertEquals(sasType.getName(), chainGet(sasData, "sasType", "name"));
-        assertEquals("active", sasData.get("status"));
+        Map<String, ?> workData = chainGet(data, "data", "createWork");
+        String workNumber = (String) workData.get("workNumber");
+        assertNotNull(workNumber);
+        assertEquals(project.getName(), chainGet(workData, "project", "name"));
+        assertEquals(cc.getCode(), chainGet(workData, "costCode", "code"));
+        assertEquals(workType.getName(), chainGet(workData, "workType", "name"));
+        assertEquals("active", workData.get("status"));
 
-        data = tester.post(sasNumbersQuery);
-        sasNumbersData = chainGet(data, "data", "sasNumbers");
-        assertEquals(startingNum+1, sasNumbersData.size());
-        assertThat(sasNumbersData).contains(sasData);
+        data = tester.post(worksQuery);
+        worksData = chainGet(data, "data", "works");
+        assertEquals(startingNum+1, worksData.size());
+        assertThat(worksData).contains(workData);
 
-        data = tester.post("mutation { updateSasNumberStatus(sasNumber: \""+sasNumber+"\", status: completed) {status} }");
-        assertEquals("completed", chainGet(data, "data", "updateSasNumberStatus", "status"));
-        data = tester.post(sasNumbersQuery);
-        sasNumbersData = chainGet(data, "data", "sasNumbers");
-        assertEquals(startingNum, sasNumbersData.size());
-        assertFalse(sasNumbersData.stream().anyMatch(d -> d.get("sasNumber").equals(sasNumber)));
+        data = tester.post("mutation { updateWorkStatus(workNumber: \""+workNumber+"\", status: completed) {status} }");
+        assertEquals("completed", chainGet(data, "data", "updateWorkStatus", "status"));
+        data = tester.post(worksQuery);
+        worksData = chainGet(data, "data", "works");
+        assertEquals(startingNum, worksData.size());
+        assertFalse(worksData.stream().anyMatch(d -> d.get("workNumber").equals(workNumber)));
     }
 
     private void stubStorelightUnstore() throws IOException {

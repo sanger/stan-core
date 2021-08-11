@@ -14,16 +14,16 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.newArrayList;
 public class ExtractRequest {
     private List<String> barcodes;
     private String labwareType;
-    private String sasNumber;
+    private String workNumber;
 
     public ExtractRequest() {
         this(null, null, null);
     }
 
-    public ExtractRequest(List<String> barcodes, String labwareType, String sasNumber) {
+    public ExtractRequest(List<String> barcodes, String labwareType, String workNumber) {
         setBarcodes(barcodes);
         this.labwareType = labwareType;
-        this.sasNumber = sasNumber;
+        this.workNumber = workNumber;
     }
 
     public List<String> getBarcodes() {
@@ -42,12 +42,12 @@ public class ExtractRequest {
         this.labwareType = labwareType;
     }
 
-    public String getSasNumber() {
-        return this.sasNumber;
+    public String getWorkNumber() {
+        return this.workNumber;
     }
 
-    public void setSasNumber(String sasNumber) {
-        this.sasNumber = sasNumber;
+    public void setWorkNumber(String workNumber) {
+        this.workNumber = workNumber;
     }
 
     @Override
@@ -57,7 +57,7 @@ public class ExtractRequest {
         ExtractRequest that = (ExtractRequest) o;
         return (this.barcodes.equals(that.barcodes)
                 && Objects.equals(this.labwareType, that.labwareType)
-                && Objects.equals(this.sasNumber, that.sasNumber));
+                && Objects.equals(this.workNumber, that.workNumber));
     }
 
     @Override
@@ -70,7 +70,7 @@ public class ExtractRequest {
         return BasicUtils.describe("ExtractRequest")
                 .add("barcodes", barcodes)
                 .add("labwareType", labwareType)
-                .add("sasNumber", sasNumber)
+                .add("workNumber", workNumber)
                 .reprStringValues()
                 .toString();
     }

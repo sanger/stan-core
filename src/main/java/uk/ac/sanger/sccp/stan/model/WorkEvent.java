@@ -4,19 +4,17 @@ import org.hibernate.annotations.*;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import javax.persistence.Entity;
-import javax.persistence.Table;
 import javax.persistence.*;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
 /**
- * An event in the life cycle of an {@link SasNumber SAS number}
+ * An event in the life cycle of a {@link Work}
  * @author dr6
  */
 @Entity
-@Table(name="sas_event")
 @DynamicInsert
-public class SasEvent {
+public class WorkEvent {
     public enum Type {
         create, pause, resume, complete, fail
     }
@@ -30,8 +28,7 @@ public class SasEvent {
     private Type type;
 
     @ManyToOne
-    @JoinColumn(name="sas_id")
-    private SasNumber sasNumber;
+    private Work work;
 
     @ManyToOne
     private User user;
@@ -42,19 +39,19 @@ public class SasEvent {
     @Generated(GenerationTime.INSERT)
     private LocalDateTime performed;
 
-    public SasEvent() {}
+    public WorkEvent() {}
 
-    public SasEvent(Integer id, SasNumber sasNumber, Type type, User user, Comment comment, LocalDateTime performed) {
+    public WorkEvent(Integer id, Work work, Type type, User user, Comment comment, LocalDateTime performed) {
         this.id = id;
-        this.sasNumber = sasNumber;
+        this.work = work;
         this.type = type;
         this.user = user;
         this.comment = comment;
         this.performed = performed;
     }
 
-    public SasEvent(SasNumber sasNumber, Type type, User user, Comment comment) {
-        this(null, sasNumber, type, user, comment, null);
+    public WorkEvent(Work work, Type type, User user, Comment comment) {
+        this(null, work, type, user, comment, null);
     }
 
     public Integer getId() {
@@ -73,12 +70,12 @@ public class SasEvent {
         this.type = type;
     }
 
-    public SasNumber getSasNumber() {
-        return this.sasNumber;
+    public Work getWork() {
+        return this.work;
     }
 
-    public void setSasNumber(SasNumber sasNumber) {
-        this.sasNumber = sasNumber;
+    public void setWork(Work work) {
+        this.work = work;
     }
 
     public User getUser() {
@@ -109,10 +106,10 @@ public class SasEvent {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        SasEvent that = (SasEvent) o;
+        WorkEvent that = (WorkEvent) o;
         return (Objects.equals(this.id, that.id)
                 && this.type == that.type
-                && Objects.equals(this.sasNumber, that.sasNumber)
+                && Objects.equals(this.work, that.work)
                 && Objects.equals(this.user, that.user)
                 && Objects.equals(this.comment, that.comment)
                 && Objects.equals(this.performed, that.performed));
@@ -120,15 +117,15 @@ public class SasEvent {
 
     @Override
     public int hashCode() {
-        return (id!=null ? id.hashCode() : Objects.hash(type, sasNumber, user, comment, performed));
+        return (id!=null ? id.hashCode() : Objects.hash(type, work, user, comment, performed));
     }
 
     @Override
     public String toString() {
-        return BasicUtils.describe("SasEvent")
+        return BasicUtils.describe("WorkEvent")
                 .add("id", id)
                 .add("type", type)
-                .add("sasNumber", sasNumber)
+                .add("work", work)
                 .add("user", user)
                 .add("comment", comment)
                 .add("performed", performed)

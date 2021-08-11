@@ -2,7 +2,6 @@
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
-
     <changeSet id="1600" author="dr6">
         <createTable tableName="project">
             <column name="id" type="INT" autoIncrement="true">
@@ -44,7 +43,7 @@
     </changeSet>
 
     <changeSet id="1602" author="dr6">
-        <createTable tableName="sas_type">
+        <createTable tableName="work_type">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
             </column>
@@ -64,21 +63,21 @@
     </changeSet>
 
     <changeSet id="1603" author="dr6">
-        <createTable tableName="sas_number">
+        <createTable tableName="work">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
             </column>
-            <column name="sas_number" type="VARCHAR(10)">
+            <column name="work_number" type="VARCHAR(10)">
                 <constraints nullable="false" unique="true"/>
             </column>
-            <column name="sas_type_id" type="INT">
-                <constraints nullable="false" foreignKeyName="fk_sas_number_sas_type" referencedTableName="sas_type" referencedColumnNames="id"/>
+            <column name="work_type_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_work_work_type" referencedTableName="work_type" referencedColumnNames="id"/>
             </column>
             <column name="project_id" type="INT">
-                <constraints nullable="false" foreignKeyName="fk_sas_number_project" referencedTableName="project" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_work_project" referencedTableName="project" referencedColumnNames="id"/>
             </column>
             <column name="cost_code_id" type="INT">
-                <constraints nullable="false" foreignKeyName="fk_sas_number_cost_code" referencedTableName="cost_code" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_work_cost_code" referencedTableName="cost_code" referencedColumnNames="id"/>
             </column>
             <column name="status" type="ENUM('active', 'paused', 'completed', 'failed')">
                 <constraints nullable="false"/>
@@ -90,31 +89,31 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
-        <createIndex tableName="sas_number" indexName="ix_sas_number_status" unique="false">
+        <createIndex tableName="work" indexName="ix_work_status" unique="false">
             <column name="status"/>
         </createIndex>
         <rollback>
-            <dropAllForeignKeyConstraints baseTableName="sas_number"/>
-            <dropTable tableName="sas_number"/>
+            <dropAllForeignKeyConstraints baseTableName="work"/>
+            <dropTable tableName="work"/>
         </rollback>
     </changeSet>
 
     <changeSet id="1604" author="dr6">
-        <createTable tableName="sas_event">
+        <createTable tableName="work_event">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
             </column>
             <column name="type" type="ENUM('create', 'pause', 'resume', 'complete', 'fail')">
                 <constraints nullable="false"/>
             </column>
-            <column name="sas_id" type="INT">
-                <constraints nullable="false" foreignKeyName="fk_sas_event_sas" referencedTableName="sas_number" referencedColumnNames="id"/>
+            <column name="work_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_work_event_work" referencedTableName="work" referencedColumnNames="id"/>
             </column>
             <column name="user_id" type="INT">
-                <constraints nullable="false" foreignKeyName="fk_sas_event_user" referencedTableName="user" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_work_event_user" referencedTableName="user" referencedColumnNames="id"/>
             </column>
             <column name="comment_id" type="INT">
-                <constraints nullable="true" foreignKeyName="fk_sas_event_comment" referencedTableName="comment" referencedColumnNames="id"/>
+                <constraints nullable="true" foreignKeyName="fk_work_event_comment" referencedTableName="comment" referencedColumnNames="id"/>
             </column>
             <column name="performed" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
@@ -129,48 +128,48 @@
     </changeSet>
 
     <changeSet id="1605" author="dr6">
-        <createTable tableName="sas_op">
-            <column name="sas_id" type="INT">
-                <constraints nullable="false" foreignKeyName="fk_sas_op_sas" referencedTableName="sas_number" referencedColumnNames="id"/>
+        <createTable tableName="work_op">
+            <column name="work_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_work_op_work" referencedTableName="work" referencedColumnNames="id"/>
             </column>
             <column name="operation_id" type="INT">
-                <constraints nullable="false" foreignKeyName="fk_sas_op_operation" referencedTableName="operation" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_work_op_operation" referencedTableName="operation" referencedColumnNames="id"/>
             </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
             </column>
         </createTable>
-        <addPrimaryKey tableName="sas_op" columnNames="sas_id,operation_id"/>
+        <addPrimaryKey tableName="work_op" columnNames="work_id,operation_id"/>
         <rollback>
-            <dropAllForeignKeyConstraints baseTableName="sas_op"/>
-            <dropTable tableName="sas_op"/>
+            <dropAllForeignKeyConstraints baseTableName="work_op"/>
+            <dropTable tableName="work_op"/>
         </rollback>
     </changeSet>
 
     <changeSet id="1606" author="dr6">
-        <createTable tableName="sas_sample">
-            <column name="sas_id" type="INT">
-                <constraints nullable="false" foreignKeyName="fk_sas_sample_sas" referencedTableName="sas_number" referencedColumnNames="id"/>
+        <createTable tableName="work_sample">
+            <column name="work_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_work_sample_work" referencedTableName="work" referencedColumnNames="id"/>
             </column>
             <column name="sample_id" type="INT">
-                <constraints nullable="false" foreignKeyName="fk_sas_sample_sample" referencedTableName="sample" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_work_sample_sample" referencedTableName="sample" referencedColumnNames="id"/>
             </column>
             <column name="slot_id" type="INT">
-                <constraints nullable="false" foreignKeyName="fk_sas_sample_slot" referencedTableName="slot" referencedColumnNames="id"/>
+                <constraints nullable="false" foreignKeyName="fk_work_sample_slot" referencedTableName="slot" referencedColumnNames="id"/>
             </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
             </column>
         </createTable>
-        <addPrimaryKey tableName="sas_sample" columnNames="sas_id,sample_id,slot_id"/>
+        <addPrimaryKey tableName="work_sample" columnNames="work_id,sample_id,slot_id"/>
         <rollback>
-            <dropAllForeignKeyConstraints baseTableName="sas_sample"/>
-            <dropTable tableName="sas_sample"/>
+            <dropAllForeignKeyConstraints baseTableName="work_sample"/>
+            <dropTable tableName="work_sample"/>
         </rollback>
     </changeSet>
 
     <changeSet id="1607" author="dr6">
-        <createTable tableName="sas_sequence">
+        <createTable tableName="work_sequence">
             <column name="prefix" type="CHAR(3)" autoIncrement="false">
                 <constraints nullable="false" primaryKey="true"/>
             </column>
@@ -182,11 +181,11 @@
 
 
     <changeSet id="1650" author="dr6">
-        <insert tableName="sas_sequence">
-            <column name="prefix" value="SAS"/>
-            <column name="counter" value="1000"/>
+        <insert tableName="work_sequence">
+            <column name="prefix" value="SGP"/>
+            <column name="counter" value="0"/>
         </insert>
-        <insert tableName="sas_sequence">
+        <insert tableName="work_sequence">
             <column name="prefix" value="R&amp;D"/>
             <column name="counter" value="10"/>
         </insert>
@@ -194,19 +193,19 @@
 
     <changeSet id="1651" author="dr6">
         <insert tableName="comment">
-            <column name="category" value="SAS status"/>
+            <column name="category" value="Work status"/>
             <column name="text" value="RIN number too low"/>
         </insert>
         <insert tableName="comment">
-            <column name="category" value="SAS status"/>
+            <column name="category" value="Work status"/>
             <column name="text" value="Poor quality tissue"/>
         </insert>
         <insert tableName="comment">
-            <column name="category" value="SAS status"/>
+            <column name="category" value="Work status"/>
             <column name="text" value="Waiting for reagents"/>
         </insert>
         <insert tableName="comment">
-            <column name="category" value="SAS status"/>
+            <column name="category" value="Work status"/>
             <column name="text" value="Waiting for customer"/>
         </insert>
     </changeSet>
@@ -224,10 +223,10 @@
     </changeSet>
 
     <changeSet id="1654" author="dr6">
-        <insert tableName="sas_type">
+        <insert tableName="work_type">
             <column name="name" value="RNAscope"/>
         </insert>
-        <insert tableName="sas_type">
+        <insert tableName="work_type">
             <column name="name" value="Histology"/>
         </insert>
     </changeSet>

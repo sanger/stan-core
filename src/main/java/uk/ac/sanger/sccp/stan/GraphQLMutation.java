@@ -24,8 +24,8 @@ import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmSectionService;
 import uk.ac.sanger.sccp.stan.service.operation.plan.PlanService;
 import uk.ac.sanger.sccp.stan.service.register.RegisterService;
 import uk.ac.sanger.sccp.stan.service.register.SectionRegisterService;
-import uk.ac.sanger.sccp.stan.service.sas.SasService;
-import uk.ac.sanger.sccp.stan.service.sas.SasTypeService;
+import uk.ac.sanger.sccp.stan.service.work.WorkService;
+import uk.ac.sanger.sccp.stan.service.work.WorkTypeService;
 
 import java.util.*;
 import java.util.function.BiFunction;
@@ -60,8 +60,8 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final SpeciesAdminService speciesAdminService;
     final ProjectService projectService;
     final CostCodeService costCodeService;
-    final SasTypeService sasTypeService;
-    final SasService sasService;
+    final WorkTypeService workTypeService;
+    final WorkService workService;
     final UserAdminService userAdminService;
 
     @Autowired
@@ -75,8 +75,8 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            CommentAdminService commentAdminService, DestructionReasonAdminService destructionReasonAdminService,
                            HmdmcAdminService hmdmcAdminService, ReleaseDestinationAdminService releaseDestinationAdminService,
                            ReleaseRecipientAdminService releaseRecipientAdminService, SpeciesAdminService speciesAdminService,
-                           ProjectService projectService, CostCodeService costCodeService, SasTypeService sasTypeService,
-                           SasService sasService,
+                           ProjectService projectService, CostCodeService costCodeService, WorkTypeService workTypeService,
+                           WorkService workService,
                            UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
@@ -99,8 +99,8 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.speciesAdminService = speciesAdminService;
         this.projectService = projectService;
         this.costCodeService = costCodeService;
-        this.sasTypeService = sasTypeService;
-        this.sasService = sasService;
+        this.workTypeService = workTypeService;
+        this.workService = workService;
         this.userAdminService = userAdminService;
     }
 
@@ -328,32 +328,32 @@ public class GraphQLMutation extends BaseGraphQLResource {
         return adminSetEnabled(costCodeService::setEnabled, "SetCostCodeEnabled", "code");
     }
 
-    public DataFetcher<SasType> addSasType() {
-        return adminAdd(sasTypeService::addNew, "AddSasType", "name");
+    public DataFetcher<WorkType> addWorkType() {
+        return adminAdd(workTypeService::addNew, "AddWorkType", "name");
     }
 
-    public DataFetcher<SasType> setSasTypeEnabled() {
-        return adminSetEnabled(sasTypeService::setEnabled, "SetSasTypeEnabled", "name");
+    public DataFetcher<WorkType> setWorkTypeEnabled() {
+        return adminSetEnabled(workTypeService::setEnabled, "SetWorkTypeEnabled", "name");
     }
 
-    public DataFetcher<SasNumber> createSasNumber() {
+    public DataFetcher<Work> createWork() {
         return dfe -> {
             User user = checkUser(dfe, User.Role.normal);
             String projectName = dfe.getArgument("project");
             String code = dfe.getArgument("costCode");
             String prefix = dfe.getArgument("prefix");
-            String sasTypeName = dfe.getArgument("sasType");
-            return sasService.createSasNumber(user, prefix, sasTypeName, projectName, code);
+            String workTypeName = dfe.getArgument("workType");
+            return workService.createWork(user, prefix, workTypeName, projectName, code);
         };
     }
 
-    public DataFetcher<SasNumber> updateSasNumberStatus() {
+    public DataFetcher<Work> updateWorkStatus() {
         return dfe -> {
             User user = checkUser(dfe, User.Role.normal);
-            String sasString = dfe.getArgument("sasNumber");
-            SasNumber.Status status = arg(dfe, "status", SasNumber.Status.class);
+            String workNumber = dfe.getArgument("workNumber");
+            Work.Status status = arg(dfe, "status", Work.Status.class);
             Integer commentId = dfe.getArgument("commentId");
-            return sasService.updateStatus(user, sasString, status, commentId);
+            return workService.updateStatus(user, workNumber, status, commentId);
         };
     }
 

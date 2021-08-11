@@ -8,8 +8,8 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.ExtractRequest;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.service.*;
-import uk.ac.sanger.sccp.stan.service.sas.SasService;
 import uk.ac.sanger.sccp.stan.service.store.StoreService;
+import uk.ac.sanger.sccp.stan.service.work.WorkService;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -27,7 +27,7 @@ public class ExtractServiceImp implements ExtractService {
     private final LabwareService labwareService;
     private final OperationService opService;
     private final StoreService storeService;
-    private final SasService sasService;
+    private final WorkService workService;
 
     private final LabwareRepo labwareRepo;
     private final LabwareTypeRepo lwTypeRepo;
@@ -38,7 +38,7 @@ public class ExtractServiceImp implements ExtractService {
     @Autowired
     public ExtractServiceImp(Transactor transactor, LabwareValidatorFactory labwareValidatorFactory,
                              LabwareService labwareService, OperationService opService,
-                             StoreService storeService, SasService sasService,
+                             StoreService storeService, WorkService workService,
                              LabwareRepo labwareRepo, LabwareTypeRepo lwTypeRepo, OperationTypeRepo opTypeRepo,
                              SampleRepo sampleRepo, SlotRepo slotRepo) {
         this.transactor = transactor;
@@ -46,7 +46,7 @@ public class ExtractServiceImp implements ExtractService {
         this.labwareService = labwareService;
         this.opService = opService;
         this.storeService = storeService;
-        this.sasService = sasService;
+        this.workService = workService;
         this.labwareRepo = labwareRepo;
         this.lwTypeRepo = lwTypeRepo;
         this.opTypeRepo = opTypeRepo;
@@ -82,7 +82,7 @@ public class ExtractServiceImp implements ExtractService {
         }
         LabwareType labwareType = lwTypeRepo.getByName(request.getLabwareType());
         OperationType opType = opTypeRepo.getByName("Extract");
-        SasNumber sas = (request.getSasNumber()==null ? null : sasService.getUsableSas(request.getSasNumber()));
+        Work work = (request.getWorkNumber()==null ? null : workService.getUsableWork(request.getWorkNumber()));
         BioState bioState = opType.getNewBioState();
         List<Labware> sources = loadAndValidateLabware(request.getBarcodes());
         if (opType.discardSource()) {
@@ -91,8 +91,8 @@ public class ExtractServiceImp implements ExtractService {
         Map<Labware, Labware> labwareMap = createNewLabware(labwareType, sources);
         createSamples(labwareMap, bioState);
         List<Operation> ops = createOperations(user, opType, labwareMap);
-        if (sas!=null) {
-            sasService.link(sas, ops);
+        if (work!=null) {
+            workService.link(work, ops);
         }
         return new OperationResult(ops, labwareMap.values());
     }

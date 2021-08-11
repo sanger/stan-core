@@ -33,7 +33,7 @@ mutation {
                 ]
             }
         ]
-        sasNumber: "SAS4000"
+        workNumber: "SGP4000"
     }) {
         labware {
             barcode

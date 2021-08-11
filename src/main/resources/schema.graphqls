@@ -257,7 +257,7 @@ input ConfirmSectionLabware {
 
 input ConfirmSectionRequest {
     labware: [ConfirmSectionLabware!]!
-    sasNumber: String
+    workNumber: String
 }
 
 input SlotCopyContent {
@@ -270,7 +270,7 @@ input SlotCopyRequest {
     labwareType: String!
     operationType: String!
     contents: [SlotCopyContent!]!
-    sasNumber: String
+    workNumber: String
 }
 
 type Action {
@@ -340,7 +340,7 @@ input ReleaseRequest {
 input ExtractRequest {
     barcodes: [String!]!
     labwareType: String!
-    sasNumber: String
+    workNumber: String
 }
 
 type OperationResult {
@@ -487,24 +487,24 @@ type CostCode {
     enabled: Boolean!
 }
 
-type SasType {
+type WorkType {
     name: String!
     enabled: Boolean!
 }
 
-enum SasStatus {
+enum WorkStatus {
     active
     paused
     completed
     failed
 }
 
-type SasNumber {
-    sasType: SasType!
+type Work {
+    workType: WorkType!
     project: Project!
     costCode: CostCode!
-    sasNumber: String!
-    status: SasStatus!
+    workNumber: String!
+    status: WorkStatus!
 }
 
 type Query {
@@ -524,9 +524,9 @@ type Query {
     destructionReasons(includeDisabled: Boolean): [DestructionReason!]!
     projects(includeDisabled: Boolean): [Project!]!
     costCodes(includeDisabled: Boolean): [CostCode!]!
-    sasTypes(includeDisabled: Boolean): [SasType!]!
-    sasNumbers(status: [SasStatus!]): [SasNumber!]!
-    sasNumber(sasNumber: String!): SasNumber!
+    workTypes(includeDisabled: Boolean): [WorkType!]!
+    works(status: [WorkStatus!]): [Work!]!
+    work(workNumber: String!): Work!
     users(includeDisabled: Boolean): [User!]!
     find(request: FindRequest!): FindResult!
     planData(barcode: String!): PlanData!
@@ -569,10 +569,10 @@ type Mutation {
     setProjectEnabled(name: String!, enabled: Boolean!): Project!
     addCostCode(code: String!): CostCode!
     setCostCodeEnabled(code: String!, enabled: Boolean!): CostCode!
-    addSasType(name: String!): SasType!
-    setSasTypeEnabled(name: String!, enabled: Boolean!): SasType!
-    createSasNumber(prefix: String!, sasType: String!, project: String!, costCode: String!): SasNumber!
-    updateSasNumberStatus(sasNumber: String!, status: SasStatus!, commentId: Int): SasNumber!
+    addWorkType(name: String!): WorkType!
+    setWorkTypeEnabled(name: String!, enabled: Boolean!): WorkType!
+    createWork(prefix: String!, workType: String!, project: String!, costCode: String!): Work!
+    updateWorkStatus(workNumber: String!, status: WorkStatus!, commentId: Int): Work!
 
     addUser(username: String!): User!
     setUserRole(username: String!, role: UserRole!): User!

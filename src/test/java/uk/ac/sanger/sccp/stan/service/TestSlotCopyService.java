@@ -14,8 +14,8 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.request.SlotCopyRequest;
 import uk.ac.sanger.sccp.stan.request.SlotCopyRequest.SlotCopyContent;
-import uk.ac.sanger.sccp.stan.service.sas.SasService;
 import uk.ac.sanger.sccp.stan.service.store.StoreService;
+import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import javax.persistence.EntityManager;
@@ -53,7 +53,7 @@ public class TestSlotCopyService {
     @Mock
     StoreService storeService;
     @Mock
-    SasService mockSasService;
+    WorkService mockWorkService;
     @Mock
     LabwareValidatorFactory mockLabwareValidatorFactory;
     @Mock
@@ -82,7 +82,7 @@ public class TestSlotCopyService {
         user = EntityFactory.getUser();
 
         service = spy(new SlotCopyServiceImp(mockOpTypeRepo, mockLwTypeRepo, mockLwRepo, mockSampleRepo, mockSlotRepo,
-                mockLwService, mockOpService, storeService, mockSasService, mockLabwareValidatorFactory, mockEntityManager, transactor));
+                mockLwService, mockOpService, storeService, mockWorkService, mockLabwareValidatorFactory, mockEntityManager, transactor));
     }
 
     private List<Sample> makeSourceSamples(BioState bioState) {
@@ -140,9 +140,9 @@ public class TestSlotCopyService {
     @ValueSource(booleans={false, true})
     public void testPerformInsideTransaction(boolean valid) {
         List<SlotCopyContent> contents = List.of(new SlotCopyContent("SOURCE1", new Address(1, 2), new Address(3, 4)));
-        SasNumber sas = new SasNumber(50, "SAS5000", null, null, null, SasNumber.Status.active);
-        when(mockSasService.validateUsableSas(any(), any())).thenReturn(sas);
-        SlotCopyRequest request = new SlotCopyRequest(opType.getName(), plateType.getName(), contents, sas.getSasNumber());
+        Work work = new Work(50, "SGP5000", null, null, null, Work.Status.active);
+        when(mockWorkService.validateUsableWork(any(), any())).thenReturn(work);
+        SlotCopyRequest request = new SlotCopyRequest(opType.getName(), plateType.getName(), contents, work.getWorkNumber());
         when(mockOpTypeRepo.findByName(any())).thenReturn(Optional.of(opType));
         when(mockLwTypeRepo.findByName(any())).thenReturn(Optional.of(plateType));
         UCMap<Labware> lwMap = makeLabwareMap();
@@ -162,7 +162,7 @@ public class TestSlotCopyService {
             //noinspection unchecked
             assertThat((Collection<Object>) ex.getProblems()).containsOnly("Bananas");
         }
-        verify(mockSasService).validateUsableSas(notNull(), eq(sas.getSasNumber()));
+        verify(mockWorkService).validateUsableWork(notNull(), eq(work.getWorkNumber()));
         verify(mockOpTypeRepo).findByName(request.getOperationType());
         verify(mockLwTypeRepo).findByName(request.getLabwareType());
         verify(service).loadLabware(notNull(), same(contents));
@@ -170,7 +170,7 @@ public class TestSlotCopyService {
         verify(service).validateContents(notNull(), same(plateType), same(lwMap), same(contents));
 
         if (valid) {
-            verify(service).execute(user, contents, opType, plateType, lwMap, sas);
+            verify(service).execute(user, contents, opType, plateType, lwMap, work);
         } else {
             verify(service, never()).execute(any(), any(), any(), any(), any(), any());
         }
@@ -335,18 +335,18 @@ public class TestSlotCopyService {
         Operation op = new Operation(100, opType, null, null, null);
         doReturn(op).when(service).createOperation(any(), any(), any(), any(), any(), any());
         final Address A1 = new Address(1,1);
-        SasNumber sas = new SasNumber(14, "SAS5000", null, null, null, SasNumber.Status.active);
+        Work work = new Work(14, "SGP5000", null, null, null, Work.Status.active);
 
         List<SlotCopyContent> contents = List.of(new SlotCopyContent("STAN-001", A1, A1));
 
-        OperationResult result = service.execute(user, contents, opType, plateType, lwMap, sas);
+        OperationResult result = service.execute(user, contents, opType, plateType, lwMap, work);
 
         verify(mockLwService).create(plateType);
         verify(service).createSamples(contents, lwMap, cdna);
         verify(service).fillLabware(emptyLw, contents, lwMap, sampleMap);
         verify(service, discardSources ? times(1) : never()).discardSources(lwMap.values());
         verify(service).createOperation(user, contents, opType, lwMap, filledLabware, sampleMap);
-        verify(mockSasService).link(sas, List.of(op));
+        verify(mockWorkService).link(work, List.of(op));
 
         assertEquals(result.getLabware(), List.of(filledLabware));
         assertEquals(result.getOperations(), List.of(op));

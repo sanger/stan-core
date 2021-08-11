@@ -1,4 +1,4 @@
-package uk.ac.sanger.sccp.stan.service.sas;
+package uk.ac.sanger.sccp.stan.service.work;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -7,9 +7,9 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.model.SasNumber.Status;
+import uk.ac.sanger.sccp.stan.model.Work.Status;
 import uk.ac.sanger.sccp.stan.repo.CommentRepo;
-import uk.ac.sanger.sccp.stan.repo.SasEventRepo;
+import uk.ac.sanger.sccp.stan.repo.WorkEventRepo;
 
 import java.util.Arrays;
 import java.util.stream.Stream;
@@ -20,39 +20,39 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 /**
- * Tests {@link SasEventServiceImp}
+ * Tests {@link WorkEventServiceImp}
  * @author dr6
  */
-public class TestSasEventService {
-    private SasEventServiceImp eventService;
+public class TestWorkEventService {
+    private WorkEventServiceImp eventService;
 
-    private SasEventRepo mockSasEventRepo;
+    private WorkEventRepo mockWorkEventRepo;
     private CommentRepo mockCommentRepo;
 
     @BeforeEach
     void setup() {
-        mockSasEventRepo = mock(SasEventRepo.class);
+        mockWorkEventRepo = mock(WorkEventRepo.class);
         mockCommentRepo = mock(CommentRepo.class);
 
-        eventService = spy(new SasEventServiceImp(mockSasEventRepo, mockCommentRepo));
+        eventService = spy(new WorkEventServiceImp(mockWorkEventRepo, mockCommentRepo));
     }
 
     @Test
     public void testRecordEvent() {
-        when(mockSasEventRepo.save(any())).then(Matchers.returnArgument());
+        when(mockWorkEventRepo.save(any())).then(Matchers.returnArgument());
         User user = new User(1, "user1", User.Role.normal);
         Comment comment = new Comment(30, "Hi", "Bananas");
-        SasEvent.Type type = SasEvent.Type.pause;
-        SasNumber sas = new SasNumber(20, "SAS4000", null, null, null, null);
+        WorkEvent.Type type = WorkEvent.Type.pause;
+        Work work = new Work(20, "SGP4000", null, null, null, null);
 
-        SasEvent event = eventService.recordEvent(user, sas, type, comment);
-        verify(mockSasEventRepo).save(event);
-        assertEquals(new SasEvent(sas, type, user, comment), event);
+        WorkEvent event = eventService.recordEvent(user, work, type, comment);
+        verify(mockWorkEventRepo).save(event);
+        assertEquals(new WorkEvent(work, type, user, comment), event);
     }
 
     @ParameterizedTest
     @MethodSource("findEventTypeArgs")
-    public void testFindEventType(Status newStatus, SasEvent.Type expectedType) {
+    public void testFindEventType(Status newStatus, WorkEvent.Type expectedType) {
         if (expectedType==null) {
             assertThrows(IllegalArgumentException.class, () -> eventService.findEventType(newStatus));
         } else {
@@ -62,10 +62,10 @@ public class TestSasEventService {
 
     static Stream<Arguments> findEventTypeArgs() {
         return Arrays.stream(new Object[][] {
-                { Status.active, SasEvent.Type.resume },
-                { Status.completed, SasEvent.Type.complete },
-                { Status.failed, SasEvent.Type.fail },
-                { Status.paused, SasEvent.Type.pause },
+                { Status.active, WorkEvent.Type.resume },
+                { Status.completed, WorkEvent.Type.complete },
+                { Status.failed, WorkEvent.Type.fail },
+                { Status.paused, WorkEvent.Type.pause },
                 { null, null },
         }).map(Arguments::of);
     }
@@ -74,7 +74,7 @@ public class TestSasEventService {
     @MethodSource("recordStatusChangeArgs")
     public void testRecordStatusChange(Status oldStatus, Status newStatus, Integer commentId, String expectedErrorMessage) {
         User user = new User(1, "user1", User.Role.normal);
-        SasNumber sas = new SasNumber(20, "SAS4000", null, null, null, oldStatus);
+        Work work = new Work(20, "SGP4000", null, null, null, oldStatus);
 
         Comment comment = (commentId==null ? null : new Comment(commentId, "Hello", "Bananas"));
         if (comment!=null) {
@@ -82,13 +82,13 @@ public class TestSasEventService {
         }
 
         if (expectedErrorMessage==null) {
-            SasEvent event = new SasEvent(sas, SasEvent.Type.resume, user, null);
+            WorkEvent event = new WorkEvent(work, WorkEvent.Type.resume, user, null);
             doReturn(event).when(eventService).recordEvent(any(), any(), any(), any());
-            assertEquals(event, eventService.recordStatusChange(user, sas, newStatus, commentId));
-            SasEvent.Type type = eventService.findEventType(newStatus);
-            verify(eventService).recordEvent(user, sas, type, comment);
+            assertEquals(event, eventService.recordStatusChange(user, work, newStatus, commentId));
+            WorkEvent.Type type = eventService.findEventType(newStatus);
+            verify(eventService).recordEvent(user, work, type, comment);
         } else {
-            assertThat(assertThrows(IllegalArgumentException.class, () -> eventService.recordStatusChange(user, sas, newStatus, commentId)))
+            assertThat(assertThrows(IllegalArgumentException.class, () -> eventService.recordStatusChange(user, work, newStatus, commentId)))
                     .hasMessage(expectedErrorMessage);
             verify(eventService, never()).recordEvent(any(), any(), any(), any());
         }
@@ -96,13 +96,13 @@ public class TestSasEventService {
 
     static Stream<Arguments> recordStatusChangeArgs() {
         return Arrays.stream(new Object[][]{
-                {Status.paused, Status.paused, 10, "SAS number SAS4000 status is already paused."},
-                {Status.completed, Status.active, null, "Cannot alter status of completed SAS number: SAS4000"},
-                {Status.failed, Status.completed, null, "Cannot alter status of failed SAS number: SAS4000"},
-                {Status.active, Status.paused, null, "A reason is required to pause an SAS number."},
-                {Status.paused, Status.failed, null, "A reason is required to fail an SAS number."},
-                {Status.paused, Status.active, 10, "A reason is not required to resume an SAS number."},
-                {Status.active, Status.completed, 10, "A reason is not required to complete an SAS number."},
+                {Status.paused, Status.paused, 10, "Work SGP4000 status is already paused."},
+                {Status.completed, Status.active, null, "Cannot alter status of completed work: SGP4000"},
+                {Status.failed, Status.completed, null, "Cannot alter status of failed work: SGP4000"},
+                {Status.active, Status.paused, null, "A reason is required to pause work."},
+                {Status.paused, Status.failed, null, "A reason is required to fail work."},
+                {Status.paused, Status.active, 10, "A reason is not required to resume work."},
+                {Status.active, Status.completed, 10, "A reason is not required to complete work."},
                 {Status.active, Status.paused, 10, null},
                 {Status.active, Status.completed, null, null},
                 {Status.active, Status.failed, 10, null},

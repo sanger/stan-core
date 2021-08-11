@@ -7,11 +7,11 @@ import javax.persistence.*;
 import java.util.*;
 
 /**
- * An SAS number identifies a piece of requested work to be performed for some particular project and cost code
+ * A work (identified by a work number) indicates a piece of requested work to be performed for some particular project and cost code
  * @author dr6
  */
 @Entity
-public class SasNumber {
+public class Work {
     // region inner classes
     public enum Status {
         active, paused, completed, failed
@@ -69,10 +69,10 @@ public class SasNumber {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    private String sasNumber;
+    private String workNumber;
 
     @ManyToOne
-    private SasType sasType;
+    private WorkType workType;
 
     @ManyToOne
     private Project project;
@@ -85,20 +85,20 @@ public class SasNumber {
     private Status status;
 
     @ElementCollection
-    @CollectionTable(name="sas_op", joinColumns=@JoinColumn(name="sas_id"))
+    @CollectionTable(name="work_op", joinColumns=@JoinColumn(name="work_id"))
     @Column(name="operation_id")
     private List<Integer> operationIds;
 
     @ElementCollection
-    @CollectionTable(name="sas_sample", joinColumns=@JoinColumn(name="sas_id"))
+    @CollectionTable(name="work_sample", joinColumns=@JoinColumn(name="work_id"))
     private List<SampleSlotId> sampleSlotIds;
 
-    public SasNumber() {}
+    public Work() {}
 
-    public SasNumber(Integer id, String sasNumber, SasType sasType, Project project, CostCode costCode, Status status) {
+    public Work(Integer id, String workNumber, WorkType workType, Project project, CostCode costCode, Status status) {
         this.id = id;
-        this.sasNumber = sasNumber;
-        this.sasType = sasType;
+        this.workNumber = workNumber;
+        this.workType = workType;
         this.project = project;
         this.costCode = costCode;
         this.status = status;
@@ -112,20 +112,20 @@ public class SasNumber {
         this.id = id;
     }
 
-    public String getSasNumber() {
-        return this.sasNumber;
+    public String getWorkNumber() {
+        return this.workNumber;
     }
 
-    public void setSasNumber(String sasNumber) {
-        this.sasNumber = sasNumber;
+    public void setWorkNumber(String workNumber) {
+        this.workNumber = workNumber;
     }
 
-    public SasType getSasType() {
-        return this.sasType;
+    public WorkType getWorkType() {
+        return this.workType;
     }
 
-    public void setSasType(SasType sasType) {
-        this.sasType = sasType;
+    public void setWorkType(WorkType workType) {
+        this.workType = workType;
     }
 
     public Project getProject() {
@@ -187,10 +187,10 @@ public class SasNumber {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        SasNumber that = (SasNumber) o;
+        Work that = (Work) o;
         return (Objects.equals(this.id, that.id)
-                && Objects.equals(this.sasType, that.sasType)
-                && Objects.equals(this.sasNumber, that.sasNumber)
+                && Objects.equals(this.workType, that.workType)
+                && Objects.equals(this.workNumber, that.workNumber)
                 && Objects.equals(this.project, that.project)
                 && Objects.equals(this.costCode, that.costCode)
                 && this.status == that.status);
@@ -198,11 +198,11 @@ public class SasNumber {
 
     @Override
     public int hashCode() {
-        return (id!=null ? id.hashCode() : sasNumber != null ? sasNumber.hashCode() : 0);
+        return (id!=null ? id.hashCode() : workNumber != null ? workNumber.hashCode() : 0);
     }
 
     @Override
     public String toString() {
-        return this.sasNumber;
+        return this.workNumber;
     }
 }

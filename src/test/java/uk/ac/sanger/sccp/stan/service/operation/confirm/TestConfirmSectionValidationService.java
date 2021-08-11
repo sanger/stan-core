@@ -12,7 +12,7 @@ import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
 import uk.ac.sanger.sccp.stan.repo.PlanOperationRepo;
 import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSectionLabware.AddressCommentId;
-import uk.ac.sanger.sccp.stan.service.sas.SasService;
+import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
@@ -37,14 +37,14 @@ public class TestConfirmSectionValidationService {
     @Mock
     PlanOperationRepo mockPlanRepo;
     @Mock
-    SasService mockSasService;
+    WorkService mockWorkService;
 
     OperationType opType;
 
     @BeforeEach
     void setup() {
         MockitoAnnotations.initMocks(this);
-        service = spy(new ConfirmSectionValidationServiceImp(mockLwRepo, mockPlanRepo, mockSasService));
+        service = spy(new ConfirmSectionValidationServiceImp(mockLwRepo, mockPlanRepo, mockWorkService));
         opType = new OperationType(2, "Section", OperationTypeFlag.SOURCE_IS_BLOCK.bit(), EntityFactory.getBioState());
     }
 
@@ -63,7 +63,7 @@ public class TestConfirmSectionValidationService {
     public void testValidate(boolean valid) {
         Labware lw = EntityFactory.getTube();
         ConfirmSectionRequest request = new ConfirmSectionRequest(List.of(new ConfirmSectionLabware(lw.getBarcode())),
-                "SAS9000");
+                "SGP9000");
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lw);
 
         PlanOperation plan = EntityFactory.makePlanForLabware(opType, List.of(), List.of());
@@ -100,7 +100,7 @@ public class TestConfirmSectionValidationService {
             assertThat(validation.getProblems()).containsExactly("lw problem", "plan problem", "op problem");
         }
 
-        verify(mockSasService).validateUsableSas(any(), eq(request.getSasNumber()));
+        verify(mockWorkService).validateUsableWork(any(), eq(request.getWorkNumber()));
         verify(service).validateLabware(any(), eq(request.getLabware()));
         verify(service).lookUpPlans(any(), eq(lwMap.values()));
         verify(service).validateOperations(any(), eq(request.getLabware()), eq(lwMap), eq(planMap));

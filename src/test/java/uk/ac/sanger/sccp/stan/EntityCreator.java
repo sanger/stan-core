@@ -67,9 +67,9 @@ public class EntityCreator {
     @Autowired
     private CostCodeRepo costCodeRepo;
     @Autowired
-    private SasTypeRepo sasTypeRepo;
+    private WorkTypeRepo workTypeRepo;
     @Autowired
-    private SasNumberRepo sasRepo;
+    private WorkRepo workRepo;
 
     @Autowired
     private EntityManager entityManager;
@@ -185,22 +185,22 @@ public class EntityCreator {
         return costCodeRepo.save(new CostCode(null, code));
     }
 
-    public SasType createSasType(String name) {
-        return sasTypeRepo.save(new SasType(null, name));
+    public WorkType createWorkType(String name) {
+        return workTypeRepo.save(new WorkType(null, name));
     }
 
-    public SasNumber createSasNumber(SasType sasType, Project project, CostCode cc) {
+    public Work createWork(WorkType workType, Project project, CostCode cc) {
         if (project==null) {
             project = createProject("Stargate");
         }
         if (cc==null) {
             cc = createCostCode("S400");
         }
-        if (sasType==null) {
-            sasType = createSasType("Drywalling");
+        if (workType ==null) {
+            workType = createWorkType("Drywalling");
         }
-        String sasString = sasRepo.createNumber("SAS");
-        return sasRepo.save(new SasNumber(null, sasString, sasType, project, cc, SasNumber.Status.active));
+        String workNumber = workRepo.createNumber("SGP");
+        return workRepo.save(new Work(null, workNumber, workType, project, cc, Work.Status.active));
     }
 
     public Printer createPrinter(String name, LabelType labelType) {

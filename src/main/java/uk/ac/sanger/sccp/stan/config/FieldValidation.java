@@ -121,12 +121,12 @@ public class FieldValidation {
     }
 
     @Bean
-    public Validator<String> sasTypeNameValidator() {
+    public Validator<String> workTypeNameValidator() {
         Set<CharacterType> charTypes = EnumSet.of(
                 CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN, CharacterType.SPACE,
                 CharacterType.SLASH, CharacterType.PAREN, CharacterType.FULL_STOP, CharacterType.APOSTROPHE
         );
-        return new StringValidator("SAS type name", 2, 64, charTypes);
+        return new StringValidator("Work type name", 2, 64, charTypes);
     }
 
     @Bean

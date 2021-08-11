@@ -15,7 +15,7 @@ import uk.ac.sanger.sccp.stan.service.OperationService;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
 import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmSectionServiceImp.ConfirmLabwareResult;
 import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmSectionServiceImp.PlanActionKey;
-import uk.ac.sanger.sccp.stan.service.sas.SasService;
+import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.UCMap;
 
@@ -36,7 +36,7 @@ import static org.mockito.Mockito.*;
 public class TestConfirmSectionService {
     private ConfirmSectionValidationService mockValidationService;
     private OperationService mockOpService;
-    private SasService mockSasService;
+    private WorkService mockWorkService;
     private LabwareRepo mockLwRepo;
     private SlotRepo mockSlotRepo;
     private MeasurementRepo mockMeasurementRepo;
@@ -51,7 +51,7 @@ public class TestConfirmSectionService {
     void setup() {
         mockValidationService = mock(ConfirmSectionValidationService.class);
         mockOpService = mock(OperationService.class);
-        mockSasService = mock(SasService.class);
+        mockWorkService = mock(WorkService.class);
         mockLwRepo = mock(LabwareRepo.class);
         mockSlotRepo = mock(SlotRepo.class);
         mockMeasurementRepo = mock(MeasurementRepo.class);
@@ -59,7 +59,7 @@ public class TestConfirmSectionService {
         mockCommentRepo = mock(CommentRepo.class);
         mockOpCommentRepo = mock(OperationCommentRepo.class);
         mockEntityManager = mock(EntityManager.class);
-        service = spy(new ConfirmSectionServiceImp(mockValidationService, mockOpService, mockSasService,
+        service = spy(new ConfirmSectionServiceImp(mockValidationService, mockOpService, mockWorkService,
                 mockLwRepo, mockSlotRepo, mockMeasurementRepo, mockSampleRepo, mockCommentRepo, mockOpCommentRepo,
                 mockEntityManager));
     }
@@ -147,7 +147,7 @@ public class TestConfirmSectionService {
         doNothing().when(service).recordComments(any(), any(), any());
         doNothing().when(service).updateSourceBlocks(any());
 
-        ConfirmSectionRequest request = new ConfirmSectionRequest(List.of(csl1, csl2), "SAS9000");
+        ConfirmSectionRequest request = new ConfirmSectionRequest(List.of(csl1, csl2), "SGP9000");
         ConfirmSectionValidation validation = new ConfirmSectionValidation(UCMap.from(Labware::getBarcode, lw1, lw2),
                 Map.of(lw1.getId(), plan1, lw2.getId(), plan2));
 
@@ -159,7 +159,7 @@ public class TestConfirmSectionService {
         verify(service).confirmLabware(user, csl2, lw2, plan2);
         verify(service).recordComments(csl1, op1.getId(), lw1B);
         verify(service).recordComments(csl2, null, lw2B);
-        verify(mockSasService).link(request.getSasNumber(), result.getOperations());
+        verify(mockWorkService).link(request.getWorkNumber(), result.getOperations());
         verify(service).updateSourceBlocks(result.getOperations());
     }
 

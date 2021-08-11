@@ -9,7 +9,7 @@ import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSectionLabware.AddressCommentId;
 import uk.ac.sanger.sccp.stan.service.OperationService;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
-import uk.ac.sanger.sccp.stan.service.sas.SasService;
+import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import javax.persistence.EntityManager;
@@ -27,7 +27,7 @@ import static org.hibernate.internal.util.NullnessHelper.coalesce;
 public class ConfirmSectionServiceImp implements ConfirmSectionService {
     private final ConfirmSectionValidationService validationService;
     private final OperationService opService;
-    private final SasService sasService;
+    private final WorkService workService;
     private final LabwareRepo lwRepo;
     private final SlotRepo slotRepo;
     private final MeasurementRepo measurementRepo;
@@ -39,13 +39,13 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
 
     @Autowired
     public ConfirmSectionServiceImp(ConfirmSectionValidationService validationService, OperationService opService,
-                                    SasService sasService,
+                                    WorkService workService,
                                     LabwareRepo lwRepo, SlotRepo slotRepo, MeasurementRepo measurementRepo,
                                     SampleRepo sampleRepo, CommentRepo commentRepo, OperationCommentRepo opCommentRepo,
                                     EntityManager entityManager) {
         this.validationService = validationService;
         this.opService = opService;
-        this.sasService = sasService;
+        this.workService = workService;
         this.lwRepo = lwRepo;
         this.slotRepo = slotRepo;
         this.measurementRepo = measurementRepo;
@@ -97,8 +97,8 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
             }
             resultLabware.add(clr.labware);
         }
-        if (request.getSasNumber()!=null) {
-            sasService.link(request.getSasNumber(), operations);
+        if (request.getWorkNumber()!=null) {
+            workService.link(request.getWorkNumber(), operations);
         }
         updateSourceBlocks(operations);
         return new OperationResult(operations, resultLabware);
