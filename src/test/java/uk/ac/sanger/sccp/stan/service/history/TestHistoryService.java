@@ -36,6 +36,7 @@ public class TestHistoryService {
     private DestructionRepo mockDestructionRepo;
     private OperationCommentRepo mockOpCommentRepo;
     private SnapshotRepo mockSnapshotRepo;
+    private WorkRepo mockWorkRepo;
 
     private HistoryServiceImp service;
 
@@ -54,9 +55,10 @@ public class TestHistoryService {
         mockDestructionRepo = mock(DestructionRepo.class);
         mockOpCommentRepo = mock(OperationCommentRepo.class);
         mockSnapshotRepo = mock(SnapshotRepo.class);
+        mockWorkRepo = mock(WorkRepo.class);
 
         service = spy(new HistoryServiceImp(mockOpRepo, mockLwRepo, mockSampleRepo, mockTissueRepo, mockDonorRepo,
-                mockReleaseRepo, mockDestructionRepo, mockOpCommentRepo, mockSnapshotRepo));
+                mockReleaseRepo, mockDestructionRepo, mockOpCommentRepo, mockSnapshotRepo, mockWorkRepo));
     }
 
     @Test
@@ -136,10 +138,12 @@ public class TestHistoryService {
         Set<Integer> labwareIds = Set.of(labware.get(0).getId(), labware.get(1).getId());
         List<Destruction> destructions = List.of(new Destruction());
         List<Release> releases = List.of(new Release());
+        Map<Integer, Set<String>> opWork = Map.of(1, Set.of("R&D50"), 2, Set.of());
+        when(mockWorkRepo.findWorkNumbersForOpIds(Set.of(100))).thenReturn(opWork);
 
-        List<HistoryEntry> opEntries = List.of(new HistoryEntry(1, "op", null, 1, 1, null, "user1"));
-        List<HistoryEntry> releaseEntries = List.of(new HistoryEntry(2, "release", null, 1, 1, null, "user2"));
-        List<HistoryEntry> destructionEntries = List.of(new HistoryEntry(3, "destruction", null, 1, 1, null, "user3"));
+        List<HistoryEntry> opEntries = List.of(new HistoryEntry(1, "op", null, 1, 1, null, "user1", "R&D50"));
+        List<HistoryEntry> releaseEntries = List.of(new HistoryEntry(2, "release", null, 1, 1, null, "user2", null));
+        List<HistoryEntry> destructionEntries = List.of(new HistoryEntry(3, "destruction", null, 1, 1, null, "user3", null));
 
         List<HistoryEntry> entries = List.of(opEntries.get(0), releaseEntries.get(0), destructionEntries.get(0));
 
@@ -150,7 +154,7 @@ public class TestHistoryService {
 
         doReturn(labwareIds).when(service).loadLabwareIdsForOpsAndSampleIds(ops, sampleIds);
 
-        doReturn(opEntries).when(service).createEntriesForOps(ops, sampleIds, labware);
+        doReturn(opEntries).when(service).createEntriesForOps(ops, sampleIds, labware, opWork);
         doReturn(releaseEntries).when(service).createEntriesForReleases(releases, sampleIds);
         doReturn(destructionEntries).when(service).createEntriesForDestructions(destructions, sampleIds);
 
@@ -279,6 +283,10 @@ public class TestHistoryService {
         };
         createOps();
         int[] opIds = ops.stream().mapToInt(Operation::getId).toArray();
+        Map<Integer, Set<String>> opWork = Map.of(
+                opIds[0], Set.of("SGP5000"),
+                opIds[1], Set.of()
+        );
 
         OperationComment[] opComs = {
                 new OperationComment(1, coms[0], opIds[0], null, null, null),
@@ -304,11 +312,11 @@ public class TestHistoryService {
         String username = getUser().getUsername();
         List<HistoryEntry> expectedEntries = List.of(
                 new HistoryEntry(opIds[0], opTypeName, ops.get(0).getPerformed(), labware[0].getId(),
-                        labware[1].getId(), samples[0].getId(), username, List.of("Alabama", "A1: Alaska")),
+                        labware[1].getId(), samples[0].getId(), username, "SGP5000", List.of("Alabama", "A1: Alaska")),
                 new HistoryEntry(opIds[1], opTypeName, ops.get(1).getPerformed(), labware[0].getId(),
-                        labware[3].getId(), samples[2].getId(), username, List.of("Arizona"))
+                        labware[3].getId(), samples[2].getId(), username, null, List.of("Arizona"))
         );
-        assertThat(service.createEntriesForOps(ops, sampleIds, labwareList)).containsExactlyElementsOf(expectedEntries);
+        assertThat(service.createEntriesForOps(ops, sampleIds, labwareList, opWork)).containsExactlyElementsOf(expectedEntries);
     }
 
     private static LocalDateTime makeTime(int n) {
@@ -335,11 +343,11 @@ public class TestHistoryService {
         when(mockSnapshotRepo.findAllByIdIn(Set.of(1))).thenReturn(List.of(snap));
         List<HistoryEntry> expectedEntries = List.of(
                 new HistoryEntry(1, "Release", rel1.getReleased(), lw1.getId(), lw1.getId(), samples[0].getId(),
-                        username, List.of("Destination: Mercury", "Recipient: jeff")),
+                        username, null, List.of("Destination: Mercury", "Recipient: jeff")),
                 new HistoryEntry(1, "Release", rel1.getReleased(), lw1.getId(), lw1.getId(), samples[2].getId(),
-                        username, List.of("Destination: Mercury", "Recipient: jeff")),
+                        username, null, List.of("Destination: Mercury", "Recipient: jeff")),
                 new HistoryEntry(2, "Release", rel2.getReleased(), lw2.getId(), lw2.getId(), null,
-                        username, List.of("Destination: Venus", "Recipient: dirk"))
+                        username, null, List.of("Destination: Venus", "Recipient: dirk"))
         );
         assertThat(service.createEntriesForReleases(List.of(rel1, rel2), Set.of(samples[0].getId(), samples[2].getId())))
                 .containsExactlyElementsOf(expectedEntries);
@@ -360,11 +368,11 @@ public class TestHistoryService {
 
         List<HistoryEntry> expectedEntries = List.of(
                 new HistoryEntry(1, "Destruction", d1.getDestroyed(), lw1.getId(), lw1.getId(), samples[0].getId(),
-                        username, List.of("Reason: Dropped.")),
+                        username, null, List.of("Reason: Dropped.")),
                 new HistoryEntry(1, "Destruction", d1.getDestroyed(), lw1.getId(), lw1.getId(), samples[2].getId(),
-                        username, List.of("Reason: Dropped.")),
+                        username, null, List.of("Reason: Dropped.")),
                 new HistoryEntry(2, "Destruction", d2.getDestroyed(), lw2.getId(), lw2.getId(), samples[0].getId(),
-                        username, List.of("Reason: Sat on."))
+                        username, null, List.of("Reason: Sat on."))
         );
 
         assertThat(service.createEntriesForDestructions(List.of(d1, d2), Set.of(samples[0].getId(), samples[2].getId())))
@@ -375,18 +383,18 @@ public class TestHistoryService {
     @Test
     public void testAssembleEntries() {
         List<HistoryEntry> e1 = List.of(
-                new HistoryEntry(1, "Register", makeTime(0), 1, 1, 1, "user1"),
-                new HistoryEntry(2, "Section", makeTime(2), 1, 2, 2, "user2"),
-                new HistoryEntry(3, "Section", makeTime(4), 1, 3, 3, "user3"),
-                new HistoryEntry(4, "Scoop", makeTime(6), 3, 4, 3, "user4")
+                new HistoryEntry(1, "Register", makeTime(0), 1, 1, 1, "user1", null),
+                new HistoryEntry(2, "Section", makeTime(2), 1, 2, 2, "user2", null),
+                new HistoryEntry(3, "Section", makeTime(4), 1, 3, 3, "user3", null),
+                new HistoryEntry(4, "Scoop", makeTime(6), 3, 4, 3, "user4", null)
         );
         List<HistoryEntry> e2 = List.of(
-                new HistoryEntry(1, "Release", makeTime(3), 2, 2, 2, "user11"),
-                new HistoryEntry(2, "Release", makeTime(8), 3, 3, 3, "user12")
+                new HistoryEntry(1, "Release", makeTime(3), 2, 2, 2, "user11", null),
+                new HistoryEntry(2, "Release", makeTime(8), 3, 3, 3, "user12", null)
         );
         List<HistoryEntry> e3 = List.of(
-                new HistoryEntry(1, "Destruction", makeTime(5), 1, 1, 1, "user21"),
-                new HistoryEntry(2, "Destruction", makeTime(9), 4, 4, 3, "user22")
+                new HistoryEntry(1, "Destruction", makeTime(5), 1, 1, 1, "user21", null),
+                new HistoryEntry(2, "Destruction", makeTime(9), 4, 4, 3, "user22", null)
         );
 
         List<HistoryEntry> expectedEntries = List.of(

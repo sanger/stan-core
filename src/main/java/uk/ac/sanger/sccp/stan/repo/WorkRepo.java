@@ -8,6 +8,9 @@ import uk.ac.sanger.sccp.stan.model.Work.Status;
 
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
+import java.util.function.Function;
+
+import static java.util.stream.Collectors.toMap;
 
 public interface WorkRepo extends CrudRepository<Work, Integer> {
     Optional<Work> findByWorkNumber(String workNumber);
@@ -58,4 +61,18 @@ public interface WorkRepo extends CrudRepository<Work, Integer> {
      * @return the matching works
      */
     Iterable<Work> findAllByStatusIn(Collection<Status> statuses);
+
+    @Query(value="select operation_id as opId, work_number as workNumber from work_op join work on (work_id=work.id) where operation_id IN (?1)", nativeQuery=true)
+    List<Object[]> _opIdWorkNumbersForOpIds(Collection<Integer> opIds);
+
+    default Map<Integer, Set<String>> findWorkNumbersForOpIds(Collection<Integer> opIds) {
+        if (opIds.isEmpty()) {
+            return Map.of();
+        }
+        final Map<Integer, Set<String>> opWork = opIds.stream().collect(toMap(Function.identity(), x -> new HashSet<>()));
+        for (Object[] opIdWorkNumber : _opIdWorkNumbersForOpIds(opIds)) {
+            opWork.get((Integer) opIdWorkNumber[0]).add((String) opIdWorkNumber[1]);
+        }
+        return opWork;
+    }
 }

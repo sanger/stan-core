@@ -178,6 +178,38 @@ public class TestWorkRepo {
         assertThat(c).matches("R&D\\d{2,}");
     }
 
+    @Transactional
+    @Test
+    public void testFindWorkNumbersForOpIds() {
+        Work work1 = entityCreator.createWork(null, null, null);
+        Work work2 = entityCreator.createWork(work1.getWorkType(), work1.getProject(), work1.getCostCode());
+        String workNum1 = work1.getWorkNumber();
+        String workNum2 = work2.getWorkNumber();
+        int[] opIds = IntStream.range(0,4).map(i -> createOpId()).toArray();
+        List<Integer> opIdList = Arrays.stream(opIds).boxed().collect(toList());
+        Map<Integer, Set<String>> workMap = workRepo.findWorkNumbersForOpIds(opIdList);
+        assertThat(workMap).hasSameSizeAs(opIds);
+        for (int opId : opIds) {
+            assertThat(workMap.get(opId)).isEmpty();
+        }
+        work1.setOperationIds(List.of(opIds[0], opIds[1]));
+        work2.setOperationIds(List.of(opIds[1], opIds[2]));
+        workRepo.saveAll(List.of(work1, work2));
+        entityManager.flush();
+
+        workMap = workRepo.findWorkNumbersForOpIds(List.of(opIds[3]));
+        assertThat(workMap).hasSize(1);
+        assertThat(workMap.get(opIds[3])).isEmpty();
+
+        workMap = workRepo.findWorkNumbersForOpIds(opIdList);
+
+        assertThat(workMap).hasSameSizeAs(opIdList);
+        assertThat(workMap.get(opIds[0])).containsExactly(workNum1);
+        assertThat(workMap.get(opIds[1])).containsExactlyInAnyOrder(workNum1, workNum2);
+        assertThat(workMap.get(opIds[2])).containsExactly(workNum2);
+        assertThat(workMap.get(opIds[3])).isEmpty();
+    }
+
     @SuppressWarnings("BusyWait")
     @Test
     public void testCreateNumberIsolation() throws InterruptedException {
