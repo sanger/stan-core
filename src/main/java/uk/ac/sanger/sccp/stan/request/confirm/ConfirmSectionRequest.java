@@ -3,6 +3,7 @@ package uk.ac.sanger.sccp.stan.request.confirm;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import java.util.List;
+import java.util.Objects;
 
 import static uk.ac.sanger.sccp.utils.BasicUtils.newArrayList;
 
@@ -12,13 +13,19 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.newArrayList;
  */
 public class ConfirmSectionRequest {
     private List<ConfirmSectionLabware> labware;
+    private String workNumber;
+
+    public ConfirmSectionRequest(Iterable<ConfirmSectionLabware> labware, String workNumber) {
+        setLabware(labware);
+        this.workNumber = workNumber;
+    }
 
     public ConfirmSectionRequest(Iterable<ConfirmSectionLabware> labware) {
-        setLabware(labware);
+        this(labware, null);
     }
 
     public ConfirmSectionRequest() {
-        this(null);
+        this(null, null);
     }
 
     public List<ConfirmSectionLabware> getLabware() {
@@ -29,12 +36,20 @@ public class ConfirmSectionRequest {
         this.labware = newArrayList(labware);
     }
 
+    public String getWorkNumber() {
+        return this.workNumber;
+    }
+
+    public void setWorkNumber(String workNumber) {
+        this.workNumber = workNumber;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ConfirmSectionRequest that = (ConfirmSectionRequest) o;
-        return this.labware.equals(that.labware);
+        return (this.labware.equals(that.labware) && Objects.equals(this.workNumber, that.workNumber));
     }
 
     @Override
@@ -46,6 +61,7 @@ public class ConfirmSectionRequest {
     public String toString() {
         return BasicUtils.describe("ConfirmSectionRequest")
                 .add("labware", labware)
+                .addRepr("workNumber", workNumber)
                 .toString();
     }
 }

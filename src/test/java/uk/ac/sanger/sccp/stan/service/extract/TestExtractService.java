@@ -13,6 +13,7 @@ import uk.ac.sanger.sccp.stan.request.ExtractRequest;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.store.StoreService;
+import uk.ac.sanger.sccp.stan.service.work.WorkService;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -34,6 +35,7 @@ public class TestExtractService {
     private LabwareService mockLwService;
     private OperationService mockOpService;
     private StoreService mockStoreService;
+    private WorkService mockWorkService;
     private LabwareRepo mockLwRepo;
     private LabwareTypeRepo mockLtRepo;
     private OperationTypeRepo mockOpTypeRepo;
@@ -57,6 +59,7 @@ public class TestExtractService {
         mockLwService = mock(LabwareService.class);
         mockOpService = mock(OperationService.class);
         mockStoreService = mock(StoreService.class);
+        mockWorkService = mock(WorkService.class);
         mockLwRepo = mock(LabwareRepo.class);
         mockLtRepo = mock(LabwareTypeRepo.class);
         mockOpTypeRepo = mock(OperationTypeRepo.class);
@@ -68,13 +71,13 @@ public class TestExtractService {
         lwType = new LabwareType(6, "lwtype", 1, 1, EntityFactory.getLabelType(), false);
 
         service = spy(new ExtractServiceImp(mockTransactor, mockLabwareValidatorFactory, mockLwService, mockOpService,
-                mockStoreService, mockLwRepo, mockLtRepo, mockOpTypeRepo, mockSampleRepo, mockSlotRepo));
+                mockStoreService, mockWorkService, mockLwRepo, mockLtRepo, mockOpTypeRepo, mockSampleRepo, mockSlotRepo));
     }
 
     @Test
     public void testExtractAndUnstore() {
         User user = EntityFactory.getUser();
-        ExtractRequest request = new ExtractRequest(List.of("STAN-A1"), "lt");
+        ExtractRequest request = new ExtractRequest(List.of("STAN-A1"), "lt", "SGP5000");
         OperationResult result = new OperationResult();
         doReturn(result).when(service).transactExtract(any(), any());
 
@@ -89,7 +92,7 @@ public class TestExtractService {
     @ValueSource(booleans={false, true})
     public void testTransactExtract(boolean successful) {
         User user = EntityFactory.getUser();
-        ExtractRequest request = new ExtractRequest(List.of("STAN-A1"), "lt");
+        ExtractRequest request = new ExtractRequest(List.of("STAN-A1"), "lt", "SGP5000");
         OperationResult opResult;
         IllegalArgumentException exception;
         if (successful) {
@@ -129,6 +132,9 @@ public class TestExtractService {
         List<Labware> sources = List.of(src);
         List<String> bcs = List.of(src.getBarcode());
         List<Operation> ops = List.of(EntityFactory.makeOpForLabware(opType, sources, List.of(dst), user));
+        Work work = new Work(500, "SGP5000", new WorkType(1, "Bananas"), null, null, Work.Status.active);
+
+        when(mockWorkService.getUsableWork(work.getWorkNumber())).thenReturn(work);
 
         Map<Labware, Labware> lwMap = Map.of(src, dst);
         doReturn(sources).when(service).loadAndValidateLabware(any());
@@ -137,8 +143,8 @@ public class TestExtractService {
         doNothing().when(service).createSamples(any(), any());
         doReturn(ops).when(service).createOperations(any(), any(), any());
 
-        assertThrowsMsg(IllegalArgumentException.class, "No barcodes specified.", () -> service.extract(user, new ExtractRequest(List.of(), ltName)));
-        assertThrowsMsg(IllegalArgumentException.class, "No labware type specified.", () -> service.extract(user, new ExtractRequest(bcs, null)));
+        assertThrowsMsg(IllegalArgumentException.class, "No barcodes specified.", () -> service.extract(user, new ExtractRequest(List.of(), ltName, "SGP5000")));
+        assertThrowsMsg(IllegalArgumentException.class, "No labware type specified.", () -> service.extract(user, new ExtractRequest(bcs, null, "SGP5000")));
 
         verify(service, never()).loadAndValidateLabware(any());
         verify(service, never()).discardSources(any());
@@ -146,13 +152,14 @@ public class TestExtractService {
         verify(service, never()).createSamples(any(), any());
         verify(service, never()).createOperations(any(), any(), any());
 
-        assertEquals(new OperationResult(ops, List.of(dst)), service.extract(user, new ExtractRequest(bcs, ltName)));
+        assertEquals(new OperationResult(ops, List.of(dst)), service.extract(user, new ExtractRequest(bcs, ltName, work.getWorkNumber())));
 
         verify(service).loadAndValidateLabware(bcs);
         verify(service).discardSources(sources);
         verify(service).createNewLabware(lwType, sources);
         verify(service).createSamples(lwMap, rnaBioState);
         verify(service).createOperations(user, opType, lwMap);
+        verify(mockWorkService).link(work, ops);
     }
 
     @Test

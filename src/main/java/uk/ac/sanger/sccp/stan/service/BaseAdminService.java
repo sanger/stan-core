@@ -13,7 +13,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.trimAndRequire;
  * Base class for a couple of required services.
  * @author dr6
  */
-abstract class BaseAdminService<E extends HasEnabled, R extends CrudRepository<E, ?>> {
+public abstract class BaseAdminService<E extends HasEnabled, R extends CrudRepository<E, ?>> {
     final String entityTypeName;
     final R repo;
     final String missingFieldMessage;
@@ -70,7 +70,7 @@ abstract class BaseAdminService<E extends HasEnabled, R extends CrudRepository<E
      * @param string the string for the new object
      * @return the new object
      */
-    abstract E newEntity(String string);
+    protected abstract E newEntity(String string);
 
     /**
      * Looks up an entity
@@ -78,5 +78,5 @@ abstract class BaseAdminService<E extends HasEnabled, R extends CrudRepository<E
      * @param string the string to use
      * @return an optional that will contain the entity if it is found
      */
-    abstract Optional<E> findEntity(R repo, String string);
+    protected abstract Optional<E> findEntity(R repo, String string);
 }

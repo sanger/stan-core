@@ -7,6 +7,7 @@ import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
 import uk.ac.sanger.sccp.stan.repo.PlanOperationRepo;
 import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSectionLabware.AddressCommentId;
+import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
@@ -22,11 +23,13 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidationService {
     private final LabwareRepo labwareRepo;
     private final PlanOperationRepo planOpRepo;
+    private final WorkService workService;
 
     @Autowired
-    public ConfirmSectionValidationServiceImp(LabwareRepo labwareRepo, PlanOperationRepo planOpRepo) {
+    public ConfirmSectionValidationServiceImp(LabwareRepo labwareRepo, PlanOperationRepo planOpRepo, WorkService workService) {
         this.labwareRepo = labwareRepo;
         this.planOpRepo = planOpRepo;
+        this.workService = workService;
     }
 
     @Override
@@ -40,6 +43,7 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
         UCMap<Labware> labware = validateLabware(problems, request.getLabware());
         Map<Integer, PlanOperation> plans = lookUpPlans(problems, labware.values());
         validateOperations(problems, request.getLabware(), labware, plans);
+        workService.validateUsableWork(problems, request.getWorkNumber());
         if (!problems.isEmpty()) {
             return new ConfirmSectionValidation(problems);
         }

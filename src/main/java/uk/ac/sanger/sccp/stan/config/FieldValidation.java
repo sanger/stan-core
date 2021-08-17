@@ -110,4 +110,29 @@ public class FieldValidation {
         );
         return new StringValidator("Species", 1, 64, charTypes);
     }
+
+    @Bean
+    public Validator<String> projectNameValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(
+                CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN, CharacterType.SPACE,
+                CharacterType.SLASH, CharacterType.PAREN, CharacterType.FULL_STOP, CharacterType.APOSTROPHE
+        );
+        return new StringValidator("Project name", 2, 64, charTypes);
+    }
+
+    @Bean
+    public Validator<String> workTypeNameValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(
+                CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN, CharacterType.SPACE,
+                CharacterType.SLASH, CharacterType.PAREN, CharacterType.FULL_STOP, CharacterType.APOSTROPHE
+        );
+        return new StringValidator("Work type name", 2, 64, charTypes);
+    }
+
+    @Bean
+    public Validator<String> costCodeValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA, CharacterType.DIGIT);
+        Pattern pattern = Pattern.compile("[A-Z][0-9]+", Pattern.CASE_INSENSITIVE);
+        return new StringValidator("Cost code", 2, 10, charTypes, false, pattern);
+    }
 }

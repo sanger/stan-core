@@ -20,12 +20,12 @@ public class HmdmcAdminService extends BaseAdminService<Hmdmc, HmdmcRepo> {
     }
 
     @Override
-    Hmdmc newEntity(String string) {
+    protected Hmdmc newEntity(String string) {
         return new Hmdmc(null, string);
     }
 
     @Override
-    Optional<Hmdmc> findEntity(HmdmcRepo repo, String string) {
+    protected Optional<Hmdmc> findEntity(HmdmcRepo repo, String string) {
         return repo.findByHmdmc(string);
     }
 }

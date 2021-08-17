@@ -239,7 +239,7 @@ input ConfirmOperationLabware {
 }
 
 input ConfirmOperationRequest {
-    labware: [ConfirmOperationLabware!]!,
+    labware: [ConfirmOperationLabware!]!
 }
 
 input ConfirmSection {
@@ -257,6 +257,7 @@ input ConfirmSectionLabware {
 
 input ConfirmSectionRequest {
     labware: [ConfirmSectionLabware!]!
+    workNumber: String
 }
 
 input SlotCopyContent {
@@ -269,6 +270,7 @@ input SlotCopyRequest {
     labwareType: String!
     operationType: String!
     contents: [SlotCopyContent!]!
+    workNumber: String
 }
 
 type Action {
@@ -338,6 +340,7 @@ input ReleaseRequest {
 input ExtractRequest {
     barcodes: [String!]!
     labwareType: String!
+    workNumber: String
 }
 
 type OperationResult {
@@ -474,6 +477,36 @@ type PlanData {
     destination: Labware!
 }
 
+type Project {
+    name: String!
+    enabled: Boolean!
+}
+
+type CostCode {
+    code: String!
+    enabled: Boolean!
+}
+
+type WorkType {
+    name: String!
+    enabled: Boolean!
+}
+
+enum WorkStatus {
+    active
+    paused
+    completed
+    failed
+}
+
+type Work {
+    workType: WorkType!
+    project: Project!
+    costCode: CostCode!
+    workNumber: String!
+    status: WorkStatus!
+}
+
 type Query {
     user: User
     tissueTypes: [TissueType!]!
@@ -489,6 +522,11 @@ type Query {
     releaseDestinations(includeDisabled: Boolean): [ReleaseDestination!]!
     releaseRecipients(includeDisabled: Boolean): [ReleaseRecipient!]!
     destructionReasons(includeDisabled: Boolean): [DestructionReason!]!
+    projects(includeDisabled: Boolean): [Project!]!
+    costCodes(includeDisabled: Boolean): [CostCode!]!
+    workTypes(includeDisabled: Boolean): [WorkType!]!
+    works(status: [WorkStatus!]): [Work!]!
+    work(workNumber: String!): Work!
     users(includeDisabled: Boolean): [User!]!
     find(request: FindRequest!): FindResult!
     planData(barcode: String!): PlanData!
@@ -527,6 +565,15 @@ type Mutation {
     setReleaseRecipientEnabled(username: String!, enabled: Boolean!): ReleaseRecipient!
     addSpecies(name: String!): Species!
     setSpeciesEnabled(name: String!, enabled: Boolean!): Species!
+    addProject(name: String!): Project!
+    setProjectEnabled(name: String!, enabled: Boolean!): Project!
+    addCostCode(code: String!): CostCode!
+    setCostCodeEnabled(code: String!, enabled: Boolean!): CostCode!
+    addWorkType(name: String!): WorkType!
+    setWorkTypeEnabled(name: String!, enabled: Boolean!): WorkType!
+    createWork(prefix: String!, workType: String!, project: String!, costCode: String!): Work!
+    updateWorkStatus(workNumber: String!, status: WorkStatus!, commentId: Int): Work!
+
     addUser(username: String!): User!
     setUserRole(username: String!, role: UserRole!): User!
 

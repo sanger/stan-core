@@ -21,12 +21,12 @@ public class ReleaseRecipientAdminService extends BaseAdminService<ReleaseRecipi
     }
 
     @Override
-    ReleaseRecipient newEntity(String string) {
+    protected ReleaseRecipient newEntity(String string) {
         return new ReleaseRecipient(null, string);
     }
 
     @Override
-    Optional<ReleaseRecipient> findEntity(ReleaseRecipientRepo repo, String string) {
+    protected Optional<ReleaseRecipient> findEntity(ReleaseRecipientRepo repo, String string) {
         return repo.findByUsername(string);
     }
 }

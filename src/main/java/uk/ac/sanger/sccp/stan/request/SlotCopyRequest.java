@@ -14,13 +14,15 @@ public class SlotCopyRequest {
     private String operationType;
     private String labwareType;
     private List<SlotCopyContent> contents = List.of();
+    private String workNumber;
 
     public SlotCopyRequest() {}
 
-    public SlotCopyRequest(String operationType, String labwareType, List<SlotCopyContent> contents) {
+    public SlotCopyRequest(String operationType, String labwareType, List<SlotCopyContent> contents, String workNumber) {
         this.operationType = operationType;
         this.labwareType = labwareType;
         setContents(contents);
+        this.workNumber = workNumber;
     }
 
     public void setOperationType(String operationType) {
@@ -33,6 +35,10 @@ public class SlotCopyRequest {
 
     public void setContents(List<SlotCopyContent> contents) {
         this.contents = (contents==null ? List.of() : contents);
+    }
+
+    public void setWorkNumber(String workNumber) {
+        this.workNumber = workNumber;
     }
 
     /** The name of the type of operation to record */
@@ -50,6 +56,11 @@ public class SlotCopyRequest {
         return this.contents;
     }
 
+    public String getWorkNumber() {
+        return this.workNumber;
+    }
+
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -57,12 +68,13 @@ public class SlotCopyRequest {
         SlotCopyRequest that = (SlotCopyRequest) o;
         return (Objects.equals(this.operationType, that.operationType)
                 && Objects.equals(this.labwareType, that.labwareType)
-                && Objects.equals(this.contents, that.contents));
+                && Objects.equals(this.contents, that.contents)
+                && Objects.equals(this.workNumber, that.workNumber));
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(operationType, labwareType, contents);
+        return Objects.hash(operationType, labwareType, contents, workNumber);
     }
 
     @Override
@@ -71,6 +83,7 @@ public class SlotCopyRequest {
                 .add("operationType", operationType)
                 .add("labwareType", labwareType)
                 .add("contents", contents)
+                .add("workNumber", workNumber)
                 .reprStringValues()
                 .toString();
     }

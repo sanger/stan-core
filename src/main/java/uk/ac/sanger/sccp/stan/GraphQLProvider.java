@@ -83,6 +83,12 @@ public class GraphQLProvider {
                         .dataFetcher("releaseRecipients", graphQLDataFetchers.getReleaseRecipients())
                         .dataFetcher("find", graphQLDataFetchers.find())
                         .dataFetcher("destructionReasons", graphQLDataFetchers.getDestructionReasons())
+                        .dataFetcher("projects", graphQLDataFetchers.getProjects())
+                        .dataFetcher("costCodes", graphQLDataFetchers.getCostCodes())
+                        .dataFetcher("workTypes", graphQLDataFetchers.getWorkTypes())
+                        .dataFetcher("works", graphQLDataFetchers.getWorks())
+                        .dataFetcher("work", graphQLDataFetchers.getWork())
+
                         .dataFetcher("users", graphQLDataFetchers.getUsers())
                         .dataFetcher("planData", graphQLDataFetchers.getPlanData())
 
@@ -120,6 +126,15 @@ public class GraphQLProvider {
                         .dataFetcher("setReleaseRecipientEnabled", transact(graphQLMutation.setReleaseRecipientEnabled()))
                         .dataFetcher("addSpecies", transact(graphQLMutation.addSpecies()))
                         .dataFetcher("setSpeciesEnabled", transact(graphQLMutation.setSpeciesEnabled()))
+                        .dataFetcher("addProject", transact(graphQLMutation.addProject()))
+                        .dataFetcher("setProjectEnabled", transact(graphQLMutation.setProjectEnabled()))
+                        .dataFetcher("addCostCode", transact(graphQLMutation.addCostCode()))
+                        .dataFetcher("setCostCodeEnabled", transact(graphQLMutation.setCostCodeEnabled()))
+                        .dataFetcher("addWorkType", transact(graphQLMutation.addWorkType()))
+                        .dataFetcher("setWorkTypeEnabled", transact(graphQLMutation.setWorkTypeEnabled()))
+                        .dataFetcher("createWork", transact(graphQLMutation.createWork()))
+                        .dataFetcher("updateWorkStatus", transact(graphQLMutation.updateWorkStatus()))
+
                         .dataFetcher("addUser", transact(graphQLMutation.addUser()))
                         .dataFetcher("setUserRole", transact(graphQLMutation.setUserRole()))
 

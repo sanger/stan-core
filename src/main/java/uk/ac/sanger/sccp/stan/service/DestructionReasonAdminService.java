@@ -21,12 +21,12 @@ public class DestructionReasonAdminService extends BaseAdminService<DestructionR
     }
 
     @Override
-    DestructionReason newEntity(String string) {
+    protected DestructionReason newEntity(String string) {
         return new DestructionReason(null, string);
     }
 
     @Override
-    Optional<DestructionReason> findEntity(DestructionReasonRepo repo, String string) {
+    protected Optional<DestructionReason> findEntity(DestructionReasonRepo repo, String string) {
         return repo.findByText(string);
     }
 }

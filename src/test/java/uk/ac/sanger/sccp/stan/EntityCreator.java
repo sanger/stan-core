@@ -62,6 +62,14 @@ public class EntityCreator {
     private SnapshotElementRepo snapshotElementRepo;
     @Autowired
     private SpeciesRepo speciesRepo;
+    @Autowired
+    private ProjectRepo projectRepo;
+    @Autowired
+    private CostCodeRepo costCodeRepo;
+    @Autowired
+    private WorkTypeRepo workTypeRepo;
+    @Autowired
+    private WorkRepo workRepo;
 
     @Autowired
     private EntityManager entityManager;
@@ -167,6 +175,32 @@ public class EntityCreator {
         planActionRepo.saveAll(planActions);
         entityManager.refresh(plan);
         return plan;
+    }
+
+    public Project createProject(String name) {
+        return projectRepo.save(new Project(null, name));
+    }
+
+    public CostCode createCostCode(String code) {
+        return costCodeRepo.save(new CostCode(null, code));
+    }
+
+    public WorkType createWorkType(String name) {
+        return workTypeRepo.save(new WorkType(null, name));
+    }
+
+    public Work createWork(WorkType workType, Project project, CostCode cc) {
+        if (project==null) {
+            project = createProject("Stargate");
+        }
+        if (cc==null) {
+            cc = createCostCode("S400");
+        }
+        if (workType ==null) {
+            workType = createWorkType("Drywalling");
+        }
+        String workNumber = workRepo.createNumber("SGP");
+        return workRepo.save(new Work(null, workNumber, workType, project, cc, Work.Status.active));
     }
 
     public Printer createPrinter(String name, LabelType labelType) {

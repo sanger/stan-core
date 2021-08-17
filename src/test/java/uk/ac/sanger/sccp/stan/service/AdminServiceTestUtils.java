@@ -21,16 +21,16 @@ import static org.mockito.Mockito.*;
  * Utils class for tests of admin services
  * @author dr6
  */
-abstract class AdminServiceTestUtils<E extends HasEnabled, R extends CrudRepository<E, ?>, S> {
-    private static final String MISSING_STRING_MESSAGE = "MISSING_STRING_MESSAGE";
+public abstract class AdminServiceTestUtils<E extends HasEnabled, R extends CrudRepository<E, ?>, S> {
+    static final String MISSING_STRING_MESSAGE = "MISSING_STRING_MESSAGE";
     private final String missingStringMessage;
     private final String entityTypeName;
     private final BiFunction<Integer, String, E> newEntityFunction;
     private final BiFunction<R, String, Optional<E>> repoFindFunction;
-    R mockRepo;
-    S service;
+    protected R mockRepo;
+    protected S service;
 
-    AdminServiceTestUtils(String entityTypeName, BiFunction<Integer, String, E> newEntityFunction,
+    protected AdminServiceTestUtils(String entityTypeName, BiFunction<Integer, String, E> newEntityFunction,
                           BiFunction<R, String, Optional<E>> repoFindFunction,
                           String missingStringMessage) {
         this.entityTypeName = entityTypeName;
@@ -39,11 +39,11 @@ abstract class AdminServiceTestUtils<E extends HasEnabled, R extends CrudReposit
         this.missingStringMessage = missingStringMessage;
     }
 
-    E newEntity(Integer id, String string) {
+    protected E newEntity(Integer id, String string) {
         return newEntityFunction.apply(id, string);
     }
 
-    void genericTestAddNew(BiFunction<S, String, E> serviceAddFunction,
+    protected void genericTestAddNew(BiFunction<S, String, E> serviceAddFunction,
                            String string, String existingEntityString, Exception expectedException, String expectedResultString) {
         when(repoFindFunction.apply(mockRepo, string)).thenReturn(Optional.ofNullable(existingEntityString).map(s -> newEntity(14, s)));
         if (expectedException != null) {
@@ -57,7 +57,7 @@ abstract class AdminServiceTestUtils<E extends HasEnabled, R extends CrudReposit
         verify(mockRepo).save(newEntity(null, expectedResultString));
     }
 
-    String expectedMessage(Exception expectedException) {
+    protected String expectedMessage(Exception expectedException) {
         String expectedMessage = expectedException.getMessage();
         if (expectedMessage.equals(MISSING_STRING_MESSAGE)) {
             return this.missingStringMessage;
@@ -65,11 +65,11 @@ abstract class AdminServiceTestUtils<E extends HasEnabled, R extends CrudReposit
         return expectedMessage.replace("<ENTITY>", this.entityTypeName);
     }
 
-    void assertException(Exception exception, Executable executable) {
+    protected void assertException(Exception exception, Executable executable) {
         assertThat(assertThrows(exception.getClass(), executable)).hasMessage(expectedMessage(exception));
     }
 
-    static Stream<Arguments> addNewArgs() {
+    protected static Stream<Arguments> addNewArgs() {
         Exception missingStringException = new IllegalArgumentException(MISSING_STRING_MESSAGE);
         return Stream.of(
                 Arguments.of("Alpha", null, null, "Alpha"),
@@ -81,7 +81,17 @@ abstract class AdminServiceTestUtils<E extends HasEnabled, R extends CrudReposit
         );
     }
 
-    void genericTestSetEnabled(TriFunction<S, String, Boolean, E> serviceSetEnabledFunction,
+    protected static Stream<Arguments> addNewArgsUpCase() {
+        return addNewArgs().peek(args -> {
+            Object[] objs = args.get();
+            int i = objs.length - 1;
+            if (objs[i] instanceof String) {
+                objs[i] = ((String) objs[i]).toUpperCase();
+            }
+        });
+    }
+
+    protected void genericTestSetEnabled(TriFunction<S, String, Boolean, E> serviceSetEnabledFunction,
                                String string, boolean newValue, Boolean oldValue, Exception expectedException) {
         String name = (string==null ? null : string.trim());
         E entity = (oldValue==null ? null : newEntity(17, name));
@@ -105,7 +115,7 @@ abstract class AdminServiceTestUtils<E extends HasEnabled, R extends CrudReposit
         }
     }
 
-    static Stream<Arguments> setEnabledArgs() {
+    protected static Stream<Arguments> setEnabledArgs() {
         Exception missingStringException = new IllegalArgumentException(MISSING_STRING_MESSAGE);
         Exception entityNotFoundAlphaException = new EntityNotFoundException("<ENTITY> not found: Alpha");
         return Stream.of(
@@ -120,7 +130,7 @@ abstract class AdminServiceTestUtils<E extends HasEnabled, R extends CrudReposit
         );
     }
 
-    static Validator<String> simpleValidator() {
+    protected static Validator<String> simpleValidator() {
         return new StringValidator("string", 1, 16, StringValidator.CharacterType.ALPHA);
     }
 }

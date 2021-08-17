@@ -21,12 +21,12 @@ public class ReleaseDestinationAdminService extends BaseAdminService<ReleaseDest
     }
 
     @Override
-    ReleaseDestination newEntity(String string) {
+    protected ReleaseDestination newEntity(String string) {
         return new ReleaseDestination(null, string);
     }
 
     @Override
-    Optional<ReleaseDestination> findEntity(ReleaseDestinationRepo repo, String string) {
+    protected Optional<ReleaseDestination> findEntity(ReleaseDestinationRepo repo, String string) {
         return repo.findByName(string);
     }
 }

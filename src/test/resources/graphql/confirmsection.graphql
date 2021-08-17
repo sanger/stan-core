@@ -33,6 +33,7 @@ mutation {
                 ]
             }
         ]
+        workNumber: "SGP4000"
     }) {
         labware {
             barcode

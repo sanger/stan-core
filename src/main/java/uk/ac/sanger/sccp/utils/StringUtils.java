@@ -52,7 +52,7 @@ class StringUtils {
             items[i] = s;
             ++i;
         }
-        len += joint.length()*numItems;
+        len += joint.length()*(numItems-1);
         StringBuilder sb = new StringBuilder(len);
         sb.append(items[0]);
         for (i = 1; i < numItems; ++i) {

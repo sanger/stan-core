@@ -86,6 +86,12 @@ public class IntegrationTests {
     @Autowired
     private DestructionReasonRepo destructionReasonRepo;
     @Autowired
+    private ProjectRepo projectRepo;
+    @Autowired
+    private CostCodeRepo costCodeRepo;
+    @Autowired
+    private WorkTypeRepo workTypeRepo;
+    @Autowired
     private MeasurementRepo measurementRepo;
     @Autowired
     private CommentRepo commentRepo;
@@ -170,11 +176,13 @@ public class IntegrationTests {
                 .collect(toList())).containsExactlyInAnyOrder("STAN-B70C", "STAN-B70D");
 
         // Confirming
+        Work work = entityCreator.createWork(null, null, null);
 
         String recordMutation = tester.readResource("graphql/confirmsection.graphql");
         recordMutation = recordMutation.replace("$BARCODE", barcode)
                 .replace("55555", String.valueOf(sample1.getId()))
-                .replace("55556", String.valueOf(sample2.getId()));
+                .replace("55556", String.valueOf(sample2.getId()))
+                .replace("SGP4000", work.getWorkNumber());
         result = tester.post(recordMutation);
         assertNull(result.get("errors"));
 
@@ -241,6 +249,10 @@ public class IntegrationTests {
         entityManager.refresh(sourceBlock2);
         assertEquals(15, sourceBlock1.getFirstSlot().getBlockHighestSection());
         assertEquals(17, sourceBlock2.getFirstSlot().getBlockHighestSection());
+        entityManager.flush();
+        entityManager.refresh(work);
+        assertThat(work.getOperationIds()).hasSize(1);
+        assertThat(work.getSampleSlotIds()).hasSize(4);
     }
 
     @Test
@@ -365,9 +377,12 @@ public class IntegrationTests {
 
         stubStorelightUnstore();
 
+        Work work = entityCreator.createWork(null, null, null);
+
         String mutation = tester.readResource("graphql/extract.graphql")
                 .replace("[]", "[\"STAN-A1\", \"STAN-A2\"]")
-                .replace("LWTYPE", lwType.getName());
+                .replace("LWTYPE", lwType.getName())
+                .replace("SGP4000", work.getWorkNumber());
         User user = entityCreator.createUser("user1");
         tester.setUser(user);
         Object result = tester.post(mutation);
@@ -450,6 +465,11 @@ public class IntegrationTests {
         }
 
         verifyUnstored(List.of(sources[0].getBarcode(), sources[1].getBarcode()), user.getUsername());
+
+        entityManager.flush();
+        entityManager.refresh(work);
+        assertThat(work.getOperationIds()).containsExactlyInAnyOrderElementsOf(Arrays.stream(opIds).boxed().collect(toList()));
+        assertThat(work.getSampleSlotIds()).hasSize(sampleIds.length);
     }
 
     @Test
@@ -687,9 +707,12 @@ public class IntegrationTests {
         slotRepo.saveAll(List.of(slide1.getSlot(A1), slide1.getSlot(B1)));
 
         stubStorelightUnstore();
+
+        Work work = entityCreator.createWork(null, null, null);
         User user = entityCreator.createUser("user1");
         tester.setUser(user);
         String mutation = tester.readResource("graphql/slotcopy.graphql");
+        mutation = mutation.replace("SGP5000", work.getWorkNumber());
         Object result = tester.post(mutation);
         Object data = chainGet(result, "data", "slotCopy");
         List<Map<String, ?>> lwsData = chainGet(data, "labware");
@@ -753,6 +776,9 @@ public class IntegrationTests {
         assertTrue(newLabware.getSlot(A2).getSamples().stream().allMatch(sam -> sam.getBioState().getName().equals("cDNA")));
 
         verifyUnstored(List.of("STAN-01"), user.getUsername());
+        entityManager.refresh(work);
+        assertThat(work.getOperationIds()).containsExactly(opId);
+        assertThat(work.getSampleSlotIds()).hasSize(3);
     }
 
     @Test
@@ -851,6 +877,21 @@ public class IntegrationTests {
     @Transactional
     public void testAddDestructionReasonAndSetEnabled() throws Exception {
         testGenericAddNewAndSetEnabled("DestructionReason", "text", "Dropped.", destructionReasonRepo::findByText, DestructionReason::getText, "destructionReasons");
+    }
+    @Test
+    @Transactional
+    public void testAddNewProjectAndSetEnabled() throws Exception {
+        testGenericAddNewAndSetEnabled("Project", "name", "Stargate", projectRepo::findByName, Project::getName, "projects");
+    }
+    @Test
+    @Transactional
+    public void testAddNewCostCodeAndSetEnabled() throws Exception {
+        testGenericAddNewAndSetEnabled("CostCode", "code", "S12345", costCodeRepo::findByCode, CostCode::getCode, "costCodes");
+    }
+    @Test
+    @Transactional
+    public void testAddNewWorkTypeAndSetEnabled() throws Exception {
+        testGenericAddNewAndSetEnabled("WorkType", "name", "Drywalling", workTypeRepo::findByName, WorkType::getName, "workTypes");
     }
 
     @Test
@@ -984,7 +1025,44 @@ public class IntegrationTests {
             assertEquals("DONOR1", chainGet(sampleData, "tissue", "donor", "donorName"));
             assertNull(sampleData.get("section"));
         }
+    }
 
+    @Transactional
+    @Test
+    public void testWork() throws Exception {
+        Project project = projectRepo.save(new Project(null, "Stargate"));
+        CostCode cc = costCodeRepo.save(new CostCode(null, "S666"));
+        WorkType workType = entityCreator.createWorkType("Drywalling");
+        User user = entityCreator.createUser("user1", User.Role.normal);
+
+        String worksQuery  = "query { works(status: [active]) { workNumber, workType {name}, project {name}, costCode {code}, status } }";
+        Object data = tester.post(worksQuery);
+        List<Map<String,?>> worksData = chainGet(data, "data", "works");
+        assertNotNull(worksData);
+        int startingNum = worksData.size();
+
+        tester.setUser(user);
+        data = tester.post(tester.readResource("graphql/createWork.graphql"));
+
+        Map<String, ?> workData = chainGet(data, "data", "createWork");
+        String workNumber = (String) workData.get("workNumber");
+        assertNotNull(workNumber);
+        assertEquals(project.getName(), chainGet(workData, "project", "name"));
+        assertEquals(cc.getCode(), chainGet(workData, "costCode", "code"));
+        assertEquals(workType.getName(), chainGet(workData, "workType", "name"));
+        assertEquals("active", workData.get("status"));
+
+        data = tester.post(worksQuery);
+        worksData = chainGet(data, "data", "works");
+        assertEquals(startingNum+1, worksData.size());
+        assertThat(worksData).contains(workData);
+
+        data = tester.post("mutation { updateWorkStatus(workNumber: \""+workNumber+"\", status: completed) {status} }");
+        assertEquals("completed", chainGet(data, "data", "updateWorkStatus", "status"));
+        data = tester.post(worksQuery);
+        worksData = chainGet(data, "data", "works");
+        assertEquals(startingNum, worksData.size());
+        assertFalse(worksData.stream().anyMatch(d -> d.get("workNumber").equals(workNumber)));
     }
 
     private void stubStorelightUnstore() throws IOException {
