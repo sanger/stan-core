@@ -462,6 +462,7 @@ type HistoryEntry {
     destinationLabwareId: Int!
     sampleId: Int
     username: String!
+    workNumber: String
     details: [String!]!
 }
 
