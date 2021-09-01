@@ -121,7 +121,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     }
 
     public DataFetcher<Iterable<Fixative>> getFixatives() {
-        return dfe -> fixativeRepo.findAll();
+        return allOrEnabled(fixativeRepo::findAll, fixativeRepo::findAllByEnabled);
     }
 
     public DataFetcher<Labware> findLabwareByBarcode() {
