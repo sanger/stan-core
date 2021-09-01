@@ -16,6 +16,7 @@ import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.request.plan.PlanRequest;
 import uk.ac.sanger.sccp.stan.request.plan.PlanResult;
 import uk.ac.sanger.sccp.stan.request.register.*;
+import uk.ac.sanger.sccp.stan.request.stain.StainRequest;
 import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.extract.ExtractService;
 import uk.ac.sanger.sccp.stan.service.label.print.LabelPrintService;
@@ -63,6 +64,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final FixativeService fixativeService;
     final WorkTypeService workTypeService;
     final WorkService workService;
+    final StainService stainService;
     final UserAdminService userAdminService;
 
     @Autowired
@@ -78,8 +80,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            ReleaseRecipientAdminService releaseRecipientAdminService, SpeciesAdminService speciesAdminService,
                            ProjectService projectService, CostCodeService costCodeService, FixativeService fixativeService,
                            WorkTypeService workTypeService,
-                           WorkService workService,
-                           UserAdminService userAdminService) {
+                           WorkService workService, StainService stainService, UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
@@ -104,6 +105,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.fixativeService = fixativeService;
         this.workTypeService = workTypeService;
         this.workService = workService;
+        this.stainService = stainService;
         this.userAdminService = userAdminService;
     }
 
@@ -365,6 +367,14 @@ public class GraphQLMutation extends BaseGraphQLResource {
             Work.Status status = arg(dfe, "status", Work.Status.class);
             Integer commentId = dfe.getArgument("commentId");
             return workService.updateStatus(user, workNumber, status, commentId);
+        };
+    }
+
+    public DataFetcher<OperationResult> stain() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            StainRequest request = arg(dfe, "request", StainRequest.class);
+            return stainService.recordStain(user, request);
         };
     }
 
