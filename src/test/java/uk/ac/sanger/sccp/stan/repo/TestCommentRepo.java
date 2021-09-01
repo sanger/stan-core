@@ -25,11 +25,11 @@ public class TestCommentRepo {
 
     @Test
     @Transactional
-    public void testFindIdByIdIn() {
-        int id1 = commentRepo.save(new Comment(null, "Comment1", "group1")).getId();
-        int id2 = commentRepo.save(new Comment(null, "Comment2", "group2")).getId();
+    public void testFindAllByIdIn() {
+        Comment com1 = commentRepo.save(new Comment(null, "Comment1", "group1"));
+        Comment com2 = commentRepo.save(new Comment(null, "Comment2", "group2"));
         commentRepo.save(new Comment(null, "Comment3", "group3"));
-        assertThat(commentRepo.findIdByIdIn(List.of(id1, id2, -1))).containsOnly(id1, id2);
+        assertThat(commentRepo.findAllByIdIn(List.of(com1.getId(), com2.getId(), -1))).containsOnly(com1, com2);
     }
 
     @Test

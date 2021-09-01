@@ -306,7 +306,7 @@ public class TestConfirmOperationValidation {
         );
         validation.validateComments();
         assertThat(validation.getProblems()).isEmpty();
-        verify(mockCommentRepo, never()).findIdByIdIn(any());
+        verify(mockCommentRepo, never()).findAllByIdIn(any());
     }
 
     private static Map<String, Labware> bcMap(Collection<Labware> labware) {
