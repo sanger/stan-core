@@ -79,6 +79,7 @@ public class GraphQLProvider {
                         .dataFetcher("labware", graphQLDataFetchers.findLabwareByBarcode())
                         .dataFetcher("printers", graphQLDataFetchers.findPrinters())
                         .dataFetcher("comments", graphQLDataFetchers.getComments())
+                        .dataFetcher("equipments", graphQLDataFetchers.getEquipments())
                         .dataFetcher("releaseDestinations", graphQLDataFetchers.getReleaseDestinations())
                         .dataFetcher("releaseRecipients", graphQLDataFetchers.getReleaseRecipients())
                         .dataFetcher("find", graphQLDataFetchers.find())
@@ -114,9 +115,12 @@ public class GraphQLProvider {
                         .dataFetcher("destroy", graphQLMutation.destroy()) // transaction handled in service
                         .dataFetcher("registerSections", transact(graphQLMutation.sectionRegister()))
                         .dataFetcher("slotCopy", graphQLMutation.slotCopy()) // transaction handled in service
+                        .dataFetcher("recordInPlace", transact(graphQLMutation.recordInPlace()))
 
                         .dataFetcher("addComment", transact(graphQLMutation.addComment()))
                         .dataFetcher("setCommentEnabled", transact(graphQLMutation.setCommentEnabled()))
+                        .dataFetcher("addEquipment", transact(graphQLMutation.addEquipment()))
+                        .dataFetcher("setEquipmentEnabled", transact(graphQLMutation.setEquipmentEnabled()))
                         .dataFetcher("addHmdmc", transact(graphQLMutation.addHmdmc()))
                         .dataFetcher("setHmdmcEnabled", transact(graphQLMutation.setHmdmcEnabled()))
                         .dataFetcher("addDestructionReason", transact(graphQLMutation.addDestructionReason()))

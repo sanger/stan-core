@@ -257,6 +257,17 @@ public class EntityFactory {
         return new Snapshot(snapId, lw.getId(), elements);
     }
 
+    @SuppressWarnings("unchecked")
+    public static <E> List<E> objToList(Object obj) {
+        if (obj==null) {
+            return List.of();
+        }
+        if (obj instanceof List) {
+            return (List<E>) obj;
+        }
+        return (List<E>) List.of(obj);
+    }
+
     private static List<Slot> toFirstSlots(Collection<Labware> labware) {
         return labware.stream().map(Labware::getFirstSlot).collect(toList());
     }

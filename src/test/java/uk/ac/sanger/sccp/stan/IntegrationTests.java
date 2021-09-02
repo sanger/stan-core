@@ -99,6 +99,8 @@ public class IntegrationTests {
     private CommentRepo commentRepo;
     @Autowired
     private UserRepo userRepo;
+    @Autowired
+    private EquipmentRepo equipmentRepo;
 
     @MockBean
     StorelightClient mockStorelightClient;
@@ -827,6 +829,23 @@ public class IntegrationTests {
         assertFalse(commentRepo.getById(comment.getId()).isEnabled());
     }
 
+    @Test
+    @Transactional
+    public void testEquipmentAdmin() throws Exception {
+        String mutation = "mutation { addEquipment(name: \"Bananas\", category: \"SCANNER\") { id, name, category, enabled }}";
+        tester.setUser(entityCreator.createUser("admo", User.Role.admin));
+        Object result = tester.post(mutation);
+        Integer eqId = chainGet(result, "data", "addEquipment", "id");
+        assertNotNull(eqId);
+        assertEquals(Map.of("id", eqId, "name", "Bananas", "category", "scanner", "enabled", true),
+                chainGet(result, "data", "addEquipment"));
+
+        mutation = "mutation { setEquipmentEnabled(equipmentId: "+eqId+", enabled: false) { id, name, category, enabled }}";
+        result = tester.post(mutation);
+        assertEquals(Map.of("id", eqId, "name", "Bananas", "category", "scanner", "enabled", false),
+                chainGet(result, "data", "setEquipmentEnabled"));
+    }
+
     public <E extends HasEnabled> void testGenericAddNewAndSetEnabled(String entityTypeName, String fieldName,
                                                                       String string,
                                                                       Function<String, Optional<E>> findFunction,
@@ -1092,6 +1111,31 @@ public class IntegrationTests {
 
         Operation op = opRepo.findById(opId).orElseThrow();
         assertEquals(op.getStainType().getName(), "H&E");
+    }
+
+    @Transactional
+    @Test
+    public void testRecordInPlaceWithEquipment() throws Exception {
+        Work work = entityCreator.createWork(null, null, null);
+        User user = entityCreator.createUser("user1");
+        Sample sam = entityCreator.createSample(entityCreator.createTissue(entityCreator.createDonor("DONOR1"), "TISSUE1"), 5);
+        LabwareType lt = entityCreator.createLabwareType("lt1", 1, 1);
+        entityCreator.createLabware("STAN-50", lt, sam);
+
+        Equipment equipment = equipmentRepo.save(new Equipment("Bananas", "scanner"));
+        OperationType opType = entityCreator.createOpType("OpTypeName", null, OperationTypeFlag.IN_PLACE);
+
+        String mutation = tester.readResource("graphql/recordInPlace.graphql").replace("WORKNUMBER", work.getWorkNumber())
+                .replace("666", String.valueOf(equipment.getId()));
+
+        tester.setUser(user);
+        Object result = tester.post(mutation);
+        Integer opId = chainGet(result, "data", "recordInPlace", "operations", 0, "id");
+        assertNotNull(opId);
+
+        Operation op = opRepo.findById(opId).orElseThrow();
+        assertEquals(opType, op.getOperationType());
+        assertEquals(equipment, op.getEquipment());
     }
 
     private void stubStorelightUnstore() throws IOException {

@@ -1,0 +1,12 @@
+mutation {
+    recordInPlace(request: {
+        operationType: "OpTypeName"
+        barcodes: ["STAN-50"]
+        workNumber: "WORKNUMBER"
+        equipmentId: 666
+    }) {
+        operations {
+            id
+        }
+    }
+}

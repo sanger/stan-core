@@ -274,6 +274,13 @@ input SlotCopyRequest {
     workNumber: String
 }
 
+input InPlaceOpRequest {
+    operationType: String!
+    barcodes: [String!]!
+    equipmentId: Int
+    workNumber: String
+}
+
 type Action {
     source: Slot!,
     destination: Slot!,
@@ -307,6 +314,13 @@ type Printer {
 type Comment {
     id: Int!
     text: String!
+    category: String!
+    enabled: Boolean!
+}
+
+type Equipment {
+    id: Int!
+    name: String!
     category: String!
     enabled: Boolean!
 }
@@ -538,6 +552,7 @@ type Query {
     labware(barcode: String!): Labware!
     printers(labelType: String): [Printer!]!
     comments(category: String, includeDisabled: Boolean): [Comment!]!
+    equipments(category: String, includeDisabled: Boolean): [Equipment]!
     releaseDestinations(includeDisabled: Boolean): [ReleaseDestination!]!
     releaseRecipients(includeDisabled: Boolean): [ReleaseRecipient!]!
     destructionReasons(includeDisabled: Boolean): [DestructionReason!]!
@@ -575,6 +590,8 @@ type Mutation {
     slotCopy(request: SlotCopyRequest!): OperationResult!
     addComment(category: String!, text: String!): Comment!
     setCommentEnabled(commentId: Int!, enabled: Boolean!): Comment!
+    addEquipment(category: String!, name: String!): Equipment!
+    setEquipmentEnabled(equipmentId: Int!, enabled: Boolean!): Equipment!
     addDestructionReason(text: String!): DestructionReason!
     setDestructionReasonEnabled(text: String!, enabled: Boolean!): DestructionReason!
     addHmdmc(hmdmc: String!): Hmdmc!
@@ -596,6 +613,7 @@ type Mutation {
     createWork(prefix: String!, workType: String!, project: String!, costCode: String!): Work!
     updateWorkStatus(workNumber: String!, status: WorkStatus!, commentId: Int): Work!
     stain(request: StainRequest!): OperationResult!
+    recordInPlace(request: InPlaceOpRequest!): OperationResult!
 
     addUser(username: String!): User!
     setUserRole(username: String!, role: UserRole!): User!
