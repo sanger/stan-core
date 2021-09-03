@@ -3,8 +3,7 @@ package uk.ac.sanger.sccp.stan.service.history;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.*;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
@@ -211,10 +210,13 @@ public class TestHistoryService {
             final Address C1 = new Address(3,1);
 
             OperationType opType = EntityFactory.makeOperationType("Catapult", null);
+            OperationType stainOpType = EntityFactory.makeOperationType("Stain", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.STAIN);
+            Operation stain = EntityFactory.makeOpForSlots(stainOpType, List.of(labware[0].getSlot(C1)), List.of(labware[3].getFirstSlot()), getUser());
+            stain.setStainType(new StainType(400, "Ribena"));
             ops = List.of(
                     EntityFactory.makeOpForSlots(opType, streamSlots(labware[0], A1, B1, B1).collect(toList()),
                             Stream.concat(streamSlots(labware[1], A1, B1), streamSlots(labware[2], A1)).collect(toList()), getUser()),
-                    EntityFactory.makeOpForSlots(opType, List.of(labware[0].getSlot(C1)), List.of(labware[3].getFirstSlot()), getUser())
+                    stain
             );
         }
     }
@@ -251,6 +253,53 @@ public class TestHistoryService {
         assertEquals(Map.of(), service.loadOpComments(Set.of(3,4)));
     }
 
+    @Test
+    public void testLoadOpMeasurements() {
+        Measurement[] measurements = {
+                new Measurement(1, "Thickness", "10", 1, 10, 100),
+                new Measurement(2, "Thickness", "20", 2, 20, 200),
+                new Measurement(3, "Blueing", "300", 3, 20, 300),
+        };
+        when(mockMeasurementRepo.findAllByOperationIdIn(any())).then(invocation -> {
+            Collection<Integer> opIds = invocation.getArgument(0);
+            return Arrays.stream(measurements).filter(m -> opIds.contains(m.getOperationId())).collect(toList());
+        });
+        assertEquals(Map.of(), service.loadOpMeasurements(Set.of(1,2)));
+        assertEquals(Map.of(20, List.of(measurements[1], measurements[2])), service.loadOpMeasurements(Set.of(1,20)));
+    }
+
+    @ParameterizedTest
+    @CsvSource(value={
+            "bananas, bananas",
+            "51, 51 sec",
+            "60, 1 min 0 sec",
+            "3333, 55 min 33 sec",
+            "7200, 2 hour 0 min 0 sec",
+            "9876, 2 hour 44 min 36 sec",
+    })
+    public void testDescribeSeconds(String value, String expected) {
+        assertEquals(expected, service.describeSeconds(value));
+    }
+
+    @ParameterizedTest
+    @CsvSource(value={
+            "Thickness, 14,, Thickness: 14",
+            "Thickness, 11, B3, B3: Thickness: 11",
+            "Blueing, 902,, Blueing: 15 min 2 sec",
+            "Blueing, 75, D9, D9: Blueing: 1 min 15 sec",
+    })
+    public void testMeasurementDetail(String name, String value, Address address, String expected) {
+        Map<Integer, Slot> slotIdMap = null;
+        Integer slotId = null;
+        if (address != null) {
+            slotId = 70;
+            Slot slot = new Slot(slotId, 7, address, null, null, null);
+            slotIdMap = Map.of(slotId, slot);
+        }
+        Measurement measurement = new Measurement(6, name, value, 4, 5, slotId);
+        assertEquals(expected, service.measurementDetail(measurement, slotIdMap));
+    }
+
     @ParameterizedTest
     @MethodSource("doesCommentApplyData")
     public void testDoesCommentApply(OperationComment opCom, int sampleId, int labwareId, Slot slot, boolean expected) {
@@ -275,6 +324,31 @@ public class TestHistoryService {
         );
     }
 
+    @ParameterizedTest
+    @MethodSource("doesMeasurementApplyData")
+    public void testDoesMeasurementApply(Measurement measurement, int sampleId, int labwareId, Map<Integer, Slot> slotIdMap, boolean expected) {
+        assertEquals(expected, service.doesMeasurementApply(measurement, sampleId, labwareId, slotIdMap));
+    }
+
+    static Stream<Arguments> doesMeasurementApplyData() {
+        final int sampleId = 4;
+        final int slotId = 10;
+        final int lwId = 1;
+        Map<Integer, Slot> slotIdMap = Map.of(slotId, new Slot(slotId, lwId, new Address(1,2), null, null, null));
+        return Arrays.stream(new Object[][] {
+                {new Measurement(1, "A", "1", null, 1, null), sampleId, lwId, slotIdMap, true},
+                {new Measurement(1, "A", "1", sampleId, 1, null), sampleId, lwId, slotIdMap, true},
+                {new Measurement(1, "A", "1", null, 1, slotId), sampleId, lwId, slotIdMap, true},
+                {new Measurement(1, "A", "1", sampleId, 1, slotId), sampleId, lwId, slotIdMap, true},
+
+                {new Measurement(1, "A", "1", 5, 1, slotId), sampleId, lwId, slotIdMap, false},
+                {new Measurement(1, "A", "1", sampleId, 1, 800), sampleId, lwId, slotIdMap, false},
+                {new Measurement(1, "A", "1", sampleId, 1, slotId), sampleId, 2, slotIdMap, false},
+                {new Measurement(1, "A", "1", null, 1, 800), sampleId, lwId, slotIdMap, false},
+                {new Measurement(1, "A", "1", 5, 1, null), sampleId, lwId, slotIdMap, false},
+        }).map(Arguments::of);
+    }
+
     @Test
     public void testCreateEntriesForOps() {
         Comment[] coms = {
@@ -284,6 +358,7 @@ public class TestHistoryService {
                 new Comment(3, "Arkansas", "Bananas"),
         };
         createOps();
+        ops.get(0).setEquipment(new Equipment("Feeniks", "scanner"));
         int[] opIds = ops.stream().mapToInt(Operation::getId).toArray();
         Map<Integer, Set<String>> opWork = Map.of(
                 opIds[0], Set.of("SGP5000"),
@@ -296,6 +371,12 @@ public class TestHistoryService {
                 new OperationComment(3, coms[2], opIds[1], null, null, null),
                 new OperationComment(4, coms[3], opIds[1], 400, null, null),
         };
+
+        Map<Integer, List<Measurement>> opMeasurements = Map.of(
+                opIds[0], List.of(new Measurement(1, "Thickness", "4", null, opIds[0], null))
+        );
+
+        doReturn(opMeasurements).when(service).loadOpMeasurements(any());
 
         Map<Integer, List<OperationComment>> opComMap = Map.of(
                 opIds[0], List.of(opComs[0], opComs[1]),
@@ -310,15 +391,20 @@ public class TestHistoryService {
 
         Set<Integer> sampleIds = Set.of(samples[0].getId(), samples[2].getId());
 
-        String opTypeName = ops.get(0).getOperationType().getName();
+        String opTypeName0 = ops.get(0).getOperationType().getName();
+        String opTypeName1 = ops.get(1).getOperationType().getName();
         String username = getUser().getUsername();
         List<HistoryEntry> expectedEntries = List.of(
-                new HistoryEntry(opIds[0], opTypeName, ops.get(0).getPerformed(), labware[0].getId(),
-                        labware[1].getId(), samples[0].getId(), username, "SGP5000", List.of("Alabama", "A1: Alaska")),
-                new HistoryEntry(opIds[1], opTypeName, ops.get(1).getPerformed(), labware[0].getId(),
-                        labware[3].getId(), samples[2].getId(), username, null, List.of("Arizona"))
+                new HistoryEntry(opIds[0], opTypeName0, ops.get(0).getPerformed(), labware[0].getId(),
+                        labware[1].getId(), samples[0].getId(), username, "SGP5000",
+                        List.of("Equipment: Feeniks", "Alabama", "A1: Alaska", "Thickness: 4")),
+                new HistoryEntry(opIds[1], opTypeName1, ops.get(1).getPerformed(), labware[0].getId(),
+                        labware[3].getId(), samples[2].getId(), username, null,
+                        List.of("Stain type: Ribena", "Arizona"))
         );
         assertThat(service.createEntriesForOps(ops, sampleIds, labwareList, opWork)).containsExactlyElementsOf(expectedEntries);
+
+        verify(service).loadOpMeasurements(Set.of(opIds[0], opIds[1]));
     }
 
     private static LocalDateTime makeTime(int n) {
