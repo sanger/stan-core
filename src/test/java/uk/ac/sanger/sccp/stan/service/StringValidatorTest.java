@@ -105,6 +105,7 @@ public class StringValidatorTest {
                 {"()", CharacterType.PAREN},
                 {"/", CharacterType.SLASH},
                 {"'", CharacterType.APOSTROPHE},
+                {"%", CharacterType.PERCENT},
                 {"@[`{", null},
         }).map(Arguments::of);
     }

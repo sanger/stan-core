@@ -13,7 +13,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 public class StringValidator implements Validator<String> {
 
     public enum CharacterType {
-        ALPHA, DIGIT, HYPHEN, UNDERSCORE, SPACE, SLASH, PAREN, FULL_STOP, APOSTROPHE
+        ALPHA, DIGIT, HYPHEN, UNDERSCORE, SPACE, SLASH, PAREN, FULL_STOP, APOSTROPHE, PERCENT,
     }
 
     private final String fieldName;
@@ -191,6 +191,7 @@ public class StringValidator implements Validator<String> {
             case '(': case ')': return CharacterType.PAREN;
             case '.': return CharacterType.FULL_STOP;
             case '\'': return CharacterType.APOSTROPHE;
+            case '%': return CharacterType.PERCENT;
         }
         return null;
     }
