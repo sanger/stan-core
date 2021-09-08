@@ -13,7 +13,7 @@ import java.util.Objects;
 @Entity
 public class StainType implements HasEnabled {
     /** The measurements supported for the {@code H&E} stain type. */
-    public static final List<String> H_AND_E_MEASUREMENTS = List.of("Haematoxylin", "Eosin", "Blueing");
+    public static final List<String> H_AND_E_MEASUREMENTS = List.of("Haematoxylin", "Blueing", "Eosin");
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
