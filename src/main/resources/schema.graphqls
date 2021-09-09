@@ -16,6 +16,11 @@ enum LabwareState {
     destroyed
 }
 
+enum PassFail {
+    pass
+    fail
+}
+
 type User {
     username: String!
     role: UserRole!
@@ -540,6 +545,23 @@ input StainRequest {
     workNumber: String
 }
 
+input SampleResult {
+    address: Address!
+    sampleId: Int!
+    result: PassFail!
+    commentId: Int
+}
+
+input LabwareResult {
+    barcode: String!
+    sampleResults: [SampleResult!]!
+}
+
+input ResultRequest {
+    labwareResults: [LabwareResult!]!
+    workNumber: String
+}
+
 type Query {
     user: User
     tissueTypes: [TissueType!]!
@@ -614,6 +636,7 @@ type Mutation {
     updateWorkStatus(workNumber: String!, status: WorkStatus!, commentId: Int): Work!
     stain(request: StainRequest!): OperationResult!
     recordInPlace(request: InPlaceOpRequest!): OperationResult!
+    recordStainResult(request: ResultRequest!): OperationResult!
 
     addUser(username: String!): User!
     setUserRole(username: String!, role: UserRole!): User!

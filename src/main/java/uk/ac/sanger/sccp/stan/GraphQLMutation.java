@@ -68,6 +68,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final WorkTypeService workTypeService;
     final WorkService workService;
     final StainService stainService;
+    final ResultService resultService;
     final UserAdminService userAdminService;
 
     @Autowired
@@ -83,8 +84,9 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            HmdmcAdminService hmdmcAdminService, ReleaseDestinationAdminService releaseDestinationAdminService,
                            ReleaseRecipientAdminService releaseRecipientAdminService, SpeciesAdminService speciesAdminService,
                            ProjectService projectService, CostCodeService costCodeService, FixativeService fixativeService,
-                           WorkTypeService workTypeService,
-                           WorkService workService, StainService stainService, UserAdminService userAdminService) {
+                           WorkTypeService workTypeService, WorkService workService,
+                           StainService stainService, ResultService resultService,
+                           UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
@@ -112,6 +114,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.workTypeService = workTypeService;
         this.workService = workService;
         this.stainService = stainService;
+        this.resultService = resultService;
         this.userAdminService = userAdminService;
     }
 
@@ -412,6 +415,14 @@ public class GraphQLMutation extends BaseGraphQLResource {
             User user = checkUser(dfe, User.Role.normal);
             StainRequest request = arg(dfe, "request", StainRequest.class);
             return stainService.recordStain(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> recordStainResult() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            ResultRequest request = arg(dfe, "request", ResultRequest.class);
+            return resultService.recordStainResult(user, request);
         };
     }
 

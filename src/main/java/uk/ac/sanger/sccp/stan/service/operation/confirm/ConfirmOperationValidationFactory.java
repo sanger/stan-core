@@ -2,8 +2,10 @@ package uk.ac.sanger.sccp.stan.service.operation.confirm;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
+import uk.ac.sanger.sccp.stan.repo.PlanOperationRepo;
 import uk.ac.sanger.sccp.stan.request.confirm.ConfirmOperationRequest;
+import uk.ac.sanger.sccp.stan.service.CommentValidationService;
 
 /**
  * @author dr6
@@ -12,17 +14,17 @@ import uk.ac.sanger.sccp.stan.request.confirm.ConfirmOperationRequest;
 public class ConfirmOperationValidationFactory {
     private final LabwareRepo labwareRepo;
     private final PlanOperationRepo planOpRepo;
-    private final CommentRepo commentRepo;
+    private final CommentValidationService commentValidationService;
 
     @Autowired
     public ConfirmOperationValidationFactory(LabwareRepo labwareRepo, PlanOperationRepo planOpRepo,
-                                             CommentRepo commentRepo) {
+                                             CommentValidationService commentValidationService) {
         this.labwareRepo = labwareRepo;
         this.planOpRepo = planOpRepo;
-        this.commentRepo = commentRepo;
+        this.commentValidationService = commentValidationService;
     }
 
     public ConfirmOperationValidation createConfirmOperationValidation(ConfirmOperationRequest request) {
-        return new ConfirmOperationValidationImp(request, labwareRepo, planOpRepo, commentRepo);
+        return new ConfirmOperationValidationImp(request, labwareRepo, planOpRepo, commentValidationService);
     }
 }
