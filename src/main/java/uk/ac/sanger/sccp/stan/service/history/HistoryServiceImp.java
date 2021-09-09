@@ -279,6 +279,7 @@ public class HistoryServiceImp implements HistoryService {
             } else {
                 stainDetail = null;
             }
+            Equipment equipment = op.getEquipment();
             Set<SampleAndLabwareIds> items = new LinkedHashSet<>();
             List<OperationComment> comments = opComments.getOrDefault(op.getId(), List.of());
             List<Measurement> measurements = opMeasurements.getOrDefault(op.getId(), List.of());
@@ -304,6 +305,9 @@ public class HistoryServiceImp implements HistoryService {
                         op.getPerformed(), item.sourceId, item.destId, item.sampleId, username, workNumber);
                 if (stainDetail!=null) {
                     entry.addDetail(stainDetail);
+                }
+                if (equipment!=null) {
+                    entry.addDetail("Equipment: "+equipment.getName());
                 }
                 comments.forEach(com -> {
                     if (doesCommentApply(com, item.sampleId, item.destId, slotIdMap)) {

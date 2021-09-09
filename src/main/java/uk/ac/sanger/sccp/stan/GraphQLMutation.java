@@ -20,6 +20,7 @@ import uk.ac.sanger.sccp.stan.request.stain.StainRequest;
 import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.extract.ExtractService;
 import uk.ac.sanger.sccp.stan.service.label.print.LabelPrintService;
+import uk.ac.sanger.sccp.stan.service.operation.InPlaceOpService;
 import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmOperationService;
 import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmSectionService;
 import uk.ac.sanger.sccp.stan.service.operation.plan.PlanService;
@@ -53,7 +54,9 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final ExtractService extractService;
     final DestructionService destructionService;
     final SlotCopyService slotCopyService;
+    final InPlaceOpService inPlaceOpService;
     final CommentAdminService commentAdminService;
+    final EquipmentAdminService equipmentAdminService;
     final DestructionReasonAdminService destructionReasonAdminService;
     final HmdmcAdminService hmdmcAdminService;
     final ReleaseDestinationAdminService releaseDestinationAdminService;
@@ -74,8 +77,9 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            LabelPrintService labelPrintService,
                            ConfirmOperationService confirmOperationService,
                            UserRepo userRepo, ConfirmSectionService confirmSectionService, ReleaseService releaseService, ExtractService extractService,
-                           DestructionService destructionService, SlotCopyService slotCopyService,
-                           CommentAdminService commentAdminService, DestructionReasonAdminService destructionReasonAdminService,
+                           DestructionService destructionService, SlotCopyService slotCopyService, InPlaceOpService inPlaceOpService,
+                           CommentAdminService commentAdminService, EquipmentAdminService equipmentAdminService,
+                           DestructionReasonAdminService destructionReasonAdminService,
                            HmdmcAdminService hmdmcAdminService, ReleaseDestinationAdminService releaseDestinationAdminService,
                            ReleaseRecipientAdminService releaseRecipientAdminService, SpeciesAdminService speciesAdminService,
                            ProjectService projectService, CostCodeService costCodeService, FixativeService fixativeService,
@@ -94,7 +98,9 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.extractService = extractService;
         this.destructionService = destructionService;
         this.slotCopyService = slotCopyService;
+        this.inPlaceOpService = inPlaceOpService;
         this.commentAdminService = commentAdminService;
+        this.equipmentAdminService = equipmentAdminService;
         this.destructionReasonAdminService = destructionReasonAdminService;
         this.hmdmcAdminService = hmdmcAdminService;
         this.releaseDestinationAdminService = releaseDestinationAdminService;
@@ -255,6 +261,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
         };
     }
 
+    public DataFetcher<OperationResult> recordInPlace() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            InPlaceOpRequest request = arg(dfe, "request", InPlaceOpRequest.class);
+            logRequest("recordInPlace", user, request);
+            return inPlaceOpService.record(user, request);
+        };
+    }
+
     public DataFetcher<Comment> addComment() {
         return dfe -> {
             User user = checkUser(dfe, User.Role.admin);
@@ -274,6 +289,28 @@ public class GraphQLMutation extends BaseGraphQLResource {
             requireNonNull(enabled, "enabled not specified");
             logRequest("SetCommentEnabled", user, String.format("(commentId=%s, enabled=%s)", commentId, enabled));
             return commentAdminService.setCommentEnabled(commentId, enabled);
+        };
+    }
+
+    public DataFetcher<Equipment> addEquipment() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.admin);
+            String category = dfe.getArgument("category");
+            String name = dfe.getArgument("name");
+            logRequest("AddCategory", user, String.format("(category=%s, name=%s)", repr(category), repr(name)));
+            return equipmentAdminService.addEquipment(category, name);
+        };
+    }
+
+    public DataFetcher<Equipment> setEquipmentEnabled() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.admin);
+            Integer equipmentId = dfe.getArgument("equipmentId");
+            Boolean enabled = dfe.getArgument("enabled");
+            requireNonNull(equipmentId, "equipmentId not specified");
+            requireNonNull(enabled, "enabled not specified");
+            logRequest("SetEquipmentEnabled", user, String.format("(equipmentId=%s, enabled=%s)", equipmentId, enabled));
+            return equipmentAdminService.setEquipmentEnabled(equipmentId, enabled);
         };
     }
 

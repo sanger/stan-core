@@ -1,0 +1,48 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+    <changeSet id="1900" author="dr6">
+        <createTable tableName="equipment">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="name" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="category" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValue="TRUE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="equipment" indexName="uk_equipment_category_name" unique="true">
+            <column name="category"/>
+            <column name="name"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="1901" author="dr6">
+        <createTable tableName="operation_equipment">
+            <column name="operation_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_operation_equipment_operation" referencedTableName="operation" referencedColumnNames="id"/>
+            </column>
+            <column name="equipment_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_operation_equipment_equipment" referencedTableName="equipment" referencedColumnNames="id"/>
+            </column>
+        </createTable>
+        <addPrimaryKey tableName="operation_equipment" columnNames="operation_id,equipment_id"/>
+        <rollback>
+            <dropAllForeignKeyConstraints baseTableName="operation_equipment"/>
+            <dropTable tableName="operation_equipment"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

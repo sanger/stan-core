@@ -39,7 +39,6 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final SpeciesRepo speciesRepo;
     final HmdmcRepo hmdmcRepo;
     final LabwareRepo labwareRepo;
-    final CommentRepo commentRepo;
     final ReleaseDestinationRepo releaseDestinationRepo;
     final ReleaseRecipientRepo releaseRecipientRepo;
     final DestructionReasonRepo destructionReasonRepo;
@@ -50,6 +49,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final LabelPrintService labelPrintService;
     final FindService findService;
     final CommentAdminService commentAdminService;
+    final EquipmentAdminService equipmentAdminService;
     final HistoryService historyService;
     final PlanService planService;
     final StainService stainService;
@@ -59,12 +59,13 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                SessionConfig sessionConfig,
                                TissueTypeRepo tissueTypeRepo, LabwareTypeRepo labwareTypeRepo,
                                MediumRepo mediumRepo, FixativeRepo fixativeRepo, MouldSizeRepo mouldSizeRepo,
-                               SpeciesRepo speciesRepo, HmdmcRepo hmdmcRepo, LabwareRepo labwareRepo, CommentRepo commentRepo,
+                               SpeciesRepo speciesRepo, HmdmcRepo hmdmcRepo, LabwareRepo labwareRepo,
                                ReleaseDestinationRepo releaseDestinationRepo, ReleaseRecipientRepo releaseRecipientRepo,
                                DestructionReasonRepo destructionReasonRepo, ProjectRepo projectRepo, CostCodeRepo costCodeRepo,
                                WorkTypeRepo workTypeRepo, WorkRepo workRepo,
                                LabelPrintService labelPrintService, FindService findService,
-                               CommentAdminService commentAdminService, HistoryService historyService, PlanService planService,
+                               CommentAdminService commentAdminService, EquipmentAdminService equipmentAdminService,
+                               HistoryService historyService, PlanService planService,
                                StainService stainService) {
         super(objectMapper, authComp, userRepo);
         this.sessionConfig = sessionConfig;
@@ -76,7 +77,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.speciesRepo = speciesRepo;
         this.hmdmcRepo = hmdmcRepo;
         this.labwareRepo = labwareRepo;
-        this.commentRepo = commentRepo;
+        this.equipmentAdminService = equipmentAdminService;
         this.releaseDestinationRepo = releaseDestinationRepo;
         this.releaseRecipientRepo = releaseRecipientRepo;
         this.destructionReasonRepo = destructionReasonRepo;
@@ -147,6 +148,14 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
             String category = dfe.getArgument("category");
             boolean includeDisabled = argOrFalse(dfe, "includeDisabled");
             return commentAdminService.getComments(category, includeDisabled);
+        };
+    }
+
+    public DataFetcher<Iterable<Equipment>> getEquipments() {
+        return dfe -> {
+            String category = dfe.getArgument("category");
+            boolean includeDisabled = argOrFalse(dfe, "includeDisabled");
+            return equipmentAdminService.getEquipment(category, includeDisabled);
         };
     }
 

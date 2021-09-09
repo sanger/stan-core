@@ -40,6 +40,12 @@ public class Operation {
             inverseJoinColumns = @JoinColumn(name="stain_type_id"))
     private StainType stainType;
 
+    @ManyToOne
+    @JoinTable(name="operation_equipment",
+            joinColumns = @JoinColumn(name="operation_id"),
+            inverseJoinColumns = @JoinColumn(name="equipment_id"))
+    private Equipment equipment;
+
     public Operation() {}
 
     public Operation(Integer id, OperationType operationType, LocalDateTime performed, List<Action> actions, User user,
@@ -112,6 +118,14 @@ public class Operation {
         this.stainType = stainType;
     }
 
+    public Equipment getEquipment() {
+        return this.equipment;
+    }
+
+    public void setEquipment(Equipment equipment) {
+        this.equipment = equipment;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -123,7 +137,8 @@ public class Operation {
                 && Objects.equals(this.user, that.user)
                 && Objects.equals(this.actions, that.actions)
                 && Objects.equals(this.planOperationId, that.planOperationId)
-                && Objects.equals(this.stainType, that.stainType));
+                && Objects.equals(this.stainType, that.stainType)
+                && Objects.equals(this.equipment, that.equipment));
     }
 
     @Override
@@ -138,6 +153,7 @@ public class Operation {
                 .add("performed", performed)
                 .add("operationType", operationType)
                 .addIfNotNull("stainType", stainType)
+                .addIfNotNull("equipment", equipment)
                 .toString();
     }
 }

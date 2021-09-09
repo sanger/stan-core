@@ -66,6 +66,21 @@ public class FieldValidation {
     }
 
     @Bean
+    public Validator<String> equipmentCategoryValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA);
+        return new StringValidator("Equipment category", 2, 32, charTypes);
+    }
+
+    @Bean
+    public Validator<String> equipmentNameValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(
+                CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN, CharacterType.SPACE,
+                CharacterType.SLASH, CharacterType.PAREN, CharacterType.FULL_STOP, CharacterType.APOSTROPHE
+        );
+        return new StringValidator("Equipment name", 3, 64, charTypes);
+    }
+
+    @Bean
     public Validator<String> usernameValidator() {
         Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA, CharacterType.DIGIT);
         return new StringValidator("Username", 1, 32, charTypes);
