@@ -552,7 +552,7 @@ type Query {
     labware(barcode: String!): Labware!
     printers(labelType: String): [Printer!]!
     comments(category: String, includeDisabled: Boolean): [Comment!]!
-    equipments(category: String, includeDisabled: Boolean): [Equipment]!
+    equipments(category: String, includeDisabled: Boolean): [Equipment!]!
     releaseDestinations(includeDisabled: Boolean): [ReleaseDestination!]!
     releaseRecipients(includeDisabled: Boolean): [ReleaseRecipient!]!
     destructionReasons(includeDisabled: Boolean): [DestructionReason!]!
