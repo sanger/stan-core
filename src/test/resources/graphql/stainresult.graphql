@@ -1,0 +1,22 @@
+mutation {
+    recordStainResult(request: {
+        workNumber: "SGP500"
+        labwareResults: [
+            {
+                barcode: "STAN-50"
+                sampleResults: [
+                    {
+                        address: "A1"
+                        sampleId: 543
+                        result: pass
+                    }
+                ]
+            }
+        ]
+    }) {
+        operations {
+            id
+            operationType { name }
+        }
+    }
+}
