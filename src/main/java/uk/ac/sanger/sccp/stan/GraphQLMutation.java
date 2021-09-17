@@ -393,6 +393,8 @@ public class GraphQLMutation extends BaseGraphQLResource {
             String code = dfe.getArgument("costCode");
             String prefix = dfe.getArgument("prefix");
             String workTypeName = dfe.getArgument("workType");
+            logRequest("Create work", user, String.format("project: %s, costCode: %s, prefix: %s, workType: %s",
+                    projectName, code, prefix, workTypeName));
             return workService.createWork(user, prefix, workTypeName, projectName, code);
         };
     }
@@ -403,6 +405,8 @@ public class GraphQLMutation extends BaseGraphQLResource {
             String workNumber = dfe.getArgument("workNumber");
             Work.Status status = arg(dfe, "status", Work.Status.class);
             Integer commentId = dfe.getArgument("commentId");
+            logRequest("Update work status", user, String.format("workNumber: %s, status: %s, commentId: %s",
+                    workNumber, status, commentId));
             return workService.updateStatus(user, workNumber, status, commentId);
         };
     }
@@ -411,6 +415,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         return dfe -> {
             User user = checkUser(dfe, User.Role.normal);
             StainRequest request = arg(dfe, "request", StainRequest.class);
+            logRequest("Stain", user, request);
             return stainService.recordStain(user, request);
         };
     }
