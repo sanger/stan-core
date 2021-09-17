@@ -540,6 +540,15 @@ input StainRequest {
     workNumber: String
 }
 
+input UnreleaseLabware {
+    barcode: String!
+    highestSection: Int
+}
+
+input UnreleaseRequest {
+    labware: [UnreleaseLabware!]!
+}
+
 type Query {
     user: User
     tissueTypes: [TissueType!]!
@@ -614,6 +623,7 @@ type Mutation {
     updateWorkStatus(workNumber: String!, status: WorkStatus!, commentId: Int): Work!
     stain(request: StainRequest!): OperationResult!
     recordInPlace(request: InPlaceOpRequest!): OperationResult!
+    unrelease(request: UnreleaseRequest!): OperationResult!
 
     addUser(username: String!): User!
     setUserRole(username: String!, role: UserRole!): User!
