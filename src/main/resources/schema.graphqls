@@ -547,7 +547,6 @@ input StainRequest {
 
 input SampleResult {
     address: Address!
-    sampleId: Int!
     result: PassFail!
     commentId: Int
 }

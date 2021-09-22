@@ -60,7 +60,6 @@ public class TestResultService {
     @ParameterizedTest
     @ValueSource(booleans={false,true})
     void testRecordStainResult(boolean valid) {
-        User user = (valid ? EntityFactory.getUser() : null);
         OperationType opType = EntityFactory.makeOperationType("Record result", null,
                 OperationTypeFlag.IN_PLACE, OperationTypeFlag.RESULT);
         doReturn(opType).when(service).loadOpType(any(), eq("Record result"));
@@ -91,11 +90,11 @@ public class TestResultService {
         doReturn(opRes).when(service).createResults(any(), any(), any(), any(), any(), any(), any());
         final List<LabwareResult> lrs = request.getLabwareResults();
         if (valid) {
+            User user = EntityFactory.getUser();
             assertSame(opRes, service.recordStainResult(user, request));
-
             verify(service).createResults(user, opType, lrs, lwMap, lwStainMap, commentMap, work);
         } else {
-            ValidationException exc = assertThrows(ValidationException.class, () -> service.recordStainResult(user, request));
+            ValidationException exc = assertThrows(ValidationException.class, () -> service.recordStainResult(null, request));
             assertThat(exc).hasMessage("The result request could not be validated.");
             //noinspection unchecked
             assertThat((Collection<Object>) exc.getProblems()).containsExactlyInAnyOrder(stainMapProblem, "No user specified.");
@@ -159,29 +158,30 @@ public class TestResultService {
         Labware lw2 = EntityFactory.makeEmptyLabware(lw0.getLabwareType());
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lw0, lw1, lw2);
 
+        final Address B2 = new Address(2, 2);
         List<LabwareResult> lrs = List.of(
                 new LabwareResult("No such barcode", List.of()),
                 new LabwareResult(lw0.getBarcode(), List.of()),
                 new LabwareResult(lw1.getBarcode(), List.of(
-                        new SampleResult(new Address(1,1), 1, PassFail.pass, null),
-                        new SampleResult(new Address(1,2), 2, PassFail.fail, 10))
+                        new SampleResult(new Address(1,1), PassFail.pass, null),
+                        new SampleResult(new Address(1,2), PassFail.fail, 10))
                 ),
                 new LabwareResult(lw2.getBarcode(), List.of(
-                        new SampleResult(new Address(2,1), 3, PassFail.pass, null),
-                        new SampleResult(new Address(2,2), 4, PassFail.fail, null))
+                        new SampleResult(new Address(2,1), PassFail.pass, null),
+                        new SampleResult(B2, PassFail.fail, null))
                 )
         );
         final String slotSampleProblem = "Slot sample problem.";
 
         doAnswer(invocation -> {
-            Set<List<Integer>> slotSampleIds = invocation.getArgument(2);
+            Set<Integer> slotIds = invocation.getArgument(2);
             SampleResult sr = invocation.getArgument(3);
-            if (sr.getSampleId()==4) {
+            if (sr.getAddress().equals(B2)) {
                 Collection<String> prob = invocation.getArgument(0);
                 prob.add(slotSampleProblem);
             }
             Address ad = sr.getAddress();
-            slotSampleIds.add(List.of(10 * ad.getRow() + ad.getColumn(), sr.getSampleId()));
+            slotIds.add(10 * ad.getRow() + ad.getColumn());
             return null;
         }).when(service).validateSampleResult(anyCollection(), any(), any(), any());
 
@@ -190,45 +190,42 @@ public class TestResultService {
         assertThat(problems).containsExactlyInAnyOrder(slotSampleProblem, "No results specified for labware "+lw0.getBarcode()+".");
 
         //noinspection unchecked
-        ArgumentCaptor<Set<List<Integer>>> argCap = ArgumentCaptor.forClass(Set.class);
+        ArgumentCaptor<Set<Integer>> argCap = ArgumentCaptor.forClass(Set.class);
         for (LabwareResult lr : lrs) {
             for (SampleResult sr : lr.getSampleResults()) {
                 verify(service).validateSampleResult(same(problems), same(lwMap.get(lr.getBarcode())), argCap.capture(), same(sr));
             }
         }
         // verify that the same slot/sample id sets were used for sample results on the same labware
-        var ssSets = argCap.getAllValues();
-        assertSame(ssSets.get(0), ssSets.get(1));
-        assertSame(ssSets.get(2), ssSets.get(3));
-        assertEquals(Set.of(List.of(11,1), List.of(12,2)), ssSets.get(0));
-        assertEquals(Set.of(List.of(21,3), List.of(22,4)), ssSets.get(2));
+        List<Set<Integer>> slotIdSets = argCap.getAllValues();
+        assertSame(slotIdSets.get(0), slotIdSets.get(1));
+        assertSame(slotIdSets.get(2), slotIdSets.get(3));
+        assertEquals(Set.of(11,12), slotIdSets.get(0));
+        assertEquals(Set.of(21,22), slotIdSets.get(2));
     }
 
     @ParameterizedTest
     @MethodSource("validateSampleResultArgs")
-    public void testValidateSampleResult(SampleResult sr, Labware lw, Slot slot, Sample sample, List<Integer> ssid,
-                                      Object expectedProblemsObj) {
-        if (slot!=null) {
-            doReturn(slot).when(service).getSlot(any(), any(), any());
-        } else {
+    public void testValidateSampleResult(SampleResult sr, Labware lw, Slot slot, Integer priorSlotId,
+                                         Object expectedProblemsObj) {
+        if (slot==null) {
             doAnswer(invocation -> {
                 Collection<String> problems = invocation.getArgument(0);
                 problems.add("No such slot.");
                 return null;
-            }).when(service).getSlot(any(), any(), any());
-        }
-        if (sample!=null) {
-            doReturn(sample).when(service).getSample(any(), any(), any(), any());
-        } else {
+            }).when(service).getNonemptySlot(any(), any(), any());
+        } else if (slot.getSamples().isEmpty()) {
             doAnswer(invocation -> {
                 Collection<String> problems = invocation.getArgument(0);
-                problems.add("No such sample.");
+                problems.add("Slot is empty.");
                 return null;
-            }).when(service).getSample(any(), any(), any(), any());
+            }).when(service).getNonemptySlot(any(), any(), any());
+        } else {
+            doReturn(slot).when(service).getNonemptySlot(any(), any(), any());
         }
-        Set<List<Integer>> ssids = new HashSet<>(2);
-        if (ssid != null) {
-            ssids.add(ssid);
+        Set<Integer> slotIds = new HashSet<>(2);
+        if (priorSlotId != null) {
+            slotIds.add(priorSlotId);
         }
         Collection<String> expectedProblems;
         if (expectedProblemsObj instanceof String) {
@@ -241,82 +238,74 @@ public class TestResultService {
         }
         final List<String> problems = new ArrayList<>(expectedProblems.size());
 
-        assertSame(sample, service.validateSampleResult(problems, lw, ssids, sr));
+        service.validateSampleResult(problems, lw, slotIds, sr);
+
         assertThat(problems).containsExactlyInAnyOrderElementsOf(expectedProblems);
-        if (sample!=null) {
-            verify(service).getSlot(problems, lw, sr.getAddress());
-            assert slot != null;
-            verify(service).getSample(problems, lw.getBarcode(), slot, sr.getSampleId());
+        if (sr.getAddress()!=null) {
+            verify(service).getNonemptySlot(problems, lw, sr.getAddress());
         }
     }
 
     static Stream<Arguments> validateSampleResultArgs() {
         Sample sam = EntityFactory.getSample();
-        Integer samId = sam.getId();
-        Labware lw = EntityFactory.makeLabware(EntityFactory.getTubeType(), sam);
+        LabwareType lt = EntityFactory.makeLabwareType(1,2);
+        Labware lw = EntityFactory.makeLabware(lt, sam);
         lw.setBarcode("STAN-001");
-        Slot slot = lw.getFirstSlot();
-        List<Integer> sameSsid = List.of(slot.getId(), samId);
-        List<Integer> otherSsid = List.of(slot.getId(), samId+1);
-        Address ad = new Address(1,1);
+        Address A1 = new Address(1,1);
+        Address A2 = new Address(1,2);
+        Slot slot = lw.getSlot(A1);
+        Slot emptySlot = lw.getSlot(A2);
 
-        final SampleResult passResult = new SampleResult(ad, samId, PassFail.pass, null);
-        final SampleResult failResult = new SampleResult(ad, samId, PassFail.fail, 6);
+        final SampleResult passResult = new SampleResult(A1, PassFail.pass, null);
+        final SampleResult failResult = new SampleResult(A1, PassFail.fail, 6);
         // sr, slot, sample, ssid, problems
         return Arrays.stream(new Object[][] {
-                {passResult, slot, sam, null, null},
-                {failResult, slot, sam, null, null},
-                {passResult, slot, sam, otherSsid, null},
+                {passResult, slot, null, null},
+                {failResult, slot, null, null},
+                {passResult, slot, slot.getId()+1, null},
 
-                {new SampleResult(ad, samId, null, null), slot, sam, null,
+                {new SampleResult(A1, null, null), slot, null,
                         "Sample result is missing a result."},
-                {new SampleResult(null, samId, PassFail.pass, null), null, null, null,
+                {new SampleResult(null, PassFail.pass, null), null, null,
                         "Sample result is missing a slot address."},
-                {new SampleResult(ad, null, PassFail.pass, null), null, null, null,
-                        "Sample result is missing a sample ID."},
-                {new SampleResult(ad, samId, PassFail.fail, null), slot, sam, null,
+                {new SampleResult(A2, PassFail.pass, null), emptySlot, null,
+                        "Slot is empty."},
+                {new SampleResult(A1, PassFail.fail, null), slot, null,
                         "Missing comment ID for a fail result."},
-                {new SampleResult(), null, null, null,
-                        List.of("Sample result is missing a result.", "Sample result is missing a slot address.",
-                                "Sample result is missing a sample ID.")},
+                {new SampleResult(), null, null,
+                        List.of("Sample result is missing a result.", "Sample result is missing a slot address.")},
 
-                {passResult, slot, null, null, "No such sample."},
-                {passResult, null, null, null, "No such slot."},
+                {passResult, null, null, "No such slot."},
 
-                {passResult, slot, sam, sameSsid, "Multiple results specified for slot A1 in labware STAN-001 " +
-                        "and sample ID " + samId + "."},
-                {new SampleResult(ad, samId, null, null), null, null, null,
+                {passResult, slot, slot.getId(), "Multiple results specified for slot A1 in labware STAN-001."},
+                {new SampleResult(A1, null, null), null, null,
                         List.of("Sample result is missing a result.", "No such slot.") },
-        }).map(arr -> Arguments.of(arr[0], lw, arr[1], arr[2], arr[3], arr[4]));
+        }).map(arr -> Arguments.of(arr[0], lw, arr[1], arr[2], arr[3]));
     }
 
     @ParameterizedTest
-    @ValueSource(booleans={false, true})
-    public void testGetSlot(boolean found) {
-        Labware lw = EntityFactory.getTube();
-        List<String> problems = new ArrayList<>(found ? 0 : 1);
-        if (found) {
-            assertSame(lw.getFirstSlot(), service.getSlot(problems, lw, new Address(1,1)));
-            assertThat(problems).isEmpty();
+    @CsvSource(value={
+            "false,false",
+            "true,false",
+            "true,true",
+    })
+    public void testGetNonemptySlot(boolean found, boolean hasSamples) {
+        Labware lw;
+        if (found && !hasSamples) {
+            lw = EntityFactory.makeEmptyLabware(EntityFactory.getTubeType());
         } else {
-            assertNull(service.getSlot(problems, lw, new Address(1,2)));
-            assertThat(problems).containsExactly("No slot in labware "+lw.getBarcode()+" has address A2.");
+            lw = EntityFactory.getTube();
         }
-    }
-
-    @ParameterizedTest
-    @ValueSource(booleans={false,true})
-    public void testGetSample(boolean found) {
-        Labware lw = EntityFactory.getTube();
-        Slot slot = lw.getFirstSlot();
         List<String> problems = new ArrayList<>(found ? 0 : 1);
-        if (found) {
-            Sample sample = slot.getSamples().get(0);
-            assertSame(sample, service.getSample(problems, "STAN-001", slot, sample.getId()));
-            assertThat(problems).isEmpty();
+        if (!found) {
+            assertNull(service.getNonemptySlot(problems, lw, new Address(1,2)));
+            assertThat(problems).containsExactly("No slot in labware "+lw.getBarcode()+" has address A2.");
+        } else if (!hasSamples) {
+            assertNull(service.getNonemptySlot(problems, lw, new Address(1,1)));
+            assertThat(problems).containsExactly("There are no samples in slot A1 of labware "+lw.getBarcode()+".");
         } else {
-            assertNull(service.getSample(problems, "STAN-001", slot, -500));
-            assertThat(problems).containsExactly("Slot A1 in labware STAN-001 does not contain a sample with ID -500.");
+            assertSame(lw.getFirstSlot(), service.getNonemptySlot(problems, lw, new Address(1,1)));
+            assertThat(problems).isEmpty();
         }
     }
 
@@ -484,19 +473,20 @@ public class TestResultService {
 
         LabwareType lt = EntityFactory.makeLabwareType(1,2);
         Labware lw1 = EntityFactory.makeLabware(lt, sam1, sam2);
-        Labware lw2 = EntityFactory.makeLabware(lt, sam1);
+        Labware lw2 = EntityFactory.makeEmptyLabware(lt);
+        lw2.getFirstSlot().setSamples(List.of(sam1, sam2));
 
         Address A1 = new Address(1,1);
         Address A2 = new Address(1,2);
         List<SampleResult> srs1 = List.of(
-                new SampleResult(A1, sam1id, PassFail.pass, null),
-                new SampleResult(A2, sam2id, PassFail.fail, 17)
+                new SampleResult(A1, PassFail.pass, null),
+                new SampleResult(A2, PassFail.fail, 17)
         );
 
         LabwareResult lr1 = new LabwareResult(lw1.getBarcode(), srs1);
 
         List<SampleResult> srs2 = List.of(
-                new SampleResult(A1, sam1id, PassFail.fail, 18)
+                new SampleResult(A1, PassFail.fail, 18)
         );
 
         LabwareResult lr2 = new LabwareResult(lw2.getBarcode(), srs2);
@@ -526,12 +516,14 @@ public class TestResultService {
 
         verify(mockOpCommentRepo).saveAll(List.of(
                 new OperationComment(null, com1, op1.getId(), sam2id, lw1.getSlot(A2).getId(), null),
-                new OperationComment(null, com2, op2.getId(), sam1id, lw2.getSlot(A1).getId(), null)
+                new OperationComment(null, com2, op2.getId(), sam1id, lw2.getSlot(A1).getId(), null),
+                new OperationComment(null, com2, op2.getId(), sam2id, lw2.getSlot(A1).getId(), null)
         ));
         verify(mockResOpRepo).saveAll(List.of(
                 new ResultOp(null, PassFail.pass, op1.getId(), sam1id, lw1.getSlot(A1).getId(), stainId1),
                 new ResultOp(null, PassFail.fail, op1.getId(), sam2id, lw1.getSlot(A2).getId(), stainId1),
-                new ResultOp(null, PassFail.fail, op2.getId(), sam1.getId(), lw2.getSlot(A1).getId(), stainId2)
+                new ResultOp(null, PassFail.fail, op2.getId(), sam1.getId(), lw2.getSlot(A1).getId(), stainId2),
+                new ResultOp(null, PassFail.fail, op2.getId(), sam2.getId(), lw2.getSlot(A1).getId(), stainId2)
         ));
         verify(mockWorkService).link(work, List.of(op1, op2));
 

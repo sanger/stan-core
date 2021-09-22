@@ -115,9 +115,9 @@ public class ResultServiceImp implements ResultService {
                 problems.add("No results specified for labware "+lw.getBarcode()+".");
                 continue;
             }
-            Set<List<Integer>> slotSampleIds = new HashSet<>(lr.getSampleResults().size());
+            Set<Integer> slotIds = new HashSet<>(lr.getSampleResults().size());
             for (SampleResult sr : lr.getSampleResults()) {
-                validateSampleResult(problems, lw, slotSampleIds, sr);
+                validateSampleResult(problems, lw, slotIds, sr);
             }
         }
     }
@@ -127,44 +127,31 @@ public class ResultServiceImp implements ResultService {
      * Possible problems include<ul>
      *     <li>Missing fields in the sample result</li>
      *     <li>Comment id missing for fail result</li>
-     *     <li>Same slot/sample combination given for this labware</li>
-     *     <li>Invalid slot or sample</li>
+     *     <li>Slot already seen in this request</li>
+     *     <li>Invalid or empty slot</li>
      * </ul>
      * @param problems receptacle for problems
      * @param lw the labware of this result
-     * @param slotSampleIds the accumulated set of slot and sample ids for this labware
+     * @param slotIds the accumulated set of slot ids for this labware
      * @param sr the sample result to validate
-     * @return the sample
      */
-    public Sample validateSampleResult(Collection<String> problems, Labware lw, Set<List<Integer>> slotSampleIds, SampleResult sr) {
+    public void validateSampleResult(Collection<String> problems, Labware lw, Set<Integer> slotIds, SampleResult sr) {
         if (sr.getResult()==null) {
             problems.add("Sample result is missing a result.");
         } else if (sr.getResult()==PassFail.fail && sr.getCommentId()==null) {
             problems.add("Missing comment ID for a fail result.");
         }
-        if (sr.getAddress()==null || sr.getSampleId()==null) {
-            if (sr.getAddress()==null) {
-                problems.add("Sample result is missing a slot address.");
-            }
-            if (sr.getSampleId()==null) {
-                problems.add("Sample result is missing a sample ID.");
-            }
-            return null;
+        if (sr.getAddress()==null) {
+            problems.add("Sample result is missing a slot address.");
+            return;
         }
-        Slot slot = getSlot(problems, lw, sr.getAddress());
+        Slot slot = getNonemptySlot(problems, lw, sr.getAddress());
         if (slot==null) {
-            return null;
+            return;
         }
-        Sample sample = getSample(problems, lw.getBarcode(), slot, sr.getSampleId());
-        if (sample==null) {
-            return null;
+        if (!slotIds.add(slot.getId())) {
+            problems.add("Multiple results specified for slot "+sr.getAddress()+" in labware "+ lw.getBarcode()+".");
         }
-        List<Integer> slotSampleId = List.of(slot.getId(), sample.getId());
-        if (!slotSampleIds.add(slotSampleId)) {
-            problems.add("Multiple results specified for slot "+slot.getAddress()+" in labware "+ lw.getBarcode()
-                    +" and sample ID "+sample.getId()+".");
-        }
-        return sample;
     }
 
     /**
@@ -172,32 +159,20 @@ public class ResultServiceImp implements ResultService {
      * @param problems receptacle for problems
      * @param lw the labware
      * @param address the address of the slot
-     * @return the indicated slot, or null if it does not exist
+     * @return the indicated slot, if it exists and contains samples; otherwise null
      */
-    public Slot getSlot(Collection<String> problems, Labware lw, Address address) {
+    public Slot getNonemptySlot(Collection<String> problems, Labware lw, Address address) {
         Optional<Slot> optSlot = lw.optSlot(address);
         if (optSlot.isEmpty()) {
             problems.add("No slot in labware " + lw.getBarcode() + " has address " + address + ".");
+            return null;
         }
-        return optSlot.orElse(null);
-    }
-
-    /**
-     * Gets the specified sample from the given slot
-     * @param problems receptacle for problems
-     * @param barcode the barcode of the labware (used in problem messages)
-     * @param slot the slot that should contain the sample
-     * @param sampleId the id of the sample we're looking for
-     * @return the sample indicated, or null if it was not found
-     */
-    public Sample getSample(Collection<String> problems, String barcode, Slot slot, Integer sampleId) {
-        var optSample = slot.getSamples().stream()
-                .filter(sam -> sam.getId().equals(sampleId))
-                .findAny();
-        if (optSample.isEmpty()) {
-            problems.add("Slot "+slot.getAddress()+" in labware "+ barcode +" does not contain a sample with ID "+sampleId+".");
+        Slot slot = optSlot.get();
+        if (slot.getSamples().isEmpty()) {
+            problems.add("There are no samples in slot "+address+" of labware "+lw.getBarcode()+".");
+            return null;
         }
-        return optSample.orElse(null);
+        return slot;
     }
 
     /**
@@ -310,12 +285,13 @@ public class ResultServiceImp implements ResultService {
             for (SampleResult sr : lr.getSampleResults()) {
                 Slot slot = lw.getSlot(sr.getAddress());
                 Integer refersToOpId = latestStain.get(lw.getId());
-                ResultOp resOp = new ResultOp(null, sr.getResult(), op.getId(), sr.getSampleId(), slot.getId(), refersToOpId);
-                resultOps.add(resOp);
-
-                if (sr.getCommentId()!=null) {
-                    Comment comment = commentMap.get(sr.getCommentId());
-                    opComments.add(new OperationComment(null, comment, op.getId(), sr.getSampleId(), slot.getId(), null));
+                Comment comment = (sr.getCommentId()!=null ? commentMap.get(sr.getCommentId()) : null);
+                for (Sample sample : slot.getSamples()) {
+                    ResultOp resOp = new ResultOp(null, sr.getResult(), op.getId(), sample.getId(), slot.getId(), refersToOpId);
+                    resultOps.add(resOp);
+                    if (comment != null) {
+                        opComments.add(new OperationComment(null, comment, op.getId(), sample.getId(), slot.getId(), null));
+                    }
                 }
             }
             ops.add(op);

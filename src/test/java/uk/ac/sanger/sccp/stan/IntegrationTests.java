@@ -1116,7 +1116,6 @@ public class IntegrationTests {
         assertEquals(op.getStainType().getName(), "H&E");
 
         String resultGraphql = tester.readResource("graphql/stainresult.graphql")
-                .replace("543", String.valueOf(sam.getId()))
                 .replace("SGP500", work.getWorkNumber());
         data = tester.post(resultGraphql);
 

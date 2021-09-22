@@ -14,15 +14,13 @@ import java.util.Objects;
 public class ResultRequest {
     public static class SampleResult {
         private Address address;
-        private Integer sampleId;
         private PassFail result;
         private Integer commentId;
 
         public SampleResult() {}
 
-        public SampleResult(Address address, Integer sampleId, PassFail result, Integer commentId) {
+        public SampleResult(Address address, PassFail result, Integer commentId) {
             this.address = address;
-            this.sampleId = sampleId;
             this.result = result;
             this.commentId = commentId;
         }
@@ -33,14 +31,6 @@ public class ResultRequest {
 
         public void setAddress(Address address) {
             this.address = address;
-        }
-
-        public Integer getSampleId() {
-            return this.sampleId;
-        }
-
-        public void setSampleId(Integer sampleId) {
-            this.sampleId = sampleId;
         }
 
         public PassFail getResult() {
@@ -65,21 +55,19 @@ public class ResultRequest {
             if (o == null || getClass() != o.getClass()) return false;
             SampleResult that = (SampleResult) o;
             return (Objects.equals(this.address, that.address)
-                    && Objects.equals(this.sampleId, that.sampleId)
                     && this.result == that.result
                     && Objects.equals(this.commentId, that.commentId));
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(address, sampleId, result, commentId);
+            return Objects.hash(address, result, commentId);
         }
 
         @Override
         public String toString() {
             return BasicUtils.describe("SampleResult")
                     .add("address", address)
-                    .add("sampleId", sampleId)
                     .add("result", result)
                     .add("commentId", commentId)
                     .toString();

@@ -7,7 +7,6 @@ mutation {
                 sampleResults: [
                     {
                         address: "A1"
-                        sampleId: 543
                         result: pass
                     }
                 ]
