@@ -1,0 +1,6 @@
+query {
+    workProgress(workNumber: "SGP500") {
+        work { workNumber, workType { name }}
+        timestamps { type, timestamp }
+    }
+}
