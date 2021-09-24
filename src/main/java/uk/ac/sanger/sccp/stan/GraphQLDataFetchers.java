@@ -251,7 +251,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         return dfe -> {
             String workNumber = dfe.getArgument("workNumber");
             String workTypeName = dfe.getArgument("workType");
-            return workProgressService.getProgress(workNumber, workTypeName);
+            Work.Status status = arg(dfe, "status", Work.Status.class);
+            return workProgressService.getProgress(workNumber, workTypeName, status);
         };
     }
   

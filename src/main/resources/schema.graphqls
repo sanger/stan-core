@@ -580,7 +580,7 @@ type Query {
     historyForExternalName(externalName: String!): History!
     historyForDonorName(donorName: String!): History!
     historyForLabwareBarcode(barcode: String!): History!
-    workProgress(workNumber: String, workType: String): [WorkProgress!]!
+    workProgress(workNumber: String, workType: String, status: WorkStatus): [WorkProgress!]!
 
     location(locationBarcode: String!): Location!
     stored(barcodes: [String!]!): [StoredItem!]!

@@ -9,6 +9,7 @@ import uk.ac.sanger.sccp.stan.request.WorkProgress.WorkProgressTimestamp;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import static java.util.stream.Collectors.toList;
@@ -32,10 +33,13 @@ public class WorkProgressServiceImp implements WorkProgressService {
     }
 
     @Override
-    public List<WorkProgress> getProgress(String workNumber, String workTypeName) {
+    public List<WorkProgress> getProgress(String workNumber, String workTypeName, Work.Status status) {
         if (workNumber!=null) {
             Work work = workRepo.getByWorkNumber(workNumber);
             if (workTypeName!=null && !work.getWorkType().equals(workTypeRepo.getByName(workTypeName))) {
+                return List.of();
+            }
+            if (status!=null && work.getStatus()!=status) {
                 return List.of();
             }
             return List.of(getProgressForWork(work));
@@ -43,11 +47,20 @@ public class WorkProgressServiceImp implements WorkProgressService {
         if (workTypeName!=null) {
             WorkType wt = workTypeRepo.getByName(workTypeName);
             List<Work> works = workRepo.findAllByWorkTypeIn(List.of(wt));
-            return works.stream()
+            Stream<Work> workStream = works.stream();
+            if (status!=null) {
+                workStream = workStream.filter(work -> work.getStatus()==status);
+            }
+            return workStream
                     .map(this::getProgressForWork)
                     .collect(toList());
         }
-        Iterable<Work> works = workRepo.findAll();
+        Iterable<Work> works;
+        if (status!=null) {
+            works = workRepo.findAllByStatusIn(List.of(status));
+        } else {
+            works = workRepo.findAll();
+        }
         return StreamSupport.stream(works.spliterator(), false)
                 .map(this::getProgressForWork)
                 .collect(toList());

@@ -6,6 +6,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import uk.ac.sanger.sccp.stan.model.*;
+import uk.ac.sanger.sccp.stan.model.Work.Status;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.WorkProgress;
 import uk.ac.sanger.sccp.stan.request.WorkProgress.WorkProgressTimestamp;
@@ -45,6 +46,7 @@ public class TestWorkProgressService {
     @ParameterizedTest
     @MethodSource("getProgressWithWorkNumberArgs")
     public void testGetProgressWithWorkNumber(String workNumber, Work work, String workTypeName, WorkType workType,
+                                             Status status,
                                              List<Work> works, String expectedError) {
         if (work==null) {
             when(mockWorkRepo.getByWorkNumber(workNumber)).thenThrow(new EntityNotFoundException("Unknown work number: "+workNumber));
@@ -53,11 +55,11 @@ public class TestWorkProgressService {
         }
         mockWorkType(workTypeName, workType);
         if (expectedError!=null) {
-            assertThat(assertThrows(EntityNotFoundException.class, () -> service.getProgress(workNumber, workTypeName)))
+            assertThat(assertThrows(EntityNotFoundException.class, () -> service.getProgress(workNumber, workTypeName, status)))
                     .hasMessage(expectedError);
             verify(service, never()).getProgressForWork(any());
         } else {
-            List<WorkProgress> wps = service.getProgress(workNumber, workTypeName);
+            List<WorkProgress> wps = service.getProgress(workNumber, workTypeName, status);
             verifyProgress(wps, works);
         }
     }
@@ -68,50 +70,70 @@ public class TestWorkProgressService {
         String wtn = wt1.getName();
         WorkType wt2 = new WorkType(3, "Colorado");
         work.setWorkType(wt1);
+        work.setStatus(Status.active);
         String wn = "SGP1";
         work.setWorkNumber(wn);
         List<Work> works = List.of(work);
 
         return Arrays.stream(new Object[][] {
-                {wn, work, null, null, works, null},
-                {wn, work, wtn, wt1, works, null},
-                {wn, work, "Colorado", wt2, List.of(), null},
+                {wn, work, null, null, null, works, null},
+                {wn, work, null, null, Status.active, works, null},
+                {wn, work, null, null, Status.paused, List.of(), null},
+                {wn, work, wtn, wt1, null, works, null},
+                {wn, work, wtn, wt1, Status.active, works, null},
+                {wn, work, wtn, wt1, Status.paused, List.of(), null},
+                {wn, work, "Colorado", wt2, null, List.of(), null},
+                {wn, work, "Colorado", wt2, Status.active, List.of(), null},
+                {wn, work, "Colorado", wt2, Status.paused, List.of(), null},
 
-                {"SGP404", null, null, null, null, "Unknown work number: SGP404"},
-                {wn, work, "France", null, null, "Unknown work type: France"},
+                {"SGP404", null, null, null, null,  null, "Unknown work number: SGP404"},
+                {wn, work, "France", null, null, null, "Unknown work type: France"},
+                {wn, work, "France", null, Status.paused, null, "Unknown work type: France"},
         }).map(Arguments::of);
     }
 
     @ParameterizedTest
     @MethodSource("getProgressWithWorkTypeNameArgs")
-    public void testGetProgressWithWorkTypeName(String workTypeName, WorkType workType,
-                                                List<Work> works, String expectedError) {
+    public void testGetProgressWithWorkTypeName(String workTypeName, WorkType workType, Status status,
+                                                List<Work> works, List<Work> expectedWorks, String expectedError) {
         mockWorkType(workTypeName, workType);
         if (expectedError!=null) {
-            assertThat(assertThrows(EntityNotFoundException.class, () -> service.getProgress(null, workTypeName)))
+            assertThat(assertThrows(EntityNotFoundException.class,
+                    () -> service.getProgress(null, workTypeName, status)))
                     .hasMessage(expectedError);
         } else {
             when(mockWorkRepo.findAllByWorkTypeIn(List.of(workType))).thenReturn(works);
-            List<WorkProgress> wps = service.getProgress(null, workTypeName);
-            verifyProgress(wps, works);
+            List<WorkProgress> wps = service.getProgress(null, workTypeName, status);
+            verifyProgress(wps, expectedWorks);
         }
     }
 
     static Stream<Arguments> getProgressWithWorkTypeNameArgs() {
         WorkType wt = new WorkType(2, "California");
         List<Work> works = List.of(workWithId(1), workWithId(2));
+        works.get(0).setStatus(Status.active);
+        works.get(1).setStatus(Status.paused);
 
         return Arrays.stream(new Object[][] {
-                {"California", wt, works, null},
-                {"France", null, null, "Unknown work type: France"},
+                {"California", wt, null, works, works, null},
+                {"California", wt, Status.active, works, List.of(works.get(0)), null},
+                {"France", null, null, null, null, "Unknown work type: France"},
         }).map(Arguments::of);
+    }
+
+    @Test
+    public void testGetProgressWithStatus() {
+        List<Work> works = List.of(workWithId(1), workWithId(2));
+        when(mockWorkRepo.findAllByStatusIn(List.of(Status.active))).thenReturn(works);
+        List<WorkProgress> wps = service.getProgress(null, null, Status.active);
+        verifyProgress(wps, works);
     }
 
     @Test
     public void testGetProgressWithNoFilter() {
         List<Work> works = List.of(workWithId(1), workWithId(2));
         when(mockWorkRepo.findAll()).thenReturn(works);
-        List<WorkProgress> wps = service.getProgress(null, null);
+        List<WorkProgress> wps = service.getProgress(null, null, null);
         verifyProgress(wps, works);
     }
 

@@ -16,5 +16,5 @@ public interface WorkProgressService {
      * @param workTypeName the work type (if any) to look up, or null
      * @return a list of work progresses for matching works.
      */
-    List<WorkProgress> getProgress(String workNumber, String workTypeName);
+    List<WorkProgress> getProgress(String workNumber, String workTypeName, Work.Status status);
 }
