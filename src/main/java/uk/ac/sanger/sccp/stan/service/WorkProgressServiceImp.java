@@ -23,7 +23,7 @@ public class WorkProgressServiceImp implements WorkProgressService {
     private final WorkTypeRepo workTypeRepo;
     private final OperationRepo opRepo;
     // Consider for the future moving this set to a config class and injecting it
-    private final Set<String> includedOpTypes = Set.of("section", "stain", "extract", "cdna");
+    private final Set<String> includedOpTypes = Set.of("section", "stain", "extract", "visium cdna");
 
     @Autowired
     public WorkProgressServiceImp(WorkRepo workRepo, WorkTypeRepo workTypeRepo, OperationRepo opRepo) {
