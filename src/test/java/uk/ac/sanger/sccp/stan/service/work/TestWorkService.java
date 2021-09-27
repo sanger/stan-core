@@ -66,7 +66,7 @@ public class TestWorkService {
         verify(mockWorkRepo).createNumber(prefix);
         verify(mockWorkRepo).save(result);
         verify(mockWorkEventService).recordEvent(user, result, WorkEvent.Type.create, null);
-        assertEquals(new Work(null, workNumber, workType, project, cc, Status.active), result);
+        assertEquals(new Work(null, workNumber, workType, project, cc, Status.unstarted), result);
     }
 
     @ParameterizedTest

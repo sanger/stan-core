@@ -509,6 +509,7 @@ type WorkType {
 }
 
 enum WorkStatus {
+    unstarted
     active
     paused
     completed

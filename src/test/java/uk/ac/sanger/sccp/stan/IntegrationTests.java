@@ -1070,25 +1070,26 @@ public class IntegrationTests {
         tester.setUser(user);
         data = tester.post(tester.readResource("graphql/createWork.graphql"));
 
-        Map<String, ?> workData = chainGet(data, "data", "createWork");
+        Map<String, Object> workData = chainGet(data, "data", "createWork");
         String workNumber = (String) workData.get("workNumber");
         assertNotNull(workNumber);
         assertEquals(project.getName(), chainGet(workData, "project", "name"));
         assertEquals(cc.getCode(), chainGet(workData, "costCode", "code"));
         assertEquals(workType.getName(), chainGet(workData, "workType", "name"));
-        assertEquals("active", workData.get("status"));
+        assertEquals("unstarted", workData.get("status"));
 
-        data = tester.post(worksQuery);
-        worksData = chainGet(data, "data", "works");
-        assertEquals(startingNum+1, worksData.size());
-        assertThat(worksData).contains(workData);
-
-        data = tester.post("mutation { updateWorkStatus(workNumber: \""+workNumber+"\", status: completed) {status} }");
-        assertEquals("completed", chainGet(data, "data", "updateWorkStatus", "status"));
         data = tester.post(worksQuery);
         worksData = chainGet(data, "data", "works");
         assertEquals(startingNum, worksData.size());
         assertFalse(worksData.stream().anyMatch(d -> d.get("workNumber").equals(workNumber)));
+
+        data = tester.post("mutation { updateWorkStatus(workNumber: \""+workNumber+"\", status: active) {status} }");
+        assertEquals("active", chainGet(data, "data", "updateWorkStatus", "status"));
+        data = tester.post(worksQuery);
+        worksData = chainGet(data, "data", "works");
+        assertEquals(startingNum+1, worksData.size());
+        workData.put("status", "active");
+        assertThat(worksData).contains(workData);
     }
 
     @Transactional

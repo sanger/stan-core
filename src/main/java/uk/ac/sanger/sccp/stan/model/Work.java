@@ -14,7 +14,7 @@ import java.util.*;
 public class Work {
     // region inner classes
     public enum Status {
-        active, paused, completed, failed
+        unstarted, active, paused, completed, failed
     }
     @Embeddable
     public static class SampleSlotId {
@@ -80,7 +80,7 @@ public class Work {
     @ManyToOne
     private CostCode costCode;
 
-    @Column(columnDefinition = "enum('active', 'paused', 'completed', 'failed')")
+    @Column(columnDefinition = "enum('unstarted', 'active', 'paused', 'completed', 'failed')")
     @Enumerated(EnumType.STRING)
     private Status status;
 

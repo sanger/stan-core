@@ -49,7 +49,7 @@ public class WorkServiceImp implements WorkService {
         WorkType type = workTypeRepo.getByName(workTypeName);
 
         String workNumber = workRepo.createNumber(prefix);
-        Work work = workRepo.save(new Work(null, workNumber, type, project, cc, Status.active));
+        Work work = workRepo.save(new Work(null, workNumber, type, project, cc, Status.unstarted));
         workEventService.recordEvent(user, work, WorkEvent.Type.create, null);
         return work;
     }
