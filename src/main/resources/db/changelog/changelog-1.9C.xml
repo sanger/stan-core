@@ -12,4 +12,15 @@
                         newDataType="ENUM('create', 'start', 'pause', 'resume', 'complete', 'fail')"/>
     </changeSet>
 
+    <changeSet id="1962" author="dr6">
+        <addColumn tableName="work">
+            <column name="num_blocks" type="INT UNSIGNED">
+                <constraints nullable="true"/>
+            </column>
+            <column name="num_slides" type="INT UNSIGNED">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
 </databaseChangeLog>

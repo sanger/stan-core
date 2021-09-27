@@ -1090,6 +1090,19 @@ public class IntegrationTests {
         assertEquals(startingNum+1, worksData.size());
         workData.put("status", "active");
         assertThat(worksData).contains(workData);
+
+        data = tester.post("mutation { updateWorkNumBlocks(workNumber: \""+workNumber+"\", numBlocks: 5) { workNumber, numBlocks, numSlides }}");
+        workData = chainGet(data, "data", "updateWorkNumBlocks");
+        assertEquals(workNumber, workData.get("workNumber"));
+        assertEquals(5, workData.get("numBlocks"));
+        assertNull(workData.get("numSlides"));
+
+        data = tester.post("mutation { updateWorkNumSlides(workNumber: \""+workNumber+"\", numSlides: 0) { workNumber, numBlocks, numSlides }}");
+        workData = chainGet(data, "data", "updateWorkNumSlides");
+        assertEquals(workNumber, workData.get("workNumber"));
+        assertEquals(5, workData.get("numBlocks"));
+        assertEquals(0, workData.get("numSlides"));
+
     }
 
     @Transactional
