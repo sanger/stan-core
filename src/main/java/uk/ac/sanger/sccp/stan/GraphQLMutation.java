@@ -69,6 +69,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final WorkService workService;
     final StainService stainService;
     final ResultService resultService;
+    final ExtractResultService extractResultService;
     final UserAdminService userAdminService;
 
     @Autowired
@@ -85,7 +86,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            ReleaseRecipientAdminService releaseRecipientAdminService, SpeciesAdminService speciesAdminService,
                            ProjectService projectService, CostCodeService costCodeService, FixativeService fixativeService,
                            WorkTypeService workTypeService, WorkService workService,
-                           StainService stainService, ResultService resultService,
+                           StainService stainService, ResultService resultService, ExtractResultService extractResultService,
                            UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
@@ -115,6 +116,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.workService = workService;
         this.stainService = stainService;
         this.resultService = resultService;
+        this.extractResultService = extractResultService;
         this.userAdminService = userAdminService;
     }
 
@@ -424,6 +426,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             ResultRequest request = arg(dfe, "request", ResultRequest.class);
             logRequest("Record stain result", user, request);
             return resultService.recordStainResult(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> recordExtractResult() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            ExtractResultRequest request = arg(dfe, "request", ExtractResultRequest.class);
+            logRequest("Record extract result", user, request);
+            return extractResultService.recordExtractResult(user, request);
         };
     }
 

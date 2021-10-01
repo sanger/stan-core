@@ -103,6 +103,8 @@ public class IntegrationTests {
     private EquipmentRepo equipmentRepo;
     @Autowired
     private ResultOpRepo resultOpRepo;
+    @Autowired
+    private OperationCommentRepo opCommentRepo;
 
     @MockBean
     StorelightClient mockStorelightClient;
@@ -476,6 +478,49 @@ public class IntegrationTests {
         entityManager.refresh(work);
         assertThat(work.getOperationIds()).containsExactlyInAnyOrderElementsOf(Arrays.stream(opIds).boxed().collect(toList()));
         assertThat(work.getSampleSlotIds()).hasSize(sampleIds.length);
+
+        entityCreator.createOpType("Record result", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.RESULT);
+
+        mutation = tester.readResource("graphql/extract_result.graphql")
+                .replace("$BARCODE1$", dests[0].getBarcode())
+                .replace("$BARCODE2$", dests[1].getBarcode());
+        result = tester.post(mutation);
+
+        List<Map<String,?>> opsData = chainGet(result, "data", "recordExtractResult", "operations");
+        List<Integer> resultOpIds = new ArrayList<>(2);
+        for (var opsDatum : opsData) {
+            assertEquals("Record result", chainGet(opsDatum, "operationType", "name"));
+            resultOpIds.add((Integer) opsDatum.get("id"));
+        }
+
+        List<ResultOp> ros = resultOpRepo.findAllByOperationIdIn(resultOpIds);
+        ResultOp ro0, ro1;
+        if (ros.get(0).getOperationId().equals(resultOpIds.get(0))) {
+            ro0 = ros.get(0);
+            ro1 = ros.get(1);
+        } else {
+            ro0 = ros.get(1);
+            ro1 = ros.get(0);
+        }
+        assertEquals(resultOpIds.get(0), ro0.getOperationId());
+        assertEquals(PassFail.pass, ro0.getResult());
+        assertEquals(resultOpIds.get(1), ro1.getOperationId());
+        assertEquals(PassFail.fail, ro1.getResult());
+
+        List<Measurement> measurements = measurementRepo.findAllByOperationIdIn(resultOpIds);
+        assertThat(measurements).hasSize(1);
+        Measurement meas = measurements.get(0);
+        assertEquals(dests[0].getFirstSlot().getId(), meas.getSlotId());
+        assertEquals("Concentration", meas.getName());
+        assertEquals("-200.00", meas.getValue());
+        assertEquals(resultOpIds.get(0), meas.getOperationId());
+
+        List<OperationComment> opComs = opCommentRepo.findAllByOperationIdIn(resultOpIds);
+        assertThat(opComs).hasSize(1);
+        OperationComment opCom = opComs.get(0);
+        assertEquals(1, opCom.getComment().getId());
+        assertEquals(resultOpIds.get(1), opCom.getOperationId());
+        assertEquals(dests[1].getFirstSlot().getId(), opCom.getSlotId());
     }
 
     @Test

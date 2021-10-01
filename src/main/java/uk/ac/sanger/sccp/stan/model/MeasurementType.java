@@ -7,7 +7,9 @@ public enum MeasurementType {
     Thickness(MeasurementValueType.INT),
     Haematoxylin(MeasurementValueType.TIME),
     Eosin(MeasurementValueType.TIME),
-    Blueing(MeasurementValueType.TIME);
+    Blueing(MeasurementValueType.TIME),
+    Concentration(MeasurementValueType.DECIMAL_2),
+    ;
 
     private final MeasurementValueType valueType;
 
@@ -20,12 +22,11 @@ public enum MeasurementType {
     }
 
     public static MeasurementType forName(String name) {
-        if (name==null) {
-            return null;
-        }
-        for (MeasurementType mt : values()) {
-            if (mt.name().equalsIgnoreCase(name)) {
-                return mt;
+        if (name!=null) {
+            for (MeasurementType mt : values()) {
+                if (mt.name().equalsIgnoreCase(name)) {
+                    return mt;
+                }
             }
         }
         return null;

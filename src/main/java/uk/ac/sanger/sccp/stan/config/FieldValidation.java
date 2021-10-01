@@ -2,9 +2,8 @@ package uk.ac.sanger.sccp.stan.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import uk.ac.sanger.sccp.stan.service.StringValidator;
+import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.StringValidator.CharacterType;
-import uk.ac.sanger.sccp.stan.service.Validator;
 
 import java.util.EnumSet;
 import java.util.Set;
@@ -159,5 +158,10 @@ public class FieldValidation {
         Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA, CharacterType.DIGIT);
         Pattern pattern = Pattern.compile("[A-Z][0-9]+", Pattern.CASE_INSENSITIVE);
         return new StringValidator("Cost code", 2, 10, charTypes, false, pattern);
+    }
+
+    @Bean
+    public Sanitiser<String> concentrationSanitiser() {
+        return new ConcentrationSanitiser();
     }
 }
