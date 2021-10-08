@@ -80,7 +80,7 @@ public class UCMap<V> implements Map<String, V> {
     @NotNull
     @Override
     public Set<String> keySet() {
-        return inner.keySet(); // NB may allow insertion of non-canonical keys
+        return inner.keySet();
     }
 
     @NotNull

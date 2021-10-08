@@ -75,4 +75,6 @@ public interface WorkRepo extends CrudRepository<Work, Integer> {
         }
         return opWork;
     }
+
+    List<Work> findAllByWorkNumberIn(Collection<String> workNumbers);
 }

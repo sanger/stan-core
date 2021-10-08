@@ -573,6 +573,23 @@ input ExtractResultRequest {
     workNumber: String
 }
 
+input StringMeasurement {
+    name: String!
+    value: String!
+}
+
+input RNAAnalysisLabware {
+    barcode: String!
+    workNumber: String
+    commentId: Int
+    measurements: [StringMeasurement!]!
+}
+
+input RNAAnalysisRequest {
+    operationType: String!
+    labware: [RNAAnalysisLabware!]!
+}
+
 type Query {
     user: User
     tissueTypes: [TissueType!]!
@@ -649,6 +666,7 @@ type Mutation {
     recordInPlace(request: InPlaceOpRequest!): OperationResult!
     recordStainResult(request: ResultRequest!): OperationResult!
     recordExtractResult(request: ExtractResultRequest!): OperationResult!
+    recordRNAAnalysis(request: RNAAnalysisRequest!): OperationResult!
 
     addUser(username: String!): User!
     setUserRole(username: String!, role: UserRole!): User!

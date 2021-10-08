@@ -6,10 +6,13 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.Work.SampleSlotId;
 import uk.ac.sanger.sccp.stan.model.Work.Status;
 import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.utils.BasicUtils;
+import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
 
 import static java.util.Objects.requireNonNull;
+import static java.util.stream.Collectors.toList;
 import static uk.ac.sanger.sccp.utils.BasicUtils.newArrayList;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
@@ -125,5 +128,39 @@ public class WorkServiceImp implements WorkService {
             problems.add(work.getWorkNumber()+" cannot be used because it is "+work.getStatus()+".");
         }
         return work;
+    }
+
+    @Override
+    public UCMap<Work> validateUsableWorks(Collection<String> problems, Collection<String> workNumbers) {
+        if (workNumbers.isEmpty()) {
+            return new UCMap<>(0);
+        }
+        UCMap<Work> workMap = workRepo.findAllByWorkNumberIn(workNumbers).stream()
+                .collect(UCMap.toUCMap(Work::getWorkNumber));
+        List<String> missing = workNumbers.stream()
+                .filter(s -> workMap.get(s)==null)
+                .filter(BasicUtils.distinctUCSerial())
+                .collect(toList());
+        if (!missing.isEmpty()) {
+            problems.add((missing.size()==1 ? "Work number" : "Work numbers") +" not recognised: "+
+                    BasicUtils.reprCollection(missing));
+        }
+        List<String> unusable = new ArrayList<>();
+        Set<String> badStates = new LinkedHashSet<>();
+        for (Work work : workMap.values()) {
+            if (!work.isUsable()) {
+                unusable.add(work.getWorkNumber());
+                badStates.add(work.getStatus().name());
+            }
+        }
+        if (!unusable.isEmpty()) {
+            String problem = String.format("Work %s cannot be used because %s %s: %s",
+                    unusable.size()==1 ? "number" : "numbers",
+                    unusable.size()==1 ? "it is" : "they are",
+                    BasicUtils.commaAndConjunction(badStates, "or"),
+                    unusable);
+            problems.add(problem);
+        }
+        return workMap;
     }
 }

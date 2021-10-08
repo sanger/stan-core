@@ -18,6 +18,7 @@ import uk.ac.sanger.sccp.stan.request.plan.PlanResult;
 import uk.ac.sanger.sccp.stan.request.register.*;
 import uk.ac.sanger.sccp.stan.request.stain.StainRequest;
 import uk.ac.sanger.sccp.stan.service.*;
+import uk.ac.sanger.sccp.stan.service.analysis.RNAAnalysisService;
 import uk.ac.sanger.sccp.stan.service.extract.ExtractService;
 import uk.ac.sanger.sccp.stan.service.label.print.LabelPrintService;
 import uk.ac.sanger.sccp.stan.service.operation.InPlaceOpService;
@@ -70,6 +71,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final StainService stainService;
     final ResultService resultService;
     final ExtractResultService extractResultService;
+    final RNAAnalysisService rnaAnalysisService;
     final UserAdminService userAdminService;
 
     @Autowired
@@ -87,7 +89,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            ProjectService projectService, CostCodeService costCodeService, FixativeService fixativeService,
                            WorkTypeService workTypeService, WorkService workService,
                            StainService stainService, ResultService resultService, ExtractResultService extractResultService,
-                           UserAdminService userAdminService) {
+                           RNAAnalysisService rnaAnalysisService, UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
@@ -117,6 +119,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.stainService = stainService;
         this.resultService = resultService;
         this.extractResultService = extractResultService;
+        this.rnaAnalysisService = rnaAnalysisService;
         this.userAdminService = userAdminService;
     }
 
@@ -435,6 +438,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             ExtractResultRequest request = arg(dfe, "request", ExtractResultRequest.class);
             logRequest("Record extract result", user, request);
             return extractResultService.recordExtractResult(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> recordRNAAnalysis() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            RNAAnalysisRequest request = arg(dfe, "request", RNAAnalysisRequest.class);
+            logRequest("Record RNA analysis", user, request);
+            return rnaAnalysisService.perform(user, request);
         };
     }
 
