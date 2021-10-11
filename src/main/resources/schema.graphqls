@@ -573,6 +573,12 @@ input ExtractResultRequest {
     workNumber: String
 }
 
+type ExtractResult {
+    labware: Labware!
+    result: PassFail
+    concentration: String
+}
+
 input StringMeasurement {
     name: String!
     value: String!
@@ -615,6 +621,7 @@ type Query {
     find(request: FindRequest!): FindResult!
     planData(barcode: String!): PlanData!
     stainTypes: [StainType!]!
+    extractResult(barcode: String!): ExtractResult!
 
     historyForSampleId(sampleId: Int!): History!
     historyForExternalName(externalName: String!): History!

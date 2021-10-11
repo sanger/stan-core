@@ -90,6 +90,7 @@ public class GraphQLProvider {
                         .dataFetcher("works", graphQLDataFetchers.getWorks())
                         .dataFetcher("work", graphQLDataFetchers.getWork())
                         .dataFetcher("stainTypes", graphQLDataFetchers.getEnabledStainTypes())
+                        .dataFetcher("extractResult", graphQLDataFetchers.getExtractResult())
 
                         .dataFetcher("users", graphQLDataFetchers.getUsers())
                         .dataFetcher("planData", graphQLDataFetchers.getPlanData())
