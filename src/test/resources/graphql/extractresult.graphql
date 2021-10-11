@@ -1,0 +1,7 @@
+query {
+    extractResult(barcode: "$BARCODE") {
+        labware { barcode }
+        result
+        concentration
+    }
+}
