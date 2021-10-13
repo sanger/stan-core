@@ -364,6 +364,18 @@ public class IntegrationTests {
             assertEquals(lw.getBarcode(), row.get("Barcode"));
             assertEquals(lw.getLabwareType().getName(), row.get("Labware type"));
         }
+
+        entityCreator.createOpType("Unrelease", null, OperationTypeFlag.IN_PLACE);
+
+        String unreleaseMutation = tester.readResource("graphql/unrelease.graphql")
+                .replace("BARCODE", lw.getBarcode());
+        result = tester.post(unreleaseMutation);
+        Object unreleaseResult = chainGet(result, "data", "unrelease");
+        assertEquals("active", chainGet(unreleaseResult, "labware", 0, "state"));
+        assertEquals("Unrelease", chainGet(unreleaseResult, "operations", 0, "operationType", "name"));
+        assertNotNull(chainGet(unreleaseResult, "operations", 0, "id"));
+        entityManager.refresh(lw);
+        assertTrue(lw.isReleased());
     }
 
     @Test

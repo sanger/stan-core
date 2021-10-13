@@ -545,6 +545,15 @@ input StainRequest {
     workNumber: String
 }
 
+input UnreleaseLabware {
+    barcode: String!
+    highestSection: Int
+}
+
+input UnreleaseRequest {
+    labware: [UnreleaseLabware!]!
+}
+
 input SampleResult {
     address: Address!
     result: PassFail!
@@ -635,6 +644,7 @@ type Mutation {
     updateWorkStatus(workNumber: String!, status: WorkStatus!, commentId: Int): Work!
     stain(request: StainRequest!): OperationResult!
     recordInPlace(request: InPlaceOpRequest!): OperationResult!
+    unrelease(request: UnreleaseRequest!): OperationResult!
     recordStainResult(request: ResultRequest!): OperationResult!
 
     addUser(username: String!): User!
