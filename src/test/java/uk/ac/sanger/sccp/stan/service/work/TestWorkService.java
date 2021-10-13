@@ -10,11 +10,14 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.Work.SampleSlotId;
 import uk.ac.sanger.sccp.stan.model.Work.Status;
 import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.request.WorkWithComment;
+import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
 import java.util.stream.Stream;
 
+import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -240,6 +243,73 @@ public class TestWorkService {
                 { "SGP404", null, EntityNotFoundException.class, "Work number not recognised: \"SGP404\"" },
                 { null, null, NullPointerException.class, "Work number is null." },
         }).map(Arguments::of);
+    }
+
+    @ParameterizedTest
+    @MethodSource("getWorksWithCommentsArgs")
+    public void testGetWorksWithComments(Collection<Status> statuses, Collection<Work> works, Collection<WorkEvent> events) {
+        if (statuses==null) {
+            when(mockWorkRepo.findAll()).thenReturn(works);
+        } else {
+            when(mockWorkRepo.findAllByStatusIn(statuses)).thenReturn(works);
+        }
+        Map<Integer, WorkEvent> eventMap;
+        if (events==null) {
+            eventMap = null;
+        } else {
+            eventMap = events.stream().collect(BasicUtils.toMap(e -> e.getWork().getId()));
+            when(mockWorkEventService.loadLatestEvents(any())).thenReturn(eventMap);
+        }
+        List<WorkWithComment> wcs = workService.getWorksWithComments(statuses);
+        assertThat(wcs.stream().map(WorkWithComment::getWork)).containsExactlyElementsOf(works);
+
+        if (events!=null) {
+            List<Integer> workIds = works.stream()
+                    .filter(work -> work.getStatus()==Status.failed || work.getStatus()==Status.paused)
+                    .map(Work::getId)
+                    .collect(toList());
+            verify(mockWorkEventService).loadLatestEvents(workIds);
+            verify(workService).fillInComments(wcs, eventMap);
+        }
+    }
+
+    static Stream<Arguments> getWorksWithCommentsArgs() {
+        Work workA = new Work(1, "SGP1", null, null, null, Status.active);
+        Work workC = new Work(2, "SGP2", null, null, null, Status.completed);
+        Work workF = new Work(3, "SGP3", null, null, null, Status.failed);
+        Work workP = new Work(4, "SGP4", null, null, null, Status.paused);
+
+        WorkEvent eventF = new WorkEvent(workF, WorkEvent.Type.fail, null, null);
+        WorkEvent eventP = new WorkEvent(workP, WorkEvent.Type.pause, null, null);
+
+        return Arrays.stream(new Object[][] {
+                {null, List.of(workA, workC, workF, workP), List.of(eventF, eventP)},
+                {List.of(Status.active, Status.completed), List.of(workA, workC), null},
+                {List.of(Status.failed, Status.paused), List.of(workF, workP), List.of(eventF, eventP)},
+        }).map(Arguments::of);
+    }
+
+    @Test
+    public void testFillInComments() {
+        Work workF1 = new Work(1, "SGP1", null, null, null, Status.failed);
+        Work workF2 = new Work(2, "SGP2", null, null, null, Status.failed);
+        Work workP1 = new Work(3, "SGP3", null, null, null, Status.paused);
+        Work workP2 = new Work(4, "SGP4", null, null, null, Status.paused);
+        Map<Integer, WorkEvent> events = Stream.of(
+                new WorkEvent(workF1, WorkEvent.Type.fail, null, new Comment(1, "Ohio", "")),
+                new WorkEvent(workF2, WorkEvent.Type.create, null, new Comment(2, "Oklahoma", "")),
+                new WorkEvent(workP1, WorkEvent.Type.pause, null, new Comment(3, "Oregon", ""))
+        ).collect(BasicUtils.toMap(e -> e.getWork().getId()));
+
+        List<WorkWithComment> wcs = Stream.of(workF1, workF2, workP1, workP2)
+                .map(WorkWithComment::new)
+                .collect(toList());
+
+        workService.fillInComments(wcs, events);
+
+        assertEquals(List.of(new WorkWithComment(workF1, "Ohio"), new WorkWithComment(workF2),
+                        new WorkWithComment(workP1, "Oregon"), new WorkWithComment(workP2)),
+                wcs);
     }
 
     private Operation makeOp(OperationType opType, int opId, Labware srcLw, Labware dstLw) {

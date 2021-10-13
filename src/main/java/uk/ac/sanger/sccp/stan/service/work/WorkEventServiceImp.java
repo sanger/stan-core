@@ -1,13 +1,17 @@
 package uk.ac.sanger.sccp.stan.service.work;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.util.Streamable;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.Work.Status;
 import uk.ac.sanger.sccp.stan.repo.CommentRepo;
 import uk.ac.sanger.sccp.stan.repo.WorkEventRepo;
 
-import java.util.Objects;
+import java.util.*;
+import java.util.function.Function;
+
+import static java.util.stream.Collectors.toMap;
 
 /**
  * Service for dealing with {@link WorkEvent work events}
@@ -67,5 +71,12 @@ public class WorkEventServiceImp implements WorkEventService {
         }
         Comment comment = (commentId==null ? null : commentRepo.getById(commentId));
         return recordEvent(user, work, eventType, comment);
+    }
+
+    @Override
+    public Map<Integer, WorkEvent> loadLatestEvents(Collection<Integer> workIds) {
+        return Streamable.of(workEventRepo.getLatestEventForEachWorkId(workIds))
+                .stream()
+                .collect(toMap(e -> e.getWork().getId(), Function.identity(), (e,f) -> (e.getId() > f.getId() ? e : f)));
     }
 }

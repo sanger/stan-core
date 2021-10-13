@@ -533,6 +533,11 @@ type StainType {
     measurementTypes: [String!]!
 }
 
+type WorkWithComment {
+    work: Work!
+    comment: String
+}
+
 input TimeMeasurement {
     name: String!
     seconds: Int!
@@ -591,6 +596,7 @@ type Query {
     workTypes(includeDisabled: Boolean): [WorkType!]!
     works(status: [WorkStatus!]): [Work!]!
     work(workNumber: String!): Work!
+    worksWithComments(status: [WorkStatus!]): [WorkWithComment!]!
     users(includeDisabled: Boolean): [User!]!
     find(request: FindRequest!): FindResult!
     planData(barcode: String!): PlanData!

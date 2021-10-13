@@ -15,6 +15,7 @@ import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.history.HistoryService;
 import uk.ac.sanger.sccp.stan.service.label.print.LabelPrintService;
 import uk.ac.sanger.sccp.stan.service.operation.plan.PlanService;
+import uk.ac.sanger.sccp.stan.service.work.WorkService;
 
 import javax.persistence.EntityNotFoundException;
 import java.util.Collection;
@@ -53,6 +54,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final HistoryService historyService;
     final PlanService planService;
     final StainService stainService;
+    final WorkService workService;
 
     @Autowired
     public GraphQLDataFetchers(ObjectMapper objectMapper, AuthenticationComponent authComp, UserRepo userRepo,
@@ -66,7 +68,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                LabelPrintService labelPrintService, FindService findService,
                                CommentAdminService commentAdminService, EquipmentAdminService equipmentAdminService,
                                HistoryService historyService, PlanService planService,
-                               StainService stainService) {
+                               StainService stainService, WorkService workService) {
         super(objectMapper, authComp, userRepo);
         this.sessionConfig = sessionConfig;
         this.tissueTypeRepo = tissueTypeRepo;
@@ -91,6 +93,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.historyService = historyService;
         this.planService = planService;
         this.stainService = stainService;
+        this.workService = workService;
     }
 
     public DataFetcher<User> getUser() {
@@ -195,6 +198,13 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
 
     public DataFetcher<Work> getWork() {
         return dfe -> workRepo.getByWorkNumber(dfe.getArgument("workNumber"));
+    }
+
+    public DataFetcher<List<WorkWithComment>> getWorksWithComments() {
+        return dfe -> {
+            Collection<Work.Status> statuses = arg(dfe, "status", new TypeReference<List<Work.Status>>() {});
+            return workService.getWorksWithComments(statuses);
+        };
     }
 
     public DataFetcher<Iterable<User>> getUsers() {

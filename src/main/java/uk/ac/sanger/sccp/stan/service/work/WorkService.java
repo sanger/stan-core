@@ -2,8 +2,10 @@ package uk.ac.sanger.sccp.stan.service.work;
 
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.Work.Status;
+import uk.ac.sanger.sccp.stan.request.WorkWithComment;
 
 import java.util.Collection;
+import java.util.List;
 
 /**
  * Service for managing {@link Work work}.
@@ -74,4 +76,12 @@ public interface WorkService {
      * @see Work#isUsable
      */
     Work validateUsableWork(Collection<String> problems, String workNumber);
+
+    /**
+     * Loads works along with the comment about their status, if any.
+     * Optional filtered by work status.
+     * @param workStatuses the statuses to filter by (may be null, in which case unfiltered)
+     * @return a list of WorkWithComment objects each of which may or may not include a comment
+     */
+    List<WorkWithComment> getWorksWithComments(Collection<Work.Status> workStatuses);
 }

@@ -1097,6 +1097,16 @@ public class IntegrationTests {
         assertEquals(startingNum+1, worksData.size());
         assertThat(worksData).contains(workData);
 
+        data = tester.post("mutation { updateWorkStatus(workNumber: \""+workNumber+"\", status: paused, commentId: 1) {status}}");
+        assertEquals("paused", chainGet(data, "data", "updateWorkStatus", "status"));
+
+        data = tester.post("query { worksWithComments(status:[paused]) { work { workNumber }, comment }}");
+        List<Map<String,?>> wcDatas = chainGet(data, "data", "worksWithComments");
+        Map<String, ?> wcData = wcDatas.stream().filter(wcd -> chainGet(wcd, "work", "workNumber").equals(workNumber))
+                        .findAny().orElse(null);
+        assertNotNull(wcData);
+        assertEquals("Section damaged.", wcData.get("comment"));
+
         data = tester.post("mutation { updateWorkStatus(workNumber: \""+workNumber+"\", status: completed) {status} }");
         assertEquals("completed", chainGet(data, "data", "updateWorkStatus", "status"));
         data = tester.post(worksQuery);

@@ -11,7 +11,7 @@ import uk.ac.sanger.sccp.stan.model.Work.Status;
 import uk.ac.sanger.sccp.stan.repo.CommentRepo;
 import uk.ac.sanger.sccp.stan.repo.WorkEventRepo;
 
-import java.util.Arrays;
+import java.util.*;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -109,5 +109,16 @@ public class TestWorkEventService {
                 {Status.paused, Status.active, null, null},
                 {Status.paused, Status.failed, 10, null},
         }).map(Arguments::of);
+    }
+
+    @Test
+    public void testLoadLatestEvents() {
+        WorkEvent event1 = new WorkEvent(new Work(7, "SGP57", null, null, null, null),
+                WorkEvent.Type.resume, null, null);
+        WorkEvent event2 = new WorkEvent(new Work(8, "SGP58", null, null, null, null),
+                WorkEvent.Type.fail, null, null);
+        List<Integer> workIds = List.of(7,8,9);
+        when(mockWorkEventRepo.getLatestEventForEachWorkId(workIds)).thenReturn(List.of(event1, event2));
+        assertEquals(Map.of(7, event1, 8, event2), eventService.loadLatestEvents(workIds));
     }
 }
