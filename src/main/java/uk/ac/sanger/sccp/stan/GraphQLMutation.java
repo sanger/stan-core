@@ -87,9 +87,6 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            ProjectService projectService, CostCodeService costCodeService, FixativeService fixativeService,
                            WorkTypeService workTypeService, WorkService workService, StainService stainService,
                            UnreleaseService unreleaseService, ResultService resultService, UserAdminService userAdminService) {
-                           WorkTypeService workTypeService, WorkService workService,
-                           StainService stainService, ResultService resultService,
-                           UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
