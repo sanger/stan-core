@@ -104,8 +104,13 @@ public class StringValidatorTest {
                 {" ", CharacterType.SPACE},
                 {"()", CharacterType.PAREN},
                 {"/", CharacterType.SLASH},
+                {"\\", CharacterType.BACKSLASH},
                 {"'", CharacterType.APOSTROPHE},
                 {"%", CharacterType.PERCENT},
+                {".", CharacterType.FULL_STOP},
+                {",", CharacterType.COMMA},
+                {":", CharacterType.COLON},
+                {";", CharacterType.SEMICOLON},
                 {"@[`{", null},
         }).map(Arguments::of);
     }

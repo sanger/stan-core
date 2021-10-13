@@ -11,6 +11,7 @@ import uk.ac.sanger.sccp.stan.repo.OperationRepo;
 
 import javax.persistence.EntityManager;
 import java.util.*;
+import java.util.function.Consumer;
 
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -140,5 +141,40 @@ public class OperationServiceTest {
 
         assertThat(op.getActions()).isEqualTo(savedActions);
         verify(mockEntityManager).refresh(op);
+    }
+
+    @Test
+    public void testCreateOperationInPlace() {
+        OperationType opType = new OperationType(2, "Stain");
+        User user = EntityFactory.getUser();
+        Sample sam1 = EntityFactory.getSample();
+        Sample sam2 = new Sample(sam1.getId()+1, 2, sam1.getTissue(), sam1.getBioState());
+        int sam1id = sam1.getId();
+        int sam2id = sam2.getId();
+        LabwareType lt = EntityFactory.makeLabwareType(3,1);
+        Labware lw = EntityFactory.makeLabware(lt, sam1, sam2);
+        lw.getFirstSlot().getSamples().add(sam2);
+        StainType st = new StainType(1, "Bananas");
+        Integer planId = 700;
+        Consumer<Operation> opMod = op -> op.setStainType(st);
+        Operation op = opService.createOperationInPlace(opType, user, lw, planId, opMod);
+        int slot1id = lw.getFirstSlot().getId();
+        int slot2id = lw.getSlot(new Address(2,1)).getId();
+
+        assertNotNull(op.getId());
+        assertThat(savedOps).contains(op);
+        assertThat(savedActions).hasSize(3);
+        assertEquals(op.getActions(), savedActions);
+        assertEquals(op.getOperationType(), opType);
+        assertEquals(op.getStainType(), st);
+        assertEquals(op.getPlanOperationId(), planId);
+        List<List<Integer>> slotSampleIds = new ArrayList<>(3);
+        for (Action ac : op.getActions()) {
+            assertSame(ac.getSource(), ac.getDestination());
+            assertSame(ac.getSample(), ac.getSourceSample());
+            assertEquals(ac.getOperationId(), op.getId());
+            slotSampleIds.add(List.of(ac.getDestination().getId(), ac.getSample().getId()));
+        }
+        assertThat(slotSampleIds).containsExactlyInAnyOrder(List.of(slot1id, sam1id), List.of(slot1id, sam2id), List.of(slot2id, sam2id));
     }
 }

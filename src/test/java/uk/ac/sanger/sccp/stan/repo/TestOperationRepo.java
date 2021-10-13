@@ -39,6 +39,7 @@ public class TestOperationRepo {
     OperationType opType1, opType2;
     Sample[] samples;
     Operation[] ops;
+    Labware[] lws;
 
     private void setUpOps() {
         if (opType1==null) {
@@ -58,7 +59,7 @@ public class TestOperationRepo {
 
         if (ops==null) {
             LabwareType lt = entityCreator.createLabwareType("lt", 1, 1);
-            Labware[] lw = IntStream.range(0, 4)
+            lws = IntStream.range(0, 4)
                     .mapToObj(i -> {
                         Sample sample = samples[(i == 3) ? 2 : i];
                         return entityCreator.createLabware("STAN-A" + i, lt, sample);
@@ -66,10 +67,10 @@ public class TestOperationRepo {
                     .toArray(Labware[]::new);
 
             ops = new Operation[]{
-                    makeOp(opType1, lw[0]),
-                    makeOp(opType1, lw[1], lw[2]),
-                    makeOp(opType1, lw[2], lw[3]),
-                    makeOp(opType2, lw[1])
+                    makeOp(opType1, lws[0]),
+                    makeOp(opType1, lws[1], lws[2]),
+                    makeOp(opType1, lws[2], lws[3]),
+                    makeOp(opType2, lws[1])
             };
         }
     }
@@ -88,6 +89,14 @@ public class TestOperationRepo {
         setUpOps();
         List<Operation> foundOps = opRepo.findAllBySampleIdIn(List.of(samples[1].getId(), samples[2].getId()));
         assertThat(foundOps).containsExactlyInAnyOrder(ops[1], ops[2], ops[3]);
+    }
+
+    @Test
+    @Transactional
+    public void testFindAllByOperationTypeAndDestinationLabwareId() {
+        setUpOps();
+        List<Operation> foundOps = opRepo.findAllByOperationTypeAndDestinationLabwareIdIn(opType1, List.of(lws[0].getId(), lws[1].getId()));
+        assertThat(foundOps).containsExactlyInAnyOrder(ops[0], ops[1]);
     }
 
     private Operation makeOp(OperationType opType, Labware... labware) {

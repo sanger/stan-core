@@ -69,6 +69,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final WorkService workService;
     final StainService stainService;
     final UnreleaseService unreleaseService;
+    final ResultService resultService;
     final UserAdminService userAdminService;
 
     @Autowired
@@ -85,7 +86,10 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            ReleaseRecipientAdminService releaseRecipientAdminService, SpeciesAdminService speciesAdminService,
                            ProjectService projectService, CostCodeService costCodeService, FixativeService fixativeService,
                            WorkTypeService workTypeService, WorkService workService, StainService stainService,
-                           UnreleaseService unreleaseService, UserAdminService userAdminService) {
+                           UnreleaseService unreleaseService, ResultService resultService, UserAdminService userAdminService) {
+                           WorkTypeService workTypeService, WorkService workService,
+                           StainService stainService, ResultService resultService,
+                           UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
@@ -114,6 +118,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.workService = workService;
         this.stainService = stainService;
         this.unreleaseService = unreleaseService;
+        this.resultService = resultService;
         this.userAdminService = userAdminService;
     }
 
@@ -395,6 +400,8 @@ public class GraphQLMutation extends BaseGraphQLResource {
             String code = dfe.getArgument("costCode");
             String prefix = dfe.getArgument("prefix");
             String workTypeName = dfe.getArgument("workType");
+            logRequest("Create work", user, String.format("project: %s, costCode: %s, prefix: %s, workType: %s",
+                    projectName, code, prefix, workTypeName));
             return workService.createWork(user, prefix, workTypeName, projectName, code);
         };
     }
@@ -405,6 +412,8 @@ public class GraphQLMutation extends BaseGraphQLResource {
             String workNumber = dfe.getArgument("workNumber");
             Work.Status status = arg(dfe, "status", Work.Status.class);
             Integer commentId = dfe.getArgument("commentId");
+            logRequest("Update work status", user, String.format("workNumber: %s, status: %s, commentId: %s",
+                    workNumber, status, commentId));
             return workService.updateStatus(user, workNumber, status, commentId);
         };
     }
@@ -413,6 +422,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         return dfe -> {
             User user = checkUser(dfe, User.Role.normal);
             StainRequest request = arg(dfe, "request", StainRequest.class);
+            logRequest("Stain", user, request);
             return stainService.recordStain(user, request);
         };
     }
@@ -423,6 +433,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             UnreleaseRequest request = arg(dfe, "request", UnreleaseRequest.class);
             logRequest("Unrelease", user, request);
             return unreleaseService.unrelease(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> recordStainResult() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            ResultRequest request = arg(dfe, "request", ResultRequest.class);
+            logRequest("Record stain result", user, request);
+            return resultService.recordStainResult(user, request);
         };
     }
 
