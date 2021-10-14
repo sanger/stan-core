@@ -10,6 +10,8 @@ import javax.persistence.EntityManager;
 import java.util.List;
 import java.util.function.Consumer;
 
+import static java.util.stream.Collectors.toList;
+
 /**
  * Service to create and record {@link Operation operations}.
  * @author dr6
@@ -77,5 +79,22 @@ public class OperationService {
     public Operation createOperationInPlace(OperationType operationType, User user, Slot slot, Sample sample) {
         Action action = new Action(null, null, slot, slot, sample, sample);
         return createOperation(operationType, user, List.of(action), null);
+    }
+
+    /**
+     * Creates a new in-place operation with an action for each sample in each slot of the given labware
+     * @param opType the operation type
+     * @param user the user responsible for the operation
+     * @param labware the labware where the operation takes place
+     * @param planId the id of the plan operation (if any)
+     * @param operationModifier a function to call on the operation before it is created (if any)
+     * @return the newly created operation
+     */
+    public Operation createOperationInPlace(OperationType opType, User user, Labware labware, Integer planId,
+                                            Consumer<Operation> operationModifier) {
+        List<Action> actions = labware.getSlots().stream().flatMap(slot -> slot.getSamples().stream()
+                        .map(sam -> new Action(null, null, slot, slot, sam, sam)))
+                .collect(toList());
+        return createOperation(opType, user, actions, planId, operationModifier);
     }
 }

@@ -5,6 +5,7 @@ public enum OperationTypeFlag {
     SOURCE_IS_BLOCK,
     DISCARD_SOURCE,
     STAIN,
+    RESULT,
     ;
 
     public int bit() {

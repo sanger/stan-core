@@ -68,6 +68,8 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final WorkTypeService workTypeService;
     final WorkService workService;
     final StainService stainService;
+    final UnreleaseService unreleaseService;
+    final ResultService resultService;
     final UserAdminService userAdminService;
 
     @Autowired
@@ -83,8 +85,8 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            HmdmcAdminService hmdmcAdminService, ReleaseDestinationAdminService releaseDestinationAdminService,
                            ReleaseRecipientAdminService releaseRecipientAdminService, SpeciesAdminService speciesAdminService,
                            ProjectService projectService, CostCodeService costCodeService, FixativeService fixativeService,
-                           WorkTypeService workTypeService,
-                           WorkService workService, StainService stainService, UserAdminService userAdminService) {
+                           WorkTypeService workTypeService, WorkService workService, StainService stainService,
+                           UnreleaseService unreleaseService, ResultService resultService, UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
@@ -112,6 +114,8 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.workTypeService = workTypeService;
         this.workService = workService;
         this.stainService = stainService;
+        this.unreleaseService = unreleaseService;
+        this.resultService = resultService;
         this.userAdminService = userAdminService;
     }
 
@@ -442,6 +446,24 @@ public class GraphQLMutation extends BaseGraphQLResource {
             StainRequest request = arg(dfe, "request", StainRequest.class);
             logRequest("Stain", user, request);
             return stainService.recordStain(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> unrelease() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.admin);
+            UnreleaseRequest request = arg(dfe, "request", UnreleaseRequest.class);
+            logRequest("Unrelease", user, request);
+            return unreleaseService.unrelease(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> recordStainResult() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            ResultRequest request = arg(dfe, "request", ResultRequest.class);
+            logRequest("Record stain result", user, request);
+            return resultService.recordStainResult(user, request);
         };
     }
 

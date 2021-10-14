@@ -37,6 +37,7 @@ public class TestHistoryService {
     private SnapshotRepo mockSnapshotRepo;
     private WorkRepo mockWorkRepo;
     private MeasurementRepo mockMeasurementRepo;
+    private ResultOpRepo mockResultOpRepo;
 
     private HistoryServiceImp service;
 
@@ -57,9 +58,11 @@ public class TestHistoryService {
         mockSnapshotRepo = mock(SnapshotRepo.class);
         mockWorkRepo = mock(WorkRepo.class);
         mockMeasurementRepo = mock(MeasurementRepo.class);
+        mockResultOpRepo = mock(ResultOpRepo.class);
 
         service = spy(new HistoryServiceImp(mockOpRepo, mockLwRepo, mockSampleRepo, mockTissueRepo, mockDonorRepo,
-                mockReleaseRepo, mockDestructionRepo, mockOpCommentRepo, mockSnapshotRepo, mockWorkRepo, mockMeasurementRepo));
+                mockReleaseRepo, mockDestructionRepo, mockOpCommentRepo, mockSnapshotRepo, mockWorkRepo,
+                mockMeasurementRepo, mockResultOpRepo));
     }
 
     @Test
@@ -268,6 +271,46 @@ public class TestHistoryService {
         assertEquals(Map.of(20, List.of(measurements[1], measurements[2])), service.loadOpMeasurements(Set.of(1,20)));
     }
 
+    @Test
+    public void testLoadOpResults() {
+        OperationType resultOpType = EntityFactory.makeOperationType("Record result", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.RESULT);
+        OperationType otherOpType = EntityFactory.makeOperationType("Splunge", null, OperationTypeFlag.IN_PLACE);
+        List<Operation> ops = List.of(
+                new Operation(1, otherOpType, null, null, null),
+                new Operation(2, resultOpType, null, null, null),
+                new Operation(3, resultOpType, null, null, null)
+        );
+        assertThat(service.loadOpResults(ops.subList(0,1))).isEmpty();
+        verifyNoInteractions(mockResultOpRepo);
+
+        List<ResultOp> results = List.of(
+                new ResultOp(10, PassFail.pass, 2, 20, 30, 40),
+                new ResultOp(11, PassFail.fail, 2, 21, 31, 40),
+                new ResultOp(12, PassFail.pass, 3, 22, 32, 50)
+        );
+        when(mockResultOpRepo.findAllByOperationIdIn(List.of(2,3))).thenReturn(results);
+
+        var expected = Map.of(2, results.subList(0,2), 3, results.subList(2,3));
+        assertEquals(expected, service.loadOpResults(ops));
+    }
+
+    @ParameterizedTest
+    @CsvSource(value={
+            "pass, A1, A1: pass",
+            "fail, B3, B3: fail",
+            "pass,,pass"
+    })
+    public void testResultDetail(PassFail res, Address address, String expected) {
+        final int slotId = 7;
+        Slot slot = (address==null ? null : new Slot(slotId, 2, address, null, null, null));
+        Map<Integer, Slot> slotIdMap = (slot==null ? Map.of() : Map.of(slotId, slot));
+        ResultOp result = new ResultOp();
+        result.setResult(res);
+        result.setSlotId(slotId);
+
+        assertEquals(expected, service.resultDetail(result, slotIdMap));
+    }
+
     @ParameterizedTest
     @CsvSource(value={
             "bananas, bananas",
@@ -349,6 +392,28 @@ public class TestHistoryService {
         }).map(Arguments::of);
     }
 
+    @ParameterizedTest
+    @CsvSource(value={
+            "pass, 10, 200, 20, 10, 20, true",
+            "fail, 10, 200, 20, 10, 20, true",
+            "pass,,,,10,20,true",
+            "pass, 11, 200, 20, 10, 20, false",
+            "pass, 10, 200, 21, 10, 20, false",
+    })
+    public void testDoesResultApply(PassFail res, Integer resultSampleId, Integer resultSlotId, Integer slotLabwareId, int sampleId, int labwareId, boolean expected) {
+        ResultOp result = new ResultOp(50, res, 1, resultSampleId, resultSlotId, -50);
+        Map<Integer, Slot> slotIdMap;
+        if (slotLabwareId!=null) {
+            Slot slot = new Slot();
+            slot.setId(resultSlotId);
+            slot.setLabwareId(slotLabwareId);
+            slotIdMap = Map.of(resultSlotId, slot);
+        } else {
+            slotIdMap = Map.of();
+        }
+        assertEquals(expected, service.doesResultApply(result, sampleId, labwareId, slotIdMap));
+    }
+
     @Test
     public void testCreateEntriesForOps() {
         Comment[] coms = {
@@ -364,6 +429,11 @@ public class TestHistoryService {
                 opIds[0], Set.of("SGP5000"),
                 opIds[1], Set.of()
         );
+
+        Map<Integer, List<ResultOp>> resultMap = Map.of(
+                opIds[0], List.of(new ResultOp(50, PassFail.pass, opIds[0], 90, labware[1].getFirstSlot().getId(), -50))
+        );
+        doReturn(resultMap).when(service).loadOpResults(any());
 
         OperationComment[] opComs = {
                 new OperationComment(1, coms[0], opIds[0], null, null, null),
@@ -397,7 +467,7 @@ public class TestHistoryService {
         List<HistoryEntry> expectedEntries = List.of(
                 new HistoryEntry(opIds[0], opTypeName0, ops.get(0).getPerformed(), labware[0].getId(),
                         labware[1].getId(), samples[0].getId(), username, "SGP5000",
-                        List.of("Equipment: Feeniks", "Alabama", "A1: Alaska", "Thickness: 4")),
+                        List.of("Equipment: Feeniks", "A1: pass", "Alabama", "A1: Alaska", "Thickness: 4")),
                 new HistoryEntry(opIds[1], opTypeName1, ops.get(1).getPerformed(), labware[0].getId(),
                         labware[3].getId(), samples[2].getId(), username, null,
                         List.of("Stain type: Ribena", "Arizona"))

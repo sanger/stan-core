@@ -6,8 +6,7 @@ import org.hibernate.annotations.GenerationTime;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 import static uk.ac.sanger.sccp.utils.BasicUtils.newArrayList;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
@@ -113,16 +112,27 @@ public class Labware {
      * @exception IllegalStateException the slot at the index expected for that address does not have the expected address
      */
     public Slot getSlot(Address address) {
+        return optSlot(address).orElseThrow(() -> new IllegalArgumentException("Address "+address+" is not valid for labware type "+labwareType.getName()));
+    }
+
+    /**
+     * Finds the slot with the given address from this labware.
+     * Throws an exception if the slot we find has the wrong address
+     * @param address the address of the slot to get
+     * @return the slot with the given address, if the address is valid for this labware
+     * @exception IllegalStateException the slot at the index expected for that address does not have the expected address
+     */
+    public Optional<Slot> optSlot(Address address) {
         int index = labwareType.indexOf(address);
         if (index < 0) {
-            throw new IllegalArgumentException("Address "+address+" is not valid for labware type "+labwareType.getName());
+            return Optional.empty();
         }
         Slot slot = getSlots().get(index);
         if (!slot.getAddress().equals(address)) {
             throw new IllegalStateException("Expected slot "+address+" at index "+index+" in labware "
                     +getBarcode()+" but found "+slot.getAddress());
         }
-        return slot;
+        return Optional.of(slot);
     }
 
     public boolean isDiscarded() {

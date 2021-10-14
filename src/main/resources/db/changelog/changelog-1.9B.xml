@@ -1,0 +1,44 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <changeSet id="1950" author="dr6">
+        <createTable tableName="result_op">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="result" type="ENUM('pass', 'fail')">
+                <constraints nullable="false"/>
+            </column>
+            <column name="operation_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_result_op_operation" referencedTableName="operation" referencedColumnNames="id"/>
+            </column>
+            <column name="sample_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_result_op_sample" referencedTableName="sample" referencedColumnNames="id"/>
+            </column>
+            <column name="slot_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_result_op_slot" referencedTableName="slot" referencedColumnNames="id"/>
+            </column>
+            <column name="refers_to_op_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_result_op_refers_to_op" referencedTableName="operation" referencedColumnNames="id"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="result_op" indexName="uk_result_op_operation_sample_slot" unique="true">
+            <column name="operation_id"/>
+            <column name="sample_id"/>
+            <column name="slot_id"/>
+        </createIndex>
+        <rollback>
+            <dropAllForeignKeyConstraints baseTableName="result_op"/>
+            <dropTable tableName="result_op"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

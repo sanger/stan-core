@@ -101,6 +101,8 @@ public class IntegrationTests {
     private UserRepo userRepo;
     @Autowired
     private EquipmentRepo equipmentRepo;
+    @Autowired
+    private ResultOpRepo resultOpRepo;
 
     @MockBean
     StorelightClient mockStorelightClient;
@@ -362,6 +364,18 @@ public class IntegrationTests {
             assertEquals(lw.getBarcode(), row.get("Barcode"));
             assertEquals(lw.getLabwareType().getName(), row.get("Labware type"));
         }
+
+        entityCreator.createOpType("Unrelease", null, OperationTypeFlag.IN_PLACE);
+
+        String unreleaseMutation = tester.readResource("graphql/unrelease.graphql")
+                .replace("BARCODE", lw.getBarcode());
+        result = tester.post(unreleaseMutation);
+        Object unreleaseResult = chainGet(result, "data", "unrelease");
+        assertEquals("active", chainGet(unreleaseResult, "labware", 0, "state"));
+        assertEquals("Unrelease", chainGet(unreleaseResult, "operations", 0, "operationType", "name"));
+        assertNotNull(chainGet(unreleaseResult, "operations", 0, "id"));
+        entityManager.refresh(lw);
+        assertTrue(lw.isReleased());
     }
 
     @Test
@@ -1107,12 +1121,13 @@ public class IntegrationTests {
 
     @Transactional
     @Test
-    public void testStain() throws Exception {
+    public void testStainAndRecordResult() throws Exception {
+        entityCreator.createOpType("Record result", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.RESULT);
         Work work = entityCreator.createWork(null, null, null);
         User user = entityCreator.createUser("user1");
         Sample sam = entityCreator.createSample(entityCreator.createTissue(entityCreator.createDonor("DONOR1"), "TISSUE1"), 5);
         LabwareType lt = entityCreator.createLabwareType("lt1", 1, 1);
-        entityCreator.createLabware("STAN-50", lt, sam);
+        Labware lw = entityCreator.createLabware("STAN-50", lt, sam);
 
         tester.setUser(user);
         Object data = tester.post(tester.readResource("graphql/stain.graphql").replace("SGP500", work.getWorkNumber()));
@@ -1125,6 +1140,23 @@ public class IntegrationTests {
 
         Operation op = opRepo.findById(opId).orElseThrow();
         assertEquals(op.getStainType().getName(), "H&E");
+
+        String resultGraphql = tester.readResource("graphql/stainresult.graphql")
+                .replace("SGP500", work.getWorkNumber());
+        data = tester.post(resultGraphql);
+
+        opData = chainGet(data, "data", "recordStainResult", "operations", 0);
+        Integer resultOpId = (Integer) opData.get("id");
+        assertEquals("Record result", chainGet(opData, "operationType", "name"));
+        assertNotNull(resultOpId);
+        List<ResultOp> results = resultOpRepo.findAllByOperationIdIn(List.of(resultOpId));
+        assertThat(results).hasSize(1);
+        ResultOp result = results.get(0);
+        assertEquals(PassFail.pass, result.getResult());
+        assertEquals(resultOpId, result.getOperationId());
+        assertEquals(sam.getId(), result.getSampleId());
+        assertEquals(opId, result.getRefersToOpId());
+        assertEquals(lw.getFirstSlot().getId(), result.getSlotId());
     }
 
     @Transactional
