@@ -3,7 +3,7 @@
 
 name: Build UAT
 
-# Controls when the action will run. Triggers the workflow on pushes into rc branch.
+# Controls when the action will run. Triggers the workflow on pushes into uat branch.
 on:
   push:
     branches: "uat"
