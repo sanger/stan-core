@@ -143,6 +143,7 @@ public class GraphQLProvider {
                         .dataFetcher("createWork", transact(graphQLMutation.createWork()))
                         .dataFetcher("updateWorkStatus", transact(graphQLMutation.updateWorkStatus()))
                         .dataFetcher("stain", transact(graphQLMutation.stain()))
+                        .dataFetcher("unrelease", transact(graphQLMutation.unrelease()))
                         .dataFetcher("recordStainResult", transact(graphQLMutation.recordStainResult()))
                         .dataFetcher("recordExtractResult", transact(graphQLMutation.recordExtractResult()))
                         .dataFetcher("recordRNAAnalysis", transact(graphQLMutation.recordRNAAnalysis()))
