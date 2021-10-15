@@ -122,6 +122,23 @@ public class TestWorkRepo {
     }
 
     @Transactional
+    @Test
+    public void testFindAllByWorkTypeIn() {
+        Project pr = entityCreator.createProject("Stargate");
+        CostCode cc = entityCreator.createCostCode("S5000");
+        WorkType type1 = entityCreator.createWorkType("Drywalling");
+        WorkType type2 = entityCreator.createWorkType("Lasers");
+        WorkType type3 = entityCreator.createWorkType("Death Star");
+        Status st = Status.active;
+        Work work1 = workRepo.save(new Work(null, "SGP1", type1, pr, cc, st));
+        Work work2 = workRepo.save(new Work(null, "SGP2", type2, pr, cc, st));
+        Work work3 = workRepo.save(new Work(null, "SGP3", type1, pr, cc, st));
+        assertThat(workRepo.findAllByWorkTypeIn(List.of(type1))).containsExactlyInAnyOrder(work1, work3);
+        assertThat(workRepo.findAllByWorkTypeIn(List.of(type1, type2))).containsExactlyInAnyOrder(work1, work2, work3);
+        assertThat(workRepo.findAllByWorkTypeIn(List.of(type3))).isEmpty();
+    }
+
+    @Transactional
     @ParameterizedTest
     @ValueSource(ints = {0, 1, 2, 3})
     // 0: valid foreign keys
