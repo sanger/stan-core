@@ -5,11 +5,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.ArgumentCaptor;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
+import uk.ac.sanger.sccp.stan.repo.PlanOperationRepo;
 import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.request.confirm.ConfirmOperationLabware.AddressCommentId;
+import uk.ac.sanger.sccp.stan.service.CommentValidationService;
 
 import java.util.*;
 import java.util.stream.IntStream;
@@ -17,7 +20,6 @@ import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.*;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
 
 /**
@@ -27,13 +29,13 @@ import static org.mockito.Mockito.*;
 public class TestConfirmOperationValidation {
     private LabwareRepo mockLabwareRepo;
     private PlanOperationRepo mockPlanOpRepo;
-    private CommentRepo mockCommentRepo;
+    private CommentValidationService mockCommentValidationService;
 
     @BeforeEach
     void setup() {
         mockLabwareRepo = mock(LabwareRepo.class);
         mockPlanOpRepo = mock(PlanOperationRepo.class);
-        mockCommentRepo = mock(CommentRepo.class);
+        mockCommentValidationService = mock(CommentValidationService.class);
     }
 
     private ConfirmOperationValidationImp makeValidation() {
@@ -45,7 +47,7 @@ public class TestConfirmOperationValidation {
     }
 
     private ConfirmOperationValidationImp makeValidation(ConfirmOperationRequest request) {
-        return spy(new ConfirmOperationValidationImp(request, mockLabwareRepo, mockPlanOpRepo, mockCommentRepo));
+        return spy(new ConfirmOperationValidationImp(request, mockLabwareRepo, mockPlanOpRepo, mockCommentValidationService));
     }
 
     @Test
@@ -262,13 +264,6 @@ public class TestConfirmOperationValidation {
 
     @Test
     public void testValidateComments() {
-
-        List<Comment> comments = List.of(
-                new Comment(1, "Alpha", "section"),
-                new Comment(2, "Beta", "section"),
-                new Comment(3, "Gamma", "section", false)
-        );
-
         ConfirmOperationValidationImp validation = makeValidation(
                 new ConfirmOperationLabware("STAN-A", false, List.of(),
                         List.of(new AddressCommentId(new Address(1,1), 1),
@@ -280,33 +275,12 @@ public class TestConfirmOperationValidation {
                                 new AddressCommentId(new Address(1,1), 3),
                                 new AddressCommentId(new Address(1,2), null)))
         );
-
-        final Set<Integer> idsGivenAsArgument = new HashSet<>();
-        when(mockCommentRepo.findAllByIdIn(any())).then(invocation -> {
-            Collection<Integer> ids = invocation.getArgument(0);
-            idsGivenAsArgument.addAll(ids);
-            return comments;
-        });
-
+        //noinspection unchecked
+        ArgumentCaptor<Stream<Integer>> argCaptor = ArgumentCaptor.forClass(Stream.class);
         validation.validateComments();
-        assertThat(validation.getProblems()).containsOnly(
-                "Null given as ID for comment.",
-                "Unknown comment IDs: [4]",
-                "Comment not enabled: [(category=section, text=\"Gamma\")]"
-        );
-        verify(mockCommentRepo).findAllByIdIn(any());
-        // verify(mockCommentRepo).findIdByIdIn(Set.of(1,2,3)); -- doesn't work because the method under test modifies the set
-        assertEquals(Set.of(1, 2, 3, 4), idsGivenAsArgument);
-    }
-
-    @Test
-    public void testValidateNoComments() {
-        ConfirmOperationValidationImp validation = makeValidation(
-                new ConfirmOperationLabware("STAN-A")
-        );
-        validation.validateComments();
-        assertThat(validation.getProblems()).isEmpty();
-        verify(mockCommentRepo, never()).findAllByIdIn(any());
+        verify(mockCommentValidationService).validateCommentIds(same(validation.getProblems()), argCaptor.capture());
+        Set<Integer> givenCommentIds = argCaptor.getValue().collect(toSet());
+        assertThat(givenCommentIds).containsExactlyInAnyOrder(1,2,3,4,null);
     }
 
     private static Map<String, Labware> bcMap(Collection<Labware> labware) {

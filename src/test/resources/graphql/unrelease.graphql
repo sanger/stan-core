@@ -1,0 +1,15 @@
+mutation {
+    unrelease(request: {
+        labware: [{
+            barcode: "BARCODE"
+        }]
+    }) {
+        labware {
+            state
+        }
+        operations {
+            id
+            operationType { name }
+        }
+    }
+}

@@ -11,10 +11,8 @@ import uk.ac.sanger.sccp.utils.BasicUtils;
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
-import static java.util.stream.Collectors.toMap;
-import static java.util.stream.Collectors.toSet;
+import static java.util.stream.Collectors.*;
 
 /**
  * @author dr6
@@ -32,12 +30,14 @@ public class HistoryServiceImp implements HistoryService {
     private final SnapshotRepo snapshotRepo;
     private final WorkRepo workRepo;
     private final MeasurementRepo measurementRepo;
+    private final ResultOpRepo resultOpRepo;
 
     @Autowired
     public HistoryServiceImp(OperationRepo opRepo, LabwareRepo lwRepo, SampleRepo sampleRepo, TissueRepo tissueRepo,
                              DonorRepo donorRepo, ReleaseRepo releaseRepo,
                              DestructionRepo destructionRepo, OperationCommentRepo opCommentRepo,
-                             SnapshotRepo snapshotRepo, WorkRepo workRepo, MeasurementRepo measurementRepo) {
+                             SnapshotRepo snapshotRepo, WorkRepo workRepo, MeasurementRepo measurementRepo,
+                             ResultOpRepo resultOpRepo) {
         this.opRepo = opRepo;
         this.lwRepo = lwRepo;
         this.sampleRepo = sampleRepo;
@@ -49,6 +49,7 @@ public class HistoryServiceImp implements HistoryService {
         this.snapshotRepo = snapshotRepo;
         this.workRepo = workRepo;
         this.measurementRepo = measurementRepo;
+        this.resultOpRepo = resultOpRepo;
     }
 
     @Override
@@ -70,7 +71,7 @@ public class HistoryServiceImp implements HistoryService {
     public History getHistoryForDonorName(String donorName) {
         Donor donor = donorRepo.getByDonorName(donorName);
         List<Tissue> tissues = tissueRepo.findByDonorId(donor.getId());
-        List<Sample> samples = sampleRepo.findAllByTissueIdIn(tissues.stream().map(Tissue::getId).collect(Collectors.toList()));
+        List<Sample> samples = sampleRepo.findAllByTissueIdIn(tissues.stream().map(Tissue::getId).collect(toList()));
         return getHistoryForSamples(samples);
     }
 
@@ -191,6 +192,26 @@ public class HistoryServiceImp implements HistoryService {
     }
 
     /**
+     * Should the given result be added as a detail to the history entry under construction?
+     * It should unless its sample or slot labware indicate that it is not relevant.
+     * @param result the result to be checked
+     * @param sampleId the id of the sample for the history entry
+     * @param labwareId the id of the destination labware for the history entry
+     * @param slotIdMap a map to look up slots from their id
+     * @return true if the result is applicable; false if it is not
+     */
+    public boolean doesResultApply(ResultOp result, int sampleId, int labwareId, Map<Integer, Slot> slotIdMap) {
+        if (result.getSampleId()!=null && result.getSampleId()!=sampleId) {
+            return false;
+        }
+        if (result.getSlotId()!=null) {
+            Slot slot = slotIdMap.get(result.getSlotId());
+            return (slot != null && slot.getLabwareId()==labwareId);
+        }
+        return true;
+    }
+
+    /**
      * Loads measurements for the given operations
      * @param opIds the id of operations
      * @return a map of operation id to list of measurements
@@ -250,6 +271,44 @@ public class HistoryServiceImp implements HistoryService {
     }
 
     /**
+     * Loads the results recorded against any result operations in the given collection of operations
+     * @param ops some operations, some of which might be result ops
+     * @return a map of op id to list of applicable results
+     */
+    public Map<Integer, List<ResultOp>> loadOpResults(Collection<Operation> ops) {
+        List<Integer> resultOpIds = ops.stream()
+                .filter(op -> op.getOperationType().has(OperationTypeFlag.RESULT))
+                .map(Operation::getId)
+                .collect(toList());
+        if (resultOpIds.isEmpty()) {
+            return Map.of();
+        }
+        Iterable<ResultOp> results = resultOpRepo.findAllByOperationIdIn(resultOpIds);
+        Map<Integer, List<ResultOp>> map = new HashMap<>(ops.size());
+        for (ResultOp result : results) {
+            map.computeIfAbsent(result.getOperationId(), k -> new ArrayList<>()).add(result);
+        }
+        return map;
+    }
+
+    /**
+     * Describes a result for inclusion in the details of a history entry
+     * @param result the result to describe
+     * @param slotIdMap a map to look up slots by their id
+     * @return a string describing the result
+     */
+    public String resultDetail(ResultOp result, Map<Integer, Slot> slotIdMap) {
+        String detail = result.getResult().name();
+        if (result.getSlotId()!=null) {
+            Slot slot = slotIdMap.get(result.getSlotId());
+            if (slot!=null) {
+                detail = slot.getAddress()+": "+detail;
+            }
+        }
+        return detail;
+    }
+
+    /**
      * Creates history entries for the given operations, where relevant to the specified samples
      * @param operations the operations to represent in the history
      * @param sampleIds the ids of relevant samples
@@ -262,6 +321,7 @@ public class HistoryServiceImp implements HistoryService {
         Set<Integer> opIds = operations.stream().map(Operation::getId).collect(toSet());
         var opComments = loadOpComments(opIds);
         var opMeasurements = loadOpMeasurements(opIds);
+        var opResults = loadOpResults(operations);
         final Map<Integer, Slot> slotIdMap;
         if (!opComments.isEmpty() || !opMeasurements.isEmpty()) {
             slotIdMap = labware.stream()
@@ -279,6 +339,7 @@ public class HistoryServiceImp implements HistoryService {
             } else {
                 stainDetail = null;
             }
+            List<ResultOp> results = opResults.get(op.getId());
             Equipment equipment = op.getEquipment();
             Set<SampleAndLabwareIds> items = new LinkedHashSet<>();
             List<OperationComment> comments = opComments.getOrDefault(op.getId(), List.of());
@@ -308,6 +369,13 @@ public class HistoryServiceImp implements HistoryService {
                 }
                 if (equipment!=null) {
                     entry.addDetail("Equipment: "+equipment.getName());
+                }
+                if (results!=null) {
+                    results.forEach(result -> {
+                        if (doesResultApply(result, item.sampleId, item.destId, slotIdMap)) {
+                            entry.addDetail(resultDetail(result, slotIdMap));
+                        }
+                    });
                 }
                 comments.forEach(com -> {
                     if (doesCommentApply(com, item.sampleId, item.destId, slotIdMap)) {

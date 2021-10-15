@@ -15,4 +15,9 @@ public interface OperationRepo extends CrudRepository<Operation, Integer> {
 
     @Query("select distinct op from Operation op join Action a ON (a.operationId=op.id) where a.sample.id IN (?1)")
     List<Operation> findAllBySampleIdIn(Collection<Integer> sampleIds);
+
+    @Query("select distinct op from Operation op join Action a on (a.operationId=op.id) " +
+            "join Slot s on (a.destination=s) " +
+            "where op.operationType=?1 and s.labwareId in (?2)")
+    List<Operation> findAllByOperationTypeAndDestinationLabwareIdIn(OperationType opType, Collection<Integer> labwareIds);
 }

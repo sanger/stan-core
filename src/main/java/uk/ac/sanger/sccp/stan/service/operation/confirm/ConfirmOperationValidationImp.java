@@ -1,16 +1,18 @@
 package uk.ac.sanger.sccp.stan.service.operation.confirm;
 
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
+import uk.ac.sanger.sccp.stan.repo.PlanOperationRepo;
 import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.request.confirm.ConfirmOperationLabware.AddressCommentId;
+import uk.ac.sanger.sccp.stan.service.CommentValidationService;
 
 import java.util.*;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
-import static java.util.stream.Collectors.*;
-import static uk.ac.sanger.sccp.utils.BasicUtils.pluralise;
-import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
+import static java.util.stream.Collectors.toMap;
+import static java.util.stream.Collectors.toSet;
 
 /**
  * Tool for validating a {@link ConfirmOperationRequest}.
@@ -21,14 +23,15 @@ public class ConfirmOperationValidationImp implements ConfirmOperationValidation
     private final ConfirmOperationRequest request;
     private final LabwareRepo labwareRepo;
     private final PlanOperationRepo planOpRepo;
-    private final CommentRepo commentRepo;
+    private final CommentValidationService commentValidationService;
 
     public ConfirmOperationValidationImp(ConfirmOperationRequest request,
-                                         LabwareRepo labwareRepo, PlanOperationRepo planOpRepo, CommentRepo commentRepo) {
+                                         LabwareRepo labwareRepo, PlanOperationRepo planOpRepo,
+                                         CommentValidationService commentValidationService) {
         this.request = request;
         this.labwareRepo = labwareRepo;
         this.planOpRepo = planOpRepo;
-        this.commentRepo = commentRepo;
+        this.commentValidationService = commentValidationService;
     }
 
     @Override
@@ -211,28 +214,10 @@ public class ConfirmOperationValidationImp implements ConfirmOperationValidation
      * Adds a problem for any that are invalid or null.
      */
     public void validateComments() {
-        Set<Integer> commentIds = request.getLabware().stream()
-                .flatMap(col -> col.getAddressComments().stream().map(AddressCommentId::getCommentId))
-                .collect(toCollection(HashSet::new));
-        if (commentIds.contains(null)) {
-            addProblem("Null given as ID for comment.");
-            commentIds.remove(null);
-        }
-        if (commentIds.isEmpty()) {
-            return;
-        }
-        List<Comment> comments = commentRepo.findAllByIdIn(commentIds);
-        comments.forEach(c -> commentIds.remove(c.getId()));
-        if (!commentIds.isEmpty()) {
-            addProblem("Unknown comment IDs: "+commentIds);
-        }
-        List<String> disabledComments = comments.stream()
-                .filter(c -> !c.isEnabled())
-                .map(c -> String.format("(category=%s, text=%s)", c.getCategory(), repr(c.getText())))
-                .collect(toList());
-        if (!disabledComments.isEmpty()) {
-            addProblem(pluralise("Comment{s} not enabled: ", disabledComments.size())+disabledComments);
-        }
+        Stream<Integer> commentIdStream = request.getLabware().stream()
+                .flatMap(col -> col.getAddressComments().stream()
+                        .map(AddressCommentId::getCommentId));
+        commentValidationService.validateCommentIds(problems, commentIdStream);
     }
 
     /**

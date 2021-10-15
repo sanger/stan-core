@@ -177,6 +177,14 @@ public class EntityFactory {
         return lw;
     }
 
+    public static Labware makeBlock(Sample sample) {
+        Labware lw = makeLabware(getTubeType(), sample);
+        Slot slot = lw.getFirstSlot();
+        slot.setBlockSampleId(sample.getId());
+        slot.setBlockHighestSection(0);
+        return lw;
+    }
+
     public static OperationType makeOperationType(String name, BioState newBioState, OperationTypeFlag... flags) {
         int flagbits = 0;
         for (OperationTypeFlag flag : flags) {

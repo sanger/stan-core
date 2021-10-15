@@ -3,7 +3,7 @@ package uk.ac.sanger.sccp.stan.service;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.*;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
@@ -12,6 +12,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -107,6 +108,33 @@ public class TestLabwareValidator {
         testValidator(List.of(lw1), action);
         testValidator(List.of(lw1, lw2), action);
         testValidator(List.of(lw1, lw2, lw1), action, errorBarcode("Labware is repeated", lw1));
+    }
+
+    @ParameterizedTest
+    @MethodSource("validateUniqueFromBarcodesData")
+    public void testValidateUniqueFromBarcodes(List<String> barcodes, List<Labware> labware, List<String> expectedProblems) {
+        LabwareRepo mockLwRepo = mock(LabwareRepo.class);
+        when(mockLwRepo.findByBarcodeIn(barcodes)).thenReturn(labware);
+        validator.loadLabware(mockLwRepo, barcodes);
+        validator.validateUnique();
+        assertThat(validator.getErrors()).containsExactlyInAnyOrderElementsOf(expectedProblems);
+    }
+
+    static Stream<Arguments> validateUniqueFromBarcodesData() {
+        LabwareType lt = EntityFactory.getTubeType();
+        Labware lw1 = EntityFactory.makeEmptyLabware(lt);
+        lw1.setBarcode("STAN-1");
+        Labware lw2 = EntityFactory.makeEmptyLabware(lt);
+        lw2.setBarcode("STAN-2");
+        Labware lw3 = EntityFactory.makeEmptyLabware(lt);
+        lw3.setBarcode("STAN-3");
+
+        return Arrays.stream(new Object[][] {
+                {List.of("STAN-1"), List.of(lw1), List.of()},
+                {List.of("STAN-1", "STAN-2", "STAN-3"), List.of(lw1, lw2, lw3), List.of()},
+                {List.of("STAN-1", "STAN-2", "STAN-3", "stan-2", "stan-1"), List.of(lw1, lw2, lw3),
+                        List.of("Labware is repeated: [STAN-1, STAN-2].")}
+        }).map(Arguments::of);
     }
 
     @Test
