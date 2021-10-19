@@ -115,6 +115,7 @@ type Slot {
 type Labware {
     id: Int!
     barcode: String!
+    externalBarcode: String
     labwareType: LabwareType!
     slots: [Slot!]!
     released: Boolean!
