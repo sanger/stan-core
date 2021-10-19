@@ -18,6 +18,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.toLinkedHashSet;
 public class LabwareValidator {
     private Collection<Labware> labware;
     private final Collection<String> errors = new LinkedHashSet<>();
+    private Collection<String> givenBarcodes;
     private boolean uniqueRequired = true;
     private boolean singleSample = false;
 
@@ -146,6 +147,7 @@ public class LabwareValidator {
      * @return the found labware
      */
     public List<Labware> loadLabware(LabwareRepo lwRepo, Collection<String> barcodes) {
+        givenBarcodes = barcodes;
         List<Labware> labware = lwRepo.findByBarcodeIn(barcodes);
         this.labware = labware;
         if (labware.size() < barcodes.size()) {
@@ -189,6 +191,10 @@ public class LabwareValidator {
      * If any are found, an error is added.
      */
     public void validateUnique() {
+        if (givenBarcodes!=null) {
+            validateUniqueBarcodes();
+            return;
+        }
         if (labware.size() <= 1) {
             return;
         }
@@ -197,6 +203,34 @@ public class LabwareValidator {
         for (Labware lw : labware) {
             if (!seenIds.add(lw.getId())) {
                 dupes.add(lw.getBarcode());
+            }
+        }
+        if (!dupes.isEmpty()) {
+            addError("Labware is repeated: %s.", dupes);
+        }
+    }
+
+    private void validateUniqueBarcodes() {
+        if (givenBarcodes.size() <= 1) {
+            return;
+        }
+        Map<String, Integer> bcCount = new LinkedHashMap<>(labware.size());
+        for (Labware lw : labware) {
+            if (lw!=null) {
+                bcCount.put(lw.getBarcode().toUpperCase(), 0);
+            }
+        }
+        for (String bc : givenBarcodes) {
+            String bcu = bc.toUpperCase();
+            Integer count = bcCount.get(bcu);
+            if (count != null) {
+                bcCount.put(bcu, count + 1);
+            }
+        }
+        List<String> dupes = new ArrayList<>();
+        for (var entry : bcCount.entrySet()) {
+            if (entry.getValue() > 1) {
+                dupes.add(entry.getKey());
             }
         }
         if (!dupes.isEmpty()) {

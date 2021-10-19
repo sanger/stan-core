@@ -366,6 +366,18 @@ public class IntegrationTests {
             assertEquals(lw.getBarcode(), row.get("Barcode"));
             assertEquals(lw.getLabwareType().getName(), row.get("Labware type"));
         }
+
+        entityCreator.createOpType("Unrelease", null, OperationTypeFlag.IN_PLACE);
+
+        String unreleaseMutation = tester.readResource("graphql/unrelease.graphql")
+                .replace("BARCODE", lw.getBarcode());
+        result = tester.post(unreleaseMutation);
+        Object unreleaseResult = chainGet(result, "data", "unrelease");
+        assertEquals("active", chainGet(unreleaseResult, "labware", 0, "state"));
+        assertEquals("Unrelease", chainGet(unreleaseResult, "operations", 0, "operationType", "name"));
+        assertNotNull(chainGet(unreleaseResult, "operations", 0, "id"));
+        entityManager.refresh(lw);
+        assertTrue(lw.isReleased());
     }
 
     @Test
@@ -1140,7 +1152,7 @@ public class IntegrationTests {
 
     @Transactional
     @Test
-    public void testStainAndRecordResult() throws Exception {
+    public void testStainAndWorkProgressAndRecordResult() throws Exception {
         entityCreator.createOpType("Record result", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.RESULT);
         Work work = entityCreator.createWork(null, null, null);
         User user = entityCreator.createUser("user1");
@@ -1160,6 +1172,16 @@ public class IntegrationTests {
         Operation op = opRepo.findById(opId).orElseThrow();
         assertEquals(op.getStainType().getName(), "H&E");
 
+        data = tester.post(tester.readResource("graphql/workprogress.graphql").replace("SGP500", work.getWorkNumber()));
+        Object progressData = chainGet(data, "data", "workProgress", 0);
+        assertEquals(work.getWorkNumber(), chainGet(progressData, "work", "workNumber"));
+        assertEquals(work.getWorkType().getName(), chainGet(progressData, "work", "workType", "name"));
+
+        List<Map<String,?>> timeEntries = chainGetList(progressData, "timestamps");
+        assertThat(timeEntries).hasSize(1);
+        var timeEntry = timeEntries.get(0);
+        assertEquals("Stain", timeEntry.get("type"));
+        assertEquals(GraphQLCustomTypes.TIMESTAMP.getCoercing().serialize(op.getPerformed()), timeEntry.get("timestamp"));
         String resultGraphql = tester.readResource("graphql/stainresult.graphql")
                 .replace("SGP500", work.getWorkNumber());
         data = tester.post(resultGraphql);

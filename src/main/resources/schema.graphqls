@@ -533,6 +533,16 @@ type StainType {
     measurementTypes: [String!]!
 }
 
+type WorkProgressTimestamp {
+    type: String!
+    timestamp: Timestamp!
+}
+
+type WorkProgress {
+    work: Work!
+    timestamps: [WorkProgressTimestamp!]!
+}
+
 input TimeMeasurement {
     name: String!
     seconds: Int!
@@ -541,8 +551,17 @@ input TimeMeasurement {
 input StainRequest {
     stainType: String!
     barcodes: [String!]!
-    timeMeasurements: [TimeMeasurement!]
+    timeMeasurements: [TimeMeasurement!]!
     workNumber: String
+}
+
+input UnreleaseLabware {
+    barcode: String!
+    highestSection: Int
+}
+
+input UnreleaseRequest {
+    labware: [UnreleaseLabware!]!
 }
 
 input SampleResult {
@@ -603,6 +622,7 @@ type Query {
     historyForExternalName(externalName: String!): History!
     historyForDonorName(donorName: String!): History!
     historyForLabwareBarcode(barcode: String!): History!
+    workProgress(workNumber: String, workType: String, status: WorkStatus): [WorkProgress!]!
 
     location(locationBarcode: String!): Location!
     stored(barcodes: [String!]!): [StoredItem!]!
@@ -647,6 +667,7 @@ type Mutation {
     updateWorkStatus(workNumber: String!, status: WorkStatus!, commentId: Int): Work!
     stain(request: StainRequest!): OperationResult!
     recordInPlace(request: InPlaceOpRequest!): OperationResult!
+    unrelease(request: UnreleaseRequest!): OperationResult!
     recordStainResult(request: ResultRequest!): OperationResult!
     recordExtractResult(request: ExtractResultRequest!): OperationResult!
 

@@ -98,6 +98,7 @@ public class GraphQLProvider {
                         .dataFetcher("historyForExternalName", graphQLDataFetchers.historyForExternalName())
                         .dataFetcher("historyForDonorName", graphQLDataFetchers.historyForDonorName())
                         .dataFetcher("historyForLabwareBarcode", graphQLDataFetchers.historyForLabwareBarcode())
+                        .dataFetcher("workProgress", graphQLDataFetchers.workProgress())
 
                         .dataFetcher("location", graphQLStore.getLocation())
                         .dataFetcher("stored", graphQLStore.getStored())
@@ -142,6 +143,7 @@ public class GraphQLProvider {
                         .dataFetcher("createWork", transact(graphQLMutation.createWork()))
                         .dataFetcher("updateWorkStatus", transact(graphQLMutation.updateWorkStatus()))
                         .dataFetcher("stain", transact(graphQLMutation.stain()))
+                        .dataFetcher("unrelease", transact(graphQLMutation.unrelease()))
                         .dataFetcher("recordStainResult", transact(graphQLMutation.recordStainResult()))
                         .dataFetcher("recordExtractResult", transact(graphQLMutation.recordExtractResult()))
 

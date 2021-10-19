@@ -19,7 +19,9 @@ public class FieldValidation {
     public Validator<String> donorNameValidator() {
         Set<CharacterType> charTypes = EnumSet.of(
                 CharacterType.ALPHA, CharacterType.DIGIT,
-                CharacterType.HYPHEN, CharacterType.UNDERSCORE, CharacterType.SPACE
+                CharacterType.HYPHEN, CharacterType.UNDERSCORE, CharacterType.SPACE,
+                CharacterType.FULL_STOP, CharacterType.SLASH, CharacterType.BACKSLASH,
+                CharacterType.COMMA, CharacterType.COLON, CharacterType.SEMICOLON
         );
         return new StringValidator("Donor identifier", 3, 64, charTypes);
     }
