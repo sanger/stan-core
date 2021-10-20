@@ -1084,25 +1084,39 @@ public class IntegrationTests {
         tester.setUser(user);
         data = tester.post(tester.readResource("graphql/createWork.graphql"));
 
-        Map<String, ?> workData = chainGet(data, "data", "createWork");
+        Map<String, Object> workData = chainGet(data, "data", "createWork");
         String workNumber = (String) workData.get("workNumber");
         assertNotNull(workNumber);
         assertEquals(project.getName(), chainGet(workData, "project", "name"));
         assertEquals(cc.getCode(), chainGet(workData, "costCode", "code"));
         assertEquals(workType.getName(), chainGet(workData, "workType", "name"));
-        assertEquals("active", workData.get("status"));
+        assertEquals("unstarted", workData.get("status"));
 
-        data = tester.post(worksQuery);
-        worksData = chainGet(data, "data", "works");
-        assertEquals(startingNum+1, worksData.size());
-        assertThat(worksData).contains(workData);
-
-        data = tester.post("mutation { updateWorkStatus(workNumber: \""+workNumber+"\", status: completed) {status} }");
-        assertEquals("completed", chainGet(data, "data", "updateWorkStatus", "status"));
         data = tester.post(worksQuery);
         worksData = chainGet(data, "data", "works");
         assertEquals(startingNum, worksData.size());
         assertFalse(worksData.stream().anyMatch(d -> d.get("workNumber").equals(workNumber)));
+
+        data = tester.post("mutation { updateWorkStatus(workNumber: \""+workNumber+"\", status: active) {status} }");
+        assertEquals("active", chainGet(data, "data", "updateWorkStatus", "status"));
+        data = tester.post(worksQuery);
+        worksData = chainGet(data, "data", "works");
+        assertEquals(startingNum+1, worksData.size());
+        workData.put("status", "active");
+        assertThat(worksData).contains(workData);
+
+        data = tester.post("mutation { updateWorkNumBlocks(workNumber: \""+workNumber+"\", numBlocks: 5) { workNumber, numBlocks, numSlides }}");
+        workData = chainGet(data, "data", "updateWorkNumBlocks");
+        assertEquals(workNumber, workData.get("workNumber"));
+        assertEquals(5, workData.get("numBlocks"));
+        assertNull(workData.get("numSlides"));
+
+        data = tester.post("mutation { updateWorkNumSlides(workNumber: \""+workNumber+"\", numSlides: 0) { workNumber, numBlocks, numSlides }}");
+        workData = chainGet(data, "data", "updateWorkNumSlides");
+        assertEquals(workNumber, workData.get("workNumber"));
+        assertEquals(5, workData.get("numBlocks"));
+        assertEquals(0, workData.get("numSlides"));
+
     }
 
     @Transactional

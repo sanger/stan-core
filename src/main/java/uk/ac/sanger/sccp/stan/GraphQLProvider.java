@@ -142,6 +142,8 @@ public class GraphQLProvider {
                         .dataFetcher("setWorkTypeEnabled", transact(graphQLMutation.setWorkTypeEnabled()))
                         .dataFetcher("createWork", transact(graphQLMutation.createWork()))
                         .dataFetcher("updateWorkStatus", transact(graphQLMutation.updateWorkStatus()))
+                        .dataFetcher("updateWorkNumBlocks", transact(graphQLMutation.updateWorkNumBlocks()))
+                        .dataFetcher("updateWorkNumSlides", transact(graphQLMutation.updateWorkNumSlides()))
                         .dataFetcher("stain", transact(graphQLMutation.stain()))
                         .dataFetcher("unrelease", transact(graphQLMutation.unrelease()))
                         .dataFetcher("recordStainResult", transact(graphQLMutation.recordStainResult()))
