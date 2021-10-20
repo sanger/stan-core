@@ -583,6 +583,18 @@ input ResultRequest {
     workNumber: String
 }
 
+input ExtractResultLabware {
+    barcode: String!
+    result: PassFail!
+    concentration: String
+    commentId: Int
+}
+
+input ExtractResultRequest {
+    labware: [ExtractResultLabware!]!
+    workNumber: String
+}
+
 type Query {
     user: User
     tissueTypes: [TissueType!]!
@@ -662,6 +674,7 @@ type Mutation {
     recordInPlace(request: InPlaceOpRequest!): OperationResult!
     unrelease(request: UnreleaseRequest!): OperationResult!
     recordStainResult(request: ResultRequest!): OperationResult!
+    recordExtractResult(request: ExtractResultRequest!): OperationResult!
 
     addUser(username: String!): User!
     setUserRole(username: String!, role: UserRole!): User!
