@@ -15,6 +15,7 @@ public class ReleaseEntry {
     private String sourceBarcode;
     private String sectionThickness;
     private Address sourceAddress;
+    private Address storageAddress;
 
     public ReleaseEntry(Labware labware, Slot slot, Sample sample) {
         this.labware = labware;
@@ -66,6 +67,14 @@ public class ReleaseEntry {
         this.sourceAddress = sourceAddress;
     }
 
+    public Address getStorageAddress() {
+        return this.storageAddress;
+    }
+
+    public void setStorageAddress(Address storageAddress) {
+        this.storageAddress = storageAddress;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -77,7 +86,8 @@ public class ReleaseEntry {
                 && Objects.equals(this.lastSection, that.lastSection)
                 && Objects.equals(this.sourceBarcode, that.sourceBarcode)
                 && Objects.equals(this.sourceAddress, that.sourceAddress)
-                && Objects.equals(this.sectionThickness, that.sectionThickness));
+                && Objects.equals(this.sectionThickness, that.sectionThickness)
+                && Objects.equals(this.storageAddress, that.storageAddress));
     }
 
     @Override

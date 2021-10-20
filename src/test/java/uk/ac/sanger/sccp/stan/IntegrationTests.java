@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.json.JSONObject;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -17,6 +18,7 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.store.Location;
+import uk.ac.sanger.sccp.stan.model.store.StoredItem;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.service.label.LabelPrintRequest;
 import uk.ac.sanger.sccp.stan.service.label.LabwareLabelData;
@@ -349,20 +351,31 @@ public class IntegrationTests {
         List<Integer> releaseIds = releaseData.stream()
                 .map(rd -> (Integer) rd.get("id"))
                 .collect(toList());
+        Location location = new Location();
+        location.setBarcode("STO-33");
+        location.setId(33);
+        List<StoredItem> storedItems = List.of(
+                new StoredItem("STAN-001", location, new Address(1,2)),
+                new StoredItem("STAN-002", location, new Address(3,4))
+        );
+        stubStorelightLocation(storedItems);
+
         String tsvString = getReleaseFile(releaseIds);
         var tsvMaps = tsvToMap(tsvString);
         assertEquals(tsvMaps.size(), 4);
         assertThat(tsvMaps.get(0).keySet()).containsOnly("Barcode", "Labware type", "Address", "Donor name",
                 "Life stage", "External identifier", "Tissue type", "Spatial location", "Replicate number", "Section number",
-                "Last section number", "Source barcode", "Section thickness");
+                "Last section number", "Source barcode", "Section thickness", "Released from box location");
         var row0 = tsvMaps.get(0);
         assertEquals(block.getBarcode(), row0.get("Barcode"));
         assertEquals(block.getLabwareType().getName(), row0.get("Labware type"));
         assertEquals("6", row0.get("Last section number"));
+        assertEquals("A2", row0.get("Released from box location"));
         for (int i = 1; i < 4; ++i) {
             var row = tsvMaps.get(i);
             assertEquals(lw.getBarcode(), row.get("Barcode"));
             assertEquals(lw.getLabwareType().getName(), row.get("Labware type"));
+            assertEquals("C4", row.get("Released from box location"));
         }
 
         entityCreator.createOpType("Unrelease", null, OperationTypeFlag.IN_PLACE);
@@ -1185,7 +1198,39 @@ public class IntegrationTests {
         ObjectNode storelightDataNode = objectMapper.createObjectNode()
                 .set("unstoreBarcodes", objectMapper.createObjectNode().put("numUnstored", 2));
         GraphQLResponse storelightResponse = new GraphQLResponse(storelightDataNode, null);
-        when(mockStorelightClient.postQuery(anyString(), anyString())).thenReturn(storelightResponse);
+        when(mockStorelightClient.postQuery(ArgumentMatchers.contains("unstoreBarcodes("), anyString())).thenReturn(storelightResponse);
+    }
+
+    private void stubStorelightLocation(List<StoredItem> storedItems) throws IOException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        ObjectNode storelightDataNode;
+        if (storedItems==null || storedItems.isEmpty()) {
+            storelightDataNode = objectMapper.createObjectNode()
+                    .set("stored", objectMapper.createArrayNode());
+        } else {
+            ArrayNode itemArrayNode = objectMapper.createArrayNode();
+            for (StoredItem item : storedItems) {
+                itemArrayNode.add(storedItemNode(objectMapper, item));
+            }
+            storelightDataNode = objectMapper.createObjectNode()
+                    .set("stored", itemArrayNode);
+        }
+        GraphQLResponse storelightResponse = new GraphQLResponse(storelightDataNode, null);
+        when(mockStorelightClient.postQuery(ArgumentMatchers.contains("stored("), any())).thenReturn(storelightResponse);
+    }
+
+    private static ObjectNode locationNode(ObjectMapper objectMapper, Location location) {
+        return objectMapper.createObjectNode()
+                .put("id", location.getId())
+                .put("barcode", location.getBarcode())
+                .put("name", location.getName());
+    }
+
+    private static ObjectNode storedItemNode(ObjectMapper objectMapper, StoredItem item) {
+        return objectMapper.createObjectNode()
+                .put("barcode", item.getBarcode())
+                .put("address", item.getAddress()==null ? null : item.getAddress().toString())
+                .set("location", locationNode(objectMapper, item.getLocation()));
     }
 
     private void verifyUnstored(Collection<String> barcodes, String username) throws Exception {
