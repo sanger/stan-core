@@ -515,6 +515,7 @@ type WorkType {
 }
 
 enum WorkStatus {
+    unstarted
     active
     paused
     completed
@@ -527,11 +528,23 @@ type Work {
     costCode: CostCode!
     workNumber: String!
     status: WorkStatus!
+    numBlocks: Int
+    numSlides: Int
 }
 
 type StainType {
     name: String!
     measurementTypes: [String!]!
+}
+
+type WorkProgressTimestamp {
+    type: String!
+    timestamp: Timestamp!
+}
+
+type WorkProgress {
+    work: Work!
+    timestamps: [WorkProgressTimestamp!]!
 }
 
 input TimeMeasurement {
@@ -542,7 +555,7 @@ input TimeMeasurement {
 input StainRequest {
     stainType: String!
     barcodes: [String!]!
-    timeMeasurements: [TimeMeasurement!]
+    timeMeasurements: [TimeMeasurement!]!
     workNumber: String
 }
 
@@ -637,6 +650,7 @@ type Query {
     historyForExternalName(externalName: String!): History!
     historyForDonorName(donorName: String!): History!
     historyForLabwareBarcode(barcode: String!): History!
+    workProgress(workNumber: String, workType: String, status: WorkStatus): [WorkProgress!]!
 
     location(locationBarcode: String!): Location!
     stored(barcodes: [String!]!): [StoredItem!]!
@@ -677,8 +691,10 @@ type Mutation {
     setFixativeEnabled(name: String!, enabled: Boolean!): Fixative!
     addWorkType(name: String!): WorkType!
     setWorkTypeEnabled(name: String!, enabled: Boolean!): WorkType!
-    createWork(prefix: String!, workType: String!, project: String!, costCode: String!): Work!
+    createWork(prefix: String!, workType: String!, project: String!, costCode: String!, numBlocks: Int, numSlides: Int): Work!
     updateWorkStatus(workNumber: String!, status: WorkStatus!, commentId: Int): Work!
+    updateWorkNumBlocks(workNumber: String!, numBlocks: Int): Work!
+    updateWorkNumSlides(workNumber: String!, numSlides: Int): Work!
     stain(request: StainRequest!): OperationResult!
     recordInPlace(request: InPlaceOpRequest!): OperationResult!
     unrelease(request: UnreleaseRequest!): OperationResult!

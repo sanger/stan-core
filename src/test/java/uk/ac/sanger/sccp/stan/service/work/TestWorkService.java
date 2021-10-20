@@ -48,8 +48,15 @@ public class TestWorkService {
         workService = spy(new WorkServiceImp(mockProjectRepo, mockCostCodeRepo, mockWorkTypeRepo, mockWorkRepo, mockWorkEventService));
     }
 
-    @Test
-    public void testCreateWork() {
+    @ParameterizedTest
+    @CsvSource(value={
+            ",,",
+            "1,,",
+            ",2,",
+            "-1,,Number of blocks cannot be a negative number.",
+            ",-2,Number of slides cannot be a negative number.",
+    })
+    public void testCreateWork(Integer numBlocks, Integer numSlides, String expectedErrorMessage) {
         String projectName = "Stargate";
         String code = "S1234";
         String workTypeName = "Drywalling";
@@ -65,12 +72,18 @@ public class TestWorkService {
         User user = new User(1, "user1", User.Role.admin);
         when(mockWorkRepo.save(any())).then(Matchers.returnArgument());
 
-        Work result = workService.createWork(user, prefix, workTypeName, projectName, code);
-        verify(workService).checkPrefix(prefix);
-        verify(mockWorkRepo).createNumber(prefix);
-        verify(mockWorkRepo).save(result);
-        verify(mockWorkEventService).recordEvent(user, result, WorkEvent.Type.create, null);
-        assertEquals(new Work(null, workNumber, workType, project, cc, Status.active), result);
+        if (expectedErrorMessage==null) {
+            Work result = workService.createWork(user, prefix, workTypeName, projectName, code, numBlocks, numSlides);
+            verify(workService).checkPrefix(prefix);
+            verify(mockWorkRepo).createNumber(prefix);
+            verify(mockWorkRepo).save(result);
+            verify(mockWorkEventService).recordEvent(user, result, WorkEvent.Type.create, null);
+            assertEquals(new Work(null, workNumber, workType, project, cc, Status.unstarted, numBlocks, numSlides), result);
+        } else {
+            assertThat(assertThrows(IllegalArgumentException.class, () -> workService.createWork(user, prefix, workTypeName, projectName,
+                    code, numBlocks, numSlides))).hasMessage(expectedErrorMessage);
+            verifyNoInteractions(mockWorkRepo);
+        }
     }
 
     @ParameterizedTest
@@ -91,6 +104,72 @@ public class TestWorkService {
             assertSame(work, workService.updateStatus(user, workNumber, newStatus, commentId));
             verify(mockWorkRepo).save(work);
             assertEquals(work.getStatus(), newStatus);
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource(value={
+            ",,",
+            "1,,",
+            ",1,",
+            "1,2,",
+            "2,1,",
+            ",-2,Number of blocks cannot be a negative number.",
+            "2,-1,Number of blocks cannot be a negative number.",
+    })
+    public void testUpdateNumBlocks(Integer oldValue, Integer newValue, String expectedErrorMessage) {
+        String workNumber = "SGP4000";
+        Work work = new Work(10, workNumber, null, null, null, Status.active);
+        work.setNumBlocks(oldValue);
+        when(mockWorkRepo.getByWorkNumber(workNumber)).thenReturn(work);
+        User user = EntityFactory.getUser();
+
+        if (expectedErrorMessage!=null) {
+            assertThat(assertThrows(IllegalArgumentException.class, () -> workService.updateWorkNumBlocks(user, workNumber, newValue)))
+                    .hasMessage(expectedErrorMessage);
+            verify(mockWorkRepo, never()).save(any());
+        } else if (Objects.equals(oldValue, newValue)) {
+            assertSame(work, workService.updateWorkNumBlocks(user, workNumber, newValue));
+            assertEquals(work.getNumBlocks(), newValue);
+            verify(mockWorkRepo, never()).save(any());
+        } else {
+            when(mockWorkRepo.save(any())).then(Matchers.returnArgument());
+            assertSame(work, workService.updateWorkNumBlocks(user, workNumber, newValue));
+            verify(mockWorkRepo).save(work);
+            assertEquals(work.getNumBlocks(), newValue);
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource(value={
+            ",,",
+            "1,,",
+            ",1,",
+            "1,2,",
+            "2,1,",
+            ",-2,Number of slides cannot be a negative number.",
+            "2,-1,Number of slides cannot be a negative number.",
+    })
+    public void testUpdateNumSlides(Integer oldValue, Integer newValue, String expectedErrorMessage) {
+        String workNumber = "SGP4000";
+        Work work = new Work(10, workNumber, null, null, null, Status.active);
+        work.setNumBlocks(oldValue);
+        when(mockWorkRepo.getByWorkNumber(workNumber)).thenReturn(work);
+        User user = EntityFactory.getUser();
+
+        if (expectedErrorMessage!=null) {
+            assertThat(assertThrows(IllegalArgumentException.class, () -> workService.updateWorkNumSlides(user, workNumber, newValue)))
+                    .hasMessage(expectedErrorMessage);
+            verify(mockWorkRepo, never()).save(any());
+        } else if (Objects.equals(oldValue, newValue)) {
+            assertSame(work, workService.updateWorkNumSlides(user, workNumber, newValue));
+            assertEquals(work.getNumSlides(), newValue);
+            verify(mockWorkRepo, never()).save(any());
+        } else {
+            when(mockWorkRepo.save(any())).then(Matchers.returnArgument());
+            assertSame(work, workService.updateWorkNumSlides(user, workNumber, newValue));
+            verify(mockWorkRepo).save(work);
+            assertEquals(work.getNumSlides(), newValue);
         }
     }
 

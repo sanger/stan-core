@@ -52,6 +52,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final CommentAdminService commentAdminService;
     final EquipmentAdminService equipmentAdminService;
     final HistoryService historyService;
+    final WorkProgressService workProgressService;
     final PlanService planService;
     final StainService stainService;
     final ExtractResultQueryService extractResultQueryService;
@@ -67,8 +68,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                WorkTypeRepo workTypeRepo, WorkRepo workRepo,
                                LabelPrintService labelPrintService, FindService findService,
                                CommentAdminService commentAdminService, EquipmentAdminService equipmentAdminService,
-                               HistoryService historyService, PlanService planService,
-                               StainService stainService, ExtractResultQueryService extractResultQueryService) {
+                               HistoryService historyService, WorkProgressService workProgressService,
+                               PlanService planService, StainService stainService, ExtractResultQueryService extractResultQueryService) {
         super(objectMapper, authComp, userRepo);
         this.sessionConfig = sessionConfig;
         this.tissueTypeRepo = tissueTypeRepo;
@@ -91,6 +92,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.findService = findService;
         this.commentAdminService = commentAdminService;
         this.historyService = historyService;
+        this.workProgressService = workProgressService;
         this.planService = planService;
         this.stainService = stainService;
         this.extractResultQueryService = extractResultQueryService;
@@ -245,6 +247,15 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         return dfe -> {
             String barcode = dfe.getArgument("barcode");
             return historyService.getHistoryForLabwareBarcode(barcode);
+        };
+    }
+
+    public DataFetcher<List<WorkProgress>> workProgress() {
+        return dfe -> {
+            String workNumber = dfe.getArgument("workNumber");
+            String workTypeName = dfe.getArgument("workType");
+            Work.Status status = arg(dfe, "status", Work.Status.class);
+            return workProgressService.getProgress(workNumber, workTypeName, status);
         };
     }
   

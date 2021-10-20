@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
 import uk.ac.sanger.sccp.stan.model.Work;
 import uk.ac.sanger.sccp.stan.model.Work.Status;
+import uk.ac.sanger.sccp.stan.model.WorkType;
 
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
@@ -61,6 +62,9 @@ public interface WorkRepo extends CrudRepository<Work, Integer> {
      * @return the matching works
      */
     Iterable<Work> findAllByStatusIn(Collection<Status> statuses);
+
+    List<Work> findAllByWorkTypeIn(Collection<WorkType> workTypes);
+
 
     @Query(value="select operation_id as opId, work_number as workNumber from work_op join work on (work_id=work.id) where operation_id IN (?1)", nativeQuery=true)
     List<Object[]> _opIdWorkNumbersForOpIds(Collection<Integer> opIds);
