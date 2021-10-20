@@ -73,12 +73,12 @@ public class TestWorkService {
     }
 
     @ParameterizedTest
-    @ValueSource(booleans={true, false})
-    public void testUpdateStatus(boolean success) {
+    @CsvSource({"false,false", "true,false", "true,true"})
+    public void testUpdateStatus(boolean success, boolean withComment) {
         User user = new User(1, "user1", User.Role.admin);
         String workNumber = "SGP4000";
-        final Integer commentId = 99;
-        Status newStatus = Status.paused;
+        final Integer commentId = (withComment ? 99 : null);
+        Status newStatus = (withComment ? Status.paused : Status.completed);
         Work work = new Work(10, workNumber, null, null, null, Status.active);
         when(mockWorkRepo.getByWorkNumber(workNumber)).thenReturn(work);
         if (!success) {
@@ -86,8 +86,15 @@ public class TestWorkService {
             assertThrows(IllegalArgumentException.class, () -> workService.updateStatus(user, workNumber, newStatus, commentId));
             verify(mockWorkRepo, never()).save(any());
         } else {
+            Comment comment = (withComment ? new Comment(commentId, "Custard", "Alabama") : null);
+            WorkEvent event = new WorkEvent(10, work, null, null, comment, null);
+            when(mockWorkEventService.recordStatusChange(any(), any(), any(), any())).thenReturn(event);
             when(mockWorkRepo.save(any())).then(Matchers.returnArgument());
-            assertSame(work, workService.updateStatus(user, workNumber, newStatus, commentId));
+            WorkWithComment wc = workService.updateStatus(user, workNumber, newStatus, commentId);
+
+            assertSame(work, wc.getWork());
+            assertEquals(withComment ? comment.getText() : null, wc.getComment());
+
             verify(mockWorkRepo).save(work);
             assertEquals(work.getStatus(), newStatus);
         }
@@ -217,7 +224,7 @@ public class TestWorkService {
     public void testValidateUsableWork(String workNumber, Status status, Class<? extends Exception> unused, String expectedErrorMessage) {
         List<String> problems = new ArrayList<>(1);
         if (workNumber==null) {
-            assertNull(workService.validateUsableWork(problems, workNumber));
+            assertNull(workService.validateUsableWork(problems, null));
             assertThat(problems).isEmpty();
             verifyNoInteractions(mockWorkRepo);
             return;

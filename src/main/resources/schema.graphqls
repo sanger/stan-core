@@ -658,7 +658,7 @@ type Mutation {
     addWorkType(name: String!): WorkType!
     setWorkTypeEnabled(name: String!, enabled: Boolean!): WorkType!
     createWork(prefix: String!, workType: String!, project: String!, costCode: String!): Work!
-    updateWorkStatus(workNumber: String!, status: WorkStatus!, commentId: Int): Work!
+    updateWorkStatus(workNumber: String!, status: WorkStatus!, commentId: Int): WorkWithComment!
     stain(request: StainRequest!): OperationResult!
     recordInPlace(request: InPlaceOpRequest!): OperationResult!
     unrelease(request: UnreleaseRequest!): OperationResult!

@@ -31,9 +31,9 @@ public interface WorkService {
      * @param workNumber the work to be updated
      * @param newStatus the new status
      * @param commentId the id of the comment giving a reason for the change
-     * @return the updated work
+     * @return the updated work along with the comment, if any
      */
-    Work updateStatus(User user, String workNumber, Status newStatus, Integer commentId);
+    WorkWithComment updateStatus(User user, String workNumber, Status newStatus, Integer commentId);
 
     /**
      * Updates the existing work linking it to the given operations and samples in slots in the ops' actions

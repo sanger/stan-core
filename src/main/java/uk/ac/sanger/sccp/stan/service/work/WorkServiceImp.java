@@ -58,11 +58,12 @@ public class WorkServiceImp implements WorkService {
     }
 
     @Override
-    public Work updateStatus(User user, String workNumber, Status newStatus, Integer commentId) {
+    public WorkWithComment updateStatus(User user, String workNumber, Status newStatus, Integer commentId) {
         Work work = workRepo.getByWorkNumber(workNumber);
-        workEventService.recordStatusChange(user, work, newStatus, commentId);
+        WorkEvent event = workEventService.recordStatusChange(user, work, newStatus, commentId);
         work.setStatus(newStatus);
-        return workRepo.save(work);
+        String commentText = (event.getComment()==null ? null : event.getComment().getText());
+        return new WorkWithComment(workRepo.save(work), commentText);
     }
 
     @Override

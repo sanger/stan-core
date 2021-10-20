@@ -403,7 +403,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         };
     }
 
-    public DataFetcher<Work> updateWorkStatus() {
+    public DataFetcher<WorkWithComment> updateWorkStatus() {
         return dfe -> {
             User user = checkUser(dfe, User.Role.normal);
             String workNumber = dfe.getArgument("workNumber");
