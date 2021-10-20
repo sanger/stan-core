@@ -70,6 +70,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final StainService stainService;
     final UnreleaseService unreleaseService;
     final ResultService resultService;
+    final ExtractResultService extractResultService;
     final UserAdminService userAdminService;
 
     @Autowired
@@ -86,7 +87,8 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            ReleaseRecipientAdminService releaseRecipientAdminService, SpeciesAdminService speciesAdminService,
                            ProjectService projectService, CostCodeService costCodeService, FixativeService fixativeService,
                            WorkTypeService workTypeService, WorkService workService, StainService stainService,
-                           UnreleaseService unreleaseService, ResultService resultService, UserAdminService userAdminService) {
+                           UnreleaseService unreleaseService, ResultService resultService, ExtractResultService extractResultService,
+                           UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
@@ -116,6 +118,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.stainService = stainService;
         this.unreleaseService = unreleaseService;
         this.resultService = resultService;
+        this.extractResultService = extractResultService;
         this.userAdminService = userAdminService;
     }
 
@@ -397,9 +400,34 @@ public class GraphQLMutation extends BaseGraphQLResource {
             String code = dfe.getArgument("costCode");
             String prefix = dfe.getArgument("prefix");
             String workTypeName = dfe.getArgument("workType");
-            logRequest("Create work", user, String.format("project: %s, costCode: %s, prefix: %s, workType: %s",
-                    projectName, code, prefix, workTypeName));
-            return workService.createWork(user, prefix, workTypeName, projectName, code);
+            Integer numBlocks = dfe.getArgument("numBlocks");
+            Integer numSlides = dfe.getArgument("numSlides");
+            logRequest("Create work", user,
+                    String.format("project: %s, costCode: %s, prefix: %s, workType: %s, numBlocks: %s, numSlides: %s",
+                    projectName, code, prefix, workTypeName, numBlocks, numSlides));
+            return workService.createWork(user, prefix, workTypeName, projectName, code, numBlocks, numSlides);
+        };
+    }
+
+    public DataFetcher<Work> updateWorkNumBlocks() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            String workNumber = dfe.getArgument("workNumber");
+            Integer newValue = dfe.getArgument("numBlocks");
+            logRequest("Update work numBlocks", user,
+                    String.format("Work number: %s, numBlocks: %s", workNumber, newValue));
+            return workService.updateWorkNumBlocks(user, workNumber, newValue);
+        };
+    }
+
+    public DataFetcher<Work> updateWorkNumSlides() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            String workNumber = dfe.getArgument("workNumber");
+            Integer newValue = dfe.getArgument("numSlides");
+            logRequest("Update work numSlides", user,
+                    String.format("Work number: %s, numSlides: %s", workNumber, newValue));
+            return workService.updateWorkNumSlides(user, workNumber, newValue);
         };
     }
 
@@ -439,6 +467,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             ResultRequest request = arg(dfe, "request", ResultRequest.class);
             logRequest("Record stain result", user, request);
             return resultService.recordStainResult(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> recordExtractResult() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            ExtractResultRequest request = arg(dfe, "request", ExtractResultRequest.class);
+            logRequest("Record extract result", user, request);
+            return extractResultService.recordExtractResult(user, request);
         };
     }
 

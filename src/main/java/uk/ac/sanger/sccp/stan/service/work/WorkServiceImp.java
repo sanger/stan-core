@@ -44,15 +44,22 @@ public class WorkServiceImp implements WorkService {
     }
 
     @Override
-    public Work createWork(User user, String prefix, String workTypeName, String projectName, String costCode) {
+    public Work createWork(User user, String prefix, String workTypeName, String projectName, String costCode,
+                           Integer numBlocks, Integer numSlides) {
         checkPrefix(prefix);
 
         Project project = projectRepo.getByName(projectName);
         CostCode cc = costCodeRepo.getByCode(costCode);
         WorkType type = workTypeRepo.getByName(workTypeName);
+        if (numBlocks!=null && numBlocks < 0) {
+            throw new IllegalArgumentException("Number of blocks cannot be a negative number.");
+        }
+        if (numSlides!=null && numSlides < 0) {
+            throw new IllegalArgumentException("Number of slides cannot be a negative number.");
+        }
 
         String workNumber = workRepo.createNumber(prefix);
-        Work work = workRepo.save(new Work(null, workNumber, type, project, cc, Status.active));
+        Work work = workRepo.save(new Work(null, workNumber, type, project, cc, Status.unstarted, numBlocks, numSlides));
         workEventService.recordEvent(user, work, WorkEvent.Type.create, null);
         return work;
     }
@@ -64,6 +71,32 @@ public class WorkServiceImp implements WorkService {
         work.setStatus(newStatus);
         String commentText = (event.getComment()==null ? null : event.getComment().getText());
         return new WorkWithComment(workRepo.save(work), commentText);
+    }
+
+    @Override
+    public Work updateWorkNumBlocks(User user, String workNumber, Integer numBlocks) {
+        Work work = workRepo.getByWorkNumber(workNumber);
+        if (!Objects.equals(work.getNumBlocks(), numBlocks)) {
+            if (numBlocks != null && numBlocks < 0) {
+                throw new IllegalArgumentException("Number of blocks cannot be a negative number.");
+            }
+            work.setNumBlocks(numBlocks);
+            work = workRepo.save(work);
+        }
+        return work;
+    }
+
+    @Override
+    public Work updateWorkNumSlides(User user, String workNumber, Integer numSlides) {
+        Work work = workRepo.getByWorkNumber(workNumber);
+        if (!Objects.equals(work.getNumBlocks(), numSlides)) {
+            if (numSlides != null && numSlides < 0) {
+                throw new IllegalArgumentException("Number of slides cannot be a negative number.");
+            }
+            work.setNumSlides(numSlides);
+            work = workRepo.save(work);
+        }
+        return work;
     }
 
     @Override

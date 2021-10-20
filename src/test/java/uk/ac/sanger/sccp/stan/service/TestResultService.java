@@ -408,7 +408,7 @@ public class TestResultService {
         verify(service).makeLabwareOpIdMap(ops);
 
         if (anyUnstained) {
-            assertThat(problems).containsExactly("No stain has been recorded on the following labware: [STAN-U]");
+            assertThat(problems).containsExactly("No Stain operation has been recorded on the following labware: [STAN-U]");
         } else {
             assertThat(problems).isEmpty();
         }
