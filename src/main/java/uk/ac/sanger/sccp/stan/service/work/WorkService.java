@@ -2,8 +2,10 @@ package uk.ac.sanger.sccp.stan.service.work;
 
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.Work.Status;
+import uk.ac.sanger.sccp.stan.request.WorkWithComment;
 
 import java.util.Collection;
+import java.util.List;
 
 /**
  * Service for managing {@link Work work}.
@@ -32,9 +34,9 @@ public interface WorkService {
      * @param workNumber the work to be updated
      * @param newStatus the new status
      * @param commentId the id of the comment giving a reason for the change
-     * @return the updated work
+     * @return the updated work along with the comment, if any
      */
-    Work updateStatus(User user, String workNumber, Status newStatus, Integer commentId);
+    WorkWithComment updateStatus(User user, String workNumber, Status newStatus, Integer commentId);
 
     /**
      * Updates the numBlocks field on an existing work.
@@ -95,4 +97,12 @@ public interface WorkService {
      * @see Work#isUsable
      */
     Work validateUsableWork(Collection<String> problems, String workNumber);
+
+    /**
+     * Loads works along with the comment about their status, if any.
+     * Optional filtered by work status.
+     * @param workStatuses the statuses to filter by (may be null, in which case unfiltered)
+     * @return a list of WorkWithComment objects each of which may or may not include a comment
+     */
+    List<WorkWithComment> getWorksWithComments(Collection<Work.Status> workStatuses);
 }
