@@ -102,6 +102,7 @@ public class GraphQLProvider {
 
                         .dataFetcher("location", graphQLStore.getLocation())
                         .dataFetcher("stored", graphQLStore.getStored())
+                        .dataFetcher("labwareInLocation", graphQLStore.getLabwareInLocation())
                 )
                 .type(newTypeWiring("Mutation")
                         .dataFetcher("login", graphQLMutation.logIn())
