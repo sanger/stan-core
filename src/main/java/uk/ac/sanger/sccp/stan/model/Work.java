@@ -14,7 +14,7 @@ import java.util.*;
 public class Work {
     // region inner classes
     public enum Status {
-        active, paused, completed, failed
+        unstarted, active, paused, completed, failed
     }
     @Embeddable
     public static class SampleSlotId {
@@ -80,7 +80,7 @@ public class Work {
     @ManyToOne
     private CostCode costCode;
 
-    @Column(columnDefinition = "enum('active', 'paused', 'completed', 'failed')")
+    @Column(columnDefinition = "enum('unstarted', 'active', 'paused', 'completed', 'failed')")
     @Enumerated(EnumType.STRING)
     private Status status;
 
@@ -93,15 +93,24 @@ public class Work {
     @CollectionTable(name="work_sample", joinColumns=@JoinColumn(name="work_id"))
     private List<SampleSlotId> sampleSlotIds;
 
+    private Integer numBlocks, numSlides;
+
     public Work() {}
 
-    public Work(Integer id, String workNumber, WorkType workType, Project project, CostCode costCode, Status status) {
+    public Work(Integer id, String workNumber, WorkType workType, Project project, CostCode costCode, Status status,
+                Integer numBlocks, Integer numSlides) {
         this.id = id;
         this.workNumber = workNumber;
         this.workType = workType;
         this.project = project;
         this.costCode = costCode;
         this.status = status;
+        this.numBlocks = numBlocks;
+        this.numSlides = numSlides;
+    }
+
+    public Work(Integer id, String workNumber, WorkType workType, Project project, CostCode costCode, Status status) {
+        this(id, workNumber, workType, project, costCode, status, null, null);
     }
 
     public Integer getId() {
@@ -168,6 +177,22 @@ public class Work {
         this.sampleSlotIds = (sampleSlotIds instanceof ArrayList ? sampleSlotIds : BasicUtils.newArrayList(sampleSlotIds));
     }
 
+    public Integer getNumBlocks() {
+        return this.numBlocks;
+    }
+
+    public void setNumBlocks(Integer numBlocks) {
+        this.numBlocks = numBlocks;
+    }
+
+    public Integer getNumSlides() {
+        return this.numSlides;
+    }
+
+    public void setNumSlides(Integer numSlides) {
+        this.numSlides = numSlides;
+    }
+
     @JsonIgnore
     public boolean isClosed() {
         return (status==Status.completed || status==Status.failed);
@@ -193,6 +218,8 @@ public class Work {
                 && Objects.equals(this.workNumber, that.workNumber)
                 && Objects.equals(this.project, that.project)
                 && Objects.equals(this.costCode, that.costCode)
+                && Objects.equals(this.numBlocks, that.numBlocks)
+                && Objects.equals(this.numSlides, that.numSlides)
                 && this.status == that.status);
     }
 

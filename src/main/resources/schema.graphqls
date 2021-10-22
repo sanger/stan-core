@@ -514,6 +514,7 @@ type WorkType {
 }
 
 enum WorkStatus {
+    unstarted
     active
     paused
     completed
@@ -526,11 +527,18 @@ type Work {
     costCode: CostCode!
     workNumber: String!
     status: WorkStatus!
+    numBlocks: Int
+    numSlides: Int
 }
 
 type StainType {
     name: String!
     measurementTypes: [String!]!
+}
+
+type WorkWithComment {
+    work: Work!
+    comment: String
 }
 
 type WorkProgressTimestamp {
@@ -580,6 +588,18 @@ input ResultRequest {
     workNumber: String
 }
 
+input ExtractResultLabware {
+    barcode: String!
+    result: PassFail!
+    concentration: String
+    commentId: Int
+}
+
+input ExtractResultRequest {
+    labware: [ExtractResultLabware!]!
+    workNumber: String
+}
+
 type Query {
     user: User
     tissueTypes: [TissueType!]!
@@ -601,6 +621,7 @@ type Query {
     workTypes(includeDisabled: Boolean): [WorkType!]!
     works(status: [WorkStatus!]): [Work!]!
     work(workNumber: String!): Work!
+    worksWithComments(status: [WorkStatus!]): [WorkWithComment!]!
     users(includeDisabled: Boolean): [User!]!
     find(request: FindRequest!): FindResult!
     planData(barcode: String!): PlanData!
@@ -652,12 +673,16 @@ type Mutation {
     setFixativeEnabled(name: String!, enabled: Boolean!): Fixative!
     addWorkType(name: String!): WorkType!
     setWorkTypeEnabled(name: String!, enabled: Boolean!): WorkType!
-    createWork(prefix: String!, workType: String!, project: String!, costCode: String!): Work!
-    updateWorkStatus(workNumber: String!, status: WorkStatus!, commentId: Int): Work!
+    createWork(prefix: String!, workType: String!, project: String!, costCode: String!, numBlocks: Int, numSlides: Int): Work!
+    updateWorkStatus(workNumber: String!, status: WorkStatus!, commentId: Int): WorkWithComment!
+    updateWorkNumBlocks(workNumber: String!, numBlocks: Int): Work!
+    updateWorkNumSlides(workNumber: String!, numSlides: Int): Work!
+
     stain(request: StainRequest!): OperationResult!
     recordInPlace(request: InPlaceOpRequest!): OperationResult!
     unrelease(request: UnreleaseRequest!): OperationResult!
     recordStainResult(request: ResultRequest!): OperationResult!
+    recordExtractResult(request: ExtractResultRequest!): OperationResult!
 
     addUser(username: String!): User!
     setUserRole(username: String!, role: UserRole!): User!

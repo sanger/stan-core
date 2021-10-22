@@ -10,11 +10,14 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.Work.SampleSlotId;
 import uk.ac.sanger.sccp.stan.model.Work.Status;
 import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.request.WorkWithComment;
+import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
 import java.util.stream.Stream;
 
+import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -44,8 +47,15 @@ public class TestWorkService {
         workService = spy(new WorkServiceImp(mockProjectRepo, mockCostCodeRepo, mockWorkTypeRepo, mockWorkRepo, mockWorkEventService));
     }
 
-    @Test
-    public void testCreateWork() {
+    @ParameterizedTest
+    @CsvSource(value={
+            ",,",
+            "1,,",
+            ",2,",
+            "-1,,Number of blocks cannot be a negative number.",
+            ",-2,Number of slides cannot be a negative number.",
+    })
+    public void testCreateWork(Integer numBlocks, Integer numSlides, String expectedErrorMessage) {
         String projectName = "Stargate";
         String code = "S1234";
         String workTypeName = "Drywalling";
@@ -61,21 +71,27 @@ public class TestWorkService {
         User user = new User(1, "user1", User.Role.admin);
         when(mockWorkRepo.save(any())).then(Matchers.returnArgument());
 
-        Work result = workService.createWork(user, prefix, workTypeName, projectName, code);
-        verify(workService).checkPrefix(prefix);
-        verify(mockWorkRepo).createNumber(prefix);
-        verify(mockWorkRepo).save(result);
-        verify(mockWorkEventService).recordEvent(user, result, WorkEvent.Type.create, null);
-        assertEquals(new Work(null, workNumber, workType, project, cc, Status.active), result);
+        if (expectedErrorMessage==null) {
+            Work result = workService.createWork(user, prefix, workTypeName, projectName, code, numBlocks, numSlides);
+            verify(workService).checkPrefix(prefix);
+            verify(mockWorkRepo).createNumber(prefix);
+            verify(mockWorkRepo).save(result);
+            verify(mockWorkEventService).recordEvent(user, result, WorkEvent.Type.create, null);
+            assertEquals(new Work(null, workNumber, workType, project, cc, Status.unstarted, numBlocks, numSlides), result);
+        } else {
+            assertThat(assertThrows(IllegalArgumentException.class, () -> workService.createWork(user, prefix, workTypeName, projectName,
+                    code, numBlocks, numSlides))).hasMessage(expectedErrorMessage);
+            verifyNoInteractions(mockWorkRepo);
+        }
     }
 
     @ParameterizedTest
-    @ValueSource(booleans={true, false})
-    public void testUpdateStatus(boolean success) {
+    @CsvSource({"false,false", "true,false", "true,true"})
+    public void testUpdateStatus(boolean success, boolean withComment) {
         User user = new User(1, "user1", User.Role.admin);
         String workNumber = "SGP4000";
-        final Integer commentId = 99;
-        Status newStatus = Status.paused;
+        final Integer commentId = (withComment ? 99 : null);
+        Status newStatus = (withComment ? Status.paused : Status.completed);
         Work work = new Work(10, workNumber, null, null, null, Status.active);
         when(mockWorkRepo.getByWorkNumber(workNumber)).thenReturn(work);
         if (!success) {
@@ -83,10 +99,83 @@ public class TestWorkService {
             assertThrows(IllegalArgumentException.class, () -> workService.updateStatus(user, workNumber, newStatus, commentId));
             verify(mockWorkRepo, never()).save(any());
         } else {
+            Comment comment = (withComment ? new Comment(commentId, "Custard", "Alabama") : null);
+            WorkEvent event = new WorkEvent(10, work, null, null, comment, null);
+            when(mockWorkEventService.recordStatusChange(any(), any(), any(), any())).thenReturn(event);
             when(mockWorkRepo.save(any())).then(Matchers.returnArgument());
-            assertSame(work, workService.updateStatus(user, workNumber, newStatus, commentId));
+            WorkWithComment wc = workService.updateStatus(user, workNumber, newStatus, commentId);
+
+            assertSame(work, wc.getWork());
+            assertEquals(withComment ? comment.getText() : null, wc.getComment());
+
             verify(mockWorkRepo).save(work);
             assertEquals(work.getStatus(), newStatus);
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource(value={
+            ",,",
+            "1,,",
+            ",1,",
+            "1,2,",
+            "2,1,",
+            ",-2,Number of blocks cannot be a negative number.",
+            "2,-1,Number of blocks cannot be a negative number.",
+    })
+    public void testUpdateNumBlocks(Integer oldValue, Integer newValue, String expectedErrorMessage) {
+        String workNumber = "SGP4000";
+        Work work = new Work(10, workNumber, null, null, null, Status.active);
+        work.setNumBlocks(oldValue);
+        when(mockWorkRepo.getByWorkNumber(workNumber)).thenReturn(work);
+        User user = EntityFactory.getUser();
+
+        if (expectedErrorMessage!=null) {
+            assertThat(assertThrows(IllegalArgumentException.class, () -> workService.updateWorkNumBlocks(user, workNumber, newValue)))
+                    .hasMessage(expectedErrorMessage);
+            verify(mockWorkRepo, never()).save(any());
+        } else if (Objects.equals(oldValue, newValue)) {
+            assertSame(work, workService.updateWorkNumBlocks(user, workNumber, newValue));
+            assertEquals(work.getNumBlocks(), newValue);
+            verify(mockWorkRepo, never()).save(any());
+        } else {
+            when(mockWorkRepo.save(any())).then(Matchers.returnArgument());
+            assertSame(work, workService.updateWorkNumBlocks(user, workNumber, newValue));
+            verify(mockWorkRepo).save(work);
+            assertEquals(work.getNumBlocks(), newValue);
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource(value={
+            ",,",
+            "1,,",
+            ",1,",
+            "1,2,",
+            "2,1,",
+            ",-2,Number of slides cannot be a negative number.",
+            "2,-1,Number of slides cannot be a negative number.",
+    })
+    public void testUpdateNumSlides(Integer oldValue, Integer newValue, String expectedErrorMessage) {
+        String workNumber = "SGP4000";
+        Work work = new Work(10, workNumber, null, null, null, Status.active);
+        work.setNumBlocks(oldValue);
+        when(mockWorkRepo.getByWorkNumber(workNumber)).thenReturn(work);
+        User user = EntityFactory.getUser();
+
+        if (expectedErrorMessage!=null) {
+            assertThat(assertThrows(IllegalArgumentException.class, () -> workService.updateWorkNumSlides(user, workNumber, newValue)))
+                    .hasMessage(expectedErrorMessage);
+            verify(mockWorkRepo, never()).save(any());
+        } else if (Objects.equals(oldValue, newValue)) {
+            assertSame(work, workService.updateWorkNumSlides(user, workNumber, newValue));
+            assertEquals(work.getNumSlides(), newValue);
+            verify(mockWorkRepo, never()).save(any());
+        } else {
+            when(mockWorkRepo.save(any())).then(Matchers.returnArgument());
+            assertSame(work, workService.updateWorkNumSlides(user, workNumber, newValue));
+            verify(mockWorkRepo).save(work);
+            assertEquals(work.getNumSlides(), newValue);
         }
     }
 
@@ -214,7 +303,7 @@ public class TestWorkService {
     public void testValidateUsableWork(String workNumber, Status status, Class<? extends Exception> unused, String expectedErrorMessage) {
         List<String> problems = new ArrayList<>(1);
         if (workNumber==null) {
-            assertNull(workService.validateUsableWork(problems, workNumber));
+            assertNull(workService.validateUsableWork(problems, null));
             assertThat(problems).isEmpty();
             verifyNoInteractions(mockWorkRepo);
             return;
@@ -240,6 +329,73 @@ public class TestWorkService {
                 { "SGP404", null, EntityNotFoundException.class, "Work number not recognised: \"SGP404\"" },
                 { null, null, NullPointerException.class, "Work number is null." },
         }).map(Arguments::of);
+    }
+
+    @ParameterizedTest
+    @MethodSource("getWorksWithCommentsArgs")
+    public void testGetWorksWithComments(Collection<Status> statuses, Collection<Work> works, Collection<WorkEvent> events) {
+        if (statuses==null) {
+            when(mockWorkRepo.findAll()).thenReturn(works);
+        } else {
+            when(mockWorkRepo.findAllByStatusIn(statuses)).thenReturn(works);
+        }
+        Map<Integer, WorkEvent> eventMap;
+        if (events==null) {
+            eventMap = null;
+        } else {
+            eventMap = events.stream().collect(BasicUtils.toMap(e -> e.getWork().getId()));
+            when(mockWorkEventService.loadLatestEvents(any())).thenReturn(eventMap);
+        }
+        List<WorkWithComment> wcs = workService.getWorksWithComments(statuses);
+        assertThat(wcs.stream().map(WorkWithComment::getWork)).containsExactlyElementsOf(works);
+
+        if (events!=null) {
+            List<Integer> workIds = works.stream()
+                    .filter(work -> work.getStatus()==Status.failed || work.getStatus()==Status.paused)
+                    .map(Work::getId)
+                    .collect(toList());
+            verify(mockWorkEventService).loadLatestEvents(workIds);
+            verify(workService).fillInComments(wcs, eventMap);
+        }
+    }
+
+    static Stream<Arguments> getWorksWithCommentsArgs() {
+        Work workA = new Work(1, "SGP1", null, null, null, Status.active);
+        Work workC = new Work(2, "SGP2", null, null, null, Status.completed);
+        Work workF = new Work(3, "SGP3", null, null, null, Status.failed);
+        Work workP = new Work(4, "SGP4", null, null, null, Status.paused);
+
+        WorkEvent eventF = new WorkEvent(workF, WorkEvent.Type.fail, null, null);
+        WorkEvent eventP = new WorkEvent(workP, WorkEvent.Type.pause, null, null);
+
+        return Arrays.stream(new Object[][] {
+                {null, List.of(workA, workC, workF, workP), List.of(eventF, eventP)},
+                {List.of(Status.active, Status.completed), List.of(workA, workC), null},
+                {List.of(Status.failed, Status.paused), List.of(workF, workP), List.of(eventF, eventP)},
+        }).map(Arguments::of);
+    }
+
+    @Test
+    public void testFillInComments() {
+        Work workF1 = new Work(1, "SGP1", null, null, null, Status.failed);
+        Work workF2 = new Work(2, "SGP2", null, null, null, Status.failed);
+        Work workP1 = new Work(3, "SGP3", null, null, null, Status.paused);
+        Work workP2 = new Work(4, "SGP4", null, null, null, Status.paused);
+        Map<Integer, WorkEvent> events = Stream.of(
+                new WorkEvent(workF1, WorkEvent.Type.fail, null, new Comment(1, "Ohio", "")),
+                new WorkEvent(workF2, WorkEvent.Type.create, null, new Comment(2, "Oklahoma", "")),
+                new WorkEvent(workP1, WorkEvent.Type.pause, null, new Comment(3, "Oregon", ""))
+        ).collect(BasicUtils.toMap(e -> e.getWork().getId()));
+
+        List<WorkWithComment> wcs = Stream.of(workF1, workF2, workP1, workP2)
+                .map(WorkWithComment::new)
+                .collect(toList());
+
+        workService.fillInComments(wcs, events);
+
+        assertEquals(List.of(new WorkWithComment(workF1, "Ohio"), new WorkWithComment(workF2),
+                        new WorkWithComment(workP1, "Oregon"), new WorkWithComment(workP2)),
+                wcs);
     }
 
     private Operation makeOp(OperationType opType, int opId, Labware srcLw, Labware dstLw) {

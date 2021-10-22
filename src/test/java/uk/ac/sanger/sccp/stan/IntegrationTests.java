@@ -105,6 +105,8 @@ public class IntegrationTests {
     private EquipmentRepo equipmentRepo;
     @Autowired
     private ResultOpRepo resultOpRepo;
+    @Autowired
+    private OperationCommentRepo opCommentRepo;
 
     @MockBean
     StorelightClient mockStorelightClient;
@@ -501,6 +503,49 @@ public class IntegrationTests {
         entityManager.refresh(work);
         assertThat(work.getOperationIds()).containsExactlyInAnyOrderElementsOf(Arrays.stream(opIds).boxed().collect(toList()));
         assertThat(work.getSampleSlotIds()).hasSize(sampleIds.length);
+
+        entityCreator.createOpType("Record result", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.RESULT);
+
+        mutation = tester.readResource("graphql/extract_result.graphql")
+                .replace("$BARCODE1$", dests[0].getBarcode())
+                .replace("$BARCODE2$", dests[1].getBarcode());
+        result = tester.post(mutation);
+
+        List<Map<String,?>> opsData = chainGet(result, "data", "recordExtractResult", "operations");
+        List<Integer> resultOpIds = new ArrayList<>(2);
+        for (var opsDatum : opsData) {
+            assertEquals("Record result", chainGet(opsDatum, "operationType", "name"));
+            resultOpIds.add((Integer) opsDatum.get("id"));
+        }
+
+        List<ResultOp> ros = resultOpRepo.findAllByOperationIdIn(resultOpIds);
+        ResultOp ro0, ro1;
+        if (ros.get(0).getOperationId().equals(resultOpIds.get(0))) {
+            ro0 = ros.get(0);
+            ro1 = ros.get(1);
+        } else {
+            ro0 = ros.get(1);
+            ro1 = ros.get(0);
+        }
+        assertEquals(resultOpIds.get(0), ro0.getOperationId());
+        assertEquals(PassFail.pass, ro0.getResult());
+        assertEquals(resultOpIds.get(1), ro1.getOperationId());
+        assertEquals(PassFail.fail, ro1.getResult());
+
+        List<Measurement> measurements = measurementRepo.findAllByOperationIdIn(resultOpIds);
+        assertThat(measurements).hasSize(1);
+        Measurement meas = measurements.get(0);
+        assertEquals(dests[0].getFirstSlot().getId(), meas.getSlotId());
+        assertEquals("Concentration", meas.getName());
+        assertEquals("-200.00", meas.getValue());
+        assertEquals(resultOpIds.get(0), meas.getOperationId());
+
+        List<OperationComment> opComs = opCommentRepo.findAllByOperationIdIn(resultOpIds);
+        assertThat(opComs).hasSize(1);
+        OperationComment opCom = opComs.get(0);
+        assertEquals(1, opCom.getComment().getId());
+        assertEquals(resultOpIds.get(1), opCom.getOperationId());
+        assertEquals(dests[1].getFirstSlot().getId(), opCom.getSlotId());
     }
 
     @Test
@@ -1097,25 +1142,52 @@ public class IntegrationTests {
         tester.setUser(user);
         data = tester.post(tester.readResource("graphql/createWork.graphql"));
 
-        Map<String, ?> workData = chainGet(data, "data", "createWork");
+        Map<String, Object> workData = chainGet(data, "data", "createWork");
         String workNumber = (String) workData.get("workNumber");
         assertNotNull(workNumber);
         assertEquals(project.getName(), chainGet(workData, "project", "name"));
         assertEquals(cc.getCode(), chainGet(workData, "costCode", "code"));
         assertEquals(workType.getName(), chainGet(workData, "workType", "name"));
-        assertEquals("active", workData.get("status"));
+        assertEquals("unstarted", workData.get("status"));
 
-        data = tester.post(worksQuery);
-        worksData = chainGet(data, "data", "works");
-        assertEquals(startingNum+1, worksData.size());
-        assertThat(worksData).contains(workData);
-
-        data = tester.post("mutation { updateWorkStatus(workNumber: \""+workNumber+"\", status: completed) {status} }");
-        assertEquals("completed", chainGet(data, "data", "updateWorkStatus", "status"));
         data = tester.post(worksQuery);
         worksData = chainGet(data, "data", "works");
         assertEquals(startingNum, worksData.size());
         assertFalse(worksData.stream().anyMatch(d -> d.get("workNumber").equals(workNumber)));
+
+        data = tester.post("mutation { updateWorkStatus(workNumber: \""+workNumber+"\", status: paused, commentId: 1) {work{status},comment}}");
+        assertEquals("paused", chainGet(data, "data", "updateWorkStatus", "work", "status"));
+        assertEquals("Section damaged.", chainGet(data, "data", "updateWorkStatus", "comment"));
+
+        data = tester.post("query { worksWithComments(status:[paused]) { work { workNumber }, comment }}");
+        List<Map<String,?>> wcDatas = chainGet(data, "data", "worksWithComments");
+        Map<String, ?> wcData = wcDatas.stream().filter(wcd -> chainGet(wcd, "work", "workNumber").equals(workNumber))
+                        .findAny().orElse(null);
+        assertNotNull(wcData);
+        assertEquals("Section damaged.", wcData.get("comment"));
+
+        data = tester.post("mutation { updateWorkStatus(workNumber: \""+workNumber+"\", status: active) {work{status}, comment} }");
+        assertEquals("active", chainGet(data, "data", "updateWorkStatus", "work", "status"));
+        assertNull(chainGet(data, "data", "updateWorkStatus", "comment"));
+
+        data = tester.post(worksQuery);
+        worksData = chainGet(data, "data", "works");
+        assertEquals(startingNum+1, worksData.size());
+        workData.put("status", "active");
+        assertThat(worksData).contains(workData);
+
+        data = tester.post("mutation { updateWorkNumBlocks(workNumber: \""+workNumber+"\", numBlocks: 5) { workNumber, numBlocks, numSlides }}");
+        workData = chainGet(data, "data", "updateWorkNumBlocks");
+        assertEquals(workNumber, workData.get("workNumber"));
+        assertEquals(5, workData.get("numBlocks"));
+        assertNull(workData.get("numSlides"));
+
+        data = tester.post("mutation { updateWorkNumSlides(workNumber: \""+workNumber+"\", numSlides: 0) { workNumber, numBlocks, numSlides }}");
+        workData = chainGet(data, "data", "updateWorkNumSlides");
+        assertEquals(workNumber, workData.get("workNumber"));
+        assertEquals(5, workData.get("numBlocks"));
+        assertEquals(0, workData.get("numSlides"));
+
     }
 
     @Transactional

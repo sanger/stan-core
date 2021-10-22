@@ -1,0 +1,21 @@
+mutation {
+    recordExtractResult(request: {
+        labware: [
+            {
+                barcode: "$BARCODE1$"
+                result: pass
+                concentration: "-200"
+            }
+            {
+                barcode: "$BARCODE2$"
+                result: fail
+                commentId: 1
+            }
+        ]
+    }) {
+        operations {
+            operationType { name }
+            id
+        }
+    }
+}

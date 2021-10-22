@@ -11,7 +11,7 @@ import uk.ac.sanger.sccp.stan.model.Work.Status;
 import uk.ac.sanger.sccp.stan.repo.CommentRepo;
 import uk.ac.sanger.sccp.stan.repo.WorkEventRepo;
 
-import java.util.Arrays;
+import java.util.*;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -52,21 +52,24 @@ public class TestWorkEventService {
 
     @ParameterizedTest
     @MethodSource("findEventTypeArgs")
-    public void testFindEventType(Status newStatus, WorkEvent.Type expectedType) {
+    public void testFindEventType(Status oldStatus, Status newStatus, WorkEvent.Type expectedType) {
         if (expectedType==null) {
-            assertThrows(IllegalArgumentException.class, () -> eventService.findEventType(newStatus));
+            assertThrows(IllegalArgumentException.class, () -> eventService.findEventType(oldStatus, newStatus));
         } else {
-            assertEquals(expectedType, eventService.findEventType(newStatus));
+            assertEquals(expectedType, eventService.findEventType(oldStatus, newStatus));
         }
     }
 
     static Stream<Arguments> findEventTypeArgs() {
         return Arrays.stream(new Object[][] {
-                { Status.active, WorkEvent.Type.resume },
-                { Status.completed, WorkEvent.Type.complete },
-                { Status.failed, WorkEvent.Type.fail },
-                { Status.paused, WorkEvent.Type.pause },
-                { null, null },
+                { Status.unstarted, Status.active, WorkEvent.Type.start },
+                { Status.paused, Status.active, WorkEvent.Type.resume },
+                { Status.active, Status.completed, WorkEvent.Type.complete },
+                { Status.active, Status.failed, WorkEvent.Type.fail },
+                { Status.paused, Status.completed, WorkEvent.Type.complete },
+                { Status.paused, Status.failed, WorkEvent.Type.fail },
+                { Status.active, Status.paused, WorkEvent.Type.pause },
+                { Status.active, null, null },
         }).map(Arguments::of);
     }
 
@@ -85,7 +88,7 @@ public class TestWorkEventService {
             WorkEvent event = new WorkEvent(work, WorkEvent.Type.resume, user, null);
             doReturn(event).when(eventService).recordEvent(any(), any(), any(), any());
             assertEquals(event, eventService.recordStatusChange(user, work, newStatus, commentId));
-            WorkEvent.Type type = eventService.findEventType(newStatus);
+            WorkEvent.Type type = eventService.findEventType(oldStatus, newStatus);
             verify(eventService).recordEvent(user, work, type, comment);
         } else {
             assertThat(assertThrows(IllegalArgumentException.class, () -> eventService.recordStatusChange(user, work, newStatus, commentId)))
@@ -108,6 +111,19 @@ public class TestWorkEventService {
                 {Status.active, Status.failed, 10, null},
                 {Status.paused, Status.active, null, null},
                 {Status.paused, Status.failed, 10, null},
+                {Status.unstarted, Status.active, null, null},
+                {Status.active, Status.unstarted, null, "Cannot revert work status to unstarted."},
         }).map(Arguments::of);
+    }
+
+    @Test
+    public void testLoadLatestEvents() {
+        WorkEvent event1 = new WorkEvent(new Work(7, "SGP57", null, null, null, null),
+                WorkEvent.Type.resume, null, null);
+        WorkEvent event2 = new WorkEvent(new Work(8, "SGP58", null, null, null, null),
+                WorkEvent.Type.fail, null, null);
+        List<Integer> workIds = List.of(7,8,9);
+        when(mockWorkEventRepo.getLatestEventForEachWorkId(workIds)).thenReturn(List.of(event1, event2));
+        assertEquals(Map.of(7, event1, 8, event2), eventService.loadLatestEvents(workIds));
     }
 }
