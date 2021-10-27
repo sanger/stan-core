@@ -57,6 +57,14 @@ public class PermServiceImp implements PermService {
         return record(user, lw, request.getPermData(), work);
     }
 
+    /**
+     * Loads the indicated item of labware.
+     * Adds a problem if the labware is not found.
+     * Does not check that the labware is suitable: that is another method.
+     * @param problems receptacle for problems
+     * @param barcode the barcode of the labware to load
+     * @return the labware loaded, or null if none was loaded
+     */
     public Labware lookUpLabware(Collection<String> problems, String barcode) {
         if (barcode==null || barcode.isEmpty()) {
             problems.add("No barcode specified.");
@@ -70,6 +78,14 @@ public class PermServiceImp implements PermService {
         return null;
     }
 
+    /**
+     * Checks the labware is usable in this operation.
+     * Usable means it's a usable source (according to {@link LabwareValidator}
+     * and it has had a stain op recorded on it.
+     * If the labware given is null, then there is nothing to check.
+     * @param problems receptacle for problems
+     * @param lw the labware to validate, or null if there is no labware to validate
+     */
     public void validateLabware(Collection<String> problems, Labware lw) {
         if (lw==null) {
             return;
@@ -92,6 +108,15 @@ public class PermServiceImp implements PermService {
         }
     }
 
+    /**
+     * Checks that the perm data is valid for the labware given.
+     * Valid means that the perm data is non-null, non-empty, and has valid addresses and values
+     * according to {@link #validateAddresses} and {@link #validatePermValues}.
+     * If no labware is given then there is nothing to check.
+     * @param problems receptacle for problems
+     * @param lw the labware to validate, or null if there is no labware to validate
+     * @param permData the data that the user wants to record against the given labware
+     */
     public void validatePermData(Collection<String> problems, Labware lw, Collection<PermData> permData) {
         if (lw == null) {
             return;
@@ -104,6 +129,14 @@ public class PermServiceImp implements PermService {
         validatePermValues(problems, permData);
     }
 
+    /**
+     * Checks that the addresses in the perm data are valid.
+     * Valid means that the addresses are non-null, are unique, exist in the labware, and that the slots they
+     * indicate are not empty.
+     * @param problems receptacle for problems
+     * @param lw the labware the perm data applies to
+     * @param permData the perm data to check
+     */
     public void validateAddresses(Collection<String> problems, Labware lw, Collection<PermData> permData) {
         Set<Address> seenAddresses = new HashSet<>(permData.size());
         Set<Address> repeatedAddresses = new LinkedHashSet<>();
@@ -139,6 +172,13 @@ public class PermServiceImp implements PermService {
         }
     }
 
+    /**
+     * Checks that the values in the perm data are valid.
+     * Valid means that for each perm data element either a perm time (in seconds) is given, or a control type
+     * is given, but not both.
+     * @param problems receptacle for problems
+     * @param permData the data to check
+     */
     public void validatePermValues(Collection<String> problems, Collection<PermData> permData) {
         Set<Address> addressesBoth = new LinkedHashSet<>();
         Set<Address> addressesNeither = new LinkedHashSet<>();
@@ -162,6 +202,14 @@ public class PermServiceImp implements PermService {
         }
     }
 
+    /**
+     * Records the requested operation and measurements, after validation.
+     * @param user the user responsible for the operation
+     * @param lw the labware involved in the operation
+     * @param permData the perm data to record as measurements
+     * @param work the work to associate the operation with, or null
+     * @return the operation recorded and the labware
+     */
     public OperationResult record(User user, Labware lw, Collection<PermData> permData, Work work) {
         OperationType opType = opTypeRepo.getByName("Visium permabilisation");
         Operation op = opService.createOperationInPlace(opType, user, lw, null, null);
@@ -173,6 +221,12 @@ public class PermServiceImp implements PermService {
         return new OperationResult(ops, List.of(lw));
     }
 
+    /**
+     * Creates the measurements for the given perm data; saves them in the database.
+     * @param opId the operation id to associate with the measurements
+     * @param lw the labware to record measurements on
+     * @param permData the perm data that will be turned into measurements
+     */
     public void createMeasurements(final Integer opId, Labware lw, Collection<PermData> permData) {
         List<Measurement> measurements = permData.stream()
                 .flatMap(pd -> {
