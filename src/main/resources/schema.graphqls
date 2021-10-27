@@ -537,6 +537,11 @@ type StainType {
     measurementTypes: [String!]!
 }
 
+type WorkWithComment {
+    work: Work!
+    comment: String
+}
+
 type WorkProgressTimestamp {
     type: String!
     timestamp: Timestamp!
@@ -640,6 +645,7 @@ type Query {
     workTypes(includeDisabled: Boolean): [WorkType!]!
     works(status: [WorkStatus!]): [Work!]!
     work(workNumber: String!): Work!
+    worksWithComments(status: [WorkStatus!]): [WorkWithComment!]!
     users(includeDisabled: Boolean): [User!]!
     find(request: FindRequest!): FindResult!
     planData(barcode: String!): PlanData!
@@ -692,9 +698,10 @@ type Mutation {
     addWorkType(name: String!): WorkType!
     setWorkTypeEnabled(name: String!, enabled: Boolean!): WorkType!
     createWork(prefix: String!, workType: String!, project: String!, costCode: String!, numBlocks: Int, numSlides: Int): Work!
-    updateWorkStatus(workNumber: String!, status: WorkStatus!, commentId: Int): Work!
+    updateWorkStatus(workNumber: String!, status: WorkStatus!, commentId: Int): WorkWithComment!
     updateWorkNumBlocks(workNumber: String!, numBlocks: Int): Work!
     updateWorkNumSlides(workNumber: String!, numSlides: Int): Work!
+
     stain(request: StainRequest!): OperationResult!
     recordInPlace(request: InPlaceOpRequest!): OperationResult!
     unrelease(request: UnreleaseRequest!): OperationResult!

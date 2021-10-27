@@ -2,6 +2,9 @@ package uk.ac.sanger.sccp.stan.service.work;
 
 import uk.ac.sanger.sccp.stan.model.*;
 
+import java.util.Collection;
+import java.util.Map;
+
 public interface WorkEventService {
     /**
      * Records a work event.
@@ -27,4 +30,11 @@ public interface WorkEventService {
      * @return the newly recorded event
      */
     WorkEvent recordStatusChange(User user, Work work, Work.Status newStatus, Integer commentId);
+
+    /**
+     * Gets the latest work event for each of the given work ids
+     * @param workIds the work ids
+     * @return a map of work id to event
+     */
+    Map<Integer, WorkEvent> loadLatestEvents(Collection<Integer> workIds);
 }

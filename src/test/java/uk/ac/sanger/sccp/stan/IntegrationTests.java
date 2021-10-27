@@ -1161,8 +1161,21 @@ public class IntegrationTests {
         assertEquals(startingNum, worksData.size());
         assertFalse(worksData.stream().anyMatch(d -> d.get("workNumber").equals(workNumber)));
 
-        data = tester.post("mutation { updateWorkStatus(workNumber: \""+workNumber+"\", status: active) {status} }");
-        assertEquals("active", chainGet(data, "data", "updateWorkStatus", "status"));
+        data = tester.post("mutation { updateWorkStatus(workNumber: \""+workNumber+"\", status: paused, commentId: 1) {work{status},comment}}");
+        assertEquals("paused", chainGet(data, "data", "updateWorkStatus", "work", "status"));
+        assertEquals("Section damaged.", chainGet(data, "data", "updateWorkStatus", "comment"));
+
+        data = tester.post("query { worksWithComments(status:[paused]) { work { workNumber }, comment }}");
+        List<Map<String,?>> wcDatas = chainGet(data, "data", "worksWithComments");
+        Map<String, ?> wcData = wcDatas.stream().filter(wcd -> chainGet(wcd, "work", "workNumber").equals(workNumber))
+                        .findAny().orElse(null);
+        assertNotNull(wcData);
+        assertEquals("Section damaged.", wcData.get("comment"));
+
+        data = tester.post("mutation { updateWorkStatus(workNumber: \""+workNumber+"\", status: active) {work{status}, comment} }");
+        assertEquals("active", chainGet(data, "data", "updateWorkStatus", "work", "status"));
+        assertNull(chainGet(data, "data", "updateWorkStatus", "comment"));
+
         data = tester.post(worksQuery);
         worksData = chainGet(data, "data", "works");
         assertEquals(startingNum+1, worksData.size());

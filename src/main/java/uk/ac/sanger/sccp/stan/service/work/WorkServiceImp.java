@@ -1,6 +1,7 @@
 package uk.ac.sanger.sccp.stan.service.work;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.util.Streamable;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.Work.SampleSlotId;
@@ -8,6 +9,7 @@ import uk.ac.sanger.sccp.stan.model.Work.Status;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.UCMap;
+import uk.ac.sanger.sccp.stan.request.WorkWithComment;
 
 import java.util.*;
 
@@ -65,11 +67,12 @@ public class WorkServiceImp implements WorkService {
     }
 
     @Override
-    public Work updateStatus(User user, String workNumber, Status newStatus, Integer commentId) {
+    public WorkWithComment updateStatus(User user, String workNumber, Status newStatus, Integer commentId) {
         Work work = workRepo.getByWorkNumber(workNumber);
-        workEventService.recordStatusChange(user, work, newStatus, commentId);
+        WorkEvent event = workEventService.recordStatusChange(user, work, newStatus, commentId);
         work.setStatus(newStatus);
-        return workRepo.save(work);
+        String commentText = (event.getComment()==null ? null : event.getComment().getText());
+        return new WorkWithComment(workRepo.save(work), commentText);
     }
 
     @Override
@@ -195,5 +198,34 @@ public class WorkServiceImp implements WorkService {
             problems.add(problem);
         }
         return workMap;
+    }
+
+    @Override
+    public List<WorkWithComment> getWorksWithComments(Collection<Status> statuses) {
+        Iterable<Work> works = (statuses==null ? workRepo.findAll() : workRepo.findAllByStatusIn(statuses));
+        List<WorkWithComment> wcs = Streamable.of(works).stream()
+                .map(WorkWithComment::new)
+                .collect(toList());
+        List<Integer> pausedOrFailedIds = wcs.stream().map(WorkWithComment::getWork)
+                .filter(work -> work.getStatus()==Status.paused || work.getStatus()==Status.failed)
+                .map(Work::getId)
+                .collect(toList());
+        if (!pausedOrFailedIds.isEmpty()) {
+            Map<Integer, WorkEvent> workEvents = workEventService.loadLatestEvents(pausedOrFailedIds);
+            fillInComments(wcs, workEvents);
+        }
+        return wcs;
+    }
+
+    public void fillInComments(Collection<WorkWithComment> wcs, Map<Integer, WorkEvent> workEvents) {
+        for (WorkWithComment wc : wcs) {
+            Work work = wc.getWork();
+            WorkEvent event = workEvents.get(work.getId());
+            if (event != null && event.getComment()!=null &&
+                    (work.getStatus()==Status.paused && event.getType()==WorkEvent.Type.pause
+                            || work.getStatus()==Status.failed && event.getType()==WorkEvent.Type.fail)) {
+                wc.setComment(event.getComment().getText());
+            }
+        }
     }
 }
