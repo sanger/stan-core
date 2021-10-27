@@ -1,0 +1,13 @@
+mutation {
+    recordPerm(request: {
+        barcode: "STAN-50"
+        permData: [
+            {
+                address: "A1"
+                seconds: 124
+            }
+        ]
+    }) {
+        operations {id}
+    }
+}

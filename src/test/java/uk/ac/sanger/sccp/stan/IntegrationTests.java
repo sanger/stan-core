@@ -1225,6 +1225,20 @@ public class IntegrationTests {
         assertEquals(sam.getId(), result.getSampleId());
         assertEquals(opId, result.getRefersToOpId());
         assertEquals(lw.getFirstSlot().getId(), result.getSlotId());
+
+        testPerm();
+    }
+
+    // called by testStainAndWorkProgressAndRecordResult
+    private void testPerm() throws Exception {
+        entityCreator.createOpType("Visium permabilisation", null, OperationTypeFlag.IN_PLACE);
+        Object data = tester.post(tester.readResource("graphql/perm.graphql"));
+        Integer opId = chainGet(data, "data", "recordPerm", "operations", 0, "id");
+        List<Measurement> measurements = measurementRepo.findAllByOperationIdIn(List.of(opId));
+        assertThat(measurements).hasSize(1);
+        Measurement meas = measurements.get(0);
+        assertEquals("permabilisation time", meas.getName());
+        assertEquals("124", meas.getValue());
     }
 
     @Transactional
