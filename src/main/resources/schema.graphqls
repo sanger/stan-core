@@ -660,6 +660,7 @@ type Query {
 
     location(locationBarcode: String!): Location!
     stored(barcodes: [String!]!): [StoredItem!]!
+    labwareInLocation(locationBarcode: String!): [Labware!]!
 }
 
 type Mutation {

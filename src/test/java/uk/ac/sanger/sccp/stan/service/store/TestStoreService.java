@@ -363,6 +363,44 @@ public class TestStoreService {
         verify(service).checkErrors(response);
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testGetLabwareInLocation(boolean any) {
+        Location loc = new Location();
+        final String locBarcode = "STO-2000";
+        loc.setBarcode(locBarcode);
+        List<Labware> labware;
+        List<StoredItem> storedItems;
+        List<String> labwareBarcodes;
+        if (any) {
+            Labware lw1 = EntityFactory.getTube();
+            Labware lw2 = EntityFactory.makeLabware(lw1.getLabwareType(), EntityFactory.getSample());
+            labware = List.of(lw1, lw2);
+            storedItems = List.of(
+                    new StoredItem(lw1.getBarcode(), loc, new Address(1,2)),
+                    new StoredItem(lw2.getBarcode(), loc),
+                    new StoredItem("Other", loc)
+            );
+            when(mockLabwareRepo.findByBarcodeIn(any())).thenReturn(labware);
+            labwareBarcodes = List.of(lw1.getBarcode(), lw2.getBarcode(), "Other");
+        } else {
+            labware = List.of();
+            storedItems = List.of();
+            labwareBarcodes = List.of();
+        }
+        loc.setStored(storedItems);
+        doReturn(loc).when(service).getLocation(locBarcode);
+
+        assertSame(labware, service.getLabwareInLocation(locBarcode));
+
+        verify(service).getLocation(locBarcode);
+        if (any) {
+            verify(mockLabwareRepo).findByBarcodeIn(labwareBarcodes);
+        } else {
+            verifyNoInteractions(mockLabwareRepo);
+        }
+    }
+
     @Test
     public void testCheckErrors() {
         GraphQLResponse data = new GraphQLResponse(objectMapper.createObjectNode(), null);
