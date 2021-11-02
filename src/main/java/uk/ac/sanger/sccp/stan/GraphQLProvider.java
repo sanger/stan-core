@@ -150,6 +150,7 @@ public class GraphQLProvider {
                         .dataFetcher("recordStainResult", transact(graphQLMutation.recordStainResult()))
                         .dataFetcher("recordExtractResult", transact(graphQLMutation.recordExtractResult()))
                         .dataFetcher("recordPerm", transact(graphQLMutation.recordPerm()))
+                        .dataFetcher("visiumAnalysis", transact(graphQLMutation.visiumAnalysis()))
 
                         .dataFetcher("addUser", transact(graphQLMutation.addUser()))
                         .dataFetcher("setUserRole", transact(graphQLMutation.setUserRole()))

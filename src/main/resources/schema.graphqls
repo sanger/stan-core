@@ -617,6 +617,13 @@ input RecordPermRequest {
     permData: [PermData!]!
 }
 
+input VisiumAnalysisRequest {
+    barcode: String!
+    workNumber: String
+    selectedAddress: Address!
+    selectedTime: Int!
+}
+
 type Query {
     user: User
     tissueTypes: [TissueType!]!
@@ -700,6 +707,7 @@ type Mutation {
     recordStainResult(request: ResultRequest!): OperationResult!
     recordExtractResult(request: ExtractResultRequest!): OperationResult!
     recordPerm(request: RecordPermRequest!): OperationResult!
+    visiumAnalysis(request: VisiumAnalysisRequest!): OperationResult!
 
     addUser(username: String!): User!
     setUserRole(username: String!, role: UserRole!): User!

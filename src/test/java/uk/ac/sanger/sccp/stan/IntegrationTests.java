@@ -1227,6 +1227,7 @@ public class IntegrationTests {
         assertEquals(lw.getFirstSlot().getId(), result.getSlotId());
 
         testPerm();
+        testVisiumAnalysis();
     }
 
     // called by testStainAndWorkProgressAndRecordResult
@@ -1238,7 +1239,21 @@ public class IntegrationTests {
         assertThat(measurements).hasSize(1);
         Measurement meas = measurements.get(0);
         assertEquals("permabilisation time", meas.getName());
-        assertEquals("124", meas.getValue());
+        assertEquals("120", meas.getValue());
+    }
+
+    // called by testStainAndWorkProgressAndRecordResult
+    private void testVisiumAnalysis() throws Exception {
+        entityCreator.createOpType("Visium analysis", null, OperationTypeFlag.IN_PLACE);
+        Object data = tester.post(tester.readResource("graphql/visium_analysis.graphql"));
+        final Map<String, ?> opData = chainGet(data, "data", "visiumAnalysis", "operations", 0);
+        assertEquals("Visium analysis", chainGet(opData, "operationType", "name"));
+        Integer opId = (Integer) opData.get("id");
+        List<Measurement> measurements = measurementRepo.findAllByOperationIdIn(List.of(opId));
+        assertThat(measurements).hasSize(1);
+        Measurement meas = measurements.get(0);
+        assertEquals("selected time", meas.getName());
+        assertEquals("120", meas.getValue());
     }
 
     @Transactional
