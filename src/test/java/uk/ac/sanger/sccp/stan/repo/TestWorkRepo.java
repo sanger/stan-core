@@ -103,6 +103,19 @@ public class TestWorkRepo {
 
     @Transactional
     @Test
+    public void testFindAllByWorkNumbersIn() {
+        Project pr = entityCreator.createProject("Stargate");
+        CostCode cc = entityCreator.createCostCode("S5000");
+        WorkType workType = entityCreator.createWorkType("Drywalling");
+        List<Work> newWorks = IntStream.range(0,3).mapToObj(n -> new Work(null, "SGP"+n, workType, pr, cc, Status.active))
+                .collect(toList());
+        var saved = workRepo.saveAll(newWorks);
+        List<Work> loaded = workRepo.findAllByWorkNumberIn(List.of("SGP0", "SGP1", "SGP2", "SGP404"));
+        assertThat(loaded).containsExactlyInAnyOrderElementsOf(saved);
+    }
+
+    @Transactional
+    @Test
     public void testFindAllByStatusIn() {
         Project pr = entityCreator.createProject("Stargate");
         CostCode cc = entityCreator.createCostCode("S5000");

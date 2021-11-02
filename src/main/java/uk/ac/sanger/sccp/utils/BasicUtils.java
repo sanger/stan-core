@@ -72,6 +72,42 @@ public class BasicUtils {
     }
 
     /**
+     * Combines the given strings with commas and a conjunction at the end.
+     * E.g. {@code "or"} or {@code "and"}.
+     * Does not add an Oxford comma.
+     * @param items the strings to combine
+     * @param conjunction the word before the last item
+     * @return a string combining the given strings with commas and the given conjunction.
+     */
+    public static String commaAndConjunction(Collection<String> items, String conjunction) {
+        int n = items.size();
+        if (n==0) {
+            return "";
+        }
+        if (n==1) {
+            return items.iterator().next();
+        }
+        if (n==2) {
+            var iter = items.iterator();
+            String first = iter.next();
+            String second = iter.next();
+            return first + " " + conjunction + " " + second;
+        }
+        StringBuilder sb = new StringBuilder();
+        int i = 0;
+        for (String item : items) {
+            sb.append(item);
+            ++i;
+            if (i==n-1) {
+                sb.append(' ').append(conjunction).append(' ');
+            } else if (i < n) {
+                sb.append(", ");
+            }
+        }
+        return sb.toString();
+    }
+
+    /**
      * Pluralise a message with {@link MessageVar} and add an unordered list.
      * @param template the {@code MessageVar} template
      * @param items the items

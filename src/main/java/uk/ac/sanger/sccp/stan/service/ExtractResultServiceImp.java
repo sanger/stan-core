@@ -130,7 +130,7 @@ public class ExtractResultServiceImp extends BaseResultService implements Extrac
     }
 
     /**
-     * Checks the values given for concentration using {@link ConcentrationSanitiser}.
+     * Checks the values given for concentration using {@link Sanitiser}.
      * Null values in requests are skipped.
      * @param problems receptacle for problems found
      * @param labware the requests including the given concentration values

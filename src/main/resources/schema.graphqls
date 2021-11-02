@@ -115,6 +115,7 @@ type Slot {
 type Labware {
     id: Int!
     barcode: String!
+    externalBarcode: String
     labwareType: LabwareType!
     slots: [Slot!]!
     released: Boolean!
@@ -600,6 +601,29 @@ input ExtractResultRequest {
     workNumber: String
 }
 
+type ExtractResult {
+    labware: Labware!
+    result: PassFail
+    concentration: String
+}
+
+input StringMeasurement {
+    name: String!
+    value: String!
+}
+
+input RNAAnalysisLabware {
+    barcode: String!
+    workNumber: String
+    commentId: Int
+    measurements: [StringMeasurement!]!
+}
+
+input RNAAnalysisRequest {
+    operationType: String!
+    labware: [RNAAnalysisLabware!]!
+}
+
 type Query {
     user: User
     tissueTypes: [TissueType!]!
@@ -626,6 +650,7 @@ type Query {
     find(request: FindRequest!): FindResult!
     planData(barcode: String!): PlanData!
     stainTypes: [StainType!]!
+    extractResult(barcode: String!): ExtractResult!
 
     historyForSampleId(sampleId: Int!): History!
     historyForExternalName(externalName: String!): History!
@@ -682,6 +707,7 @@ type Mutation {
     unrelease(request: UnreleaseRequest!): OperationResult!
     recordStainResult(request: ResultRequest!): OperationResult!
     recordExtractResult(request: ExtractResultRequest!): OperationResult!
+    recordRNAAnalysis(request: RNAAnalysisRequest!): OperationResult!
 
     addUser(username: String!): User!
     setUserRole(username: String!, role: UserRole!): User!

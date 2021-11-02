@@ -2,6 +2,7 @@ package uk.ac.sanger.sccp.stan.service.work;
 
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.Work.Status;
+import uk.ac.sanger.sccp.utils.UCMap;
 import uk.ac.sanger.sccp.stan.request.WorkWithComment;
 
 import java.util.Collection;
@@ -97,6 +98,16 @@ public interface WorkService {
      * @see Work#isUsable
      */
     Work validateUsableWork(Collection<String> problems, String workNumber);
+
+    /**
+     * Validates the specified work as usable.
+     * If any of the work doesn't exist or cannot be used, adds a problem to the given problems receptacle.
+     * @param problems a receptacle for any problems found
+     * @param workNumbers the strings representing existing work numbers
+     * @return a map of the work numbers to the specified work (even if it is not usable)
+     * @see Work#isUsable
+     */
+    UCMap<Work> validateUsableWorks(Collection<String> problems, Collection<String> workNumbers);
 
     /**
      * Loads works along with the comment about their status, if any.

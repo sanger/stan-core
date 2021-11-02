@@ -4,7 +4,12 @@ import org.mockito.ArgumentMatcher;
 import org.mockito.stubbing.Answer;
 
 import java.util.Collection;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.IntStream;
 
+import static java.util.stream.Collectors.toList;
 import static org.mockito.ArgumentMatchers.argThat;
 import static uk.ac.sanger.sccp.utils.BasicUtils.sameContents;
 
@@ -20,6 +25,10 @@ public class Matchers {
      */
     public static String eqCi(String string) {
         return argThat(new CaseInsensitiveStringMatcher(string));
+    }
+
+    public static String disorderedMatch(String regex, List<String> parts) {
+        return argThat(new DisorderedStringMatcher(regex, parts));
     }
 
     /**
@@ -66,6 +75,38 @@ public class Matchers {
         @Override
         public String toString() {
             return "in any order "+this.collection;
+        }
+    }
+
+    public static class DisorderedStringMatcher implements ArgumentMatcher<String> {
+        private final Pattern pattern;
+        private final List<String> parts;
+
+        public DisorderedStringMatcher(String regex, List<String> parts) {
+            this(Pattern.compile(regex), parts);
+        }
+
+        public DisorderedStringMatcher(Pattern pattern, List<String> parts) {
+            this.pattern = pattern;
+            this.parts = parts;
+        }
+
+        @Override
+        public boolean matches(String string) {
+            Matcher m = pattern.matcher(string);
+            if (!m.matches()) {
+                System.out.println("No match.");
+                return false;
+            }
+            List<String> groups = IntStream.range(1, m.groupCount()+1)
+                    .mapToObj(m::group)
+                    .collect(toList());
+            return sameContents(groups, this.parts);
+        }
+
+        @Override
+        public String toString() {
+            return pattern.pattern()+" with groups "+parts;
         }
     }
 }

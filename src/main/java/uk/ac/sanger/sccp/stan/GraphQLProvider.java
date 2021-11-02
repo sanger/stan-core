@@ -91,6 +91,7 @@ public class GraphQLProvider {
                         .dataFetcher("work", graphQLDataFetchers.getWork())
                         .dataFetcher("worksWithComments", graphQLDataFetchers.getWorksWithComments())
                         .dataFetcher("stainTypes", graphQLDataFetchers.getEnabledStainTypes())
+                        .dataFetcher("extractResult", graphQLDataFetchers.getExtractResult())
 
                         .dataFetcher("users", graphQLDataFetchers.getUsers())
                         .dataFetcher("planData", graphQLDataFetchers.getPlanData())
@@ -149,6 +150,7 @@ public class GraphQLProvider {
                         .dataFetcher("unrelease", transact(graphQLMutation.unrelease()))
                         .dataFetcher("recordStainResult", transact(graphQLMutation.recordStainResult()))
                         .dataFetcher("recordExtractResult", transact(graphQLMutation.recordExtractResult()))
+                        .dataFetcher("recordRNAAnalysis", transact(graphQLMutation.recordRNAAnalysis()))
 
                         .dataFetcher("addUser", transact(graphQLMutation.addUser()))
                         .dataFetcher("setUserRole", transact(graphQLMutation.setUserRole()))

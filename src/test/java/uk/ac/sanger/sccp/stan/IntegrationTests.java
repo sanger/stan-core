@@ -533,6 +533,25 @@ public class IntegrationTests {
         assertEquals(1, opCom.getComment().getId());
         assertEquals(resultOpIds.get(1), opCom.getOperationId());
         assertEquals(dests[1].getFirstSlot().getId(), opCom.getSlotId());
+
+        result = tester.post(tester.readResource("graphql/extractresult.graphql").replace("$BARCODE", dests[0].getBarcode()));
+        extractData = chainGet(result, "data", "extractResult");
+        assertEquals(dests[0].getBarcode(), chainGet(extractData, "labware", "barcode"));
+        assertEquals("pass", chainGet(extractData, "result"));
+        assertEquals("-200.00", chainGet(extractData, "concentration"));
+
+        entityCreator.createOpType("RIN analysis", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.ANALYSIS);
+
+        result = tester.post(tester.readResource("graphql/analysis.graphql")
+                .replace("$BARCODE", dests[0].getBarcode()).replace("SGP4000", work.getWorkNumber()));
+
+        Integer opId = chainGet(result, "data", "recordRNAAnalysis", "operations", 0, "id");
+        measurements = measurementRepo.findAllByOperationIdIn(List.of(opId));
+        assertThat(measurements).hasSize(1);
+        meas = measurements.get(0);
+        assertEquals(dests[0].getFirstSlot().getId(), meas.getSlotId());
+        assertEquals("RIN", meas.getName());
+        assertEquals("55.0", meas.getValue());
     }
 
     @Test
