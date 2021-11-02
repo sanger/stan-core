@@ -1254,6 +1254,17 @@ public class IntegrationTests {
         Measurement meas = measurements.get(0);
         assertEquals("selected time", meas.getName());
         assertEquals("120", meas.getValue());
+
+        data = tester.post("query { visiumPermData(barcode: \"STAN-50\") { labware { barcode } " +
+                "addressPermData { address, seconds, controlType, selected } }}");
+        assertEquals("STAN-50", chainGet(data, "data", "visiumPermData", "labware", "barcode"));
+        List<Map<String, ?>> permDatas = chainGet(data, "data", "visiumPermData", "addressPermData");
+        assertThat(permDatas).hasSize(1);
+        Map<String, ?> permData = permDatas.get(0);
+        assertEquals("A1", permData.get("address"));
+        assertEquals(120, permData.get("seconds"));
+        assertNull(permData.get("controlType"));
+        assertEquals(true, permData.get("selected"));
     }
 
     @Transactional

@@ -56,6 +56,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final PlanService planService;
     final StainService stainService;
     final WorkService workService;
+    final VisiumPermDataService visiumPermDataService;
 
     @Autowired
     public GraphQLDataFetchers(ObjectMapper objectMapper, AuthenticationComponent authComp, UserRepo userRepo,
@@ -69,7 +70,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                LabelPrintService labelPrintService, FindService findService,
                                CommentAdminService commentAdminService, EquipmentAdminService equipmentAdminService,
                                HistoryService historyService, WorkProgressService workProgressService, PlanService planService,
-                               StainService stainService, WorkService workService) {
+                               StainService stainService, WorkService workService, VisiumPermDataService visiumPermDataService) {
         super(objectMapper, authComp, userRepo);
         this.sessionConfig = sessionConfig;
         this.tissueTypeRepo = tissueTypeRepo;
@@ -96,6 +97,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.planService = planService;
         this.stainService = stainService;
         this.workService = workService;
+        this.visiumPermDataService = visiumPermDataService;
     }
 
     public DataFetcher<User> getUser() {
@@ -272,6 +274,10 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
 
     public DataFetcher<List<StainType>> getEnabledStainTypes() {
         return dfe -> stainService.getEnabledStainTypes();
+    }
+
+    public DataFetcher<VisiumPermData> getVisiumPermData() {
+        return dfe -> visiumPermDataService.load(dfe.getArgument("barcode"));
     }
 
     private boolean argOrFalse(DataFetchingEnvironment dfe, String argName) {
