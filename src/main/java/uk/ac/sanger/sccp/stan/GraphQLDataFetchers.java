@@ -12,6 +12,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.service.*;
+import uk.ac.sanger.sccp.stan.service.extract.ExtractResultQueryService;
 import uk.ac.sanger.sccp.stan.service.history.HistoryService;
 import uk.ac.sanger.sccp.stan.service.label.print.LabelPrintService;
 import uk.ac.sanger.sccp.stan.service.operation.plan.PlanService;
@@ -55,6 +56,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final WorkProgressService workProgressService;
     final PlanService planService;
     final StainService stainService;
+    final ExtractResultQueryService extractResultQueryService;
     final WorkService workService;
     final VisiumPermDataService visiumPermDataService;
 
@@ -70,7 +72,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                LabelPrintService labelPrintService, FindService findService,
                                CommentAdminService commentAdminService, EquipmentAdminService equipmentAdminService,
                                HistoryService historyService, WorkProgressService workProgressService, PlanService planService,
-                               StainService stainService, WorkService workService, VisiumPermDataService visiumPermDataService) {
+                               StainService stainService, ExtractResultQueryService extractResultQueryService,
+                               WorkService workService, VisiumPermDataService visiumPermDataService) {
         super(objectMapper, authComp, userRepo);
         this.sessionConfig = sessionConfig;
         this.tissueTypeRepo = tissueTypeRepo;
@@ -96,6 +99,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.workProgressService = workProgressService;
         this.planService = planService;
         this.stainService = stainService;
+        this.extractResultQueryService = extractResultQueryService;
         this.workService = workService;
         this.visiumPermDataService = visiumPermDataService;
     }
@@ -278,6 +282,10 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
 
     public DataFetcher<VisiumPermData> getVisiumPermData() {
         return dfe -> visiumPermDataService.load(dfe.getArgument("barcode"));
+    }
+
+    public DataFetcher<ExtractResult> getExtractResult() {
+        return dfe -> extractResultQueryService.getExtractResult(dfe.getArgument("barcode"));
     }
 
     private boolean argOrFalse(DataFetchingEnvironment dfe, String argName) {

@@ -92,6 +92,7 @@ public class GraphQLProvider {
                         .dataFetcher("worksWithComments", graphQLDataFetchers.getWorksWithComments())
                         .dataFetcher("stainTypes", graphQLDataFetchers.getEnabledStainTypes())
                         .dataFetcher("visiumPermData", graphQLDataFetchers.getVisiumPermData())
+                        .dataFetcher("extractResult", graphQLDataFetchers.getExtractResult())
 
                         .dataFetcher("users", graphQLDataFetchers.getUsers())
                         .dataFetcher("planData", graphQLDataFetchers.getPlanData())
@@ -104,6 +105,7 @@ public class GraphQLProvider {
 
                         .dataFetcher("location", graphQLStore.getLocation())
                         .dataFetcher("stored", graphQLStore.getStored())
+                        .dataFetcher("labwareInLocation", graphQLStore.getLabwareInLocation())
                 )
                 .type(newTypeWiring("Mutation")
                         .dataFetcher("login", graphQLMutation.logIn())
@@ -152,6 +154,7 @@ public class GraphQLProvider {
                         .dataFetcher("recordExtractResult", transact(graphQLMutation.recordExtractResult()))
                         .dataFetcher("recordPerm", transact(graphQLMutation.recordPerm()))
                         .dataFetcher("visiumAnalysis", transact(graphQLMutation.visiumAnalysis()))
+                        .dataFetcher("recordRNAAnalysis", transact(graphQLMutation.recordRNAAnalysis()))
 
                         .dataFetcher("addUser", transact(graphQLMutation.addUser()))
                         .dataFetcher("setUserRole", transact(graphQLMutation.setUserRole()))

@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.json.JSONObject;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -17,6 +18,7 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.store.Location;
+import uk.ac.sanger.sccp.stan.model.store.StoredItem;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.service.label.LabelPrintRequest;
 import uk.ac.sanger.sccp.stan.service.label.LabwareLabelData;
@@ -346,25 +348,36 @@ public class IntegrationTests {
             assertTrue((boolean) chainGet(releaseItem, "labware", "released"));
         }
 
-        verifyUnstored(List.of("STAN-001", "STAN-002"), user.getUsername());
+        verifyStorelightQuery(List.of("STAN-001", "STAN-002"), user.getUsername());
 
         List<Integer> releaseIds = releaseData.stream()
                 .map(rd -> (Integer) rd.get("id"))
                 .collect(toList());
+        Location location = new Location();
+        location.setBarcode("STO-33");
+        location.setId(33);
+        List<StoredItem> storedItems = List.of(
+                new StoredItem("STAN-001", location, new Address(1,2)),
+                new StoredItem("STAN-002", location, new Address(3,4))
+        );
+        stubStorelightLocation(storedItems);
+
         String tsvString = getReleaseFile(releaseIds);
         var tsvMaps = tsvToMap(tsvString);
         assertEquals(tsvMaps.size(), 4);
         assertThat(tsvMaps.get(0).keySet()).containsOnly("Barcode", "Labware type", "Address", "Donor name",
                 "Life stage", "External identifier", "Tissue type", "Spatial location", "Replicate number", "Section number",
-                "Last section number", "Source barcode", "Section thickness");
+                "Last section number", "Source barcode", "Section thickness", "Released from box location");
         var row0 = tsvMaps.get(0);
         assertEquals(block.getBarcode(), row0.get("Barcode"));
         assertEquals(block.getLabwareType().getName(), row0.get("Labware type"));
         assertEquals("6", row0.get("Last section number"));
+        assertEquals("A2", row0.get("Released from box location"));
         for (int i = 1; i < 4; ++i) {
             var row = tsvMaps.get(i);
             assertEquals(lw.getBarcode(), row.get("Barcode"));
             assertEquals(lw.getLabwareType().getName(), row.get("Labware type"));
+            assertEquals("C4", row.get("Released from box location"));
         }
 
         entityCreator.createOpType("Unrelease", null, OperationTypeFlag.IN_PLACE);
@@ -484,7 +497,7 @@ public class IntegrationTests {
             assertNotNull(op.getPerformed());
         }
 
-        verifyUnstored(List.of(sources[0].getBarcode(), sources[1].getBarcode()), user.getUsername());
+        verifyStorelightQuery(List.of(sources[0].getBarcode(), sources[1].getBarcode()), user.getUsername());
 
         entityManager.flush();
         entityManager.refresh(work);
@@ -533,6 +546,25 @@ public class IntegrationTests {
         assertEquals(1, opCom.getComment().getId());
         assertEquals(resultOpIds.get(1), opCom.getOperationId());
         assertEquals(dests[1].getFirstSlot().getId(), opCom.getSlotId());
+
+        result = tester.post(tester.readResource("graphql/extractresult.graphql").replace("$BARCODE", dests[0].getBarcode()));
+        extractData = chainGet(result, "data", "extractResult");
+        assertEquals(dests[0].getBarcode(), chainGet(extractData, "labware", "barcode"));
+        assertEquals("pass", chainGet(extractData, "result"));
+        assertEquals("-200.00", chainGet(extractData, "concentration"));
+
+        entityCreator.createOpType("RIN analysis", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.ANALYSIS);
+
+        result = tester.post(tester.readResource("graphql/analysis.graphql")
+                .replace("$BARCODE", dests[0].getBarcode()).replace("SGP4000", work.getWorkNumber()));
+
+        Integer opId = chainGet(result, "data", "recordRNAAnalysis", "operations", 0, "id");
+        measurements = measurementRepo.findAllByOperationIdIn(List.of(opId));
+        assertThat(measurements).hasSize(1);
+        meas = measurements.get(0);
+        assertEquals(dests[0].getFirstSlot().getId(), meas.getSlotId());
+        assertEquals("RIN", meas.getName());
+        assertEquals("55.0", meas.getValue());
     }
 
     @Test
@@ -670,7 +702,7 @@ public class IntegrationTests {
         List<Destruction> destructions = destructionRepo.findAllByLabwareIdIn(List.of(labware[0].getId(), labware[1].getId()));
         assertEquals(labware.length, destructions.size());
 
-        verifyUnstored(barcodes, user.getUsername());
+        verifyStorelightQuery(barcodes, user.getUsername());
     }
 
     @Test
@@ -838,7 +870,7 @@ public class IntegrationTests {
         assertThat(newLabware.getSlot(A2).getSamples()).hasSize(2);
         assertTrue(newLabware.getSlot(A2).getSamples().stream().allMatch(sam -> sam.getBioState().getName().equals("cDNA")));
 
-        verifyUnstored(List.of("STAN-01"), user.getUsername());
+        verifyStorelightQuery(List.of("STAN-01"), user.getUsername());
         entityManager.refresh(work);
         assertThat(work.getOperationIds()).containsExactly(opId);
         assertThat(work.getSampleSlotIds()).hasSize(3);
@@ -1292,19 +1324,102 @@ public class IntegrationTests {
         assertEquals(equipment, op.getEquipment());
     }
 
+    @Transactional
+    @Test
+    public void testStore() throws Exception {
+
+        // 1. storeBarcode
+
+        User user = entityCreator.createUser("user1");
+        tester.setUser(user);
+        Sample sample = entityCreator.createSample(entityCreator.createTissue(entityCreator.createDonor("DONOR1"), "EXT1"), 10);
+        entityCreator.createLabware("STAN-100", entityCreator.createLabwareType("lw1", 1, 1), sample);
+        ObjectMapper objectMapper = new ObjectMapper();
+        ObjectNode storedItemNode = objectMapper.createObjectNode()
+                .put("barcode", "STAN-100")
+                .set("location", objectMapper.createObjectNode()
+                        .put("id", 4)
+                        .put("barcode", "STO-4")
+                );
+
+        GraphQLResponse storeResponse = new GraphQLResponse(objectMapper.createObjectNode().set("storeBarcode", storedItemNode), null);
+        when(mockStorelightClient.postQuery(ArgumentMatchers.contains("storeBarcode("), any())).thenReturn(storeResponse);
+
+        Object result = tester.post("mutation { storeBarcode(barcode: \"STAN-100\", locationBarcode: \"STO-4\") { barcode }}");
+        assertEquals("STAN-100", chainGet(result, "data", "storeBarcode", "barcode"));
+
+        verifyStorelightQuery(List.of("STAN-100", "STO-4"), user.getUsername());
+
+        // 2. labwareInLocation
+
+        ObjectNode locationNode = objectMapper.createObjectNode()
+                .put("id", 4)
+                .put("barcode", "STO-4")
+                .put("name", "Location 4")
+                .set("stored", objectMapper.createArrayNode()
+                        .add(objectMapper.createObjectNode()
+                                .put("barcode", "STAN-100"))
+                        .add(objectMapper.createObjectNode()
+                                .put("barcode", "Other"))
+                );
+
+        GraphQLResponse locationResponse = new GraphQLResponse(objectMapper.createObjectNode().set("location", locationNode), null);
+        when(mockStorelightClient.postQuery(ArgumentMatchers.contains("location("), any())).thenReturn(locationResponse);
+
+        result = tester.post("query { labwareInLocation(locationBarcode: \"STO-4\") { barcode, slots { samples { id }}}}");
+
+        List<Map<String, ?>> labwareListData = chainGet(result, "data", "labwareInLocation");
+        assertThat(labwareListData).hasSize(1);
+        Map<String, ?> labwareData = labwareListData.get(0);
+        assertEquals("STAN-100", labwareData.get("barcode"));
+        assertEquals(sample.getId(), chainGet(labwareData, "slots", 0, "samples", 0, "id"));
+    }
+
     private void stubStorelightUnstore() throws IOException {
         ObjectMapper objectMapper = new ObjectMapper();
         ObjectNode storelightDataNode = objectMapper.createObjectNode()
                 .set("unstoreBarcodes", objectMapper.createObjectNode().put("numUnstored", 2));
         GraphQLResponse storelightResponse = new GraphQLResponse(storelightDataNode, null);
-        when(mockStorelightClient.postQuery(anyString(), anyString())).thenReturn(storelightResponse);
+        when(mockStorelightClient.postQuery(ArgumentMatchers.contains("unstoreBarcodes("), anyString())).thenReturn(storelightResponse);
     }
 
-    private void verifyUnstored(Collection<String> barcodes, String username) throws Exception {
+    private void stubStorelightLocation(List<StoredItem> storedItems) throws IOException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        ObjectNode storelightDataNode;
+        if (storedItems==null || storedItems.isEmpty()) {
+            storelightDataNode = objectMapper.createObjectNode()
+                    .set("stored", objectMapper.createArrayNode());
+        } else {
+            ArrayNode itemArrayNode = objectMapper.createArrayNode();
+            for (StoredItem item : storedItems) {
+                itemArrayNode.add(storedItemNode(objectMapper, item));
+            }
+            storelightDataNode = objectMapper.createObjectNode()
+                    .set("stored", itemArrayNode);
+        }
+        GraphQLResponse storelightResponse = new GraphQLResponse(storelightDataNode, null);
+        when(mockStorelightClient.postQuery(ArgumentMatchers.contains("stored("), any())).thenReturn(storelightResponse);
+    }
+
+    private static ObjectNode locationNode(ObjectMapper objectMapper, Location location) {
+        return objectMapper.createObjectNode()
+                .put("id", location.getId())
+                .put("barcode", location.getBarcode())
+                .put("name", location.getName());
+    }
+
+    private static ObjectNode storedItemNode(ObjectMapper objectMapper, StoredItem item) {
+        return objectMapper.createObjectNode()
+                .put("barcode", item.getBarcode())
+                .put("address", item.getAddress()==null ? null : item.getAddress().toString())
+                .set("location", locationNode(objectMapper, item.getLocation()));
+    }
+
+    private void verifyStorelightQuery(Collection<String> contents, String username) throws Exception {
         ArgumentCaptor<String> queryCaptor = ArgumentCaptor.forClass(String.class);
         verify(mockStorelightClient).postQuery(queryCaptor.capture(), eq(username));
         String storelightQuery = queryCaptor.getValue();
-        assertThat(storelightQuery).contains(barcodes);
+        assertThat(storelightQuery).contains(contents);
     }
 
     private List<Map<String, String>> tsvToMap(String tsv) {

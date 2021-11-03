@@ -120,6 +120,7 @@ type Slot {
 type Labware {
     id: Int!
     barcode: String!
+    externalBarcode: String
     labwareType: LabwareType!
     slots: [Slot!]!
     released: Boolean!
@@ -617,6 +618,7 @@ input RecordPermRequest {
     permData: [PermData!]!
 }
 
+
 type AddressPermData {
     address: Address!
     seconds: Int
@@ -634,6 +636,28 @@ input VisiumAnalysisRequest {
     workNumber: String
     selectedAddress: Address!
     selectedTime: Int!
+}
+type ExtractResult {
+    labware: Labware!
+    result: PassFail
+    concentration: String
+}
+
+input StringMeasurement {
+    name: String!
+    value: String!
+}
+
+input RNAAnalysisLabware {
+    barcode: String!
+    workNumber: String
+    commentId: Int
+    measurements: [StringMeasurement!]!
+}
+
+input RNAAnalysisRequest {
+    operationType: String!
+    labware: [RNAAnalysisLabware!]!
 }
 
 type Query {
@@ -663,6 +687,7 @@ type Query {
     planData(barcode: String!): PlanData!
     stainTypes: [StainType!]!
     visiumPermData(barcode: String!): VisiumPermData!
+    extractResult(barcode: String!): ExtractResult!
 
     historyForSampleId(sampleId: Int!): History!
     historyForExternalName(externalName: String!): History!
@@ -672,6 +697,7 @@ type Query {
 
     location(locationBarcode: String!): Location!
     stored(barcodes: [String!]!): [StoredItem!]!
+    labwareInLocation(locationBarcode: String!): [Labware!]!
 }
 
 type Mutation {
@@ -721,6 +747,7 @@ type Mutation {
     recordExtractResult(request: ExtractResultRequest!): OperationResult!
     recordPerm(request: RecordPermRequest!): OperationResult!
     visiumAnalysis(request: VisiumAnalysisRequest!): OperationResult!
+    recordRNAAnalysis(request: RNAAnalysisRequest!): OperationResult!
 
     addUser(username: String!): User!
     setUserRole(username: String!, role: UserRole!): User!

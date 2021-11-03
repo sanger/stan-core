@@ -4,17 +4,20 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
+import org.mockito.ArgumentMatcher;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.Work.SampleSlotId;
 import uk.ac.sanger.sccp.stan.model.Work.Status;
 import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.utils.UCMap;
 import uk.ac.sanger.sccp.stan.request.WorkWithComment;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -328,6 +331,52 @@ public class TestWorkService {
                 { "SGP5000", Status.failed, IllegalArgumentException.class, "SGP5000 cannot be used because it is failed."  },
                 { "SGP404", null, EntityNotFoundException.class, "Work number not recognised: \"SGP404\"" },
                 { null, null, NullPointerException.class, "Work number is null." },
+        }).map(Arguments::of);
+    }
+
+    @ParameterizedTest
+    @MethodSource("usableWorksArgs")
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public void testValidateUsableWorks(Object[] workNumbers, Object[] workData, Object[] expectedErrors) {
+        assert workData.length%2==0;
+        List<Work> works = IntStream.range(0, workData.length/2)
+                .mapToObj(i -> new Work(i, (String) workData[2*i], null, null, null, (Status) workData[2*i+1]))
+                .collect(toList());
+        List<String> workNumbersList = (List) Arrays.asList(workNumbers);
+        when(mockWorkRepo.findAllByWorkNumberIn(workNumbersList)).thenReturn(works);
+
+        final List<String> problems = new ArrayList<>(expectedErrors.length);
+        UCMap<Work> workMap = workService.validateUsableWorks(problems, workNumbersList);
+
+        if (!workNumbersList.isEmpty()) {
+            verify(mockWorkRepo).findAllByWorkNumberIn(workNumbersList);
+        }
+        assertThat(workMap.values()).containsExactlyInAnyOrderElementsOf(works);
+        if (expectedErrors.length==1 && expectedErrors[0] instanceof ArgumentMatcher) {
+            ArgumentMatcher<String> matcher = (ArgumentMatcher<String>) expectedErrors[0];
+            assertThat(problems).isNotEmpty().allMatch(matcher::matches);
+        } else {
+            assertThat(problems).containsExactlyInAnyOrderElementsOf((List) Arrays.asList(expectedErrors));
+        }
+    }
+
+    static Stream<Arguments> usableWorksArgs() {
+        return Arrays.stream(new Object[][][] {
+                {{},{},{}},
+                {{"SGP1", "sgp2", "SGP2"}, {"SGP1", Status.active, "SGP2", Status.active}, {}},
+                {{"SGP1", "SGP2", "SGP404", "SGP405"}, {"SGP1", Status.active, "SGP2", Status.active},
+                        {"Work numbers not recognised: [\"SGP404\", \"SGP405\"]"}},
+                {{"SGP1", "SGP10", "SGP11"}, {"SGP1", Status.active, "SGP10", Status.paused, "SGP11", Status.paused},
+                        {"Work numbers cannot be used because they are paused: [SGP10, SGP11]"}},
+                {{"SGP10", "sgp10"}, {"SGP10", Status.failed},
+                        {"Work number cannot be used because it is failed: [SGP10]"}},
+                {{"SGP1", "sgp1", "SGP404", "sgp404", "SGP10"}, {"SGP1", Status.active, "SGP10", Status.failed},
+                        {"Work number not recognised: [\"SGP404\"]",
+                                "Work number cannot be used because it is failed: [SGP10]"}},
+                {{"SGP1", "SGP10", "SGP11", "SGP12"},
+                        {"SGP1", Status.active, "SGP10", Status.failed, "SGP11", Status.completed, "SGP12", Status.paused},
+                {new Matchers.DisorderedStringMatcher("Work numbers cannot be used because they are %, % or %: \\[%, %, %]".replace("%", "(\\S+)"),
+                        List.of("failed", "completed", "paused", "SGP10", "SGP11", "SGP12"))}},
         }).map(Arguments::of);
     }
 

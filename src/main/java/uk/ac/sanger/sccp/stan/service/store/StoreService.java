@@ -23,6 +23,7 @@ import java.net.URL;
 import java.util.*;
 
 import static java.util.Objects.requireNonNull;
+import static java.util.stream.Collectors.toList;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
@@ -212,5 +213,21 @@ public class StoreService {
     protected String readResource(String path) throws IOException {
         URL url = Resources.getResource("storelight/"+path+".graphql");
         return Resources.toString(url, Charsets.UTF_8);
+    }
+
+    /**
+     * Gets Labware objects for the labware stored (directly) in a particular location.
+     * Any stored barcodes that do not correspond to labware will be omitted.
+     * @param locationBarcode the barcode of the location
+     * @return the labware in the location
+     */
+    public List<Labware> getLabwareInLocation(String locationBarcode) {
+        Location location = getLocation(locationBarcode);
+        List<StoredItem> storedItems = location.getStored();
+        if (storedItems==null || storedItems.isEmpty()) {
+            return List.of();
+        }
+        List<String> labwareBarcodes = storedItems.stream().map(StoredItem::getBarcode).collect(toList());
+        return labwareRepo.findByBarcodeIn(labwareBarcodes);
     }
 }

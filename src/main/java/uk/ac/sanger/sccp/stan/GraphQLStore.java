@@ -6,8 +6,7 @@ import graphql.schema.DataFetcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-import uk.ac.sanger.sccp.stan.model.Address;
-import uk.ac.sanger.sccp.stan.model.User;
+import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.store.*;
 import uk.ac.sanger.sccp.stan.repo.UserRepo;
 import uk.ac.sanger.sccp.stan.service.store.StoreService;
@@ -100,4 +99,10 @@ public class GraphQLStore extends BaseGraphQLResource {
         };
     }
 
+    public DataFetcher<List<Labware>> getLabwareInLocation() {
+        return dfe -> {
+            String locationBarcode = dfe.getArgument("locationBarcode");
+            return storeService.getLabwareInLocation(locationBarcode);
+        };
+    }
 }

@@ -6,9 +6,13 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
+import uk.ac.sanger.sccp.stan.model.store.Location;
+import uk.ac.sanger.sccp.stan.model.store.StoredItem;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.Ancestry;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
+import uk.ac.sanger.sccp.stan.service.store.StoreService;
+import uk.ac.sanger.sccp.utils.UCMap;
 
 import javax.persistence.EntityNotFoundException;
 import java.time.LocalDateTime;
@@ -33,6 +37,7 @@ public class TestReleaseFileService {
     MeasurementRepo mockMeasurementRepo;
     SnapshotRepo mockSnapshotRepo;
     Ancestoriser mockAncestoriser;
+    StoreService mockStoreService;
 
     ReleaseFileService service;
 
@@ -52,9 +57,10 @@ public class TestReleaseFileService {
         mockMeasurementRepo = mock(MeasurementRepo.class);
         mockSnapshotRepo = mock(SnapshotRepo.class);
         mockAncestoriser = mock(Ancestoriser.class);
+        mockStoreService = mock(StoreService.class);
 
         service = spy(new ReleaseFileService(mockReleaseRepo, mockSampleRepo, mockLabwareRepo,
-                mockMeasurementRepo, mockSnapshotRepo, mockAncestoriser));
+                mockMeasurementRepo, mockSnapshotRepo, mockAncestoriser, mockStoreService));
 
         user = EntityFactory.getUser();
         destination = new ReleaseDestination(50, "Venus");
@@ -117,6 +123,7 @@ public class TestReleaseFileService {
         doNothing().when(service).loadLastSection(any());
         doNothing().when(service).loadSources(any(), any(), any());
         doNothing().when(service).loadSectionThickness(any(), any());
+        doNothing().when(service).loadStorageAddresses(any());
 
         List<Integer> releaseIds = List.of(this.release1.getId(), release2.getId());
         ReleaseFileContent rfc = service.getReleaseFileContent(releaseIds);
@@ -131,6 +138,7 @@ public class TestReleaseFileService {
         verify(service).findAncestry(entries);
         verify(service).loadSources(entries, ancestry, mode);
         verify(service).loadSectionThickness(entries, ancestry);
+        verify(service).loadStorageAddresses(entries);
     }
 
     @ParameterizedTest
@@ -389,6 +397,81 @@ public class TestReleaseFileService {
         assertEquals(meas[3], service.selectMeasurement(entry,  measurementMap(meas), ancestry));
         assertEquals(meas[0], service.selectMeasurement(entry, measurementMap(meas[0], meas[1]), ancestry));
         assertNull(service.selectMeasurement(entry, measurementMap(meas[1], meas[1]), ancestry));
+    }
+
+    @Test
+    public void testLoadStorageAddressesForNoEntries() {
+        service.loadStorageAddresses(List.of());
+        verify(service, never()).lookUpStorageAddresses(any());
+        verifyNoInteractions(mockStoreService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans={false, true})
+    public void testLoadStorageAddresses(boolean anyAddresses) {
+        setupLabware();
+        List<ReleaseEntry> entries = List.of(
+                new ReleaseEntry(lw1, null, null),
+                new ReleaseEntry(lw2, null, null)
+        );
+        UCMap<Address> addressMap;
+        if (anyAddresses) {
+            addressMap = new UCMap<>(2);
+            addressMap.put(lw1.getBarcode(), new Address(1,2));
+            addressMap.put(lw2.getBarcode(), new Address(3,4));
+        } else {
+            addressMap = null;
+        }
+        doReturn(addressMap).when(service).lookUpStorageAddresses(any());
+
+        service.loadStorageAddresses(entries);
+        verify(service).lookUpStorageAddresses(Set.of(lw1.getBarcode(), lw2.getBarcode()));
+        if (anyAddresses) {
+            assertEquals(entries.get(0).getStorageAddress(), new Address(1,2));
+            assertEquals(entries.get(1).getStorageAddress(), new Address(3,4));
+        } else {
+            assertNull(entries.get(0).getStorageAddress());
+            assertNull(entries.get(1).getStorageAddress());
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("lookUpStorageAddressesArgs")
+    public void testLookUpStorageAddresses(Set<String> barcodes, List<StoredItem> items, UCMap<Address> expectedMap) {
+        when(mockStoreService.getStored(barcodes)).thenReturn(items);
+        assertEquals(expectedMap, service.lookUpStorageAddresses(barcodes));
+        if (barcodes.isEmpty()) {
+            verifyNoInteractions(mockStoreService);
+        } else {
+            verify(mockStoreService).getStored(barcodes);
+        }
+    }
+
+    static Stream<Arguments> lookUpStorageAddressesArgs() {
+        final Address A1 = new Address(1,1);
+        final Address A2 = new Address(1,2);
+        StoredItem siA = storedItem("STAN-A", 10, A1);
+        StoredItem siB = storedItem("STAN-B", 10, A2);
+        StoredItem siC = storedItem("STAN-C", 11, A1);
+        StoredItem siD = storedItem("STAN-D", 10, null);
+        UCMap<Address> abMap = new UCMap<>(2);
+        abMap.put("STAN-A", A1);
+        abMap.put("STAN-B", A2);
+        return Arrays.stream(new Object[][] {
+                {Set.of("STAN-A"), List.of(), null},
+                {Set.of("STAN-A", "STAN-B"), List.of(siA), null},
+                {Set.of("STAN-A", "STAN-B"), List.of(siA, siB), abMap},
+                {Set.of("STAN-A", "STAN-C"), List.of(siA, siC), null},
+                {Set.of("STAN-A", "STAN-D"), List.of(siA, siD), null},
+                {Set.of("STAN-D"), List.of(siD), null},
+        }).map(Arguments::of);
+    }
+
+    static StoredItem storedItem(String barcode, Integer locationId, Address address) {
+        Location loc = new Location();
+        loc.setId(locationId);
+        loc.setBarcode("STO-A"+locationId);
+        return new StoredItem(barcode, loc, address);
     }
 
     private Map<Integer, List<Measurement>> measurementMap(Measurement... measurements) {
