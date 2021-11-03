@@ -18,6 +18,7 @@ import uk.ac.sanger.sccp.stan.request.plan.PlanResult;
 import uk.ac.sanger.sccp.stan.request.register.*;
 import uk.ac.sanger.sccp.stan.request.stain.StainRequest;
 import uk.ac.sanger.sccp.stan.service.*;
+import uk.ac.sanger.sccp.stan.service.analysis.RNAAnalysisService;
 import uk.ac.sanger.sccp.stan.service.extract.ExtractService;
 import uk.ac.sanger.sccp.stan.service.label.print.LabelPrintService;
 import uk.ac.sanger.sccp.stan.service.operation.InPlaceOpService;
@@ -72,6 +73,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final ResultService resultService;
     final ExtractResultService extractResultService;
     final PermService permService;
+    final RNAAnalysisService rnaAnalysisService;
     final UserAdminService userAdminService;
 
     @Autowired
@@ -89,7 +91,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            ProjectService projectService, CostCodeService costCodeService, FixativeService fixativeService,
                            WorkTypeService workTypeService, WorkService workService, StainService stainService,
                            UnreleaseService unreleaseService, ResultService resultService, ExtractResultService extractResultService,
-                           PermService permService, UserAdminService userAdminService) {
+                           PermService permService, RNAAnalysisService rnaAnalysisService, UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
@@ -121,6 +123,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.resultService = resultService;
         this.extractResultService = extractResultService;
         this.permService = permService;
+        this.rnaAnalysisService = rnaAnalysisService;
         this.userAdminService = userAdminService;
     }
 
@@ -487,6 +490,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             RecordPermRequest request = arg(dfe, "request", RecordPermRequest.class);
             logRequest("Record perm", user, request);
             return permService.recordPerm(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> recordRNAAnalysis() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            RNAAnalysisRequest request = arg(dfe, "request", RNAAnalysisRequest.class);
+            logRequest("Record RNA analysis", user, request);
+            return rnaAnalysisService.perform(user, request);
         };
     }
 

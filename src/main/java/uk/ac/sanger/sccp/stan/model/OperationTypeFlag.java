@@ -6,6 +6,9 @@ public enum OperationTypeFlag {
     DISCARD_SOURCE,
     STAIN,
     RESULT,
+    ANALYSIS,
+
+    // Current limit: 32 flags
     ;
 
     public int bit() {

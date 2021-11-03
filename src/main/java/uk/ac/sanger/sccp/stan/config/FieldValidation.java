@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Configuration;
 import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.StringValidator.CharacterType;
 
+import java.math.BigDecimal;
 import java.util.EnumSet;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -164,6 +165,16 @@ public class FieldValidation {
 
     @Bean
     public Sanitiser<String> concentrationSanitiser() {
-        return new ConcentrationSanitiser();
+        return new DecimalSanitiser("concentration", 2, null, null);
+    }
+
+    @Bean
+    public Sanitiser<String> rinSanitiser() {
+        return new DecimalSanitiser("RIN", 1, null, null);
+    }
+
+    @Bean
+    public Sanitiser<String> dv200Sanitiser() {
+        return new DecimalSanitiser("DV200", 1, BigDecimal.ZERO, new BigDecimal(100));
     }
 }

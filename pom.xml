@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>uk.ac.sanger.sccp</groupId>
 	<artifactId>stan</artifactId>
-	<version>1.8.3</version>
+	<version>1.10.0</version>
 	<name>stan</name>
 	<description>Spatial Genomics LIMS</description>
 
@@ -153,6 +153,7 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<version>${project.parent.version}</version>
 			</plugin>
 			<plugin>
 				<groupId>org.liquibase</groupId>
