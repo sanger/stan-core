@@ -315,9 +315,11 @@ public class TestHistoryService {
     @CsvSource(value={
             "bananas, bananas",
             "51, 51 sec",
-            "60, 1 min 0 sec",
+            "60, 1 min",
             "3333, 55 min 33 sec",
-            "7200, 2 hour 0 min 0 sec",
+            "7200, 2 hour",
+            "7320, 2 hour 2 min",
+            "7205, 2 hour 0 min 5 sec",
             "9876, 2 hour 44 min 36 sec",
     })
     public void testDescribeSeconds(String value, String expected) {
