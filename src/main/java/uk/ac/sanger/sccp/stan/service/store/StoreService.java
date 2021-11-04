@@ -1,6 +1,7 @@
 package uk.ac.sanger.sccp.stan.service.store;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.google.common.base.Charsets;
@@ -15,6 +16,7 @@ import uk.ac.sanger.sccp.stan.model.store.*;
 import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
 import uk.ac.sanger.sccp.stan.service.EmailService;
 import uk.ac.sanger.sccp.utils.GraphQLClient.GraphQLResponse;
+import uk.ac.sanger.sccp.utils.UCMap;
 
 import javax.persistence.EntityNotFoundException;
 import java.io.IOException;
@@ -149,6 +151,54 @@ public class StoreService {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
+    }
+
+    public UCMap<BasicLocation> loadBasicLocationsOfItems(Collection<String> itemBarcodes) {
+        requireNonNull(itemBarcodes, "Barcode collection is null.");
+        if (itemBarcodes.isEmpty()) {
+            return new UCMap<>(0);
+        }
+        try {
+            String query = readResource("storedBasicLocation");
+            ArrayNode arrayNode = objectMapper.createArrayNode();
+            for (String barcode : itemBarcodes) {
+                arrayNode.add(barcode);
+            }
+            query = query.replace("[]", objectMapper.writeValueAsString(arrayNode));
+            GraphQLResponse response = storelightClient.postQuery(query, null);
+            checkErrors(response);
+            var objectData = response.getData();
+            ArrayNode storedData = (ArrayNode) objectData.get("stored");
+
+            return makeBasicLocations(storedData);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    private UCMap<BasicLocation> makeBasicLocations(ArrayNode nodes) {
+        UCMap<BasicLocation> map = new UCMap<>(nodes.size());
+        for (JsonNode sd : nodes) {
+            String itemBarcode = sd.get("barcode").textValue();
+            if (itemBarcode==null || itemBarcode.isEmpty()) {
+                continue;
+            }
+            var locationData = sd.get("location");
+            if (!locationData.isObject()) {
+                continue;
+            }
+            String locationBarcode = locationData.get("barcode").textValue();
+            if (locationBarcode==null) {
+                continue;
+            }
+            String addressString = sd.get("address").textValue();
+            Address address = null;
+            if (addressString!=null && !addressString.isEmpty()) {
+                address = Address.valueOf(addressString);
+            }
+            map.put(itemBarcode, new BasicLocation(locationBarcode, address));
+        }
+        return map;
     }
 
     /**

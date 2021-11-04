@@ -939,6 +939,15 @@
             <column name="snapshot_id" type="INT">
                 <constraints nullable="false" foreignKeyName="fk_labware_release_snapshot" referencedTableName="snapshot" referencedColumnNames="id"/>
             </column>
+            <column name="location_barcode" type="VARCHAR(16)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="storage_row" type="INT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="storage_col" type="INT">
+                <constraints nullable="true"/>
+            </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
             </column>
