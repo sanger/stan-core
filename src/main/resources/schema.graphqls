@@ -590,6 +590,7 @@ input LabwareResult {
 }
 
 input ResultRequest {
+    operationType: String
     labwareResults: [LabwareResult!]!
     workNumber: String
 }
@@ -618,6 +619,22 @@ input RecordPermRequest {
     permData: [PermData!]!
 }
 
+input VisiumQCSlot {
+    address: Address!
+    result: PassFail!
+    commentId: Int
+}
+
+input VisiumQCLabware {
+    barcode: String!
+    slots: [VisiumQCSlot!]!
+}
+
+input VisiumQCRequest {
+    operationType: String!
+    workNumber: String
+    labware: [VisiumQCLabware!]!
+}
 
 type AddressPermData {
     address: Address!

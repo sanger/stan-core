@@ -123,6 +123,7 @@ public class ResultRequest {
         }
     }
 
+    private String operationType;
     private List<LabwareResult> labwareResults;
     private String workNumber;
 
@@ -142,18 +143,27 @@ public class ResultRequest {
         this.workNumber = workNumber;
     }
 
+    public String getOperationType() {
+        return this.operationType;
+    }
+
+    public void setOperationType(String operationType) {
+        this.operationType = operationType;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ResultRequest that = (ResultRequest) o;
         return (Objects.equals(this.labwareResults, that.labwareResults)
-                && Objects.equals(this.workNumber, that.workNumber));
+                && Objects.equals(this.workNumber, that.workNumber)
+                && Objects.equals(this.operationType, that.operationType));
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(labwareResults, workNumber);
+        return Objects.hash(labwareResults, workNumber, operationType);
     }
 
     @Override
@@ -161,6 +171,7 @@ public class ResultRequest {
         return BasicUtils.describe("ResultRequest")
                 .add("labwareResults", labwareResults)
                 .addRepr("workNumber", workNumber)
+                .addRepr("operationType", operationType)
                 .toString();
     }
 }

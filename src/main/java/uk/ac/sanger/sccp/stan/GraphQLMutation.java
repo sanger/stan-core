@@ -474,7 +474,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
             User user = checkUser(dfe, User.Role.normal);
             ResultRequest request = arg(dfe, "request", ResultRequest.class);
             logRequest("Record stain result", user, request);
-            return resultService.recordStainResult(user, request);
+            return resultService.recordStainQC(user, request);
         };
     }
 
