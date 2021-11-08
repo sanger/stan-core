@@ -15,9 +15,13 @@ Database setup:
 
 ```
 $ mysql -u root
-> create schema stan;
 > create user 'stan'@'%' identified by 'stanpassword';
 > grant delete, insert, execute, select, update on `stan%`.* to 'stan'@'%';
 > create user 'stan_admin'@'%' identified by 'stanadminpassword';
 > grant all on `stan%`.* to 'stan_admin'@'%';
 ```
+
+Use the schema and static data patches in the `stan-sql` repo to set up your schema, starting with
+`schema/create_schema.sql`.
+You might need to create an empty schema called `stantest` for the tests to run in. Liquibase is
+responsible for setting up tables and data for unit tests.
