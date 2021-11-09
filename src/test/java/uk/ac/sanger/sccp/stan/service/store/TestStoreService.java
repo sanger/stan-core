@@ -16,9 +16,11 @@ import uk.ac.sanger.sccp.stan.model.store.*;
 import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
 import uk.ac.sanger.sccp.stan.service.EmailService;
 import uk.ac.sanger.sccp.utils.GraphQLClient.GraphQLResponse;
+import uk.ac.sanger.sccp.utils.UCMap;
 
 import javax.persistence.EntityNotFoundException;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
@@ -361,6 +363,52 @@ public class TestStoreService {
                 null);
 
         verify(service).checkErrors(response);
+    }
+
+    @Test
+    public void testLoadBasicLocationsOfItems_empty() {
+        assertThat(service.loadBasicLocationsOfItems(List.of())).isEmpty();
+        verifyNoInteractions(mockClient);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testLoadBasicLocationsOfItems(boolean succeeds) throws IOException {
+        UCMap<BasicLocation> locations;
+        final List<String> stanBarcodes = List.of("STAN-1", "STAN-2", "STAN-3");
+        if (succeeds) {
+            ArrayNode itemsNode = objectMapper.createArrayNode();
+            itemsNode.add(objectMapper.createObjectNode()
+                            .put("barcode", "STAN-1")
+                            .put("address", "A2")
+                            .set("location", objectMapper.createObjectNode().put("barcode", "STO-1"))
+                    )
+                    .add(objectMapper.createObjectNode()
+                            .put("barcode", "STAN-2")
+                            .putNull("address")
+                            .set("location", objectMapper.createObjectNode().put("barcode", "STO-2"))
+                    );
+            GraphQLResponse response = setupResponse("stored", itemsNode);
+            when(mockClient.postQuery(anyString(), isNull())).thenReturn(response);
+            locations = service.loadBasicLocationsOfItems(stanBarcodes);
+            assertThat(locations).hasSize(2);
+            assertEquals(new BasicLocation("STO-1", new Address(1,2)), locations.get("STAN-1"));
+            assertEquals(new BasicLocation("STO-2", null), locations.get("STAN-2"));
+            assertNull(locations.get("STAN-3"));
+            verify(service).checkErrors(response);
+        } else {
+            final IOException ioException = new IOException("Everything is bad.");
+            doThrow(ioException).when(mockClient).postQuery(anyString(), isNull());
+            var ex = assertThrows(UncheckedIOException.class, () -> service.loadBasicLocationsOfItems(stanBarcodes));
+            assertThat(ex).hasCause(ioException);
+        }
+
+        verifyQueryMatches("{" +
+                " stored(barcodes: [\"STAN-1\", \"STAN-2\", \"STAN-3\"]) {" +
+                "  barcode" +
+                "  address" +
+                "  location { barcode }" +
+                "}}", null);
     }
 
     @ParameterizedTest

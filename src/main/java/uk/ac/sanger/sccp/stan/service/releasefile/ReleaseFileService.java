@@ -3,12 +3,9 @@ package uk.ac.sanger.sccp.stan.service.releasefile;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.model.store.StoredItem;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.Ancestry;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
-import uk.ac.sanger.sccp.stan.service.store.StoreService;
-import uk.ac.sanger.sccp.utils.UCMap;
 
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
@@ -29,19 +26,17 @@ public class ReleaseFileService {
     private final MeasurementRepo measurementRepo;
     private final SnapshotRepo snapshotRepo;
     private final Ancestoriser ancestoriser;
-    private final StoreService storeService;
 
     @Autowired
     public ReleaseFileService(ReleaseRepo releaseRepo, SampleRepo sampleRepo, LabwareRepo labwareRepo,
-                              MeasurementRepo measurementRepo, SnapshotRepo snapshotRepo, Ancestoriser ancestoriser,
-                              StoreService storeService) {
+                              MeasurementRepo measurementRepo, SnapshotRepo snapshotRepo,
+                              Ancestoriser ancestoriser) {
         this.releaseRepo = releaseRepo;
         this.sampleRepo = sampleRepo;
         this.labwareRepo = labwareRepo;
         this.measurementRepo = measurementRepo;
         this.snapshotRepo = snapshotRepo;
         this.ancestoriser = ancestoriser;
-        this.storeService = storeService;
     }
 
     /**
@@ -60,16 +55,33 @@ public class ReleaseFileService {
         Map<Integer, Sample> samples = loadSamples(releases, snapshots);
         ReleaseFileMode mode = checkMode(samples.values());
 
+        final boolean includeStorageAddress = shouldIncludeStorageAddress(releases);
+
         List<ReleaseEntry> entries = releases.stream()
-                .flatMap(r -> toReleaseEntries(r, samples, snapshots))
+                .flatMap(r -> toReleaseEntries(r, samples, snapshots, includeStorageAddress))
                 .collect(toList());
 
         loadLastSection(entries);
         Ancestry ancestry = findAncestry(entries);
         loadSources(entries, ancestry, mode);
         loadSectionThickness(entries, ancestry);
-        loadStorageAddresses(entries);
         return new ReleaseFileContent(mode, entries);
+    }
+
+    public boolean shouldIncludeStorageAddress(Collection<Release> releases) {
+        String consistentLocationBarcode = null;
+        for (Release release : releases) {
+            String locBarcode = release.getLocationBarcode();
+            if (locBarcode==null || release.getStorageAddress()==null) {
+                return false;
+            }
+            if (consistentLocationBarcode==null) {
+                consistentLocationBarcode = locBarcode;
+            } else if (!consistentLocationBarcode.equalsIgnoreCase(locBarcode)) {
+                return false;
+            }
+        }
+        return (consistentLocationBarcode!=null);
     }
 
     /**
@@ -185,15 +197,18 @@ public class ReleaseFileService {
      * @param release the release
      * @param sampleIdMap a map to look up samples in
      * @param snapshots a map to look up snapshots in
+     * @param includeStorageAddress whether or not to fill in the storage address field
      * @return a stream of release entries
      */
     public Stream<ReleaseEntry> toReleaseEntries(final Release release, Map<Integer, Sample> sampleIdMap,
-                                                 Map<Integer, Snapshot> snapshots) {
+                                                 Map<Integer, Snapshot> snapshots, boolean includeStorageAddress) {
         final Labware labware = release.getLabware();
         final Map<Integer, Slot> slotIdMap = labware.getSlots().stream()
                 .collect(toMap(Slot::getId, slot -> slot));
+        final Address storageAddress = (includeStorageAddress ? release.getStorageAddress() : null);
         return snapshots.get(release.getSnapshotId()).getElements().stream()
-                .map(el -> new ReleaseEntry(release.getLabware(), slotIdMap.get(el.getSlotId()), sampleIdMap.get(el.getSampleId())));
+                .map(el -> new ReleaseEntry(release.getLabware(), slotIdMap.get(el.getSlotId()),
+                        sampleIdMap.get(el.getSampleId()), storageAddress));
     }
 
     /**
@@ -320,56 +335,5 @@ public class ReleaseFileService {
             }
         }
         return null;
-    }
-
-    /**
-     * Fills in the storage address.
-     * If every labware in the release entries is stored in the same location and has an address,
-     * then the addresses will be filled in; otherwise, they will not be filled in for any entries.
-     * @param entries release entries under construction
-     */
-    public void loadStorageAddresses(Collection<ReleaseEntry> entries) {
-        if (entries.isEmpty()) {
-            return;
-        }
-        Set<String> barcodes = entries.stream()
-                .map(e -> e.getLabware().getBarcode().toUpperCase())
-                .collect(toSet());
-        UCMap<Address> addresses = lookUpStorageAddresses(barcodes);
-        if (addresses!=null) {
-            for (ReleaseEntry entry : entries) {
-                entry.setStorageAddress(addresses.get(entry.getLabware().getBarcode()));
-            }
-        }
-    }
-
-    /**
-     * Gets a map from item barcode to storage address.
-     * This includes checking if the locations are present and similar enough that the storage address
-     * should be included: if they are not, then this method should return null.
-     * @param barcodes the barcodes that should be looked up. These are assumed to all be for different labware
-     *                 (so should not include different cases of the same string).
-     * @return the map of labware barcode to address, if the addresses should be filled in; null if the
-     *         addresses should not be filled in.
-     */
-    public UCMap<Address> lookUpStorageAddresses(Set<String> barcodes) {
-        var storedList = storeService.getStored(barcodes);
-        if (storedList.size() < barcodes.size()) {
-            return null;
-        }
-        UCMap<Address> addresses = new UCMap<>(storedList.size());
-        Integer locationId = null;
-        for (StoredItem item : storedList) {
-            if (item.getAddress()==null || item.getLocation()==null) {
-                return null;
-            }
-            if (locationId==null) {
-                locationId = item.getLocation().getId();
-            } else if (!locationId.equals(item.getLocation().getId())) {
-                return null;
-            }
-            addresses.put(item.getBarcode(), item.getAddress());
-        }
-        return addresses;
     }
 }

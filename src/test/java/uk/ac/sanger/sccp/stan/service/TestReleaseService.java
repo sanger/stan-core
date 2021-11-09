@@ -7,11 +7,14 @@ import org.junit.jupiter.params.provider.*;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.Transactor;
 import uk.ac.sanger.sccp.stan.model.*;
+import uk.ac.sanger.sccp.stan.model.store.BasicLocation;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.ReleaseRequest;
 import uk.ac.sanger.sccp.stan.request.ReleaseResult;
 import uk.ac.sanger.sccp.stan.service.store.StoreService;
+import uk.ac.sanger.sccp.utils.UCMap;
 
+import javax.persistence.EntityManager;
 import javax.persistence.EntityNotFoundException;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -29,6 +32,7 @@ import static org.mockito.Mockito.*;
  * @author dr6
  */
 public class TestReleaseService {
+    private EntityManager mockEntityManager;
     private LabwareRepo mockLabwareRepo;
     private StoreService mockStoreService;
     private ReleaseRepo mockReleaseRepo;
@@ -47,6 +51,7 @@ public class TestReleaseService {
 
     @BeforeEach
     void setup() {
+        mockEntityManager = mock(EntityManager.class);
         mockDestinationRepo = mock(ReleaseDestinationRepo.class);
         mockRecipientRepo = mock(ReleaseRecipientRepo.class);
         mockTransactor = mock(Transactor.class);
@@ -64,7 +69,7 @@ public class TestReleaseService {
         sample1 = new Sample(sample.getId()+1, 7, sample.getTissue(), EntityFactory.getBioState());
         labwareType = EntityFactory.makeLabwareType(1,4);
 
-        service = spy(new ReleaseServiceImp(mockTransactor, mockDestinationRepo, mockRecipientRepo, mockLabwareRepo, mockStoreService,
+        service = spy(new ReleaseServiceImp(mockTransactor, mockEntityManager, mockDestinationRepo, mockRecipientRepo, mockLabwareRepo, mockStoreService,
                 mockReleaseRepo, mockSnapshotService));
 
         when(mockTransactor.transact(any(), any())).then(invocation -> {
@@ -73,159 +78,140 @@ public class TestReleaseService {
         });
     }
 
-    @Test
-    public void testReleaseAndUnstore() {
-        Labware lw1 = EntityFactory.makeLabware(labwareType, sample, sample, sample1);
-        Labware lw2 = EntityFactory.makeLabware(labwareType, sample1);
-        LocalDateTime timestamp = LocalDateTime.now();
-        List<String> barcodes = List.of(lw1.getBarcode(), lw2.getBarcode());
-        ReleaseRequest request = new ReleaseRequest(barcodes, "Venus", "Mekon");
-        List<Release> releases = List.of(new Release(1, lw1, user, destination, recipient, 1, timestamp),
-                new Release(2, lw2, user, destination, recipient, 2, timestamp));
+    @ParameterizedTest
+    @MethodSource("releaseAndUnstoreArgs")
+    public void testReleaseAndUnstore(ReleaseRequest request, ReleaseRecipient recipient,
+                                      ReleaseDestination destination, List<Labware> labware,
+                                      String loadLabwareError, String labwareValidationError, String labwareContentsError,
+                                      String expectedExceptionMessage) {
+        if (recipient!=null) {
+            when(mockRecipientRepo.getByUsername(request.getRecipient())).thenReturn(recipient);
+        } else {
+            when(mockRecipientRepo.getByUsername(any())).thenThrow(new EntityNotFoundException("Recipient not found."));
+        }
 
-        doReturn(releases).when(service).release(any(), any());
+        if (destination!=null) {
+            when(mockDestinationRepo.getByName(request.getDestination())).thenReturn(destination);
+        } else {
+            when(mockDestinationRepo.getByName(any())).thenThrow(new EntityNotFoundException("Destination not found."));
+        }
 
-        assertEquals(new ReleaseResult(releases), service.releaseAndUnstore(user, request));
+        if (loadLabwareError!=null) {
+            doThrow(new IllegalArgumentException(loadLabwareError)).when(service).loadLabware(any());
+        } else if (labware!=null && recipient!=null && destination != null) {
+            doReturn(labware).when(service).loadLabware(request.getBarcodes());
 
-        verify(service).release(user, request);
-        verify(mockStoreService).discardStorage(user, barcodes);
+            if (labwareValidationError!=null) {
+                doThrow(new IllegalArgumentException(labwareValidationError)).when(service).validateLabware(any());
+            } else {
+                doNothing().when(service).validateLabware(any());
+                if (labwareContentsError!=null) {
+                    doThrow(new IllegalArgumentException(labwareContentsError)).when(service).validateContents(any());
+                } else {
+                    doNothing().when(service).validateContents(any());
+                }
+            }
+        }
+
+        if (expectedExceptionMessage!=null) {
+            var ex = assertThrows(Exception.class, () -> service.releaseAndUnstore(user, request));
+            assertThat(ex).hasMessage(expectedExceptionMessage);
+            verifyNoInteractions(mockStoreService);
+            verify(service, never()).transactRelease(any(), any(), any(), any(), any());
+            return;
+        }
+        assert labware != null;
+
+        UCMap<BasicLocation> locations = new UCMap<>(1);
+        locations.put(labware.get(0).getBarcode(), new BasicLocation("STO-123", new Address(1,2)));
+        when(mockStoreService.loadBasicLocationsOfItems(any())).thenReturn(locations);
+
+        List<Release> releases = List.of(
+                new Release(labware.get(0), user, destination, recipient, 100)
+        );
+        doReturn(releases).when(service).transactRelease(user, recipient, destination, labware, locations);
+
+        ReleaseResult result = service.releaseAndUnstore(user, request);
+
+        verify(service).loadLabware(request.getBarcodes());
+        verify(service).validateLabware(labware);
+        verify(service).validateContents(labware);
+        verify(mockStoreService).loadBasicLocationsOfItems(labware.stream().map(Labware::getBarcode).collect(toList()));
+        verify(service).transactRelease(user, recipient, destination, labware, locations);
+        verify(mockStoreService).discardStorage(user, request.getBarcodes());
+        assertEquals(result, new ReleaseResult(releases));
+    }
+
+    static Stream<Arguments> releaseAndUnstoreArgs() {
+        ReleaseRecipient rec = new ReleaseRecipient(10, "dr6");
+        ReleaseDestination dest = new ReleaseDestination(20, "Moon");
+        ReleaseRecipient disRec = new ReleaseRecipient(10, "dr6");
+        disRec.setEnabled(false);
+        ReleaseDestination disDest = new ReleaseDestination(20, "Moon");
+        disDest.setEnabled(false);
+        List<Labware> lws = List.of(EntityFactory.getTube());
+        ReleaseRequest request = new ReleaseRequest(List.of(lws.get(0).getBarcode()), dest.getName(), rec.getUsername());
+        return Arrays.stream(new Object[][] {
+                {request, rec, dest, lws, null, null, null, null},
+                {request, null, dest, null, null, null, null, "Recipient not found."},
+                {request, rec, null, null, null, null, null, "Destination not found."},
+                {new ReleaseRequest(List.of(), dest.getName(), rec.getUsername()),
+                   rec, dest, null, null, null, null, "No barcodes supplied to release."},
+                {request, rec, disDest, null, null, null, null, "Release destination Moon is not enabled."},
+                {request, disRec, dest, null, null, null, null, "Release recipient dr6 is not enabled."},
+                {request, rec, dest, null, "Bad barcodes.", null, null, "Bad barcodes."},
+                {request, rec, dest, lws, null, "Bad labware.", null, "Bad labware."},
+                {request, rec, dest, lws, null, null, "Bad contents.", "Bad contents."},
+        }).map(Arguments::of);
     }
 
     @ParameterizedTest
     @ValueSource(booleans={true, false})
     public void testTransactRelease(final boolean successful) {
-        ReleaseRequest request = new ReleaseRequest();
+        List<Labware> lws = List.of(EntityFactory.getTube());
+        UCMap<BasicLocation> locations = new UCMap<>();
+        locations.put(lws.get(0).getBarcode(), new BasicLocation("STO-A1", new Address(1,2)));
 
         IllegalArgumentException exception;
         List<Release> releases;
         if (successful) {
             exception = null;
             releases = List.of();
-            doReturn(releases).when(service).release(any(), any());
+            doReturn(releases).when(service).release(any(), any(), any(), any(), any());
         } else {
             exception = new IllegalArgumentException("Bad.");
             releases = List.of();
-            doThrow(exception).when(service).release(any(), any());
+            doThrow(exception).when(service).release(any(), any(), any(), any(), any());
         }
 
         if (successful) {
-            assertEquals(releases, service.transactRelease(user, request));
+            assertEquals(releases, service.transactRelease(user, recipient, destination, lws, locations));
         } else {
-            assertThat(assertThrows(IllegalArgumentException.class, () -> service.transactRelease(user, request)))
+            assertThat(assertThrows(IllegalArgumentException.class,
+                    () -> service.transactRelease(user, recipient, destination, lws, locations)))
                     .hasMessage(exception.getMessage());
         }
 
         verify(mockTransactor).transact(anyString(), any());
-        verify(service).release(user, request);
+        verify(service).release(user, recipient, destination, lws, locations);
     }
 
-    @ParameterizedTest
-    @CsvSource({",", "0", "1", "2"})
-    public void testRelease_numBarcodes(Integer numBarcodes) {
-        List<Labware> labware;
-        List<String> barcodes;
-        if (numBarcodes==null) {
-            barcodes = null;
-            labware = null;
-        } else if (numBarcodes <= 0) {
-            barcodes = List.of();
-            labware = null;
-        } else {
-            LabwareType lt = EntityFactory.getTubeType();
-            labware = IntStream.range(0, numBarcodes)
-                    .mapToObj(i -> EntityFactory.makeLabware(lt, sample))
-                    .collect(toList());
-            barcodes = labware.stream().map(Labware::getBarcode).collect(toList());
-        }
-        ReleaseRequest request = new ReleaseRequest(barcodes, destination.getName(), recipient.getUsername());
-
-        if (numBarcodes==null || numBarcodes <= 0) {
-            assertThat(assertThrows(IllegalArgumentException.class, () -> service.release(user, request)))
-                    .hasMessage("No barcodes supplied to release.");
-            return;
-        }
-        doReturn(labware).when(service).loadLabware(any());
+    @Test
+    public void testRelease() {
+        List<Labware> lws = List.of(EntityFactory.getTube());
+        UCMap<BasicLocation> locations = new UCMap<>(1);
+        locations.put(lws.get(0).getBarcode(), new BasicLocation("STO-A1", new Address(1,2)));
         doNothing().when(service).validateLabware(any());
         doNothing().when(service).validateContents(any());
-        doReturn(labware).when(service).updateReleasedLabware(any());
-        LocalDateTime timestamp = LocalDateTime.now();
-        List<Release> releases = labware.stream()
-                .map(lw -> new Release(10+lw.getId(), lw, user, destination, recipient, 1, timestamp))
-                .collect(toList());
-        doReturn(releases).when(service).recordReleases(any(), any(), any(), any());
-
-        assertSame(releases, service.release(user, request));
-
-        verify(service).loadLabware(barcodes);
-        verify(service).validateLabware(labware);
-        verify(service).validateContents(labware);
-        verify(service).updateReleasedLabware(labware);
-        verify(service).recordReleases(user, destination, recipient, labware);
-    }
-
-    @ParameterizedTest
-    @MethodSource("releaseDestAndRecipient")
-    public void testRelease_destAndRecipient(ReleaseDestination dest, ReleaseRecipient rec, String expectedExceptionMessage) {
-        Labware lw = EntityFactory.makeLabware(EntityFactory.getTubeType(), sample);
-        List<Labware> labware = List.of(lw);
-        String destName = (dest==null ? "Venus" : dest.getName());
-        String recName = (rec==null ? "mekon" : rec.getUsername());
-        Class<? extends Exception> expectedExceptionClass = (expectedExceptionMessage==null ? null : IllegalArgumentException.class);
-
-        if (dest!=null) {
-            when(mockDestinationRepo.getByName(destName)).thenReturn(dest);
-        } else {
-            when(mockDestinationRepo.getByName(destName)).thenThrow(new EntityNotFoundException("Release destination not found: \"Venus\"."));
-            expectedExceptionClass = EntityNotFoundException.class;
-        }
-        if (rec!=null) {
-            when(mockRecipientRepo.getByUsername(recName)).thenReturn(rec);
-        } else {
-            when(mockRecipientRepo.getByUsername(recName)).thenThrow(new EntityNotFoundException("Release recipient not found: \"mekon\"."));
-            expectedExceptionClass = EntityNotFoundException.class;
-        }
-
-        final List<String> barcodes = List.of(lw.getBarcode());
-        ReleaseRequest request = new ReleaseRequest(barcodes, destName, recName);
-        doReturn(labware).when(service).loadLabware(barcodes);
-
-        if (expectedExceptionMessage!=null) {
-            assertThat(assertThrows(expectedExceptionClass, () -> service.release(user, request)))
-                    .hasMessage(expectedExceptionMessage);
-            verify(service, never()).recordReleases(any(), any(), any(), any());
-            return;
-        }
-
-        doNothing().when(service).validateLabware(any());
-        doNothing().when(service).validateContents(any());
-        doReturn(labware).when(service).updateReleasedLabware(any());
-        List<Release> releases = List.of(new Release(200, lw, user, dest, rec, 1, LocalDateTime.now()));
-        doReturn(releases).when(service).recordReleases(any(), any(), any(), any());
-
-        assertSame(releases, service.release(user, request));
-        verify(service).loadLabware(barcodes);
-        verify(service).validateLabware(labware);
-        verify(service).validateContents(labware);
-        verify(service).updateReleasedLabware(labware);
-        verify(service).recordReleases(user, dest, rec, labware);
-    }
-
-    static Stream<Arguments> releaseDestAndRecipient() {
-        ReleaseDestination goodDest = new ReleaseDestination(1, "Mars");
-        ReleaseDestination badDest = new ReleaseDestination(2, "Venus");
-        badDest.setEnabled(false);
-
-        ReleaseRecipient goodRec = new ReleaseRecipient(3, "digby");
-        ReleaseRecipient badRec = new ReleaseRecipient(4, "mekon");
-        badRec.setEnabled(false);
-
-        return Stream.of(
-                Arguments.of(goodDest, goodRec, null),
-                Arguments.of(goodDest, null, "Release recipient not found: \"mekon\"."),
-                Arguments.of(null, goodRec, "Release destination not found: \"Venus\"."),
-                Arguments.of(goodDest, badRec, "Release recipient mekon is not enabled."),
-                Arguments.of(badDest, goodRec, "Release destination Venus is not enabled.")
-        );
+        doReturn(lws).when(service).updateReleasedLabware(lws);
+        List<Release> releases = List.of(new Release(100, lws.get(0), user, destination, recipient, 200, null));
+        doReturn(releases).when(service).recordReleases(user, destination, recipient, lws, locations);
+        assertSame(releases, service.release(user, recipient, destination, lws, locations));
+        lws.forEach(lw -> verify(mockEntityManager).refresh(lw));
+        verify(service).validateLabware(lws);
+        verify(service).validateContents(lws);
+        verify(service).updateReleasedLabware(lws);
+        verify(service).recordReleases(user, destination, recipient, lws, locations);
     }
 
     @ParameterizedTest
@@ -331,7 +317,7 @@ public class TestReleaseService {
 
     @Test
     public void testRecordReleases() {
-        List<Labware> labware = IntStream.range(0,2)
+        List<Labware> labware = IntStream.range(0,3)
                 .mapToObj(i -> EntityFactory.makeLabware(labwareType, sample, sample1))
                 .collect(toList());
         LocalDateTime timestamp = LocalDateTime.now();
@@ -339,31 +325,50 @@ public class TestReleaseService {
                 .map(lw -> new Release(10, lw, user, destination, recipient, 1, timestamp))
                 .collect(toList());
 
-        doReturn(releases.get(0)).when(service).recordRelease(user, destination, recipient, labware.get(0));
-        doReturn(releases.get(1)).when(service).recordRelease(user, destination, recipient, labware.get(1));
+        BasicLocation[] locs = {
+                new BasicLocation("STO-A1", new Address(1,2)),
+                new BasicLocation("STO-B2", null),
+        };
 
-        assertEquals(releases, service.recordReleases(user, destination, recipient, labware));
+        UCMap<BasicLocation> locations = new UCMap<>(labware.size());
+        for (int i = 0; i < locs.length; ++i) {
+            locations.put(labware.get(i).getBarcode(), locs[i]);
+        }
+
+        doReturn(releases.get(0)).when(service).recordRelease(user, destination, recipient, labware.get(0), locs[0]);
+        doReturn(releases.get(1)).when(service).recordRelease(user, destination, recipient, labware.get(1), locs[1]);
+        doReturn(releases.get(2)).when(service).recordRelease(user, destination, recipient, labware.get(2), null);
+
+        assertEquals(releases, service.recordReleases(user, destination, recipient, labware, locations));
     }
 
-    @Test
-    public void testRecordRelease() {
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testRecordRelease(boolean withLocation) {
         Labware lw = EntityFactory.makeEmptyLabware(labwareType);
         lw.getSlots().get(0).getSamples().add(sample);
         lw.getSlots().get(0).getSamples().add(sample1);
         lw.getSlots().get(1).getSamples().add(sample1);
+        BasicLocation loc = (withLocation ? new BasicLocation("STO-A1", new Address(1,2)) : null);
 
         final int releaseId = 10;
-        Release release = new Release(releaseId, lw, user, destination, recipient, 1, LocalDateTime.now());
+        Release release = new Release(releaseId, lw, user, destination, recipient, 1, LocalDateTime.now(),
+                withLocation ? loc.getBarcode() : null, withLocation ? loc.getAddress() : null);
 
         when(mockReleaseRepo.save(any())).thenReturn(release);
 
         Snapshot snap = EntityFactory.makeSnapshot(lw);
         when(mockSnapshotService.createSnapshot(any())).thenReturn(snap);
 
-        assertSame(release, service.recordRelease(user, destination, recipient, lw));
+        assertSame(release, service.recordRelease(user, destination, recipient, lw, loc));
 
         verify(mockSnapshotService).createSnapshot(lw);
-        verify(mockReleaseRepo).save(new Release(lw, user, destination, recipient, snap.getId()));
+        final Release expectedNewRelease = new Release(lw, user, destination, recipient, snap.getId());
+        if (loc!=null) {
+            expectedNewRelease.setLocationBarcode(loc.getBarcode());
+            expectedNewRelease.setStorageAddress(loc.getAddress());
+        }
+        verify(mockReleaseRepo).save(expectedNewRelease);
     }
 
     @Test
