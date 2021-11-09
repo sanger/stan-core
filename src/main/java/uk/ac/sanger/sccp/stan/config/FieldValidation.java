@@ -61,7 +61,7 @@ public class FieldValidation {
     @Bean
     public Validator<String> commentTextValidator() {
         Set<CharacterType> charTypes = EnumSet.of(
-                CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN, CharacterType.SPACE,
+                CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN, CharacterType.SPACE, CharacterType.COLON,
                 CharacterType.SLASH, CharacterType.PAREN, CharacterType.FULL_STOP, CharacterType.APOSTROPHE
         );
         return new StringValidator("Comment text", 3, 128, charTypes);
