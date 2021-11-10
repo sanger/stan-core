@@ -1,0 +1,7 @@
+{
+    stored(barcodes: []) {
+        barcode
+        address
+        location { barcode }
+    }
+}

@@ -1,10 +1,12 @@
 package uk.ac.sanger.sccp.stan.service.releasefile;
 
 import uk.ac.sanger.sccp.stan.model.*;
+import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import java.util.Objects;
 
 /**
+ * A helper data type used to return information about releases to be put into a file
  * @author dr6
  */
 public class ReleaseEntry {
@@ -18,9 +20,14 @@ public class ReleaseEntry {
     private Address storageAddress;
 
     public ReleaseEntry(Labware labware, Slot slot, Sample sample) {
+        this(labware, slot, sample, null);
+    }
+
+    public ReleaseEntry(Labware labware, Slot slot, Sample sample, Address storageAddress) {
         this.labware = labware;
         this.slot = slot;
         this.sample = sample;
+        this.storageAddress = storageAddress;
     }
 
     public Labware getLabware() {
@@ -93,5 +100,18 @@ public class ReleaseEntry {
     @Override
     public int hashCode() {
         return Objects.hash(slot, sample);
+    }
+
+    @Override
+    public String toString() {
+        return BasicUtils.describe("ReleaseEntry")
+                .add("labware", labware==null ? null : labware.getBarcode())
+                .add("sample", sample==null ? null : sample.getId())
+                .add("lastSection", lastSection)
+                .add("sourceBarcode", sourceBarcode)
+                .add("sourceAddress", sourceAddress)
+                .add("sectionThickness", sectionThickness)
+                .add("storageAddress", storageAddress)
+                .toString();
     }
 }

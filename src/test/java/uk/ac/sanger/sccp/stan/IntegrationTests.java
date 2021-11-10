@@ -17,8 +17,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.model.store.Location;
-import uk.ac.sanger.sccp.stan.model.store.StoredItem;
+import uk.ac.sanger.sccp.stan.model.store.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.service.label.LabelPrintRequest;
 import uk.ac.sanger.sccp.stan.service.label.LabwareLabelData;
@@ -26,6 +25,7 @@ import uk.ac.sanger.sccp.stan.service.label.LabwareLabelData.LabelContent;
 import uk.ac.sanger.sccp.stan.service.label.print.PrintClient;
 import uk.ac.sanger.sccp.stan.service.store.StorelightClient;
 import uk.ac.sanger.sccp.utils.GraphQLClient.GraphQLResponse;
+import uk.ac.sanger.sccp.utils.UCMap;
 
 import javax.persistence.EntityManager;
 import javax.transaction.Transactional;
@@ -333,6 +333,10 @@ public class IntegrationTests {
                 .replace("RECIPIENT", recipient.getUsername());
 
         stubStorelightUnstore();
+        UCMap<BasicLocation> basicLocationMap = new UCMap<>(2);
+        basicLocationMap.put("STAN-001", new BasicLocation("STO-1", new Address(1,2)));
+        basicLocationMap.put("STAN-002", new BasicLocation("STO-1", new Address(3,4)));
+        stubStorelightBasicLocation(basicLocationMap);
 
         Object result = tester.post(mutation);
 
@@ -353,14 +357,6 @@ public class IntegrationTests {
         List<Integer> releaseIds = releaseData.stream()
                 .map(rd -> (Integer) rd.get("id"))
                 .collect(toList());
-        Location location = new Location();
-        location.setBarcode("STO-33");
-        location.setId(33);
-        List<StoredItem> storedItems = List.of(
-                new StoredItem("STAN-001", location, new Address(1,2)),
-                new StoredItem("STAN-002", location, new Address(3,4))
-        );
-        stubStorelightLocation(storedItems);
 
         String tsvString = getReleaseFile(releaseIds);
         var tsvMaps = tsvToMap(tsvString);
@@ -1383,23 +1379,44 @@ public class IntegrationTests {
         when(mockStorelightClient.postQuery(ArgumentMatchers.contains("unstoreBarcodes("), anyString())).thenReturn(storelightResponse);
     }
 
-    private void stubStorelightLocation(List<StoredItem> storedItems) throws IOException {
+    private void stubStorelightBasicLocation(Map<String, BasicLocation> locations) throws IOException {
         ObjectMapper objectMapper = new ObjectMapper();
         ObjectNode storelightDataNode;
-        if (storedItems==null || storedItems.isEmpty()) {
+        if (locations==null || locations.isEmpty()) {
             storelightDataNode = objectMapper.createObjectNode()
                     .set("stored", objectMapper.createArrayNode());
         } else {
             ArrayNode itemArrayNode = objectMapper.createArrayNode();
-            for (StoredItem item : storedItems) {
-                itemArrayNode.add(storedItemNode(objectMapper, item));
+            for (var entry : locations.entrySet()) {
+                var loc = entry.getValue();
+                ObjectNode node = objectMapper.createObjectNode()
+                        .put("barcode", entry.getKey())
+                        .put("address", loc.getAddress()!=null ? loc.getAddress().toString() : null)
+                        .set("location", objectMapper.createObjectNode().put("barcode", loc.getBarcode()));
+                itemArrayNode.add(node);
             }
-            storelightDataNode = objectMapper.createObjectNode()
-                    .set("stored", itemArrayNode);
+            storelightDataNode = objectMapper.createObjectNode().set("stored", itemArrayNode);
         }
         GraphQLResponse storelightResponse = new GraphQLResponse(storelightDataNode, null);
         when(mockStorelightClient.postQuery(ArgumentMatchers.contains("stored("), any())).thenReturn(storelightResponse);
     }
+//
+//    private void stubStorelightLocation(List<StoredItem> storedItems) throws IOException {
+//        ObjectMapper objectMapper = new ObjectMapper();
+//        ObjectNode storelightDataNode;
+//        if (storedItems==null || storedItems.isEmpty()) {
+//            storelightDataNode = objectMapper.createObjectNode()
+//                    .set("stored", objectMapper.createArrayNode());
+//        } else {
+//            ArrayNode itemArrayNode = objectMapper.createArrayNode();
+//            for (StoredItem item : storedItems) {
+//                itemArrayNode.add(storedItemNode(objectMapper, item));
+//            }
+//            storelightDataNode = objectMapper.createObjectNode().set("stored", itemArrayNode);
+//        }
+//        GraphQLResponse storelightResponse = new GraphQLResponse(storelightDataNode, null);
+//        when(mockStorelightClient.postQuery(ArgumentMatchers.contains("stored("), any())).thenReturn(storelightResponse);
+//    }
 
     private static ObjectNode locationNode(ObjectMapper objectMapper, Location location) {
         return objectMapper.createObjectNode()
