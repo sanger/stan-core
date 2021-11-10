@@ -1,8 +1,8 @@
 package uk.ac.sanger.sccp.stan.model;
 
-import com.google.common.base.MoreObjects;
 import org.hibernate.annotations.Generated;
 import org.hibernate.annotations.GenerationTime;
+import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
@@ -38,13 +38,25 @@ public class Release {
 
     private Integer snapshotId;
 
+    private String locationBarcode;
+
+    @AttributeOverrides({
+            @AttributeOverride(name = "row", column = @Column(name = "storage_row")),
+            @AttributeOverride(name = "column", column = @Column(name = "storage_col"))
+    })
+    @Embedded
+    private Address storageAddress;
+
     public Release() {}
 
     public Release(Labware labware, User user, ReleaseDestination destination, ReleaseRecipient recipient, Integer snapshotId) {
-        this(null, labware, user, destination, recipient, snapshotId, null);
+        this(null, labware, user, destination, recipient, snapshotId, null, null, null);
     }
-
     public Release(Integer id, Labware labware, User user, ReleaseDestination destination, ReleaseRecipient recipient, Integer snapshotId, LocalDateTime released) {
+        this(id, labware, user, destination, recipient, snapshotId, released, null, null);
+    }
+    public Release(Integer id, Labware labware, User user, ReleaseDestination destination, ReleaseRecipient recipient,
+                   Integer snapshotId, LocalDateTime released, String locationBarcode, Address storageAddress) {
         this.id = id;
         this.labware = labware;
         this.user = user;
@@ -52,6 +64,8 @@ public class Release {
         this.recipient = recipient;
         this.released = released;
         this.snapshotId = snapshotId;
+        this.locationBarcode = locationBarcode;
+        this.storageAddress = storageAddress;
     }
 
     public Integer getId() {
@@ -110,6 +124,22 @@ public class Release {
         this.snapshotId = snapshotId;
     }
 
+    public String getLocationBarcode() {
+        return this.locationBarcode;
+    }
+
+    public void setLocationBarcode(String locationBarcode) {
+        this.locationBarcode = locationBarcode;
+    }
+
+    public Address getStorageAddress() {
+        return this.storageAddress;
+    }
+
+    public void setStorageAddress(Address storageAddress) {
+        this.storageAddress = storageAddress;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -121,7 +151,10 @@ public class Release {
                 && Objects.equals(this.recipient, that.recipient)
                 && Objects.equals(this.released, that.released)
                 && Objects.equals(this.user, that.user)
-                && Objects.equals(this.snapshotId, that.snapshotId));
+                && Objects.equals(this.snapshotId, that.snapshotId)
+                && Objects.equals(this.locationBarcode, that.locationBarcode)
+                && Objects.equals(this.storageAddress, that.storageAddress)
+        );
     }
 
     @Override
@@ -131,7 +164,7 @@ public class Release {
 
     @Override
     public String toString() {
-        return MoreObjects.toStringHelper(this)
+        return BasicUtils.describe(this)
                 .add("id", id)
                 .add("labware", labware==null ? null : repr(labware.getBarcode()))
                 .add("user", user==null ? null : repr(user.getUsername()))
@@ -139,6 +172,8 @@ public class Release {
                 .add("recipient", recipient)
                 .add("released", released)
                 .add("snapshotId", snapshotId)
+                .addReprIfNotNull("locationBarcode", locationBarcode)
+                .addIfNotNull("storageAddress", storageAddress)
                 .toString();
     }
 }
