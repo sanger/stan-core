@@ -1254,12 +1254,13 @@ public class IntegrationTests {
         assertEquals(opId, result.getRefersToOpId());
         assertEquals(lw.getFirstSlot().getId(), result.getSlotId());
 
-        testPerm();
+        Integer permOpId = testPerm();
         testVisiumAnalysis();
+        testVisiumQC(permOpId);
     }
 
     // called by testStainAndWorkProgressAndRecordResult
-    private void testPerm() throws Exception {
+    private Integer testPerm() throws Exception {
         entityCreator.createOpType("Visium permabilisation", null, OperationTypeFlag.IN_PLACE);
         Object data = tester.post(tester.readResource("graphql/perm.graphql"));
         Integer opId = chainGet(data, "data", "recordPerm", "operations", 0, "id");
@@ -1268,6 +1269,7 @@ public class IntegrationTests {
         Measurement meas = measurements.get(0);
         assertEquals("permabilisation time", meas.getName());
         assertEquals("120", meas.getValue());
+        return opId;
     }
 
     // called by testStainAndWorkProgressAndRecordResult
@@ -1293,6 +1295,20 @@ public class IntegrationTests {
         assertEquals(120, permData.get("seconds"));
         assertNull(permData.get("controlType"));
         assertEquals(true, permData.get("selected"));
+    }
+
+    // called by testStainAndWorkProgressAndRecordResult
+    private void testVisiumQC(Integer permOpId) throws Exception {
+        final String resultOpName = "Slide processing";
+        entityCreator.createOpType(resultOpName, null, OperationTypeFlag.RESULT, OperationTypeFlag.IN_PLACE);
+        Object data = tester.post(tester.readResource("graphql/visiumqc.graphql"));
+        Integer opId = chainGet(data, "data", "recordVisiumQC", "operations", 0, "id");
+        assertEquals(resultOpName, chainGet(data, "data", "recordVisiumQC", "operations", 0, "operationType", "name"));
+        var resultOps = resultOpRepo.findAllByOperationIdIn(List.of(opId));
+        assertThat(resultOps).hasSize(1);
+        ResultOp ro = resultOps.get(0);
+        assertEquals(PassFail.pass, ro.getResult());
+        assertEquals(permOpId, ro.getRefersToOpId());
     }
 
     @Transactional

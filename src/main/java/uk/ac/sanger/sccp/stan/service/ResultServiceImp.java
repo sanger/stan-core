@@ -40,23 +40,45 @@ public class ResultServiceImp extends BaseResultService implements ResultService
     }
 
     @Override
-    public OperationResult recordStainResult(User user, ResultRequest request) {
+    public OperationResult recordStainQC(User user, ResultRequest request) {
+        if (request!=null && request.getOperationType()==null) {
+            request.setOperationType("Record result");
+        }
+        return recordResultForOperation(user, request, "Stain");
+    }
+
+    @Override
+    public OperationResult recordVisiumQC(User user, ResultRequest request) {
+        return recordResultForOperation(user, request, "Visium permabilisation");
+    }
+
+    public OperationResult recordResultForOperation(User user, ResultRequest request, String refersToOpName) {
         Set<String> problems = new LinkedHashSet<>();
         if (user==null) {
             problems.add("No user specified.");
         }
-        OperationType opType = loadOpType(problems, "Record result");
+        OperationType opType;
+        if (request.getOperationType()==null) {
+            opType = null;
+            problems.add("No operation type specified.");
+        } else {
+            opType = loadOpType(problems, request.getOperationType());
+        }
+        OperationType refersToOpType = loadOpType(problems, refersToOpName);
+        if (opType != null && (!opType.inPlace() || !opType.has(OperationTypeFlag.RESULT))) {
+            problems.add("The operation type "+opType.getName()+" cannot be used in this operation.");
+        }
         UCMap<Labware> labware = validateLabware(problems, request.getLabwareResults());
         validateLabwareContents(problems, labware, request.getLabwareResults());
         Map<Integer, Comment> commentMap = validateComments(problems, request.getLabwareResults());
         Work work = workService.validateUsableWork(problems, request.getWorkNumber());
-        Map<Integer, Integer> latestStains = lookUpStains(problems, labware.values());
+        Map<Integer, Integer> referredOpIds = lookUpPrecedingOps(problems, refersToOpType, labware.values());
 
         if (!problems.isEmpty()) {
             throw new ValidationException("The result request could not be validated.", problems);
         }
 
-        return createResults(user, opType, request.getLabwareResults(), labware, latestStains, commentMap, work);
+        return createResults(user, opType, request.getLabwareResults(), labware, referredOpIds, commentMap, work);
     }
 
     /**
@@ -107,7 +129,7 @@ public class ResultServiceImp extends BaseResultService implements ResultService
      * @param problems receptacle for problems
      * @param lw the labware of this result
      * @param slotIds the accumulated set of slot ids for this labware
-     * @param sr the sample result to validate
+     * @param sr the sample result to validate`
      */
     public void validateSampleResult(Collection<String> problems, Labware lw, Set<Integer> slotIds, SampleResult sr) {
         if (sr.getResult()==null) {
@@ -166,17 +188,18 @@ public class ResultServiceImp extends BaseResultService implements ResultService
     }
 
     /**
-     * Gets the latest stain on each of the given labware
+     * Gets the latest op of the given op type on the given labware
      * @param problems receptacle for problems
-     * @param labware the labware to look up stains for
-     * @return a map of labware id to the stain operation id
+     * @param opType the type of op to look up
+     * @param labware the labware to look up ops for
+     * @return a map of labware id to the operation id
      */
-    public Map<Integer, Integer> lookUpStains(Collection<String> problems, Collection<Labware> labware) {
-        OperationType stainOpType = loadOpType(problems, "Stain");
-        if (stainOpType==null || labware.isEmpty()) {
+    public Map<Integer, Integer> lookUpPrecedingOps(Collection<String> problems, OperationType opType,
+                                                    Collection<Labware> labware) {
+        if (opType==null || labware.isEmpty()) {
             return Map.of();
         }
-        return lookUpLatestOpIds(problems, stainOpType, labware);
+        return lookUpLatestOpIds(problems, opType, labware);
     }
 
     /**
@@ -185,13 +208,13 @@ public class ResultServiceImp extends BaseResultService implements ResultService
      * @param opType the result operation type
      * @param lrs the list of labware results to record
      * @param labware the map of barcode to labware
-     * @param latestStain the map from labware id to previously recorded stain op id
+     * @param referredToOpIds the map from labware id to previously recorded op id
      * @param commentMap comments mapped from their ids
      * @param work the work to link the operations to (optional)
      * @return the new operations and labware
      */
     public OperationResult createResults(User user, OperationType opType, Collection<LabwareResult> lrs,
-                                         UCMap<Labware> labware, Map<Integer, Integer> latestStain,
+                                         UCMap<Labware> labware, Map<Integer, Integer> referredToOpIds,
                                          Map<Integer, Comment> commentMap, Work work) {
         List<Operation> ops = new ArrayList<>(lrs.size());
         List<ResultOp> resultOps = new ArrayList<>();
@@ -203,7 +226,7 @@ public class ResultServiceImp extends BaseResultService implements ResultService
             Operation op = opService.createOperationInPlace(opType, user, lw, null, null);
             for (SampleResult sr : lr.getSampleResults()) {
                 Slot slot = lw.getSlot(sr.getAddress());
-                Integer refersToOpId = latestStain.get(lw.getId());
+                Integer refersToOpId = referredToOpIds.get(lw.getId());
                 Comment comment = (sr.getCommentId()!=null ? commentMap.get(sr.getCommentId()) : null);
                 for (Sample sample : slot.getSamples()) {
                     ResultOp resOp = new ResultOp(null, sr.getResult(), op.getId(), sample.getId(), slot.getId(), refersToOpId);
