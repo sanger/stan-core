@@ -57,6 +57,39 @@ public class TestResultService {
                 mockOpService, mockWorkService, mockCommentValidationService));
     }
 
+    @Test
+    public void testRecordStainQC() {
+        User user = EntityFactory.getUser();
+        ResultRequest request = new ResultRequest();
+        request.setWorkNumber("SGP50");
+        request.setLabwareResults(List.of());
+
+        OperationResult opRes = new OperationResult();
+        doReturn(opRes).when(service).recordResultForOperation(any(), any(), any());
+
+        assertSame(opRes, service.recordStainQC(user, request));
+        verify(service).recordResultForOperation(same(user), same(request), eq("Stain"));
+        assertEquals("Record result", request.getOperationType());
+    }
+
+
+    @Test
+    public void testRecordVisiumQC() {
+        User user = EntityFactory.getUser();
+        ResultRequest request = new ResultRequest();
+        request.setWorkNumber("SGP50");
+        request.setLabwareResults(List.of());
+        final String resultOpName = "Slide processing";
+        request.setOperationType(resultOpName);
+
+        OperationResult opRes = new OperationResult();
+        doReturn(opRes).when(service).recordResultForOperation(any(), any(), any());
+
+        assertSame(opRes, service.recordVisiumQC(user, request));
+        verify(service).recordResultForOperation(same(user), same(request), eq("Visium permabilisation"));
+        assertEquals(resultOpName, request.getOperationType());
+    }
+
     @ParameterizedTest
     @ValueSource(booleans={false,true})
     void testRecordResultForOperation(boolean valid) {

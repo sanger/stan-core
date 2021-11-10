@@ -1,0 +1,19 @@
+mutation {
+    recordVisiumQC(request: {
+        operationType: "Slide processing"
+        labwareResults: [
+            {
+                barcode: "STAN-50"
+                sampleResults: [{
+                    address: "A1"
+                    result: pass
+                }]
+            }
+        ]
+    }) {
+        operations {
+            id
+            operationType { name }
+        }
+    }
+}

@@ -155,6 +155,7 @@ public class GraphQLProvider {
                         .dataFetcher("recordPerm", transact(graphQLMutation.recordPerm()))
                         .dataFetcher("visiumAnalysis", transact(graphQLMutation.visiumAnalysis()))
                         .dataFetcher("recordRNAAnalysis", transact(graphQLMutation.recordRNAAnalysis()))
+                        .dataFetcher("recordVisiumQC", transact(graphQLMutation.recordVisiumQC()))
 
                         .dataFetcher("addUser", transact(graphQLMutation.addUser()))
                         .dataFetcher("setUserRole", transact(graphQLMutation.setUserRole()))

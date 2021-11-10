@@ -514,6 +514,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
         };
     }
 
+    public DataFetcher<OperationResult> recordVisiumQC() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            ResultRequest request = arg(dfe, "request", ResultRequest.class);
+            logRequest("Record visium QC", user, request);
+            return resultService.recordVisiumQC(user, request);
+        };
+    }
+
     public DataFetcher<User> addUser() {
         return adminAdd(userAdminService::addUser, "AddUser", "username");
     }

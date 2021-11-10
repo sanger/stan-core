@@ -765,6 +765,7 @@ type Mutation {
     recordPerm(request: RecordPermRequest!): OperationResult!
     visiumAnalysis(request: VisiumAnalysisRequest!): OperationResult!
     recordRNAAnalysis(request: RNAAnalysisRequest!): OperationResult!
+    recordVisiumQC(request: ResultRequest!): OperationResult!
 
     addUser(username: String!): User!
     setUserRole(username: String!, role: UserRole!): User!
