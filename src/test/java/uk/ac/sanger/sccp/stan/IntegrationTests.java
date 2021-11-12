@@ -1256,7 +1256,8 @@ public class IntegrationTests {
 
         Integer permOpId = testPerm();
         testVisiumAnalysis();
-        testVisiumQC(permOpId);
+        Integer qcOpId = testVisiumQC(permOpId);
+        testQueryVisiumQCResult(qcOpId);
     }
 
     // called by testStainAndWorkProgressAndRecordResult
@@ -1298,7 +1299,7 @@ public class IntegrationTests {
     }
 
     // called by testStainAndWorkProgressAndRecordResult
-    private void testVisiumQC(Integer permOpId) throws Exception {
+    private Integer testVisiumQC(Integer permOpId) throws Exception {
         final String resultOpName = "Slide processing";
         entityCreator.createOpType(resultOpName, null, OperationTypeFlag.RESULT, OperationTypeFlag.IN_PLACE);
         Object data = tester.post(tester.readResource("graphql/visiumqc.graphql"));
@@ -1309,6 +1310,24 @@ public class IntegrationTests {
         ResultOp ro = resultOps.get(0);
         assertEquals(PassFail.pass, ro.getResult());
         assertEquals(permOpId, ro.getRefersToOpId());
+        return opId;
+    }
+
+    // called by testStainAndWorkProgressAndRecordResult
+    private void testQueryVisiumQCResult(Integer qcOpId) throws Exception {
+        Object data = tester.post(tester.readResource("graphql/passfails.graphql"));
+
+        List<Map<String,?>> opfs = chainGet(data, "data", "passFails");
+        assertThat(opfs).hasSize(1);
+        Map<String, ?> opf = opfs.get(0);
+        assertEquals(qcOpId, chainGet(opf, "operation", "id"));
+        //noinspection unchecked
+        List<Map<String,?>> spfs = (List<Map<String, ?>>) opf.get("slotPassFails");
+        assertThat(spfs).hasSize(1);
+        Map<String, ?> spf = spfs.get(0);
+        assertEquals("A1", spf.get("address"));
+        assertEquals("pass", spf.get("result"));
+        assertNull(spf.get("comment"));
     }
 
     @Transactional

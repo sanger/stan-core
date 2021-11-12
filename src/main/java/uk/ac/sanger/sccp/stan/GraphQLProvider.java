@@ -93,6 +93,7 @@ public class GraphQLProvider {
                         .dataFetcher("stainTypes", graphQLDataFetchers.getEnabledStainTypes())
                         .dataFetcher("visiumPermData", graphQLDataFetchers.getVisiumPermData())
                         .dataFetcher("extractResult", graphQLDataFetchers.getExtractResult())
+                        .dataFetcher("passFails", graphQLDataFetchers.getPassFails())
 
                         .dataFetcher("users", graphQLDataFetchers.getUsers())
                         .dataFetcher("planData", graphQLDataFetchers.getPlanData())

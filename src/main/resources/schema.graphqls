@@ -637,6 +637,18 @@ input VisiumAnalysisRequest {
     selectedAddress: Address!
     selectedTime: Int!
 }
+
+type SlotPassFail {
+    address: Address!
+    result: PassFail!
+    comment: String
+}
+
+type OpPassFail {
+    operation: Operation!
+    slotPassFails: [SlotPassFail!]!
+}
+
 type ExtractResult {
     labware: Labware!
     result: PassFail
@@ -688,6 +700,7 @@ type Query {
     stainTypes: [StainType!]!
     visiumPermData(barcode: String!): VisiumPermData!
     extractResult(barcode: String!): ExtractResult!
+    passFails(barcode: String!, operationType: String!): [OpPassFail!]!
 
     historyForSampleId(sampleId: Int!): History!
     historyForExternalName(externalName: String!): History!
