@@ -151,6 +151,7 @@ public class GraphQLProvider {
                         .dataFetcher("unrelease", transact(graphQLMutation.unrelease()))
                         .dataFetcher("recordStainResult", transact(graphQLMutation.recordStainResult()))
                         .dataFetcher("recordExtractResult", transact(graphQLMutation.recordExtractResult()))
+                        .dataFetcher("recordPerm", transact(graphQLMutation.recordPerm()))
                         .dataFetcher("recordRNAAnalysis", transact(graphQLMutation.recordRNAAnalysis()))
 
                         .dataFetcher("addUser", transact(graphQLMutation.addUser()))

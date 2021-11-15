@@ -21,6 +21,11 @@ enum PassFail {
     fail
 }
 
+enum ControlType {
+    positive
+    negative
+}
+
 type User {
     username: String!
     role: UserRole!
@@ -601,6 +606,18 @@ input ExtractResultRequest {
     workNumber: String
 }
 
+input PermData {
+    address: Address!
+    seconds: Int
+    controlType: ControlType
+}
+
+input RecordPermRequest {
+    barcode: String!
+    workNumber: String
+    permData: [PermData!]!
+}
+
 type ExtractResult {
     labware: Labware!
     result: PassFail
@@ -708,6 +725,7 @@ type Mutation {
     unrelease(request: UnreleaseRequest!): OperationResult!
     recordStainResult(request: ResultRequest!): OperationResult!
     recordExtractResult(request: ExtractResultRequest!): OperationResult!
+    recordPerm(request: RecordPermRequest!): OperationResult!
     recordRNAAnalysis(request: RNAAnalysisRequest!): OperationResult!
 
     addUser(username: String!): User!

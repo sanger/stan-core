@@ -72,6 +72,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final UnreleaseService unreleaseService;
     final ResultService resultService;
     final ExtractResultService extractResultService;
+    final PermService permService;
     final RNAAnalysisService rnaAnalysisService;
     final UserAdminService userAdminService;
 
@@ -90,7 +91,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            ProjectService projectService, CostCodeService costCodeService, FixativeService fixativeService,
                            WorkTypeService workTypeService, WorkService workService, StainService stainService,
                            UnreleaseService unreleaseService, ResultService resultService, ExtractResultService extractResultService,
-                           RNAAnalysisService rnaAnalysisService, UserAdminService userAdminService) {
+                           PermService permService, RNAAnalysisService rnaAnalysisService, UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
@@ -121,6 +122,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.unreleaseService = unreleaseService;
         this.resultService = resultService;
         this.extractResultService = extractResultService;
+        this.permService = permService;
         this.rnaAnalysisService = rnaAnalysisService;
         this.userAdminService = userAdminService;
     }
@@ -479,6 +481,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             ExtractResultRequest request = arg(dfe, "request", ExtractResultRequest.class);
             logRequest("Record extract result", user, request);
             return extractResultService.recordExtractResult(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> recordPerm() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            RecordPermRequest request = arg(dfe, "request", RecordPermRequest.class);
+            logRequest("Record perm", user, request);
+            return permService.recordPerm(user, request);
         };
     }
 

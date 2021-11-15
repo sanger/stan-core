@@ -9,6 +9,7 @@ public enum MeasurementType {
     Eosin(MeasurementValueType.TIME),
     Blueing(MeasurementValueType.TIME),
     Concentration(MeasurementValueType.DECIMAL_2),
+    Permabilisation_time(MeasurementValueType.TIME),
     ;
 
     private final MeasurementValueType valueType;
@@ -23,6 +24,7 @@ public enum MeasurementType {
 
     public static MeasurementType forName(String name) {
         if (name!=null) {
+            name = name.replace(' ','_');
             for (MeasurementType mt : values()) {
                 if (mt.name().equalsIgnoreCase(name)) {
                     return mt;

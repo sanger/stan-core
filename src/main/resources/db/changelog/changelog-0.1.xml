@@ -740,7 +740,7 @@
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
             </column>
-            <column name="name" type="VARCHAR(16)">
+            <column name="name" type="VARCHAR(32)">
                 <constraints nullable="false"/>
             </column>
             <column name="value" type="VARCHAR(16)">
@@ -762,6 +762,9 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
+        <createIndex tableName="measurement" indexName="ix_measurement_name">
+            <column name="name"/>
+        </createIndex>
     </changeSet>
 
     <changeSet id="301" author="dr6">
