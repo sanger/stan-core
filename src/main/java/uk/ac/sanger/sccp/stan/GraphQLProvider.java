@@ -91,6 +91,7 @@ public class GraphQLProvider {
                         .dataFetcher("work", graphQLDataFetchers.getWork())
                         .dataFetcher("worksWithComments", graphQLDataFetchers.getWorksWithComments())
                         .dataFetcher("stainTypes", graphQLDataFetchers.getEnabledStainTypes())
+                        .dataFetcher("visiumPermData", graphQLDataFetchers.getVisiumPermData())
                         .dataFetcher("extractResult", graphQLDataFetchers.getExtractResult())
 
                         .dataFetcher("users", graphQLDataFetchers.getUsers())
@@ -152,6 +153,7 @@ public class GraphQLProvider {
                         .dataFetcher("recordStainResult", transact(graphQLMutation.recordStainResult()))
                         .dataFetcher("recordExtractResult", transact(graphQLMutation.recordExtractResult()))
                         .dataFetcher("recordPerm", transact(graphQLMutation.recordPerm()))
+                        .dataFetcher("visiumAnalysis", transact(graphQLMutation.visiumAnalysis()))
                         .dataFetcher("recordRNAAnalysis", transact(graphQLMutation.recordRNAAnalysis()))
 
                         .dataFetcher("addUser", transact(graphQLMutation.addUser()))

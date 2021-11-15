@@ -10,6 +10,7 @@ public enum MeasurementType {
     Blueing(MeasurementValueType.TIME),
     Concentration(MeasurementValueType.DECIMAL_2),
     Permabilisation_time(MeasurementValueType.TIME),
+    Selected_time(MeasurementValueType.TIME),
     ;
 
     private final MeasurementValueType valueType;

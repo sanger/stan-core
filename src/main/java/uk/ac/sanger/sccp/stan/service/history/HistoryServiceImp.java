@@ -242,9 +242,18 @@ public class HistoryServiceImp implements HistoryService {
         seconds %= 60;
         int hours = minutes/60;
         if (hours==0) {
-            return minutes+" min "+seconds+" sec";
+            if (seconds==0) {
+                return minutes + " min";
+            }
+            return minutes + " min " + seconds + " sec";
         }
         minutes %= 60;
+        if (minutes==0 && seconds==0) {
+            return hours + " hour";
+        }
+        if (seconds==0) {
+            return hours + " hour " + minutes + " min";
+        }
         return String.format("%d hour %d min %d sec", hours, minutes, seconds);
     }
 

@@ -91,7 +91,7 @@ public interface WorkService {
     /**
      * Validates the specified work as usable.
      * If the work doesn't exist or cannot be used, adds a problem to the given problems receptacle.
-     * Returns null if the given string is null.
+     * Just returns null if the given string is null.
      * @param problems a receptacle for any problems found
      * @param workNumber the string representing an existing work number
      * @return the active work corresponding to the given string

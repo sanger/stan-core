@@ -618,6 +618,25 @@ input RecordPermRequest {
     permData: [PermData!]!
 }
 
+
+type AddressPermData {
+    address: Address!
+    seconds: Int
+    controlType: ControlType
+    selected: Boolean!
+}
+
+type VisiumPermData {
+    labware: Labware!
+    addressPermData: [AddressPermData!]!
+}
+
+input VisiumAnalysisRequest {
+    barcode: String!
+    workNumber: String
+    selectedAddress: Address!
+    selectedTime: Int!
+}
 type ExtractResult {
     labware: Labware!
     result: PassFail
@@ -667,6 +686,7 @@ type Query {
     find(request: FindRequest!): FindResult!
     planData(barcode: String!): PlanData!
     stainTypes: [StainType!]!
+    visiumPermData(barcode: String!): VisiumPermData!
     extractResult(barcode: String!): ExtractResult!
 
     historyForSampleId(sampleId: Int!): History!
@@ -726,6 +746,7 @@ type Mutation {
     recordStainResult(request: ResultRequest!): OperationResult!
     recordExtractResult(request: ExtractResultRequest!): OperationResult!
     recordPerm(request: RecordPermRequest!): OperationResult!
+    visiumAnalysis(request: VisiumAnalysisRequest!): OperationResult!
     recordRNAAnalysis(request: RNAAnalysisRequest!): OperationResult!
 
     addUser(username: String!): User!

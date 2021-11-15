@@ -1,0 +1,12 @@
+mutation {
+    visiumAnalysis(request: {
+        barcode: "STAN-50"
+        selectedAddress: "A1"
+        selectedTime: 120
+    }) {
+        operations {
+            id
+            operationType { name }
+        }
+    }
+}
