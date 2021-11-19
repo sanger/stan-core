@@ -62,7 +62,8 @@ public class CommentAdminService {
             throw new EntityExistsException(String.format("Comment already exists: (category=%s, text=%s)",
                     repr(category), repr(text)));
         }
-        return commentRepo.save(new Comment(null, text, category.toLowerCase()));
+
+        return commentRepo.save(new Comment(null, text, category));
     }
 
     /**
