@@ -1254,12 +1254,14 @@ public class IntegrationTests {
         assertEquals(opId, result.getRefersToOpId());
         assertEquals(lw.getFirstSlot().getId(), result.getSlotId());
 
-        testPerm();
+        Integer permOpId = testPerm();
         testVisiumAnalysis();
+        Integer qcOpId = testVisiumQC(permOpId);
+        testQueryVisiumQCResult(qcOpId);
     }
 
     // called by testStainAndWorkProgressAndRecordResult
-    private void testPerm() throws Exception {
+    private Integer testPerm() throws Exception {
         entityCreator.createOpType("Visium permabilisation", null, OperationTypeFlag.IN_PLACE);
         Object data = tester.post(tester.readResource("graphql/perm.graphql"));
         Integer opId = chainGet(data, "data", "recordPerm", "operations", 0, "id");
@@ -1268,6 +1270,7 @@ public class IntegrationTests {
         Measurement meas = measurements.get(0);
         assertEquals("permabilisation time", meas.getName());
         assertEquals("120", meas.getValue());
+        return opId;
     }
 
     // called by testStainAndWorkProgressAndRecordResult
@@ -1293,6 +1296,38 @@ public class IntegrationTests {
         assertEquals(120, permData.get("seconds"));
         assertNull(permData.get("controlType"));
         assertEquals(true, permData.get("selected"));
+    }
+
+    // called by testStainAndWorkProgressAndRecordResult
+    private Integer testVisiumQC(Integer permOpId) throws Exception {
+        final String resultOpName = "Slide processing";
+        entityCreator.createOpType(resultOpName, null, OperationTypeFlag.RESULT, OperationTypeFlag.IN_PLACE);
+        Object data = tester.post(tester.readResource("graphql/visiumqc.graphql"));
+        Integer opId = chainGet(data, "data", "recordVisiumQC", "operations", 0, "id");
+        assertEquals(resultOpName, chainGet(data, "data", "recordVisiumQC", "operations", 0, "operationType", "name"));
+        var resultOps = resultOpRepo.findAllByOperationIdIn(List.of(opId));
+        assertThat(resultOps).hasSize(1);
+        ResultOp ro = resultOps.get(0);
+        assertEquals(PassFail.pass, ro.getResult());
+        assertEquals(permOpId, ro.getRefersToOpId());
+        return opId;
+    }
+
+    // called by testStainAndWorkProgressAndRecordResult
+    private void testQueryVisiumQCResult(Integer qcOpId) throws Exception {
+        Object data = tester.post(tester.readResource("graphql/passfails.graphql"));
+
+        List<Map<String,?>> opfs = chainGet(data, "data", "passFails");
+        assertThat(opfs).hasSize(1);
+        Map<String, ?> opf = opfs.get(0);
+        assertEquals(qcOpId, chainGet(opf, "operation", "id"));
+        //noinspection unchecked
+        List<Map<String,?>> spfs = (List<Map<String, ?>>) opf.get("slotPassFails");
+        assertThat(spfs).hasSize(1);
+        Map<String, ?> spf = spfs.get(0);
+        assertEquals("A1", spf.get("address"));
+        assertEquals("pass", spf.get("result"));
+        assertNull(spf.get("comment"));
     }
 
     @Transactional

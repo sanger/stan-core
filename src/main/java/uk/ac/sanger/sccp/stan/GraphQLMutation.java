@@ -474,7 +474,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
             User user = checkUser(dfe, User.Role.normal);
             ResultRequest request = arg(dfe, "request", ResultRequest.class);
             logRequest("Record stain result", user, request);
-            return resultService.recordStainResult(user, request);
+            return resultService.recordStainQC(user, request);
         };
     }
 
@@ -511,6 +511,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             RNAAnalysisRequest request = arg(dfe, "request", RNAAnalysisRequest.class);
             logRequest("Record RNA analysis", user, request);
             return rnaAnalysisService.perform(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> recordVisiumQC() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            ResultRequest request = arg(dfe, "request", ResultRequest.class);
+            logRequest("Record visium QC", user, request);
+            return resultService.recordVisiumQC(user, request);
         };
     }
 

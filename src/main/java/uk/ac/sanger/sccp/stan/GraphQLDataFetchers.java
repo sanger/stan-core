@@ -57,6 +57,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final PlanService planService;
     final StainService stainService;
     final ExtractResultQueryService extractResultQueryService;
+    final PassFailQueryService passFailQueryService;
     final WorkService workService;
     final VisiumPermDataService visiumPermDataService;
 
@@ -73,6 +74,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                CommentAdminService commentAdminService, EquipmentAdminService equipmentAdminService,
                                HistoryService historyService, WorkProgressService workProgressService, PlanService planService,
                                StainService stainService, ExtractResultQueryService extractResultQueryService,
+                               PassFailQueryService passFailQueryService,
                                WorkService workService, VisiumPermDataService visiumPermDataService) {
         super(objectMapper, authComp, userRepo);
         this.sessionConfig = sessionConfig;
@@ -100,6 +102,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.planService = planService;
         this.stainService = stainService;
         this.extractResultQueryService = extractResultQueryService;
+        this.passFailQueryService = passFailQueryService;
         this.workService = workService;
         this.visiumPermDataService = visiumPermDataService;
     }
@@ -286,6 +289,14 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
 
     public DataFetcher<ExtractResult> getExtractResult() {
         return dfe -> extractResultQueryService.getExtractResult(dfe.getArgument("barcode"));
+    }
+
+    public DataFetcher<List<OpPassFail>> getPassFails() {
+        return dfe -> {
+            String barcode = dfe.getArgument("barcode");
+            String opName = dfe.getArgument("operationType");
+            return passFailQueryService.getPassFails(barcode, opName);
+        };
     }
 
     private boolean argOrFalse(DataFetchingEnvironment dfe, String argName) {

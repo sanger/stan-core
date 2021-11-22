@@ -1,0 +1,10 @@
+query {
+    passFails(barcode: "STAN-50", operationType: "Slide processing") {
+        operation { id }
+        slotPassFails {
+            address
+            result
+            comment
+        }
+    }
+}
