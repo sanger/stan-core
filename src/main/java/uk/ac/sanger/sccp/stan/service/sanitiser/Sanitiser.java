@@ -1,4 +1,4 @@
-package uk.ac.sanger.sccp.stan.service;
+package uk.ac.sanger.sccp.stan.service.sanitiser;
 
 import java.util.Collection;
 

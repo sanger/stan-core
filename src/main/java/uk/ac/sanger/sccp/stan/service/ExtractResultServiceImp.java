@@ -7,6 +7,7 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.ExtractResultRequest;
 import uk.ac.sanger.sccp.stan.request.ExtractResultRequest.ExtractResultLabware;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
+import uk.ac.sanger.sccp.stan.service.sanitiser.Sanitiser;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.UCMap;

@@ -1,0 +1,19 @@
+mutation {
+    recordOpWithSlotMeasurements(request: {
+        barcode: "STAN-A"
+        operationType: "OP-TYPE"
+        workNumber: "WORK-NUM"
+        slotMeasurements: [
+            {
+                address: "A1"
+                name: "MEAS-NAME"
+                value: "MEAS-VALUE"
+            }
+        ]
+    }) {
+        operations {
+            id
+            operationType { name }
+        }
+    }
+}

@@ -3,8 +3,8 @@ package uk.ac.sanger.sccp.stan.service.analysis;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
-import uk.ac.sanger.sccp.stan.service.Sanitiser;
 import uk.ac.sanger.sccp.stan.service.analysis.AnalysisMeasurementValidator.AnalysisType;
+import uk.ac.sanger.sccp.stan.service.sanitiser.Sanitiser;
 
 import java.util.*;
 

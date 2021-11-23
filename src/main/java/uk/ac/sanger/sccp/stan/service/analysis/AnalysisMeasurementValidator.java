@@ -1,7 +1,7 @@
 package uk.ac.sanger.sccp.stan.service.analysis;
 
 import uk.ac.sanger.sccp.stan.request.StringMeasurement;
-import uk.ac.sanger.sccp.stan.service.Sanitiser;
+import uk.ac.sanger.sccp.stan.service.sanitiser.Sanitiser;
 
 import java.util.*;
 

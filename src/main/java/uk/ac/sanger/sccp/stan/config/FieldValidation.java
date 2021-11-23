@@ -2,8 +2,10 @@ package uk.ac.sanger.sccp.stan.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import uk.ac.sanger.sccp.stan.service.*;
+import uk.ac.sanger.sccp.stan.service.StringValidator;
 import uk.ac.sanger.sccp.stan.service.StringValidator.CharacterType;
+import uk.ac.sanger.sccp.stan.service.Validator;
+import uk.ac.sanger.sccp.stan.service.sanitiser.*;
 
 import java.math.BigDecimal;
 import java.util.EnumSet;
@@ -176,5 +178,10 @@ public class FieldValidation {
     @Bean
     public Sanitiser<String> dv200Sanitiser() {
         return new DecimalSanitiser("DV200", 1, BigDecimal.ZERO, new BigDecimal(100));
+    }
+
+    @Bean
+    public Sanitiser<String> cqSanitiser() {
+        return new IntSanitiser("Cq value", null, null);
     }
 }

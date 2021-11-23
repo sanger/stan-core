@@ -4,8 +4,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import uk.ac.sanger.sccp.stan.request.StringMeasurement;
-import uk.ac.sanger.sccp.stan.service.Sanitiser;
 import uk.ac.sanger.sccp.stan.service.analysis.AnalysisMeasurementValidator.AnalysisType;
+import uk.ac.sanger.sccp.stan.service.sanitiser.Sanitiser;
 
 import java.util.*;
 

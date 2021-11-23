@@ -672,6 +672,19 @@ input RNAAnalysisRequest {
     labware: [RNAAnalysisLabware!]!
 }
 
+input SlotMeasurementRequest {
+    address: Address!
+    name: String!
+    value: String!
+}
+
+input OpWithSlotMeasurementsRequest {
+    barcode: String!
+    operationType: String!
+    workNumber: String
+    slotMeasurements: [SlotMeasurementRequest!]!
+}
+
 type Query {
     user: User
     tissueTypes: [TissueType!]!
@@ -762,6 +775,7 @@ type Mutation {
     visiumAnalysis(request: VisiumAnalysisRequest!): OperationResult!
     recordRNAAnalysis(request: RNAAnalysisRequest!): OperationResult!
     recordVisiumQC(request: ResultRequest!): OperationResult!
+    recordOpWithSlotMeasurements(request: OpWithSlotMeasurementsRequest!): OperationResult!
 
     addUser(username: String!): User!
     setUserRole(username: String!, role: UserRole!): User!
