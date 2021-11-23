@@ -136,6 +136,7 @@ public class TestExtractResultService {
         assertThat(lwMap.values()).containsExactlyInAnyOrder(lw1, lw2);
         assertThat(problems).containsExactly(lwError);
         verify(val).loadLabware(mockLwRepo, List.of(lw1.getBarcode(), lw2.getBarcode()));
+        verify(val).validateSources();
     }
 
     @Test

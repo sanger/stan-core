@@ -44,13 +44,16 @@ public abstract class BaseResultService {
 
     /**
      * Loads the labware indicated by the given barcodes, using {@link LabwareValidator}.
+     * Validates that the labware are unique, in a usable state, and nonempty.
      * @param problems receptacle for problems
      * @param barcodes the barcodes to load
      * @return the labware found, mapped from their barcodes
      */
     public UCMap<Labware> loadLabware(Collection<String> problems, Collection<String> barcodes) {
         LabwareValidator validator = labwareValidatorFactory.getValidator();
+        validator.setUniqueRequired(true);
         validator.loadLabware(lwRepo, barcodes);
+        validator.validateSources();
         problems.addAll(validator.getErrors());
         return UCMap.from(validator.getLabware(), Labware::getBarcode);
     }
