@@ -75,6 +75,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final PermService permService;
     final VisiumAnalysisService visiumAnalysisService;
     final RNAAnalysisService rnaAnalysisService;
+    final OpWithSlotMeasurementsService opWithSlotMeasurementsService;
     final UserAdminService userAdminService;
 
     @Autowired
@@ -93,7 +94,8 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            WorkTypeService workTypeService, WorkService workService, StainService stainService,
                            UnreleaseService unreleaseService, ResultService resultService, ExtractResultService extractResultService,
                            PermService permService, RNAAnalysisService rnaAnalysisService,
-                           VisiumAnalysisService visiumAnalysisService, UserAdminService userAdminService) {
+                           VisiumAnalysisService visiumAnalysisService, OpWithSlotMeasurementsService opWithSlotMeasurementsService,
+                           UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
@@ -127,6 +129,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.permService = permService;
         this.visiumAnalysisService = visiumAnalysisService;
         this.rnaAnalysisService = rnaAnalysisService;
+        this.opWithSlotMeasurementsService = opWithSlotMeasurementsService;
         this.userAdminService = userAdminService;
     }
 
@@ -520,6 +523,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             ResultRequest request = arg(dfe, "request", ResultRequest.class);
             logRequest("Record visium QC", user, request);
             return resultService.recordVisiumQC(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> recordOpWithSlotMeasurements() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            OpWithSlotMeasurementsRequest request = arg(dfe, "request", OpWithSlotMeasurementsRequest.class);
+            logRequest("Record op with slot measurements", user, request);
+            return opWithSlotMeasurementsService.perform(user, request);
         };
     }
 

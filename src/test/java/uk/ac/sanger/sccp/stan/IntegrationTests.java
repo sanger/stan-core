@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.json.JSONObject;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -1328,6 +1330,51 @@ public class IntegrationTests {
         assertEquals("A1", spf.get("address"));
         assertEquals("pass", spf.get("result"));
         assertNull(spf.get("comment"));
+    }
+
+    @Transactional
+    @ParameterizedTest
+    @ValueSource(strings={"cDNA amplification", "cDNA analysis"})
+    public void testRecordOpWithSlotMeasurements(String opName) throws Exception {
+        OperationType opType = entityCreator.createOpType(opName, null, OperationTypeFlag.IN_PLACE);
+        Sample sam = entityCreator.createSample(entityCreator.createTissue(entityCreator.createDonor("DONOR1"), "TISSUE1"), 1);
+        LabwareType lt = entityCreator.createLabwareType("lt1", 1,1);
+        Labware lw = entityCreator.createLabware("STAN-A", lt, sam);
+        Work work = entityCreator.createWork(null, null, null);
+        User user = entityCreator.createUser("user1");
+        String measName, measValue, sanMeasName, sanMeasValue;
+        if (opName.equalsIgnoreCase("cDNA analysis")) {
+            measName = "CONCENTRATION";
+            sanMeasName = "Concentration";
+            measValue = "0123.5";
+            sanMeasValue = "123.50";
+        } else {
+            measName = "CQ VALUE";
+            sanMeasName = "Cq value";
+            measValue = "050";
+            sanMeasValue = "50";
+        }
+        String mutation = tester.readResource("graphql/opwithslotmeasurements.graphql")
+                .replace("OP-TYPE", opType.getName())
+                .replace("WORK-NUM", work.getWorkNumber())
+                .replace("MEAS-NAME", measName)
+                .replace("MEAS-VALUE", measValue);
+
+        tester.setUser(user);
+        Object result = tester.post(mutation);
+        List<?> opsData = chainGet(result, "data", "recordOpWithSlotMeasurements", "operations");
+        assertThat(opsData).hasSize(1);
+        Integer opId = chainGet(opsData, 0, "id");
+        assertNotNull(opId);
+        assertEquals(opName, chainGet(opsData, 0, "operationType", "name"));
+
+        List<Measurement> measurements = measurementRepo.findAllByOperationIdIn(List.of(opId));
+        assertThat(measurements).hasSize(1);
+        Measurement measurement = measurements.get(0);
+        assertEquals(sanMeasName, measurement.getName());
+        assertEquals(sanMeasValue, measurement.getValue());
+        assertEquals(sam.getId(), measurement.getSampleId());
+        assertEquals(lw.getFirstSlot().getId(), measurement.getSlotId());
     }
 
     @Transactional

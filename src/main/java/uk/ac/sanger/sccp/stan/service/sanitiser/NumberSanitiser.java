@@ -1,26 +1,30 @@
-package uk.ac.sanger.sccp.stan.service;
+package uk.ac.sanger.sccp.stan.service.sanitiser;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.Collection;
 
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
+ * Abstract base class for sanitising numerical values with optional lower and upper bounds.
  * @author dr6
  */
-public class DecimalSanitiser implements Sanitiser<String> {
-    private static final int MAX_MEASUREMENT_VALUE_LENGTH = 16;
-    private final String fieldName;
-    private final int numDecimalPoints;
-    private final BigDecimal lowerBound;
-    private final BigDecimal upperBound;
+public abstract class NumberSanitiser<N extends Comparable<N>> implements Sanitiser<String> {
+    public static final int MAX_MEASUREMENT_VALUE_LENGTH = 16;
 
-    public DecimalSanitiser(String fieldName, int numDecimalPoints, BigDecimal lowerBound, BigDecimal upperBound) {
+    private final String fieldName;
+    private final N lowerBound;
+    private final N upperBound;
+
+    public NumberSanitiser(String fieldName, N lowerBound, N upperBound) {
         this.fieldName = fieldName;
-        this.numDecimalPoints = numDecimalPoints;
         this.lowerBound = lowerBound;
         this.upperBound = upperBound;
+    }
+
+    public abstract N parse(String value) throws NumberFormatException, ArithmeticException;
+
+    public String toStringValue(N num) {
+        return num.toString();
     }
 
     @Override
@@ -31,23 +35,26 @@ public class DecimalSanitiser implements Sanitiser<String> {
             }
             return null;
         }
-        BigDecimal bd;
+        N number;
         try {
-            bd = new BigDecimal(value).setScale(numDecimalPoints, RoundingMode.UNNECESSARY);
-        } catch (NumberFormatException | ArithmeticException e) {
+            number = parse(value);
+        } catch (RuntimeException e) {
             if (problems!=null) {
                 problems.add("Invalid value for "+fieldName+": " + repr(value));
             }
             return null;
         }
-        if (lowerBound!=null && bd.compareTo(lowerBound) < 0
-                || upperBound!=null && bd.compareTo(upperBound) > 0) {
+        if (number==null) {
+            return null;
+        }
+        if (lowerBound!=null && number.compareTo(lowerBound) < 0
+                || upperBound!=null && number.compareTo(upperBound) > 0) {
             if (problems!=null) {
                 problems.add("Value outside the expected bounds for "+fieldName+": "+repr(value));
             }
             return null;
         }
-        String sanitisedValue = bd.toString();
+        String sanitisedValue = toStringValue(number);
         if (sanitisedValue.length() > MAX_MEASUREMENT_VALUE_LENGTH) {
             if (problems!=null) {
                 problems.add("Sanitised value too long for "+fieldName + ": "+ repr(sanitisedValue));
