@@ -62,9 +62,13 @@ public class GraphQLTester {
         when(mockAuthComp.getAuthentication()).thenReturn(new UsernamePasswordAuthenticationToken(user, "42"));
     }
 
+    public PrintClientFactory getMockPrintClientFactory() {
+        return this.mockPrintClientFactory;
+    }
+
     @SuppressWarnings("UnstableApiUsage")
-    public String readResource(String path) throws IOException {
-        URL url = Resources.getResource(path);
+    public String readGraphQL(String path) throws IOException {
+        URL url = Resources.getResource("graphql/"+path);
         return Resources.toString(url, Charsets.UTF_8);
     }
 }
