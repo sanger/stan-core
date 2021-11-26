@@ -276,6 +276,25 @@ public class EntityFactory {
         return (List<E>) List.of(obj);
     }
 
+    @SuppressWarnings("unchecked")
+    public static <E> Collection<E> objToCollection(Object obj) {
+        if (obj==null) {
+            return List.of();
+        }
+        if (obj instanceof Collection) {
+            return (Collection<E>) obj;
+        }
+        return (Collection<E>) List.of(obj);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <E> List<E> nullableObjToList(Object obj) {
+        if (obj instanceof List) {
+            return (List<E>) obj;
+        }
+        return (List<E>) Collections.singletonList(obj);
+    }
+
     private static List<Slot> toFirstSlots(Collection<Labware> labware) {
         return labware.stream().map(Labware::getFirstSlot).collect(toList());
     }

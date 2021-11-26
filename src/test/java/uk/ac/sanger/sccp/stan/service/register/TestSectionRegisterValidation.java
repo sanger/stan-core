@@ -22,6 +22,7 @@ import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.stan.EntityFactory.objToCollection;
 import static uk.ac.sanger.sccp.utils.BasicUtils.coalesce;
 
 /**
@@ -730,17 +731,6 @@ public class TestSectionRegisterValidation {
             srls.add(current);
         }
         return new SectionRegisterRequest(srls);
-    }
-
-    @SuppressWarnings("unchecked")
-    private <E> Collection<E> objToCollection(Object obj) {
-        if (obj==null) {
-            return List.of();
-        }
-        if (obj instanceof Collection) {
-            return (Collection<E>) obj;
-        }
-        return List.of((E) obj);
     }
 
     @SuppressWarnings("unchecked")

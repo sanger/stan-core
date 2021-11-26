@@ -23,6 +23,7 @@ import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.stan.EntityFactory.objToList;
 import static uk.ac.sanger.sccp.utils.BasicUtils.coalesce;
 
 /**
@@ -137,7 +138,7 @@ public class TestStainService {
         List<String> problems = new ArrayList<>();
         List<TimeMeasurement> result = service.validateMeasurements(problems, stainType, timeMeasurements);
         assertThat(result).containsExactlyInAnyOrderElementsOf(coalesce(expectedResult, timeMeasurements));
-        List<String> expectedProblems = argToList(expectedProblemArg);
+        List<String> expectedProblems = objToList(expectedProblemArg);
         assertThat(problems).containsExactlyInAnyOrderElementsOf(expectedProblems);
     }
 
@@ -324,14 +325,4 @@ public class TestStainService {
         );
     }
 
-    @SuppressWarnings("unchecked")
-    static <E> List<E> argToList(Object arg) {
-        if (arg==null) {
-            return List.of();
-        }
-        if (arg instanceof List) {
-            return (List<E>) arg;
-        }
-        return (List<E>) List.of(arg);
-    }
 }

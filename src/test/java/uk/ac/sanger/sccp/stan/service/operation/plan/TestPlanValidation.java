@@ -16,11 +16,11 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.stan.EntityFactory.nullableObjToList;
 import static uk.ac.sanger.sccp.stan.Matchers.eqCi;
 
 /**
@@ -137,7 +137,7 @@ public class TestPlanValidation {
     @ParameterizedTest
     @MethodSource("actionsData")
     public void testCheckActions(String barcode, Object planRequestActions, LabwareType labwareType, Object expectedProblems) {
-        final List<PlanRequestAction> placs = objToList(planRequestActions);
+        final List<PlanRequestAction> placs = nullableObjToList(planRequestActions);
         PlanRequestLabware prlw = new PlanRequestLabware(labwareType==null ? null : labwareType.getName(), barcode, placs);
 
         PlanValidationImp validation = makeValidation(new PlanRequest());
@@ -150,7 +150,7 @@ public class TestPlanValidation {
     @MethodSource("destinationData")
     public void testValidateDestinations(Object planRequestLabware,
                                          List<LabwareType> labwareTypes, Object expectedProblems) {
-        PlanRequest request = new PlanRequest("opType", objToList(planRequestLabware));
+        PlanRequest request = new PlanRequest("opType", nullableObjToList(planRequestLabware));
 
         PlanValidationImp validation = makeValidation(request);
         doNothing().when(validation).checkActions(any(), any());
@@ -347,19 +347,11 @@ public class TestPlanValidation {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private static <E> List<E> objToList(Object obj) {
-        if (obj instanceof List) {
-            return (List<E>) obj;
-        }
-        return (List<E>) singletonList(obj);
-    }
-
     private static <E> Stream<E> toStream(Object obj) {
-        return TestPlanValidation.<E>objToList(obj).stream();
+        return EntityFactory.<E>nullableObjToList(obj).stream();
     }
 
     private static <E> Iterator<E> toIterator(Object obj) {
-        return TestPlanValidation.<E>objToList(obj).iterator();
+        return EntityFactory.<E>nullableObjToList(obj).iterator();
     }
 }
