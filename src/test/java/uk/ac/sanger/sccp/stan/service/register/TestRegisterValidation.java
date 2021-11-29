@@ -25,6 +25,7 @@ import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.stan.EntityFactory.objToList;
 
 /**
  * Tests for {@link RegisterValidationImp}
@@ -658,17 +659,6 @@ public class TestRegisterValidation {
                                 "Repeated external identifier: X4",
                                 "There is already tissue in the database with external identifier X2."))
         );
-    }
-
-    @SuppressWarnings("unchecked")
-    private <E> List<E> objToList(Object obj) {
-        if (obj==null) {
-            return List.of();
-        }
-        if (obj instanceof Collection) {
-            return (List<E>) obj;
-        }
-        return List.of((E) obj);
     }
 
     private static class ValidateTissueTestData {

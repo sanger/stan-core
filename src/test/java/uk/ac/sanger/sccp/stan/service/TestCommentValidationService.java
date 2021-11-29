@@ -15,6 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.stan.EntityFactory.objToList;
 
 /**
  * Tests {@link CommentValidationService}
@@ -68,16 +69,5 @@ public class TestCommentValidationService {
                         "Comments not enabled: [(id=2, category=section, text=\"Imploded\"), (id=3, category=section, text=\"Sideways\")]"},
                 {comments.subList(0,2), Arrays.asList(1,2,404,null,404,2,1), List.of(nullError, notEnabledError, "Unknown comment ID: [404]")},
         }).map(Arguments::of);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <E> List<E> objToList(Object obj) {
-        if (obj==null) {
-            return List.of();
-        }
-        if (obj instanceof List) {
-            return (List<E>) obj;
-        }
-        return List.of((E) obj);
     }
 }

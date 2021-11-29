@@ -24,6 +24,7 @@ import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.stan.EntityFactory.objToList;
 
 /**
  * Tests {@link ConfirmSectionValidationServiceImp}
@@ -424,16 +425,5 @@ public class TestConfirmSectionValidationService {
         Map<K, V> c = new HashMap<>(a);
         c.putAll(b);
         return c;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <E> List<E> objToList(Object obj) {
-        if (obj instanceof List) {
-            return (List<E>) obj;
-        }
-        if (obj==null) {
-            return List.of();
-        }
-        return (List<E>) List.of(obj);
     }
 }

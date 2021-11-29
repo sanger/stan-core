@@ -21,6 +21,7 @@ import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.stan.EntityFactory.objToCollection;
 import static uk.ac.sanger.sccp.stan.service.OpWithSlotMeasurementsServiceImp.OP_CDNA_AMP;
 import static uk.ac.sanger.sccp.stan.service.OpWithSlotMeasurementsServiceImp.OP_CDNA_ANALYSIS;
 import static uk.ac.sanger.sccp.utils.BasicUtils.coalesce;
@@ -246,7 +247,7 @@ public class TestOpWithSlotMeasurementsService {
                 {List.of(C3, C4), "Invalid addresses for labware: [C3, C4]"},
                 {Arrays.asList(A1,B2,C3,null),
                  List.of("Missing address for measurement.", "Invalid address for labware: [C3]", "Slot is empty: [B2]")},
-        }).map(arr -> Arguments.of(lw, asCollection(arr[0]), asCollection(arr[1])));
+        }).map(arr -> Arguments.of(lw, objToCollection(arr[0]), objToCollection(arr[1])));
     }
 
     @ParameterizedTest
@@ -327,7 +328,7 @@ public class TestOpWithSlotMeasurementsService {
                     List.of("Unexpected measurements given for operation "+OP_CDNA_AMP+": [Alpha!, Beta!]", "Invalid value: 40!",
                             "Missing name for measurement.", "Missing value for measurement.")
                 },
-        }).map(arr -> Arguments.of(sanSmrMock, arr[0], asCollection(arr[1]), asCollection(arr[2]), asCollection(arr[3])));
+        }).map(arr -> Arguments.of(sanSmrMock, arr[0], objToCollection(arr[1]), objToCollection(arr[2]), objToCollection(arr[3])));
     }
 
     @ParameterizedTest
@@ -383,7 +384,7 @@ public class TestOpWithSlotMeasurementsService {
                     List.of("Missing name for measurement.", "Missing value for measurement."), null},
                 {new SlotMeasurementRequest(A1, "Alpha!", "10!"), opType, "Alpha", false, "10", null, null,
                     new SlotMeasurementRequest(A1, "Alpha", "10")},
-        }).map(arr -> Arguments.of(arr[0], arr[1], arr[2], arr[3], arr[4], arr[5], asCollection(arr[6]), arr[7]));
+        }).map(arr -> Arguments.of(arr[0], arr[1], arr[2], arr[3], arr[4], arr[5], objToCollection(arr[6]), arr[7]));
     }
 
     @ParameterizedTest
@@ -558,13 +559,4 @@ public class TestOpWithSlotMeasurementsService {
         verify(mockMeasRepo).saveAll(ms);
     }
 
-    static Collection<?> asCollection(Object val) {
-        if (val instanceof Collection) {
-            return (Collection<?>) val;
-        }
-        if (val==null) {
-            return List.of();
-        }
-        return List.of(val);
-    }
 }

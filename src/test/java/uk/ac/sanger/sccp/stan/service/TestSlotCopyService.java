@@ -30,6 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.stan.EntityFactory.objToList;
 
 /**
  * Tests {@link SlotCopyServiceImp}
@@ -482,14 +483,4 @@ public class TestSlotCopyService {
         return null;
     }
 
-    @SuppressWarnings("unchecked")
-    private static <E> List<E> objToList(Object obj) {
-        if (obj==null) {
-            return List.of();
-        }
-        if (obj instanceof List) {
-            return (List<E>) obj;
-        }
-        return List.of((E) obj);
-    }
 }
