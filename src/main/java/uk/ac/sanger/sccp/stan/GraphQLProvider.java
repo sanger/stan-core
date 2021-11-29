@@ -158,6 +158,7 @@ public class GraphQLProvider {
                         .dataFetcher("recordRNAAnalysis", transact(graphQLMutation.recordRNAAnalysis()))
                         .dataFetcher("recordVisiumQC", transact(graphQLMutation.recordVisiumQC()))
                         .dataFetcher("recordOpWithSlotMeasurements", transact(graphQLMutation.recordOpWithSlotMeasurements()))
+                        .dataFetcher("recordComplexStain", transact(graphQLMutation.recordComplexStain()))
 
                         .dataFetcher("addUser", transact(graphQLMutation.addUser()))
                         .dataFetcher("setUserRole", transact(graphQLMutation.setUserRole()))

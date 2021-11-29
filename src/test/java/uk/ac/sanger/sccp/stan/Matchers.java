@@ -1,7 +1,9 @@
 package uk.ac.sanger.sccp.stan;
 
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.ArgumentMatcher;
 import org.mockito.stubbing.Answer;
+import uk.ac.sanger.sccp.stan.service.ValidationException;
 
 import java.util.Collection;
 import java.util.List;
@@ -10,6 +12,8 @@ import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
 import static java.util.stream.Collectors.toList;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.argThat;
 import static uk.ac.sanger.sccp.utils.BasicUtils.sameContents;
 
@@ -41,6 +45,20 @@ public class Matchers {
      */
     public static <E, C extends Collection<E>> C sameElements(C collection) {
         return argThat(new OrderInsensitiveCollectionMatcher<>(collection));
+    }
+
+    /**
+     * Asserts that an executable throws a validation exception with the given message and problems.
+     * @param executable the logic to run that should throw the exception
+     * @param exceptionMessage the expected message of the exception
+     * @param problems the expected problems listed in the exception
+     */
+    public static void assertValidationException(final Executable executable, String exceptionMessage,
+                                          String... problems) {
+        ValidationException ex = assertThrows(ValidationException.class, executable);
+        assertThat(ex).hasMessage(exceptionMessage);
+        //noinspection unchecked
+        assertThat((Collection<Object>) ex.getProblems()).containsExactlyInAnyOrder(problems);
     }
 
     public static <T> Answer<T> returnArgument() {

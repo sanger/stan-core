@@ -569,6 +569,26 @@ input StainRequest {
     workNumber: String
 }
 
+enum StainPanel {
+    positive
+    negative
+    marker
+}
+
+input ComplexStainLabware {
+    barcode: String!
+    bondBarcode: String!
+    bondRun: Int!
+    workNumber: String
+}
+
+input ComplexStainRequest {
+    stainType: String!
+    plex: Int!
+    panel: StainPanel!
+    labware: [ComplexStainLabware!]!
+}
+
 input UnreleaseLabware {
     barcode: String!
     highestSection: Int
@@ -776,6 +796,7 @@ type Mutation {
     recordRNAAnalysis(request: RNAAnalysisRequest!): OperationResult!
     recordVisiumQC(request: ResultRequest!): OperationResult!
     recordOpWithSlotMeasurements(request: OpWithSlotMeasurementsRequest!): OperationResult!
+    recordComplexStain(request: ComplexStainRequest!): OperationResult!
 
     addUser(username: String!): User!
     setUserRole(username: String!, role: UserRole!): User!
