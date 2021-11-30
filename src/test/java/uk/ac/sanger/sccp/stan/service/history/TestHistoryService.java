@@ -37,6 +37,7 @@ public class TestHistoryService {
     private SnapshotRepo mockSnapshotRepo;
     private WorkRepo mockWorkRepo;
     private MeasurementRepo mockMeasurementRepo;
+    private LabwareNoteRepo mockLwNoteRepo;
     private ResultOpRepo mockResultOpRepo;
 
     private HistoryServiceImp service;
@@ -58,11 +59,12 @@ public class TestHistoryService {
         mockSnapshotRepo = mock(SnapshotRepo.class);
         mockWorkRepo = mock(WorkRepo.class);
         mockMeasurementRepo = mock(MeasurementRepo.class);
+        mockLwNoteRepo = mock(LabwareNoteRepo.class);
         mockResultOpRepo = mock(ResultOpRepo.class);
 
         service = spy(new HistoryServiceImp(mockOpRepo, mockLwRepo, mockSampleRepo, mockTissueRepo, mockDonorRepo,
                 mockReleaseRepo, mockDestructionRepo, mockOpCommentRepo, mockSnapshotRepo, mockWorkRepo,
-                mockMeasurementRepo, mockResultOpRepo));
+                mockMeasurementRepo, mockLwNoteRepo, mockResultOpRepo));
     }
 
     @Test
@@ -272,6 +274,21 @@ public class TestHistoryService {
     }
 
     @Test
+    public void testLoadOpLabwareNotes() {
+        LabwareNote[] notes = {
+                new LabwareNote(1, 100, 10, "Alpha", "Beta"),
+                new LabwareNote(2, 200, 10, "Gamma", "Delta"),
+                new LabwareNote(3, 200, 20, "Epsilon", "Zeta"),
+        };
+        when(mockLwNoteRepo.findAllByOperationIdIn(any())).then(invocation -> {
+            Collection<Integer> opIds = invocation.getArgument(0);
+            return Arrays.stream(notes).filter(n -> opIds.contains(n.getOperationId())).collect(toList());
+        });
+        assertEquals(Map.of(), service.loadOpLabwareNotes(Set.of(1,2)));
+        assertEquals(Map.of(10, List.of(notes[0], notes[1])), service.loadOpLabwareNotes(Set.of(1,10)));
+    }
+
+    @Test
     public void testLoadOpResults() {
         OperationType resultOpType = EntityFactory.makeOperationType("Record result", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.RESULT);
         OperationType otherOpType = EntityFactory.makeOperationType("Splunge", null, OperationTypeFlag.IN_PLACE);
@@ -343,6 +360,12 @@ public class TestHistoryService {
         }
         Measurement measurement = new Measurement(6, name, value, 4, 5, slotId);
         assertEquals(expected, service.measurementDetail(measurement, slotIdMap));
+    }
+
+    @Test
+    public void testLabwareNoteDetail() {
+        LabwareNote note = new LabwareNote(1, 100, 10, "Alpha", "Beta");
+        assertEquals("Alpha: Beta", service.labwareNoteDetail(note));
     }
 
     @ParameterizedTest
@@ -457,6 +480,19 @@ public class TestHistoryService {
 
         doReturn(opComMap).when(service).loadOpComments(Set.of(opIds[0], opIds[1]));
 
+        LabwareNote[] lwNotes = {
+                new LabwareNote(1, labware[1].getId(), opIds[0], "Alpha", "Beta"),
+                new LabwareNote(2, labware[1].getId(), opIds[0], "Gamma", "Delta"),
+                new LabwareNote(3, labware[3].getId(), opIds[1], "Epsilon", "Zeta"),
+        };
+
+        Map<Integer, List<LabwareNote>> opNotes = Map.of(
+                opIds[0], List.of(lwNotes[0], lwNotes[1]),
+                opIds[1], List.of(lwNotes[2])
+        );
+
+        doReturn(opNotes).when(service).loadOpLabwareNotes(Set.of(opIds[0], opIds[1]));
+
         // Letting doesCommentApply actually run is easier than mocking it to return what it would return anyway
 
         List<Labware> labwareList = Arrays.asList(this.labware);
@@ -469,10 +505,10 @@ public class TestHistoryService {
         List<HistoryEntry> expectedEntries = List.of(
                 new HistoryEntry(opIds[0], opTypeName0, ops.get(0).getPerformed(), labware[0].getId(),
                         labware[1].getId(), samples[0].getId(), username, "SGP5000",
-                        List.of("Equipment: Feeniks", "A1: pass", "Alabama", "A1: Alaska", "Thickness: 4")),
+                        List.of("Alpha: Beta", "Gamma: Delta", "Equipment: Feeniks", "A1: pass", "Alabama", "A1: Alaska", "Thickness: 4")),
                 new HistoryEntry(opIds[1], opTypeName1, ops.get(1).getPerformed(), labware[0].getId(),
                         labware[3].getId(), samples[2].getId(), username, null,
-                        List.of("Stain type: Ribena", "Arizona"))
+                        List.of("Stain type: Ribena", "Epsilon: Zeta", "Arizona"))
         );
         assertThat(service.createEntriesForOps(ops, sampleIds, labwareList, opWork)).containsExactlyElementsOf(expectedEntries);
 

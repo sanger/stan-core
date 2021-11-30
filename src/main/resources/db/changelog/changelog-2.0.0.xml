@@ -1,0 +1,41 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <changeSet id="2.0.0" author="dr6">
+        <createTable tableName="labware_note">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="operation_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_labware_note_operation" referencedTableName="operation" referencedColumnNames="id"/>
+            </column>
+            <column name="labware_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_labware_note_labware" referencedTableName="labware" referencedColumnNames="id"/>
+            </column>
+            <column name="name" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="value" type="VARCHAR(16)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="labware_note" indexName="uk_labware_note_operation_labware_name_value" unique="true">
+            <column name="operation_id"/>
+            <column name="labware_id"/>
+            <column name="name"/>
+            <column name="value"/>
+        </createIndex>
+        <rollback>
+            <dropAllForeignKeyConstraints baseTableName="labware_note"/>
+            <dropTable tableName="labware_note"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>
