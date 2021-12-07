@@ -62,7 +62,7 @@ public class TestComplexStainMutation {
             assertEquals(lw.getId(), note.getLabwareId());
             noteData.put(note.getName(), note.getValue());
         }
-        assertEquals(Map.of("Bond barcode", "1234 ABC", "Bond run", "8",
+        assertEquals(Map.of("Bond barcode", "12340ABC", "Bond run", "8",
                         "Panel", "positive", "Plex", "6"),
                 noteData);
     }

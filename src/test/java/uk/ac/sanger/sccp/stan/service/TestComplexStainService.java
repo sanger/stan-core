@@ -190,8 +190,8 @@ public class TestComplexStainService {
     @ParameterizedTest
     @ValueSource(booleans={false, true})
     public void testValidateBondBarcodes(boolean valid) {
-        String[] bondBarcodes = (valid? new String[] { "0000 000", "0000 000", "099A AZZ"}
-                : new String[] { null, "1234 ABC", "0000 00%", "0000 00%", "1111 11", "2222 2222" });
+        String[] bondBarcodes = (valid? new String[] { "00000000", "00000000", "099A1AZZ"}
+                : new String[] { null, "12340ABC", "0000000%", "0000000%", "1111011", "222202222" });
         List<ComplexStainLabware> csls = IntStream.range(0, bondBarcodes.length)
                 .mapToObj(i -> new ComplexStainLabware("STAN-"+i, bondBarcodes[i], 1, null))
                 .collect(toList());
@@ -200,7 +200,7 @@ public class TestComplexStainService {
         if (valid) {
             assertThat(problems).isEmpty();
         } else {
-            assertThat(problems).containsExactly("Bond barcodes not of the expected format: [null, 0000 00%, 1111 11, 2222 2222]");
+            assertThat(problems).containsExactly("Bond barcodes not of the expected format: [null, 0000000%, 1111011, 222202222]");
         }
     }
 

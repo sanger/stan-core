@@ -27,7 +27,7 @@ public class ComplexStainServiceImp implements ComplexStainService {
     public static final String LW_NOTE_PLEX = "Plex", LW_NOTE_PANEL = "Panel",
             LW_NOTE_BOND_BARCODE = "Bond barcode", LW_NOTE_BOND_RUN = "Bond run";
 
-    private final Pattern BOND_BARCODE_PTN = Pattern.compile("^[0-9A-Z]{4} [0-9A-Z]{3}$");
+    private final Pattern BOND_BARCODE_PTN = Pattern.compile("^[0-9A-Z]{8}$");
 
     private final WorkService workService;
     private final OperationService opService;

@@ -6,7 +6,7 @@ mutation {
         labware: [
             {
                 barcode: "STAN-A1"
-                bondBarcode: "1234 ABC"
+                bondBarcode: "12340ABC"
                 bondRun: 8
             }
         ]
