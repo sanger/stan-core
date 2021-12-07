@@ -7,7 +7,7 @@ import java.util.Objects;
  * @author dr6
  */
 @Entity
-public class OperationType {
+public class OperationType implements HasName, HasIntId {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
@@ -29,6 +29,7 @@ public class OperationType {
         this.newBioState = newBioState;
     }
 
+    @Override
     public Integer getId() {
         return this.id;
     }
@@ -37,6 +38,7 @@ public class OperationType {
         this.id = id;
     }
 
+    @Override
     public String getName() {
         return this.name;
     }
