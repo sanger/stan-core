@@ -95,6 +95,9 @@ public class EntityCreator {
     }
 
     public Tissue createTissue(Donor donor, String externalName, Integer replicate) {
+        if (donor==null) {
+            donor = createDonor("DONOR1");
+        }
         return tissueRepo.save(new Tissue(null, externalName, replicate, getAny(slRepo), donor, getAny(mouldSizeRepo),
                 getAny(mediumRepo), getAny(fixativeRepo), getAny(hmdmcRepo)));
     }
@@ -105,6 +108,12 @@ public class EntityCreator {
     }
 
     public Sample createSample(Tissue tissue, Integer section, BioState bioState) {
+        if (tissue==null) {
+            tissue = createTissue(null, "EXT1");
+        }
+        if (bioState==null) {
+            bioState = bioStateRepo.getByName("Tissue");
+        }
         return sampleRepo.save(new Sample(null, section, tissue, bioState));
     }
 
@@ -232,5 +241,9 @@ public class EntityCreator {
 
     public <E> E getAny(CrudRepository<E, ?> repo) {
         return repo.findAll().iterator().next();
+    }
+
+    public LabwareType getTubeType() {
+        return ltRepo.getByName("Tube");
     }
 }

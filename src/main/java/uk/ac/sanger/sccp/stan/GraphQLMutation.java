@@ -16,6 +16,7 @@ import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.request.plan.PlanRequest;
 import uk.ac.sanger.sccp.stan.request.plan.PlanResult;
 import uk.ac.sanger.sccp.stan.request.register.*;
+import uk.ac.sanger.sccp.stan.request.stain.ComplexStainRequest;
 import uk.ac.sanger.sccp.stan.request.stain.StainRequest;
 import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.analysis.RNAAnalysisService;
@@ -76,6 +77,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final VisiumAnalysisService visiumAnalysisService;
     final RNAAnalysisService rnaAnalysisService;
     final OpWithSlotMeasurementsService opWithSlotMeasurementsService;
+    final ComplexStainService complexStainService;
     final UserAdminService userAdminService;
 
     @Autowired
@@ -95,7 +97,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            UnreleaseService unreleaseService, ResultService resultService, ExtractResultService extractResultService,
                            PermService permService, RNAAnalysisService rnaAnalysisService,
                            VisiumAnalysisService visiumAnalysisService, OpWithSlotMeasurementsService opWithSlotMeasurementsService,
-                           UserAdminService userAdminService) {
+                           ComplexStainService complexStainService, UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
@@ -130,6 +132,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.visiumAnalysisService = visiumAnalysisService;
         this.rnaAnalysisService = rnaAnalysisService;
         this.opWithSlotMeasurementsService = opWithSlotMeasurementsService;
+        this.complexStainService = complexStainService;
         this.userAdminService = userAdminService;
     }
 
@@ -532,6 +535,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             OpWithSlotMeasurementsRequest request = arg(dfe, "request", OpWithSlotMeasurementsRequest.class);
             logRequest("Record op with slot measurements", user, request);
             return opWithSlotMeasurementsService.perform(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> recordComplexStain() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            ComplexStainRequest request = arg(dfe, "request", ComplexStainRequest.class);
+            logRequest("Record complex stain", user, request);
+            return complexStainService.perform(user, request);
         };
     }
 

@@ -30,6 +30,7 @@ public class HistoryServiceImp implements HistoryService {
     private final SnapshotRepo snapshotRepo;
     private final WorkRepo workRepo;
     private final MeasurementRepo measurementRepo;
+    private final LabwareNoteRepo labwareNoteRepo;
     private final ResultOpRepo resultOpRepo;
 
     @Autowired
@@ -37,7 +38,7 @@ public class HistoryServiceImp implements HistoryService {
                              DonorRepo donorRepo, ReleaseRepo releaseRepo,
                              DestructionRepo destructionRepo, OperationCommentRepo opCommentRepo,
                              SnapshotRepo snapshotRepo, WorkRepo workRepo, MeasurementRepo measurementRepo,
-                             ResultOpRepo resultOpRepo) {
+                             LabwareNoteRepo labwareNoteRepo, ResultOpRepo resultOpRepo) {
         this.opRepo = opRepo;
         this.lwRepo = lwRepo;
         this.sampleRepo = sampleRepo;
@@ -49,6 +50,7 @@ public class HistoryServiceImp implements HistoryService {
         this.snapshotRepo = snapshotRepo;
         this.workRepo = workRepo;
         this.measurementRepo = measurementRepo;
+        this.labwareNoteRepo = labwareNoteRepo;
         this.resultOpRepo = resultOpRepo;
     }
 
@@ -228,6 +230,23 @@ public class HistoryServiceImp implements HistoryService {
         return map;
     }
 
+    /**
+     * Loads labware notes for the specified operations
+     * @param opIds the ids of operations
+     * @return a map of op id to list of labware notes
+     */
+    public Map<Integer, List<LabwareNote>> loadOpLabwareNotes(Collection<Integer> opIds) {
+        List<LabwareNote> notes = labwareNoteRepo.findAllByOperationIdIn(opIds);
+        if (notes.isEmpty()) {
+            return Map.of();
+        }
+        Map<Integer, List<LabwareNote>> map = new HashMap<>();
+        for (LabwareNote note : notes) {
+            map.computeIfAbsent(note.getOperationId(), k -> new ArrayList<>()).add(note);
+        }
+        return map;
+    }
+
     public String describeSeconds(String value) {
         int seconds;
         try {
@@ -277,6 +296,17 @@ public class HistoryServiceImp implements HistoryService {
             detail = slotIdMap.get(measurement.getSlotId()).getAddress()+": "+detail;
         }
         return detail;
+    }
+
+    /**
+     * Converts a labware note into a string to go into the details of a history entry.
+     * Since entries are specific to an operation and labware, the only information that needs
+     * to be included is the note's key and value.
+     * @param lwNote the labware note to detail
+     * @return a string describing the note
+     */
+    public String labwareNoteDetail(LabwareNote lwNote) {
+        return lwNote.getName()+": "+lwNote.getValue();
     }
 
     /**
@@ -330,6 +360,7 @@ public class HistoryServiceImp implements HistoryService {
         Set<Integer> opIds = operations.stream().map(Operation::getId).collect(toSet());
         var opComments = loadOpComments(opIds);
         var opMeasurements = loadOpMeasurements(opIds);
+        var opLabwareNotes = loadOpLabwareNotes(opIds);
         var opResults = loadOpResults(operations);
         final Map<Integer, Slot> slotIdMap;
         if (!opComments.isEmpty() || !opMeasurements.isEmpty()) {
@@ -353,6 +384,7 @@ public class HistoryServiceImp implements HistoryService {
             Set<SampleAndLabwareIds> items = new LinkedHashSet<>();
             List<OperationComment> comments = opComments.getOrDefault(op.getId(), List.of());
             List<Measurement> measurements = opMeasurements.getOrDefault(op.getId(), List.of());
+            List<LabwareNote> lwNotes = opLabwareNotes.getOrDefault(op.getId(), List.of());
             String workNumber;
             Set<String> workNumbers = opWork.get(op.getId());
             if (workNumbers!=null && !workNumbers.isEmpty()) {
@@ -375,6 +407,12 @@ public class HistoryServiceImp implements HistoryService {
                         op.getPerformed(), item.sourceId, item.destId, item.sampleId, username, workNumber);
                 if (stainDetail!=null) {
                     entry.addDetail(stainDetail);
+                }
+                for (LabwareNote lwNote : lwNotes) {
+                    if (lwNote.getLabwareId() == item.destId) {
+                        String detail = labwareNoteDetail(lwNote);
+                        entry.addDetail(detail);
+                    }
                 }
                 if (equipment!=null) {
                     entry.addDetail("Equipment: "+equipment.getName());
@@ -471,7 +509,7 @@ public class HistoryServiceImp implements HistoryService {
     }
 
     /**
-     * Assembles various collections of history enties into a single list, sorted by time
+     * Assembles various collections of history entries into a single list, sorted by time
      * @param entryCollections the collections of entries to include in the combined list
      * @return a list containing the entries from all the given collections, sorted
      */
