@@ -468,7 +468,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
 
     public DataFetcher<OperationResult> unrelease() {
         return dfe -> {
-            User user = checkUser(dfe, User.Role.admin);
+            User user = checkUser(dfe, User.Role.normal);
             UnreleaseRequest request = arg(dfe, "request", UnreleaseRequest.class);
             logRequest("Unrelease", user, request);
             return unreleaseService.unrelease(user, request);
