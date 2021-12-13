@@ -25,6 +25,8 @@ public enum ReleaseColumn implements TsvColumn<ReleaseEntry> {
     Source_address(ReleaseEntry::getSourceAddress, ReleaseFileMode.CDNA),
     Section_thickness(ReleaseEntry::getSectionThickness),
     Released_from_box_location(ReleaseEntry::getStorageAddress),
+    Stain_type(ReleaseEntry::getStainType),
+    Bond_barcode(ReleaseEntry::getBondBarcode),
     ;
 
     private final Function<ReleaseEntry, ?> function;

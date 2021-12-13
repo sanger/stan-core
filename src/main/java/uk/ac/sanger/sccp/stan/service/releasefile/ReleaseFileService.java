@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.service.ComplexStainServiceImp;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.Ancestry;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
 
@@ -26,17 +27,24 @@ public class ReleaseFileService {
     private final MeasurementRepo measurementRepo;
     private final SnapshotRepo snapshotRepo;
     private final Ancestoriser ancestoriser;
+    private final OperationTypeRepo opTypeRepo;
+    private final OperationRepo opRepo;
+    private final LabwareNoteRepo lwNoteRepo;
 
     @Autowired
-    public ReleaseFileService(ReleaseRepo releaseRepo, SampleRepo sampleRepo, LabwareRepo labwareRepo,
-                              MeasurementRepo measurementRepo, SnapshotRepo snapshotRepo,
-                              Ancestoriser ancestoriser) {
+    public ReleaseFileService(Ancestoriser ancestoriser,
+                              SampleRepo sampleRepo, LabwareRepo labwareRepo, MeasurementRepo measurementRepo,
+                              SnapshotRepo snapshotRepo, ReleaseRepo releaseRepo, OperationTypeRepo opTypeRepo,
+                              OperationRepo opRepo, LabwareNoteRepo lwNoteRepo) {
         this.releaseRepo = releaseRepo;
         this.sampleRepo = sampleRepo;
         this.labwareRepo = labwareRepo;
         this.measurementRepo = measurementRepo;
         this.snapshotRepo = snapshotRepo;
         this.ancestoriser = ancestoriser;
+        this.opTypeRepo = opTypeRepo;
+        this.opRepo = opRepo;
+        this.lwNoteRepo = lwNoteRepo;
     }
 
     /**
@@ -65,6 +73,7 @@ public class ReleaseFileService {
         Ancestry ancestry = findAncestry(entries);
         loadSources(entries, ancestry, mode);
         loadSectionThickness(entries, ancestry);
+        loadLastStain(entries);
         return new ReleaseFileContent(mode, entries);
     }
 
@@ -286,6 +295,13 @@ public class ReleaseFileService {
         }
     }
 
+    /**
+     * The source for cdna is the first sample found in the ancestry that does not have biostate cDNA.
+     * @param entry the release entry to find the source for
+     * @param ancestry the ancestry of the slot/sample
+     * @return the most recent (in terms of generation) slot/sample from the ancestry that is not cdna,
+     *         or null if no such element is found
+     */
     public SlotSample selectSourceForCDNA(ReleaseEntry entry, Ancestry ancestry) {
         for (SlotSample ss : ancestry.ancestors(new SlotSample(entry.getSlot(), entry.getSample()))) {
             if (!ss.getSample().getBioState().getName().equalsIgnoreCase("cDNA")) {
@@ -320,6 +336,13 @@ public class ReleaseFileService {
         }
     }
 
+    /**
+     * Finds a particular measurement from the given set of information
+     * @param entry the release entry we want the measurement for
+     * @param slotIdToMeasurement a map of each slot id to all its relevant measurements
+     * @param ancestry the ancestry of that tells us the slot sample history
+     * @return the appropriate measurement, or null if none was found
+     */
     public Measurement selectMeasurement(ReleaseEntry entry, Map<Integer, List<Measurement>> slotIdToMeasurement,
                                          Ancestry ancestry) {
         for (SlotSample ss : ancestry.ancestors(new SlotSample(entry.getSlot(), entry.getSample()))) {
@@ -336,4 +359,89 @@ public class ReleaseFileService {
         }
         return null;
     }
+
+    /**
+     * Fills in the stain type and bond barcode fields for all the given entries.
+     * These are both taken from the latest stan operation on the particular piece of labware.
+     * @param entries the entries to add information to
+     */
+    public void loadLastStain(Collection<ReleaseEntry> entries) {
+        Set<Integer> labwareIds = entries.stream().map(re -> re.getLabware().getId()).collect(toSet());
+        if (labwareIds.isEmpty()) {
+            return;
+        }
+        Map<Integer, Operation> lwOps = loadLastOpMap(opTypeRepo.getByName("Stain"), labwareIds);
+        if (lwOps.isEmpty()) {
+            return;
+        }
+        Map<Integer, String> bondBarcodes = loadBondBarcodes(lwOps);
+        for (ReleaseEntry entry : entries) {
+            Integer labwareId = entry.getLabware().getId();
+            Operation op = lwOps.get(labwareId);
+            if (op==null) {
+                continue;
+            }
+            entry.setStainType(op.getStainType().getName());
+            entry.setBondBarcode(bondBarcodes.get(labwareId));
+        }
+    }
+
+    /**
+     * Gets the latest op of the given type on each specified labware (as a destination)
+     * @param opType the type of op we are looking for
+     * @param labwareIds the ids of the labware we are interested in
+     * @return a map of labware id to the latest op of that type (if any)
+     */
+    public Map<Integer, Operation> loadLastOpMap(OperationType opType, Set<Integer> labwareIds) {
+        Map<Integer, Operation> labwareStainOp = new HashMap<>(labwareIds.size());
+        for (Operation op : opRepo.findAllByOperationTypeAndDestinationLabwareIdIn(opType, labwareIds)) {
+            for (Action ac : op.getActions()) {
+                int labwareId = ac.getDestination().getLabwareId();
+                if (opSupplants(op, labwareStainOp.get(labwareId))) {
+                    labwareStainOp.put(labwareId, op);
+                }
+            }
+        }
+        return labwareStainOp;
+    }
+
+    /**
+     * Does op <tt>newOp</tt> supplant op <tt>savedOp</tt>?
+     * It does if <tt>savedOp</tt> is null, or <tt>newOp</tt> is later than <tt>savedOp</tt>,
+     * or if they have the same timestamp but <tt>newOp</tt> has a higher id.
+     * @param newOp new op
+     * @param savedOp previously saved op, if any
+     * @return true if <tt>newOp</tt> takes precedence over <tt>savedOp</tt>>
+     */
+    static boolean opSupplants(Operation newOp, Operation savedOp) {
+        if (savedOp==null) {
+            return true;
+        }
+        int d = newOp.getPerformed().compareTo(savedOp.getPerformed());
+        return (d > 0 || d==0 && newOp.getId() > savedOp.getId());
+    }
+
+    /**
+     * Finds the appropriate bond barcode for each labware/op combination
+     * @param lwOps map of labware ids to the stain operation we are looking for information on
+     * @return a map of labware id to bond barcode (if any)
+     */
+    public Map<Integer, String> loadBondBarcodes(Map<Integer, Operation> lwOps) {
+        Set<Integer> opIds = lwOps.values().stream().map(Operation::getId).collect(toSet());
+        List<LabwareNote> notes = lwNoteRepo.findAllByOperationIdIn(opIds);
+        if (notes.isEmpty()) {
+            return Map.of();
+        }
+        Map<Integer, String> lwBondBarcode = new HashMap<>(lwOps.size());
+        for (LabwareNote note : notes) {
+            if (note.getName().equalsIgnoreCase(ComplexStainServiceImp.LW_NOTE_BOND_BARCODE)) {
+                Operation op = lwOps.get(note.getLabwareId());
+                if (op!=null && op.getId().equals(note.getOperationId())) {
+                    lwBondBarcode.put(note.getLabwareId(), note.getValue());
+                }
+            }
+        }
+        return lwBondBarcode;
+    }
+
 }
