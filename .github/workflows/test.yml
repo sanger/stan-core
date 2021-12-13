@@ -26,6 +26,10 @@ jobs:
           MYSQL_PASSWORD: stanpw
 
     steps:
+    - name: wait 10s for anything to work
+      uses: jakejarvis/wait-action@v0.1.0
+      with:
+        time: '10s'
     - name: start mysql
       run: |
         sudo /etc/init.d/mysql start
