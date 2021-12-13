@@ -28,7 +28,7 @@ jobs:
     steps:
     - name: start mysql
       run: |
-        sudo find / -iname mysql
+        sudo /etc/init.d/mysql start
     - name: wait 10s for service
       uses: jakejarvis/wait-action@v0.1.0
       with:
