@@ -3,6 +3,7 @@ package uk.ac.sanger.sccp.stan.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
+import uk.ac.sanger.sccp.stan.model.Work.Status;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.WorkProgress;
 import uk.ac.sanger.sccp.stan.request.WorkProgress.WorkProgressTimestamp;
@@ -33,31 +34,39 @@ public class WorkProgressServiceImp implements WorkProgressService {
     }
 
     @Override
-    public List<WorkProgress> getProgress(String workNumber, String workTypeName, Work.Status status) {
-        if (workNumber!=null) {
-            Work work = workRepo.getByWorkNumber(workNumber);
-            if (workTypeName!=null && !work.getWorkType().equals(workTypeRepo.getByName(workTypeName))) {
-                return List.of();
-            }
-            if (status!=null && work.getStatus()!=status) {
-                return List.of();
-            }
-            return List.of(getProgressForWork(work));
+    public List<WorkProgress> getProgress(String workNumber, List<String> workTypeNames, List<Status> statuses) {
+        Work singleWork = (workNumber==null ? null : workRepo.getByWorkNumber(workNumber));
+        List<WorkType> workTypes;
+        if (workTypeNames==null) {
+            workTypes = null;
+        } else if (workTypeNames.isEmpty()) {
+            return List.of();
+        } else {
+            workTypes = workTypeRepo.getAllByNameIn(workTypeNames);
         }
-        if (workTypeName!=null) {
-            WorkType wt = workTypeRepo.getByName(workTypeName);
-            List<Work> works = workRepo.findAllByWorkTypeIn(List.of(wt));
-            Stream<Work> workStream = works.stream();
-            if (status!=null) {
-                workStream = workStream.filter(work -> work.getStatus()==status);
+        if (workTypes!=null && workTypes.isEmpty() || statuses!=null && statuses.isEmpty()) {
+            return List.of();
+        }
+        if (singleWork!=null) {
+            if (workTypes!=null && !workTypes.contains(singleWork.getWorkType())) {
+                return List.of();
             }
-            return workStream
-                    .map(this::getProgressForWork)
-                    .collect(toList());
+            if (statuses!=null && !statuses.contains(singleWork.getStatus())) {
+                return List.of();
+            }
+            return List.of(getProgressForWork(singleWork));
+        }
+        if (workTypes!=null) {
+            List<Work> works = workRepo.findAllByWorkTypeIn(workTypes);
+            Stream<Work> workStream = works.stream();
+            if (statuses!=null && !statuses.isEmpty()) {
+                workStream = workStream.filter(work -> statuses.contains(work.getStatus()));
+            }
+            return workStream.map(this::getProgressForWork).collect(toList());
         }
         Iterable<Work> works;
-        if (status!=null) {
-            works = workRepo.findAllByStatusIn(List.of(status));
+        if (statuses!=null) {
+            works = workRepo.findAllByStatusIn(statuses);
         } else {
             works = workRepo.findAll();
         }
