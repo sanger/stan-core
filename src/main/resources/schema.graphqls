@@ -738,6 +738,7 @@ type Query {
     historyForSampleId(sampleId: Int!): History!
     historyForExternalName(externalName: String!): History!
     historyForDonorName(donorName: String!): History!
+    historyForWorkNumber(workNumber: String!): History!
     historyForLabwareBarcode(barcode: String!): History!
     workProgress(workNumber: String, workType: String, status: WorkStatus): [WorkProgress!]!
 
