@@ -8,8 +8,10 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import uk.ac.sanger.sccp.stan.EntityCreator;
 import uk.ac.sanger.sccp.stan.GraphQLTester;
-import uk.ac.sanger.sccp.stan.model.User;
+import uk.ac.sanger.sccp.stan.model.*;
+import uk.ac.sanger.sccp.stan.repo.*;
 
+import javax.persistence.EntityManager;
 import javax.transaction.Transactional;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +34,15 @@ public class TestHistoryQuery {
     private GraphQLTester tester;
     @Autowired
     private EntityCreator entityCreator;
+    @Autowired
+    private EntityManager entityManager;
+
+    @Autowired
+    private ActionRepo actionRepo;
+    @Autowired
+    private OperationRepo opRepo;
+    @Autowired
+    private WorkRepo workRepo;
 
     @Transactional
     @Test
@@ -89,5 +100,47 @@ public class TestHistoryQuery {
             assertEquals("DONOR1", chainGet(sampleData, "tissue", "donor", "donorName"));
             assertNull(sampleData.get("section"));
         }
+    }
+
+    @Transactional
+    @Test
+    public void testHistoryForWorkNumber() throws Exception {
+        Work work = entityCreator.createWork(null, null, null);
+        User user = entityCreator.createUser("user1");
+
+        Sample sample = entityCreator.createSample(null, null);
+        LabwareType lt = entityCreator.getTubeType();
+        Labware lw = entityCreator.createLabware("STAN-A1", lt, sample);
+        Slot slot = lw.getFirstSlot();
+        OperationType opType = entityCreator.createOpType("Toast", null, OperationTypeFlag.IN_PLACE);
+        Operation op = opRepo.save(new Operation(null, opType, null, null, user));
+        actionRepo.save(new Action(null, op.getId(), slot, slot, sample, sample));
+        entityManager.refresh(op);
+        work.setOperationIds(List.of(op.getId()));
+        workRepo.save(work);
+
+        String baseQuery = tester.readGraphQL("history.graphql");
+        String queryBody = baseQuery.substring(baseQuery.indexOf(')') + 1);
+        String query = "query { historyForWorkNumber(workNumber: \"" + work.getWorkNumber() + "\")" + queryBody;
+        tester.setUser(user);
+
+        Map<String, ?> response = tester.post(query);
+        Map<String, List<Map<String, ?>>> historyData = chainGet(response, "data", "historyForWorkNumber");
+        List<Map<String, ?>> entriesData = historyData.get("entries");
+        List<Map<String, ?>> labwaresData = historyData.get("labware");
+        List<Map<String, ?>> samplesData = historyData.get("samples");
+
+        assertThat(labwaresData).hasSize(1);
+        assertEquals(lw.getId(), labwaresData.get(0).get("id"));
+        assertEquals(lw.getBarcode(), labwaresData.get(0).get("barcode"));
+
+        assertThat(samplesData).hasSize(1);
+        assertEquals(sample.getId(), samplesData.get(0).get("id"));
+
+        assertThat(entriesData).hasSize(1);
+        Map<String, ?> entryData = entriesData.get(0);
+        assertEquals(op.getId(), entryData.get("eventId"));
+        assertEquals(opType.getName(), entryData.get("type"));
+        assertEquals(work.getWorkNumber(), entryData.get("workNumber"));
     }
 }

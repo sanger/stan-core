@@ -133,6 +133,85 @@ public class TestHistoryService {
     }
 
     @Test
+    public void testGetHistoryForWorkNumber() {
+        Work work = new Work(10, "SGP10", null, null, null, Work.Status.active);
+        List<Operation> ops = List.of(
+                new Operation(20, null, null, null, null),
+                new Operation(21, null, null, null, null)
+        );
+        final List<Integer> opIds = List.of(20, 21);
+        work.setOperationIds(opIds);
+        String workNumber = "sgp10";
+        when(mockWorkRepo.getByWorkNumber(workNumber)).thenReturn(work);
+        when(mockOpRepo.findAllById(opIds)).thenReturn(ops);
+        Sample sam1 = EntityFactory.getSample();
+        Sample sam2 = new Sample(sam1.getId()+1, sam1.getSection()+1, sam1.getTissue(), sam1.getBioState());
+        Labware lw1 = EntityFactory.getTube();
+        Labware lw2 = EntityFactory.makeLabware(lw1.getLabwareType(), sam1);
+        List<Labware> lws = List.of(lw1, lw2);
+        Set<Integer> labwareIds = Set.of(lw1.getId(), lw2.getId());
+        doReturn(labwareIds).when(service).labwareIdsFromOps(ops);
+        when(mockLwRepo.findAllByIdIn(labwareIds)).thenReturn(lws);
+        // use a mutable list for this because it will be sorted
+        List<HistoryEntry> entries = new ArrayList<>(1);
+        entries.add(new HistoryEntry(20, "Bananas", null, lw1.getId(), lw2.getId(),
+                sam1.getId(), "", workNumber));
+        doReturn(entries).when(service).createEntriesForOps(ops, null, lws, null, work.getWorkNumber());
+        List<Sample> samples = List.of(sam1, sam2);
+        doReturn(samples).when(service).referencedSamples(entries, lws);
+
+        History history = service.getHistoryForWorkNumber(workNumber);
+        assertSame(entries, history.getEntries());
+        assertSame(samples, history.getSamples());
+        assertSame(lws, history.getLabware());
+    }
+
+    @Test
+    public void testGetHistoryForWorkNumber_noOps() {
+        Work work = new Work(10, "SGP10", null, null, null, Work.Status.active);
+        work.setOperationIds(List.of());
+        final String workNumber = "sgp10";
+        when(mockWorkRepo.getByWorkNumber(workNumber)).thenReturn(work);
+        History history = service.getHistoryForWorkNumber(workNumber);
+        assertThat(history.getEntries()).isEmpty();
+        assertThat(history.getLabware()).isEmpty();
+        assertThat(history.getSamples()).isEmpty();
+    }
+
+    @Test
+    public void testLabwareIdsFromOps() {
+        LabwareType lt = EntityFactory.getTubeType();
+        Sample sample = EntityFactory.getSample();
+        Labware[] lws = IntStream.range(0, 4).mapToObj(i -> EntityFactory.makeLabware(lt, sample)).toArray(Labware[]::new);
+        Integer[] lwIds = Arrays.stream(lws).map(Labware::getId).toArray(Integer[]::new);
+        Operation op1 = EntityFactory.makeOpForLabware(null, List.of(lws[0], lws[1]), List.of(lws[2]));
+        Operation op2 = EntityFactory.makeOpForLabware(null, List.of(lws[0]), List.of(lws[3]));
+        assertThat(service.labwareIdsFromOps(List.of(op1, op2))).containsExactlyInAnyOrder(lwIds);
+    }
+
+    @Test
+    public void testReferencesSamples() {
+        LabwareType lt = EntityFactory.makeLabwareType(1, 2);
+        Tissue tissue = EntityFactory.getTissue();
+        BioState bs = EntityFactory.getBioState();
+        Sample[] samples = IntStream.range(1, 7)
+                .mapToObj(i -> new Sample(i, 10+i, tissue, bs))
+                .toArray(Sample[]::new);
+        Labware lw1 = EntityFactory.makeEmptyLabware(lt);
+        lw1.getFirstSlot().getSamples().addAll(List.of(samples[0], samples[1]));
+        lw1.getSlots().get(1).getSamples().add(samples[2]);
+        Labware lw2 = EntityFactory.makeLabware(lt, samples[0], samples[3]);
+        List<HistoryEntry> entries = IntStream.range(1, 7)
+                .mapToObj(i -> new HistoryEntry(40+i, null, null, lw1.getId(), lw2.getId(), i,
+                        null, null))
+                .collect(toList());
+
+        when(mockSampleRepo.findAllByIdIn(Set.of(5,6))).thenReturn(List.of(samples[4], samples[5]));
+
+        assertThat(service.referencedSamples(entries, List.of(lw1, lw2))).containsExactlyInAnyOrder(samples);
+    }
+
+    @Test
     public void testGetHistoryForSamples() {
         Sample sample = EntityFactory.getSample();
         Sample sample2 = new Sample(sample.getId() + 1, 10, sample.getTissue(), sample.getBioState());
@@ -160,7 +239,7 @@ public class TestHistoryService {
 
         doReturn(labwareIds).when(service).loadLabwareIdsForOpsAndSampleIds(ops, sampleIds);
 
-        doReturn(opEntries).when(service).createEntriesForOps(ops, sampleIds, labware, opWork);
+        doReturn(opEntries).when(service).createEntriesForOps(ops, sampleIds, labware, opWork, null);
         doReturn(releaseEntries).when(service).createEntriesForReleases(releases, sampleIds);
         doReturn(destructionEntries).when(service).createEntriesForDestructions(destructions, sampleIds);
 
@@ -510,9 +589,29 @@ public class TestHistoryService {
                         labware[3].getId(), samples[2].getId(), username, null,
                         List.of("Stain type: Ribena", "Epsilon: Zeta", "Arizona"))
         );
-        assertThat(service.createEntriesForOps(ops, sampleIds, labwareList, opWork)).containsExactlyElementsOf(expectedEntries);
+        assertThat(service.createEntriesForOps(ops, sampleIds, labwareList, opWork, null)).containsExactlyElementsOf(expectedEntries);
 
         verify(service).loadOpMeasurements(Set.of(opIds[0], opIds[1]));
+    }
+
+    @Test
+    public void testCreateEntriesForOpsForWorkNumber() {
+        Sample sample = EntityFactory.getSample();
+        LabwareType lt = EntityFactory.makeLabwareType(1,2);
+        Labware lw = EntityFactory.makeLabware(lt, sample, sample);
+        doReturn(Map.of()).when(service).loadOpComments(any());
+        doReturn(Map.of()).when(service).loadOpMeasurements(any());
+        doReturn(Map.of()).when(service).loadOpLabwareNotes(any());
+        doReturn(Map.of()).when(service).loadOpResults(any());
+        OperationType opType = EntityFactory.makeOperationType("Boil", null);
+        User user = EntityFactory.getUser();
+        Operation op = EntityFactory.makeOpForSlots(opType, lw.getSlots(), lw.getSlots(), user);
+        String workNumber = "SGP42";
+        List<HistoryEntry> entries = service.createEntriesForOps(List.of(op), null, List.of(lw), null, workNumber);
+        assertThat(entries).hasSize(1);
+        HistoryEntry entry = entries.get(0);
+        assertEquals(new HistoryEntry(op.getId(), opType.getName(), op.getPerformed(), lw.getId(), lw.getId(),
+                sample.getId(), user.getUsername(), workNumber), entry);
     }
 
     private static LocalDateTime makeTime(int n) {

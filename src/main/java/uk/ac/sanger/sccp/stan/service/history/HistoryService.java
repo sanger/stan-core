@@ -36,4 +36,11 @@ public interface HistoryService {
      */
     History getHistoryForLabwareBarcode(String barcode);
 
+    /**
+     * Gets the history for a work number
+     * @param workNumber a valid work number
+     * @return the history of operations done for that work number
+     */
+    History getHistoryForWorkNumber(String workNumber);
+
 }

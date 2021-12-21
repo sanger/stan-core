@@ -225,7 +225,7 @@ public class EntityFactory {
                     .collect(toList());
         } else if (destinations.size()==1) {
             final Slot dest = destinations.get(0);
-            actions = destinations.stream()
+            actions = sources.stream()
                     .map(src -> slotAFunction.apply(src, dest))
                     .collect(toList());
         } else {

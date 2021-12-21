@@ -11,6 +11,7 @@ import uk.ac.sanger.sccp.utils.BasicUtils;
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.*;
 
@@ -88,6 +89,71 @@ public class HistoryServiceImp implements HistoryService {
         return getHistoryForSamples(samples);
     }
 
+    @Override
+    public History getHistoryForWorkNumber(String workNumber) {
+        Work work = workRepo.getByWorkNumber(workNumber);
+        List<Integer> opIds = work.getOperationIds();
+        if (opIds.isEmpty()) {
+            return new History(List.of(), List.of(), List.of());
+        }
+        Collection<Operation> ops = BasicUtils.asCollection(opRepo.findAllById(opIds));
+        Set<Integer> labwareIds = labwareIdsFromOps(ops);
+        List<Labware> labware = lwRepo.findAllByIdIn(labwareIds);
+        List<HistoryEntry> entries = createEntriesForOps(ops, null, labware, null, work.getWorkNumber());
+        List<Sample> samples = referencedSamples(entries, labware);
+        entries.sort(Comparator.comparing(HistoryEntry::getTime));
+        return new History(entries, samples, labware);
+    }
+
+    /**
+     * Gets all labware ids referenced in the given operations
+     * @param ops operations
+     * @return a set of all labware ids from the ops
+     */
+    public Set<Integer> labwareIdsFromOps(Collection<Operation> ops) {
+        return ops.stream()
+                .flatMap(op -> op.getActions().stream())
+                .flatMap(ac -> Stream.of(ac.getSource().getLabwareId(), ac.getDestination().getLabwareId()))
+                .collect(toSet());
+    }
+
+    /**
+     * Gets all samples referenced in the given history entries.
+     * Any that are present in the given labware will be taken from there instead of
+     * looked up again the database
+     * @param entries history entries
+     * @param labware labware
+     * @return a list of all distinct samples references in the history entries
+     */
+    public List<Sample> referencedSamples(Collection<HistoryEntry> entries, Collection<Labware> labware) {
+        Map<Integer, Sample> sampleCache = new HashMap<>();
+        for (Labware lw : labware) {
+            for (Slot slot : lw.getSlots()) {
+                for (Sample sample : slot.getSamples()) {
+                    sampleCache.put(sample.getId(), sample);
+                }
+            }
+        }
+        Set<Integer> entrySampleIds = entries.stream()
+                .map(HistoryEntry::getSampleId)
+                .filter(Objects::nonNull)
+                .collect(toSet());
+        List<Sample> samples = new ArrayList<>(entrySampleIds.size());
+        Set<Integer> toLookUp = new HashSet<>();
+        for (Integer sampleId : entrySampleIds) {
+            Sample sample = sampleCache.get(sampleId);
+            if (sample!=null) {
+                samples.add(sample);
+            } else {
+                toLookUp.add(sampleId);
+            }
+        }
+        if (!toLookUp.isEmpty()) {
+            samples.addAll(sampleRepo.findAllByIdIn(toLookUp));
+        }
+        return samples;
+    }
+
     /**
      * Gets the history for the specifically supplied samples (which are commonly all related).
      * @param samples the samples to get the history for
@@ -104,7 +170,7 @@ public class HistoryServiceImp implements HistoryService {
         Set<Integer> opIds = ops.stream().map(Operation::getId).collect(toSet());
         Map<Integer, Set<String>> opWork = workRepo.findWorkNumbersForOpIds(opIds);
 
-        List<HistoryEntry> opEntries = createEntriesForOps(ops, sampleIds, labware, opWork);
+        List<HistoryEntry> opEntries = createEntriesForOps(ops, sampleIds, labware, opWork, null);
         List<HistoryEntry> releaseEntries = createEntriesForReleases(releases, sampleIds);
         List<HistoryEntry> destructionEntries = createEntriesForDestructions(destructions, sampleIds);
 
@@ -350,13 +416,15 @@ public class HistoryServiceImp implements HistoryService {
     /**
      * Creates history entries for the given operations, where relevant to the specified samples
      * @param operations the operations to represent in the history
-     * @param sampleIds the ids of relevant samples
+     * @param sampleIds the ids of relevant samples, or null to not filter by sample
      * @param labware the relevant labware
      * @param opWork a map of op id to work numbers
+     * @param singleWorkNumber a single work number applicable to all operations
      * @return a list history entries for the given operations
      */
     public List<HistoryEntry> createEntriesForOps(Collection<Operation> operations, Set<Integer> sampleIds,
-                                                  Collection<Labware> labware, Map<Integer, Set<String>> opWork) {
+                                                  Collection<Labware> labware, Map<Integer, Set<String>> opWork,
+                                                  String singleWorkNumber) {
         Set<Integer> opIds = operations.stream().map(Operation::getId).collect(toSet());
         var opComments = loadOpComments(opIds);
         var opMeasurements = loadOpMeasurements(opIds);
@@ -386,16 +454,20 @@ public class HistoryServiceImp implements HistoryService {
             List<Measurement> measurements = opMeasurements.getOrDefault(op.getId(), List.of());
             List<LabwareNote> lwNotes = opLabwareNotes.getOrDefault(op.getId(), List.of());
             String workNumber;
-            Set<String> workNumbers = opWork.get(op.getId());
-            if (workNumbers!=null && !workNumbers.isEmpty()) {
-                workNumber = String.join(", ", workNumbers);
+            if (opWork!=null) {
+                Set<String> workNumbers = opWork.get(op.getId());
+                if (workNumbers != null && !workNumbers.isEmpty()) {
+                    workNumber = String.join(", ", workNumbers);
+                } else {
+                    workNumber = null;
+                }
             } else {
-                workNumber = null;
+                workNumber = singleWorkNumber;
             }
 
             for (Action action : op.getActions()) {
                 final Integer sampleId = action.getSample().getId();
-                if (sampleIds.contains(sampleId)) {
+                if (sampleIds==null || sampleIds.contains(sampleId)) {
                     final Integer sourceId = action.getSource().getLabwareId();
                     final Integer destId = action.getDestination().getLabwareId();
                     items.add(new SampleAndLabwareIds(sampleId, sourceId, destId));

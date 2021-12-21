@@ -10,8 +10,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 /**
@@ -113,5 +112,15 @@ public class TestBasicUtils {
             assertThat(assertThrows(IllegalArgumentException.class, () -> trimAndRequire(string, message)))
                     .hasMessage(message);
         }
+    }
+
+    @Test
+    public void testAsCollection() {
+        assertNull(asCollection(null));
+        List<Integer> intList = List.of(2,3,5);
+        assertSame(intList, asCollection(intList));
+        //noinspection FunctionalExpressionCanBeFolded
+        Iterable<Integer> intIterable = intList::iterator;
+        assertEquals(intList, asCollection(intIterable));
     }
 }
