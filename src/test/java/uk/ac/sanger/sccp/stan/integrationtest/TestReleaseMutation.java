@@ -14,7 +14,7 @@ import uk.ac.sanger.sccp.stan.EntityCreator;
 import uk.ac.sanger.sccp.stan.GraphQLTester;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.store.BasicLocation;
-import uk.ac.sanger.sccp.stan.repo.SlotRepo;
+import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.service.store.StorelightClient;
 import uk.ac.sanger.sccp.utils.UCMap;
 
@@ -47,6 +47,16 @@ public class TestReleaseMutation {
 
     @Autowired
     private SlotRepo slotRepo;
+    @Autowired
+    private ActionRepo actionRepo;
+    @Autowired
+    private OperationRepo opRepo;
+    @Autowired
+    private OperationTypeRepo opTypeRepo;
+    @Autowired
+    private LabwareNoteRepo lwNoteRepo;
+    @Autowired
+    private StainTypeRepo stainTypeRepo;
 
     @MockBean
     StorelightClient mockStorelightClient;
@@ -66,9 +76,14 @@ public class TestReleaseMutation {
         blockSlot = slotRepo.save(blockSlot);
         block.getSlots().set(0, blockSlot);
         Labware lw = entityCreator.createLabware("STAN-002", lwtype, sample, sample, null, sample1);
+        User user = entityCreator.createUser("user1");
+
+        StainType st = stainTypeRepo.save(new StainType(null, "Varnish"));
+        String bondBarcode = "1234ABCD";
+        recordStain(lw, st, bondBarcode, user);
+
         ReleaseDestination destination = entityCreator.createReleaseDestination("Venus");
         ReleaseRecipient recipient = entityCreator.createReleaseRecipient("Mekon");
-        User user = entityCreator.createUser("user1");
         tester.setUser(user);
         String mutation = tester.readGraphQL("release.graphql")
                 .replace("[]", "[\"STAN-001\", \"STAN-002\"]")
@@ -106,7 +121,8 @@ public class TestReleaseMutation {
         assertEquals(tsvMaps.size(), 4);
         assertThat(tsvMaps.get(0).keySet()).containsOnly("Barcode", "Labware type", "Address", "Donor name",
                 "Life stage", "External identifier", "Tissue type", "Spatial location", "Replicate number", "Section number",
-                "Last section number", "Source barcode", "Section thickness", "Released from box location");
+                "Last section number", "Source barcode", "Section thickness", "Released from box location",
+                "Stain type", "Bond barcode");
         var row0 = tsvMaps.get(0);
         assertEquals(block.getBarcode(), row0.get("Barcode"));
         assertEquals(block.getLabwareType().getName(), row0.get("Labware type"));
@@ -117,6 +133,8 @@ public class TestReleaseMutation {
             assertEquals(lw.getBarcode(), row.get("Barcode"));
             assertEquals(lw.getLabwareType().getName(), row.get("Labware type"));
             assertEquals("C4", row.get("Released from box location"));
+            assertEquals(st.getName(), row.get("Stain type"));
+            assertEquals(bondBarcode, row.get("Bond barcode"));
         }
 
         entityCreator.createOpType("Unrelease", null, OperationTypeFlag.IN_PLACE);
@@ -130,6 +148,18 @@ public class TestReleaseMutation {
         assertNotNull(chainGet(unreleaseResult, "operations", 0, "id"));
         entityManager.refresh(lw);
         assertTrue(lw.isReleased());
+    }
+
+    private void recordStain(Labware lw, StainType st, String bondBarcode, User user) {
+        OperationType opType = opTypeRepo.getByName("Stain");
+        Operation op = new Operation(null, opType, null, null, user);
+        op.setStainType(st);
+        op = opRepo.save(op);
+        Slot slot = lw.getFirstSlot();
+        Sample sample = slot.getSamples().get(0);
+        actionRepo.save(new Action(null, op.getId(), slot, slot, sample, sample));
+        lwNoteRepo.save(new LabwareNote(null, lw.getId(), op.getId(), "Bond barcode", bondBarcode));
+        entityManager.refresh(op);
     }
 
 

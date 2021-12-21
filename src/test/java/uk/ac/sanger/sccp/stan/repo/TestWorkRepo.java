@@ -203,9 +203,43 @@ public class TestWorkRepo {
         String b = workRepo.createNumber("SGP");
         String c = workRepo.createNumber("R&D");
         assertNotEquals(a, b);
-        assertThat(a).matches("SGP\\d{1,}");
-        assertThat(b).matches("SGP\\d{1,}");
-        assertThat(c).matches("R&D\\d{2,}");
+        assertThat(a).matches("SGP\\d+");
+        assertThat(b).matches("SGP\\d+");
+        assertThat(c).matches("R&D\\d+");
+    }
+
+    @Transactional
+    @Test
+    public void testFindLabwareIdsForWorkIds() {
+        Work work1 = entityCreator.createWork(null, null, null);
+        Work work2 = entityCreator.createWork(work1.getWorkType(), work1.getProject(), work1.getCostCode());
+
+        List<Integer> labwareIds = workRepo.findLabwareIdsForWorkIds(List.of(work1.getId(), work2.getId()));
+        assertThat(labwareIds).isEmpty();
+
+        final Address A1 = new Address(1,1);
+        final Address A2 = new Address(1,2);
+
+        Sample sample = entityCreator.createSample(null, null);
+        final Integer sampleId = sample.getId();
+        LabwareType lt = entityCreator.createLabwareType("lt", 1, 2);
+        Labware lw1 = entityCreator.createLabware("STAN-A1", lt, sample, sample);
+        Labware lw2 = entityCreator.createLabware("STAN-A2", lt, sample, sample);
+        work1.setSampleSlotIds(List.of(new SampleSlotId(sampleId, lw1.getSlot(A1).getId()),
+                new SampleSlotId(sampleId, lw1.getSlot(A2).getId()),
+                new SampleSlotId(sampleId, lw2.getSlot(A1).getId())));
+        workRepo.save(work1);
+        work2.setSampleSlotIds(List.of(new SampleSlotId(sampleId, lw2.getSlot(A2).getId())));
+        workRepo.save(work2);
+
+        labwareIds = workRepo.findLabwareIdsForWorkIds(List.of(work1.getId(), -1));
+        assertThat(labwareIds).containsExactlyInAnyOrder(lw1.getId(), lw2.getId());
+
+        labwareIds = workRepo.findLabwareIdsForWorkIds(List.of(work1.getId(), work2.getId()));
+        assertThat(labwareIds).containsExactlyInAnyOrder(lw1.getId(), lw2.getId());
+
+        labwareIds = workRepo.findLabwareIdsForWorkIds(List.of(work2.getId()));
+        assertThat(labwareIds).containsExactlyInAnyOrder(lw2.getId());
     }
 
     @Transactional
@@ -225,7 +259,6 @@ public class TestWorkRepo {
         work1.setOperationIds(List.of(opIds[0], opIds[1]));
         work2.setOperationIds(List.of(opIds[1], opIds[2]));
         workRepo.saveAll(List.of(work1, work2));
-        entityManager.flush();
 
         workMap = workRepo.findWorkNumbersForOpIds(List.of(opIds[3]));
         assertThat(workMap).hasSize(1);
@@ -269,8 +302,8 @@ public class TestWorkRepo {
         assertNotEquals(workNumber1, workNumber2); // This is the main point of the test
         assertNotNull(workNumber1);
         assertNotNull(workNumber2);
-        assertThat(workNumber1).matches("SGP\\d{1,}");
-        assertThat(workNumber2).matches("SGP\\d{1,}");
+        assertThat(workNumber1).matches("SGP\\d+");
+        assertThat(workNumber2).matches("SGP\\d+");
     }
 
     private static class WorkThread extends Thread {

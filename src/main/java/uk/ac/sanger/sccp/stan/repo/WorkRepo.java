@@ -81,4 +81,7 @@ public interface WorkRepo extends CrudRepository<Work, Integer> {
     }
 
     List<Work> findAllByWorkNumberIn(Collection<String> workNumbers);
+
+    @Query(value="select distinct labware_id from work_sample ws join slot on (ws.slot_id=slot.id) where ws.work_id IN (?1)", nativeQuery = true)
+    List<Integer> findLabwareIdsForWorkIds(Collection<Integer> workIds);
 }

@@ -18,6 +18,8 @@ public class ReleaseEntry {
     private String sectionThickness;
     private Address sourceAddress;
     private Address storageAddress;
+    private String stainType;
+    private String bondBarcode;
 
     public ReleaseEntry(Labware labware, Slot slot, Sample sample) {
         this(labware, slot, sample, null);
@@ -82,6 +84,22 @@ public class ReleaseEntry {
         this.storageAddress = storageAddress;
     }
 
+    public String getStainType() {
+        return this.stainType;
+    }
+
+    public void setStainType(String stainType) {
+        this.stainType = stainType;
+    }
+
+    public String getBondBarcode() {
+        return this.bondBarcode;
+    }
+
+    public void setBondBarcode(String bondBarcode) {
+        this.bondBarcode = bondBarcode;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -94,7 +112,9 @@ public class ReleaseEntry {
                 && Objects.equals(this.sourceBarcode, that.sourceBarcode)
                 && Objects.equals(this.sourceAddress, that.sourceAddress)
                 && Objects.equals(this.sectionThickness, that.sectionThickness)
-                && Objects.equals(this.storageAddress, that.storageAddress));
+                && Objects.equals(this.storageAddress, that.storageAddress)
+                && Objects.equals(this.stainType, that.stainType)
+                && Objects.equals(this.bondBarcode, that.bondBarcode));
     }
 
     @Override
@@ -112,6 +132,8 @@ public class ReleaseEntry {
                 .add("sourceAddress", sourceAddress)
                 .add("sectionThickness", sectionThickness)
                 .add("storageAddress", storageAddress)
+                .add("stainType", stainType)
+                .add("bondBarcode", bondBarcode)
                 .toString();
     }
 }
