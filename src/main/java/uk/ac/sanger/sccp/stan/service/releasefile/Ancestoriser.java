@@ -117,7 +117,8 @@ public class Ancestoriser {
 
         /**
          * Gets all the ancestor slot-samples of a specific slot-sample, recursing through
-         * this ancestry until last root
+         * this ancestry until last root.
+         * The returned set is ordered, most recent generation first
          * @param last the slot-sample to get the ancestors of
          * @return the ancestors of the given slot-sample (including itself)
          */

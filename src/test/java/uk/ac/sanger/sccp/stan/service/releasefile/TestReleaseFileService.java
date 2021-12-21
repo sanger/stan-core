@@ -16,11 +16,11 @@ import java.util.*;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toMap;
+import static java.util.stream.Collectors.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.stan.service.ComplexStainServiceImp.LW_NOTE_BOND_BARCODE;
 
 /**
  * Tests {@link ReleaseFileService}
@@ -33,6 +33,9 @@ public class TestReleaseFileService {
     MeasurementRepo mockMeasurementRepo;
     SnapshotRepo mockSnapshotRepo;
     Ancestoriser mockAncestoriser;
+    OperationTypeRepo mockOpTypeRepo;
+    OperationRepo mockOpRepo;
+    LabwareNoteRepo mockLwNoteRepo;
 
     ReleaseFileService service;
 
@@ -44,6 +47,7 @@ public class TestReleaseFileService {
     private Release release1, release2;
     private Snapshot snap1, snap2;
 
+
     @BeforeEach
     void setup() {
         mockReleaseRepo = mock(ReleaseRepo.class);
@@ -52,9 +56,12 @@ public class TestReleaseFileService {
         mockMeasurementRepo = mock(MeasurementRepo.class);
         mockSnapshotRepo = mock(SnapshotRepo.class);
         mockAncestoriser = mock(Ancestoriser.class);
+        mockOpTypeRepo = mock(OperationTypeRepo.class);
+        mockOpRepo = mock(OperationRepo.class);
+        mockLwNoteRepo = mock(LabwareNoteRepo.class);
 
-        service = spy(new ReleaseFileService(mockReleaseRepo, mockSampleRepo, mockLabwareRepo,
-                mockMeasurementRepo, mockSnapshotRepo, mockAncestoriser));
+        service = spy(new ReleaseFileService(mockAncestoriser, mockSampleRepo, mockLabwareRepo, mockMeasurementRepo,
+                mockSnapshotRepo, mockReleaseRepo, mockOpTypeRepo, mockOpRepo, mockLwNoteRepo));
 
         user = EntityFactory.getUser();
         destination = new ReleaseDestination(50, "Venus");
@@ -130,6 +137,7 @@ public class TestReleaseFileService {
         doNothing().when(service).loadLastSection(any());
         doNothing().when(service).loadSources(any(), any(), any());
         doNothing().when(service).loadSectionThickness(any(), any());
+        doNothing().when(service).loadLastStain(any());
 
         List<Integer> releaseIds = List.of(this.release1.getId(), release2.getId());
         ReleaseFileContent rfc = service.getReleaseFileContent(releaseIds);
@@ -144,6 +152,7 @@ public class TestReleaseFileService {
         verify(service).findAncestry(entries);
         verify(service).loadSources(entries, ancestry, mode);
         verify(service).loadSectionThickness(entries, ancestry);
+        verify(service).loadLastStain(entries);
     }
 
     @ParameterizedTest
@@ -388,6 +397,26 @@ public class TestReleaseFileService {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testSelectSourceForCDNA(boolean found) {
+        BioState cdna = new BioState(10, "cDNA");
+        Sample sam1 = new Sample(90, 1, EntityFactory.getTissue(), cdna);
+        BioState bs = (found ? new BioState(11, "Feet") : cdna);
+        Sample sam2 = new Sample(sam1.getId()+1, 10, sam1.getTissue(), bs);
+        Labware lw1 = EntityFactory.getTube();
+        Slot slot1 = lw1.getFirstSlot();
+        Labware lw2 = EntityFactory.makeLabware(lw1.getLabwareType(), sam2);
+        Slot slot2 = lw2.getFirstSlot();
+        Ancestry ancestry = mock(Ancestry.class);
+        final SlotSample keySlotSample = new SlotSample(slot1, sam1);
+        final SlotSample prevSlotSample = new SlotSample(slot2, sam2);
+        when(ancestry.ancestors(keySlotSample)).thenReturn(Set.of(keySlotSample, prevSlotSample));
+
+        ReleaseEntry entry = new ReleaseEntry(lw1, slot1, sam1);
+        assertSame(found ? prevSlotSample : null, service.selectSourceForCDNA(entry, ancestry));
+    }
+
     @Test
     public void testLoadSectionThickness() {
         setupLabware();
@@ -438,6 +467,150 @@ public class TestReleaseFileService {
             map.computeIfAbsent(meas.getSlotId(), ArrayList::new).add(meas);
         }
         return map;
+    }
+
+    @Test
+    public void testLoadLastStain_noEntries() {
+        service.loadLastStain(List.of());
+        verify(service, never()).loadLastOpMap(any(), any());
+        verify(service, never()).loadBondBarcodes(any());
+    }
+
+    @Test
+    public void testLoadLastStain_noStainOps() {
+        OperationType opType = EntityFactory.makeOperationType("Stain", null);
+        when(mockOpTypeRepo.getByName("Stain")).thenReturn(opType);
+        doReturn(Map.of()).when(service).loadLastOpMap(any(), any());
+        Labware lw = EntityFactory.getTube();
+        final ReleaseEntry entry = new ReleaseEntry(lw, lw.getFirstSlot(), EntityFactory.getSample());
+        List<ReleaseEntry> entries = List.of(entry);
+        service.loadLastStain(entries);
+        verify(service).loadLastOpMap(opType, Set.of(lw.getId()));
+        verify(service, never()).loadBondBarcodes(any());
+        assertNull(entry.getStainType());
+        assertNull(entry.getBondBarcode());
+    }
+
+    @Test
+    public void testLoadLastStain() {
+        Sample sample = EntityFactory.getSample();
+        Labware lw1 = EntityFactory.getTube();
+        Labware lw2 = EntityFactory.makeLabware(lw1.getLabwareType(), sample);
+        Labware lw3 = EntityFactory.makeLabware(lw1.getLabwareType(), sample);
+        List<ReleaseEntry> entries = Stream.of(lw1, lw2, lw3)
+                .map(lw -> new ReleaseEntry(lw, lw.getFirstSlot(), sample))
+                .collect(toList());
+        OperationType opType = EntityFactory.makeOperationType("Stain", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.STAIN);
+        when(mockOpTypeRepo.getByName("Stain")).thenReturn(opType);
+        StainType st1 = new StainType(1, "StainAlpha");
+        StainType st2 = new StainType(2, "StainBeta");
+        Operation op1 = new Operation(11, opType, null, null, null);
+        op1.setStainType(st1);
+        Operation op2 = new Operation(12, opType, null, null, null);
+        op2.setStainType(st2);
+        final Map<Integer, Operation> lwOpMap = Map.of(lw1.getId(), op1, lw2.getId(), op2);
+        doReturn(lwOpMap).when(service).loadLastOpMap(any(), any());
+        doReturn(Map.of(lw1.getId(), "BONDBC01")).when(service).loadBondBarcodes(any());
+
+        service.loadLastStain(entries);
+        verify(service).loadLastOpMap(opType, Set.of(lw1.getId(), lw2.getId(), lw3.getId()));
+        verify(service).loadBondBarcodes(lwOpMap);
+        String[] expectedStainTypes = {"StainAlpha", "StainBeta", null};
+        String[] expectedBondBarcodes = { "BONDBC01", null, null};
+        for (int i = 0; i < entries.size(); ++i) {
+            ReleaseEntry entry = entries.get(i);
+            assertEquals(expectedStainTypes[i], entry.getStainType());
+            assertEquals(expectedBondBarcodes[i], entry.getBondBarcode());
+        }
+    }
+
+    @Test
+    public void testLoadLastOpMap() {
+        OperationType opType = EntityFactory.makeOperationType("Stain", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.STAIN);
+        Sample sample = EntityFactory.getSample();
+        Labware lw1 = EntityFactory.getTube();
+        Labware lw2 = EntityFactory.makeLabware(lw1.getLabwareType(), sample);
+        Labware lw3 = EntityFactory.makeLabware(lw1.getLabwareType(), sample);
+        List<Operation> ops = List.of(
+                makeOp(1, opType, lw1, time(1)),
+                makeOp(2, opType, lw1, time(1)),
+                makeOp(3, opType, lw2, time(3)),
+                makeOp(4, opType, lw2, time(2))
+        );
+        when(mockOpRepo.findAllByOperationTypeAndDestinationLabwareIdIn(any(), any())).thenReturn(ops);
+        Set<Integer> labwareIds = Stream.of(lw1, lw2, lw3).map(Labware::getId).collect(toSet());
+        Map<Integer, Operation> opMap = service.loadLastOpMap(opType, labwareIds);
+        verify(mockOpRepo).findAllByOperationTypeAndDestinationLabwareIdIn(opType, labwareIds);
+
+        assertSame(ops.get(1), opMap.get(lw1.getId()));
+        assertSame(ops.get(2), opMap.get(lw2.getId()));
+        assertNull(opMap.get(lw3.getId()));
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "1,1,true",
+            "1,-1,true",
+            "-1,1,false",
+            "-1,-1,false",
+            "0,1,true",
+            "0,-1,false",
+            ",,true",
+    })
+    public void testOpSupplants(Integer timeDiff, Integer idDiff, boolean expected) {
+        Operation newOp, savedOp;
+        if (timeDiff==null) {
+            savedOp = null;
+            newOp = new Operation(1, null, time(0), null, null);
+        } else {
+            savedOp = new Operation(10, null, time(0), null, null);
+            newOp = new Operation(savedOp.getId()+idDiff, null,
+                    savedOp.getPerformed().plusDays(timeDiff), null, null);
+        }
+        assertEquals(expected, ReleaseFileService.opSupplants(newOp, savedOp));
+    }
+
+    @Test
+    public void testLoadBondBarcodes_noNotes() {
+        Operation op1 = new Operation(10, null, null, null, null);
+        Operation op2 = new Operation(11, null, null, null, null);
+        Map<Integer, Operation> lwOps = Map.of(80, op1, 81, op1, 82, op2);
+        when(mockLwNoteRepo.findAllByOperationIdIn(any())).thenReturn(List.of());
+        assertThat(service.loadBondBarcodes(lwOps)).isEmpty();
+        verify(mockLwNoteRepo).findAllByOperationIdIn(Set.of(op1.getId(), op2.getId()));
+    }
+
+    @Test
+    public void testLoadBondBarcodes() {
+        final int op1id = 10, op2id=11;
+        final int lw1id = 80, lw2id=81, lw3id=82;
+        final String bondBc1 = "12345678", bondBc2 = "12340000";
+        Operation op1 = new Operation(op1id, null, null, null, null);
+        Operation op2 = new Operation(op2id, null, null, null, null);
+        Map<Integer, Operation> lwOps = Map.of(lw1id, op1, lw2id, op1, lw3id, op2);
+        List<LabwareNote> notes = List.of(
+                new LabwareNote(1, lw1id, op1id, LW_NOTE_BOND_BARCODE, bondBc1),
+                new LabwareNote(2, lw1id, op1id, "Bananas", "yellow"),
+                new LabwareNote(3, lw2id, op1id, "Custard", "yellow"),
+                new LabwareNote(4, lw2id, op1id, LW_NOTE_BOND_BARCODE, bondBc2),
+                new LabwareNote(5, lw3id, op1id, LW_NOTE_BOND_BARCODE, "yellow"),
+                new LabwareNote(6, lw1id, op2id, LW_NOTE_BOND_BARCODE, "yellow")
+        );
+        when(mockLwNoteRepo.findAllByOperationIdIn(any())).thenReturn(notes);
+        Map<Integer, String> results = service.loadBondBarcodes(lwOps);
+        verify(mockLwNoteRepo).findAllByOperationIdIn(Set.of(op1id, op2id));
+        assertEquals(Map.of(lw1id, bondBc1, lw2id, bondBc2), results);
+    }
+
+    private LocalDateTime time(int day) {
+        return LocalDateTime.of(2021,12,1+day, 12,0,0);
+    }
+
+    private Operation makeOp(int id, OperationType opType, Labware lw, LocalDateTime time) {
+        Slot slot = lw.getFirstSlot();
+        Sample sam = slot.getSamples().get(0);
+        Action action = new Action(10*id, id, slot, slot, sam, sam);
+        return new Operation(id, opType, time, List.of(action), null);
     }
 
     private Ancestry makeAncestry(Object... args) {
