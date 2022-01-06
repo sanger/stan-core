@@ -3,6 +3,7 @@ package uk.ac.sanger.sccp.stan.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
+import uk.ac.sanger.sccp.stan.model.Work.Status;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.WorkProgress;
 import uk.ac.sanger.sccp.stan.request.WorkProgress.WorkProgressTimestamp;
@@ -42,35 +43,45 @@ public class WorkProgressServiceImp implements WorkProgressService {
     }
 
     @Override
-    public List<WorkProgress> getProgress(String workNumber, String workTypeName, Work.Status status) {
+    public List<WorkProgress> getProgress(String workNumber, List<String> workTypeNames, List<Status> statuses) {
+        Work singleWork = (workNumber==null ? null : workRepo.getByWorkNumber(workNumber));
+        List<WorkType> workTypes;
+        if (workTypeNames==null) {
+            workTypes = null;
+        } else if (workTypeNames.isEmpty()) {
+            return List.of();
+        } else {
+            workTypes = workTypeRepo.getAllByNameIn(workTypeNames);
+        }
+        if (workTypes!=null && workTypes.isEmpty() || statuses!=null && statuses.isEmpty()) {
+            return List.of();
+        }
         EntityNameFilter<OperationType> opTypeFilter = new EntityNameFilter<>(includedOpTypes);
         EntityNameFilter<StainType> stainTypeFilter = new EntityNameFilter<>(specialStainTypes);
         EntityNameFilter<LabwareType> labwareTypeFilter = new EntityNameFilter<>(specialLabwareTypes);
         final Map<Integer, LabwareType> labwareIdToType = new HashMap<>();
-        if (workNumber!=null) {
-            Work work = workRepo.getByWorkNumber(workNumber);
-            if (workTypeName!=null && !work.getWorkType().equals(workTypeRepo.getByName(workTypeName))) {
+        if (singleWork!=null) {
+            if (workTypes!=null && !workTypes.contains(singleWork.getWorkType())) {
                 return List.of();
             }
-            if (status!=null && work.getStatus()!=status) {
+            if (statuses!=null && !statuses.contains(singleWork.getStatus())) {
                 return List.of();
             }
-            return List.of(getProgressForWork(work, opTypeFilter, stainTypeFilter, labwareTypeFilter, labwareIdToType));
+            return List.of(getProgressForWork(singleWork, opTypeFilter, stainTypeFilter, labwareTypeFilter, labwareIdToType));
         }
-        if (workTypeName!=null) {
-            WorkType wt = workTypeRepo.getByName(workTypeName);
-            List<Work> works = workRepo.findAllByWorkTypeIn(List.of(wt));
+        if (workTypes!=null) {
+            List<Work> works = workRepo.findAllByWorkTypeIn(workTypes);
             Stream<Work> workStream = works.stream();
-            if (status!=null) {
-                workStream = workStream.filter(work -> work.getStatus()==status);
+            if (statuses!=null) {
+                workStream = workStream.filter(work -> statuses.contains(work.getStatus()));
             }
             return workStream
                     .map(work -> getProgressForWork(work, opTypeFilter, stainTypeFilter, labwareTypeFilter, labwareIdToType))
                     .collect(toList());
         }
         Iterable<Work> works;
-        if (status!=null) {
-            works = workRepo.findAllByStatusIn(List.of(status));
+        if (statuses!=null) {
+            works = workRepo.findAllByStatusIn(statuses);
         } else {
             works = workRepo.findAll();
         }

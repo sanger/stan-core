@@ -740,7 +740,7 @@ type Query {
     historyForDonorName(donorName: String!): History!
     historyForWorkNumber(workNumber: String!): History!
     historyForLabwareBarcode(barcode: String!): History!
-    workProgress(workNumber: String, workType: String, status: WorkStatus): [WorkProgress!]!
+    workProgress(workNumber: String, workTypes: [String!], statuses: [WorkStatus!]): [WorkProgress!]!
 
     location(locationBarcode: String!): Location!
     stored(barcodes: [String!]!): [StoredItem!]!

@@ -1,5 +1,5 @@
 query {
-    workProgress(workNumber: "SGP500", status: active) {
+    workProgress(workNumber: "SGP500", statuses: [active]) {
         work { workNumber, workType { name }}
         timestamps { type, timestamp }
     }
