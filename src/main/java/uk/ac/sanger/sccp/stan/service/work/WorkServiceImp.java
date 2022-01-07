@@ -1,15 +1,17 @@
 package uk.ac.sanger.sccp.stan.service.work;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.util.Streamable;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.Work.SampleSlotId;
 import uk.ac.sanger.sccp.stan.model.Work.Status;
 import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.request.WorkWithComment;
+import uk.ac.sanger.sccp.stan.service.Validator;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.UCMap;
-import uk.ac.sanger.sccp.stan.request.WorkWithComment;
 
 import java.util.*;
 
@@ -25,15 +27,18 @@ public class WorkServiceImp implements WorkService {
     private final WorkTypeRepo workTypeRepo;
     private final WorkRepo workRepo;
     private final WorkEventService workEventService;
+    private final Validator<String> priorityValidator;
 
     @Autowired
     public WorkServiceImp(ProjectRepo projectRepo, CostCodeRepo costCodeRepo, WorkTypeRepo workTypeRepo, WorkRepo workRepo,
-                          WorkEventService workEventService) {
+                          WorkEventService workEventService,
+                          @Qualifier("workPriorityValidator") Validator<String> priorityValidator) {
         this.projectRepo = projectRepo;
         this.costCodeRepo = costCodeRepo;
         this.workTypeRepo = workTypeRepo;
         this.workRepo = workRepo;
         this.workEventService = workEventService;
+        this.priorityValidator = priorityValidator;
     }
 
     public void checkPrefix(String prefix) {
@@ -61,7 +66,7 @@ public class WorkServiceImp implements WorkService {
         }
 
         String workNumber = workRepo.createNumber(prefix);
-        Work work = workRepo.save(new Work(null, workNumber, type, project, cc, Status.unstarted, numBlocks, numSlides));
+        Work work = workRepo.save(new Work(null, workNumber, type, project, cc, Status.unstarted, numBlocks, numSlides, null));
         workEventService.recordEvent(user, work, WorkEvent.Type.create, null);
         return work;
     }
@@ -72,6 +77,9 @@ public class WorkServiceImp implements WorkService {
         WorkEvent event = workEventService.recordStatusChange(user, work, newStatus, commentId);
         work.setStatus(newStatus);
         String commentText = (event.getComment()==null ? null : event.getComment().getText());
+        if (work.getPriority()!=null && work.isClosed()) { // note: work has new status so isClosed() will work
+            work.setPriority(null);
+        }
         return new WorkWithComment(workRepo.save(work), commentText);
     }
 
@@ -97,6 +105,28 @@ public class WorkServiceImp implements WorkService {
             }
             work.setNumSlides(numSlides);
             work = workRepo.save(work);
+        }
+        return work;
+    }
+
+    @Override
+    public Work updateWorkPriority(User user, String workNumber, String priority) {
+        Work work = workRepo.getByWorkNumber(workNumber);
+        if (priority==null) {
+            if (work.getPriority()!=null) {
+                work.setPriority(null);
+                work = workRepo.save(work);
+            }
+        } else {
+            priorityValidator.checkArgument(priority);
+            priority = priority.toUpperCase();
+            if (!priority.equals(work.getPriority())) {
+                if (work.isClosed()) {
+                    throw new IllegalArgumentException("Cannot set a new priority on "+work.getStatus()+" work.");
+                }
+                work.setPriority(priority);
+                work = workRepo.save(work);
+            }
         }
         return work;
     }
