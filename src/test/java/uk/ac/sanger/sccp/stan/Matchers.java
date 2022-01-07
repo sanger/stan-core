@@ -113,7 +113,6 @@ public class Matchers {
         public boolean matches(String string) {
             Matcher m = pattern.matcher(string);
             if (!m.matches()) {
-                System.out.println("No match.");
                 return false;
             }
             List<String> groups = IntStream.range(1, m.groupCount()+1)
