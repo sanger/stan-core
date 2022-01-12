@@ -10,12 +10,14 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.plan.*;
 import uk.ac.sanger.sccp.stan.service.Validator;
+import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -53,14 +55,16 @@ public class TestPlanValidation {
         PlanValidationImp validation = makeValidation(request);
         final OperationType opType = new OperationType(1, "Stir fry");
         doReturn(opType).when(validation).validateOperation();
-        doNothing().when(validation).validateSources(any());
-        doNothing().when(validation).validateDestinations();
+        Labware lw = EntityFactory.getTube();
+        UCMap<Labware> sourceLwMap = UCMap.from(Labware::getBarcode, lw);
+        doReturn(sourceLwMap).when(validation).validateSources(any());
+        doNothing().when(validation).validateDestinations(sourceLwMap);
 
         assertSame(validation.validate(), validation.problems);
 
         verify(validation).validateOperation();
         verify(validation).validateSources(opType);
-        verify(validation).validateDestinations();
+        verify(validation).validateDestinations(sourceLwMap);
     }
 
     @Test
@@ -113,7 +117,7 @@ public class TestPlanValidation {
                             new Address(1, 1), sampleId,
                             new PlanRequestSource(bc, sourceAddressIter.hasNext() ? sourceAddressIter.next() : null), null)
                     )
-                    .collect(Collectors.toList());
+                    .collect(toList());
 
         PlanRequest request = new PlanRequest(
                 opType.getName(),
@@ -121,9 +125,12 @@ public class TestPlanValidation {
         );
 
         PlanValidationImp validation = makeValidation(request);
-        validation.validateSources(opType);
+        Map<String, Labware> result = validation.validateSources(opType);
 
         assertProblems(expectedProblems, validation.problems);
+        if (existingLabware!=null) {
+            assertThat(result).containsEntry(existingLabware.getBarcode(), existingLabware).hasSize(1);
+        }
     }
 
     @Test
@@ -149,7 +156,8 @@ public class TestPlanValidation {
     @ParameterizedTest
     @MethodSource("destinationData")
     public void testValidateDestinations(Object planRequestLabware,
-                                         List<LabwareType> labwareTypes, Object expectedProblems) {
+                                         List<LabwareType> labwareTypes, Object expectedProblems,
+                                         Boolean dividedLayout) {
         PlanRequest request = new PlanRequest("opType", nullableObjToList(planRequestLabware));
 
         PlanValidationImp validation = makeValidation(request);
@@ -175,8 +183,28 @@ public class TestPlanValidation {
         if (request.getLabware().stream().anyMatch(lw -> "extant".equalsIgnoreCase(lw.getBarcode()))) {
             when(mockLabwareRepo.existsByBarcode(eqCi("extant"))).thenReturn(true);
         }
-
-        validation.validateDestinations();
+        Labware lw = EntityFactory.getTube();
+        UCMap<Labware> sourceLwMap = UCMap.from(Labware::getBarcode, lw);
+        if (dividedLayout!=null) {
+            doReturn(dividedLayout).when(validation).hasDividedLayout(any(), any(), any());
+        }
+        validation.validateDestinations(sourceLwMap);
+        if (dividedLayout==null) {
+            verify(validation, never()).hasDividedLayout(any(), any(), any());
+        } else {
+            assert labwareTypes!=null;
+            UCMap<LabwareType> adhLts = labwareTypes.stream()
+                    .filter(lwt -> lwt.getLabelType()!=null && "adh".equalsIgnoreCase(lwt.getLabelType().getName()))
+                    .collect(UCMap.toUCMap(LabwareType::getName));
+            List<PlanRequestLabware> adhPrls = request.getLabware().stream()
+                    .filter(prl -> adhLts.get(prl.getLabwareType())!=null)
+                    .collect(toList());
+            verify(validation, times(adhPrls.size())).hasDividedLayout(any(), any(), any());
+            for (PlanRequestLabware prl : adhPrls) {
+                final LabwareType lt = adhLts.get(prl.getLabwareType());
+                verify(validation).hasDividedLayout(sourceLwMap, prl, lt);
+            }
+        }
 
         assertProblems(expectedProblems, validation.problems);
 
@@ -190,6 +218,13 @@ public class TestPlanValidation {
         }
     }
 
+    @ParameterizedTest
+    @MethodSource("hasDividedLayoutData")
+    public void testHasDividedLayout(UCMap<Labware> sourceLwMap, PlanRequestLabware prl, LabwareType lt, boolean expected) {
+        PlanRequest request = new PlanRequest("opType", List.of(prl));
+        PlanValidationImp validation = makeValidation(request);
+        assertEquals(expected, validation.hasDividedLayout(sourceLwMap, prl, lt));
+    }
 
     static Stream<Arguments> sourcesData() {
         Sample sample = EntityFactory.getSample();
@@ -233,9 +268,9 @@ public class TestPlanValidation {
                 Arguments.of(destroyedLw.getBarcode(), A1, sectionSampleId, destroyedLw, otherOpType, "Labware already destroyed: ["+destroyedLw.getBarcode()+"]"),
                 Arguments.of(releasedLw.getBarcode(), A1, sectionSampleId, releasedLw, otherOpType, "Labware already released: ["+releasedLw.getBarcode()+"]"),
                 Arguments.of(discardedLw.getBarcode(), A1, sectionSampleId, discardedLw, otherOpType, "Labware already discarded: ["+discardedLw.getBarcode()+"]"),
-                Arguments.of(null, A1, blockSampleId, block, sectionOpType, "Missing source barcode."),
-                Arguments.of("", A1, blockSampleId, block, sectionOpType, "Missing source barcode."),
-                Arguments.of("404", A1, blockSampleId, block, sectionOpType, "Unknown labware barcode: [404]"),
+                Arguments.of(null, A1, blockSampleId, null, sectionOpType, "Missing source barcode."),
+                Arguments.of("", A1, blockSampleId, null, sectionOpType, "Missing source barcode."),
+                Arguments.of("404", A1, blockSampleId, null, sectionOpType, "Unknown labware barcode: [404]"),
                 Arguments.of(block.getBarcode(), new Address(2,3), blockSampleId, block, sectionOpType,
                         "Labware "+block.getBarcode()+" ("+lt.getName()+") has no slot at address B3."),
                 Arguments.of(block.getBarcode(), null, blockSampleId+1, block, sectionOpType,
@@ -302,38 +337,118 @@ public class TestPlanValidation {
         String ltName = lt.getName();
         LabwareType preLt = new LabwareType(2, "pre", 1, 1, EntityFactory.getLabelType(), true);
         String preName = preLt.getName();
-        List<LabwareType> lts = List.of(lt, preLt);
+        LabelType adhLabel = new LabelType(100, "adh");
+        LabwareType adhLt = new LabwareType(200, "Visium ADH", 4, 2, adhLabel, false);
+        List<LabwareType> lts = List.of(lt, preLt, adhLt);
         List<PlanRequestAction> noActions = List.of();
 
         return Stream.of(
                 Arguments.of(List.of(new PlanRequestLabware(ltName, null, noActions),
                         new PlanRequestLabware(ltName, null, noActions),
                         new PlanRequestLabware(preName, "SPECIALBARCODE", noActions)),
-                        lts, null),
+                        lts, null, null),
+                Arguments.of(List.of(new PlanRequestLabware(adhLt.getName(), null, noActions),
+                        new PlanRequestLabware(ltName, null, noActions)),
+                        lts, null, true),
+                Arguments.of(List.of(new PlanRequestLabware(adhLt.getName(), null, noActions),
+                        new PlanRequestLabware(ltName, null, noActions)), lts,
+                        "Labware of type Visium ADH must have one tissue in its top half and one in its bottom half.",
+                        false),
 
-                Arguments.of(List.of(), null, "No labware are specified in the plan request."),
+                Arguments.of(List.of(), null, "No labware are specified in the plan request.", null),
                 Arguments.of(List.of(new PlanRequestLabware(preName, "SPECIAL1", noActions),
                         new PlanRequestLabware(preName, "SPECIAL1", noActions)),
-                        lts, "Repeated barcode given for new labware: SPECIAL1"),
+                        lts, "Repeated barcode given for new labware: SPECIAL1", null),
                 Arguments.of(new PlanRequestLabware(null, null, noActions),
-                        lts, "Missing labware type."),
+                        lts, "Missing labware type.", null),
                 Arguments.of(new PlanRequestLabware(preName, "EXTANT", noActions),
-                        lts, "Labware with the barcode EXTANT already exists in the database."),
+                        lts, "Labware with the barcode EXTANT already exists in the database.", null),
                 Arguments.of(new PlanRequestLabware(preName, null, noActions),
-                        lts, "No barcode supplied for new labware of type "+preName+"."),
+                        lts, "No barcode supplied for new labware of type "+preName+".", null),
                 Arguments.of(new PlanRequestLabware(ltName, "SPECIAL1", noActions),
-                        lts, "Unexpected barcode supplied for new labware of type "+ltName+"."),
+                        lts, "Unexpected barcode supplied for new labware of type "+ltName+".", null),
                 Arguments.of(new PlanRequestLabware("Mist", null, noActions),
-                        lts, "Unknown labware type: [MIST]"),
+                        lts, "Unknown labware type: [MIST]", null),
                 Arguments.of(List.of(
                         new PlanRequestLabware("Mist", null, noActions),
                         new PlanRequestLabware("MIST", null, noActions),
                         new PlanRequestLabware("Fog", null, noActions)
-                ), lts, "Unknown labware types: [MIST, FOG]"),
+                ), lts, "Unknown labware types: [MIST, FOG]", null),
                 Arguments.of(new PlanRequestLabware(preName, "SPECIAL*", noActions),
-                        lts, "Invalid barcode: SPECIAL*")
+                        lts, "Invalid barcode: SPECIAL*", null)
 
         );
+    }
+
+    static Stream<Arguments> hasDividedLayoutData() {
+        // lwmap, prl, lt, expected
+
+        Tissue[] tissues = IntStream.range(0,3)
+                .mapToObj(i -> EntityFactory.makeTissue(EntityFactory.getDonor(), EntityFactory.getSpatialLocation()))
+                .toArray(Tissue[]::new);
+        Sample[] sams = IntStream.range(0,3)
+                .mapToObj(i -> new Sample(10+i, null, tissues[i], EntityFactory.getBioState()))
+                .toArray(Sample[]::new);
+        Labware[] blocks = Arrays.stream(sams)
+                .map(EntityFactory::makeBlock)
+                .toArray(Labware[]::new);
+        Labware someOtherBlock = EntityFactory.makeBlock(sams[0]);
+
+        UCMap<Labware> sourceLwMap = UCMap.from(Labware::getBarcode, blocks);
+
+        LabwareType lt = new LabwareType(10, "Visium ADH", 4, 2, new LabelType(6, "adh"), false);
+
+        final Address A1 = new Address(1,1);
+        final Address A2 = new Address(1,2);
+        final Address B1 = new Address(2,1);
+        final Address C1 = new Address(3,1);
+        final Address D2 = new Address(4,2);
+        final Address E1 = new Address(5,1); // address out of range
+        final Stream<Arguments> argStream = Arrays.stream(new Object[][]{
+                {A1, blocks[0], A1, blocks[0], A1, blocks[0], A2, blocks[0], B1, blocks[0], C1, blocks[1], C1, blocks[1], D2, blocks[1], true},
+                {A2, blocks[0], C1, blocks[0], true},
+                {A1, blocks[0], A1, blocks[0], A2, blocks[0], true},
+                {C1, blocks[0], true},
+                {A1, blocks[0], C1, blocks[1], E1, blocks[2], true}, // E1 entry is ignored
+                {null, blocks[0], true}, // missing address is ignored
+                {A1, null, true}, // missing source is ignored
+                {A1, someOtherBlock, true}, // labware not found is ignored
+                {true},
+                {A1, blocks[0], A2, blocks[0], A2, blocks[1], C1, blocks[2], false},
+                {A1, blocks[0], C1, blocks[1], D2, blocks[2], false},
+        }).map(arr -> Arguments.of(sourceLwMap, toPRL(lt.getName(), arr), lt, arr[arr.length - 1]));
+
+        final Stream<Arguments> otherArgStream = Stream.of(
+                Arguments.of(sourceLwMap, new PlanRequestLabware(lt.getName(), null,
+                        List.of(
+                                new PlanRequestAction(A1, sams[0].getId(), new PlanRequestSource(blocks[0].getBarcode(), A1), null),
+                                new PlanRequestAction(A1, sams[1].getId(), new PlanRequestSource(blocks[0].getBarcode(), A2), null))),
+                        lt, true), // Invalid source address is ignored
+                Arguments.of(sourceLwMap, new PlanRequestLabware(lt.getName(), null,
+                        List.of(new PlanRequestAction(A1, sams[0].getId(), new PlanRequestSource(blocks[0].getBarcode(), A1), null),
+                                new PlanRequestAction(A2, sams[1].getId(), new PlanRequestSource(blocks[0].getBarcode(), A1), null))),
+                        lt, true) // Sample id not present in slot is ignored
+        );
+
+        return Stream.concat(argStream, otherArgStream);
+
+    }
+
+    private static PlanRequestLabware toPRL(String ltName, Object[] data) {
+        final Address A1 = new Address(1,1);
+
+        List<PlanRequestAction> pras = IntStream.range(0, (data.length-1)/2)
+                .mapToObj(i -> {
+                    Address ad = (Address) data[2*i];
+                    Labware lw = (Labware) data[2*i+1];
+                    if (lw==null) {
+                        return new PlanRequestAction(ad, 5, null, null);
+                    }
+                    return new PlanRequestAction(ad, lw.getFirstSlot().getSamples().get(0).getId(),
+                            new PlanRequestSource(lw.getBarcode(), i%2==0 ? A1 : null), null);
+                })
+                .collect(toList());
+        return new PlanRequestLabware(ltName, null, pras);
     }
 
     private static void assertProblems(Object expectedProblems, Collection<String> problems) {
