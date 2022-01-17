@@ -10,6 +10,7 @@ import javax.persistence.EntityNotFoundException;
 import java.io.IOException;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Function;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
@@ -62,8 +63,14 @@ public class LabelPrintService {
             throw new IllegalArgumentException("Cannot perform a print request incorporating multiple different label types.");
         }
         LabelType labelType = labelTypes.iterator().next();
+        final Function<Labware, LabwareLabelData> labelFunction;
+        if (labelType.getName().equalsIgnoreCase("adh")) {
+            labelFunction = labwareLabelDataService::getDividedLabelData;
+        } else {
+            labelFunction = labwareLabelDataService::getLabelData;
+        }
         List<LabwareLabelData> labelData = labware.stream()
-                .map(labwareLabelDataService::getLabelData)
+                .map(labelFunction)
                 .collect(toList());
         LabelPrintRequest request = new LabelPrintRequest(labelType, labelData);
         print(printer, request);

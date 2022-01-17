@@ -1,0 +1,114 @@
+{
+  "labelSize": {
+    "width": 23,
+    "height": 19,
+    "displacement": 22
+  },
+  "barcodeFields": [
+    {
+      "x": 17,
+      "y": 2,
+      "value": "#barcode#",
+      "cellWidth": 0.25,
+      "barcodeType": "datamatrix"
+    }
+  ],
+  "textFields": [
+    {
+      "fontSize": 2.2,
+      "value": "#barcode#",
+      "x": 1,
+      "y": 4
+    },
+    {
+      "fontSize": 1.8,
+      "value": "#donor[0]#",
+      "x": 1,
+      "y": 8
+    },
+    {
+      "fontSize": 1.8,
+      "value": "#tissue[0]#",
+      "x": 10,
+      "y": 8
+    },
+    {
+      "fontSize": 1.8,
+      "value": "#replicate[0]#",
+      "x": 18,
+      "y": 8
+    },
+    {
+      "fontSize": 1.8,
+      "value": "#state[0]#",
+      "x": 1,
+      "y": 10
+    },
+    {
+      "fontSize": 1.8,
+      "value": "#state[1]#",
+      "x": 8,
+      "y": 10
+    },
+    {
+      "fontSize": 1.8,
+      "value": "#state[2]#",
+      "x": 1,
+      "y": 12
+    },
+    {
+      "fontSize": 1.8,
+      "value": "#state[3]#",
+      "x": 8,
+      "y": 12
+    },
+    {
+      "fontSize": 1.8,
+      "value": "#donor[4]#",
+      "x": 1,
+      "y": 14
+    },
+    {
+      "fontSize": 1.8,
+      "value": "#tissue[4]#",
+      "x": 10,
+      "y": 14
+    },
+    {
+      "fontSize": 1.8,
+      "value": "#replicate[4]#",
+      "x": 18,
+      "y": 14
+    },
+    {
+      "fontSize": 1.8,
+      "value": "#state[4]#",
+      "x": 1,
+      "y": 16
+    },
+    {
+      "fontSize": 1.8,
+      "value": "#state[5]#",
+      "x": 8,
+      "y": 16
+    },
+    {
+      "fontSize": 1.8,
+      "value": "#state[6]#",
+      "x": 1,
+      "y": 18
+    },
+    {
+      "fontSize": 1.8,
+      "value": "#state[7]#",
+      "x": 8,
+      "y": 18
+    },
+    {
+      "fontSize": 2.1,
+      "value": "ADH",
+      "x": 18,
+      "y": 18
+    }
+  ]
+}
