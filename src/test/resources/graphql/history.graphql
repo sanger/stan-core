@@ -7,6 +7,7 @@ query {
             sourceLabwareId
             destinationLabwareId
             time
+            workNumber
             username
             details
         }

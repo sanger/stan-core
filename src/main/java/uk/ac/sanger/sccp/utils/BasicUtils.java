@@ -323,4 +323,23 @@ public class BasicUtils {
         final Set<String> seen = new HashSet<>();
         return x -> seen.add(x==null ? null : x.toUpperCase());
     }
+
+    /**
+     * Gets the given iterable as a collection. If it already is a collection (or is null),
+     * it is cast and returned.
+     * If it is not a collection, its contents are added to a new collection, which is returned.
+     * @param iterable an iterable
+     * @param <E> the type of contents in the iterable
+     * @return the iterable cast as a collection, or a new collection with the iterable's contents
+     */
+    public static <E> Collection<E> asCollection(Iterable<E> iterable) {
+        if (iterable==null || iterable instanceof Collection) {
+            return (Collection<E>) iterable;
+        }
+        List<E> list = new ArrayList<>();
+        for (E item : iterable) {
+            list.add(item);
+        }
+        return list;
+    }
 }

@@ -11,7 +11,7 @@ import java.util.Objects;
  * @author dr6
  */
 @Entity
-public class StainType implements HasEnabled {
+public class StainType implements HasEnabled, HasName, HasIntId {
     /** The measurements supported for the {@code H&E} stain type. */
     public static final List<String> H_AND_E_MEASUREMENTS = List.of("Haematoxylin", "Blueing", "Eosin");
 
@@ -33,6 +33,7 @@ public class StainType implements HasEnabled {
         this(id, name, true);
     }
 
+    @Override
     public Integer getId() {
         return this.id;
     }
@@ -41,6 +42,7 @@ public class StainType implements HasEnabled {
         this.id = id;
     }
 
+    @Override
     public String getName() {
         return this.name;
     }

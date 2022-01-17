@@ -3,8 +3,8 @@ package uk.ac.sanger.sccp.stan.service;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.*;
+import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.Work.Status;
 import uk.ac.sanger.sccp.stan.repo.*;
@@ -14,6 +14,7 @@ import uk.ac.sanger.sccp.stan.request.WorkProgress.WorkProgressTimestamp;
 import javax.persistence.EntityNotFoundException;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -31,6 +32,7 @@ public class TestWorkProgressService {
     private WorkRepo mockWorkRepo;
     private WorkTypeRepo mockWorkTypeRepo;
     private OperationRepo mockOpRepo;
+    private LabwareRepo mockLwRepo;
 
     private WorkProgressServiceImp service;
 
@@ -39,27 +41,29 @@ public class TestWorkProgressService {
         mockWorkRepo = mock(WorkRepo.class);
         mockWorkTypeRepo = mock(WorkTypeRepo.class);
         mockOpRepo = mock(OperationRepo.class);
+        mockLwRepo = mock(LabwareRepo.class);
 
-        service = spy(new WorkProgressServiceImp(mockWorkRepo, mockWorkTypeRepo, mockOpRepo));
+        service = spy(new WorkProgressServiceImp(mockWorkRepo, mockWorkTypeRepo, mockOpRepo, mockLwRepo));
     }
 
     @ParameterizedTest
     @MethodSource("getProgressWithWorkNumberArgs")
     public void testGetProgressWithWorkNumber(String workNumber, Work work, String workTypeName, WorkType workType,
-                                             Status status,
-                                             List<Work> works, String expectedError) {
+                                             Status status, List<Work> works, String expectedError) {
         if (work==null) {
             when(mockWorkRepo.getByWorkNumber(workNumber)).thenThrow(new EntityNotFoundException("Unknown work number: "+workNumber));
         } else {
             when(mockWorkRepo.getByWorkNumber(workNumber)).thenReturn(work);
         }
+        List<String> workTypeNames = (workTypeName==null ? null : workTypeName.isEmpty() ? List.of() : List.of(workTypeName));
+        List<Status> statuses = (status==null ? null : List.of(status));
         mockWorkType(workTypeName, workType);
         if (expectedError!=null) {
-            assertThat(assertThrows(EntityNotFoundException.class, () -> service.getProgress(workNumber, workTypeName, status)))
+            assertThat(assertThrows(EntityNotFoundException.class, () -> service.getProgress(workNumber, workTypeNames, statuses)))
                     .hasMessage(expectedError);
-            verify(service, never()).getProgressForWork(any());
+            verify(service, never()).getProgressForWork(any(), any(), any(), any(), any());
         } else {
-            List<WorkProgress> wps = service.getProgress(workNumber, workTypeName, status);
+            List<WorkProgress> wps = service.getProgress(workNumber, workTypeNames, statuses);
             verifyProgress(wps, works);
         }
     }
@@ -78,6 +82,7 @@ public class TestWorkProgressService {
         return Arrays.stream(new Object[][] {
                 {wn, work, null, null, null, works, null},
                 {wn, work, null, null, Status.active, works, null},
+                {wn, work, "", null, Status.active, List.of(), null},
                 {wn, work, null, null, Status.paused, List.of(), null},
                 {wn, work, wtn, wt1, null, works, null},
                 {wn, work, wtn, wt1, Status.active, works, null},
@@ -87,28 +92,33 @@ public class TestWorkProgressService {
                 {wn, work, "Colorado", wt2, Status.paused, List.of(), null},
 
                 {"SGP404", null, null, null, null,  null, "Unknown work number: SGP404"},
-                {wn, work, "France", null, null, null, "Unknown work type: France"},
-                {wn, work, "France", null, Status.paused, null, "Unknown work type: France"},
+                {wn, work, "France", null, null, null, "Unknown work types: [France]"},
+                {wn, work, "France", null, Status.paused, null, "Unknown work types: [France]"},
         }).map(Arguments::of);
     }
 
     @ParameterizedTest
-    @MethodSource("getProgressWithWorkTypeNameArgs")
-    public void testGetProgressWithWorkTypeName(String workTypeName, WorkType workType, Status status,
+    @MethodSource("getProgressWithWorkTypeNamesArgs")
+    public void testGetProgressWithWorkTypeNames(String workTypeName, WorkType workType, Status status,
                                                 List<Work> works, List<Work> expectedWorks, String expectedError) {
         mockWorkType(workTypeName, workType);
+        List<String> workTypeNames = workTypeName==null ? null : workTypeName.isEmpty() ? List.of() : List.of(workTypeName);
+        List<Status> statuses = status==null ? null : List.of(status);
         if (expectedError!=null) {
             assertThat(assertThrows(EntityNotFoundException.class,
-                    () -> service.getProgress(null, workTypeName, status)))
+                    () -> service.getProgress(null, workTypeNames, statuses)))
                     .hasMessage(expectedError);
-        } else {
+        } else if (workType!=null) {
             when(mockWorkRepo.findAllByWorkTypeIn(List.of(workType))).thenReturn(works);
-            List<WorkProgress> wps = service.getProgress(null, workTypeName, status);
+            List<WorkProgress> wps = service.getProgress(null, workTypeNames, statuses);
             verifyProgress(wps, expectedWorks);
+        } else {
+            List<WorkProgress> wps = service.getProgress(null, workTypeNames, statuses);
+            assertThat(wps).isEmpty();
         }
     }
 
-    static Stream<Arguments> getProgressWithWorkTypeNameArgs() {
+    static Stream<Arguments> getProgressWithWorkTypeNamesArgs() {
         WorkType wt = new WorkType(2, "California");
         List<Work> works = List.of(workWithId(1), workWithId(2));
         works.get(0).setStatus(Status.active);
@@ -116,17 +126,24 @@ public class TestWorkProgressService {
 
         return Arrays.stream(new Object[][] {
                 {"California", wt, null, works, works, null},
+                {"", null, null, works, null, null},
                 {"California", wt, Status.active, works, List.of(works.get(0)), null},
-                {"France", null, null, null, null, "Unknown work type: France"},
+                {"France", null, null, null, null, "Unknown work types: [France]"},
         }).map(Arguments::of);
     }
 
     @Test
-    public void testGetProgressWithStatus() {
+    public void testGetProgressWithStatuses() {
         List<Work> works = List.of(workWithId(1), workWithId(2));
-        when(mockWorkRepo.findAllByStatusIn(List.of(Status.active))).thenReturn(works);
-        List<WorkProgress> wps = service.getProgress(null, null, Status.active);
+        when(mockWorkRepo.findAllByStatusIn(List.of(Status.active, Status.unstarted))).thenReturn(works);
+        List<WorkProgress> wps = service.getProgress(null, null, List.of(Status.active, Status.unstarted));
         verifyProgress(wps, works);
+    }
+
+    @Test
+    public void testGetProgressWithEmptyListOfStatuses() {
+        List<WorkProgress> wps = service.getProgress(null, null, List.of());
+        assertThat(wps).isEmpty();
     }
 
     @Test
@@ -140,14 +157,17 @@ public class TestWorkProgressService {
     private void mockWorkType(String workTypeName, WorkType workType) {
         if (workType != null) {
             when(mockWorkTypeRepo.getByName(workTypeName)).thenReturn(workType);
+            when(mockWorkTypeRepo.getAllByNameIn(List.of(workTypeName))).thenReturn(List.of(workType));
         } else if (workTypeName!=null) {
             when(mockWorkTypeRepo.getByName(workTypeName)).thenThrow(new EntityNotFoundException("Unknown work type: "+workTypeName));
+            final List<String> workTypeNames = List.of(workTypeName);
+            when(mockWorkTypeRepo.getAllByNameIn(workTypeNames)).thenThrow(new EntityNotFoundException("Unknown work types: "+workTypeNames));
         }
     }
 
     private void verifyProgress(List<WorkProgress> wps, List<Work> works) {
         assertThat(wps.stream().map(WorkProgress::getWork)).containsExactlyElementsOf(works);
-        verify(service, times(works.size())).getProgressForWork(any());
+        verify(service, times(works.size())).getProgressForWork(notNull(), notNull(), notNull(), notNull(), notNull());
     }
 
     @Test
@@ -156,8 +176,12 @@ public class TestWorkProgressService {
         final LocalDateTime sectionTime = LocalDateTime.of(2021, 9, 23, 11, 0);
         final LocalDateTime stainTime = LocalDateTime.of(2021, 9, 22, 12, 0);
         Map<String, LocalDateTime> times = Map.of("Section", sectionTime,"Stain", stainTime);
-        doReturn(times).when(service).loadOpTimes(work);
-        WorkProgress wp = service.getProgressForWork(work);
+        Predicate<OperationType> opTypeFilter = x -> true;
+        Predicate<StainType> stainTypeFilter = x -> true;
+        Predicate<LabwareType> lwTypeFilter = x -> true;
+        Map<Integer, LabwareType> lwIdTypeMap = Map.of(4, EntityFactory.getTubeType());
+        doReturn(times).when(service).loadOpTimes(work, opTypeFilter, stainTypeFilter, lwTypeFilter, lwIdTypeMap);
+        WorkProgress wp = service.getProgressForWork(work, opTypeFilter, stainTypeFilter, lwTypeFilter, lwIdTypeMap);
         assertSame(work, wp.getWork());
         assertThat(wp.getTimestamps()).containsExactlyInAnyOrder(
                 new WorkProgressTimestamp("Section", sectionTime),
@@ -167,29 +191,125 @@ public class TestWorkProgressService {
 
     @Test
     public void testLoadOpTimes() {
-        Work work = workWithId(17);
-        List<Integer> opIds = List.of(5,6,7,8,9);
-        work.setOperationIds(opIds);
-        OperationType sectionType = new OperationType(1, "Section");
-        OperationType stainType = new OperationType(2, "Stain");
-        OperationType otherType = new OperationType(3, "Bananas");
 
-        OperationType[] opTypes = { sectionType, stainType, otherType, sectionType, sectionType };
-        LocalDateTime[] times = IntStream.of(10,11,12,13,9)
+        OperationType sectionType = EntityFactory.makeOperationType( "Section", null, OperationTypeFlag.SOURCE_IS_BLOCK);
+        OperationType stainOpType = EntityFactory.makeOperationType("Stain", null, OperationTypeFlag.STAIN, OperationTypeFlag.IN_PLACE);
+        OperationType rinOpType = EntityFactory.makeOperationType("RIN analysis", null, OperationTypeFlag.ANALYSIS);
+        OperationType dv200OpType = EntityFactory.makeOperationType("DV200 analysis", null, OperationTypeFlag.ANALYSIS);
+        OperationType otherType = EntityFactory.makeOperationType("Bananas", null);
+
+        StainType st1 = new StainType(1, "RNAscope");
+        StainType st2 = new StainType(2, "IHC");
+        StainType st3 = new StainType(3, "Rhubarb");
+
+        LabwareType lt1 = new LabwareType(1, "jar", 1, 1, null, false);
+        LabwareType lt2 = new LabwareType(2, "box", 1, 1, null, false);
+        LabwareType lt3 = new LabwareType(3, "jug", 1, 1, null, false);
+
+        Predicate<OperationType> opTypeFilter = x -> (x==sectionType || x==stainOpType || x==rinOpType || x==dv200OpType);
+        Predicate<StainType> stainTypeFilter = x -> (x==st1 || x==st2);
+        Predicate<LabwareType> lwTypeFilter = x -> (x==lt1 || x==lt2);
+        Map<Integer, LabwareType> lwIdTypeMap = new HashMap<>();
+
+        OperationType[] opTypes = { sectionType, stainOpType, otherType, sectionType, sectionType,
+                stainOpType, stainOpType, stainOpType, stainOpType, rinOpType, dv200OpType };
+        StainType[] stainTypes = {null, st1, null, null, null, st1, st2, st3, st3, null, null};
+        LocalDateTime[] times = IntStream.of(10,11,12,13,9, 14, 15, 16, 17, 18, 19)
                 .mapToObj(d -> LocalDateTime.of(2021,9, d, 12,0))
                 .toArray(LocalDateTime[]::new);
         List<Operation> ops = IntStream.range(0, opTypes.length)
                 .mapToObj(i -> {
                     Operation op = new Operation();
-                    op.setId(opIds.get(i));
+                    op.setId(5+i);
                     op.setOperationType(opTypes[i]);
                     op.setPerformed(times[i]);
+                    op.setStainType(stainTypes[i]);
                     return op;
                 }).collect(toList());
+
+        LabwareType[][] opLwTypes = {
+                null, null, null, null, null, { lt1 }, {lt1, lt2}, {lt2}, {lt3}, null, null,
+        };
+
+        IntStream.range(0, ops.size()).forEach(i -> {
+            LabwareType[] lts = opLwTypes[i];
+            doReturn((lts==null ? Set.of() : Set.of(lts)))
+                    .when(service).opLabwareTypes(same(ops.get(i)), same(lwIdTypeMap));
+        });
+
+        List<Integer> opIds = ops.stream().map(Operation::getId).collect(toList());
+        Work work = workWithId(17);
+        work.setOperationIds(opIds);
         when(mockOpRepo.findAllById(opIds)).thenReturn(ops);
 
-        var result = service.loadOpTimes(work);
-        assertThat(result).containsExactlyInAnyOrderEntriesOf(Map.of("Section", times[3], "Stain", times[1]));
+        var result = service.loadOpTimes(work, opTypeFilter, stainTypeFilter, lwTypeFilter, lwIdTypeMap);
+
+        assertThat(result).containsExactlyInAnyOrderEntriesOf(Map.of(
+                sectionType.getName(), times[3],
+                stainOpType.getName(), times[8],
+                "RNAscope/IHC stain", times[6],
+                "Stain "+lt1.getName(), times[6],
+                "Stain "+lt2.getName(), times[7],
+                "Analysis", times[10]
+        ));
+    }
+
+    @Test
+    public void testOpLabwareTypes() {
+        LabwareType lt0 = EntityFactory.makeLabwareType(1,1);
+        LabwareType lt1 = EntityFactory.makeLabwareType(1,1);
+        LabwareType lt2 = EntityFactory.makeLabwareType(1,1);
+        Sample sample = EntityFactory.getSample();
+        Labware lw0 = EntityFactory.makeLabware(lt0, sample);
+        Labware lw1A = EntityFactory.makeLabware(lt1, sample);
+        Labware lw1B = EntityFactory.makeLabware(lt1, sample);
+        Labware lw2 = EntityFactory.makeLabware(lt2, sample);
+        List<Labware> dests = List.of(lw1A, lw1B, lw2);
+        OperationType opType = EntityFactory.makeOperationType("Splat", null);
+        Operation op = EntityFactory.makeOpForLabware(opType, List.of(lw0), dests);
+        Map<Integer, LabwareType> lwIdToType = Map.of();
+        dests.forEach(lw ->
+                doReturn(lw.getLabwareType()).when(service).getLabwareType(eq(lw.getId()), same(lwIdToType))
+        );
+        assertThat(service.opLabwareTypes(op, lwIdToType)).containsExactlyInAnyOrder(lt1, lt2);
+        dests.forEach(lw -> verify(service).getLabwareType(eq(lw.getId()), same(lwIdToType)));
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans={false, true})
+    public void testGetLabwareType(boolean cached) {
+        LabwareType lt = EntityFactory.makeLabwareType(1, 1);
+        Map<Integer, LabwareType> map = new HashMap<>(1);
+        if (cached) {
+            map.put(4, lt);
+            assertSame(lt, service.getLabwareType(4, map));
+            verifyNoInteractions(mockLwRepo);
+            assertThat(map).containsExactly(Map.entry(4, lt));
+        } else {
+            Labware lw = EntityFactory.makeEmptyLabware(lt);
+            final Integer id = lw.getId();
+            when(mockLwRepo.getById(id)).thenReturn(lw);
+            assertSame(lt, service.getLabwareType(id, map));
+            assertThat(map).containsExactly(Map.entry(id, lt));
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource({"-1,false",",true","1,true"})
+    public void testAddTime(Integer diff, boolean shouldReplace) {
+        LocalDateTime thisTime = LocalDateTime.of(2021,12,8, 10,30);
+        Map<String, LocalDateTime> opTimes = new HashMap<>(1);
+        final String key = "opkey";
+        LocalDateTime savedTime;
+        if (diff==null) {
+            savedTime = null;
+        } else {
+            savedTime = thisTime.minusDays(diff);
+            opTimes.put(key, savedTime);
+        }
+        assert shouldReplace || savedTime!=null;
+        service.addTime(opTimes, key, thisTime);
+        assertThat(opTimes).containsExactly(Map.entry(key, shouldReplace ? thisTime : savedTime));
     }
 
     private static Work workWithId(int id) {

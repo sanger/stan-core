@@ -7,7 +7,7 @@ import java.util.Objects;
  * @author dr6
  */
 @Entity
-public class LabwareType {
+public class LabwareType implements HasIntId, HasName {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
@@ -31,6 +31,7 @@ public class LabwareType {
         this.prebarcoded = prebarcoded;
     }
 
+    @Override
     public Integer getId() {
         return this.id;
     }
@@ -39,6 +40,7 @@ public class LabwareType {
         this.id = id;
     }
 
+    @Override
     public String getName() {
         return this.name;
     }
