@@ -113,9 +113,9 @@ public class TestSectionRegisterService {
     @Test
     public void testAssembleResult() {
         Tissue tissue1 = EntityFactory.getTissue();
-        Tissue tissue2 = new Tissue(tissue1.getId() + 1, "TISSUE 2", 10, tissue1.getSpatialLocation(), tissue1.getDonor(),
+        Tissue tissue2 = new Tissue(tissue1.getId() + 1, "TISSUE 2", "10", tissue1.getSpatialLocation(), tissue1.getDonor(),
                 tissue1.getMouldSize(), tissue1.getMedium(), tissue1.getFixative(), tissue1.getHmdmc());
-        Tissue tissue3 = new Tissue(tissue1.getId() + 2, "TISSUE 3", 10, tissue1.getSpatialLocation(), tissue1.getDonor(),
+        Tissue tissue3 = new Tissue(tissue1.getId() + 2, "TISSUE 3", "10", tissue1.getSpatialLocation(), tissue1.getDonor(),
                 tissue1.getMouldSize(), tissue1.getMedium(), tissue1.getFixative(), tissue1.getHmdmc());
         UCMap<Tissue> tissueMap = UCMap.from(Tissue::getExternalName, tissue1, tissue2, tissue3);
 

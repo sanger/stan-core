@@ -44,6 +44,7 @@ public class TestSectionRegisterValidation {
     private Validator<String> mockExternalBarcodeValidation;
     private Validator<String> mockDonorNameValidation;
     private Validator<String> mockExternalNameValidation;
+    private Validator<String> mockReplicateValidator;
     private Validator<String> mockVisiumLpBarcodeValidation;
 
     @SuppressWarnings("unchecked")
@@ -63,6 +64,7 @@ public class TestSectionRegisterValidation {
         mockExternalBarcodeValidation = mock(Validator.class);
         mockDonorNameValidation = mock(Validator.class);
         mockExternalNameValidation = mock(Validator.class);
+        mockReplicateValidator = mock(Validator.class);
         mockVisiumLpBarcodeValidation = mock(Validator.class);
     }
 
@@ -89,7 +91,8 @@ public class TestSectionRegisterValidation {
         return spy(new SectionRegisterValidation(request, mockDonorRepo, mockSpeciesRepo, mockLwTypeRepo, mockLwRepo,
                 mockMouldSizeRepo, mockHmdmcRepo, mockTissueTypeRepo, mockFixativeRepo, mockMediumRepo,
                 mockTissueRepo, mockBioStateRepo,
-                mockExternalBarcodeValidation, mockDonorNameValidation, mockExternalNameValidation, mockVisiumLpBarcodeValidation));
+                mockExternalBarcodeValidation, mockDonorNameValidation, mockExternalNameValidation,
+                mockReplicateValidator, mockVisiumLpBarcodeValidation));
     }
 
     private void mockValidator(Validator<String> validator) {
@@ -102,6 +105,8 @@ public class TestSectionRegisterValidation {
             desc = "Bad external name: ";
         } else if (validator==mockVisiumLpBarcodeValidation) {
             desc = "Bad visium barcode: ";
+        } else if (validator==mockReplicateValidator) {
+            desc = "Bad replicate: ";
         } else {
             desc = "Bad string: ";
         }
@@ -420,6 +425,7 @@ public class TestSectionRegisterValidation {
         when(mockMediumRepo.findAllByNameIn(any())).then(findAllAnswer(testData.mediums, Medium::getName));
         when(mockTissueRepo.findAllByExternalNameIn(any())).then(findAllAnswer(testData.existingTissues, Tissue::getExternalName));
         mockValidator(mockExternalNameValidation);
+        mockValidator(mockReplicateValidator);
 
         UCMap<Donor> donorMap = UCMap.from(coalesce(testData.donors, List.of()), Donor::getDonorName);
 
@@ -461,86 +467,87 @@ public class TestSectionRegisterValidation {
         return Stream.of(
                 // Good request
                 testData.get()
-                        .content("EXT1", 4, "Arm", 1, "Donor1", "None", "None", "2021/01", "human")
-                        .content("EXT2", 5, "Leg", 2, "Donor1", "butter", "Formalin", "2021/02", "human")
-                        .content("EXT3", 5, "Leg", 1, "Donor2", "butter", "Formalin", null, "hamster")
-                        .tissues(new Tissue(null, "EXT1", 4, ARM.getSpatialLocations().get(0), DONOR1, mouldSize, mediumNone, fixNone, hmdmc1),
-                                new Tissue(null, "EXT2", 5, LEG.getSpatialLocations().get(1), DONOR1, mouldSize, medium, fix, hmdmc2),
-                                new Tissue(null, "EXT3", 5, LEG.getSpatialLocations().get(0), DONOR2, mouldSize, medium, fix, null)),
+                        .content("EXT1", "4", "Arm", 1, "Donor1", "None", "None", "2021/01", "human")
+                        .content("EXT2", "5", "Leg", 2, "Donor1", "butter", "Formalin", "2021/02", "human")
+                        .content("EXT3", "5", "Leg", 1, "Donor2", "butter", "Formalin", null, "hamster")
+                        .tissues(new Tissue(null, "EXT1", "4", ARM.getSpatialLocations().get(0), DONOR1, mouldSize, mediumNone, fixNone, hmdmc1),
+                                new Tissue(null, "EXT2", "5", LEG.getSpatialLocations().get(1), DONOR1, mouldSize, medium, fix, hmdmc2),
+                                new Tissue(null, "EXT3", "5", LEG.getSpatialLocations().get(0), DONOR2, mouldSize, medium, fix, null)),
 
                 // Single problems
                 testData.get()
-                        .content("EXT1", 4, "ARM", 1, null, "None", "None", "2021/01", "human")
+                        .content("EXT1", "4", "ARM", 1, null, "None", "None", "2021/01", "human")
                         .noMouldSize()
                         .problem("Mould size \"None\" not found."),
                 testData.get()
-                        .content("EXT1", 4, "ARM", 1, "Donor1", "None", "None", null, "human")
+                        .content("EXT1", "4", "ARM", 1, "Donor1", "None", "None", null, "human")
                         .problem("Missing HMDMC number."),
                 testData.get()
-                        .content("EXT1", 4, "ARM", 1, "Donor1", "None", "None", "", "human")
-                        .content("EXT2", 4, "ARM", 1, "Donor1", "None", "None", "2021/01", "")
+                        .content("EXT1", "4", "ARM", 1, "Donor1", "None", "None", "", "human")
+                        .content("EXT2", "4", "ARM", 1, "Donor1", "None", "None", "2021/01", "")
                         .problem("Missing HMDMC number."),
                 testData.get()
-                        .content("EXT1", 4, "ARM", 1, "Donor1", "None", "None", "2021/404", "human")
-                        .content("EXT2", 4, "ARM", 1, "Donor1", "None", "None", "2021/405", "human")
-                        .content("EXT3", 4, "ARM", 1, "Donor1", "None", "None", "2021/405", "human")
+                        .content("EXT1", "4", "ARM", 1, "Donor1", "None", "None", "2021/404", "human")
+                        .content("EXT2", "4", "ARM", 1, "Donor1", "None", "None", "2021/405", "human")
+                        .content("EXT3", "4", "ARM", 1, "Donor1", "None", "None", "2021/405", "human")
                         .problem("Unknown HMDMC numbers: [2021/404, 2021/405]"),
                 testData.get()
-                        .content("EXT1", 4, "ARM", 1, "Donor2", "None", "None", "2021/01", "Hamster")
+                        .content("EXT1", "4", "ARM", 1, "Donor2", "None", "None", "2021/01", "Hamster")
                         .problem("Unexpected HMDMC number received for non-human tissue."),
                 testData.get()
-                        .content("EXT1", 4, "ARM", 1, "Donor2", "None", "None", "2021/03", "Human")
-                        .content("EXT2", 4, "ARM", 1, "Donor2", "None", "None", "2021/04", "Human")
+                        .content("EXT1", "4", "ARM", 1, "Donor2", "None", "None", "2021/03", "Human")
+                        .content("EXT2", "4", "ARM", 1, "Donor2", "None", "None", "2021/04", "Human")
                         .problem("HMDMC not enabled: [2021/03, 2021/04]"),
                 testData.get()
-                        .content(null, 4, "ARM", 1, "Donor1", "None", "None", "2021/01", "Human")
+                        .content(null, "4", "ARM", 1, "Donor1", "None", "None", "2021/01", "Human")
                         .problem("Missing external identifier."),
                 testData.get()
-                        .content("", 4, "ARM", 1, "Donor1", "None", "None", "2021/01", "Human")
+                        .content("", "4", "ARM", 1, "Donor1", "None", "None", "2021/01", "Human")
                         .problem("Missing external identifier."),
                 testData.get()
-                        .content("!DN", 4, "ARM", 1, "Donor1", "none", "none", "2021/01", "human")
+                        .content("!DN", "4", "ARM", 1, "Donor1", "none", "none", "2021/01", "human")
                         .problem("Bad external name: !DN"),
                 testData.get()
-                        .content("EXT1", 4, "ARM", 1, "Donor1", "None", "None", "2021/01", "Human")
-                        .content("EXT1", 5, "ARM", 1, "Donor1", "None", "None", "2021/01", "Human")
-                        .content("EXT2", 4, "ARM", 1, "Donor1", "None", "None", "2021/01", "Human")
-                        .content("EXT2", 5, "ARM", 1, "Donor1", "None", "None", "2021/01", "Human")
-                        .content("EXT3", 5, "ARM", 1, "Donor1", "None", "None", "2021/01", "Human")
+                        .content("EXT1", "4", "ARM", 1, "Donor1", "None", "None", "2021/01", "Human")
+                        .content("EXT1", "5", "ARM", 1, "Donor1", "None", "None", "2021/01", "Human")
+                        .content("EXT2", "4", "ARM", 1, "Donor1", "None", "None", "2021/01", "Human")
+                        .content("EXT2", "5", "ARM", 1, "Donor1", "None", "None", "2021/01", "Human")
+                        .content("EXT3", "5", "ARM", 1, "Donor1", "None", "None", "2021/01", "Human")
                         .problem("Repeated external identifiers: [EXT1, EXT2]"),
                 testData.get()
-                        .content("TISSUE1", 4, "ARM", 1, "Donor1", "none", "none", "2021/01", "human")
-                        .content("TISSUE2", 4, "ARM", 1, "Donor1", "none", "none", "2021/01", "human")
-                        .content("TISSUE3", 4, "ARM", 1, "Donor1", "none", "none", "2021/01", "human")
-                        .existing(new Tissue(1, "TISSUE1", 3, ARM.getSpatialLocations().get(0), DONOR1, mouldSize, medium, fix, hmdmcs.get(0)),
-                                new Tissue(2, "TISSUE2", 3, ARM.getSpatialLocations().get(0), DONOR1, mouldSize, medium, fix, hmdmcs.get(0)))
+                        .content("TISSUE1", "4", "ARM", 1, "Donor1", "none", "none", "2021/01", "human")
+                        .content("TISSUE2", "4", "ARM", 1, "Donor1", "none", "none", "2021/01", "human")
+                        .content("TISSUE3", "4", "ARM", 1, "Donor1", "none", "none", "2021/01", "human")
+                        .existing(new Tissue(1, "TISSUE1", "3", ARM.getSpatialLocations().get(0), DONOR1, mouldSize, medium, fix, hmdmcs.get(0)),
+                                new Tissue(2, "TISSUE2", "3", ARM.getSpatialLocations().get(0), DONOR1, mouldSize, medium, fix, hmdmcs.get(0)))
                         .problem("External identifiers already in use: [TISSUE1, TISSUE2]"),
                 testData.get()
-                        .content("EXT1", 4, null, 1, "Donor1", "None", "None", "2021/01", "Human")
+                        .content("EXT1", "4", null, 1, "Donor1", "None", "None", "2021/01", "Human")
                         .problem("Missing tissue type."),
                 testData.get()
-                        .content("EXT1", 4, "Squirrel", 1, "Donor1", "None", "None", "2021/01", "Human")
+                        .content("EXT1", "4", "Squirrel", 1, "Donor1", "None", "None", "2021/01", "Human")
                         .problem("Unknown tissue type: [Squirrel]"),
                 testData.get()
-                        .content("EXT1", 4, "ARM", null, "Donor1", "None", "None", "2021/01", "Human")
+                        .content("EXT1", "4", "ARM", null, "Donor1", "None", "None", "2021/01", "Human")
                         .problem("Missing spatial location."),
                 testData.get()
-                        .content("EXT1", 4, "ARM", 5, "Donor1", "None", "None", "2021/01", "Human")
-                        .content("EXT2", 4, "LEG", 3, "Donor1", "None", "None", "2021/01", "Human")
+                        .content("EXT1", "4", "ARM", 5, "Donor1", "None", "None", "2021/01", "Human")
+                        .content("EXT2", "4", "LEG", 3, "Donor1", "None", "None", "2021/01", "Human")
                         .problem("Unknown spatial locations: [5 for Arm, 3 for Leg]"),
                 testData.get()
                         .content("EXT1", null, "ARM", 1, "Donor1", "None", "None", "2021/01", "Human")
                         .problem("Missing replicate number."),
+
                 testData.get()
-                        .content("EXT1", -4, "ARM", 1, "Donor1", "None", "None", "2021/01", "Human")
-                        .problem("Replicate number cannot be negative."),
+                        .content("EXT1", "!-4", "ARM", 1, "Donor1", "None", "None", "2021/01", "Human")
+                        .problem("Bad replicate: !-4"),
                 testData.get()
-                        .content("EXT1", 4, "ARM", 1, "Donor1", "Custard", "None", "2021/01", "Human")
-                        .content("EXT2", 4, "ARM", 1, "Donor1", "Jelly", "None", "2021/01", "Human")
+                        .content("EXT1", "4", "ARM", 1, "Donor1", "Custard", "None", "2021/01", "Human")
+                        .content("EXT2", "4", "ARM", 1, "Donor1", "Jelly", "None", "2021/01", "Human")
                         .problem("Unknown mediums: [Custard, Jelly]"),
                 testData.get()
-                        .content("EXT1", 4, "ARM", 1, "Donor1", "None", "Glue", "2021/01", "Human")
-                        .content("EXT2", 4, "ARM", 1, "Donor1", "None", "Stapler", "2021/01", "Human")
+                        .content("EXT1", "4", "ARM", 1, "Donor1", "None", "Glue", "2021/01", "Human")
+                        .content("EXT2", "4", "ARM", 1, "Donor1", "None", "Stapler", "2021/01", "Human")
                         .problem("Unknown fixatives: [Glue, Stapler]"),
 
 
@@ -550,8 +557,8 @@ public class TestSectionRegisterValidation {
                         .problems("Missing external identifier.", "Missing replicate number.", "Missing tissue type.", "Missing spatial location.", "Missing medium.",
                                 "Missing fixative.", "Missing HMDMC number."),
                 testData.get()
-                        .content("!X11", -1, "Squirrel", 2, null, "Custard", "Stapler", "2021/404", null)
-                        .problems("Bad external name: !X11", "Replicate number cannot be negative.", "Unknown tissue type: [Squirrel]", "Unknown medium: [Custard]",
+                        .content("!X11", "!-1", "Squirrel", 2, null, "Custard", "Stapler", "2021/404", null)
+                        .problems("Bad external name: !X11", "Bad replicate: !-1", "Unknown tissue type: [Squirrel]", "Unknown medium: [Custard]",
                                 "Unknown fixative: [Stapler]", "Unknown HMDMC number: [2021/404]")
 
         );
@@ -664,7 +671,7 @@ public class TestSectionRegisterValidation {
             return this;
         }
 
-        public ValidateTissueTestData content(String externalName, Integer replicate, String tissueType, Integer spatLoc, String donorName, String medium, String fixative, String hmdmc, String species) {
+        public ValidateTissueTestData content(String externalName, String replicate, String tissueType, Integer spatLoc, String donorName, String medium, String fixative, String hmdmc, String species) {
             SectionRegisterContent content = new SectionRegisterContent();
             content.setDonorIdentifier(donorName);
             content.setExternalIdentifier(externalName);

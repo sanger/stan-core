@@ -61,7 +61,7 @@ public class TestPrintMutation {
         assertThat(tester.<Map<?,?>>post(mutation)).isEqualTo(Map.of("data", Map.of("printLabware", "OK")));
         String donorName = tissue.getDonor().getDonorName();
         String tissueDesc = getTissueDesc(tissue);
-        Integer replicate = tissue.getReplicate();
+        String replicate = tissue.getReplicate();
         verify(mockPrintClient).print("stub", new LabelPrintRequest(
                 lw.getLabwareType().getLabelType(),
                 List.of(new LabwareLabelData(lw.getBarcode(), tissue.getMedium().getName(), "2021-03-17",

@@ -75,7 +75,7 @@ public class TestPlanActionRepo {
         assertThat(planActionRepo.findMaxPlannedSectionFromSlotId(-1)).isEmpty();
         Donor donor = new Donor(null, "DONOR", LifeStage.adult, entityCreator.getHuman());
         donorRepo.save(donor);
-        Tissue tissue = new Tissue(null, "TISSUE1", 1, any(slRepo), donor, any(mouldSizeRepo),
+        Tissue tissue = new Tissue(null, "TISSUE1", "1", any(slRepo), donor, any(mouldSizeRepo),
                 any(mediumRepo), any(fixativeRepo), any(hmdmcRepo));
         BioState bioState = any(bioStateRepo);
         tissueRepo.save(tissue);

@@ -15,7 +15,7 @@ public class BlockRegisterRequest {
     private String hmdmc;
     private String tissueType;
     private int spatialLocation;
-    private int replicateNumber;
+    private String replicateNumber;
     private String externalIdentifier;
     private int highestSection;
     private String labwareType;
@@ -65,11 +65,11 @@ public class BlockRegisterRequest {
         this.spatialLocation = spatialLocation;
     }
 
-    public int getReplicateNumber() {
+    public String getReplicateNumber() {
         return this.replicateNumber;
     }
 
-    public void setReplicateNumber(int replicateNumber) {
+    public void setReplicateNumber(String replicateNumber) {
         this.replicateNumber = replicateNumber;
     }
 
@@ -143,7 +143,7 @@ public class BlockRegisterRequest {
         if (o == null || getClass() != o.getClass()) return false;
         BlockRegisterRequest that = (BlockRegisterRequest) o;
         return (this.spatialLocation == that.spatialLocation
-                && this.replicateNumber == that.replicateNumber
+                && Objects.equals(this.replicateNumber, that.replicateNumber)
                 && this.highestSection == that.highestSection
                 && this.existingTissue == that.existingTissue
                 && Objects.equals(this.donorIdentifier, that.donorIdentifier)

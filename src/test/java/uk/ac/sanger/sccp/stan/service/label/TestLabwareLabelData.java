@@ -18,8 +18,8 @@ public class TestLabwareLabelData {
         LabwareLabelData data = new LabwareLabelData(
                 "STAN-123", "Butter", "2021-03-17",
                 List.of(
-                        new LabelContent("DONOR1", "TISSUE1", 1),
-                        new LabelContent("DONOR2", "TISSUE2", 2, 3)
+                        new LabelContent("DONOR1", "TISSUE1", "1"),
+                        new LabelContent("DONOR2", "TISSUE2", "2a", 3)
                 )
         );
         Map<String, String> fields = data.getFields();
@@ -34,7 +34,7 @@ public class TestLabwareLabelData {
 
                 "donor[1]", "DONOR2",
                 "tissue[1]", "TISSUE2",
-                "replicate[1]", "R:2",
+                "replicate[1]", "R:2a",
                 "state[1]", "S003"
         ));
     }

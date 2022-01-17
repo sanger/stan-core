@@ -43,8 +43,10 @@ public class TestRegisterValidation {
     private SpeciesRepo mockSpeciesRepo;
     private Validator<String> mockDonorNameValidation;
     private Validator<String> mockExternalNameValidation;
+    private Validator<String> mockReplicateValidator;
     private TissueFieldChecker mockFieldChecker;
 
+    @SuppressWarnings("unchecked")
     @BeforeEach
     void setup() {
         mockDonorRepo = mock(DonorRepo.class);
@@ -56,10 +58,9 @@ public class TestRegisterValidation {
         mockTissueRepo = mock(TissueRepo.class);
         mockFixativeRepo = mock(FixativeRepo.class);
         mockSpeciesRepo = mock(SpeciesRepo.class);
-        //noinspection unchecked
         mockDonorNameValidation = mock(Validator.class);
-        //noinspection unchecked
         mockExternalNameValidation = mock(Validator.class);
+        mockReplicateValidator = mock(Validator.class);
         mockFieldChecker = mock(TissueFieldChecker.class);
     }
 
@@ -73,7 +74,7 @@ public class TestRegisterValidation {
     private RegisterValidationImp create(RegisterRequest request) {
         return spy(new RegisterValidationImp(request, mockDonorRepo, mockHmdmcRepo, mockTtRepo, mockLtRepo,
                 mockMouldSizeRepo, mockMediumRepo, mockFixativeRepo, mockTissueRepo, mockSpeciesRepo,
-                mockDonorNameValidation, mockExternalNameValidation, mockFieldChecker));
+                mockDonorNameValidation, mockExternalNameValidation, mockReplicateValidator, mockFieldChecker));
     }
 
     private void stubValidationMethods(RegisterValidationImp validation) {
@@ -329,6 +330,15 @@ public class TestRegisterValidation {
                     .filter(td -> td.anyWithSameIdentifier && td.externalName.equalsIgnoreCase(name))
                     .findAny()
                     .map(td -> EntityFactory.getTissue());
+        });
+        when(mockReplicateValidator.validate(any(), any())).then(invocation -> {
+            String replicate = invocation.getArgument(0);
+            Consumer<String> addProblem = invocation.getArgument(1);
+            if (!replicate.matches("\\d+[a-zA-Z]?")) {
+                addProblem.accept("Invalid replicate: " + replicate);
+                return true;
+            }
+            return false;
         });
 
         RegisterRequest request = new RegisterRequest(
@@ -611,19 +621,19 @@ public class TestRegisterValidation {
     private static Stream<Arguments> newTissueData() {
         return Stream.of(
                 // No problems
-                Arguments.of(List.of(ValidateTissueTestData.externalName("X1").replicate(1),
-                        ValidateTissueTestData.externalName("X2").replicate(2)),
+                Arguments.of(List.of(ValidateTissueTestData.externalName("X1").replicate("1"),
+                        ValidateTissueTestData.externalName("X2").replicate("2a")),
                         List.of()),
-                Arguments.of(List.of(ValidateTissueTestData.externalName("X1").replicate(1).anyWithSameIdentifier(true).existing(true),
-                        ValidateTissueTestData.externalName("X2").replicate(2)),
+                Arguments.of(List.of(ValidateTissueTestData.externalName("X1").replicate("1").anyWithSameIdentifier(true).existing(true),
+                        ValidateTissueTestData.externalName("X2").replicate("2a")),
                         List.of()),
 
                 // Some problems
-                Arguments.of(List.of(ValidateTissueTestData.externalName("X1").replicate(1),
-                        ValidateTissueTestData.externalName("X2").replicate(-4)),
-                        List.of("Replicate number cannot be negative.")),
-                Arguments.of(List.of(ValidateTissueTestData.externalName("X1").replicate(1),
-                        ValidateTissueTestData.externalName("X2").replicate(2).highestSection(-2)),
+                Arguments.of(List.of(ValidateTissueTestData.externalName("X1").replicate("1"),
+                        ValidateTissueTestData.externalName("X2").replicate("-4")),
+                        List.of("Invalid replicate: -4")),
+                Arguments.of(List.of(ValidateTissueTestData.externalName("X1").replicate("1"),
+                        ValidateTissueTestData.externalName("X2").replicate("2").highestSection(-2)),
                         List.of("Highest section number cannot be negative.")),
                 Arguments.of(List.of(ValidateTissueTestData.externalName(null)),
                         List.of("Missing external identifier.")),
@@ -631,28 +641,28 @@ public class TestRegisterValidation {
                         List.of("Missing external identifier.")),
                 Arguments.of(List.of(ValidateTissueTestData.externalName("Banana*")),
                         List.of("Invalid name: Banana*")),
-                Arguments.of(List.of(ValidateTissueTestData.externalName("xyz").replicate(1),
-                        ValidateTissueTestData.externalName("Xyz").replicate(2)),
+                Arguments.of(List.of(ValidateTissueTestData.externalName("xyz").replicate("1"),
+                        ValidateTissueTestData.externalName("Xyz").replicate("2")),
                         List.of("Repeated external identifier: Xyz")),
-                Arguments.of(List.of(ValidateTissueTestData.externalName("X1").replicate(1),
-                        ValidateTissueTestData.externalName("X2").replicate(2).anyWithSameIdentifier(true)),
+                Arguments.of(List.of(ValidateTissueTestData.externalName("X1").replicate("1"),
+                        ValidateTissueTestData.externalName("X2").replicate("2").anyWithSameIdentifier(true)),
                         List.of("There is already tissue in the database with external identifier X2.")),
-                Arguments.of(List.of(ValidateTissueTestData.externalName("X1").replicate(1).anyWithSameIdentifier(true),
-                        ValidateTissueTestData.externalName("X1").replicate(2).anyWithSameIdentifier(true),
-                        ValidateTissueTestData.externalName("X2").replicate(3).anyWithSameIdentifier(true)),
+                Arguments.of(List.of(ValidateTissueTestData.externalName("X1").replicate("1").anyWithSameIdentifier(true),
+                        ValidateTissueTestData.externalName("X1").replicate("2").anyWithSameIdentifier(true),
+                        ValidateTissueTestData.externalName("X2").replicate("3").anyWithSameIdentifier(true)),
                         List.of("There is already tissue in the database with external identifier X1.",
                                 "There is already tissue in the database with external identifier X2.",
                                 "Repeated external identifier: X1")),
 
                 // Many problems
-                Arguments.of(List.of(ValidateTissueTestData.externalName("X1*").replicate(-1).highestSection(-1),
-                        ValidateTissueTestData.externalName(null).replicate(2),
-                        ValidateTissueTestData.externalName("X1").replicate(3).anySimilarInDatabase(true),
-                        ValidateTissueTestData.externalName("X2").replicate(4).anyWithSameIdentifier(true),
-                        ValidateTissueTestData.externalName("X3").replicate(5),
-                        ValidateTissueTestData.externalName("X4").replicate(5),
-                        ValidateTissueTestData.externalName("X4").replicate(6)),
-                        List.of("Replicate number cannot be negative.",
+                Arguments.of(List.of(ValidateTissueTestData.externalName("X1*").replicate("-1").highestSection(-1),
+                        ValidateTissueTestData.externalName(null).replicate("2"),
+                        ValidateTissueTestData.externalName("X1").replicate("3").anySimilarInDatabase(true),
+                        ValidateTissueTestData.externalName("X2").replicate("4").anyWithSameIdentifier(true),
+                        ValidateTissueTestData.externalName("X3").replicate("5"),
+                        ValidateTissueTestData.externalName("X4").replicate("5"),
+                        ValidateTissueTestData.externalName("X4").replicate("6")),
+                        List.of("Invalid replicate: -1",
                                 "Highest section number cannot be negative.",
                                 "Missing external identifier.",
                                 "Invalid name: X1*",
@@ -663,7 +673,7 @@ public class TestRegisterValidation {
 
     private static class ValidateTissueTestData {
         String externalName;
-        int replicate = 1;
+        String replicate = "1";
         String donorName = "D";
         String tissueTypeName = "TT";
         int slCode = 2;
@@ -682,7 +692,7 @@ public class TestRegisterValidation {
             return new ValidateTissueTestData(externalName);
         }
 
-        public ValidateTissueTestData replicate(int replicate) {
+        public ValidateTissueTestData replicate(String replicate) {
             this.replicate = replicate;
             return this;
         }

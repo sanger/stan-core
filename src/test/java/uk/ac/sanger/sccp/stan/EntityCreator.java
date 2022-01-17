@@ -91,10 +91,10 @@ public class EntityCreator {
     }
 
     public Tissue createTissue(Donor donor, String externalName) {
-        return createTissue(donor, externalName, 1);
+        return createTissue(donor, externalName, "1");
     }
 
-    public Tissue createTissue(Donor donor, String externalName, Integer replicate) {
+    public Tissue createTissue(Donor donor, String externalName, String replicate) {
         if (donor==null) {
             donor = createDonor("DONOR1");
         }

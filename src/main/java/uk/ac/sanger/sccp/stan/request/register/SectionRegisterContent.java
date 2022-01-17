@@ -19,7 +19,7 @@ public class SectionRegisterContent {
     private String externalIdentifier;
     private String tissueType;
     private Integer spatialLocation;
-    private Integer replicateNumber;
+    private String replicateNumber;
     private String fixative;
     private String medium;
     private Integer sectionNumber;
@@ -97,11 +97,11 @@ public class SectionRegisterContent {
         this.spatialLocation = spatialLocation;
     }
 
-    public Integer getReplicateNumber() {
+    public String getReplicateNumber() {
         return this.replicateNumber;
     }
 
-    public void setReplicateNumber(Integer replicateNumber) {
+    public void setReplicateNumber(String replicateNumber) {
         this.replicateNumber = replicateNumber;
     }
 

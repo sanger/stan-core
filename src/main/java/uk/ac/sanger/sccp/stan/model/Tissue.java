@@ -6,6 +6,7 @@ import javax.persistence.*;
 import java.util.Objects;
 
 /**
+ * Class representing a piece of tissue from one donor, and from which numerous samples may be derived.
  * @author dr6
  */
 @Entity
@@ -14,7 +15,7 @@ public class Tissue {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
     private String externalName;
-    private Integer replicate;
+    private String replicate;
     @ManyToOne
     private SpatialLocation spatialLocation;
     @ManyToOne
@@ -30,7 +31,7 @@ public class Tissue {
 
     public Tissue() {}
 
-    public Tissue(Integer id, String externalName, Integer replicate, SpatialLocation spatialLocation, Donor donor,
+    public Tissue(Integer id, String externalName, String replicate, SpatialLocation spatialLocation, Donor donor,
                   MouldSize mouldSize, Medium medium, Fixative fixative, Hmdmc hmdmc) {
         this.id = id;
         this.externalName = externalName;
@@ -59,11 +60,11 @@ public class Tissue {
         this.externalName = externalName;
     }
 
-    public Integer getReplicate() {
+    public String getReplicate() {
         return this.replicate;
     }
 
-    public void setReplicate(Integer replicate) {
+    public void setReplicate(String replicate) {
         this.replicate = replicate;
     }
 

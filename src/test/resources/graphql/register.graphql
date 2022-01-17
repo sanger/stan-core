@@ -10,7 +10,7 @@ mutation {
                 hmdmc:"20/0002",
                 spatialLocation:0,
                 tissueType:"Bone",
-                replicateNumber:1,
+                replicateNumber:"1",
                 medium:"None",
                 mouldSize:"None",
                 fixative:"None",

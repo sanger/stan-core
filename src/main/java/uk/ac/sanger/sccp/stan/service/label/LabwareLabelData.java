@@ -93,19 +93,19 @@ public class LabwareLabelData {
     public static class LabelContent {
         private final String donorName;
         private final String tissueDesc;
-        private final Integer replicate;
+        private final String replicate;
         private final String stateDesc;
 
-        public LabelContent(String donorName, String tissueDesc, Integer replicate) {
+        public LabelContent(String donorName, String tissueDesc, String replicate) {
             this(donorName, tissueDesc, replicate, (String) null);
         }
 
 
-        public LabelContent(String donorName, String tissueDesc, Integer replicate, Integer section) {
+        public LabelContent(String donorName, String tissueDesc, String replicate, Integer section) {
             this(donorName, tissueDesc, replicate, section==null ? null : String.format("S%03d", section));
         }
 
-        public LabelContent(String donorName, String tissueDesc, Integer replicate, String stateDesc) {
+        public LabelContent(String donorName, String tissueDesc, String replicate, String stateDesc) {
             this.donorName = donorName;
             this.tissueDesc = tissueDesc;
             this.replicate = replicate;
@@ -120,7 +120,7 @@ public class LabwareLabelData {
             return this.tissueDesc;
         }
 
-        public Integer getReplicate() {
+        public String getReplicate() {
             return this.replicate;
         }
 

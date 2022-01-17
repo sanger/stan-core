@@ -48,8 +48,8 @@ public class TestSampleRepo {
     @Transactional
     public void testFindAllByTissueIdIn() {
         Donor donor = entityCreator.createDonor("DONOR1");
-        Tissue tissue1 = entityCreator.createTissue(donor, "TISSUE1", 1);
-        Tissue tissue2 = entityCreator.createTissue(donor, "TISSUE2", 2);
+        Tissue tissue1 = entityCreator.createTissue(donor, "TISSUE1", "1");
+        Tissue tissue2 = entityCreator.createTissue(donor, "TISSUE2", "2");
         Sample sample10 = entityCreator.createSample(tissue1, null);
         Sample sample11 = entityCreator.createSample(tissue1, 1);
         Sample sample12 = entityCreator.createSample(tissue1, 2);

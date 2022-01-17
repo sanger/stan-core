@@ -79,7 +79,7 @@ public class TestTissueFieldChecker {
                 Arguments.of(toBRR(tissue, br -> br.setHmdmc("12/345")), tissue, "Expected HMDMC number to be "+tissue.getHmdmc().getHmdmc()+forTissue),
                 Arguments.of(toBRR(tissue, br -> br.setTissueType("Plumbus")), tissue, "Expected tissue type to be "+tissue.getTissueType().getName()+forTissue),
                 Arguments.of(toBRR(tissue, br -> br.setSpatialLocation(18)), tissue, "Expected spatial location to be "+tissue.getSpatialLocation().getCode()+forTissue),
-                Arguments.of(toBRR(tissue, br -> br.setReplicateNumber(-5)), tissue, "Expected replicate number to be "+tissue.getReplicate()+forTissue),
+                Arguments.of(toBRR(tissue, br -> br.setReplicateNumber("-5")), tissue, "Expected replicate number to be "+tissue.getReplicate()+forTissue),
                 Arguments.of(toBRR(tissue, br -> br.setMedium("Custard")), tissue, "Expected medium to be "+tissue.getMedium().getName()+forTissue),
                 Arguments.of(toBRR(tissue, br -> br.setMouldSize("Giant")), tissue, "Expected mould size to be "+tissue.getMouldSize().getName()+forTissue),
                 Arguments.of(toBRR(tissue, br -> br.setFixative("Glue")), tissue, "Expected fixative to be "+tissue.getFixative().getName()+forTissue),

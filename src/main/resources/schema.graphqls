@@ -92,14 +92,14 @@ type BioState {
 }
 
 type Tissue {
-    externalName: String!,
-    replicate: Int!,
-    spatialLocation: SpatialLocation!,
-    donor: Donor!,
-    hmdmc: Hmdmc,
-    mouldSize: MouldSize!,
-    medium: Medium!,
-    fixative: Fixative!,
+    externalName: String!
+    replicate: String!
+    spatialLocation: SpatialLocation!
+    donor: Donor!
+    hmdmc: Hmdmc
+    mouldSize: MouldSize!
+    medium: Medium!
+    fixative: Fixative!
 }
 
 type Sample {
@@ -142,7 +142,7 @@ input BlockRegisterRequest {
     hmdmc: String
     tissueType: String!
     spatialLocation: Int!
-    replicateNumber: Int!
+    replicateNumber: String!
     externalIdentifier: String!
     highestSection: Int!
     labwareType: String!
@@ -166,7 +166,7 @@ input SectionRegisterContent {
     externalIdentifier: String!
     tissueType: String!
     spatialLocation: Int!
-    replicateNumber: Int!
+    replicateNumber: String!
     fixative: String!
     medium: String!
     sectionNumber: Int!
