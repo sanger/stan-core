@@ -2,8 +2,8 @@ package uk.ac.sanger.sccp.stan.service.work;
 
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.Work.Status;
-import uk.ac.sanger.sccp.utils.UCMap;
 import uk.ac.sanger.sccp.stan.request.WorkWithComment;
+import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.Collection;
 import java.util.List;
@@ -56,6 +56,15 @@ public interface WorkService {
      * @return the updated work
      */
     Work updateWorkNumSlides(User user, String workNumber, Integer numSlides);
+
+    /**
+     * Updates the priority field on an existing work.
+     * @param user the user responsible for the change
+     * @param workNumber the work number of an existing work
+     * @param priority the new value of priority (may be null)
+     * @return the updated work
+     */
+    Work updateWorkPriority(User user, String workNumber, String priority);
 
     /**
      * Updates the existing work linking it to the given operations and samples in slots in the ops' actions

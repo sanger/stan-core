@@ -95,10 +95,12 @@ public class Work {
 
     private Integer numBlocks, numSlides;
 
+    private String priority;
+
     public Work() {}
 
     public Work(Integer id, String workNumber, WorkType workType, Project project, CostCode costCode, Status status,
-                Integer numBlocks, Integer numSlides) {
+                Integer numBlocks, Integer numSlides, String priority) {
         this.id = id;
         this.workNumber = workNumber;
         this.workType = workType;
@@ -107,10 +109,11 @@ public class Work {
         this.status = status;
         this.numBlocks = numBlocks;
         this.numSlides = numSlides;
+        this.priority = priority;
     }
 
     public Work(Integer id, String workNumber, WorkType workType, Project project, CostCode costCode, Status status) {
-        this(id, workNumber, workType, project, costCode, status, null, null);
+        this(id, workNumber, workType, project, costCode, status, null, null, null);
     }
 
     public Integer getId() {
@@ -193,6 +196,14 @@ public class Work {
         this.numSlides = numSlides;
     }
 
+    public String getPriority() {
+        return this.priority;
+    }
+
+    public void setPriority(String priority) {
+        this.priority = priority;
+    }
+
     @JsonIgnore
     public boolean isClosed() {
         return (status==Status.completed || status==Status.failed);
@@ -220,6 +231,7 @@ public class Work {
                 && Objects.equals(this.costCode, that.costCode)
                 && Objects.equals(this.numBlocks, that.numBlocks)
                 && Objects.equals(this.numSlides, that.numSlides)
+                && Objects.equals(this.priority, that.priority)
                 && this.status == that.status);
     }
 

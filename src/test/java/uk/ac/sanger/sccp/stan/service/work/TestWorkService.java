@@ -11,9 +11,10 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.Work.SampleSlotId;
 import uk.ac.sanger.sccp.stan.model.Work.Status;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.utils.UCMap;
 import uk.ac.sanger.sccp.stan.request.WorkWithComment;
+import uk.ac.sanger.sccp.stan.service.Validator;
 import uk.ac.sanger.sccp.utils.BasicUtils;
+import uk.ac.sanger.sccp.utils.UCMap;
 
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
@@ -38,6 +39,7 @@ public class TestWorkService {
     private WorkRepo mockWorkRepo;
     private WorkTypeRepo mockWorkTypeRepo;
     private WorkEventService mockWorkEventService;
+    private Validator<String> mockPriorityValidator;
 
     @BeforeEach
     void setup() {
@@ -46,8 +48,11 @@ public class TestWorkService {
         mockWorkRepo = mock(WorkRepo.class);
         mockWorkEventService = mock(WorkEventService.class);
         mockWorkTypeRepo = mock(WorkTypeRepo.class);
+        //noinspection unchecked
+        mockPriorityValidator = mock(Validator.class);
 
-        workService = spy(new WorkServiceImp(mockProjectRepo, mockCostCodeRepo, mockWorkTypeRepo, mockWorkRepo, mockWorkEventService));
+        workService = spy(new WorkServiceImp(mockProjectRepo, mockCostCodeRepo, mockWorkTypeRepo, mockWorkRepo,
+                mockWorkEventService, mockPriorityValidator));
     }
 
     @ParameterizedTest
@@ -80,7 +85,7 @@ public class TestWorkService {
             verify(mockWorkRepo).createNumber(prefix);
             verify(mockWorkRepo).save(result);
             verify(mockWorkEventService).recordEvent(user, result, WorkEvent.Type.create, null);
-            assertEquals(new Work(null, workNumber, workType, project, cc, Status.unstarted, numBlocks, numSlides), result);
+            assertEquals(new Work(null, workNumber, workType, project, cc, Status.unstarted, numBlocks, numSlides, null), result);
         } else {
             assertThat(assertThrows(IllegalArgumentException.class, () -> workService.createWork(user, prefix, workTypeName, projectName,
                     code, numBlocks, numSlides))).hasMessage(expectedErrorMessage);
@@ -89,32 +94,41 @@ public class TestWorkService {
     }
 
     @ParameterizedTest
-    @CsvSource({"false,false", "true,false", "true,true"})
-    public void testUpdateStatus(boolean success, boolean withComment) {
+    @CsvSource({
+            "true,active,,completed,,",
+            "false,active,,paused,,",
+            "true,active,,paused,,20",
+            "true,active,B4,paused,B4,20",
+            "false,completed,B4,failed,B4,20",
+            "true,active,B4,failed,,20",
+            "true,active,B4,completed,,",
+    })
+    public void testUpdateStatus(boolean legal, Status oldStatus, String oldPriority, Status newStatus,
+                                 String expectedPriority, Integer commentId) {
         User user = new User(1, "user1", User.Role.admin);
         String workNumber = "SGP4000";
-        final Integer commentId = (withComment ? 99 : null);
-        Status newStatus = (withComment ? Status.paused : Status.completed);
-        Work work = new Work(10, workNumber, null, null, null, Status.active);
+        Work work = new Work(10, workNumber, null, null, null, oldStatus);
+        work.setPriority(oldPriority);
         when(mockWorkRepo.getByWorkNumber(workNumber)).thenReturn(work);
-        if (!success) {
+        if (!legal) {
             doThrow(IllegalArgumentException.class).when(mockWorkEventService).recordStatusChange(any(), any(), any(), any());
             assertThrows(IllegalArgumentException.class, () -> workService.updateStatus(user, workNumber, newStatus, commentId));
             verify(mockWorkRepo, never()).save(any());
-        } else {
-            Comment comment = (withComment ? new Comment(commentId, "Custard", "Alabama") : null);
-            WorkEvent event = new WorkEvent(10, work, null, null, comment, null);
-            when(mockWorkEventService.recordStatusChange(any(), any(), any(), any())).thenReturn(event);
-            when(mockWorkRepo.save(any())).then(Matchers.returnArgument());
-            WorkWithComment wc = workService.updateStatus(user, workNumber, newStatus, commentId);
-
-            assertSame(work, wc.getWork());
-            assertEquals(withComment ? comment.getText() : null, wc.getComment());
-
-            verify(mockWorkRepo).save(work);
-            assertEquals(work.getStatus(), newStatus);
+            return;
         }
+        Comment comment = (commentId==null ? new Comment(commentId, "Custard", "Alabama") : null);
+        WorkEvent event = new WorkEvent(100, work, null, null, comment, null);
+        when(mockWorkEventService.recordStatusChange(any(), any(), any(), any())).thenReturn(event);
+        when(mockWorkRepo.save(any())).then(Matchers.returnArgument());
+        WorkWithComment wc = workService.updateStatus(user, workNumber, newStatus, commentId);
+        assertSame(work, wc.getWork());
+        assertEquals(comment!=null ? comment.getText() : null, wc.getComment());
+        verify(mockWorkRepo).save(work);
+        verify(mockWorkEventService).recordStatusChange(user, work, newStatus, commentId);
+        assertEquals(newStatus, work.getStatus());
+        assertEquals(expectedPriority, work.getPriority());
     }
+
 
     @ParameterizedTest
     @CsvSource(value={
@@ -179,6 +193,52 @@ public class TestWorkService {
             assertSame(work, workService.updateWorkNumSlides(user, workNumber, newValue));
             verify(mockWorkRepo).save(work);
             assertEquals(work.getNumSlides(), newValue);
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            ",,active",
+            ",,failed",
+            ",A2,active",
+            ",a2,active",
+            ",a2,failed",
+            ",a2,completed",
+            "A2,A2,active",
+            "A2,B3,active",
+            "A2,a2,active",
+            "A2,B3,failed",
+            "A2,B3,completed",
+            "A2,,active",
+            "A2,!4,active",
+            ",!4,active",
+    })
+    public void testUpdateWorkPriority(String oldPriority, String newPriority, Status status) {
+        Work work = new Work(10, "SGP4000", null, null, null, status);
+        work.setPriority(oldPriority);
+        String exMsg;
+        if (newPriority!=null && newPriority.indexOf('!')>=0) {
+            exMsg = "Bad priority";
+            doThrow(new IllegalArgumentException(exMsg)).when(mockPriorityValidator).checkArgument(newPriority);
+        } else if (work.isClosed() && newPriority!=null) {
+            exMsg = "Cannot set a new priority on "+status+" work.";
+        } else {
+            exMsg = null;
+        }
+        User user = EntityFactory.getUser();
+        when(mockWorkRepo.getByWorkNumber(work.getWorkNumber())).thenReturn(work);
+        if (exMsg!=null) {
+            IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> workService.updateWorkPriority(user, work.getWorkNumber(), newPriority));
+            assertThat(thrown).hasMessage(exMsg);
+        } else {
+            workService.updateWorkPriority(user, work.getWorkNumber(), newPriority);
+            String newPrioritySan = (newPriority==null ? null : newPriority.toUpperCase());
+            if (!Objects.equals(oldPriority, newPrioritySan)) {
+                verify(mockWorkRepo).save(work);
+            } else {
+                verify(mockWorkRepo, never()).save(any());
+            }
+            assertEquals(newPrioritySan, work.getPriority());
         }
     }
 

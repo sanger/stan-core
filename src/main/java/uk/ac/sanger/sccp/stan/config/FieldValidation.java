@@ -98,6 +98,13 @@ public class FieldValidation {
     }
 
     @Bean
+    public Validator<String> workPriorityValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA, CharacterType.DIGIT);
+        Pattern pattern = Pattern.compile("[A-Z][0-9]", Pattern.CASE_INSENSITIVE);
+        return new StringValidator("Priority", 2, 2, charTypes, false, pattern);
+    }
+
+    @Bean
     public Validator<String> destructionReasonValidator() {
         Set<CharacterType> charTypes = EnumSet.of(
                 CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN, CharacterType.SPACE,

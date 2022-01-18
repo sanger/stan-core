@@ -80,8 +80,14 @@ public class TestWorkMutation {
         assertNotNull(wcData);
         assertEquals("Section damaged.", wcData.get("comment"));
 
-        data = tester.post("mutation { updateWorkStatus(workNumber: \""+workNumber+"\", status: active) {work{status}, comment} }");
+        data = tester.post("mutation { updateWorkPriority(workNumber: \""+workNumber+"\", priority: \"a4\") { priority }}");
+        assertEquals("A4", chainGet(data, "data", "updateWorkPriority", "priority"));
+        data = tester.post("mutation { updateWorkPriority(workNumber: \""+workNumber+"\", priority: \"B3\") { priority }}");
+        assertEquals("B3", chainGet(data, "data", "updateWorkPriority", "priority"));
+
+        data = tester.post("mutation { updateWorkStatus(workNumber: \""+workNumber+"\", status: active) {work{status,priority}, comment} }");
         assertEquals("active", chainGet(data, "data", "updateWorkStatus", "work", "status"));
+        assertEquals("B3", chainGet(data, "data", "updateWorkStatus", "work", "priority"));
         assertNull(chainGet(data, "data", "updateWorkStatus", "comment"));
 
         data = tester.post(worksQuery);
@@ -102,5 +108,8 @@ public class TestWorkMutation {
         assertEquals(5, workData.get("numBlocks"));
         assertEquals(0, workData.get("numSlides"));
 
+        data = tester.post("mutation { updateWorkStatus(workNumber: \""+workNumber+"\", status: completed) {work{status,priority}}}");
+        assertEquals("completed", chainGet(data, "data", "updateWorkStatus", "work", "status"));
+        assertNull(chainGet(data, "data", "updateWorkStatus", "work", "priority"));
     }
 }

@@ -457,6 +457,17 @@ public class GraphQLMutation extends BaseGraphQLResource {
         };
     }
 
+    public DataFetcher<Work> updateWorkPriority() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            String workNumber = dfe.getArgument("workNumber");
+            String priority = dfe.getArgument("priority");
+            logRequest("Update work priority", user,
+                    String.format("Work number: %s, priority: %s", workNumber, priority));
+            return workService.updateWorkPriority(user, workNumber, priority);
+        };
+    }
+
     public DataFetcher<OperationResult> stain() {
         return dfe -> {
             User user = checkUser(dfe, User.Role.normal);
