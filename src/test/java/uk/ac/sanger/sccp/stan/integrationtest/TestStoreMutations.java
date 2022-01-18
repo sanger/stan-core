@@ -12,10 +12,9 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import uk.ac.sanger.sccp.stan.EntityCreator;
 import uk.ac.sanger.sccp.stan.GraphQLTester;
-import uk.ac.sanger.sccp.stan.model.Sample;
-import uk.ac.sanger.sccp.stan.model.User;
+import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.service.store.StorelightClient;
-import uk.ac.sanger.sccp.utils.GraphQLClient;
+import uk.ac.sanger.sccp.utils.GraphQLClient.GraphQLResponse;
 
 import javax.transaction.Transactional;
 import java.util.List;
@@ -23,6 +22,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGet;
@@ -62,7 +62,7 @@ public class TestStoreMutations {
                         .put("barcode", "STO-4")
                 );
 
-        GraphQLClient.GraphQLResponse storeResponse = new GraphQLClient.GraphQLResponse(objectMapper.createObjectNode().set("storeBarcode", storedItemNode), null);
+        GraphQLResponse storeResponse = new GraphQLResponse(objectMapper.createObjectNode().set("storeBarcode", storedItemNode), null);
         when(mockStorelightClient.postQuery(ArgumentMatchers.contains("storeBarcode("), any())).thenReturn(storeResponse);
 
         Object result = tester.post("mutation { storeBarcode(barcode: \"STAN-100\", locationBarcode: \"STO-4\") { barcode }}");
@@ -83,7 +83,7 @@ public class TestStoreMutations {
                                 .put("barcode", "Other"))
                 );
 
-        GraphQLClient.GraphQLResponse locationResponse = new GraphQLClient.GraphQLResponse(objectMapper.createObjectNode().set("location", locationNode), null);
+        GraphQLResponse locationResponse = new GraphQLResponse(objectMapper.createObjectNode().set("location", locationNode), null);
         when(mockStorelightClient.postQuery(ArgumentMatchers.contains("location("), any())).thenReturn(locationResponse);
 
         result = tester.post("query { labwareInLocation(locationBarcode: \"STO-4\") { barcode, slots { samples { id }}}}");
@@ -93,5 +93,50 @@ public class TestStoreMutations {
         Map<String, ?> labwareData = labwareListData.get(0);
         assertEquals("STAN-100", labwareData.get("barcode"));
         assertEquals(sample.getId(), chainGet(labwareData, "slots", 0, "samples", 0, "id"));
+    }
+
+    @Transactional
+    @Test
+    public void testStoreMulti() throws Exception {
+        User user = entityCreator.createUser("user1");
+        tester.setUser(user);
+        Sample sample = entityCreator.createSample(entityCreator.createTissue(entityCreator.createDonor("DONOR1"), "EXT1"), 10);
+        LabwareType lt = entityCreator.createLabwareType("lt", 1, 1);
+        entityCreator.createLabware("STAN-100", lt, sample);
+        entityCreator.createLabware("STAN-101", lt, sample);
+        ObjectMapper objectMapper = new ObjectMapper();
+        ObjectNode locationNode = objectMapper.createObjectNode()
+                .put("id", 4)
+                .put("barcode", "STO-4")
+                .put("name", "Location 4")
+                .set("stored", objectMapper.createArrayNode()
+                        .add(objectMapper.createObjectNode()
+                                .put("barcode", "STAN-100")
+                                .put("address", "A1"))
+                        .add(objectMapper.createObjectNode()
+                                .put("barcode", "STAN-101"))
+                );
+
+        GraphQLResponse storeResponse = new GraphQLResponse(
+                objectMapper.createObjectNode().set("store", objectMapper.createObjectNode().put("numStored", 3)),
+                null
+        );
+
+        GraphQLResponse locationResponse = new GraphQLResponse(
+                objectMapper.createObjectNode().set("location", locationNode),
+                null
+        );
+
+        when(mockStorelightClient.postQuery(ArgumentMatchers.contains("STAN-100"), any())).thenReturn(storeResponse);
+
+        when(mockStorelightClient.postQuery(ArgumentMatchers.contains("location(location:"), any())).thenReturn(locationResponse);
+
+        Map<String, ?> result = tester.post("mutation { store(store:[{barcode:\"STAN-100\", address:\"A1\"},{barcode:\"STAN-101\",address:\"A2\"}]," +
+                "locationBarcode:\"STO-4\") { barcode, stored { barcode, address } }}");
+
+        assertNull(result.get("errors"));
+        assertEquals("STO-4", chainGet(result, "data", "store", "barcode"));
+
+        verifyStorelightQuery(mockStorelightClient, List.of("STAN-100", "STAN-101", "STO-4"), user.getUsername());
     }
 }

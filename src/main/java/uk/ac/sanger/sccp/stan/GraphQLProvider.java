@@ -165,6 +165,7 @@ public class GraphQLProvider {
                         .dataFetcher("addUser", transact(graphQLMutation.addUser()))
                         .dataFetcher("setUserRole", transact(graphQLMutation.setUserRole()))
 
+                        .dataFetcher("store", graphQLStore.store())
                         .dataFetcher("storeBarcode", graphQLStore.storeBarcode())
                         .dataFetcher("unstoreBarcode", graphQLStore.unstoreBarcode())
                         .dataFetcher("empty", graphQLStore.empty())

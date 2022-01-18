@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.store.*;
 import uk.ac.sanger.sccp.stan.repo.UserRepo;
+import uk.ac.sanger.sccp.stan.request.StoreInput;
 import uk.ac.sanger.sccp.stan.service.store.StoreService;
 
 import java.util.List;
@@ -51,6 +52,19 @@ public class GraphQLStore extends BaseGraphQLResource {
                         user.getUsername(), repr(itemBarcode), repr(locationBarcode), address);
             }
             return storeService.storeBarcode(user, itemBarcode, locationBarcode, address);
+        };
+    }
+
+    public DataFetcher<Location> store() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            String locationBarcode = dfe.getArgument("locationBarcode");
+            List<StoreInput> storeInputs = arg(dfe, "store", new TypeReference<List<StoreInput>>() {});
+            if (log.isInfoEnabled()) {
+                log.info("Store request from {}: store: {}, locationBarcode: {}",
+                        user.getUsername(), storeInputs, repr(locationBarcode));
+            }
+            return storeService.store(user, storeInputs, locationBarcode);
         };
     }
 

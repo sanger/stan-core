@@ -1,0 +1,5 @@
+mutation {
+    store(store:[{}], location:{barcode:"LOCATIONBARCODE"}) {
+        numStored
+    }
+}
