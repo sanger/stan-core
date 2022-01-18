@@ -4,6 +4,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.plan.*;
 import uk.ac.sanger.sccp.stan.service.Validator;
+import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
 import java.util.stream.Stream;
@@ -32,8 +33,8 @@ public class PlanValidationImp implements PlanValidation {
     @Override
     public Collection<String> validate() {
         OperationType opType = validateOperation();
-        validateSources(opType);
-        validateDestinations();
+        UCMap<Labware> sourceLwMap = validateSources(opType);
+        validateDestinations(sourceLwMap);
         return problems;
     }
 
@@ -41,11 +42,11 @@ public class PlanValidationImp implements PlanValidation {
      * Checks the sources. Returns a map of {@link ActionKey} to source slot for each action.
      * @param opType the type of operation
      */
-    public void validateSources(OperationType opType) {
+    public UCMap<Labware> validateSources(OperationType opType) {
+        UCMap<Labware> labwareMap = new UCMap<>();
         if (request.getLabware().isEmpty()) {
-            return;
+            return labwareMap;
         }
-        Map<String, Labware> labwareMap = new HashMap<>();
         Set<String> unfoundBarcodes = new LinkedHashSet<>();
         Set<String> destroyedBarcodes = new LinkedHashSet<>();
         Set<String> releasedBarcodes = new LinkedHashSet<>();
@@ -108,9 +109,10 @@ public class PlanValidationImp implements PlanValidation {
         if (!discardedBarcodes.isEmpty()) {
             addProblem("Labware already discarded: "+discardedBarcodes);
         }
+        return labwareMap;
     }
 
-    public void validateDestinations() {
+    public void validateDestinations(UCMap<Labware> sourceLabwareMap) {
         if (request.getLabware().isEmpty()) {
             addProblem("No labware are specified in the plan request.");
             return;
@@ -150,13 +152,19 @@ public class PlanValidationImp implements PlanValidation {
             }
             if (gotBarcode != lt.isPrebarcoded()) {
                 addProblem("%s barcode supplied for new labware of type %s.",
-                        gotBarcode ? "Unexpected":"No", lt.getName());
+                        gotBarcode ? "Unexpected": "No", lt.getName());
             }
             checkActions(lw, lt);
             if (gotBarcode && !alreadySeen && labwareRepo.existsByBarcode(lw.getBarcode())) {
                 addProblem("Labware with the barcode "+lw.getBarcode()+" already exists in the database.");
             } else if (gotBarcode && !alreadySeen && labwareRepo.existsByExternalBarcode(lw.getBarcode())) {
                 addProblem("Labware with the external barcode "+lw.getBarcode()+" already exists in the database.");
+            }
+            if (lt.getLabelType()!=null && lt.getLabelType().getName().equalsIgnoreCase("adh")) {
+                if (!hasDividedLayout(sourceLabwareMap, lw, lt)) {
+                    addProblem("Labware of type "+lt.getName()+" must have one tissue in its top half and " +
+                            "one in its bottom half.");
+                }
             }
         }
         if (!unknownTypes.isEmpty()) {
@@ -201,6 +209,45 @@ public class PlanValidationImp implements PlanValidation {
                 addProblem("Actions for labware %s contain duplicate action: %s", lwErrorDesc(lw), key);
             }
         }
+    }
+
+
+    public boolean hasDividedLayout(UCMap<Labware> sourceLwMap, PlanRequestLabware lw, LabwareType lt) {
+        Tissue[] tissues = new Tissue[2];
+        int regionSize = lt.getNumRows()/2;
+        for (var pa : lw.getActions()) {
+            if (pa.getAddress()==null || pa.getSource()==null || pa.getSource().getBarcode()==null) {
+                continue;
+            }
+            int tissueIndex = (pa.getAddress().getRow()-1)/regionSize;
+            if (tissueIndex < 0 || tissueIndex >= 2) {
+                continue; // must be invalid address, which is handled elsewhere
+            }
+            Labware sourceLabware = sourceLwMap.get(pa.getSource().getBarcode());
+            if (sourceLabware==null) {
+                continue;
+            }
+            Address sourceAddress = pa.getSource().getAddress();
+            if (sourceAddress==null) {
+                sourceAddress = new Address(1,1);
+            }
+            Slot sourceSlot = sourceLabware.optSlot(sourceAddress).orElse(null);
+            if (sourceSlot==null) {
+                continue;
+            }
+            Sample sample = sourceSlot.getSamples().stream().filter(sam -> sam.getId()==pa.getSampleId())
+                    .findAny().orElse(null);
+            if (sample==null) {
+                continue;
+            }
+            Tissue tissue = sample.getTissue();
+            if (tissues[tissueIndex]==null) {
+                tissues[tissueIndex] = tissue;
+            } else if (!tissues[tissueIndex].equals(tissue)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static String lwErrorDesc(PlanRequestLabware lw) {

@@ -100,9 +100,13 @@ public class LabwareLabelData {
             this(donorName, tissueDesc, replicate, (String) null);
         }
 
-
         public LabelContent(String donorName, String tissueDesc, String replicate, Integer section) {
             this(donorName, tissueDesc, replicate, section==null ? null : String.format("S%03d", section));
+        }
+
+        public LabelContent(String donorName, String tissueDesc, String replicate, Integer minSection, Integer maxSection) {
+            this(donorName, tissueDesc, replicate, minSection==null ? null :
+                    String.format(minSection.equals(maxSection) || maxSection==null ? "S%03d" : "S%03d+", minSection));
         }
 
         public LabelContent(String donorName, String tissueDesc, String replicate, String stateDesc) {

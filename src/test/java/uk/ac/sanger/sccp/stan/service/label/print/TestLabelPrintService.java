@@ -92,6 +92,28 @@ public class TestLabelPrintService {
     }
 
     @Test
+    public void testPrintLabwareWithDividedLabel() throws IOException {
+        LabwareType lt = new LabwareType(10, "Visium ADH", 4, 2, new LabelType(6, "adh"), false);
+        Labware lw = EntityFactory.makeEmptyLabware(lt);
+        when(mockPrinterRepo.getByName(printer.getName())).thenReturn(printer);
+        List<LabwareLabelData> labelData = List.of(
+                new LabwareLabelData(lw.getBarcode(), "None", "2021-03-17", List.of(
+                        new LabelContent("DONOR1", "TISSUE1", "2", 3),
+                        new LabelContent("DONOR2", "TISSUE2", "3", 4)
+                ))
+        );
+        LabelPrintRequest expectedRequest = new LabelPrintRequest(lw.getLabwareType().getLabelType(), labelData);
+
+        when(mockLabwareLabelDataService.getDividedLabelData(lw)).thenReturn(labelData.get(0));
+        doNothing().when(labelPrintService).print(any(), any());
+        doReturn(List.of()).when(labelPrintService).recordPrint(any(), any(), any());
+
+        labelPrintService.printLabware(user, printer.getName(), List.of(lw));
+        verify(labelPrintService).print(printer, expectedRequest);
+        verify(labelPrintService).recordPrint(printer, user, List.of(lw));
+    }
+
+    @Test
     public void testPrintLabwareErrors() throws IOException {
         assertThat(assertThrows(IllegalArgumentException.class, () -> labelPrintService.printLabware(user, printer.getName(), List.of())))
                 .hasMessage("No labware supplied to print.");

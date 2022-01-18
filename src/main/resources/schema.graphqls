@@ -535,6 +535,7 @@ type Work {
     status: WorkStatus!
     numBlocks: Int
     numSlides: Int
+    priority: String
 }
 
 type StainType {
@@ -786,6 +787,7 @@ type Mutation {
     updateWorkStatus(workNumber: String!, status: WorkStatus!, commentId: Int): WorkWithComment!
     updateWorkNumBlocks(workNumber: String!, numBlocks: Int): Work!
     updateWorkNumSlides(workNumber: String!, numSlides: Int): Work!
+    updateWorkPriority(workNumber: String!, priority: String): Work!
 
     stain(request: StainRequest!): OperationResult!
     recordInPlace(request: InPlaceOpRequest!): OperationResult!
