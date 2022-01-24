@@ -57,7 +57,7 @@ public class FieldValidation {
     @Bean
     public Validator<String> replicateValidator() {
         Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA, CharacterType.DIGIT);
-        Pattern pattern = Pattern.compile("[0-9]+[a-z]?", Pattern.CASE_INSENSITIVE);
+        Pattern pattern = Pattern.compile("[1-9][0-9]*[a-z]?", Pattern.CASE_INSENSITIVE);
         return new StringValidator("Replicate number", 1, 8, charTypes, false, pattern);
     }
 
