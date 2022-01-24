@@ -410,13 +410,13 @@ public class TestHistoryService {
     @ParameterizedTest
     @CsvSource(value={
             "bananas, bananas",
-            "51, 51 sec",
-            "60, 1 min",
-            "3333, 55 min 33 sec",
-            "7200, 2 hour",
-            "7320, 2 hour 2 min",
-            "7205, 2 hour 0 min 5 sec",
-            "9876, 2 hour 44 min 36 sec",
+            "51, 51\u00a0sec",
+            "60, 1\u00a0min",
+            "3333, 55\u00a0min 33\u00a0sec",
+            "7200, 2\u00a0hour",
+            "7320, 2\u00a0hour 2\u00a0min",
+            "7205, 2\u00a0hour 0\u00a0min 5\u00a0sec",
+            "9876, 2\u00a0hour 44\u00a0min 36\u00a0sec",
     })
     public void testDescribeSeconds(String value, String expected) {
         assertEquals(expected, service.describeSeconds(value));
@@ -424,10 +424,10 @@ public class TestHistoryService {
 
     @ParameterizedTest
     @CsvSource(value={
-            "Thickness, 14,, Thickness: 14",
-            "Thickness, 11, B3, B3: Thickness: 11",
-            "Blueing, 902,, Blueing: 15 min 2 sec",
-            "Blueing, 75, D9, D9: Blueing: 1 min 15 sec",
+            "Thickness, 14,, Thickness: 14\u00a0μm",
+            "Thickness, 11, B3, B3: Thickness: 11\u00a0μm",
+            "Blueing, 902,, Blueing: 15\u00a0min 2\u00a0sec",
+            "Blueing, 75, D9, D9: Blueing: 1\u00a0min 15\u00a0sec",
     })
     public void testMeasurementDetail(String name, String value, Address address, String expected) {
         Map<Integer, Slot> slotIdMap = null;
@@ -584,7 +584,7 @@ public class TestHistoryService {
         List<HistoryEntry> expectedEntries = List.of(
                 new HistoryEntry(opIds[0], opTypeName0, ops.get(0).getPerformed(), labware[0].getId(),
                         labware[1].getId(), samples[0].getId(), username, "SGP5000",
-                        List.of("Alpha: Beta", "Gamma: Delta", "Equipment: Feeniks", "A1: pass", "Alabama", "A1: Alaska", "Thickness: 4")),
+                        List.of("Alpha: Beta", "Gamma: Delta", "Equipment: Feeniks", "A1: pass", "Alabama", "A1: Alaska", "Thickness: 4\u00a0μm")),
                 new HistoryEntry(opIds[1], opTypeName1, ops.get(1).getPerformed(), labware[0].getId(),
                         labware[3].getId(), samples[2].getId(), username, null,
                         List.of("Stain type: Ribena", "Epsilon: Zeta", "Arizona"))

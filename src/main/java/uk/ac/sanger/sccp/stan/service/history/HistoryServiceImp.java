@@ -322,24 +322,24 @@ public class HistoryServiceImp implements HistoryService {
         }
         int minutes = seconds/60;
         if (minutes==0) {
-            return seconds+" sec";
+            return seconds+"\u00a0sec";
         }
         seconds %= 60;
         int hours = minutes/60;
         if (hours==0) {
             if (seconds==0) {
-                return minutes + " min";
+                return minutes + "\u00a0min";
             }
-            return minutes + " min " + seconds + " sec";
+            return minutes + "\u00a0min " + seconds + "\u00a0sec";
         }
         minutes %= 60;
         if (minutes==0 && seconds==0) {
-            return hours + " hour";
+            return hours + "\u00a0hour";
         }
         if (seconds==0) {
-            return hours + " hour " + minutes + " min";
+            return hours + "\u00a0hour " + minutes + "\u00a0min";
         }
-        return String.format("%d hour %d min %d sec", hours, minutes, seconds);
+        return String.format("%d\u00a0hour %d\u00a0min %d\u00a0sec", hours, minutes, seconds);
     }
 
     /**
@@ -350,12 +350,18 @@ public class HistoryServiceImp implements HistoryService {
      */
     public String measurementDetail(Measurement measurement, Map<Integer, Slot> slotIdMap) {
         MeasurementType mt = MeasurementType.forName(measurement.getName());
+        if (mt==null && BasicUtils.startsWithIgnoreCase(measurement.getName(), "DV200")) {
+            mt = MeasurementType.DV200;
+        }
         MeasurementValueType vt = (mt==null ? null : mt.getValueType());
         String detail = measurement.getName() + ": ";
         if (vt==MeasurementValueType.TIME) {
             detail += describeSeconds(measurement.getValue());
         } else {
             detail += measurement.getValue();
+            if (mt!=null && mt.getUnit()!=null) {
+                detail += "\u00a0" + mt.getUnit();
+            }
         }
         if (measurement.getSlotId()!=null) {
             assert slotIdMap != null;

@@ -342,4 +342,14 @@ public class BasicUtils {
         }
         return list;
     }
+
+    /**
+     * Does the given string start with the given substring, ignoring its case?
+     * @param string the containing string
+     * @param sub the substring
+     * @return true if {@code string} starts with {@code sub}, ignoring case; false otherwise
+     */
+    public static boolean startsWithIgnoreCase(String string, String sub) {
+        return StringUtils.startsWithIgnoreCase(string, sub);
+    }
 }
