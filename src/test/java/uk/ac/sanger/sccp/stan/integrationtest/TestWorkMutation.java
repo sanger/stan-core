@@ -82,12 +82,12 @@ public class TestWorkMutation {
 
         data = tester.post("mutation { updateWorkPriority(workNumber: \""+workNumber+"\", priority: \"a4\") { priority }}");
         assertEquals("A4", chainGet(data, "data", "updateWorkPriority", "priority"));
-        data = tester.post("mutation { updateWorkPriority(workNumber: \""+workNumber+"\", priority: \"B3\") { priority }}");
-        assertEquals("B3", chainGet(data, "data", "updateWorkPriority", "priority"));
+        data = tester.post("mutation { updateWorkPriority(workNumber: \""+workNumber+"\", priority: \"B35\") { priority }}");
+        assertEquals("B35", chainGet(data, "data", "updateWorkPriority", "priority"));
 
         data = tester.post("mutation { updateWorkStatus(workNumber: \""+workNumber+"\", status: active) {work{status,priority}, comment} }");
         assertEquals("active", chainGet(data, "data", "updateWorkStatus", "work", "status"));
-        assertEquals("B3", chainGet(data, "data", "updateWorkStatus", "work", "priority"));
+        assertEquals("B35", chainGet(data, "data", "updateWorkStatus", "work", "priority"));
         assertNull(chainGet(data, "data", "updateWorkStatus", "comment"));
 
         data = tester.post(worksQuery);
