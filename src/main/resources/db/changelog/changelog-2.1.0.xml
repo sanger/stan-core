@@ -5,7 +5,7 @@
 
     <changeSet id="2.1.0" author="dr6">
         <addColumn tableName="work">
-            <column name="priority" type="CHAR(2)">
+            <column name="priority" type="VARCHAR(8)">
                 <constraints nullable="true"/>
             </column>
         </addColumn>
