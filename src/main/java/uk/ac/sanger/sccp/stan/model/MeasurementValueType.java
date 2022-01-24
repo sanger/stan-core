@@ -6,5 +6,5 @@ package uk.ac.sanger.sccp.stan.model;
 public enum MeasurementValueType {
     INT, // An integer
     TIME, // A duration in seconds
-    DECIMAL_2, // A positive or negative rational number with two decimal places
+    DECIMAL, // A positive or negative rational number with decimal places
 }
