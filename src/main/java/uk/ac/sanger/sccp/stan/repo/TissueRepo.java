@@ -16,7 +16,7 @@ public interface TissueRepo extends CrudRepository<Tissue, Integer> {
             int spatialLocationId,
             int mediumId,
             int fixativeId,
-            int replicate
+            String replicate
     );
 
     default Tissue getByExternalName(String externalName) throws EntityNotFoundException {

@@ -82,7 +82,7 @@ public class LabwareLabelDataService {
 
         String[] donorNames = new String[2];
         String[] tissueDescs = new String[2];
-        Integer[] reps = new Integer[2];
+        String[] reps = new String[2];
         Set<String> mediums = new HashSet<>(2);
 
         for (int i = 0; i < tissues.length; i++) {

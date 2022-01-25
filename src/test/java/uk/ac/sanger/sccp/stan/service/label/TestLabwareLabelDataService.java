@@ -257,8 +257,8 @@ public class TestLabwareLabelDataService {
         Tissue[] tissues = IntStream.range(0,2)
                 .mapToObj(i -> EntityFactory.makeTissue(donors[i], sls[i]))
                 .toArray(Tissue[]::new);
-        tissues[0].setReplicate(100);
-        tissues[1].setReplicate(101);
+        tissues[0].setReplicate("100");
+        tissues[1].setReplicate("101b");
         Medium medium = EntityFactory.getMedium();
         tissues[0].setMedium(medium);
         if (sameMedium) {
@@ -281,7 +281,7 @@ public class TestLabwareLabelDataService {
         assertEquals(sameMedium ? medium.getName() : null, ld.getMedium());
         String[] donorNames = { donors[0].getDonorName(), donors[1].getDonorName() };
         String[] tissueStrings = { tissueString(tissues[0]), tissueString(tissues[1]) };
-        Integer[] reps = { tissues[0].getReplicate(), tissues[1].getReplicate() };
+        String[] reps = { tissues[0].getReplicate(), tissues[1].getReplicate() };
 
         List<LabelContent> expectedContents = List.of(
                 new LabelContent(donorNames[0], tissueStrings[0], reps[0], "S001+"),

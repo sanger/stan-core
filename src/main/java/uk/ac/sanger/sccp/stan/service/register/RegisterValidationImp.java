@@ -29,6 +29,7 @@ public class RegisterValidationImp implements RegisterValidation {
     private final SpeciesRepo speciesRepo;
     private final Validator<String> donorNameValidation;
     private final Validator<String> externalNameValidation;
+    private final Validator<String> replicateValidator;
     private final TissueFieldChecker tissueFieldChecker;
 
     final Map<String, Donor> donorMap = new HashMap<>();
@@ -47,6 +48,7 @@ public class RegisterValidationImp implements RegisterValidation {
                                  MouldSizeRepo mouldSizeRepo, MediumRepo mediumRepo,
                                  FixativeRepo fixativeRepo, TissueRepo tissueRepo, SpeciesRepo speciesRepo,
                                  Validator<String> donorNameValidation, Validator<String> externalNameValidation,
+                                 Validator<String> replicateValidator,
                                  TissueFieldChecker tissueFieldChecker) {
         this.request = request;
         this.donorRepo = donorRepo;
@@ -60,6 +62,7 @@ public class RegisterValidationImp implements RegisterValidation {
         this.speciesRepo = speciesRepo;
         this.donorNameValidation = donorNameValidation;
         this.externalNameValidation = externalNameValidation;
+        this.replicateValidator = replicateValidator;
         this.tissueFieldChecker = tissueFieldChecker;
     }
 
@@ -298,8 +301,10 @@ public class RegisterValidationImp implements RegisterValidation {
             if (block.isExistingTissue()) {
                 continue;
             }
-            if (block.getReplicateNumber() < 0) {
-                addProblem("Replicate number cannot be negative.");
+            if (block.getReplicateNumber()==null || block.getReplicateNumber().isEmpty()) {
+                addProblem("Missing replicate number.");
+            } else {
+                replicateValidator.validate(block.getReplicateNumber(), this::addProblem);
             }
             if (block.getHighestSection() < 0) {
                 addProblem("Highest section number cannot be negative.");

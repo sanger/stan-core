@@ -192,10 +192,10 @@ public class TestRegisterService {
                         existingTissue.getMedium().getName(), existingTissue.getFixative().getName()),
                 makeBrr("TISSUE2", donor2.getDonorName(),
                         hmdmc.getHmdmc(), human.getName(),
-                        7, sl, ms.getName(), medium.getName(), fix.getName()),
+                        "7", sl, ms.getName(), medium.getName(), fix.getName()),
                 makeBrr("TISSUE3", donor3.getDonorName(),
                         null, hamster.getName(),
-                        14, sl, ms.getName(), medium.getName(), fix.getName())
+                        "14", sl, ms.getName(), medium.getName(), fix.getName())
         );
         RegisterRequest request = new RegisterRequest(brs);
 
@@ -213,11 +213,11 @@ public class TestRegisterService {
             if (xn.equals("TISSUE2")) {
                 assertEquals(donor2, tissue.getDonor());
                 assertEquals(hmdmc, tissue.getHmdmc());
-                assertEquals(7, tissue.getReplicate());
+                assertEquals("7", tissue.getReplicate());
             } else {
                 assertEquals(donor3, tissue.getDonor());
                 assertNull(tissue.getHmdmc());
-                assertEquals(14, tissue.getReplicate());
+                assertEquals("14", tissue.getReplicate());
             }
             assertEquals(sl, tissue.getSpatialLocation());
             assertEquals(ms, tissue.getMouldSize());
@@ -230,7 +230,7 @@ public class TestRegisterService {
 
     private BlockRegisterRequest makeBrr(String externalName, String donorName,
                                          String hmdmc, String species,
-                                         int replicate, SpatialLocation sl,
+                                         String replicate, SpatialLocation sl,
                                          String mouldName, String mediumName, String fixName) {
         BlockRegisterRequest br = new BlockRegisterRequest();
         br.setExternalIdentifier(externalName);
@@ -270,14 +270,14 @@ public class TestRegisterService {
         block0.setFixative(fixative.getName());
         block0.setMouldSize(mouldSize.getName());
         block0.setTissueType(tissueType.getName());
-        block0.setReplicateNumber(2);
+        block0.setReplicateNumber("2");
         block0.setSpatialLocation(1);
         block0.setSpecies(donor1.getSpecies().getName());
 
         BlockRegisterRequest block1 = new BlockRegisterRequest();
         block1.setDonorIdentifier(donor2.getDonorName());
         block1.setLifeStage(donor2.getLifeStage());
-        block1.setReplicateNumber(5);
+        block1.setReplicateNumber("5");
         block1.setTissueType(tissueType.getName());
         block1.setSpatialLocation(0);
         block1.setLabwareType(lts[1].getName());
@@ -391,7 +391,7 @@ public class TestRegisterService {
         block.setFixative(fixative.getName());
         block.setMouldSize(mouldSize.getName());
         block.setTissueType(tissueType.getName());
-        block.setReplicateNumber(2);
+        block.setReplicateNumber("2");
         block.setSpatialLocation(1);
         block.setSpecies(species.getName());
 

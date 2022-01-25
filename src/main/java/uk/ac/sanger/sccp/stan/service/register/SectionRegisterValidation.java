@@ -40,6 +40,7 @@ public class SectionRegisterValidation {
     private final Validator<String> donorNameValidation;
     private final Validator<String> externalNameValidation;
     private final Validator<String> visiumLpBarcodeValidation;
+    private final Validator<String> replicateValidator;
 
     public SectionRegisterValidation(SectionRegisterRequest request,
                                      DonorRepo donorRepo, SpeciesRepo speciesRepo, LabwareTypeRepo lwTypeRepo,
@@ -47,7 +48,8 @@ public class SectionRegisterValidation {
                                      TissueTypeRepo tissueTypeRepo, FixativeRepo fixativeRepo, MediumRepo mediumRepo,
                                      TissueRepo tissueRepo, BioStateRepo bioStateRepo,
                                      Validator<String> externalBarcodeValidation, Validator<String> donorNameValidation,
-                                     Validator<String> externalNameValidation, Validator<String> visiumLpBarcodeValidation) {
+                                     Validator<String> externalNameValidation, Validator<String> replicateValidator,
+                                     Validator<String> visiumLpBarcodeValidation) {
         this.request = request;
         this.donorRepo = donorRepo;
         this.speciesRepo = speciesRepo;
@@ -63,6 +65,7 @@ public class SectionRegisterValidation {
         this.externalBarcodeValidation = externalBarcodeValidation;
         this.donorNameValidation = donorNameValidation;
         this.externalNameValidation = externalNameValidation;
+        this.replicateValidator = replicateValidator;
         this.visiumLpBarcodeValidation = visiumLpBarcodeValidation;
     }
 
@@ -307,10 +310,10 @@ public class SectionRegisterValidation {
                 }
             }
 
-            if (content.getReplicateNumber()==null) {
+            if (content.getReplicateNumber()==null || content.getReplicateNumber().isEmpty()) {
                 addProblem("Missing replicate number.");
-            } else if (content.getReplicateNumber() < 0) {
-                addProblem("Replicate number cannot be negative.");
+            } else {
+                replicateValidator.validate(content.getReplicateNumber(), this::addProblem);
             }
 
             Fixative fixative = loadItem(content.getFixative(), fixativeMap, "Missing fixative.",
@@ -331,7 +334,7 @@ public class SectionRegisterValidation {
                 continue;
             }
 
-            Tissue tissue = new Tissue(null, externalIdentifier, content.getReplicateNumber(),
+            Tissue tissue = new Tissue(null, externalIdentifier, content.getReplicateNumber().toLowerCase(),
                     spatialLocation, donor, mouldSize, medium, fixative, hmdmc);
             tissueMap.put(externalIdentifier, tissue);
         }

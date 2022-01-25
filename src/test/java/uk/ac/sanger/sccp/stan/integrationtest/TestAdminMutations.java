@@ -28,7 +28,8 @@ import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainG
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
 @ActiveProfiles("test")
-@Import({GraphQLTester.class, EntityCreator.class})public class TestAdminMutations {
+@Import({GraphQLTester.class, EntityCreator.class})
+public class TestAdminMutations {
     @Autowired
     private GraphQLTester tester;
     @Autowired

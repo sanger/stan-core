@@ -45,8 +45,8 @@ public class TestTissueRepo {
     @Transactional
     public void testGetByExternalName() {
         Donor donor = entityCreator.createDonor("DONOR1");
-        Tissue tissue1 = entityCreator.createTissue(donor, "TISSUE1", 1);
-        Tissue tissue2 = entityCreator.createTissue(donor, "TISSUE2", 2);
+        Tissue tissue1 = entityCreator.createTissue(donor, "TISSUE1", "1");
+        Tissue tissue2 = entityCreator.createTissue(donor, "TISSUE2", "2a");
 
         assertEquals(tissue1, tissueRepo.getByExternalName("tissue1"));
         assertEquals(tissue2, tissueRepo.getByExternalName("tissue2"));
@@ -66,8 +66,8 @@ public class TestTissueRepo {
         Medium med2 = mediumRepo.findByName("Paraffin").orElseThrow();
         Fixative fix1 = fixativeRepo.findByName("None").orElseThrow();
         Fixative fix2 = fixativeRepo.findByName("Formalin").orElseThrow();
-        int rep1 = 1;
-        int rep2 = 2;
+        String rep1 = "1";
+        String rep2 = "2";
 
         Tissue tissue = tissueRepo.save(new Tissue(null, "TISSUE1", rep1, sl1, donor1,
                 entityCreator.getAny(mouldSizeRepo), med1, fix1, entityCreator.getAny(hmdmcRepo)));
@@ -92,9 +92,9 @@ public class TestTissueRepo {
     public void testFindByDonorId() {
         Donor donor1 = entityCreator.createDonor("DONOR1");
         Donor donor2 = entityCreator.createDonor("DONOR2");
-        Tissue tissue1A = entityCreator.createTissue(donor1, "TISSUE1A", 1);
-        Tissue tissue1B = entityCreator.createTissue(donor1, "TISSUE1B", 2);
-        Tissue tissue2 = entityCreator.createTissue(donor2, "TISSUE2", 1);
+        Tissue tissue1A = entityCreator.createTissue(donor1, "TISSUE1A", "1");
+        Tissue tissue1B = entityCreator.createTissue(donor1, "TISSUE1B", "2");
+        Tissue tissue2 = entityCreator.createTissue(donor2, "TISSUE2", "1");
 
         assertThat(tissueRepo.findByDonorId(donor1.getId())).containsExactlyInAnyOrder(tissue1A, tissue1B);
         assertThat(tissueRepo.findByDonorId(donor2.getId())).containsExactly(tissue2);
@@ -105,9 +105,9 @@ public class TestTissueRepo {
     @Transactional
     public void testFindAllByExternalNameIn() {
         Donor donor = entityCreator.createDonor("DONOR1");
-        Tissue tissue1 = entityCreator.createTissue(donor, "TISSUE1", 1);
-        Tissue tissue2 = entityCreator.createTissue(donor, "TISSUE2", 1);
-        entityCreator.createTissue(donor, "TISSUE3", 1);
+        Tissue tissue1 = entityCreator.createTissue(donor, "TISSUE1", "1");
+        Tissue tissue2 = entityCreator.createTissue(donor, "TISSUE2", "1");
+        entityCreator.createTissue(donor, "TISSUE3", "1");
 
         assertThat(tissueRepo.findAllByExternalNameIn(List.of("tissue1", "Tissue2"))).containsExactlyInAnyOrder(tissue1, tissue2);
     }
@@ -128,7 +128,7 @@ public class TestTissueRepo {
         MouldSize mould = entityCreator.getAny(mouldSizeRepo);
         Hmdmc hmdmc = entityCreator.getAny(hmdmcRepo);
         Tissue[] tissues = IntStream.range(0, 3)
-                .mapToObj(i -> tissueRepo.save(new Tissue(null, "TISSUE"+i, i+1, sls[i],
+                .mapToObj(i -> tissueRepo.save(new Tissue(null, "TISSUE"+i, String.valueOf(i+1), sls[i],
                         donor, mould, med, fix, hmdmc)))
                 .toArray(Tissue[]::new);
         assertThat(tissueRepo.findByTissueTypeId(tt1.getId())).containsExactly(tissues[0], tissues[1]);

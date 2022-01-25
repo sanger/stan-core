@@ -52,7 +52,7 @@ public class TestFindQuery {
         Donor donor = entityCreator.createDonor("DONOR1");
         Tissue tissue1 = entityCreator.createTissue(donor, "TISSUE1");
         BioState bs = entityCreator.anyBioState();
-        Tissue tissue2 = entityCreator.createTissue(donor, "TISSUE2", 2);
+        Tissue tissue2 = entityCreator.createTissue(donor, "TISSUE2", "2");
 
         Sample[] samples = {
                 entityCreator.createSample(tissue1, 1, bs),

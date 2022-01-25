@@ -12,7 +12,7 @@ mutation {
                         hmdmc: "20/0002"
                         fixative: "None"
                         medium: "None"
-                        replicateNumber: 7
+                        replicateNumber: "7"
                         sectionNumber: 8
                         sectionThickness: 12
                         lifeStage: adult
@@ -26,7 +26,7 @@ mutation {
                         species: "Hamster"
                         fixative: "None"
                         medium: "None"
-                        replicateNumber: 9
+                        replicateNumber: "9a"
                         sectionNumber: 10
                         sectionThickness: 13
                         lifeStage: adult
@@ -41,7 +41,7 @@ mutation {
                         hmdmc: "20/0002"
                         fixative: "None"
                         medium: "None"
-                        replicateNumber: 8
+                        replicateNumber: "8"
                         sectionNumber: 11
                         sectionThickness: 14
                         lifeStage: adult

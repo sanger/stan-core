@@ -122,13 +122,17 @@ public class TestRegisterMutation {
 
         Labware labware = lwRepo.getByBarcode(barcode);
 
-        assertThat(labware.getSlot(new Address(1,1)).getSamples()).hasSize(2);
+        final Slot slotA1 = labware.getSlot(new Address(1, 1));
+        assertThat(slotA1.getSamples()).hasSize(2);
+        assertEquals("7", slotA1.getSamples().get(0).getTissue().getReplicate());
+        assertEquals("9a", slotA1.getSamples().get(1).getTissue().getReplicate());
+
         final Slot slotB2 = labware.getSlot(new Address(2, 2));
         assertThat(slotB2.getSamples()).hasSize(1);
         Sample sample = slotB2.getSamples().get(0);
         assertEquals("TISSUE3", sample.getTissue().getExternalName());
         assertEquals("DONOR1", sample.getTissue().getDonor().getDonorName());
-        assertEquals(8, sample.getTissue().getReplicate());
+        assertEquals("8", sample.getTissue().getReplicate());
         assertEquals(11, sample.getSection());
 
         List<Measurement> measurements = measurementRepo.findAllBySlotIdIn(List.of(slotB2.getId()));

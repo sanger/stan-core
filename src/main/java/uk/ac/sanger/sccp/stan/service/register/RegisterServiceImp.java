@@ -105,7 +105,7 @@ public class RegisterServiceImp implements RegisterService {
             if (!donor.getSpecies().requiresHmdmc() && hmdmc!=null) {
                 throw new IllegalArgumentException("HMDMC number given for non-human tissue "+block.getExternalIdentifier());
             }
-            Tissue tissue = new Tissue(null, block.getExternalIdentifier(), block.getReplicateNumber(),
+            Tissue tissue = new Tissue(null, block.getExternalIdentifier(), block.getReplicateNumber().toLowerCase(),
                     validation.getSpatialLocation(block.getTissueType(), block.getSpatialLocation()),
                     donor,
                     validation.getMouldSize(block.getMouldSize()),
