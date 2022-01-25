@@ -1,5 +1,6 @@
 package uk.ac.sanger.sccp.stan.service.store;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.store.*;
 import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
+import uk.ac.sanger.sccp.stan.request.StoreInput;
 import uk.ac.sanger.sccp.stan.service.EmailService;
 import uk.ac.sanger.sccp.utils.GraphQLClient.GraphQLResponse;
 import uk.ac.sanger.sccp.utils.UCMap;
@@ -49,6 +51,65 @@ public class StoreService {
         this.objectMapper = new ObjectMapper();
     }
 
+    /**
+     * Stores multiple items (optionally at addresses) in a single location.
+     * @param user the user responsible for the storage
+     * @param storeInputs the specification of what to store (and the addresses)
+     * @param locationBarcode the barcode of the location
+     * @return the updated location from StoreLight
+     * @exception UncheckedIOException if there is an io problem
+     */
+    public Location store(User user, List<StoreInput> storeInputs, String locationBarcode) {
+        requireNonNull(user, "User is null.");
+        requireNonNull(storeInputs, "Store inputs is null.");
+        requireNonNull(locationBarcode, "Location barcode is null.");
+        if (storeInputs.isEmpty()) {
+            return getLocation(locationBarcode);
+        }
+        validateLabwareBarcodesForStorage(storeInputs.stream().map(StoreInput::getBarcode).collect(toList()));
+
+        try {
+            String query = readResource("store");
+            query = query.replace("[{}]", serialiseStoreInputs(storeInputs));
+            query = query.replace("\"LOCATIONBARCODE\"", objectMapper.writeValueAsString(locationBarcode));
+            GraphQLResponse response = storelightClient.postQuery(query, user.getUsername());
+            checkErrors(response);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        return getLocation(locationBarcode);
+    }
+
+    /**
+     * Converts a list of store inputs to a string suitable for insertion in a graphql request
+     * @param storeInputs the store inputs to serialise
+     * @return a string describing the store inputs
+     * @exception JsonProcessingException there was a serialisation problem
+     */
+    public String serialiseStoreInputs(Collection<StoreInput> storeInputs) throws JsonProcessingException {
+        StringBuilder sb = new StringBuilder();
+        sb.append('[');
+
+        for (StoreInput storeInput : storeInputs) {
+            sb.append('{');
+            sb.append("barcode: ").append(objectMapper.writeValueAsString(storeInput.getBarcode().toUpperCase()));
+            if (storeInput.getAddress()!=null) {
+                sb.append(", address: ").append(objectMapper.writeValueAsString(storeInput.getAddress().toString()));
+            }
+            sb.append("},");
+        }
+
+        return sb.append(']').toString();
+    }
+
+    /**
+     * Stores a single item in a location
+     * @param user the user responsible
+     * @param barcode the barcode of the item to store
+     * @param locationBarcode the barcode of the location
+     * @param address the address to store at (or null)
+     * @return the stored item
+     */
     public StoredItem storeBarcode(User user, String barcode, String locationBarcode, Address address) {
         requireNonNull(user, "User is null.");
         requireNonNull(barcode, "Item barcode is null.");
@@ -58,6 +119,12 @@ public class StoreService {
                 new Object[] { barcode, locationBarcode, address}, StoredItem.class).fixInternalLinks();
     }
 
+    /**
+     * Unstores the specified item
+     * @param user the user responsible
+     * @param barcode the barcode of the item to unstore
+     * @return the result of the unstorage
+     */
     public UnstoredItem unstoreBarcode(User user, String barcode) {
         requireNonNull(user, "User is null.");
         requireNonNull(barcode, "Barcode is null.");
@@ -106,6 +173,12 @@ public class StoreService {
         }
     }
 
+    /**
+     * Empties a specified location
+     * @param user the user responsible
+     * @param locationBarcode the barcode of the location to be emptied
+     * @return the result of the unstoring of the items in the location
+     */
     public UnstoreResult empty(User user, String locationBarcode) {
         requireNonNull(user, "User is null.");
         requireNonNull(locationBarcode, "Location barcode is null.");
@@ -113,6 +186,13 @@ public class StoreService {
                     new String[] { locationBarcode }, UnstoreResult.class);
     }
 
+    /**
+     * Sets the custom name of a location
+     * @param user the user responsible
+     * @param locationBarcode the barcode of the location
+     * @param customName the new custom name
+     * @return the updated location
+     */
     public Location setLocationCustomName(User user, String locationBarcode, String customName) {
         requireNonNull(user, "User is null.");
         requireNonNull(locationBarcode, "Location barcode is null.");
@@ -124,12 +204,22 @@ public class StoreService {
                 Location.class).fixInternalLinks();
     }
 
+    /**
+     * Gets the location with the given barcode
+     * @param locationBarcode the barcode of the location
+     * @return the specified location
+     */
     public Location getLocation(String locationBarcode) {
         requireNonNull(locationBarcode, "Location barcode is null.");
         return send(null, "location", new String[] { "\"LOCATIONBARCODE\""},
                 new Object[] { locationBarcode }, Location.class).fixInternalLinks();
     }
 
+    /**
+     * Gets storage information about the given item barcodes
+     * @param barcodes barcodes of stored items
+     * @return the stored items
+     */
     public List<StoredItem> getStored(Collection<String> barcodes) {
         requireNonNull(barcodes, "Barcodes collection is null.");
         if (barcodes.isEmpty()) {
@@ -153,6 +243,11 @@ public class StoreService {
         }
     }
 
+    /**
+     * Loads the basic location information for the specified items
+     * @param itemBarcodes the barcodes of stored items
+     * @return a map from each item barcode to its basic location
+     */
     public UCMap<BasicLocation> loadBasicLocationsOfItems(Collection<String> itemBarcodes) {
         requireNonNull(itemBarcodes, "Barcode collection is null.");
         if (itemBarcodes.isEmpty()) {
@@ -176,6 +271,11 @@ public class StoreService {
         }
     }
 
+    /**
+     * Convert arraynodes into a map of item to basic location.
+     * @param nodes a json array
+     * @return a map of item barcode to its basic location
+     */
     private UCMap<BasicLocation> makeBasicLocations(ArrayNode nodes) {
         UCMap<BasicLocation> map = new UCMap<>(nodes.size());
         for (JsonNode sd : nodes) {
@@ -216,6 +316,48 @@ public class StoreService {
         }
     }
 
+    /**
+     * Checks if the labware can be stored.
+     * @param barcodes the barcodes being stored
+     * @exception EntityNotFoundException any of the barcodes are not found
+     * @exception IllegalArgumentException barcodes are repeated or any of the specified labware cannot be stored
+     */
+    public void validateLabwareBarcodesForStorage(Collection<String> barcodes) {
+        Set<String> bcSet = new HashSet<>(barcodes.size());
+        for (String bc : barcodes) {
+            String bcu = bc.toUpperCase();
+            if (!bcSet.add(bcu)) {
+                throw new IllegalArgumentException("Repeated barcode given: "+bc);
+            }
+        }
+        UCMap<Labware> lwMap = UCMap.from(labwareRepo.findByBarcodeIn(barcodes), Labware::getBarcode);
+        List<String> missingBarcodes = barcodes.stream()
+                .filter(bc -> lwMap.get(bc)==null)
+                .collect(toList());
+        if (!missingBarcodes.isEmpty()) {
+            throw new EntityNotFoundException("Unknown labware barcodes: "+missingBarcodes);
+        }
+        Set<String> badStates = new LinkedHashSet<>();
+        List<String> badBarcodes = new ArrayList<>();
+        for (String bc : barcodes) {
+            Labware lw = lwMap.get(bc);
+            String state = badState(lw);
+            if (state!=null) {
+                badStates.add(state);
+                badBarcodes.add(lw.getBarcode());
+            }
+        }
+        if (!badBarcodes.isEmpty()) {
+            throw new IllegalArgumentException(String.format("Labware %s cannot be stored because it is %s.",
+                    badBarcodes, badStates));
+        }
+    }
+
+    /**
+     * Gets a word for the state of a labware if it cannot be stored.
+     * @param lw an item of labware
+     * @return a string if the labware cannot be stored; null if it can
+     */
     private static String badState(Labware lw) {
         if (lw.isDestroyed()) return "destroyed";
         if (lw.isReleased()) return "released";
@@ -226,6 +368,18 @@ public class StoreService {
         // The behaviour of stan wrt discarded labware is not yet established.
     }
 
+    /**
+     * Sends a query through the storelight client.
+     * The query is loaded from a graphql file using the given operation name.
+     * @param user the user responsible (if any)
+     * @param operationName the name of the operation
+     * @param replaceFrom an array of strings in the query that must be replaced
+     * @param replaceToObj an array of replacements
+     * @param resultType the expected type of object to be returned
+     * @param <T> the type of object to be returned
+     * @return the object from the graphql response
+     * @exception UncheckedIOException if there was an IO problem
+     */
     private <T> T send(User user, String operationName, String[] replaceFrom, Object[] replaceToObj,
                        Class<T> resultType) throws UncheckedIOException {
         try {
@@ -252,13 +406,25 @@ public class StoreService {
         }
     }
 
-    protected GraphQLResponse checkErrors(GraphQLResponse response) {
+    /**
+     * Checks the response for errors
+     * @param response the response
+     * @return the given response
+     * @exception StoreException if there is an error in the response
+     */
+    protected GraphQLResponse checkErrors(GraphQLResponse response) throws StoreException {
         if (response.hasErrors()) {
             throw new StoreException(response.getErrors());
         }
         return response;
     }
 
+    /**
+     * Reads a graphql resource file
+     * @param path the name of the file to load, without the .graphql extension
+     * @return the content of the file
+     * @exception IOException the resource could not be loaded
+     */
     @SuppressWarnings("UnstableApiUsage")
     protected String readResource(String path) throws IOException {
         URL url = Resources.getResource("storelight/"+path+".graphql");

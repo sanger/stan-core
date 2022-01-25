@@ -706,6 +706,11 @@ input OpWithSlotMeasurementsRequest {
     slotMeasurements: [SlotMeasurementRequest!]!
 }
 
+input StoreInput {
+    barcode: String!
+    address: Address
+}
+
 type Query {
     user: User
     tissueTypes: [TissueType!]!
@@ -805,6 +810,7 @@ type Mutation {
     setUserRole(username: String!, role: UserRole!): User!
 
     storeBarcode(barcode: String!, locationBarcode: String!, address: Address): StoredItem!
+    store(store: [StoreInput!]!, locationBarcode: String!): Location!
     unstoreBarcode(barcode: String!): UnstoredItem
     empty(locationBarcode: String!): UnstoreResult!
     setLocationCustomName(locationBarcode: String!, customName: String): Location!

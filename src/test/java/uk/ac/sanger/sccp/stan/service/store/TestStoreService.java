@@ -14,6 +14,7 @@ import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.store.*;
 import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
+import uk.ac.sanger.sccp.stan.request.StoreInput;
 import uk.ac.sanger.sccp.stan.service.EmailService;
 import uk.ac.sanger.sccp.utils.GraphQLClient.GraphQLResponse;
 import uk.ac.sanger.sccp.utils.UCMap;
@@ -21,8 +22,7 @@ import uk.ac.sanger.sccp.utils.UCMap;
 import javax.persistence.EntityNotFoundException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -77,6 +77,56 @@ public class TestStoreService {
             return "null";
         }
         return "\"" + address + "\"";
+    }
+
+    @Test
+    public void testStore_none() throws IOException {
+        String locationBarcode = "STO-123";
+        Location location = new Location();
+        location.setBarcode(locationBarcode);
+        doReturn(location).when(service).getLocation(locationBarcode);
+        User user = EntityFactory.getUser();
+        List<StoreInput> storeInputs = List.of();
+        assertSame(location, service.store(user, storeInputs, locationBarcode));
+        verify(service, never()).validateLabwareBarcodesForStorage(any());
+        verifyNoInteractions(mockClient);
+    }
+
+    @Test
+    public void testStore() throws IOException {
+        String locationBarcode = "STO-123";
+        Location location = new Location();
+        location.setBarcode(locationBarcode);
+        doReturn(location).when(service).getLocation(locationBarcode);
+        List<StoreInput> storeInputs = List.of(
+                new StoreInput("STAN-01", new Address(1,1)),
+                new StoreInput("STAN-02", null)
+        );
+        doNothing().when(service).validateLabwareBarcodesForStorage(any());
+
+        GraphQLResponse response = setupResponse("store", 3);
+
+        assertSame(location, service.store(user, storeInputs, locationBarcode));
+
+        verify(service).validateLabwareBarcodesForStorage(List.of("STAN-01", "STAN-02"));
+        verify(service).serialiseStoreInputs(storeInputs);
+        verifyQueryMatches("mutation{store(store:[{barcode:\"STAN-01\",address:\"A1\"},{barcode:\"STAN-02\"},]," +
+                "location:{barcode:\"STO-123\"}){ numStored }}", user.getUsername());
+        verify(service).checkErrors(response);
+        verify(service).getLocation(locationBarcode);
+    }
+
+    @Test
+    public void testSerialiseStoreInputs() throws JsonProcessingException {
+        Address A1 = new Address(1,1);
+        Address A2 = new Address(1,2);
+        List<StoreInput> storeInputs = List.of(
+                new StoreInput("STAN-01", A1), new StoreInput("STAN-02", A2),
+                new StoreInput("STAN-03", null)
+        );
+        String serialised = service.serialiseStoreInputs(storeInputs);
+        String expected = "[{barcode:\"STAN-01\",address:\"A1\"},{barcode:\"STAN-02\",address:\"A2\"},{barcode:\"STAN-03\"},]";
+        assertEquals(expected, serialised.replace(" ",""));
     }
 
     @ParameterizedTest
@@ -195,6 +245,62 @@ public class TestStoreService {
                 Arguments.of(discardedLabware, "Labware %bc cannot be stored because it is discarded."),
                 Arguments.of(emptyLabware, "Labware %bc cannot be stored because it is empty.")
         );
+    }
+
+    @ParameterizedTest
+    @MethodSource("validateBarcodesForStorageArgs")
+    public void testValidateBarcodesForStorage(List<String> barcodes, UCMap<Labware> labware, String expectedErrorMessage) {
+        if (labware==null || labware.isEmpty()) {
+            when(mockLabwareRepo.findByBarcodeIn(any())).thenReturn(List.of());
+        } else {
+            when(mockLabwareRepo.findByBarcodeIn(any())).then(invocation -> {
+                Collection<String> bcs = invocation.getArgument(0);
+                return bcs.stream().map(labware::get).filter(Objects::nonNull).collect(toList());
+            });
+        }
+        if (expectedErrorMessage==null) {
+            service.validateLabwareBarcodesForStorage(barcodes);
+        } else {
+            assertThat(assertThrows(RuntimeException.class,
+                    () -> service.validateLabwareBarcodesForStorage(barcodes)))
+                    .hasMessage(expectedErrorMessage);
+        }
+    }
+
+    static Stream<Arguments> validateBarcodesForStorageArgs() {
+        LabwareType lt = EntityFactory.getTubeType();
+        Sample sample = EntityFactory.getSample();
+        Labware okLabware = EntityFactory.makeLabware(lt, sample);
+        okLabware.setBarcode("STAN-OK");
+        Labware emptyLabware = EntityFactory.makeEmptyLabware(lt);
+        emptyLabware.setBarcode("STAN-EMPTY");
+        Labware releasedLabware = EntityFactory.makeEmptyLabware(lt);
+        releasedLabware.setReleased(true);
+        releasedLabware.setBarcode("STAN-REL");
+        Labware destroyedLabware = EntityFactory.makeEmptyLabware(lt);
+        destroyedLabware.setDestroyed(true);
+        destroyedLabware.setBarcode("STAN-DES");
+        Labware discardedLabware = EntityFactory.makeEmptyLabware(lt);
+        discardedLabware.setBarcode("STAN-DIS");
+        discardedLabware.setDiscarded(true);
+
+        UCMap<Labware> labware = UCMap.from(Labware::getBarcode, okLabware, emptyLabware, releasedLabware, destroyedLabware, discardedLabware);
+
+        return Arrays.stream(new Object[][] {
+                {okLabware, null},
+                {emptyLabware, "Labware [STAN-EMPTY] cannot be stored because it is [empty]."},
+                {releasedLabware, "Labware [STAN-REL] cannot be stored because it is [released]."},
+                {destroyedLabware, "Labware [STAN-DES] cannot be stored because it is [destroyed]."},
+                {discardedLabware, "Labware [STAN-DIS] cannot be stored because it is [discarded]."},
+                {List.of("STAN-OK", "STAN-404"), "Unknown labware barcodes: [STAN-404]"},
+                {List.of("stan-ok", "STAN-OK", "STAN-3"), "Repeated barcode given: STAN-OK"},
+                {List.of("STAN-OK", "STAN-DIS", "stan-des", "stan-rel", "stan-empty"),
+                  "Labware [STAN-DIS, STAN-DES, STAN-REL, STAN-EMPTY] cannot be stored because it is " +
+                          "[discarded, destroyed, released, empty]."},
+        }).map(arr -> Arguments.of(
+                arr[0] instanceof List ? arr[0] : arr[0] instanceof Labware ? List.of(((Labware) arr[0]).getBarcode()) : List.of(arr[0]),
+                labware, arr[1]
+        ));
     }
 
     @ParameterizedTest
