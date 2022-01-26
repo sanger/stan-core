@@ -1,414 +1,653 @@
+"""A row/column combination, either in the form "B5" (row 2, column 5), or "32.15" (row 32, column 15)"""
 scalar Address
+"""A point in time, typically in the format yyyy-mm-dd HH:MM:SS."""
 scalar Timestamp
+"""A date, typically in the format yyyy-mm-dd."""
 scalar Date
 
+"""The levels of user privilege."""
 enum UserRole {
+    """User cannot record anything."""
     disabled
+    """User can record work."""
     normal
+    """User can record work and can perform admin actions."""
     admin
 }
 
+"""The state of an item of labware."""
 enum LabwareState {
+    """The labware contains no samples."""
     empty
+    """The labware contains samples and can be used as a source in operations."""
     active
+    """The labware has been used and discarded."""
     discarded
+    """The labware has been given out to another team or organisation."""
     released
+    """The labware has been destroyed for a specific reason."""
     destroyed
 }
 
+"""A pass or fail result."""
 enum PassFail {
     pass
     fail
 }
 
+"""A type of control."""
 enum ControlType {
     positive
     negative
 }
 
-type User {
-    username: String!
-    role: UserRole!
-}
-
-type LoginResult {
-    message: String,
-    user: User,
-}
-
-type Medium {
-    name: String!,
-}
-
-type Fixative {
-    name: String!
-    enabled: Boolean!
-}
-
-type MouldSize {
-    name: String!,
-}
-
-type TissueType {
-    name: String!,
-    spatialLocations: [SpatialLocation!]!,
-}
-
-type SpatialLocation {
-    name: String!,
-    code: Int!,
-    tissueType: TissueType!,
-}
-
-type Hmdmc {
-    hmdmc: String!
-    enabled: Boolean!
-}
-
-type LabelType {
-    name: String!,
-}
-
-type LabwareType {
-    name: String!,
-    numRows: Int!,
-    numColumns: Int!,
-    labelType: LabelType,
-}
-
-type Species {
-    name: String!
-    enabled: Boolean!
-}
-
-type Donor {
-    donorName: String!
-    lifeStage: LifeStage!
-    species: Species!
-}
-
-type BioState {
-    name: String!
-}
-
-type Tissue {
-    externalName: String!
-    replicate: String!
-    spatialLocation: SpatialLocation!
-    donor: Donor!
-    hmdmc: Hmdmc
-    mouldSize: MouldSize!
-    medium: Medium!
-    fixative: Fixative!
-}
-
-type Sample {
-    id: Int!
-    section: Int
-    tissue: Tissue!
-    bioState: BioState!
-}
-
-type Slot {
-    address: Address!,
-    labwareId: Int!,
-    samples: [Sample!]!,
-    block: Boolean!,
-    blockHighestSection: Int,
-}
-
-type Labware {
-    id: Int!
-    barcode: String!
-    externalBarcode: String
-    labwareType: LabwareType!
-    slots: [Slot!]!
-    released: Boolean!
-    destroyed: Boolean!
-    discarded: Boolean!
-    state: LabwareState!
-    created: Timestamp!
-}
-
+"""A stage of life that an individual has reached when tissue is collected."""
 enum LifeStage {
     adult
     paediatric
     fetal
 }
 
-input BlockRegisterRequest {
-    donorIdentifier: String!
+"""A user, who is associated with performing actions in the application."""
+type User {
+    username: String!
+    role: UserRole!
+}
+
+"""The result of an attempt to log in."""
+type LoginResult {
+    """The message describing the result of the login, if any."""
+    message: String
+    """The authenticated user, if any."""
+    user: User
+}
+
+"""A chemical a sample is put in."""
+type Medium {
+    name: String!
+}
+
+"""A chemical used to fix a sample."""
+type Fixative {
+    name: String!
+    enabled: Boolean!
+}
+
+"""A size of mould used for tissue."""
+type MouldSize {
+    name: String!
+}
+
+"""The type of tissue, typically an organ."""
+type TissueType {
+    name: String!
+    """The possible spatial locations for tissue of this type."""
+    spatialLocations: [SpatialLocation!]!
+}
+
+"""A location in an organ that tissue was taken from."""
+type SpatialLocation {
+    name: String!
+    """The int code used to identify this spatial location in the particular tissue type."""
+    code: Int!
+    """The tissue type (organ) to which this location belongs."""
+    tissueType: TissueType!
+}
+
+"""A permission number that can be linked to tissue."""
+type Hmdmc {
+    """The HMDMC code for this permission."""
+    hmdmc: String!
+    enabled: Boolean!
+}
+
+"""A type of label that can be printed, typically including a barcode and some other information."""
+type LabelType {
+    name: String!
+}
+
+"""A type of labware, such as slides and tubes."""
+type LabwareType {
+    name: String!
+    """The number of rows in an item of this labware type."""
+    numRows: Int!
+    """The number of columns in an item of this labware type."""
+    numColumns: Int!,
+    """The type of label that should be used for this labware type."""
+    labelType: LabelType,
+}
+
+"""A species, such as human, to which tissue may belong."""
+type Species {
+    name: String!
+    enabled: Boolean!
+}
+
+"""A particular individual from which one or more instances of tissue may be taken."""
+type Donor {
+    donorName: String!
+    """The stage of life of this donor at the point the tissue was collected."""
     lifeStage: LifeStage!
+    species: Species!
+}
+
+"""The state of a particular sample. As samples are created in new labware by different operations, it is associated with new bio states."""
+type BioState {
+    name: String!
+}
+
+"""A piece of tissue from which multiple samples may originate."""
+type Tissue {
+    externalName: String!
+    """A number (optionall followed by a letter) that helps to distinguish this tissue from other similar tissues."""
+    replicate: String!
+    """The location in a particular organ from which this tissue was taken."""
+    spatialLocation: SpatialLocation!
+    """The individual from whom this tissue was taken."""
+    donor: Donor!
+    hmdmc: Hmdmc
+    """The size of mould used on this tissue."""
+    mouldSize: MouldSize!
+    """The medium used on this tissue."""
+    medium: Medium!
+    """The fixative used on this tissue."""
+    fixative: Fixative!
+}
+
+"""A particular sample of tissue, in a particular state."""
+type Sample {
+    id: Int!
+    """An optional number describing the particular slice through the block of tissue that this sample came from."""
+    section: Int
+    """The tissue this sample is derived from."""
+    tissue: Tissue!
+    """The state of this particular sample."""
+    bioState: BioState!
+}
+
+"""A slot in a piece of labware, which may contain samples."""
+type Slot {
+    """The address of this slot inside its labware. No two slots in the same item of labware have the same address."""
+    address: Address!
+    """The id of the labware to which the slot belongs."""
+    labwareId: Int!
+    """The list of samples contained in this slot. May be empty."""
+    samples: [Sample!]!
+    """Is this slot a block of tissue? Blocks have different properties from sections."""
+    block: Boolean!
+    """For blocks, what is the highest section number already taken from this block?"""
+    blockHighestSection: Int
+}
+
+type Labware {
+    """The unique id of this labware."""
+    id: Int!
+    """The unique barcode of this labware."""
+    barcode: String!
+    """The external barcode of this labware, as input by the user."""
+    externalBarcode: String
+    """The type of labware."""
+    labwareType: LabwareType!
+    """The slots in this labware. The number of slots and their addresses are determined by the labware type."""
+    slots: [Slot!]!
+    """Has this labware been released?"""
+    released: Boolean!
+    """Has this labware been destroyed?"""
+    destroyed: Boolean!
+    """Has this labware been discarded?"""
+    discarded: Boolean!
+    """The state, derived from the contents and other fields on the labware."""
+    state: LabwareState!
+    """The time when this labware was created in the application."""
+    created: Timestamp!
+}
+
+"""A request to register a new block of tissue."""
+input BlockRegisterRequest {
+    """The string to use as the donor name."""
+    donorIdentifier: String!
+    """The life stage of the donor."""
+    lifeStage: LifeStage!
+    """The HMDMC to use for the tissue."""
     hmdmc: String
+    """The name of the tissue type (the organ from which the tissue is taken)."""
     tissueType: String!
+    """The code for the spatial location from which the tissue is taken."""
     spatialLocation: Int!
+    """The string to use for the replicate number of the tissue."""
     replicateNumber: String!
+    """The external identifier used to identify the tissue."""
     externalIdentifier: String!
+    """The highest section already taken from the tissue block."""
     highestSection: Int!
+    """The name of the type of labware containing the block."""
     labwareType: String!
+    """The medium used for the tissue."""
     medium: String!
+    """The fixative used for the tissue."""
     fixative: String!
+    """The mould size used for the tissue."""
     mouldSize: String!
+    """The species of the donor."""
     species: String!
+    """Is this a new block of tissue already in the application's database?"""
     existingTissue: Boolean
 }
 
+"""A request to register one or more blocks of tissue."""
 input RegisterRequest {
-    blocks: [BlockRegisterRequest!]!,
+    blocks: [BlockRegisterRequest!]!
 }
 
+"""Information about a section of tissue (already taken from some a block tracked elsewhere) to register."""
 input SectionRegisterContent {
+    """The address of the slot in the labware where this section should be created."""
     address: Address!
+    """The species from which this section originates."""
     species: String!
+    """A HMDMC number, if any, to associate with this sample."""
     hmdmc: String
+    """A name for the donor."""
     donorIdentifier: String!
+    """The life stage of the donor."""
     lifeStage: LifeStage!
+    """The external name for the tissue from which this section was taken."""
     externalIdentifier: String!
+    """The name of the tissue type (organ) for the tissue."""
     tissueType: String!
+    """The code for the spatial location from which the tissue is taken."""
     spatialLocation: Int!
+    """The string to use for the replicate number of the tissue."""
     replicateNumber: String!
+    """The fixative used for the tissue."""
     fixative: String!
+    """The medium used for the tissue."""
     medium: String!
+    """The section number of this particular section from its original tissue block."""
     sectionNumber: Int!
+    """The thickness, if known, of this section."""
     sectionThickness: Int
 }
 
+"""A request to register one or more sections into one piece of labware."""
 input SectionRegisterLabware {
+    """The name of the type of labware."""
     labwareType: String!
+    """The external barcode of this labware."""
     externalBarcode: String!
+    """The contents of the labware (new sections)."""
     contents: [SectionRegisterContent!]!
 }
 
+"""A request to register one or more labware containing new sections."""
 input SectionRegisterRequest {
     labware: [SectionRegisterLabware!]!
 }
 
+"""Information about a clash, where a given tissue name already exists in the database."""
 type RegisterClash {
+    """The tissue with the given name."""
     tissue: Tissue!
+    """The existing labware containing the tissue at registration."""
     labware: [Labware!]!
 }
 
+"""The result of a register request. It is expected to contain either labware or clashes."""
 type RegisterResult {
+    """The labware created."""
     labware: [Labware!]!
+    """The clashes that prevented registration."""
     clashes: [RegisterClash!]!
 }
 
+"""A description of a source slot in a plan request."""
 input PlanRequestSource {
-    barcode: String!,
-    address: Address,
+    """The barcode of the source labware."""
+    barcode: String!
+    """The address of the source slot in its labware. May be assumed to be A1 if omitted."""
+    address: Address
 }
 
+"""A type of operation that may be recorded."""
 type OperationType {
-    name: String!,
+    name: String!
 }
 
+"""A planned action in a planned operation; describes a sample moving from one slot to another."""
 type PlanAction {
-    source: Slot!,
-    destination: Slot!,
-    sample: Sample!,
-    newSection: Int,
-}
-
-type PlanOperation {
-    operationType: OperationType,
-    planActions: [PlanAction!]!,
-}
-
-input PlanRequestAction {
-    address: Address!,
-    sampleId: Int!,
-    sampleThickness: Int,
-    source: PlanRequestSource!,
-}
-
-input PlanRequestLabware {
-    labwareType: String!,
-    barcode: String,
-    actions: [PlanRequestAction!]!,
-}
-
-input PlanRequest {
-    operationType: String!,
-    labware: [PlanRequestLabware!]!,
-}
-
-input AddressCommentInput {
-    address: Address!,
-    commentId: Int!,
-}
-
-input CancelPlanAction {
-    destinationAddress: Address!
-    sampleId: Int!
+    """The source slot that contains the sample."""
+    source: Slot!
+    """The destination slot to which we want to add a sample."""
+    destination: Slot!
+    """The sample in the source labware that we want to act upon."""
+    sample: Sample!
+    """The new section number, if the source is a block and it is being sectioned."""
     newSection: Int
 }
 
+"""A planned operation."""
+type PlanOperation {
+    """The type of operation planned."""
+    operationType: OperationType
+    """The planned actions that describe the movement of samples in this operation."""
+    planActions: [PlanAction!]!
+}
+
+"""A specification of an action in a plan request. Describes the action on a sample being transferred between slots."""
+input PlanRequestAction {
+    """The intended address of the sample in the destination labware."""
+    address: Address!
+    """The id of the existing sample."""
+    sampleId: Int!
+    """The thickness (if specified) of the new sample."""
+    sampleThickness: Int
+    """The source of the sample (describing a slot in some existing labware)."""
+    source: PlanRequestSource!
+}
+
+"""A specification of new labware to be created for a plan request."""
+input PlanRequestLabware {
+    """The name of the type of labware."""
+    labwareType: String!
+    """The barcode of the new labware, if the user needs to specify it."""
+    barcode: String
+    """The actions, specifying which samples are transferred between which slots."""
+    actions: [PlanRequestAction!]!
+}
+
+"""A request to create a plan operation."""
+input PlanRequest {
+    """The name of the type of operation we are planning."""
+    operationType: String!
+    """The specification of the labware created for the plan."""
+    labware: [PlanRequestLabware!]!
+}
+
+"""A combination of an address and a comment id, used to record comments in particular slots of labware."""
+input AddressCommentInput {
+    """The address of a slot."""
+    address: Address!
+    """The id of a comment in the database."""
+    commentId: Int!
+}
+
+"""A request to cancel a particular planned action in a planned operation."""
+input CancelPlanAction {
+    """The destination address of the planned action to cancel."""
+    destinationAddress: Address!
+    """The sample id of the planned action to cancel."""
+    sampleId: Int!
+    """The new section number (if any) of the planned action to cancel."""
+    newSection: Int
+}
+
+"""A specification of a particular piece of labware in a confirm request."""
 input ConfirmOperationLabware {
+    """The barcode of the labware."""
     barcode: String!
+    """Should the whole labware be cancelled? Default false."""
     cancelled: Boolean
+    """What individual planned actions should be cancelled, if any."""
     cancelledActions: [CancelPlanAction!]
+    """What comments, if any, should be recorded against particular addresses."""
     addressComments: [AddressCommentInput!]
 }
 
+"""A request to confirm planned operations, created actual operations."""
 input ConfirmOperationRequest {
     labware: [ConfirmOperationLabware!]!
 }
 
+"""A specification of a section to confirm in a planned sectioning operation."""
 input ConfirmSection {
+    """The address of the destination slot for the section."""
     destinationAddress: Address!
+    """The original sample id of the source."""
     sampleId: Int!
+    """The section number of the new section."""
     newSection: Int!
 }
 
+"""A specification of a particular piece of labware to confirm or cancel planned sectioning into."""
 input ConfirmSectionLabware {
+    """The barcode of the labware."""
     barcode: String!
+    """Should the whole labware be cancelled? Default false."""
     cancelled: Boolean
+    """What individual sections, if any, should be created in the labware?"""
     confirmSections: [ConfirmSection!]
+    """What comments, if any, should be recorded on slots of the labware?"""
     addressComments: [AddressCommentInput!]
 }
 
+"""A request to confirm (or cancel) planned sectioning operations."""
 input ConfirmSectionRequest {
+    """The specification of what to confirm or cancel in each labware."""
     labware: [ConfirmSectionLabware!]!
+    """An optional work number to associate with the operations."""
     workNumber: String
 }
 
+"""A specification that the contents of one slot should be copied to a particular address in new labware."""
 input SlotCopyContent {
+    """The barcode of the source labware."""
     sourceBarcode: String!
+    """The address of the source slot in its labware."""
     sourceAddress: Address!
+    """The address of the destination slot."""
     destinationAddress: Address!
 }
 
+"""A request to copy the contents of slots from source labware to a single destination labware."""
 input SlotCopyRequest {
+    """The name of the type of the new destination labware."""
     labwareType: String!
+    """The name of the type of operation being recorded to describe the contents being copied."""
     operationType: String!
+    """The specifications of which source slots are being copied into what addresses in the destination labware."""
     contents: [SlotCopyContent!]!
+    """An optional work number to associate with this operation."""
     workNumber: String
 }
 
+"""A request to record an operation in place."""
 input InPlaceOpRequest {
+    """The name of the type of operation being recorded."""
     operationType: String!
+    """The barcodes of the labware."""
     barcodes: [String!]!
+    """The id of the equipment (if any) being used in this operation."""
     equipmentId: Int
+    """An optional work number to associate with this operation."""
     workNumber: String
 }
 
+"""A record of material being transferred from one slot to another as part of an operation."""
 type Action {
-    source: Slot!,
-    destination: Slot!,
-    operationId: Int!,
-    sample: Sample!,
+    """The source slot, where the sample already was before the operation."""
+    source: Slot!
+    """The destination slot, where the sample is after the operation."""
+    destination: Slot!
+    """The id of the operation to which this action belongs."""
+    operationId: Int!
+    """The sample as it was created or copied in its destination slot."""
+    sample: Sample!
 }
 
+"""A record of a particular operation being done involving labware and samples."""
 type Operation {
+    """The unique id of the operation."""
     id: Int!
+    """The type of operation."""
     operationType: OperationType!
+    """The specific samples and slots and how they were used in this operation."""
     actions: [Action!]!
+    """The user responsible for this operation."""
     user: User!
+    """The time at which this operation is regarded to have been performed (typically the time it was recorded)."""
     performed: Timestamp!
 }
 
+"""The result of confirming a plan."""
 type ConfirmOperationResult {
-    labware: [Labware!]!,
-    operations: [Operation!]!,
+    """The labware populated by the operations."""
+    labware: [Labware!]!
+    """The operations created."""
+    operations: [Operation!]!
 }
 
+"""The result of creating a new plan."""
 type PlanResult {
-    labware: [Labware!]!,
-    operations: [PlanOperation!]!,
+    """The labware created for the plan, which is empty until the plan is confirmed."""
+    labware: [Labware!]!
+    """The planned operations created."""
+    operations: [PlanOperation!]!
 }
 
+"""A printer, typically used to print labels for labware."""
 type Printer {
     name: String!
+    """The types of labels this printer is set up to print."""
     labelTypes: [LabelType!]!
 }
 
+"""A preset comment that users may select to link to parts of operations they record."""
 type Comment {
+    """The unique id of this comment."""
     id: Int!
+    """The text content of the comment: What comment is it?"""
     text: String!
+    """The category of the comment: Where is it applicable?"""
     category: String!
     enabled: Boolean!
 }
 
+"""A piece of equipment that may be associated with certain operations."""
 type Equipment {
+    """The unique id of this equipment."""
     id: Int!
     name: String!
+    """The category of equipment: What kind of thing is it or what is it used for?"""
     category: String!
     enabled: Boolean!
 }
 
+"""A description of a place to which labware may be released."""
 type ReleaseDestination {
     name: String!
     enabled: Boolean!
 }
 
+"""A username for someone responsible for receiving released labware."""
 type ReleaseRecipient {
     username: String!
     enabled: Boolean!
 }
 
+"""A record that labware was sent out or given away."""
 type Release {
+    """The unique id of this release."""
     id: Int!
+    """The labware that was released."""
     labware: Labware!
+    """Where the labware was sent."""
     destination: ReleaseDestination!
+    """Who is responsible for receiving the labware."""
     recipient: ReleaseRecipient!
 }
 
+"""The result of a release request."""
 type ReleaseResult {
+    """The releases recorded for this request."""
     releases: [Release!]!
 }
 
+"""A request to record releases for one or more labware."""
 input ReleaseRequest {
+    """The barcodes of the labware being released."""
     barcodes: [String!]!
+    """The name of the release destination."""
     destination: String!
+    """The name of the release recipient."""
     recipient: String!
 }
 
+"""A request to record an extract operation."""
 input ExtractRequest {
+    """The barcodes of the source labware."""
     barcodes: [String!]!
+    """The name of the labware type for the new destination labware."""
     labwareType: String!
+    """An optional work number to associate with these operations."""
     workNumber: String
 }
 
+"""The result of a request to record operations."""
 type OperationResult {
+    """The destination labware for the operations."""
     labware: [Labware!]!
+    """The new operations recorded."""
     operations: [Operation!]!
 }
 
+"""A preset reason that labware may be destroyed."""
 type DestructionReason {
+    """The unique id of this destruction reason."""
     id: Int!
+    """The text of this reason: What reason is it?"""
     text: String!
     enabled: Boolean!
 }
 
+"""A record that some piece of labware was destroyed for some particular reason."""
 type Destruction {
+    """The labware destroyed."""
     labware: Labware
+    """The user responsible for the destruction."""
     user: User
+    """The time the destruction was carried out (or at least when it was recorded)."""
     destroyed: Timestamp
+    """The reason for the destruction."""
     reason: DestructionReason
 }
 
+"""The result of a request to destroy labware."""
 type DestroyResult {
+    """The destructions created for this request."""
     destructions: [Destruction!]!
 }
 
+"""A request to destroy some labware for a particular reason."""
 input DestroyRequest {
+    """The barcodes of the labware to destroy."""
     barcodes: [String!]!
+    """The id of a destruction reason."""
     reasonId: Int!
 }
 
+"""An item in storage."""
 type StoredItem {
+    """The barcode of the item."""
     barcode: String!
+    """The location of the item."""
     location: Location!
+    """The row/column address (if any) of the item in its location."""
     address: Address
 }
 
+"""An item no longer in storage."""
 type UnstoredItem {
+    """The barcode of the item."""
     barcode: String!
+    """The row/column address (if any) where the item was stored."""
     address: Address
 }
 
+"""The size of a 2D grid."""
 type Size {
+    """The number of rows in this layout."""
     numRows: Int!
+    """The number of columns in this layout."""
     numColumns: Int!
 }
 
@@ -424,394 +663,685 @@ enum GridDirection {
     UpRight
 }
 
+"""A location where items may be stored."""
 type Location {
+    """The unique id of this location."""
     id: Int!
+    """The unique barcode of this location."""
     barcode: String!
+    """The fixed name (if any) of this location, not changeable through this API."""
     fixedName: String
+    """The custom name (if any) of this location, that may be changed through this API."""
     customName: String
+    """The row/column address (if any) of this location in its parent location."""
     address: Address
+    """The size of the grid (if any) where items may be stored in this location."""
     size: Size
+    """Some information about the location (if any) containing this location."""
     parent: LinkedLocation
+    """The items stored in this location."""
     stored: [StoredItem!]!
+    """The other locations inside this location."""
     children: [LinkedLocation!]!
+    """The suggested order (if any) of addresses in this location where items should be stored."""
     direction: GridDirection
+    """A combination of this location's name and its parents' names and barcodes."""
     qualifiedNameWithFirstBarcode: String
 }
 
+"""Information about a storage location, without links to other locations and items."""
 type LinkedLocation {
+    """The barcode of this location."""
     barcode: String!
+    """The fixed name of this location, not changeable through this API."""
     fixedName: String
+    """The custom name (if any) of this location, that may be changed through this API."""
     customName: String
+    """The row/column address (if any) of this location in its parent location."""
     address: Address
 }
 
+"""The result of a request to empty a location."""
 type UnstoreResult {
+    """The number of items unstored."""
     numUnstored: Int!
+    """The details of the item unstored."""
     unstored: [UnstoredItem!]!
 }
 
+"""Information that a particular sample was found in a particular labware."""
 type FindEntry {
+    """The id of the sample found."""
     sampleId: Int!
+    """The id of the labware where the sample was found."""
     labwareId: Int!
 }
 
+"""Information that a particular labware was found in a particular location."""
 type LabwareLocationEntry {
+    """The id of the labware found."""
     labwareId: Int!
+    """The id of the location where the labware was found."""
     locationId: Int!
+    """The row/column address (if any) of the labware inside the location."""
     address: Address
 }
 
+"""The result of a find request: labware, its locations, and its contents."""
 type FindResult {
+    """Links between samples and labware."""
     entries: [FindEntry!]!
+    """Information about each sample found."""
     samples: [Sample!]!
+    """Information about each labware found."""
     labware: [Labware!]!
+    """Information about each location labware was found in."""
     locations: [Location!]!
+    """Links between labware and locations."""
     labwareLocations: [LabwareLocationEntry!]!
+    """The number of records found, which may be greater than the number of records returned."""
     numRecords: Int!
 }
 
+"""A request to find some stored labware. Some, any or all fields may be filled. Each one refines the search results."""
 input FindRequest {
+    """The barcode of a specific piece of labware to find."""
     labwareBarcode: String
+    """The name of a donor to find stored samples of."""
     donorName: String
+    """The name of a tissue to find stored samples of."""
     tissueExternalName: String
+    """The name of a tissue type to find stored samples of."""
     tissueTypeName: String
+    """The maximum number of records to return. Use a negative value to indicate no limit."""
     maxRecords: Int
+    """The minimum creation date for the labware."""
     createdMin: Date
+    """The maximum creation date for the labware."""
     createdMax: Date
 }
 
+"""An entry in the history: the IDs refer to objects that should also be included in the History."""
 type HistoryEntry {
+    """The id of the operation or other event to which this entry refers."""
     eventId: Int!
+    """The operation type of type of event to which this entry refers."""
     type: String!
+    """The time the event took place (or was recorded)."""
     time: Timestamp!
+    """The id of the source labware of this event."""
     sourceLabwareId: Int!
+    """The id of the destination labware of this event."""
     destinationLabwareId: Int!
+    """The id of the sample involved in this event."""
     sampleId: Int
+    """The username of the user responsible for this event."""
     username: String!
+    """The work number (if any) associated with this event."""
     workNumber: String
+    """Extra details (such as measurements and comments) included in this entry."""
     details: [String!]!
 }
 
+"""History as returned for a history query."""
 type History {
+    """The entries found for the history."""
     entries: [HistoryEntry!]!
+    """The labware referenced by the entries."""
     labware: [Labware!]!
+    """The samples references by the entries."""
     samples: [Sample!]!
 }
 
+"""Information about a plan previously recorded, now being looked up."""
 type PlanData {
+    """One or more items of source labware for the plan."""
     sources: [Labware!]!
+    """The planned operation."""
     plan: PlanOperation!
+    """The single item of destination labware for the plan."""
     destination: Labware!
 }
 
+"""A project that work can be associated with."""
 type Project {
     name: String!
     enabled: Boolean!
 }
 
+"""A cost code that work can be associated with."""
 type CostCode {
     code: String!
     enabled: Boolean!
 }
 
+"""A type of work, describing what kind of work it is (its purpose or activity)."""
 type WorkType {
     name: String!
     enabled: Boolean!
 }
 
+"""The possible statuses of work."""
 enum WorkStatus {
+    """This is the initial status of new work."""
     unstarted
+    """The work has been started, or resumed following a pause.
+    Work must be in this status for operations to be recorded in it."""
     active
+    """The work has been paused (for some particular reason) by a user."""
     paused
+    """The work has been completed successfully. This is a final status."""
     completed
+    """The work has failed (for some particular reason). This is a final status."""
     failed
 }
 
+"""Work that can be used to collect together operations done on related samples for a particular purpose."""
 type Work {
+    """The type of work: what does it entail?"""
     workType: WorkType!
+    """The project for which this work is done."""
     project: Project!
+    """The cost code responsible for paying for this work."""
     costCode: CostCode!
+    """The unique (generated) string identifying this work."""
     workNumber: String!
+    """The current status of the work."""
     status: WorkStatus!
+    """The number of blocks that this work still needs to be done on.
+    This is set and updated by users during the course of the work."""
     numBlocks: Int
+    """The number of slides that this work still needs to be done on.
+    This is set and updated by users during the course of the work."""
     numSlides: Int
+    """A string describing the priority of this work.
+    This is set and updated by users during the course of the work."""
     priority: String
 }
 
-type StainType {
-    name: String!
-    measurementTypes: [String!]!
-}
-
+"""A work along with a comment that was recorded to explain its current status."""
 type WorkWithComment {
+    """The work."""
     work: Work!
+    """The text of the comment (if any) that was recorded when the work last changed its status."""
     comment: String
 }
 
+"""An indication that something happened at some particular time."""
 type WorkProgressTimestamp {
+    """The name of the thing that happened."""
     type: String!
+    """The timestamp when the thing happened."""
     timestamp: Timestamp!
 }
 
+"""The things that have happened for a particular work, as requested by a user."""
 type WorkProgress {
+    """The work under consideration."""
     work: Work!
+    """The things that happened for that work, and when they happened."""
     timestamps: [WorkProgressTimestamp!]!
 }
 
+"""A measurement given as a number of seconds for some particular named measure."""
 input TimeMeasurement {
     name: String!
     seconds: Int!
 }
 
+"""A type of stain that may be performed."""
+type StainType {
+    name: String!
+    """The types of measurements we may expect to be recorded as part of a stain of this type."""
+    measurementTypes: [String!]!
+}
+
+"""A request to record stains on some labware."""
 input StainRequest {
+    """The name of a stain type to record."""
     stainType: String!
+    """The barcodes of the labware being stained."""
     barcodes: [String!]!
+    """The times of particular measurements for the stains."""
     timeMeasurements: [TimeMeasurement!]!
+    """An optional work number to associate with this operation."""
     workNumber: String
 }
 
+"""The panel used with a stain."""
 enum StainPanel {
     positive
     negative
     marker
 }
 
+"""The details for a particular labware in a complex stain request."""
 input ComplexStainLabware {
+    """The barcode of the lawbare."""
     barcode: String!
+    """The bond barcode for the stain."""
     bondBarcode: String!
+    """The bond run number."""
     bondRun: Int!
+    """An optional work number to associate with this operation."""
     workNumber: String
 }
 
+"""A request for a stain including bond barcodes and such."""
 input ComplexStainRequest {
+    """The name of the type of stain being recorded."""
     stainType: String!
+    """The plex number."""
     plex: Int!
+    """The stain panel."""
     panel: StainPanel!
+    """The details of the labware being stained."""
     labware: [ComplexStainLabware!]!
 }
 
+"""The details of a previously released item of labware to receive back into the application."""
 input UnreleaseLabware {
+    """The barcode of the labware."""
     barcode: String!
+    """The highest section number taken from the block, if it is a block."""
     highestSection: Int
 }
 
+"""A request to receive back some previously released labware."""
 input UnreleaseRequest {
     labware: [UnreleaseLabware!]!
 }
 
+"""Specification of a result being recording."""
 input SampleResult {
+    """The slot address that the result refers to."""
     address: Address!
+    """The result."""
     result: PassFail!
+    """The id of a comment, if any, linked to the result."""
     commentId: Int
 }
 
+"""Specification of results being recorded in an item of labware."""
 input LabwareResult {
+    """The barcode of the labware."""
     barcode: String!
+    """The individual results."""
     sampleResults: [SampleResult!]!
 }
 
+"""A request to record results."""
 input ResultRequest {
+    """The name of the operation that will record the results."""
     operationType: String
+    """The results for each item of labware."""
     labwareResults: [LabwareResult!]!
+    """An optional work number to associate with this operation."""
     workNumber: String
 }
 
+"""Specification of extract results in a piece of labware."""
 input ExtractResultLabware {
+    """The barcode of the labware."""
     barcode: String!
+    """The result."""
     result: PassFail!
+    """The concentration measurement, if any."""
     concentration: String
+    """The id of a comment, if any, linked to the result."""
     commentId: Int
 }
 
+"""A request to record extract results."""
 input ExtractResultRequest {
+    """The details of the results in each item of labware."""
     labware: [ExtractResultLabware!]!
+    """An optional work number to associate with this operation."""
     workNumber: String
 }
 
+"""The permeabilisation data for a particular slot address."""
 input PermData {
+    """The address of a slot in its labware."""
     address: Address!
+    """The number of seconds, if specified."""
     seconds: Int
+    """The control type, if this is a control."""
     controlType: ControlType
 }
 
+"""A request to record permeabilisation data."""
 input RecordPermRequest {
+    """The barcode of the labware."""
     barcode: String!
+    """An optional work number to associate with this operation."""
     workNumber: String
+    """The data for each slot in the labware."""
     permData: [PermData!]!
 }
 
+"""Permeabilisation data about a particular slot address."""
 type AddressPermData {
+    """The slot address."""
     address: Address!
+    """The number of seconds, if any."""
     seconds: Int
+    """The control type, if this is a control."""
     controlType: ControlType
+    """Whether this result has been selected."""
     selected: Boolean!
 }
 
+"""The permeabilisation data recorded for a particular piece of labware."""
 type VisiumPermData {
+    """The labware in question."""
     labware: Labware!
+    """The permeabilisation data for each slot."""
     addressPermData: [AddressPermData!]!
 }
 
+"""Request to record visium analysis, selecting a permeabilisation time."""
 input VisiumAnalysisRequest {
+    """The barcode of the labware."""
     barcode: String!
+    """An optional work number to associate with this operation."""
     workNumber: String
+    """The address where the selected permeabilisation was recorded."""
     selectedAddress: Address!
+    """The permeabilisation time that we want to select."""
     selectedTime: Int!
 }
 
+"""A pass/fail result in a particular slot of some labware."""
 type SlotPassFail {
+    """The address of the slot in its labware."""
     address: Address!
+    """The result."""
     result: PassFail!
+    """The comment, if any, recorded with the result."""
     comment: String
 }
 
+"""An operation and the pass/fails in the slots of its labware."""
 type OpPassFail {
+    """An operation with one destination labware."""
     operation: Operation!
+    """The pass fails in each address of the destination labware."""
     slotPassFails: [SlotPassFail!]!
 }
 
+"""A piece of labware and an extract result, if any exists."""
 type ExtractResult {
+    """The labware the result refers to."""
     labware: Labware!
+    """The result, if any."""
     result: PassFail
+    """The concentration recorded, if any."""
     concentration: String
 }
 
+"""A specification for recording a measurement."""
 input StringMeasurement {
+    """The thing being measured."""
     name: String!
+    """The value of the measurement."""
     value: String!
 }
 
+"""An item of labware that RNA Analysis is being requested on."""
 input RNAAnalysisLabware {
+    """The barcode of the labware."""
     barcode: String!
+    """An optional work number to associate with this operation."""
     workNumber: String
+    """The id of a preset comment, if any, to associate with the analysis."""
     commentId: Int
+    """The measurements to record for this operation."""
     measurements: [StringMeasurement!]!
 }
 
+"""A request to record an RNA analysis operation."""
 input RNAAnalysisRequest {
+    """The name of the type of operation (a type RNA analsis)."""
     operationType: String!
+    """The details of what to record on one or more labware."""
     labware: [RNAAnalysisLabware!]!
 }
 
+"""A measurement to be recorded in a particular slot of some item of labware."""
 input SlotMeasurementRequest {
+    """The address of the slot."""
     address: Address!
+    """The name of the measurement."""
     name: String!
+    """The value of the measurement."""
     value: String!
 }
 
+"""A request to record an operation in place with measurements in slots."""
 input OpWithSlotMeasurementsRequest {
+    """The barcode of the labware."""
     barcode: String!
+    """The name of the type of operation to record."""
     operationType: String!
+    """An optional work number to associate with this operation."""
     workNumber: String
+    """The measurements to record in individual slots."""
     slotMeasurements: [SlotMeasurementRequest!]!
 }
 
+"""A specification of an item to be put into storage."""
 input StoreInput {
+    """The barcode of the item to be stored."""
     barcode: String!
+    """The address, if any, in a location where the item should be stored."""
     address: Address
 }
 
+"""
+Get information from the application.
+These typically require no user privilege.
+"""
 type Query {
+    """Get the current logged in user."""
     user: User
+    """Get all the tissue types available."""
     tissueTypes: [TissueType!]!
+    """Get all the labware types available."""
     labwareTypes: [LabwareType!]!
+    """Get all the HMDMCs that are enabled, or get all including those that are disabled."""
     hmdmcs(includeDisabled: Boolean): [Hmdmc!]!
+    """Get all the mediums available."""
     mediums: [Medium!]!
+    """Get all the fixatives that are enabled, or get all including those that are disabled."""
     fixatives(includeDisabled: Boolean): [Fixative!]!
+    """Get all the mould sizes available."""
     mouldSizes: [MouldSize!]!
+    """Get all the species that are enabled, or get all including those that are disabled."""
     species(includeDisabled: Boolean): [Species!]!
+    """Get the labware with the given barcode."""
     labware(barcode: String!): Labware!
+    """Get all printers available, or get all printers that support a named label type."""
     printers(labelType: String): [Printer!]!
+    """Get all enabled comments in a particular category, or all enabled in any category; optionally include disabled."""
     comments(category: String, includeDisabled: Boolean): [Comment!]!
+    """Get all enabled equipments in a particular category, or all enabled in any category; optionally include disabled."""
     equipments(category: String, includeDisabled: Boolean): [Equipment!]!
+    """Get all the release destinations that are enabled, or get all including those that are disabled."""
     releaseDestinations(includeDisabled: Boolean): [ReleaseDestination!]!
+    """Get all the release recipients that are enabled, or get all including those that are disabled."""
     releaseRecipients(includeDisabled: Boolean): [ReleaseRecipient!]!
+    """Get all the destruction reasons that are enabled, or get all including those that are disabled."""
     destructionReasons(includeDisabled: Boolean): [DestructionReason!]!
+    """Get all the projects that are enabled, or get all including those that are disabled."""
     projects(includeDisabled: Boolean): [Project!]!
+    """Get all the cost codes that are enabled, or get all including those that are disabled."""
     costCodes(includeDisabled: Boolean): [CostCode!]!
+    """Get all the work types that are enabled, or get all including those that are disabled."""
     workTypes(includeDisabled: Boolean): [WorkType!]!
+    """Get all the works, or get all the works in the given specified statuses."""
     works(status: [WorkStatus!]): [Work!]!
+    """Get the work with the specified work number."""
     work(workNumber: String!): Work!
+    """Get all the works with associated comment, or get all the ones in the given statuses."""
     worksWithComments(status: [WorkStatus!]): [WorkWithComment!]!
+    """Get all the users that are enabled, or get all including those that are disabled."""
     users(includeDisabled: Boolean): [User!]!
+    """Find where labware is stored, given some criteria."""
     find(request: FindRequest!): FindResult!
+    """Get the information about a planned operation previously recorded for a specific labware barcode."""
     planData(barcode: String!): PlanData!
+    """Get the available stain types."""
     stainTypes: [StainType!]!
+    """Get an item of labware and the visium permeabilisation data recorded on it, if any."""
     visiumPermData(barcode: String!): VisiumPermData!
+    """Get a previously recorded extract result for a given labware barcode."""
     extractResult(barcode: String!): ExtractResult!
+    """Get an operation and the pass/fail result recorded on it, for a given labware barcode and operation type name."""
     passFails(barcode: String!, operationType: String!): [OpPassFail!]!
 
+    """Get the history containing a given sample id."""
     historyForSampleId(sampleId: Int!): History!
+    """Get the history containing a tissue with the given external name."""
     historyForExternalName(externalName: String!): History!
+    """Get the history for a specified donor."""
     historyForDonorName(donorName: String!): History!
+    """Get the operation history for a specified work number."""
     historyForWorkNumber(workNumber: String!): History!
+    """Get the history containing a given labware barcode."""
     historyForLabwareBarcode(barcode: String!): History!
+    """Get the work progress (some particular timestamps) associated with a specified work number, and/or
+    work types, statuses."""
     workProgress(workNumber: String, workTypes: [String!], statuses: [WorkStatus!]): [WorkProgress!]!
 
+    """Get the specified storage location."""
     location(locationBarcode: String!): Location!
+    """Get the information about stored items with the given barcodes."""
     stored(barcodes: [String!]!): [StoredItem!]!
+    """Get the labware contained in a particular location."""
     labwareInLocation(locationBarcode: String!): [Labware!]!
 }
 
+"""
+Send information to the application.
+These typically require a user with the suitable permission for the particular request.
+"""
 type Mutation {
+    """Log in with the given credentials."""
     login(username: String!, password: String!): LoginResult!
+    """Log out; end the current login session."""
     logout: String
+    """Register blocks of tissue."""
     register(request: RegisterRequest!): RegisterResult!
+    """Register sections of tissue."""
     registerSections(request: SectionRegisterRequest): RegisterResult!
+    """Record planned operations."""
     plan(request: PlanRequest!): PlanResult!
+    """Print the specified labware barcodes on the specified printer."""
     printLabware(printer: String!, barcodes: [String!]!): String
+    """Confirm operations previously planned."""
     confirmOperation(request: ConfirmOperationRequest!): ConfirmOperationResult!
+    """Confirm sections previously planned."""
     confirmSection(request: ConfirmSectionRequest!): OperationResult!
+    """Release some labware."""
     release(request: ReleaseRequest!): ReleaseResult!
+    """Record extract operations."""
     extract(request: ExtractRequest!): OperationResult!
+    """Destroy some labware."""
     destroy(request: DestroyRequest!): DestroyResult!
+    """Record an operation copying slots from multiple source labware into various slots of one destination labware."""
     slotCopy(request: SlotCopyRequest!): OperationResult!
+    """Create a new comment that users can select to link to future operations."""
     addComment(category: String!, text: String!): Comment!
+    """Enable or disable a preset comment."""
     setCommentEnabled(commentId: Int!, enabled: Boolean!): Comment!
+    """Create a new piece of equipment that users can record using in future operations."""
     addEquipment(category: String!, name: String!): Equipment!
+    """Enable or disable a piece of equipment."""
     setEquipmentEnabled(equipmentId: Int!, enabled: Boolean!): Equipment!
+    """Create a new reason that users can record when destroying labware."""
     addDestructionReason(text: String!): DestructionReason!
+    """Enable or disable a destruction reason."""
     setDestructionReasonEnabled(text: String!, enabled: Boolean!): DestructionReason!
+    """Create a new HMDMC that can be used when registering new tissue."""
     addHmdmc(hmdmc: String!): Hmdmc!
+    """Enable or disable an HMDMC."""
     setHmdmcEnabled(hmdmc: String!, enabled: Boolean!): Hmdmc!
+    """Create a new release destination that can be associated with labware releases."""
     addReleaseDestination(name: String!): ReleaseDestination!
+    """Enable or disable a release destination."""
     setReleaseDestinationEnabled(name: String!, enabled: Boolean!): ReleaseDestination!
+    """Create a new release recipient that can be associated with labware releases."""
     addReleaseRecipient(username: String!): ReleaseRecipient!
+    """Enable or disable a release recipient."""
     setReleaseRecipientEnabled(username: String!, enabled: Boolean!): ReleaseRecipient!
+    """Create a new species that can be associated with donors in tissue registration."""
     addSpecies(name: String!): Species!
+    """Enable or disable a species."""
     setSpeciesEnabled(name: String!, enabled: Boolean!): Species!
+    """Create a new project that can be associated with work."""
     addProject(name: String!): Project!
+    """Enable or disable a project."""
     setProjectEnabled(name: String!, enabled: Boolean!): Project!
+    """Create a new cost code that can be associated with work."""
     addCostCode(code: String!): CostCode!
+    """Enable or disable a cost code."""
     setCostCodeEnabled(code: String!, enabled: Boolean!): CostCode!
+    """Create a new fixative that can be selected when registering tissue."""
     addFixative(name: String!): Fixative!
+    """Enable or disable a fixative."""
     setFixativeEnabled(name: String!, enabled: Boolean!): Fixative!
     addWorkType(name: String!): WorkType!
+    """Enable or disable a work type."""
     setWorkTypeEnabled(name: String!, enabled: Boolean!): WorkType!
+
+    """Create a new work, which will be allocated a new work number with the given prefix."""
     createWork(prefix: String!, workType: String!, project: String!, costCode: String!, numBlocks: Int, numSlides: Int): Work!
+    """Update the status of an existing work."""
     updateWorkStatus(workNumber: String!, status: WorkStatus!, commentId: Int): WorkWithComment!
+    """Update the number of blocks field in a work."""
     updateWorkNumBlocks(workNumber: String!, numBlocks: Int): Work!
+    """Update the number of slides field in a work."""
     updateWorkNumSlides(workNumber: String!, numSlides: Int): Work!
+    """Update the priority of a work."""
     updateWorkPriority(workNumber: String!, priority: String): Work!
 
+    """Record a new stain with time measurements."""
     stain(request: StainRequest!): OperationResult!
+    """Record an operation in place."""
     recordInPlace(request: InPlaceOpRequest!): OperationResult!
+    """Unrelease some previously released labware."""
     unrelease(request: UnreleaseRequest!): OperationResult!
+    """Record the result of a stain."""
     recordStainResult(request: ResultRequest!): OperationResult!
+    """Record the result of an extract."""
     recordExtractResult(request: ExtractResultRequest!): OperationResult!
+    """Record permeabilisation."""
     recordPerm(request: RecordPermRequest!): OperationResult!
+    """Record Visium Analysis."""
     visiumAnalysis(request: VisiumAnalysisRequest!): OperationResult!
+    """Record RNA Analysis."""
     recordRNAAnalysis(request: RNAAnalysisRequest!): OperationResult!
+    """Record Visium QC."""
     recordVisiumQC(request: ResultRequest!): OperationResult!
+    """Record an operation with measurements in slots."""
     recordOpWithSlotMeasurements(request: OpWithSlotMeasurementsRequest!): OperationResult!
+    """Record a stain operation with plex and bond information."""
     recordComplexStain(request: ComplexStainRequest!): OperationResult!
 
+    """Create a new user for the application."""
     addUser(username: String!): User!
+    """Set the user role (privileges) for a user."""
     setUserRole(username: String!, role: UserRole!): User!
 
+    """Store an item in a particular location, optionally with an address."""
     storeBarcode(barcode: String!, locationBarcode: String!, address: Address): StoredItem!
+    """Store multiple items in a particular location, with optional addresses."""
     store(store: [StoreInput!]!, locationBarcode: String!): Location!
+    """Remove a specified item from storage."""
     unstoreBarcode(barcode: String!): UnstoredItem
+    """Empty a specified location of its stored items."""
     empty(locationBarcode: String!): UnstoreResult!
+    """Set the custom name of a specified location."""
     setLocationCustomName(locationBarcode: String!, customName: String): Location!
 }
