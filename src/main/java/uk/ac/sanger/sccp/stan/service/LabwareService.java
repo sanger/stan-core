@@ -1,5 +1,6 @@
 package uk.ac.sanger.sccp.stan.service;
 
+import com.google.common.collect.Streams;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
@@ -8,6 +9,8 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import javax.persistence.EntityManager;
 import java.util.*;
 
+import static java.util.Objects.requireNonNull;
+import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
 /**
@@ -59,6 +62,39 @@ public class LabwareService {
     }
 
     /**
+     * Creates multiple new labware of the given type.
+     * @param labwareType the type of labware to create
+     * @param number the number of new labware to create
+     * @return a list of newly created labware
+     */
+    public List<Labware> create(LabwareType labwareType, int number) {
+        if (number < 0) {
+            throw new IllegalArgumentException("Cannot create a negative number of labware.");
+        }
+        if (number == 0) {
+            return List.of();
+        }
+        requireNonNull(labwareType, "Labware type is null.");
+        List<String> barcodes = barcodeSeedRepo.createBarcodes(BarcodeSeedRepo.STAN, number);
+        List<Labware> newLabware = barcodes.stream()
+                .map(bc -> new Labware(null, bc, labwareType, null))
+                .collect(toList());
+        Iterable<Labware> savedLabware = labwareRepo.saveAll(newLabware);
+
+        final int numRows = labwareType.getNumRows();
+        final int numColumns = labwareType.getNumColumns();
+        final List<Slot> newSlots = Streams.stream(savedLabware).flatMap(lw ->
+                Address.stream(numRows, numColumns).map(address ->
+                        new Slot(null, lw.getId(), address, null, null, null)
+                )
+        ).collect(toList());
+        slotRepo.saveAll(newSlots);
+        return Streams.stream(savedLabware)
+                .peek(entityManager::refresh)
+                .collect(toList());
+    }
+
+    /**
      * Creates new empty labware with slots from the given unsaved labware object.
      * If the given labware does not specify a barcode, one will be created.
      * @param unsaved an unsaved labware object
@@ -72,12 +108,10 @@ public class LabwareService {
         LabwareType labwareType = unsaved.getLabwareType();
         final int numRows = labwareType.getNumRows();
         final int numColumns = labwareType.getNumColumns();
-        for (int row = 1; row <= numRows; ++row) {
-            for (int col = 1; col <= numColumns; ++col) {
-                Slot slot = new Slot(null, labware.getId(), new Address(row, col), new ArrayList<>(), null, null);
-                slotRepo.save(slot);
-            }
-        }
+        List<Slot> newSlots = Address.stream(numRows, numColumns)
+                .map(address -> new Slot(null, labware.getId(), address, null, null, null))
+                .collect(toList());
+        slotRepo.saveAll(newSlots);
         entityManager.refresh(labware);
         return labware;
     }

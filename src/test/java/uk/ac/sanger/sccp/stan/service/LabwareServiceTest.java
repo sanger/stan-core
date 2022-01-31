@@ -54,6 +54,15 @@ public class LabwareServiceTest {
             savedLabware.add(lw);
             return lw;
         });
+        when(mockLabwareRepo.saveAll(any())).then(invocation -> {
+            Iterable<Labware> lws = invocation.getArgument(0);
+            for (Labware lw : lws) {
+                assertNull(lw.getId());
+                lw.setId(++idCounter);
+                savedLabware.add(lw);
+            }
+            return lws;
+        });
     }
 
     void mockSlotSave() {
@@ -63,6 +72,15 @@ public class LabwareServiceTest {
             slot.setId(++idCounter);
             savedSlots.add(slot);
             return slot;
+        });
+        when(mockSlotRepo.saveAll(any())).then(invocation -> {
+            Iterable<Slot> slots = invocation.getArgument(0);
+            for (Slot slot : slots) {
+                assertNull(slot.getId());
+                slot.setId(++idCounter);
+                savedSlots.add(slot);
+            }
+            return slots;
         });
     }
 
@@ -98,7 +116,8 @@ public class LabwareServiceTest {
         assertEquals(externalBarcode, lw.getExternalBarcode());
         assertEquals(lt, lw.getLabwareType());
         assertThat(savedLabware).hasSize(1).contains(lw);
-        assertThat(savedSlots).hasSameElementsAs(lw.getSlots());
+        assertThat(lw.getSlots()).hasSize(6);
+        assertThat(savedSlots).hasSameSizeAs(lw.getSlots()).hasSameElementsAs(lw.getSlots());
         //noinspection UnstableApiUsage
         Streams.forEachPair(Address.stream(lt.getNumRows(), lt.getNumColumns()), lw.getSlots().stream(),
                 (address, slot) -> {
@@ -106,6 +125,41 @@ public class LabwareServiceTest {
                     assertEquals(slot.getLabwareId(), lw.getId());
                     assertNotNull(slot.getId());
                 });
+    }
+
+    @Test
+    public void testCreateMultiple() {
+        LabwareType lt = EntityFactory.makeLabwareType(1, 2);
+        List<String> barcodes = List.of("STAN-AA", "STAN-BB", "STAN-CC");
+        when(mockBarcodeSeedRepo.createBarcodes(BarcodeSeedRepo.STAN, 3)).thenReturn(barcodes);
+        List<Labware> lws = labwareService.create(lt, 3);
+        assertThat(lws).hasSize(3);
+        assertThat(savedLabware).hasSameSizeAs(lws).hasSameElementsAs(lws);
+        final Address A1 = new Address(1,1);
+        final Address A2 = new Address(1,2);
+        final List<Slot> allSlots = new ArrayList<>(6);
+        //noinspection UnstableApiUsage
+        Streams.forEachPair(lws.stream(), barcodes.stream(), (lw, bc) -> {
+            assertEquals(lw.getBarcode(), bc);
+            assertThat(lw.getSlots()).hasSize(2);
+            assertEquals(lw.getFirstSlot().getAddress(), A1);
+            assertEquals(lw.getSlots().get(1).getAddress(), A2);
+            allSlots.addAll(lw.getSlots());
+        });
+        assertThat(savedSlots).hasSameSizeAs(allSlots).hasSameElementsAs(allSlots);
+    }
+
+    @Test
+    public void testCreateZero() {
+        assertThat(labwareService.create(null, 0)).isEmpty();
+        assertThat(savedLabware).isEmpty();
+    }
+
+    @Test
+    public void testCreateNegative() {
+        assertThat(assertThrows(IllegalArgumentException.class, () -> labwareService.create(null, -1)))
+                .hasMessage("Cannot create a negative number of labware.");
+        assertThat(savedLabware).isEmpty();
     }
 
     @Test
