@@ -6,9 +6,13 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import uk.ac.sanger.sccp.stan.*;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.service.work.WorkProgressColumn;
 
 import javax.persistence.EntityManager;
 import javax.transaction.Transactional;
@@ -19,7 +23,9 @@ import java.util.function.IntFunction;
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGet;
+import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.tsvToMap;
 
 /**
  * Tests the work progress query
@@ -55,14 +61,6 @@ public class TestWorkProgressQuery {
     @Test
     @Transactional
     public void testWorkProgressQuery() throws Exception {
-        /*
-        existing optypes:
-        Register
-                Section
-        Extract
-        Visium cDNA
-        */
-
         OperationType sectionOpType = opTypeRepo.getByName("Section");
         OperationType cdnaOpType = opTypeRepo.getByName("Visium cDNA");
         OperationType extractOpType = opTypeRepo.getByName("Extract");
@@ -95,6 +93,9 @@ public class TestWorkProgressQuery {
         Work work = entityCreator.createWork(null, null, null);
         work.setOperationIds(Arrays.stream(ops).map(Operation::getId).collect(toList()));
         work = workRepo.save(work);
+
+        WorkType otherWorkType = entityCreator.createWorkType("Bananas");
+
         String query = tester.readGraphQL("workprogress.graphql").replace("SGP500", work.getWorkNumber());
         Object result = tester.post(query);
         List<?> workProgresses = chainGet(result, "data", "workProgress");
@@ -115,10 +116,54 @@ public class TestWorkProgressQuery {
         }).map(arr -> Map.of("type", (String) arr[0], "timestamp", timeToString(ops[(int) arr[1]].getPerformed())))
                 .toArray((IntFunction<Map<String, String>[]>) Map[]::new);
         assertThat(timestamps).containsExactlyInAnyOrder(expected);
+
+
+        final WorkProgressColumn[] columns = WorkProgressColumn.values();
+        String[] expectedHeadings = Arrays.stream(columns)
+                .map(Object::toString)
+                .toArray(String[]::new);
+
+        Map<String, String> expectedEntries = new HashMap<>(columns.length);
+        expectedEntries.put("Work number", work.getWorkNumber());
+        expectedEntries.put("Status", work.getStatus().toString());
+        expectedEntries.put("Work type", work.getWorkType().getName());
+
+        expectedEntries.put("Last section", timeToString(ops[0].getPerformed()));
+        expectedEntries.put("Last CDNA transfer", timeToString(ops[1].getPerformed()));
+        expectedEntries.put("Last RNA extract", timeToString(ops[2].getPerformed()));
+        expectedEntries.put("Last stain Visium TO", timeToString(ops[3].getPerformed()));
+        expectedEntries.put("Last RNAscope or IHC stain", timeToString(ops[3].getPerformed()));
+        expectedEntries.put("Last stain Visium LP", timeToString(ops[4].getPerformed()));
+        expectedEntries.put("Last stain", timeToString(ops[4].getPerformed()));
+        expectedEntries.put("Last image", timeToString(ops[5].getPerformed()));
+        expectedEntries.put("Last RNA analysis", timeToString(ops[6].getPerformed()));
+
+        String[] tsvStrings = {
+                getWorkProgressFile(work.getWorkNumber(), null, null),
+                getWorkProgressFile(null, List.of(Work.Status.failed, Work.Status.active, Work.Status.completed), null),
+                getWorkProgressFile(null, null, List.of(work.getWorkType().getName()))
+        };
+        for (String tsvString : tsvStrings) {
+            List<Map<String, String>> tsvMapList = tsvToMap(tsvString);
+            assertThat(tsvMapList).hasSize(1);
+            Map<String, String> tsvMap = tsvMapList.get(0);
+            assertThat(tsvMap.keySet()).containsExactlyInAnyOrder(expectedHeadings);
+            assertThat(tsvMap).containsAllEntriesOf(expectedEntries);
+        }
+
+        String[] emptyResults = {
+                getWorkProgressFile(work.getWorkNumber(), List.of(Work.Status.failed), null),
+                getWorkProgressFile(null, List.of(Work.Status.failed), null),
+                getWorkProgressFile(null, null, List.of(otherWorkType.getName())),
+        };
+        for (String tsvString : emptyResults) {
+            List<Map<String, String>> tsvMapList = tsvToMap(tsvString);
+            assertThat(tsvMapList).isEmpty();
+        }
     }
 
     private static String timeToString(LocalDateTime time) {
-        return (String) GraphQLCustomTypes.TIMESTAMP.getCoercing().serialize(time);
+        return GraphQLCustomTypes.DATE_TIME_FORMAT.format(time);
     }
 
     private LocalDateTime time(int day) {
@@ -142,4 +187,23 @@ public class TestWorkProgressQuery {
         return op;
     }
 
+
+    private String getWorkProgressFile(String workNumber, List<Work.Status> statuses, List<String> workTypeNames)
+            throws Exception {
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        if (workNumber!=null) {
+            params.add("workNumber", workNumber);
+        }
+        if (statuses!=null) {
+            statuses.forEach(status -> params.add("statuses", status.name()));
+        }
+        if (workTypeNames!=null) {
+            workTypeNames.forEach(w -> params.add("workTypes", w));
+        }
+        return tester.getMockMvc().perform(MockMvcRequestBuilders.get("/work-progress")
+                        .queryParams(params)).andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+    }
 }

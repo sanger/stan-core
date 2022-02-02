@@ -12,10 +12,14 @@ import java.time.format.ResolverStyle;
 import java.util.Date;
 
 /**
+ * Custom scalar types used by our GraphQL schema.
  * @author dr6
  */
 public class GraphQLCustomTypes {
-    private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss").withResolverStyle(ResolverStyle.STRICT);
+    /**
+     * The expected format for timestamps: year-month-day hour:minute:second
+     */
+    public static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss").withResolverStyle(ResolverStyle.STRICT);
 
     public static final GraphQLScalarType ADDRESS = GraphQLScalarType.newScalar()
             .name("Address")
