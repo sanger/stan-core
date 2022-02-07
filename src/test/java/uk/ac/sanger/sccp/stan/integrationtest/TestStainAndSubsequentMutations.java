@@ -40,6 +40,8 @@ public class TestStainAndSubsequentMutations {
     private ResultOpRepo resultOpRepo;
     @Autowired
     private MeasurementRepo measurementRepo;
+    @Autowired
+    private TissueRepo tissueRepo;
 
     @Transactional
     @Test
@@ -48,7 +50,7 @@ public class TestStainAndSubsequentMutations {
         Work work = entityCreator.createWork(null, null, null);
         User user = entityCreator.createUser("user1");
         Sample sam = entityCreator.createSample(entityCreator.createTissue(entityCreator.createDonor("DONOR1"), "TISSUE1"), 5);
-        LabwareType lt = entityCreator.createLabwareType("lt1", 1, 1);
+        LabwareType lt = entityCreator.createLabwareType("lt1", 1, 2);
         Labware lw = entityCreator.createLabware("STAN-50", lt, sam);
 
         tester.setUser(user);
@@ -90,23 +92,48 @@ public class TestStainAndSubsequentMutations {
         assertEquals(opId, result.getRefersToOpId());
         assertEquals(lw.getFirstSlot().getId(), result.getSlotId());
 
-        Integer permOpId = testPerm();
+        Integer permOpId = testPerm(lw);
         testVisiumAnalysis();
         Integer qcOpId = testVisiumQC(permOpId);
         testQueryVisiumQCResult(qcOpId);
     }
 
     // called by testStainAndWorkProgressAndRecordResult
-    private Integer testPerm() throws Exception {
+    private Integer testPerm(Labware lw) throws Exception {
+        var addControlOpType = entityCreator.createOpType("Add control", null);
+        Tissue tissue = entityCreator.getAny(tissueRepo);
+        Sample controlSample = entityCreator.createSample(tissue, 50);
+        Labware controlLabware = entityCreator.createLabware("STAN-C0", entityCreator.getTubeType(), controlSample);
+
         entityCreator.createOpType("Visium permabilisation", null, OperationTypeFlag.IN_PLACE);
         Object data = tester.post(tester.readGraphQL("perm.graphql"));
-        Integer opId = chainGet(data, "data", "recordPerm", "operations", 0, "id");
-        List<Measurement> measurements = measurementRepo.findAllByOperationIdIn(List.of(opId));
-        assertThat(measurements).hasSize(1);
-        Measurement meas = measurements.get(0);
-        assertEquals("permabilisation time", meas.getName());
-        assertEquals("120", meas.getValue());
-        return opId;
+        List<?> ops = chainGet(data, "data", "recordPerm", "operations");
+        assertThat(ops).hasSize(2);
+
+        Integer addControlId = chainGet(ops, 0, "id");
+        Integer permId = chainGet(ops, 1, "id");
+
+        Operation controlOp = opRepo.findById(addControlId).orElseThrow();
+        assertEquals(addControlOpType, controlOp.getOperationType());
+        assertThat(controlOp.getActions()).hasSize(1);
+        Action controlAction = controlOp.getActions().get(0);
+        assertEquals(controlLabware.getFirstSlot(), controlAction.getSource());
+        assertEquals(new Address(1,2), controlAction.getDestination().getAddress());
+        assertEquals(controlSample, controlAction.getSample());
+
+        List<Measurement> measurements = measurementRepo.findAllByOperationIdIn(List.of(permId));
+        assertThat(measurements).hasSize(2);
+        Measurement timeMeasurement = measurements.stream()
+                .filter(m -> m.getName().equalsIgnoreCase("permabilisation time"))
+                .findAny().orElseThrow();
+        Measurement controlMeasurement = measurements.stream()
+                .filter(m -> m.getName().equalsIgnoreCase("control"))
+                .findAny().orElseThrow();
+        assertEquals("120", timeMeasurement.getValue());
+        assertEquals(lw.getFirstSlot().getId(), timeMeasurement.getSlotId());
+        assertEquals("positive", controlMeasurement.getValue());
+        assertEquals(lw.getSlots().get(1).getId(), controlMeasurement.getSlotId());
+        return permId;
     }
 
     // called by testStainAndWorkProgressAndRecordResult
@@ -126,12 +153,21 @@ public class TestStainAndSubsequentMutations {
                 "addressPermData { address, seconds, controlType, selected } }}");
         assertEquals("STAN-50", chainGet(data, "data", "visiumPermData", "labware", "barcode"));
         List<Map<String, ?>> permDatas = chainGet(data, "data", "visiumPermData", "addressPermData");
-        assertThat(permDatas).hasSize(1);
-        Map<String, ?> permData = permDatas.get(0);
+        assertThat(permDatas).hasSize(2);
+        Map<String, ?> permData = permDatas.stream()
+                .filter(m -> m.get("address").equals("A1"))
+                .findAny()
+                .orElseThrow();
         assertEquals("A1", permData.get("address"));
         assertEquals(120, permData.get("seconds"));
         assertNull(permData.get("controlType"));
         assertEquals(true, permData.get("selected"));
+
+        Map<String, ?> controlData = permDatas.stream()
+                .filter(m -> m.get("address").equals("A2"))
+                .findAny()
+                .orElseThrow();
+        assertEquals(false, controlData.get("selected"));
     }
 
     // called by testStainAndWorkProgressAndRecordResult
@@ -164,4 +200,5 @@ public class TestStainAndSubsequentMutations {
         assertEquals("A1", spf.get("address"));
         assertEquals("pass", spf.get("result"));
         assertNull(spf.get("comment"));
-    }}
+    }
+}

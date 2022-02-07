@@ -5,6 +5,11 @@ mutation {
             {
                 address: "A1"
                 seconds: 120
+            },
+            {
+                address: "A2"
+                controlType: positive
+                controlBarcode: "STAN-C0"
             }
         ]
     }) {

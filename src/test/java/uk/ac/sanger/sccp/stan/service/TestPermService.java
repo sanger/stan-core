@@ -3,10 +3,10 @@ package uk.ac.sanger.sccp.stan.service;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.*;
 import org.mockito.ArgumentCaptor;
 import uk.ac.sanger.sccp.stan.EntityFactory;
+import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.*;
@@ -14,6 +14,7 @@ import uk.ac.sanger.sccp.stan.request.RecordPermRequest.PermData;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 
 import java.util.*;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -32,6 +33,7 @@ public class TestPermService {
     private OperationTypeRepo mockOpTypeRepo;
     private OperationRepo mockOpRepo;
     private MeasurementRepo mockMeasurementRepo;
+    private SlotRepo mockSlotRepo;
 
     private PermServiceImp service;
 
@@ -44,9 +46,10 @@ public class TestPermService {
         mockOpTypeRepo = mock(OperationTypeRepo.class);
         mockOpRepo = mock(OperationRepo.class);
         mockMeasurementRepo = mock(MeasurementRepo.class);
+        mockSlotRepo = mock(SlotRepo.class);
 
         service = spy(new PermServiceImp(mockLabwareValidatorFactory, mockOpService,
-                mockWorkService, mockLabwareRepo, mockOpTypeRepo, mockOpRepo, mockMeasurementRepo));
+                mockWorkService, mockLabwareRepo, mockOpTypeRepo, mockOpRepo, mockMeasurementRepo, mockSlotRepo));
     }
 
     @ParameterizedTest
@@ -54,9 +57,12 @@ public class TestPermService {
     public void testRecordPerm(boolean valid) {
         User user = EntityFactory.getUser();
         Labware lw = EntityFactory.getTube();
+        Labware controlLw = EntityFactory.makeEmptyLabware(lw.getLabwareType());
         RecordPermRequest request = new RecordPermRequest(lw.getBarcode(), List.of(new PermData(new Address(1,1), 17)), "SGP-2000");
         doReturn(lw).when(service).lookUpLabware(any(), any());
         doNothing().when(service).validateLabware(any(), any());
+        doReturn(controlLw).when(service).lookUpControlLabware(any(), any());
+        doNothing().when(service).validateControlLabware(any(), any());
         Work work = new Work(300, "SGP-2000", null, null, null, Work.Status.active);
         when(mockWorkService.validateUsableWork(any(), any())).thenReturn(work);
         if (valid) {
@@ -69,7 +75,7 @@ public class TestPermService {
             }).when(service).validatePermData(any(), any(), any());
         }
         OperationResult result = new OperationResult(List.of(), List.of(lw));
-        doReturn(result).when(service).record(any(), any(), any(), any());
+        doReturn(result).when(service).record(any(), any(), any(), any(), any());
 
         if (valid) {
             assertSame(result, service.recordPerm(user, request));
@@ -84,13 +90,15 @@ public class TestPermService {
         verify(service).lookUpLabware(problemsCaptor.capture(), same(request.getBarcode()));
         Collection<String> problems = problemsCaptor.getValue();
         verify(service).validateLabware(same(problems), same(lw));
+        verify(service).lookUpControlLabware(same(problems), same(request.getPermData()));
         verify(service).validatePermData(same(problems), same(lw), same(request.getPermData()));
+        verify(service).validateControlLabware(same(problems), same(controlLw));
         verify(mockWorkService).validateUsableWork(same(problems), same(request.getWorkNumber()));
 
         if (valid) {
-            verify(service).record(user, lw, request.getPermData(), work);
+            verify(service).record(user, lw, request.getPermData(), controlLw, work);
         } else {
-            verify(service, never()).record(any(), any(), any(), any());
+            verify(service, never()).record(any(), any(), any(), any(), any());
         }
     }
 
@@ -117,6 +125,36 @@ public class TestPermService {
         } else {
             assertThat(problems).isEmpty();
         }
+    }
+
+    @ParameterizedTest
+    @MethodSource("lookUpControlLabwareArgs")
+    public void testLookUpControlLabware(Collection<PermData> permData, Labware lw, String expectedProblem) {
+        if (lw!=null) {
+            when(mockLabwareRepo.findByBarcode(lw.getBarcode())).thenReturn(Optional.of(lw));
+        } else {
+            when(mockLabwareRepo.findByBarcode(any())).thenReturn(Optional.empty());
+        }
+        List<String> problems = new ArrayList<>(expectedProblem==null ? 0 : 1);
+        assertSame(lw, service.lookUpControlLabware(problems, permData));
+        if (expectedProblem==null) {
+            assertThat(problems).isEmpty();
+        } else {
+            assertThat(problems).containsExactly(expectedProblem);
+        }
+    }
+
+    static Stream<Arguments> lookUpControlLabwareArgs() {
+        Labware lw = EntityFactory.getTube();
+        final Address A1 = new Address(1,1), A2 = new Address(1,2);
+        return Arrays.stream(new Object[][] {
+                {List.of(new PermData(A1, 10), new PermData(A2, 20)), null, null},
+                {List.of(new PermData(A1, 10), new PermData(A2, null, ControlType.positive, lw.getBarcode())), lw, null},
+                {List.of(new PermData(A1, null, ControlType.positive, "STAN-A1"), new PermData(A2, null, ControlType.positive, "STAN-A2")),
+                        null, "A control barcode was specified in multiple slots."},
+                {List.of(new PermData(A1, null, ControlType.positive, "STAN-404")), null,
+                        "Unknown control barcode: \"STAN-404\""},
+        }).map(Arguments::of);
     }
 
     @ParameterizedTest
@@ -184,6 +222,35 @@ public class TestPermService {
         }
     }
 
+    @Test
+    public void testValidateControlLabware_none() {
+        final List<String> problems = new ArrayList<>(0);
+        service.validateControlLabware(problems, null);
+        assertThat(problems).isEmpty();
+        verifyNoInteractions(mockLabwareValidatorFactory);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testValidateControlLabware(boolean valid) {
+        Labware lw = EntityFactory.getTube();
+        final List<String> problems = new ArrayList<>(valid ? 1 : 0);
+        LabwareValidator val = mock(LabwareValidator.class);
+        when(mockLabwareValidatorFactory.getValidator(any())).thenReturn(val);
+        final String problem = valid ? null : "Everything.";
+        when(val.getErrors()).thenReturn(valid ? List.of() : List.of(problem));
+        service.validateControlLabware(problems, lw);
+        if (valid) {
+            assertThat(problems).isEmpty();
+        } else {
+            assertThat(problems).containsExactly(problem);
+        }
+        verify(mockLabwareValidatorFactory).getValidator(List.of(lw));
+        verify(val).setSingleSample(true);
+        verify(val).validateSources();
+        verify(val).getErrors();
+    }
+
     @ParameterizedTest
     @CsvSource({"false, false", "true, false", "true, true"})
     public void testValidatePermData(boolean lwPresent, boolean dataPresent) {
@@ -229,11 +296,13 @@ public class TestPermService {
 
         final Address A1 = new Address(1,1);
         final Address A2 = new Address(1,2);
+        final Address B1 = new Address(2,1);
         if (allValid) {
             List<String> problems = new ArrayList<>();
             List<PermData> permData = List.of(
                     new PermData(A1, 17),
-                    new PermData(A2, ControlType.negative)
+                    new PermData(A2, ControlType.negative),
+                    new PermData(B1, null, ControlType.positive, "STAN-CTRL")
             );
             service.validateAddresses(problems, lw, permData);
             assertThat(problems).isEmpty();
@@ -241,10 +310,10 @@ public class TestPermService {
         }
         List<PermData> permData = List.of(
                 new PermData(A1, 17),
+                new PermData(A2, null, ControlType.positive, "STAN-CTRL"),
                 new PermData(A2, 21),
-                new PermData(A2, 31),
                 new PermData(null, 43),
-                new PermData(new Address(2,1), 51),
+                new PermData(B1, 51),
                 new PermData(new Address(2,2), 52),
                 new PermData(new Address(3,5), 10),
                 new PermData(new Address(3,6), 11)
@@ -255,7 +324,8 @@ public class TestPermService {
                 "Missing slot address in perm data.",
                 "Invalid slot address for labware STAN-10: [C5, C6]",
                 "Repeated slot address: [A2]",
-                "Indicated slot is empty: [B1, B2]"
+                "Indicated slot is empty: [B1, B2]",
+                "Positive control labware cannot be transferred into nonempty slot: [A2]"
         );
     }
 
@@ -272,15 +342,18 @@ public class TestPermService {
             expectedProblems = new String[0];
         } else {
             permData = List.of(
-                    new PermData(null, null, null),
-                    new PermData(new Address(1,2), null, null),
-                    new PermData(new Address(1,3), null, null),
-                    new PermData(new Address(2,3), 17, ControlType.negative),
-                    new PermData(new Address(2,4), 18, ControlType.positive)
+                    new PermData(null, null, null, null),
+                    new PermData(new Address(1,2), null, null, null),
+                    new PermData(new Address(1,3), null, null, null),
+                    new PermData(new Address(2,3), 17, ControlType.negative, null),
+                    new PermData(new Address(2,4), 18, ControlType.positive, null),
+                    new PermData(new Address(2,5), 15, null, "Bananas"),
+                    new PermData(new Address(2,6), null, ControlType.negative, "Bananas")
             );
             expectedProblems = new String[] {
                     "Neither control type nor time specified for the given address: [A2, A3]",
                     "Control type and time specified for the same address: [B3, B4]",
+                    "Control barcode specified for address that is not a positive control: [B5, B6]"
             };
         }
         List<String> problems = new ArrayList<>(expectedProblems.length);
@@ -288,26 +361,73 @@ public class TestPermService {
         assertThat(problems).containsExactlyInAnyOrder(expectedProblems);
     }
 
-    @Test
-    public void testRecord() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testRecord(boolean hasControlLabware) {
         OperationType opType = EntityFactory.makeOperationType("Visium permabilisation", null);
         Work work = new Work(14, "SGP14", null, null, null, Work.Status.active);
         User user = EntityFactory.getUser();
         Labware lw = EntityFactory.getTube();
-        List<PermData> permData = List.of(new PermData(new Address(1,1), 16));
+        final Address A1 = new Address(1,1), A2 = new Address(1,2);
+        List<PermData> permData = List.of(new PermData(A1, 16), new PermData(A2, null, ControlType.positive, "controlbc"));
         when(mockOpTypeRepo.getByName(any())).thenReturn(opType);
         Operation op = new Operation();
         op.setId(37);
+        Operation addControlOp;
+        Labware controlLw;
+        if (hasControlLabware) {
+            controlLw = EntityFactory.makeEmptyLabware(lw.getLabwareType());
+            addControlOp = new Operation();
+            addControlOp.setId(38);
+        } else {
+            controlLw = null;
+            addControlOp = null;
+        }
         when(mockOpService.createOperationInPlace(any(), any(), any(), any(), any())).thenReturn(op);
+        doReturn(addControlOp).when(service).addControl(any(), any(), any(), any());
         doNothing().when(service).createMeasurements(any(), any(), any());
 
-        OperationResult result = service.record(user, lw, permData, work);
-        assertThat(result.getOperations()).containsExactly(op);
+        OperationResult result = service.record(user, lw, permData, controlLw, work);
+        if (hasControlLabware) {
+            assertThat(result.getOperations()).containsExactly(addControlOp, op);
+        } else {
+            assertThat(result.getOperations()).containsExactly(op);
+        }
         assertThat(result.getLabware()).containsExactly(lw);
         verify(mockOpTypeRepo).getByName(opType.getName());
         verify(mockOpService).createOperationInPlace(opType, user, lw, null, null);
         verify(service).createMeasurements(op.getId(), lw, permData);
+        if (controlLw!=null) {
+            verify(service).addControl(user, controlLw, lw, A2);
+        }
         verify(mockWorkService).link(work, List.of(op));
+    }
+
+    @Test
+    public void testAddControl() {
+        User user = EntityFactory.getUser();
+        Labware controlLw = EntityFactory.getTube();
+        Sample sam1 = new Sample(500, 1, EntityFactory.getTissue(), EntityFactory.getBioState());
+        Sample sam2 = new Sample(501, 2, sam1.getTissue(), sam1.getBioState());
+        LabwareType lt = EntityFactory.makeLabwareType(2,2);
+        Labware slide = EntityFactory.makeLabware(lt, sam1, sam2);
+
+        OperationType opType = EntityFactory.makeOperationType("Add control", null);
+        when(mockOpTypeRepo.getByName("Add control")).thenReturn(opType);
+
+        when(mockSlotRepo.save(any())).then(Matchers.returnArgument());
+
+        Operation op = new Operation(600, opType, null, null, user);
+        when(mockOpService.createOperation(any(), any(), any(), any())).thenReturn(op);
+        final Address B2 = new Address(2,2);
+        assertSame(op, service.addControl(user, controlLw, slide, B2));
+
+        Slot destSlot =slide.getSlot(B2);
+        Sample sam = controlLw.getFirstSlot().getSamples().get(0);
+        verify(mockSlotRepo).save(destSlot);
+        Action expectedAction = new Action(null, null, controlLw.getFirstSlot(), destSlot, sam, sam);
+        verify(mockOpService).createOperation(opType, user, List.of(expectedAction), null);
+        assertThat(destSlot.getSamples()).containsExactly(sam);
     }
 
     @Test

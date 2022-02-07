@@ -1008,6 +1008,8 @@ input PermData {
     seconds: Int
     """The control type, if this is a control."""
     controlType: ControlType
+    """The barcode of the labware being put into this slot as a control, if there is one."""
+    controlBarcode: String
 }
 
 """A request to record permeabilisation data."""
