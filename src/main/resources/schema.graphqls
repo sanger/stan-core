@@ -1138,6 +1138,20 @@ input StoreInput {
     address: Address
 }
 
+"""A request to transfer material from one source labware into multiple new destination labware (first slot)."""
+input AliquotRequest {
+    """The name of the operation to record."""
+    operationType: String!
+    """The barcode of the source labware."""
+    barcode: String!
+    """The name of the labware type for the destination labware."""
+    labwareType: String!
+    """The number of destination labware to create."""
+    numLabware: Int!
+    """An optional work number to associate with this operation."""
+    workNumber: String
+}
+
 """
 Get information from the application.
 These typically require no user privilege.
@@ -1328,6 +1342,8 @@ type Mutation {
     recordOpWithSlotMeasurements(request: OpWithSlotMeasurementsRequest!): OperationResult!
     """Record a stain operation with plex and bond information."""
     recordComplexStain(request: ComplexStainRequest!): OperationResult!
+    """Transfer samples from one labware into multiple labware."""
+    aliquot(request: AliquotRequest!): OperationResult!
 
     """Create a new user for the application."""
     addUser(username: String!): User!

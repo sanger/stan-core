@@ -22,6 +22,7 @@ import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.analysis.RNAAnalysisService;
 import uk.ac.sanger.sccp.stan.service.extract.ExtractService;
 import uk.ac.sanger.sccp.stan.service.label.print.LabelPrintService;
+import uk.ac.sanger.sccp.stan.service.operation.AliquotService;
 import uk.ac.sanger.sccp.stan.service.operation.InPlaceOpService;
 import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmOperationService;
 import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmSectionService;
@@ -78,6 +79,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final RNAAnalysisService rnaAnalysisService;
     final OpWithSlotMeasurementsService opWithSlotMeasurementsService;
     final ComplexStainService complexStainService;
+    final AliquotService aliquotService;
     final UserAdminService userAdminService;
 
     @Autowired
@@ -97,7 +99,8 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            UnreleaseService unreleaseService, ResultService resultService, ExtractResultService extractResultService,
                            PermService permService, RNAAnalysisService rnaAnalysisService,
                            VisiumAnalysisService visiumAnalysisService, OpWithSlotMeasurementsService opWithSlotMeasurementsService,
-                           ComplexStainService complexStainService, UserAdminService userAdminService) {
+                           ComplexStainService complexStainService, AliquotService aliquotService,
+                           UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
@@ -133,6 +136,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.rnaAnalysisService = rnaAnalysisService;
         this.opWithSlotMeasurementsService = opWithSlotMeasurementsService;
         this.complexStainService = complexStainService;
+        this.aliquotService = aliquotService;
         this.userAdminService = userAdminService;
     }
 
@@ -555,6 +559,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             ComplexStainRequest request = arg(dfe, "request", ComplexStainRequest.class);
             logRequest("Record complex stain", user, request);
             return complexStainService.perform(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> aliquot() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            AliquotRequest request = arg(dfe, "request", AliquotRequest.class);
+            logRequest("Aliquot", user, request);
+            return aliquotService.perform(user, request);
         };
     }
 

@@ -1,0 +1,21 @@
+mutation {
+    aliquot(request: {
+        operationType: "Aliquot"
+        barcode: "SOURCE"
+        labwareType: "LWTYPE"
+        workNumber: "WORK"
+        numLabware: 2
+    }) {
+        labware { barcode }
+        operations {
+            id
+            operationType { name }
+            actions {
+                destination {
+                    address
+                    samples { id }
+                }
+            }
+        }
+    }
+}
