@@ -226,7 +226,8 @@ public class PermServiceImp implements PermService {
     /**
      * Checks that the values in the perm data are valid.
      * Valid means that for each perm data element either a perm time (in seconds) is given, or a control type
-     * is given, but not both.
+     * is given, but not both; also it requires that any address that is given a control barcode should be
+     * marked as a positive control.
      * @param problems receptacle for problems
      * @param permData the data to check
      */
