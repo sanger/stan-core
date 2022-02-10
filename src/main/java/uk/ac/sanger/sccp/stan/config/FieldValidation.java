@@ -101,7 +101,7 @@ public class FieldValidation {
     public Validator<String> hmdmcValidator() {
         Set<CharacterType> charTypes = EnumSet.of(CharacterType.DIGIT, CharacterType.SLASH);
         Pattern pattern = Pattern.compile("\\d{2}/\\d{2,}");
-        return new StringValidator("HMDMC", 1, 16, charTypes, false, pattern);
+        return new StringValidator("HuMFre", 1, 16, charTypes, false, pattern);
     }
 
     @Bean

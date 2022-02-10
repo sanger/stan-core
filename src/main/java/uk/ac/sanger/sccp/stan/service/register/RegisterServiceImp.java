@@ -96,14 +96,14 @@ public class RegisterServiceImp implements RegisterService {
             } else {
                 hmdmc = validation.getHmdmc(block.getHmdmc());
                 if (hmdmc==null) {
-                    throw new IllegalArgumentException("Unknown HMDMC number: "+block.getHmdmc());
+                    throw new IllegalArgumentException("Unknown HuMFre number: "+block.getHmdmc());
                 }
             }
             if (donor.getSpecies().requiresHmdmc() && hmdmc==null) {
-                throw new IllegalArgumentException("No HMDMC number given for tissue "+block.getExternalIdentifier());
+                throw new IllegalArgumentException("No HuMFre number given for tissue "+block.getExternalIdentifier());
             }
             if (!donor.getSpecies().requiresHmdmc() && hmdmc!=null) {
-                throw new IllegalArgumentException("HMDMC number given for non-human tissue "+block.getExternalIdentifier());
+                throw new IllegalArgumentException("HuMFre number given for non-human tissue "+block.getExternalIdentifier());
             }
             Tissue tissue = new Tissue(null, block.getExternalIdentifier(), block.getReplicateNumber().toLowerCase(),
                     validation.getSpatialLocation(block.getTissueType(), block.getSpatialLocation()),

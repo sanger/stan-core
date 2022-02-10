@@ -241,7 +241,7 @@ public class SectionRegisterValidation {
         MouldSize mouldSize = mouldSizeOpt.orElse(null);
         UCMap<Hmdmc> hmdmcMap = loadAllFromSectionsToStringMap(request, SectionRegisterContent::getHmdmc,
                 Hmdmc::getHmdmc, hmdmcRepo::findAllByHmdmcIn);
-        checkEntitiesEnabled(hmdmcMap.values(), "HMDMC", Hmdmc::getHmdmc);
+        checkEntitiesEnabled(hmdmcMap.values(), "HuMFre number", Hmdmc::getHmdmc);
         UCMap<TissueType> tissueTypeMap = loadAllFromSectionsToStringMap(request, SectionRegisterContent::getTissueType,
                 TissueType::getName, tissueTypeRepo::findAllByNameIn);
         UCMap<Fixative> fixativeMap = loadAllFromSectionsToStringMap(request, SectionRegisterContent::getFixative,
@@ -268,16 +268,16 @@ public class SectionRegisterValidation {
             Hmdmc hmdmc;
             if (hmdmcString==null || hmdmcString.isEmpty()) {
                 if (needHmdmc) {
-                    addProblem("Missing HMDMC number.");
+                    addProblem("Missing HuMFre number.");
                 }
                 hmdmc = null;
             } else {
                 if (needNoHmdmc) {
-                    addProblem("Unexpected HMDMC number received for non-human tissue.");
+                    addProblem("Unexpected HuMFre number received for non-human tissue.");
                 }
                 hmdmc = hmdmcMap.get(hmdmcString);
                 if (hmdmc==null) {
-                    problemFn.accept("Unknown HMDMC number{s}", hmdmcString);
+                    problemFn.accept("Unknown HuMFre number{s}", hmdmcString);
                 }
             }
 

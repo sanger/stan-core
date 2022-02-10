@@ -20,7 +20,7 @@ public class TissueFieldChecker {
     }
     enum Field {
         DONOR(Tissue::getDonor, Donor::getDonorName, BlockRegisterRequest::getDonorIdentifier, "donor identifier"),
-        HMDMC(Tissue::getHmdmc, Hmdmc::getHmdmc, BlockRegisterRequest::getHmdmc, "HMDMC number"),
+        HMDMC(Tissue::getHmdmc, Hmdmc::getHmdmc, BlockRegisterRequest::getHmdmc, "HuMFre number"),
         TTYPE(Tissue::getTissueType, TissueType::getName, BlockRegisterRequest::getTissueType, "tissue type"),
         SL(Tissue::getSpatialLocation, SpatialLocation::getCode, BlockRegisterRequest::getSpatialLocation, "spatial location"),
         REPLICATE(Tissue::getReplicate, BlockRegisterRequest::getReplicateNumber, "replicate number"),

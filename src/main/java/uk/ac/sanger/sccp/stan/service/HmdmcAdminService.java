@@ -16,7 +16,7 @@ import java.util.Optional;
 public class HmdmcAdminService extends BaseAdminService<Hmdmc, HmdmcRepo> {
     @Autowired
     public HmdmcAdminService(HmdmcRepo repo, @Qualifier("hmdmcValidator") Validator<String> hmdmcValidator) {
-        super(repo, "HMDMC", "HMDMC", hmdmcValidator);
+        super(repo, "HuMFre", "HuMFre", hmdmcValidator);
     }
 
     @Override

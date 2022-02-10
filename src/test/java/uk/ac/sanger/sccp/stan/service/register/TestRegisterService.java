@@ -464,9 +464,9 @@ public class TestRegisterService {
         return Stream.of(
                 Arguments.of(human, hmdmc, null),
                 Arguments.of(hamster, null, null),
-                Arguments.of(human, null, "No HMDMC number given for tissue TISSUE"),
-                Arguments.of(hamster, hmdmc, "HMDMC number given for non-human tissue TISSUE"),
-                Arguments.of(human, "20/404", "Unknown HMDMC number: 20/404")
+                Arguments.of(human, null, "No HuMFre number given for tissue TISSUE"),
+                Arguments.of(hamster, hmdmc, "HuMFre number given for non-human tissue TISSUE"),
+                Arguments.of(human, "20/404", "Unknown HuMFre number: 20/404")
         );
     }
 }

@@ -223,20 +223,20 @@ public class RegisterValidationImp implements RegisterValidation {
             }
         }
         if (missing) {
-            addProblem("Missing HMDMC number.");
+            addProblem("Missing HuMFre number.");
         }
         if (unwanted) {
-            addProblem("Non-human tissue should not have an HMDMC number.");
+            addProblem("Non-human tissue should not have a HuMFre number.");
         }
         if (!unknownHmdmcs.isEmpty()) {
-            addProblem(pluralise("Unknown HMDMC number{s}: ", unknownHmdmcs.size()) + unknownHmdmcs);
+            addProblem(pluralise("Unknown HuMFre number{s}: ", unknownHmdmcs.size()) + unknownHmdmcs);
         }
         List<String> disabledHmdmcs = hmdmcMap.values().stream()
                 .filter(h -> h!=null && !h.isEnabled())
                 .map(Hmdmc::getHmdmc)
                 .collect(toList());
         if (!disabledHmdmcs.isEmpty()) {
-            addProblem(pluralise("HMDMC number{s} not enabled: ", disabledHmdmcs.size()) + disabledHmdmcs);
+            addProblem(pluralise("HuMFre number{s} not enabled: ", disabledHmdmcs.size()) + disabledHmdmcs);
         }
     }
 

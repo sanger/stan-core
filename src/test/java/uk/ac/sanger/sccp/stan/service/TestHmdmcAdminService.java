@@ -14,7 +14,7 @@ import static org.mockito.Mockito.mock;
  */
 public class TestHmdmcAdminService extends AdminServiceTestUtils<Hmdmc, HmdmcRepo, HmdmcAdminService> {
     public TestHmdmcAdminService() {
-        super("HMDMC", Hmdmc::new, HmdmcRepo::findByHmdmc, "HMDMC not supplied.");
+        super("HuMFre", Hmdmc::new, HmdmcRepo::findByHmdmc, "HuMFre not supplied.");
     }
 
     @BeforeEach
