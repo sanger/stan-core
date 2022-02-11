@@ -19,7 +19,7 @@ import static java.util.stream.Collectors.toMap;
  */
 @Service
 public class VisiumPermDataService {
-    static final String PERM_TIME = "permabilisation time",
+    static final String PERM_TIME = "permeabilisation time",
             SELECTED_TIME = "selected time",
             CONTROL = "control";
 

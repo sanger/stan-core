@@ -167,7 +167,7 @@ public class PermServiceImp implements PermService {
             return;
         }
         if (permData == null || permData.isEmpty()) {
-            problems.add("No permabilisation data provided.");
+            problems.add("No permeabilisation data provided.");
             return;
         }
         validateAddresses(problems, lw, permData);
@@ -271,7 +271,7 @@ public class PermServiceImp implements PermService {
      * @return the operation recorded and the labware
      */
     public OperationResult record(User user, Labware lw, Collection<PermData> permData, Labware controlLabware, Work work) {
-        OperationType opType = opTypeRepo.getByName("Visium permabilisation");
+        OperationType opType = opTypeRepo.getByName("Visium permeabilisation");
 
         Operation addControlOp;
         if (controlLabware!=null) {
@@ -338,7 +338,7 @@ public class PermServiceImp implements PermService {
                         measurementName = "control";
                         measurementValue = pd.getControlType().name();
                     } else {
-                        measurementName = "permabilisation time";
+                        measurementName = "permeabilisation time";
                         measurementValue = pd.getSeconds().toString();
                     }
                     Slot slot = lw.getSlot(pd.getAddress());

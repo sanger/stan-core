@@ -107,9 +107,9 @@ public class VisiumAnalysisServiceImp implements VisiumAnalysisService {
         }
         List<Measurement> measurements = measurementRepo.findAllBySlotIdIn(List.of(slot.getId()));
         String value = time.toString();
-        if (measurements.stream().noneMatch(meas -> meas.getName().equalsIgnoreCase("permabilisation time") &&
+        if (measurements.stream().noneMatch(meas -> meas.getName().equalsIgnoreCase("permeabilisation time") &&
                 meas.getValue().equalsIgnoreCase(value))) {
-            problems.add(String.format("A permabilisation measurement of %s seconds was not found in slot %s of labware %s.",
+            problems.add(String.format("A permeabilisation measurement of %s seconds was not found in slot %s of labware %s.",
                     value, slot.getAddress(), lw.getBarcode()));
         }
     }

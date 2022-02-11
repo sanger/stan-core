@@ -49,7 +49,7 @@ public class ResultServiceImp extends BaseResultService implements ResultService
 
     @Override
     public OperationResult recordVisiumQC(User user, ResultRequest request) {
-        return recordResultForOperation(user, request, "Visium permabilisation");
+        return recordResultForOperation(user, request, "Visium permeabilisation");
     }
 
     public OperationResult recordResultForOperation(User user, ResultRequest request, String refersToOpName) {
