@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * A request to record permabilisation on a single slide.
+ * A request to record permeabilisation on a single slide.
  * @author dr6
  */
 public class RecordPermRequest {
@@ -18,21 +18,23 @@ public class RecordPermRequest {
         private Address address;
         private Integer seconds;
         private ControlType controlType;
+        private String controlBarcode;
 
         public PermData() {}
 
-        public PermData(Address address, Integer seconds, ControlType controlType) {
+        public PermData(Address address, Integer seconds, ControlType controlType, String controlBarcode) {
             this.address = address;
             this.seconds = seconds;
             this.controlType = controlType;
+            this.controlBarcode = controlBarcode;
         }
 
         public PermData(Address address, Integer seconds) {
-            this(address, seconds, null);
+            this(address, seconds, null, null);
         }
 
         public PermData(Address address, ControlType controlType) {
-            this(address, null, controlType);
+            this(address, null, controlType, null);
         }
 
         public Address getAddress() {
@@ -59,6 +61,14 @@ public class RecordPermRequest {
             this.controlType = controlType;
         }
 
+        public String getControlBarcode() {
+            return this.controlBarcode;
+        }
+
+        public void setControlBarcode(String controlBarcode) {
+            this.controlBarcode = controlBarcode;
+        }
+
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
@@ -66,12 +76,13 @@ public class RecordPermRequest {
             PermData that = (PermData) o;
             return (Objects.equals(this.address, that.address)
                     && Objects.equals(this.seconds, that.seconds)
+                    && Objects.equals(this.controlBarcode, that.controlBarcode)
                     && this.controlType == that.controlType);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(address, seconds, controlType);
+            return Objects.hash(address, seconds, controlType, controlBarcode);
         }
 
         @Override
@@ -80,6 +91,7 @@ public class RecordPermRequest {
                     .add("address", address)
                     .addIfNotNull("seconds", seconds)
                     .addIfNotNull("controlType", controlType)
+                    .addReprIfNotNull("controlBarcode", controlBarcode)
                     .toString();
         }
     }

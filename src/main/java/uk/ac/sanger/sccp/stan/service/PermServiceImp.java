@@ -4,8 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.OperationResult;
-import uk.ac.sanger.sccp.stan.request.RecordPermRequest;
+import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.request.RecordPermRequest.PermData;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 
@@ -27,12 +26,13 @@ public class PermServiceImp implements PermService {
     private final OperationTypeRepo opTypeRepo;
     private final OperationRepo opRepo;
     private final MeasurementRepo measurementRepo;
+    private final SlotRepo slotRepo;
 
     @Autowired
     public PermServiceImp(LabwareValidatorFactory labwareValidatorFactory, OperationService opService,
                           WorkService workService,
                           LabwareRepo labwareRepo, OperationTypeRepo opTypeRepo, OperationRepo opRepo,
-                          MeasurementRepo measurementRepo) {
+                          MeasurementRepo measurementRepo, SlotRepo slotRepo) {
         this.labwareValidatorFactory = labwareValidatorFactory;
         this.opService = opService;
         this.workService = workService;
@@ -40,6 +40,7 @@ public class PermServiceImp implements PermService {
         this.opTypeRepo = opTypeRepo;
         this.opRepo = opRepo;
         this.measurementRepo = measurementRepo;
+        this.slotRepo = slotRepo;
     }
 
     @Override
@@ -48,13 +49,15 @@ public class PermServiceImp implements PermService {
         requireNonNull(request, "Request is null");
         final Set<String> problems = new LinkedHashSet<>();
         Labware lw = lookUpLabware(problems, request.getBarcode());
+        Labware controlLabware = lookUpControlLabware(problems, request.getPermData());
         validateLabware(problems, lw);
+        validateControlLabware(problems, controlLabware);
         validatePermData(problems, lw, request.getPermData());
         Work work = workService.validateUsableWork(problems, request.getWorkNumber());
         if (!problems.isEmpty()) {
             throw new ValidationException("The request could not be validated.", problems);
         }
-        return record(user, lw, request.getPermData(), work);
+        return record(user, lw, request.getPermData(), controlLabware, work);
     }
 
     /**
@@ -75,6 +78,33 @@ public class PermServiceImp implements PermService {
             return optLw.get();
         }
         problems.add("Unknown labware barcode: "+repr(barcode));
+        return null;
+    }
+
+    /**
+     * Looks up the control barcode (there should be one at most).
+     * @param problems receptacle for problems
+     * @param permData the perm data that may include a control barcode
+     * @return the labware loaded from the control barcode; or null
+     */
+    public Labware lookUpControlLabware(Collection<String> problems, Collection<PermData> permData) {
+        String[] barcodes = permData.stream()
+                .map(PermData::getControlBarcode)
+                .filter(Objects::nonNull)
+                .toArray(String[]::new);
+        if (barcodes.length==0) {
+            return null;
+        }
+        if (barcodes.length > 1) {
+            problems.add("A control barcode was specified in multiple slots.");
+            return null;
+        }
+        String barcode = barcodes[0];
+        var optLw = labwareRepo.findByBarcode(barcode);
+        if (optLw.isPresent()) {
+            return optLw.get();
+        }
+        problems.add("Unknown control barcode: "+repr(barcode));
         return null;
     }
 
@@ -106,6 +136,21 @@ public class PermServiceImp implements PermService {
         if (ops.isEmpty()) {
             problems.add("Stain has not been recorded on labware "+lw.getBarcode()+".");
         }
+    }
+
+    /**
+     * Checks that the control labware is suitable, if given.
+     * @param problems receptacle for problems
+     * @param lw the control labware to validate, or null if there is no labware to validate
+     */
+    public void validateControlLabware(Collection<String> problems, Labware lw) {
+        if (lw==null) {
+            return;
+        }
+        LabwareValidator lv = labwareValidatorFactory.getValidator(List.of(lw));
+        lv.setSingleSample(true);
+        lv.validateSources();
+        problems.addAll(lv.getErrors());
     }
 
     /**
@@ -142,6 +187,7 @@ public class PermServiceImp implements PermService {
         Set<Address> repeatedAddresses = new LinkedHashSet<>();
         Set<Address> invalidAddresses = new LinkedHashSet<>();
         Set<Address> emptyAddresses = new LinkedHashSet<>();
+        Set<Address> nonemptyControlBarcodeAddresses = new LinkedHashSet<>();
         boolean anyNull = false;
         for (PermData pd : permData) {
             final Address address = pd.getAddress();
@@ -153,8 +199,10 @@ public class PermServiceImp implements PermService {
                 var optSlot = lw.optSlot(address);
                 if (optSlot.isEmpty()) {
                     invalidAddresses.add(address);
-                } else if (optSlot.get().getSamples().isEmpty()) {
+                } else if (optSlot.get().getSamples().isEmpty() && pd.getControlBarcode()==null) {
                     emptyAddresses.add(address);
+                } else if (pd.getControlBarcode()!=null && !optSlot.get().getSamples().isEmpty()) {
+                    nonemptyControlBarcodeAddresses.add(address);
                 }
             }
         }
@@ -170,18 +218,23 @@ public class PermServiceImp implements PermService {
         if (!emptyAddresses.isEmpty()) {
             problems.add("Indicated slot is empty: "+emptyAddresses);
         }
+        if (!nonemptyControlBarcodeAddresses.isEmpty()) {
+            problems.add("Positive control labware cannot be transferred into nonempty slot: "+nonemptyControlBarcodeAddresses);
+        }
     }
 
     /**
      * Checks that the values in the perm data are valid.
      * Valid means that for each perm data element either a perm time (in seconds) is given, or a control type
-     * is given, but not both.
+     * is given, but not both; also it requires that any address that is given a control barcode should be
+     * marked as a positive control.
      * @param problems receptacle for problems
      * @param permData the data to check
      */
     public void validatePermValues(Collection<String> problems, Collection<PermData> permData) {
         Set<Address> addressesBoth = new LinkedHashSet<>();
         Set<Address> addressesNeither = new LinkedHashSet<>();
+        Set<Address> addressesWithBarcodeNotPosCon = new LinkedHashSet<>();
         for (PermData pd : permData) {
             final Address address = pd.getAddress();
             if (address !=null) {
@@ -192,6 +245,9 @@ public class PermServiceImp implements PermService {
                 } else if (pd.getSeconds() != null) {
                     addressesBoth.add(address);
                 }
+                if (pd.getControlBarcode()!=null && pd.getControlType()!=ControlType.positive) {
+                    addressesWithBarcodeNotPosCon.add(address);
+                }
             }
         }
         if (!addressesBoth.isEmpty()) {
@@ -200,6 +256,9 @@ public class PermServiceImp implements PermService {
         if (!addressesNeither.isEmpty()) {
             problems.add("Neither control type nor time specified for the given address: "+addressesNeither);
         }
+        if (!addressesWithBarcodeNotPosCon.isEmpty()) {
+            problems.add("Control barcode specified for address that is not a positive control: "+addressesWithBarcodeNotPosCon);
+        }
     }
 
     /**
@@ -207,18 +266,62 @@ public class PermServiceImp implements PermService {
      * @param user the user responsible for the operation
      * @param lw the labware involved in the operation
      * @param permData the perm data to record as measurements
+     * @param controlLabware the labware specified for positive controls, if any
      * @param work the work to associate the operation with, or null
      * @return the operation recorded and the labware
      */
-    public OperationResult record(User user, Labware lw, Collection<PermData> permData, Work work) {
+    public OperationResult record(User user, Labware lw, Collection<PermData> permData, Labware controlLabware, Work work) {
         OperationType opType = opTypeRepo.getByName("Visium permabilisation");
+
+        Operation addControlOp;
+        if (controlLabware!=null) {
+            Address address = permData.stream()
+                    .filter(pd -> pd.getControlBarcode()!=null)
+                    .map(PermData::getAddress)
+                    .findAny()
+                    .orElseThrow();
+            addControlOp = addControl(user, controlLabware, lw, address);
+        } else {
+            addControlOp = null;
+        }
+
         Operation op = opService.createOperationInPlace(opType, user, lw, null, null);
         createMeasurements(op.getId(), lw, permData);
         List<Operation> ops = List.of(op);
         if (work!=null) {
             workService.link(work, ops);
         }
+        if (addControlOp!=null) {
+            ops = List.of(addControlOp, op);
+        }
         return new OperationResult(ops, List.of(lw));
+    }
+
+    /**
+     * Adds a control from the given src labware into the destination at the specified address.
+     * The source labware must contain one sample in one slot.
+     * The destination labware is updated and new contents are saved.
+     * An "Add control" operation is recorded to represent the transfer.
+     * @param user the user responsible for the operation
+     * @param src the source of the control
+     * @param dst the destination to which the control must be added
+     * @param address the address of the slot in the destination to add the control
+     * @return the operation recorded
+     */
+    public Operation addControl(User user, Labware src, Labware dst, Address address) {
+        OperationType opType = opTypeRepo.getByName("Add control");
+        Slot srcSlot = src.getSlots()
+                .stream()
+                .filter(slot -> !slot.getSamples().isEmpty())
+                .findAny()
+                .orElseThrow();
+        Sample sample = srcSlot.getSamples().get(0);
+        Slot dstSlot = dst.getSlot(address);
+        dstSlot.addSample(sample);
+        dstSlot = slotRepo.save(dstSlot);
+
+        Action action = new Action(null, null, srcSlot, dstSlot, sample, sample);
+        return opService.createOperation(opType, user, List.of(action), null);
     }
 
     /**

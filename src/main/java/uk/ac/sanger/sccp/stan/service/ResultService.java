@@ -15,7 +15,7 @@ public interface ResultService {
     OperationResult recordStainQC(User user, ResultRequest request);
 
     /**
-     * Records the given result request for visium permabilisation
+     * Records the given result request for visium permeabilisation
      * @param user the user responsible for the request
      * @param request the request to record
      * @return an operation result (operations and labware)

@@ -75,6 +75,13 @@ public class Slot {
         this.samples = newArrayList(samples);
     }
 
+    /**
+     * Adds a sample to this slot's list of samples. No validation.
+     */
+    public void addSample(Sample sample) {
+        this.samples.add(sample);
+    }
+
     public Integer getBlockSampleId() {
         return this.blockSampleId;
     }

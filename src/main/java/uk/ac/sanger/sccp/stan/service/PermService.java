@@ -5,7 +5,7 @@ import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.request.RecordPermRequest;
 
 /**
- * Service to record permabilisation
+ * Service to record permeabilisation
  */
 public interface PermService {
     /**
