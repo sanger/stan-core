@@ -181,16 +181,23 @@ public class TestExtractService {
         verify(mockValidator).throwError(any());
     }
 
+    /**
+     * Check that {@link ExtractServiceImp#createNewLabware} produces the right map in the right order.
+     */
     @Test
     public void testCreateNewLabware() {
+        Labware src2 = EntityFactory.makeEmptyLabware(lwType); // note that the sources are not created in 1,2,3 order
         Labware src1 = EntityFactory.makeEmptyLabware(lwType);
-        Labware src2 = EntityFactory.makeEmptyLabware(lwType);
+        Labware src3 = EntityFactory.makeEmptyLabware(lwType);
         Labware dst1 = EntityFactory.makeEmptyLabware(lwType);
         Labware dst2 = EntityFactory.makeEmptyLabware(lwType);
-        when(mockLwService.create(any(LabwareType.class))).thenReturn(dst1, dst2);
+        Labware dst3 = EntityFactory.makeEmptyLabware(lwType);
+        when(mockLwService.create(any(LabwareType.class))).thenReturn(dst1, dst2, dst3);
 
-        assertEquals(Map.of(src1, dst1, src2, dst2), service.createNewLabware(lwType, List.of(src1, src2)));
-        verify(mockLwService, times(2)).create(lwType);
+        final Map<Labware, Labware> lwMap = service.createNewLabware(lwType, List.of(src1, src2, src3));
+        // The map entries must match the order that the sources were passed in.
+        assertThat(lwMap).containsExactly(Map.entry(src1, dst1), Map.entry(src2, dst2), Map.entry(src3, dst3));
+        verify(mockLwService, times(3)).create(lwType);
     }
 
     @Test
@@ -222,12 +229,17 @@ public class TestExtractService {
                 new Sample(2, 3, tissue, tissueBioState),
                 new Sample(3, null, tissue, rnaBioState),
         };
+
+        // Create the sources in a different order from the order we are going to pass them in,
+        // to make sure the method orders them correctly
+        Labware source2 = EntityFactory.makeLabware(EntityFactory.makeLabwareType(1, 2), null, sourceSamples[1]);
+
         // source 1: a tissue sample in the first slot
         // source 2: a tissue sample in the SECOND slot
         // source 3: an RNA sample in the first slot
         Labware[] sources = {
                 EntityFactory.makeLabware(lwType, sourceSamples[0]),
-                EntityFactory.makeLabware(EntityFactory.makeLabwareType(1, 2), null, sourceSamples[1]),
+                source2,
                 EntityFactory.makeLabware(lwType, sourceSamples[2]),
         };
 
@@ -235,7 +247,7 @@ public class TestExtractService {
                 .mapToObj(i -> EntityFactory.makeEmptyLabware(lwType))
                 .toArray(Labware[]::new);
 
-        final Map<Labware, Labware> lwMap = new HashMap<>(3);
+        final Map<Labware, Labware> lwMap = new LinkedHashMap<>(3);
         IntStream.range(0, sources.length)
                 .forEach(i -> lwMap.put(sources[i], dests[i]));
 
@@ -270,18 +282,18 @@ public class TestExtractService {
                 .map(ss -> new Sample(10+ss.getId(), ss.getSection(), tissue, rnaBioState))
                 .toArray(Sample[]::new);
 
-        Labware[] srcLabware = {
-                EntityFactory.makeLabware(lwType, srcSamples[0]),
-                EntityFactory.makeLabware(EntityFactory.makeLabwareType(1,2), null, srcSamples[1]),
-        };
+        // Create the samples in a different order from how we pass them into the method
+        Labware[] srcLabware = new Labware[2];
+        srcLabware[1] = EntityFactory.makeLabware(EntityFactory.makeLabwareType(1,2), null, srcSamples[1]);
+        srcLabware[0] = EntityFactory.makeLabware(lwType, srcSamples[0]);
 
         Labware[] dstLabware = Arrays.stream(dstSamples)
                 .map(sam -> EntityFactory.makeLabware(lwType, sam))
                 .toArray(Labware[]::new);
 
-        Map<Labware, Labware> labwareMap = IntStream.range(0, srcSamples.length)
-                .boxed()
-                .collect(toMap(i -> srcLabware[i], i -> dstLabware[i]));
+        final Map<Labware, Labware> labwareMap = new LinkedHashMap<>(srcSamples.length);
+        IntStream.range(0, srcSamples.length)
+                .forEach(i -> labwareMap.put(srcLabware[i], dstLabware[i]));
         final List<Operation> createdOps = new ArrayList<>();
         when(mockOpService.createOperation(any(), any(), any(), any())).then(invocation -> {
             OperationType opType = invocation.getArgument(0);
@@ -298,10 +310,8 @@ public class TestExtractService {
         List<Operation> returnedOps = service.createOperations(user, opType, labwareMap);
         assertEquals(createdOps, returnedOps);
 
-        if (returnedOps.get(0).getActions().get(0).getSource().getLabwareId().equals(srcLabware[1].getId())) {
-            returnedOps.set(0, returnedOps.set(1, returnedOps.get(0)));
-            // make sure the ops are in the order corresponding to the labware
-        }
+        // make sure the ops are in the order corresponding to the labware
+        assertEquals(srcLabware[0].getId(), returnedOps.get(0).getActions().get(0).getSource().getLabwareId());
 
         for (int i = 0; i < 2; ++i) {
             Operation op = returnedOps.get(i);

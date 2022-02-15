@@ -99,13 +99,6 @@ public class TestExtractMutation {
 
         List<Map<String,?>> opData = chainGet(extractData, "operations");
         assertThat(opData).hasSize(2);
-        if (sources[0].getId().equals(chainGet(opData, 1, "actions", 0, "source", "labwareId"))) {
-            swap(opData, 0, 1);
-        }
-        if (chainGet(opData, 0, "actions", 0, "destination", "labwareId").equals(
-                chainGet(lwData, 1, "id"))) {
-            swap(lwData, 0, 1);
-        }
         int[] sampleIds = new int[2];
         int[] destIds = new int[2];
         int[] opIds = new int[2];
