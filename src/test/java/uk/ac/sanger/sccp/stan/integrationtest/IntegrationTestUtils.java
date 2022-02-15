@@ -54,10 +54,6 @@ public class IntegrationTestUtils {
         return chainGet(container, accessors);
     }
 
-    public static <E> void swap(List<E> list, int i, int j) {
-        list.set(i, list.set(j, list.get(i)));
-    }
-
     public static <K, V> Map<K, V> nullableMapOf(K key1, V value1, K key2, V value2, K key3, V value3) {
         Map<K, V> map = new HashMap<>(3);
         map.put(key1, value1);
