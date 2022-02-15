@@ -12,9 +12,9 @@ import uk.ac.sanger.sccp.stan.service.store.StoreService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
+import static java.util.stream.Collectors.toList;
 
 /**
  * Service for performing extraction.
@@ -116,12 +116,13 @@ public class ExtractServiceImp implements ExtractService {
     /**
      * Creates new labware as destination for the extractions.
      * Returns a map of existing source labware to new destination labware.
+     * The order of the map will match the order of the given labware.
      * @param lwType the type of the new labware
      * @param sources the source labware
      * @return a map of source to destination labware
      */
     public Map<Labware, Labware> createNewLabware(LabwareType lwType, List<Labware> sources) {
-        Map<Labware, Labware> map = new HashMap<>(sources.size());
+        Map<Labware, Labware> map = new LinkedHashMap<>(sources.size());
         for (Labware source : sources) {
             Labware dest = labwareService.create(lwType);
             map.put(source, dest);
@@ -139,12 +140,13 @@ public class ExtractServiceImp implements ExtractService {
                 .map(lw -> {
                     lw.setDiscarded(true);
                     return labwareRepo.save(lw);
-                }).collect(Collectors.toList());
+                }).collect(toList());
     }
 
     /**
      * Creates samples, inserting them into the destination labware.
      * The samples will have bio state RNA. (If the source samples have that bio state, they will be reused.)
+     * The order samples are created should match the order of the given map.
      * @param labwareMap map of source to destination labware
      * @param bioState the bio state for the new samples
      */
@@ -169,6 +171,7 @@ public class ExtractServiceImp implements ExtractService {
     /**
      * Creates extract operations.
      * Uses {@link OperationService}.
+     * The order of the operations should match the order of the given map.
      * @param user the user responsible for the operations
      * @param opType the type of operation
      * @param labwareMap the map of source to destination labware
