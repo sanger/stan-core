@@ -180,7 +180,7 @@ public class TestVisiumAnalysisService {
                 A3 = new Address(1,3);
         List<Measurement> a1Measurements = List.of(
                 new Measurement(10, "bananaas", "360", 10, 20, 30),
-                new Measurement(11, "permabilisation time", "240", 10, 20, 30)
+                new Measurement(11, "permeabilisation time", "240", 10, 20, 30)
         );
 
         return Arrays.stream(new Object[][] {
@@ -189,7 +189,7 @@ public class TestVisiumAnalysisService {
                 {lw, A3, 240, null, "Slot A3 does not exist in labware STAN-500."},
                 {lw, A2, 240, null, "There are no samples in slot A2 of labware STAN-500."},
                 {lw, A1, null, null, "No selected time specified."},
-                {lw, A1, 360, a1Measurements, "A permabilisation measurement of 360 seconds was not found " +
+                {lw, A1, 360, a1Measurements, "A permeabilisation measurement of 360 seconds was not found " +
                         "in slot A1 of labware STAN-500."},
                 {lw, A1, 240, a1Measurements, null},
         }).map(Arguments::of);

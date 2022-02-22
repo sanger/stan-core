@@ -268,7 +268,7 @@ public class TestPermService {
             service.validatePermData(problems, lw, permData);
             verify(service, never()).validateAddresses(any(), any(), any());
             verify(service, never()).validatePermValues(any(), any());
-            assertThat(problems).containsExactly("No permabilisation data provided.");
+            assertThat(problems).containsExactly("No permeabilisation data provided.");
             return;
         }
         doAnswer(invocation -> {
@@ -364,7 +364,7 @@ public class TestPermService {
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
     public void testRecord(boolean hasControlLabware) {
-        OperationType opType = EntityFactory.makeOperationType("Visium permabilisation", null);
+        OperationType opType = EntityFactory.makeOperationType("Visium permeabilisation", null);
         Work work = new Work(14, "SGP14", null, null, null, Work.Status.active);
         User user = EntityFactory.getUser();
         Labware lw = EntityFactory.getTube();
@@ -448,8 +448,8 @@ public class TestPermService {
         Integer sam1id = sam1.getId();
         Integer sam2id = sam2.getId();
         List<Measurement> expectedMeasurements = List.of(
-                new Measurement(null, "permabilisation time", "4", sam1id, opId, slot1id),
-                new Measurement(null, "permabilisation time", "4", sam2id, opId, slot1id),
+                new Measurement(null, "permeabilisation time", "4", sam1id, opId, slot1id),
+                new Measurement(null, "permeabilisation time", "4", sam2id, opId, slot1id),
                 new Measurement(null, "control", "positive", sam2id, opId, slot2id)
         );
 

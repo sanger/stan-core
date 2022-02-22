@@ -9,7 +9,7 @@ public enum MeasurementType {
     Eosin(MeasurementValueType.TIME),
     Blueing(MeasurementValueType.TIME),
     Concentration(MeasurementValueType.DECIMAL, "ng/μL"),
-    Permabilisation_time(MeasurementValueType.TIME),
+    Permeabilisation_time(MeasurementValueType.TIME),
     Selected_time(MeasurementValueType.TIME),
     DV200(MeasurementValueType.DECIMAL, "%"),
     ;

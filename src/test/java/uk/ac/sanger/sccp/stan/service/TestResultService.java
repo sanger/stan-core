@@ -86,7 +86,7 @@ public class TestResultService {
         doReturn(opRes).when(service).recordResultForOperation(any(), any(), any());
 
         assertSame(opRes, service.recordVisiumQC(user, request));
-        verify(service).recordResultForOperation(same(user), same(request), eq("Visium permabilisation"));
+        verify(service).recordResultForOperation(same(user), same(request), eq("Visium permeabilisation"));
         assertEquals(resultOpName, request.getOperationType());
     }
 

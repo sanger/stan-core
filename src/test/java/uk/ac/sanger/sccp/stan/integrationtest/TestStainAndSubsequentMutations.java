@@ -105,7 +105,7 @@ public class TestStainAndSubsequentMutations {
         Sample controlSample = entityCreator.createSample(tissue, 50);
         Labware controlLabware = entityCreator.createLabware("STAN-C0", entityCreator.getTubeType(), controlSample);
 
-        entityCreator.createOpType("Visium permabilisation", null, OperationTypeFlag.IN_PLACE);
+        entityCreator.createOpType("Visium permeabilisation", null, OperationTypeFlag.IN_PLACE);
         Object data = tester.post(tester.readGraphQL("perm.graphql"));
         List<?> ops = chainGet(data, "data", "recordPerm", "operations");
         assertThat(ops).hasSize(2);
@@ -124,7 +124,7 @@ public class TestStainAndSubsequentMutations {
         List<Measurement> measurements = measurementRepo.findAllByOperationIdIn(List.of(permId));
         assertThat(measurements).hasSize(2);
         Measurement timeMeasurement = measurements.stream()
-                .filter(m -> m.getName().equalsIgnoreCase("permabilisation time"))
+                .filter(m -> m.getName().equalsIgnoreCase("permeabilisation time"))
                 .findAny().orElseThrow();
         Measurement controlMeasurement = measurements.stream()
                 .filter(m -> m.getName().equalsIgnoreCase("control"))
