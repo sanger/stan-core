@@ -42,6 +42,8 @@ public class TestStainAndSubsequentMutations {
     private MeasurementRepo measurementRepo;
     @Autowired
     private TissueRepo tissueRepo;
+    @Autowired
+    private OperationCommentRepo opCommentRepo;
 
     @Transactional
     @Test
@@ -86,6 +88,11 @@ public class TestStainAndSubsequentMutations {
         List<ResultOp> results = resultOpRepo.findAllByOperationIdIn(List.of(resultOpId));
         assertThat(results).hasSize(1);
         ResultOp result = results.get(0);
+        var opComs = opCommentRepo.findAllByOperationIdIn(List.of(resultOpId));
+        assertThat(opComs).hasSize(1);
+        OperationComment opCom = opComs.get(0);
+        assertEquals(opCom.getComment().getId(), 1);
+        assertEquals(opCom.getSlotId(), lw.getSlots().get(0).getId());
         assertEquals(PassFail.pass, result.getResult());
         assertEquals(resultOpId, result.getOperationId());
         assertEquals(sam.getId(), result.getSampleId());
@@ -182,6 +189,11 @@ public class TestStainAndSubsequentMutations {
         ResultOp ro = resultOps.get(0);
         assertEquals(PassFail.pass, ro.getResult());
         assertEquals(permOpId, ro.getRefersToOpId());
+        var opComs = opCommentRepo.findAllByOperationIdIn(List.of(opId));
+        assertThat(opComs).hasSize(1);
+        OperationComment opCom = opComs.get(0);
+        assertEquals(opCom.getComment().getId(), 1);
+
         return opId;
     }
 
@@ -199,6 +211,7 @@ public class TestStainAndSubsequentMutations {
         Map<String, ?> spf = spfs.get(0);
         assertEquals("A1", spf.get("address"));
         assertEquals("pass", spf.get("result"));
-        assertNull(spf.get("comment"));
+        Comment comment = opCommentRepo.findAllByOperationIdIn(List.of(qcOpId)).get(0).getComment();
+        assertEquals(comment.getText(), spf.get("comment"));
     }
 }

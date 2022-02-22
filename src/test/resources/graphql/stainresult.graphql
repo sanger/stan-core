@@ -8,6 +8,7 @@ mutation {
                     {
                         address: "A1"
                         result: pass
+                        commentId: 1
                     }
                 ]
             }
