@@ -481,23 +481,23 @@ public class TestSectionRegisterValidation {
                         .problem("Mould size \"None\" not found."),
                 testData.get()
                         .content("EXT1", "4", "ARM", 1, "Donor1", "None", "None", null, "human")
-                        .problem("Missing HMDMC number."),
+                        .problem("Missing HuMFre number."),
                 testData.get()
                         .content("EXT1", "4", "ARM", 1, "Donor1", "None", "None", "", "human")
                         .content("EXT2", "4", "ARM", 1, "Donor1", "None", "None", "2021/01", "")
-                        .problem("Missing HMDMC number."),
+                        .problem("Missing HuMFre number."),
                 testData.get()
                         .content("EXT1", "4", "ARM", 1, "Donor1", "None", "None", "2021/404", "human")
                         .content("EXT2", "4", "ARM", 1, "Donor1", "None", "None", "2021/405", "human")
                         .content("EXT3", "4", "ARM", 1, "Donor1", "None", "None", "2021/405", "human")
-                        .problem("Unknown HMDMC numbers: [2021/404, 2021/405]"),
+                        .problem("Unknown HuMFre numbers: [2021/404, 2021/405]"),
                 testData.get()
                         .content("EXT1", "4", "ARM", 1, "Donor2", "None", "None", "2021/01", "Hamster")
-                        .problem("Unexpected HMDMC number received for non-human tissue."),
+                        .problem("Unexpected HuMFre number received for non-human tissue."),
                 testData.get()
                         .content("EXT1", "4", "ARM", 1, "Donor2", "None", "None", "2021/03", "Human")
                         .content("EXT2", "4", "ARM", 1, "Donor2", "None", "None", "2021/04", "Human")
-                        .problem("HMDMC not enabled: [2021/03, 2021/04]"),
+                        .problem("HuMFre number not enabled: [2021/03, 2021/04]"),
                 testData.get()
                         .content(null, "4", "ARM", 1, "Donor1", "None", "None", "2021/01", "Human")
                         .problem("Missing external identifier."),
@@ -555,11 +555,11 @@ public class TestSectionRegisterValidation {
                 testData.get()
                         .content(null, null, null, null, null, null, null, null, "Human")
                         .problems("Missing external identifier.", "Missing replicate number.", "Missing tissue type.", "Missing spatial location.", "Missing medium.",
-                                "Missing fixative.", "Missing HMDMC number."),
+                                "Missing fixative.", "Missing HuMFre number."),
                 testData.get()
                         .content("!X11", "!-1", "Squirrel", 2, null, "Custard", "Stapler", "2021/404", null)
                         .problems("Bad external name: !X11", "Bad replicate: !-1", "Unknown tissue type: [Squirrel]", "Unknown medium: [Custard]",
-                                "Unknown fixative: [Stapler]", "Unknown HMDMC number: [2021/404]")
+                                "Unknown fixative: [Stapler]", "Unknown HuMFre number: [2021/404]")
 
         );
     }

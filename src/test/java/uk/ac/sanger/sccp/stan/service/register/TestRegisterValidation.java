@@ -567,17 +567,17 @@ public class TestRegisterValidation {
                 Arguments.of(List.of(h0, h1), List.of("20/001", "20/000", "20/000", ""), List.of("Human", "Human", "Human", "Hamster"),
                         List.of(h0, h1), List.of()),
                 Arguments.of(List.of(h0, h1), List.of("20/001", "20/404", "20/405"), List.of("Human", "Human", "Human"),
-                        List.of(h1), List.of("Unknown HMDMC numbers: [20/404, 20/405]")),
+                        List.of(h1), List.of("Unknown HuMFre numbers: [20/404, 20/405]")),
                 Arguments.of(List.of(h0), Arrays.asList(null, "20/000", null), List.of("Human", "Human", "Human"),
-                        List.of(h0), List.of("Missing HMDMC number.")),
+                        List.of(h0), List.of("Missing HuMFre number.")),
                 Arguments.of(List.of(h0, h1), List.of("20/000", "20/001"), List.of("Human", "Hamster"),
-                        List.of(h0), List.of("Non-human tissue should not have an HMDMC number.")),
+                        List.of(h0), List.of("Non-human tissue should not have a HuMFre number.")),
                 Arguments.of(List.of(h0, h2, h3), List.of("20/000", "20/002", "20/003", "20/002"), List.of("Human", "Human", "Human", "Human"),
-                        List.of(h0, h2, h3), List.of("HMDMC numbers not enabled: [20/002, 20/003]")),
+                        List.of(h0, h2, h3), List.of("HuMFre numbers not enabled: [20/002, 20/003]")),
                 Arguments.of(List.of(h0, h1, h2), List.of("20/000", "20/001", "20/000", "", "", "20/404", "20/002"),
                         List.of("Human", "Human", "Human", "Human", "Human", "Human", "Human"),
-                        List.of(h0, h1, h2), List.of("Missing HMDMC number.", "Unknown HMDMC number: [20/404]",
-                                "HMDMC number not enabled: [20/002]"))
+                        List.of(h0, h1, h2), List.of("Missing HuMFre number.", "Unknown HuMFre number: [20/404]",
+                                "HuMFre number not enabled: [20/002]"))
         );
     }
 
