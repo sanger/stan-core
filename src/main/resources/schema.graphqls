@@ -968,6 +968,8 @@ input LabwareResult {
     barcode: String!
     """The individual results."""
     sampleResults: [SampleResult!]!
+    """Measurements to record in this labware."""
+    slotMeasurements: [SlotMeasurementRequest!]
 }
 
 """A request to record results."""

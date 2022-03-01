@@ -11,6 +11,13 @@ mutation {
                         commentId: 1
                     }
                 ]
+                slotMeasurements: [
+                    {
+                        address: "A1"
+                        name: "tissue coverage"
+                        value: "50"
+                    }
+                ]
             }
         ]
     }) {

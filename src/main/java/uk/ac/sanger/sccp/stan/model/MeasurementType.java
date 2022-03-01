@@ -12,6 +12,7 @@ public enum MeasurementType {
     Permeabilisation_time(MeasurementValueType.TIME),
     Selected_time(MeasurementValueType.TIME),
     DV200(MeasurementValueType.DECIMAL, "%"),
+    Tissue_coverage(MeasurementValueType.INT, "%"),
     ;
 
     private final MeasurementValueType valueType;
@@ -32,6 +33,10 @@ public enum MeasurementType {
 
     public String getUnit() {
         return this.unit;
+    }
+
+    public String friendlyName() {
+        return this.name().replace('_',' ');
     }
 
     public static MeasurementType forName(String name) {

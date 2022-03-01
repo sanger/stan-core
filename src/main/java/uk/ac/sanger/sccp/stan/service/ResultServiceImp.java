@@ -1,13 +1,15 @@
 package uk.ac.sanger.sccp.stan.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.OperationResult;
-import uk.ac.sanger.sccp.stan.request.ResultRequest;
+import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.request.ResultRequest.LabwareResult;
 import uk.ac.sanger.sccp.stan.request.ResultRequest.SampleResult;
+import uk.ac.sanger.sccp.stan.service.measurements.*;
+import uk.ac.sanger.sccp.stan.service.sanitiser.Sanitiser;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.UCMap;
@@ -20,23 +22,33 @@ import static java.util.stream.Collectors.toList;
 public class ResultServiceImp extends BaseResultService implements ResultService {
     private final OperationCommentRepo opCommentRepo;
     private final ResultOpRepo resOpRepo;
+    private final MeasurementRepo measurementRepo;
+
+    private final Sanitiser<String> coverageSanitiser;
 
     private final OperationService opService;
     private final WorkService workService;
     private final CommentValidationService commentValidationService;
+    private final SlotMeasurementValidatorFactory slotMeasurementValidatorFactory;
 
     @Autowired
     public ResultServiceImp(OperationTypeRepo opTypeRepo, LabwareRepo lwRepo, OperationRepo opRepo,
                             OperationCommentRepo opCommentRepo, ResultOpRepo resOpRepo,
+                            MeasurementRepo measurementRepo,
+                            @Qualifier("tissueCoverageSanitiser") Sanitiser<String> coverageSanitiser,
                             LabwareValidatorFactory labwareValidatorFactory,
                             OperationService opService, WorkService workService,
-                            CommentValidationService commentValidationService) {
+                            CommentValidationService commentValidationService,
+                            SlotMeasurementValidatorFactory slotMeasurementValidatorFactory) {
         super(labwareValidatorFactory, opTypeRepo, opRepo, lwRepo);
         this.opCommentRepo = opCommentRepo;
         this.resOpRepo = resOpRepo;
+        this.measurementRepo = measurementRepo;
+        this.coverageSanitiser = coverageSanitiser;
         this.opService = opService;
         this.workService = workService;
         this.commentValidationService = commentValidationService;
+        this.slotMeasurementValidatorFactory = slotMeasurementValidatorFactory;
     }
 
     @Override
@@ -70,6 +82,7 @@ public class ResultServiceImp extends BaseResultService implements ResultService
         }
         UCMap<Labware> labware = validateLabware(problems, request.getLabwareResults());
         validateLabwareContents(problems, labware, request.getLabwareResults());
+        UCMap<List<SlotMeasurementRequest>> measurementMap = validateMeasurements(problems, labware, request.getLabwareResults());
         Map<Integer, Comment> commentMap = validateComments(problems, request.getLabwareResults());
         Work work = workService.validateUsableWork(problems, request.getWorkNumber());
         Map<Integer, Integer> referredOpIds = lookUpPrecedingOps(problems, refersToOpType, labware.values());
@@ -78,7 +91,8 @@ public class ResultServiceImp extends BaseResultService implements ResultService
             throw new ValidationException("The result request could not be validated.", problems);
         }
 
-        return createResults(user, opType, request.getLabwareResults(), labware, referredOpIds, commentMap, work);
+        return createResults(user, opType, request.getLabwareResults(), labware, referredOpIds,
+                commentMap, measurementMap, work);
     }
 
     /**
@@ -87,9 +101,9 @@ public class ResultServiceImp extends BaseResultService implements ResultService
      * @param labwareResults the requested labware results
      * @return a map of labware from its barcode
      */
-    public UCMap<Labware> validateLabware(Collection<String> problems, Collection<ResultRequest.LabwareResult> labwareResults) {
+    public UCMap<Labware> validateLabware(Collection<String> problems, Collection<LabwareResult> labwareResults) {
         List<String> barcodes = labwareResults.stream()
-                .map(ResultRequest.LabwareResult::getBarcode)
+                .map(LabwareResult::getBarcode)
                 .collect(toList());
         return loadLabware(problems, barcodes);
     }
@@ -116,6 +130,35 @@ public class ResultServiceImp extends BaseResultService implements ResultService
                 validateSampleResult(problems, lw, slotIds, sr);
             }
         }
+    }
+
+    /**
+     * Checks the requested measurements on all the labware
+     * @param problems receptacle for problems
+     * @param labware map of labware from its barcode
+     * @param labwareResults the requests for each labware
+     * @return sanitised measurements for each labware barcode
+     */
+    public UCMap<List<SlotMeasurementRequest>> validateMeasurements(Collection<String> problems, UCMap<Labware> labware,
+                                                                    Collection<LabwareResult> labwareResults) {
+        if (labwareResults.stream().allMatch(lr -> lr.getSlotMeasurements().isEmpty())) {
+            return new UCMap<>(); // no measurements given
+        }
+        String coverageMeasurementName = MeasurementType.Tissue_coverage.friendlyName();
+        SlotMeasurementValidator val = slotMeasurementValidatorFactory.getSlotMeasurementValidator(List.of(coverageMeasurementName));
+        val.setValueSanitiser(coverageMeasurementName, coverageSanitiser);
+        UCMap<List<SlotMeasurementRequest>> sanMeasurements = new UCMap<>(labware.size());
+        for (LabwareResult lr : labwareResults) {
+            if (!lr.getSlotMeasurements().isEmpty()) {
+                Labware lw = labware.get(lr.getBarcode());
+                var sm = val.validateSlotMeasurements(lw, lr.getSlotMeasurements());
+                if (lw != null) {
+                    sanMeasurements.put(lw.getBarcode(), sm);
+                }
+            }
+        }
+        problems.addAll(val.compileProblems());
+        return sanMeasurements;
     }
 
     /**
@@ -210,16 +253,19 @@ public class ResultServiceImp extends BaseResultService implements ResultService
      * @param labware the map of barcode to labware
      * @param referredToOpIds the map from labware id to previously recorded op id
      * @param commentMap comments mapped from their ids
+     * @param measurementMap (optional) map from labware barcode to requested measurements
      * @param work the work to link the operations to (optional)
      * @return the new operations and labware
      */
     public OperationResult createResults(User user, OperationType opType, Collection<LabwareResult> lrs,
                                          UCMap<Labware> labware, Map<Integer, Integer> referredToOpIds,
-                                         Map<Integer, Comment> commentMap, Work work) {
+                                         Map<Integer, Comment> commentMap, UCMap<List<SlotMeasurementRequest>> measurementMap,
+                                         Work work) {
         List<Operation> ops = new ArrayList<>(lrs.size());
         List<ResultOp> resultOps = new ArrayList<>();
         List<Labware> labwareList = new ArrayList<>(lrs.size());
         List<OperationComment> opComments = new ArrayList<>();
+        List<Measurement> measurements = new ArrayList<>();
         for (LabwareResult lr : lrs) {
             Labware lw = labware.get(lr.getBarcode());
 
@@ -236,6 +282,10 @@ public class ResultServiceImp extends BaseResultService implements ResultService
                     }
                 }
             }
+            var sms = measurementMap.get(lw.getBarcode());
+            if (sms!=null && !sms.isEmpty()) {
+                makeMeasurements(measurements, lw, op.getId(), sms);
+            }
             ops.add(op);
             labwareList.add(lw);
         }
@@ -243,9 +293,33 @@ public class ResultServiceImp extends BaseResultService implements ResultService
         opCommentRepo.saveAll(opComments);
         resOpRepo.saveAll(resultOps);
 
+        if (!measurements.isEmpty()) {
+            measurementRepo.saveAll(measurements);
+        }
+
         if (work!=null) {
             workService.link(work, ops);
         }
         return new OperationResult(ops, labwareList);
+    }
+
+    /**
+     * Makes (unsaved) measurements for the given SlotMeasurementRequests.
+     * For each SlotMeasurementRequest there will be a measurement for each
+     * sample in the indicated slot.
+     * @param measurements receptacle for the new measurements
+     * @param lw the labware for the measurements
+     * @param opId the operation id for the measurements
+     * @param sms the measurement requests
+     */
+    public void makeMeasurements(List<Measurement> measurements, Labware lw, Integer opId,
+                                 Collection<SlotMeasurementRequest> sms) {
+        for (SlotMeasurementRequest sm : sms) {
+            Slot slot = lw.getSlot(sm.getAddress());
+            for (Sample sample : slot.getSamples()) {
+                Measurement measurement = new Measurement(null, sm.getName(), sm.getValue(), sample.getId(), opId, slot.getId());
+                measurements.add(measurement);
+            }
+        }
     }
 }
