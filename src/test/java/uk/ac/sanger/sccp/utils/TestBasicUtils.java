@@ -5,9 +5,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
 
+import java.time.DayOfWeek;
 import java.util.*;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
+import java.util.stream.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
@@ -20,9 +20,15 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 public class TestBasicUtils {
 
     @ParameterizedTest
+    @CsvSource({"alpha,beta,alpha", ",beta,beta", "alpha,,alpha", ",,"})
+    public void testCoalesce(Object a, Object b, Object expected) {
+        assertEquals(expected, coalesce(a, b));
+    }
+
+    @ParameterizedTest
     @MethodSource("sameContentsArguments")
-    public void testSameContents(Collection<?> alpha, Collection<?> beta, boolean expectedresult) {
-        assertEquals(expectedresult, sameContents(alpha, beta));
+    public void testSameContents(Collection<?> alpha, Collection<?> beta, boolean expectedResult) {
+        assertEquals(expectedResult, sameContents(alpha, beta));
     }
 
     static Stream<Arguments> sameContentsArguments() {
@@ -93,6 +99,17 @@ public class TestBasicUtils {
     @Test
     public void testReprCollection() {
         assertEquals("[\"Alpha\", \"Beta\\t\"]", reprCollection(List.of("Alpha", "Beta\t")));
+        assertEquals("null", reprCollection(null));
+    }
+
+    @Test
+    public void testCommaAndConjunction() {
+        assertEquals("", commaAndConjunction(List.of(), "and"));
+        assertEquals("Alpha", commaAndConjunction(List.of("Alpha"), "and"));
+        assertEquals("Alpha and beta", commaAndConjunction(List.of("Alpha", "beta"), "and"));
+        assertEquals("Alpha, beta and gamma", commaAndConjunction(List.of("Alpha", "beta", "gamma"), "and"));
+        assertEquals("Alpha, beta, gamma, delta or epsilon",
+                commaAndConjunction(List.of("Alpha", "beta", "gamma", "delta", "epsilon"), "or"));
     }
 
     @ParameterizedTest
@@ -114,13 +131,136 @@ public class TestBasicUtils {
         }
     }
 
+    @ParameterizedTest
+    @MethodSource("newArrayListArgs")
+    public <E> void testNewArrayList(Iterable<E> items) {
+        var result = newArrayList(items);
+        if (items==null) {
+            assertThat(result).isInstanceOf(ArrayList.class).isEmpty();
+        } else {
+            assertThat(result).isInstanceOf(ArrayList.class).containsExactlyElementsOf(items);
+        }
+    }
+
+    static Stream<Arguments> newArrayListArgs() {
+        //noinspection FunctionalExpressionCanBeFolded
+        return Stream.of(
+                null, new ArrayList<>(), List.of(), Set.of(),
+                new ArrayList<>(List.of("Bananas")), List.of("Bananas"), Set.of("Bananas"),
+                List.of("Alpha", "Beta", "Gamma"), (Iterable<String>) (List.of("Delta", "Epsilon", "Zeta")::iterator)
+        ).map(Arguments::of);
+    }
+
+    @Test
+    public void testToLinkedHashSet() {
+        LinkedHashSet<Integer> results = Stream.of(1,5,2,4,3,2,4,5,1).collect(toLinkedHashSet());
+        assertThat(results).containsExactly(1,5,2,4,3);
+    }
+
+    @Test
+    public void testToMapWithKeyMapperAndValueMapperAndFactory() {
+        LinkedHashMap<String, String> map = Stream.of("Alpha", "Beta", "Gamma")
+                .collect(toMap(String::toLowerCase, String::toUpperCase, LinkedHashMap::new));
+        assertEquals(map, Map.of("alpha", "ALPHA", "beta", "BETA", "gamma", "GAMMA"));
+
+        EnumMap<DayOfWeek, String> dayMap = Stream.of(DayOfWeek.values())
+                .collect(toMap(day -> day.plus(1L), DayOfWeek::name, () -> new EnumMap<>(DayOfWeek.class)));
+        assertThat(dayMap).hasSize(7);
+        assertEquals("SUNDAY", dayMap.get(DayOfWeek.MONDAY));
+
+        //noinspection ResultOfMethodCallIgnored
+        assertThrows(IllegalStateException.class,
+                () -> Stream.of("Alpha", "Beta", "Alpha")
+                        .collect(toMap(String::toLowerCase, String::toUpperCase, LinkedHashMap::new))
+        );
+    }
+
+    @Test
+    public void testToMapWithKeyMapperAndFactory() {
+        LinkedHashMap<String, String> map = Stream.of("Alpha", "Beta", "Gamma")
+                .collect(toMap(String::toUpperCase, LinkedHashMap::new));
+        assertEquals(map, Map.of("ALPHA", "Alpha", "BETA", "Beta", "GAMMA", "Gamma"));
+
+        EnumMap<DayOfWeek, String> dayMap = Stream.of("MONDAY", "TUESDAY")
+                .collect(toMap(DayOfWeek::valueOf, () -> new EnumMap<>(DayOfWeek.class)));
+        assertThat(dayMap).hasSize(2);
+        assertEquals("MONDAY", dayMap.get(DayOfWeek.MONDAY));
+        assertEquals("TUESDAY", dayMap.get(DayOfWeek.TUESDAY));
+
+        //noinspection ResultOfMethodCallIgnored
+        assertThrows(IllegalStateException.class,
+                () -> Stream.of("Alpha", "Beta", "Gamma", "Beta")
+                        .collect(toMap(String::toUpperCase, LinkedHashMap::new))
+        );
+    }
+
+    @Test
+    public void testToMapWithKeyMapper() {
+        HashMap<String, String> map = Stream.of("Alpha", "Beta", "Gamma")
+                .collect(toMap(String::toUpperCase));
+        assertEquals(map, Map.of("ALPHA", "Alpha", "BETA", "Beta", "GAMMA", "Gamma"));
+
+        //noinspection ResultOfMethodCallIgnored
+        assertThrows(IllegalStateException.class,
+                () -> Stream.of("Alpha", "Beta", "Gamma", "Gamma")
+                        .collect(toMap(String::toUpperCase))
+        );
+    }
+
+    @Test
+    public void testDescribe() {
+        assertEquals("Banana{x=1, y=\"null\"}",
+                describe("Banana").add("x", 1).add("y","null").add("z", null)
+                        .reprStringValues().omitNullValues().toString());
+        assertEquals("Integer{x=1, y=null, z=null}",
+                describe(15).add("x", 1).add("y", "null").add("z", "null").toString());
+    }
+
+    @Test
+    public void testDistinctBySerial() {
+        List<Integer> result = Stream.of(1,2,4,5,6,7,3,4,5,6).filter(distinctBySerial(n -> n%3)).collect(Collectors.toList());
+        assertEquals(List.of(1,2,6), result);
+    }
+
+    @Test
+    public void testDistinctUCSerial() {
+        List<String> result = Stream.of("Alpha", "Beta", "ALPHA", "alpha", "beta", "Gamma", "GAMMA")
+                .filter(distinctUCSerial()).collect(Collectors.toList());
+        assertEquals(List.of("Alpha", "Beta", "Gamma"), result);
+    }
+
     @Test
     public void testAsCollection() {
         assertNull(asCollection(null));
         List<Integer> intList = List.of(2,3,5);
         assertSame(intList, asCollection(intList));
+        Set<Integer> intSet = Set.of(2,3,5);
+        assertSame(intSet, asCollection(intSet));
         //noinspection FunctionalExpressionCanBeFolded
         Iterable<Integer> intIterable = intList::iterator;
         assertEquals(intList, asCollection(intIterable));
+    }
+
+    @Test
+    public void testAsList() {
+        assertNull(asList(null));
+        List<Integer> intList = List.of(2,3,5);
+        assertSame(intList, asList(intList));
+        //noinspection FunctionalExpressionCanBeFolded
+        Iterable<Integer> intIterable = intList::iterator;
+        assertEquals(intList, asList(intIterable));
+    }
+
+    @Test
+    public void testStartsWithIgnoreCase() {
+        assertTrue(startsWithIgnoreCase("Alpha", "ALP"));
+        assertTrue(startsWithIgnoreCase("Alpha", "alp"));
+        assertTrue(startsWithIgnoreCase("Alp*a", "ALP*A"));
+        assertTrue(startsWithIgnoreCase("Alpha", ""));
+        assertTrue(startsWithIgnoreCase("", ""));
+
+        assertFalse(startsWithIgnoreCase("", "a"));
+        assertFalse(startsWithIgnoreCase("Alph", "Alpha"));
+        assertFalse(startsWithIgnoreCase("Alpha", "Balpha"));
     }
 }
