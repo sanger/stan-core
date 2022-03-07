@@ -20,6 +20,7 @@ public class ReleaseEntry {
     private Address storageAddress;
     private String stainType;
     private String bondBarcode;
+    private Integer coverage;
 
     public ReleaseEntry(Labware labware, Slot slot, Sample sample) {
         this(labware, slot, sample, null);
@@ -100,6 +101,14 @@ public class ReleaseEntry {
         this.bondBarcode = bondBarcode;
     }
 
+    public Integer getCoverage() {
+        return this.coverage;
+    }
+
+    public void setCoverage(Integer coverage) {
+        this.coverage = coverage;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -114,7 +123,8 @@ public class ReleaseEntry {
                 && Objects.equals(this.sectionThickness, that.sectionThickness)
                 && Objects.equals(this.storageAddress, that.storageAddress)
                 && Objects.equals(this.stainType, that.stainType)
-                && Objects.equals(this.bondBarcode, that.bondBarcode));
+                && Objects.equals(this.bondBarcode, that.bondBarcode)
+                && Objects.equals(this.coverage, that.coverage));
     }
 
     @Override
@@ -134,6 +144,7 @@ public class ReleaseEntry {
                 .add("storageAddress", storageAddress)
                 .add("stainType", stainType)
                 .add("bondBarcode", bondBarcode)
+                .add("coverage", coverage)
                 .toString();
     }
 }

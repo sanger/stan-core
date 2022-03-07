@@ -1,5 +1,7 @@
 package uk.ac.sanger.sccp.stan.service.releasefile;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
@@ -21,6 +23,8 @@ import static java.util.stream.Collectors.*;
  */
 @Service
 public class ReleaseFileService {
+    Logger log = LoggerFactory.getLogger(ReleaseFileService.class);
+
     private final ReleaseRepo releaseRepo;
     private final SampleRepo sampleRepo;
     private final LabwareRepo labwareRepo;
@@ -72,7 +76,7 @@ public class ReleaseFileService {
         loadLastSection(entries);
         Ancestry ancestry = findAncestry(entries);
         loadSources(entries, ancestry, mode);
-        loadSectionThickness(entries, ancestry);
+        loadMeasurements(entries, ancestry);
         loadLastStain(entries);
         return new ReleaseFileContent(mode, entries);
     }
@@ -312,26 +316,41 @@ public class ReleaseFileService {
     }
 
     /**
-     * Sets the section thickness for the release entries.
-     * The thickness is a measurement recorded on the specified slot, or any ancestral slot
+     * Sets the section thickness and coverage for the release entries.
+     * The measurements may be recorded on the specified slot, or any ancestral slot
      * found through the given ancestry map.
      * @param entries the release entries
      * @param ancestry the ancestry map
      */
-    public void loadSectionThickness(Collection<ReleaseEntry> entries, Ancestry ancestry) {
+    public void loadMeasurements(Collection<ReleaseEntry> entries, Ancestry ancestry) {
         Set<Integer> slotIds = ancestry.keySet().stream().map(ss -> ss.getSlot().getId()).collect(toSet());
         List<Measurement> measurements = measurementRepo.findAllBySlotIdIn(slotIds);
-        Map<Integer, List<Measurement>> slotIdToMeasurement = new HashMap<>();
+        Map<Integer, List<Measurement>> slotIdToThickness = new HashMap<>();
+        Map<Integer, List<Measurement>> slotIdToCoverage = new HashMap<>();
+        final String THICKNESS = MeasurementType.Thickness.friendlyName();
+        final String COVERAGE = MeasurementType.Tissue_coverage.friendlyName();
         for (Measurement measurement : measurements) {
-            if (measurement.getOperationId()!=null && measurement.getName().equalsIgnoreCase("Thickness")) {
-                List<Measurement> slotIdMeasurements = slotIdToMeasurement.computeIfAbsent(measurement.getSlotId(), k -> new ArrayList<>());
+            if (measurement.getOperationId()!=null && measurement.getName().equalsIgnoreCase(THICKNESS)) {
+                List<Measurement> slotIdMeasurements = slotIdToThickness.computeIfAbsent(measurement.getSlotId(), k -> new ArrayList<>());
+                slotIdMeasurements.add(measurement);
+            }
+            if (measurement.getOperationId()!=null && measurement.getName().equalsIgnoreCase(COVERAGE)) {
+                List<Measurement> slotIdMeasurements = slotIdToCoverage.computeIfAbsent(measurement.getSlotId(), k -> new ArrayList<>());
                 slotIdMeasurements.add(measurement);
             }
         }
         for (ReleaseEntry entry : entries) {
-            Measurement measurement = selectMeasurement(entry, slotIdToMeasurement, ancestry);
-            if (measurement!=null) {
-                entry.setSectionThickness(measurement.getValue());
+            Measurement thicknessMeasurement = selectMeasurement(entry, slotIdToThickness, ancestry);
+            if (thicknessMeasurement!=null) {
+                entry.setSectionThickness(thicknessMeasurement.getValue());
+            }
+            Measurement coverageMeasurement = selectMeasurement(entry, slotIdToCoverage, ancestry);
+            if (coverageMeasurement!=null) {
+                try {
+                    entry.setCoverage(Integer.valueOf(coverageMeasurement.getValue()));
+                } catch (NumberFormatException e) {
+                    log.error("Coverage measurement is not an integer: {}", coverageMeasurement);
+                }
             }
         }
     }

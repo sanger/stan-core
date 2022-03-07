@@ -198,4 +198,9 @@ public class FieldValidation {
     public Sanitiser<String> cqSanitiser() {
         return new IntSanitiser("Cq value", null, null);
     }
+
+    @Bean
+    public Sanitiser<String> tissueCoverageSanitiser() {
+        return new IntSanitiser("Tissue coverage", 0, 100);
+    }
 }

@@ -99,6 +99,13 @@ public class TestStainAndSubsequentMutations {
         assertEquals(opId, result.getRefersToOpId());
         assertEquals(lw.getFirstSlot().getId(), result.getSlotId());
 
+        List<Measurement> measurements = measurementRepo.findAllByOperationIdIn(List.of(resultOpId));
+        assertThat(measurements).hasSize(1);
+        Measurement measurement = measurements.get(0);
+        assertEquals(lw.getFirstSlot().getId(), measurement.getSlotId());
+        assertEquals("Tissue coverage", measurement.getName());
+        assertEquals("50", measurement.getValue());
+
         Integer permOpId = testPerm(lw);
         testVisiumAnalysis();
         Integer qcOpId = testVisiumQC(permOpId);

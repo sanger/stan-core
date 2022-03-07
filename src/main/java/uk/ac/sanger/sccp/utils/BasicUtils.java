@@ -121,7 +121,8 @@ public class BasicUtils {
     }
 
     /**
-     * Using {@link MessageVar} pluralise a message with a template.
+     * Using {@link MessageVar} pluralise a message with a template.<br/>
+     * E.g. <code>pluralise("There {is|are} {n} light{s}.", numLights)</code>
      * @param template a template with substitutions baked in
      * @param number the number indicating whether the message should be pluralised or singularised
      * @return the processed string
@@ -341,6 +342,20 @@ public class BasicUtils {
             list.add(item);
         }
         return list;
+    }
+
+    /**
+     * Gets the given iterable as a list. If it is already a list (or is null), it is cast and returned.
+     * If it is not a list, its contents are added to a new list, which is returned.
+     * @param iterable an iterable
+     * @param <E> the type of contents in the iterable
+     * @return the iterable cast as a list, or a new list with the iterable's contents
+     */
+    public static <E> List<E> asList(Iterable<E> iterable) {
+        if (iterable==null || iterable instanceof List) {
+            return (List<E>) iterable;
+        }
+        return newArrayList(iterable);
     }
 
     /**

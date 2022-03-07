@@ -136,7 +136,7 @@ public class TestReleaseFileService {
         doReturn(mode).when(service).checkMode(any());
         doNothing().when(service).loadLastSection(any());
         doNothing().when(service).loadSources(any(), any(), any());
-        doNothing().when(service).loadSectionThickness(any(), any());
+        doNothing().when(service).loadMeasurements(any(), any());
         doNothing().when(service).loadLastStain(any());
 
         List<Integer> releaseIds = List.of(this.release1.getId(), release2.getId());
@@ -151,7 +151,7 @@ public class TestReleaseFileService {
         verify(service).loadLastSection(entries);
         verify(service).findAncestry(entries);
         verify(service).loadSources(entries, ancestry, mode);
-        verify(service).loadSectionThickness(entries, ancestry);
+        verify(service).loadMeasurements(entries, ancestry);
         verify(service).loadLastStain(entries);
     }
 
@@ -418,7 +418,7 @@ public class TestReleaseFileService {
     }
 
     @Test
-    public void testLoadSectionThickness() {
+    public void testLoadMeasurements() {
         setupLabware();
         Labware lw0 = EntityFactory.makeLabware(EntityFactory.getTubeType(), sample);
         var ancestry = makeAncestry(
@@ -428,7 +428,8 @@ public class TestReleaseFileService {
         List<Measurement> measurements = List.of(
                 new Measurement(1, "Thickness", "8", sample.getId(), 10, lw0.getFirstSlot().getId()),
                 new Measurement(2, "Bananas", "X", sample.getId(), 10, lw1.getFirstSlot().getId()),
-                new Measurement(3, "Thickness", "2", sample1.getId(), 10, lw1.getFirstSlot().getId())
+                new Measurement(3, "Thickness", "2", sample1.getId(), 10, lw1.getFirstSlot().getId()),
+                new Measurement(4, "Tissue coverage", "30", sample.getId(), 10, lw0.getFirstSlot().getId())
         );
         when(mockMeasurementRepo.findAllBySlotIdIn(any())).thenReturn(measurements);
         List<ReleaseEntry> entries = List.of(
@@ -436,9 +437,11 @@ public class TestReleaseFileService {
                 new ReleaseEntry(lw1, lw1.getFirstSlot(), sample1)
         );
 
-        service.loadSectionThickness(entries, ancestry);
+        service.loadMeasurements(entries, ancestry);
         assertEquals("8", entries.get(0).getSectionThickness());
         assertEquals("2", entries.get(1).getSectionThickness());
+        assertEquals(30, entries.get(0).getCoverage());
+        assertNull(entries.get(1).getCoverage());
     }
 
     @Test

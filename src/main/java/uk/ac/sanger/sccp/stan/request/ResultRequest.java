@@ -77,11 +77,20 @@ public class ResultRequest {
     public static class LabwareResult {
         private String barcode;
         private List<SampleResult> sampleResults;
+        private List<SlotMeasurementRequest> slotMeasurements;
 
-        public LabwareResult() {}
-        public LabwareResult(String barcode, List<SampleResult> sampleResults) {
+        public LabwareResult() {
+            this(null, null, null);
+        }
+
+        public LabwareResult(String barcode) {
+            this(barcode, null, null);
+        }
+
+        public LabwareResult(String barcode, List<SampleResult> sampleResults, List<SlotMeasurementRequest> slotMeasurements) {
             this.barcode = barcode;
-            this.sampleResults = sampleResults;
+            setSampleResults(sampleResults);
+            setSlotMeasurements(slotMeasurements);
         }
 
         public String getBarcode() {
@@ -97,7 +106,15 @@ public class ResultRequest {
         }
 
         public void setSampleResults(List<SampleResult> sampleResults) {
-            this.sampleResults = sampleResults;
+            this.sampleResults = sampleResults==null ? List.of() : sampleResults;
+        }
+
+        public List<SlotMeasurementRequest> getSlotMeasurements() {
+            return this.slotMeasurements;
+        }
+
+        public void setSlotMeasurements(List<SlotMeasurementRequest> slotMeasurements) {
+            this.slotMeasurements = slotMeasurements==null ? List.of() : slotMeasurements;
         }
 
         @Override
@@ -106,7 +123,8 @@ public class ResultRequest {
             if (o == null || getClass() != o.getClass()) return false;
             LabwareResult that = (LabwareResult) o;
             return (Objects.equals(this.barcode, that.barcode)
-                    && Objects.equals(this.sampleResults, that.sampleResults));
+                    && Objects.equals(this.sampleResults, that.sampleResults)
+                    && Objects.equals(this.slotMeasurements, that.slotMeasurements));
         }
 
         @Override
@@ -119,6 +137,7 @@ public class ResultRequest {
             return BasicUtils.describe("LabwareResult")
                     .addRepr("barcode", barcode)
                     .add("sampleResults", sampleResults)
+                    .add("slotMeasurements", slotMeasurements)
                     .toString();
         }
     }
