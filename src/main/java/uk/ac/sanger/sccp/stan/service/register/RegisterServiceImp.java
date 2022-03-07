@@ -108,7 +108,6 @@ public class RegisterServiceImp implements RegisterService {
             Tissue tissue = new Tissue(null, block.getExternalIdentifier(), block.getReplicateNumber().toLowerCase(),
                     validation.getSpatialLocation(block.getTissueType(), block.getSpatialLocation()),
                     donor,
-                    validation.getMouldSize(block.getMouldSize()),
                     validation.getMedium(block.getMedium()),
                     validation.getFixative(block.getFixative()),
                     hmdmc);

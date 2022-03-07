@@ -25,8 +25,6 @@ public class EntityCreator {
     @Autowired
     private SpatialLocationRepo slRepo;
     @Autowired
-    private MouldSizeRepo mouldSizeRepo;
-    @Autowired
     private MediumRepo mediumRepo;
     @Autowired
     private FixativeRepo fixativeRepo;
@@ -98,7 +96,7 @@ public class EntityCreator {
         if (donor==null) {
             donor = createDonor("DONOR1");
         }
-        return tissueRepo.save(new Tissue(null, externalName, replicate, getAny(slRepo), donor, getAny(mouldSizeRepo),
+        return tissueRepo.save(new Tissue(null, externalName, replicate, getAny(slRepo), donor,
                 getAny(mediumRepo), getAny(fixativeRepo), getAny(hmdmcRepo)));
     }
 

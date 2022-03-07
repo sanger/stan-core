@@ -15,8 +15,6 @@ public interface RegisterValidation {
 
     LabwareType getLabwareType(String name);
 
-    MouldSize getMouldSize(String name);
-
     Medium getMedium(String name);
 
     Fixative getFixative(String name);

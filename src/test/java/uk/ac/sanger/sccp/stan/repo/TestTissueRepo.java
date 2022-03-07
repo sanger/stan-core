@@ -37,8 +37,6 @@ public class TestTissueRepo {
     @Autowired
     private FixativeRepo fixativeRepo;
     @Autowired
-    private MouldSizeRepo mouldSizeRepo;
-    @Autowired
     private HmdmcRepo hmdmcRepo;
 
     @Test
@@ -70,7 +68,7 @@ public class TestTissueRepo {
         String rep2 = "2";
 
         Tissue tissue = tissueRepo.save(new Tissue(null, "TISSUE1", rep1, sl1, donor1,
-                entityCreator.getAny(mouldSizeRepo), med1, fix1, entityCreator.getAny(hmdmcRepo)));
+                med1, fix1, entityCreator.getAny(hmdmcRepo)));
 
         assertThat(tissueRepo.findByDonorIdAndSpatialLocationIdAndMediumIdAndFixativeIdAndReplicate(donor1.getId(), sl1.getId(), med1.getId(), fix1.getId(), rep1))
                 .contains(tissue);
@@ -125,11 +123,10 @@ public class TestTissueRepo {
         };
         Fixative fix = entityCreator.getAny(fixativeRepo);
         Medium med = entityCreator.getAny(mediumRepo);
-        MouldSize mould = entityCreator.getAny(mouldSizeRepo);
         Hmdmc hmdmc = entityCreator.getAny(hmdmcRepo);
         Tissue[] tissues = IntStream.range(0, 3)
                 .mapToObj(i -> tissueRepo.save(new Tissue(null, "TISSUE"+i, String.valueOf(i+1), sls[i],
-                        donor, mould, med, fix, hmdmc)))
+                        donor, med, fix, hmdmc)))
                 .toArray(Tissue[]::new);
         assertThat(tissueRepo.findByTissueTypeId(tt1.getId())).containsExactly(tissues[0], tissues[1]);
     }

@@ -20,7 +20,6 @@ public class BlockRegisterRequest {
     private int highestSection;
     private String labwareType;
     private String medium;
-    private String mouldSize;
     private String fixative;
     private String species;
     private boolean existingTissue;
@@ -113,14 +112,6 @@ public class BlockRegisterRequest {
         this.fixative = fixative;
     }
 
-    public String getMouldSize() {
-        return this.mouldSize;
-    }
-
-    public void setMouldSize(String mouldSize) {
-        this.mouldSize = mouldSize;
-    }
-
     public String getSpecies() {
         return this.species;
     }
@@ -154,7 +145,6 @@ public class BlockRegisterRequest {
                 && Objects.equals(this.labwareType, that.labwareType)
                 && Objects.equals(this.medium, that.medium)
                 && Objects.equals(this.fixative, that.fixative)
-                && Objects.equals(this.mouldSize, that.mouldSize)
                 && Objects.equals(this.species, that.species));
     }
 
@@ -177,7 +167,6 @@ public class BlockRegisterRequest {
                 .add("labwareType", labwareType)
                 .add("medium", medium)
                 .add("fixative", fixative)
-                .add("mouldSize", mouldSize)
                 .add("species", species)
                 .add("existingTissue", existingTissue)
                 .toString();

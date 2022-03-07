@@ -21,8 +21,6 @@ public class Tissue {
     @ManyToOne
     private Donor donor;
     @ManyToOne
-    private MouldSize mouldSize;
-    @ManyToOne
     private Medium medium;
     @ManyToOne
     private Fixative fixative;
@@ -32,13 +30,12 @@ public class Tissue {
     public Tissue() {}
 
     public Tissue(Integer id, String externalName, String replicate, SpatialLocation spatialLocation, Donor donor,
-                  MouldSize mouldSize, Medium medium, Fixative fixative, Hmdmc hmdmc) {
+                  Medium medium, Fixative fixative, Hmdmc hmdmc) {
         this.id = id;
         this.externalName = externalName;
         this.replicate = replicate;
         this.spatialLocation = spatialLocation;
         this.donor = donor;
-        this.mouldSize = mouldSize;
         this.medium = medium;
         this.fixative = fixative;
         this.hmdmc = hmdmc;
@@ -88,14 +85,6 @@ public class Tissue {
         return (this.spatialLocation==null ? null : spatialLocation.getTissueType());
     }
 
-    public MouldSize getMouldSize() {
-        return this.mouldSize;
-    }
-
-    public void setMouldSize(MouldSize mouldSize) {
-        this.mouldSize = mouldSize;
-    }
-
     public Medium getMedium() {
         return this.medium;
     }
@@ -129,7 +118,6 @@ public class Tissue {
                 && Objects.equals(this.externalName, that.externalName)
                 && Objects.equals(this.replicate, that.replicate)
                 && Objects.equals(this.spatialLocation, that.spatialLocation)
-                && Objects.equals(this.mouldSize, that.mouldSize)
                 && Objects.equals(this.medium, that.medium)
                 && Objects.equals(this.donor, that.donor)
                 && Objects.equals(this.hmdmc, that.hmdmc)
@@ -149,7 +137,6 @@ public class Tissue {
                 .add("replicate", replicate)
                 .add("spatialLocation", spatialLocation)
                 .add("donor", donor)
-                .add("mouldSize", mouldSize)
                 .add("medium", medium)
                 .add("fixative", fixative)
                 .add("hmdmc", hmdmc)

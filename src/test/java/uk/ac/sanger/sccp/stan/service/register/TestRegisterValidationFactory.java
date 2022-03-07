@@ -22,7 +22,7 @@ public class TestRegisterValidationFactory {
         Validator<String> mockStringValidator = mock(Validator.class);
         registerValidationFactory = new RegisterValidationFactory(
                 mock(DonorRepo.class), mock(HmdmcRepo.class), mock(TissueTypeRepo.class),
-                mock(LabwareTypeRepo.class), mock(MouldSizeRepo.class), mock(MediumRepo.class),
+                mock(LabwareTypeRepo.class), mock(MediumRepo.class),
                 mock(FixativeRepo.class), mock(TissueRepo.class), mock(SpeciesRepo.class), mock(LabwareRepo.class),
                 mock(BioStateRepo.class), mockStringValidator, mockStringValidator, mockStringValidator,
                 mockStringValidator, mockStringValidator,

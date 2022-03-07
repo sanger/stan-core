@@ -172,14 +172,12 @@ public class TestRegisterService {
             return tissue;
         });
         Hmdmc hmdmc = EntityFactory.getHmdmc();
-        MouldSize ms = EntityFactory.getMouldSize();
         SpatialLocation sl = EntityFactory.getSpatialLocation();
         Medium medium = EntityFactory.getMedium();
         Fixative fix = EntityFactory.getFixative();
 
         when(mockValidation.getTissue(existingTissue.getExternalName().toUpperCase())).thenReturn(existingTissue);
         when(mockValidation.getHmdmc(hmdmc.getHmdmc())).thenReturn(hmdmc);
-        when(mockValidation.getMouldSize(ms.getName())).thenReturn(ms);
         when(mockValidation.getSpatialLocation(sl.getTissueType().getName(), sl.getCode())).thenReturn(sl);
         when(mockValidation.getMedium(medium.getName())).thenReturn(medium);
         when(mockValidation.getFixative(fix.getName())).thenReturn(fix);
@@ -188,14 +186,13 @@ public class TestRegisterService {
                 makeBrr(existingTissue.getExternalName(), donor1.getDonorName(),
                         existingTissue.getHmdmc().getHmdmc(), donor1.getSpecies().getName(),
                         existingTissue.getReplicate(), existingTissue.getSpatialLocation(),
-                        existingTissue.getMouldSize().getName(),
                         existingTissue.getMedium().getName(), existingTissue.getFixative().getName()),
                 makeBrr("TISSUE2", donor2.getDonorName(),
                         hmdmc.getHmdmc(), human.getName(),
-                        "7", sl, ms.getName(), medium.getName(), fix.getName()),
+                        "7", sl, medium.getName(), fix.getName()),
                 makeBrr("TISSUE3", donor3.getDonorName(),
                         null, hamster.getName(),
-                        "14", sl, ms.getName(), medium.getName(), fix.getName())
+                        "14", sl, medium.getName(), fix.getName())
         );
         RegisterRequest request = new RegisterRequest(brs);
 
@@ -220,7 +217,6 @@ public class TestRegisterService {
                 assertEquals("14", tissue.getReplicate());
             }
             assertEquals(sl, tissue.getSpatialLocation());
-            assertEquals(ms, tissue.getMouldSize());
             assertEquals(medium, tissue.getMedium());
             assertEquals(fix, tissue.getFixative());
 
@@ -231,7 +227,7 @@ public class TestRegisterService {
     private BlockRegisterRequest makeBrr(String externalName, String donorName,
                                          String hmdmc, String species,
                                          String replicate, SpatialLocation sl,
-                                         String mouldName, String mediumName, String fixName) {
+                                         String mediumName, String fixName) {
         BlockRegisterRequest br = new BlockRegisterRequest();
         br.setExternalIdentifier(externalName);
         br.setDonorIdentifier(donorName);
@@ -240,7 +236,6 @@ public class TestRegisterService {
         br.setReplicateNumber(replicate);
         br.setTissueType(sl.getTissueType().getName());
         br.setSpatialLocation(sl.getCode());
-        br.setMouldSize(mouldName);
         br.setMedium(mediumName);
         br.setFixative(fixName);
         return br;
@@ -254,7 +249,6 @@ public class TestRegisterService {
         Donor donor2 = new Donor(donor1.getId()+1, "DONOR2", LifeStage.adult, hamster);
         LabwareType[] lts = {EntityFactory.getTubeType(), EntityFactory.makeLabwareType(1, 2)};
         TissueType tissueType = EntityFactory.getTissueType();
-        MouldSize mouldSize = EntityFactory.getMouldSize();
         Medium medium = EntityFactory.getMedium();
         Fixative fixative = EntityFactory.getFixative();
         Hmdmc[] hmdmcs = {new Hmdmc(20000, "20/000"), new Hmdmc(20001, "20/001")};
@@ -268,7 +262,6 @@ public class TestRegisterService {
         block0.setLabwareType(lts[0].getName());
         block0.setMedium(medium.getName());
         block0.setFixative(fixative.getName());
-        block0.setMouldSize(mouldSize.getName());
         block0.setTissueType(tissueType.getName());
         block0.setReplicateNumber("2");
         block0.setSpatialLocation(1);
@@ -283,7 +276,6 @@ public class TestRegisterService {
         block1.setLabwareType(lts[1].getName());
         block1.setMedium(medium.getName().toUpperCase());
         block1.setFixative(fixative.getName().toUpperCase());
-        block1.setMouldSize(mouldSize.getName().toUpperCase());
         block1.setHighestSection(0);
         block1.setExternalIdentifier("TISSUE1");
         block1.setSpecies(donor2.getSpecies().getName());
@@ -299,7 +291,6 @@ public class TestRegisterService {
                 .thenReturn(sls[0]);
         when(mockValidation.getSpatialLocation(eqCi(tissueType.getName()), eq(0)))
                 .thenReturn(sls[1]);
-        when(mockValidation.getMouldSize(eqCi(mouldSize.getName()))).thenReturn(mouldSize);
         when(mockValidation.getMedium(eqCi(medium.getName()))).thenReturn(medium);
         when(mockValidation.getFixative(eqCi(fixative.getName()))).thenReturn(fixative);
         Arrays.stream(lts).forEach(lt -> when(mockValidation.getLabwareType(eqCi(lt.getName()))).thenReturn(lt));
@@ -310,9 +301,9 @@ public class TestRegisterService {
 
         Tissue[] tissues = new Tissue[]{
                 new Tissue(5000, block0.getExternalIdentifier(), block0.getReplicateNumber(),
-                        sls[0], donor1, mouldSize, medium, fixative, hmdmcs[0]),
+                        sls[0], donor1, medium, fixative, hmdmcs[0]),
                 new Tissue(5001, block1.getExternalIdentifier(), block1.getReplicateNumber(),
-                        sls[1], donor2, mouldSize, medium, fixative, null),
+                        sls[1], donor2, medium, fixative, null),
         };
 
         BioState bioState = opType.getNewBioState();
@@ -341,7 +332,6 @@ public class TestRegisterService {
                             block.getReplicateNumber(),
                             sls[i],
                             i==0 ? donor1 : donor2,
-                            mouldSize,
                             medium,
                             fixative,
                             i==0 ? hmdmcs[i] : null
@@ -364,7 +354,6 @@ public class TestRegisterService {
         Donor donor = new Donor(100, "DONOR1", LifeStage.adult, species);
         LabwareType lt = EntityFactory.getTubeType();
         TissueType tissueType = EntityFactory.getTissueType();
-        MouldSize mouldSize = EntityFactory.getMouldSize();
         Medium medium = EntityFactory.getMedium();
         Fixative fixative = EntityFactory.getFixative();
         Hmdmc hmdmc;
@@ -389,7 +378,6 @@ public class TestRegisterService {
         block.setLabwareType(lt.getName());
         block.setMedium(medium.getName());
         block.setFixative(fixative.getName());
-        block.setMouldSize(mouldSize.getName());
         block.setTissueType(tissueType.getName());
         block.setReplicateNumber("2");
         block.setSpatialLocation(1);
@@ -401,7 +389,6 @@ public class TestRegisterService {
 
         when(mockValidation.getSpatialLocation(eqCi(tissueType.getName()), eq(1)))
                 .thenReturn(sl);
-        when(mockValidation.getMouldSize(eqCi(mouldSize.getName()))).thenReturn(mouldSize);
         when(mockValidation.getMedium(eqCi(medium.getName()))).thenReturn(medium);
         when(mockValidation.getFixative(eqCi(fixative.getName()))).thenReturn(fixative);
         when(mockValidation.getLabwareType(eqCi(lt.getName()))).thenReturn(lt);
@@ -415,7 +402,7 @@ public class TestRegisterService {
         when(mockLabwareService.create(lt)).thenReturn(lw);
 
         final Tissue tissue = new Tissue(5000, block.getExternalIdentifier(), block.getReplicateNumber(),
-                sl, donor, mouldSize, medium, fixative, hmdmc);
+                sl, donor, medium, fixative, hmdmc);
 
         BioState bioState = opType.getNewBioState();
         Sample sample = new Sample(6000, null, tissue, bioState);
@@ -441,7 +428,6 @@ public class TestRegisterService {
                         block.getReplicateNumber(),
                         sl,
                         donor,
-                        mouldSize,
                         medium,
                         fixative,
                         hmdmc

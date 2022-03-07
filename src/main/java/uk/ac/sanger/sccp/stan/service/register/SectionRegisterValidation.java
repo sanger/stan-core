@@ -29,7 +29,6 @@ public class SectionRegisterValidation {
     private final SpeciesRepo speciesRepo;
     private final LabwareTypeRepo lwTypeRepo;
     private final LabwareRepo lwRepo;
-    private final MouldSizeRepo mouldSizeRepo;
     private final HmdmcRepo hmdmcRepo;
     private final TissueTypeRepo tissueTypeRepo;
     private final FixativeRepo fixativeRepo;
@@ -44,7 +43,7 @@ public class SectionRegisterValidation {
 
     public SectionRegisterValidation(SectionRegisterRequest request,
                                      DonorRepo donorRepo, SpeciesRepo speciesRepo, LabwareTypeRepo lwTypeRepo,
-                                     LabwareRepo lwRepo, MouldSizeRepo mouldSizeRepo, HmdmcRepo hmdmcRepo,
+                                     LabwareRepo lwRepo, HmdmcRepo hmdmcRepo,
                                      TissueTypeRepo tissueTypeRepo, FixativeRepo fixativeRepo, MediumRepo mediumRepo,
                                      TissueRepo tissueRepo, BioStateRepo bioStateRepo,
                                      Validator<String> externalBarcodeValidation, Validator<String> donorNameValidation,
@@ -55,7 +54,6 @@ public class SectionRegisterValidation {
         this.speciesRepo = speciesRepo;
         this.lwTypeRepo = lwTypeRepo;
         this.lwRepo = lwRepo;
-        this.mouldSizeRepo = mouldSizeRepo;
         this.hmdmcRepo = hmdmcRepo;
         this.tissueTypeRepo = tissueTypeRepo;
         this.fixativeRepo = fixativeRepo;
@@ -234,11 +232,6 @@ public class SectionRegisterValidation {
 
     // Yikes, this method is big.
     public UCMap<Tissue> validateTissues(UCMap<Donor> donorMap) {
-        var mouldSizeOpt = mouldSizeRepo.findByName("None");
-        if (mouldSizeOpt.isEmpty()) {
-            addProblem("Mould size \"None\" not found.");
-        }
-        MouldSize mouldSize = mouldSizeOpt.orElse(null);
         UCMap<Hmdmc> hmdmcMap = loadAllFromSectionsToStringMap(request, SectionRegisterContent::getHmdmc,
                 Hmdmc::getHmdmc, hmdmcRepo::findAllByHmdmcIn);
         checkEntitiesEnabled(hmdmcMap.values(), "HuMFre number", Hmdmc::getHmdmc);
@@ -335,7 +328,7 @@ public class SectionRegisterValidation {
             }
 
             Tissue tissue = new Tissue(null, externalIdentifier, content.getReplicateNumber().toLowerCase(),
-                    spatialLocation, donor, mouldSize, medium, fixative, hmdmc);
+                    spatialLocation, donor, medium, fixative, hmdmc);
             tissueMap.put(externalIdentifier, tissue);
         }
 

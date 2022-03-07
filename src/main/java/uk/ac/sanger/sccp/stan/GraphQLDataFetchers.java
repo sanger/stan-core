@@ -37,7 +37,6 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final LabwareTypeRepo labwareTypeRepo;
     final MediumRepo mediumRepo;
     final FixativeRepo fixativeRepo;
-    final MouldSizeRepo mouldSizeRepo;
     final SpeciesRepo speciesRepo;
     final HmdmcRepo hmdmcRepo;
     final LabwareRepo labwareRepo;
@@ -65,7 +64,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     public GraphQLDataFetchers(ObjectMapper objectMapper, AuthenticationComponent authComp, UserRepo userRepo,
                                SessionConfig sessionConfig,
                                TissueTypeRepo tissueTypeRepo, LabwareTypeRepo labwareTypeRepo,
-                               MediumRepo mediumRepo, FixativeRepo fixativeRepo, MouldSizeRepo mouldSizeRepo,
+                               MediumRepo mediumRepo, FixativeRepo fixativeRepo,
                                SpeciesRepo speciesRepo, HmdmcRepo hmdmcRepo, LabwareRepo labwareRepo,
                                ReleaseDestinationRepo releaseDestinationRepo, ReleaseRecipientRepo releaseRecipientRepo,
                                DestructionReasonRepo destructionReasonRepo, ProjectRepo projectRepo, CostCodeRepo costCodeRepo,
@@ -82,7 +81,6 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.labwareTypeRepo = labwareTypeRepo;
         this.mediumRepo = mediumRepo;
         this.fixativeRepo = fixativeRepo;
-        this.mouldSizeRepo = mouldSizeRepo;
         this.speciesRepo = speciesRepo;
         this.hmdmcRepo = hmdmcRepo;
         this.labwareRepo = labwareRepo;
@@ -121,10 +119,6 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
 
     public DataFetcher<Iterable<Medium>> getMediums() {
         return dfe -> mediumRepo.findAll();
-    }
-
-    public DataFetcher<Iterable<MouldSize>> getMouldSizes() {
-        return dfe -> mouldSizeRepo.findAll();
     }
 
     public DataFetcher<Iterable<Species>> getSpecies() {
@@ -276,8 +270,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     public DataFetcher<List<WorkProgress>> workProgress() {
         return dfe -> {
             String workNumber = dfe.getArgument("workNumber");
-            List<String> workTypeNames = arg(dfe, "workTypes", new TypeReference<List<String>>() {});
-            List<Work.Status> statuses = arg(dfe, "statuses", new TypeReference<List<Work.Status>>() {});
+            List<String> workTypeNames = arg(dfe, "workTypes", new TypeReference<>() {});
+            List<Work.Status> statuses = arg(dfe, "statuses", new TypeReference<>() {});
             return workProgressService.getProgress(workNumber, workTypeNames, statuses);
         };
     }

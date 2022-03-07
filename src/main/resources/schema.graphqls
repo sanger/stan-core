@@ -73,11 +73,6 @@ type Fixative {
     enabled: Boolean!
 }
 
-"""A size of mould used for tissue."""
-type MouldSize {
-    name: String!
-}
-
 """The type of tissue, typically an organ."""
 type TissueType {
     name: String!
@@ -146,8 +141,6 @@ type Tissue {
     """The individual from whom this tissue was taken."""
     donor: Donor!
     hmdmc: Hmdmc
-    """The size of mould used on this tissue."""
-    mouldSize: MouldSize!
     """The medium used on this tissue."""
     medium: Medium!
     """The fixative used on this tissue."""
@@ -226,8 +219,6 @@ input BlockRegisterRequest {
     medium: String!
     """The fixative used for the tissue."""
     fixative: String!
-    """The mould size used for the tissue."""
-    mouldSize: String!
     """The species of the donor."""
     species: String!
     """Is this a new block of tissue already in the application's database?"""
@@ -1173,8 +1164,6 @@ type Query {
     mediums: [Medium!]!
     """Get all the fixatives that are enabled, or get all including those that are disabled."""
     fixatives(includeDisabled: Boolean): [Fixative!]!
-    """Get all the mould sizes available."""
-    mouldSizes: [MouldSize!]!
     """Get all the species that are enabled, or get all including those that are disabled."""
     species(includeDisabled: Boolean): [Species!]!
     """Get the labware with the given barcode."""
