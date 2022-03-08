@@ -25,7 +25,6 @@ public class EntityFactory {
     private static Sample sample;
     private static Labware tube;
     private static Hmdmc hmdmc;
-    private static MouldSize mouldSize;
     private static Medium medium;
     private static Fixative fixative;
     private static Printer printer;
@@ -102,7 +101,7 @@ public class EntityFactory {
     public static Tissue getTissue() {
         if (tissue==null) {
             tissue = new Tissue(80, "TISSUE1", "1", getSpatialLocation(), getDonor(),
-                    getMouldSize(), getMedium(), getFixative(), getHmdmc());
+                    getMedium(), getFixative(), getHmdmc());
         }
         return tissue;
     }
@@ -112,13 +111,6 @@ public class EntityFactory {
             sample = new Sample(90, 1, getTissue(), getBioState());
         }
         return sample;
-    }
-
-    public static MouldSize getMouldSize() {
-        if (mouldSize==null) {
-            mouldSize = new MouldSize(150, "Minimould");
-        }
-        return mouldSize;
     }
 
     public static Medium getMedium() {
@@ -195,7 +187,7 @@ public class EntityFactory {
 
     public static Tissue makeTissue(Donor donor, SpatialLocation sl) {
         int id = ++idCounter;
-        return new Tissue(id, "TISSUE "+id, String.valueOf(id%7), sl, donor, getMouldSize(), getMedium(), getFixative(), getHmdmc());
+        return new Tissue(id, "TISSUE "+id, String.valueOf(id%7), sl, donor, getMedium(), getFixative(), getHmdmc());
     }
 
     public static PlanOperation makePlanForLabware(OperationType opType, List<Labware> sources, List<Labware> destination) {

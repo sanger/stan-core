@@ -18,7 +18,6 @@ public class RegisterValidationFactory {
     private final HmdmcRepo hmdmcRepo;
     private final TissueTypeRepo ttRepo;
     private final LabwareTypeRepo ltRepo;
-    private final MouldSizeRepo mouldSizeRepo;
     private final MediumRepo mediumRepo;
     private final FixativeRepo fixativeRepo;
     private final TissueRepo tissueRepo;
@@ -34,7 +33,7 @@ public class RegisterValidationFactory {
 
     @Autowired
     public RegisterValidationFactory(DonorRepo donorRepo, HmdmcRepo hmdmcRepo, TissueTypeRepo ttRepo,
-                                     LabwareTypeRepo ltRepo, MouldSizeRepo mouldSizeRepo, MediumRepo mediumRepo,
+                                     LabwareTypeRepo ltRepo, MediumRepo mediumRepo,
                                      FixativeRepo fixativeRepo, TissueRepo tissueRepo, SpeciesRepo speciesRepo,
                                      LabwareRepo labwareRepo, BioStateRepo bioStateRepo,
                                      @Qualifier("donorNameValidator") Validator<String> donorNameValidation,
@@ -47,7 +46,6 @@ public class RegisterValidationFactory {
         this.hmdmcRepo = hmdmcRepo;
         this.ttRepo = ttRepo;
         this.ltRepo = ltRepo;
-        this.mouldSizeRepo = mouldSizeRepo;
         this.mediumRepo = mediumRepo;
         this.fixativeRepo = fixativeRepo;
         this.tissueRepo = tissueRepo;
@@ -63,14 +61,14 @@ public class RegisterValidationFactory {
     }
 
     public RegisterValidation createRegisterValidation(RegisterRequest request) {
-        return new RegisterValidationImp(request, donorRepo, hmdmcRepo, ttRepo, ltRepo, mouldSizeRepo, mediumRepo,
+        return new RegisterValidationImp(request, donorRepo, hmdmcRepo, ttRepo, ltRepo, mediumRepo,
                 fixativeRepo, tissueRepo, speciesRepo, donorNameValidation, externalNameValidation, replicateValidator,
                 tissueFieldChecker);
     }
 
     public SectionRegisterValidation createSectionRegisterValidation(SectionRegisterRequest request) {
         return new SectionRegisterValidation(request, donorRepo, speciesRepo, ltRepo, labwareRepo,
-                mouldSizeRepo, hmdmcRepo, ttRepo, fixativeRepo, mediumRepo, tissueRepo, bioStateRepo,
+                hmdmcRepo, ttRepo, fixativeRepo, mediumRepo, tissueRepo, bioStateRepo,
                 externalBarcodeValidation, donorNameValidation, externalNameValidation, replicateValidator,
                 visiumLpSlideBarcodeValidation);
     }

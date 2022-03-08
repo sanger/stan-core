@@ -11,14 +11,6 @@
         </addColumn>
     </changeSet>
 
-    <changeSet id="1801" author="dr6">
-        <addColumn tableName="mould_size">
-            <column name="enabled" type="BOOLEAN" defaultValue="TRUE">
-                <constraints nullable="false"/>
-            </column>
-        </addColumn>
-    </changeSet>
-
     <changeSet id="1802" author="dr6">
         <addColumn tableName="medium">
             <column name="enabled" type="BOOLEAN" defaultValue="TRUE">

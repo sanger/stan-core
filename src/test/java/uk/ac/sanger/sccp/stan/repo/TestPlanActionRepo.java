@@ -31,7 +31,6 @@ public class TestPlanActionRepo {
     private final DonorRepo donorRepo;
     private final TissueRepo tissueRepo;
     private final SpatialLocationRepo slRepo;
-    private final MouldSizeRepo mouldSizeRepo;
     private final MediumRepo mediumRepo;
     private final FixativeRepo fixativeRepo;
     private final HmdmcRepo hmdmcRepo;
@@ -46,7 +45,7 @@ public class TestPlanActionRepo {
     public TestPlanActionRepo(EntityCreator entityCreator,
                               PlanOperationRepo planOpRepo, PlanActionRepo planActionRepo, OperationTypeRepo opTypeRepo,
                               SampleRepo sampleRepo, DonorRepo donorRepo, TissueRepo tissueRepo,
-                              SpatialLocationRepo slRepo, MouldSizeRepo mouldSizeRepo, MediumRepo mediumRepo,
+                              SpatialLocationRepo slRepo, MediumRepo mediumRepo,
                               FixativeRepo fixativeRepo, HmdmcRepo hmdmcRepo, UserRepo userRepo,
                               LabwareTypeRepo labwareTypeRepo, LabwareRepo labwareRepo, SlotRepo slotRepo, BioStateRepo bioStateRepo) {
         this.entityCreator = entityCreator;
@@ -57,7 +56,6 @@ public class TestPlanActionRepo {
         this.donorRepo = donorRepo;
         this.tissueRepo = tissueRepo;
         this.slRepo = slRepo;
-        this.mouldSizeRepo = mouldSizeRepo;
         this.mediumRepo = mediumRepo;
         this.fixativeRepo = fixativeRepo;
         this.hmdmcRepo = hmdmcRepo;
@@ -75,7 +73,7 @@ public class TestPlanActionRepo {
         assertThat(planActionRepo.findMaxPlannedSectionFromSlotId(-1)).isEmpty();
         Donor donor = new Donor(null, "DONOR", LifeStage.adult, entityCreator.getHuman());
         donorRepo.save(donor);
-        Tissue tissue = new Tissue(null, "TISSUE1", "1", any(slRepo), donor, any(mouldSizeRepo),
+        Tissue tissue = new Tissue(null, "TISSUE1", "1", any(slRepo), donor,
                 any(mediumRepo), any(fixativeRepo), any(hmdmcRepo));
         BioState bioState = any(bioStateRepo);
         tissueRepo.save(tissue);

@@ -22,7 +22,6 @@ public class RegisterValidationImp implements RegisterValidation {
     private final HmdmcRepo hmdmcRepo;
     private final TissueTypeRepo ttRepo;
     private final LabwareTypeRepo ltRepo;
-    private final MouldSizeRepo mouldSizeRepo;
     private final MediumRepo mediumRepo;
     private final FixativeRepo fixativeRepo;
     private final TissueRepo tissueRepo;
@@ -38,14 +37,13 @@ public class RegisterValidationImp implements RegisterValidation {
     final Map<String, Species> speciesMap = new HashMap<>();
     final Map<StringIntKey, SpatialLocation> spatialLocationMap = new HashMap<>();
     final Map<String, LabwareType> labwareTypeMap = new HashMap<>();
-    final Map<String, MouldSize> mouldSizeMap = new HashMap<>();
     final Map<String, Medium> mediumMap = new HashMap<>();
     final Map<String, Fixative> fixativeMap = new HashMap<>();
     final LinkedHashSet<String> problems = new LinkedHashSet<>();
 
     public RegisterValidationImp(RegisterRequest request, DonorRepo donorRepo,
                                  HmdmcRepo hmdmcRepo, TissueTypeRepo ttRepo, LabwareTypeRepo ltRepo,
-                                 MouldSizeRepo mouldSizeRepo, MediumRepo mediumRepo,
+                                 MediumRepo mediumRepo,
                                  FixativeRepo fixativeRepo, TissueRepo tissueRepo, SpeciesRepo speciesRepo,
                                  Validator<String> donorNameValidation, Validator<String> externalNameValidation,
                                  Validator<String> replicateValidator,
@@ -55,7 +53,6 @@ public class RegisterValidationImp implements RegisterValidation {
         this.hmdmcRepo = hmdmcRepo;
         this.ttRepo = ttRepo;
         this.ltRepo = ltRepo;
-        this.mouldSizeRepo = mouldSizeRepo;
         this.mediumRepo = mediumRepo;
         this.fixativeRepo = fixativeRepo;
         this.tissueRepo = tissueRepo;
@@ -75,7 +72,6 @@ public class RegisterValidationImp implements RegisterValidation {
         validateHmdmcs();
         validateSpatialLocations();
         validateLabwareTypes();
-        validateMouldSizes();
         validateMediums();
         validateFixatives();
         validateExistingTissues();
@@ -244,10 +240,6 @@ public class RegisterValidationImp implements RegisterValidation {
         validateByName("labware type", BlockRegisterRequest::getLabwareType, ltRepo::findByName, labwareTypeMap);
     }
 
-    public void validateMouldSizes() {
-        validateByName("mould size", BlockRegisterRequest::getMouldSize, mouldSizeRepo::findByName, mouldSizeMap);
-    }
-
     public void validateMediums() {
         validateByName("medium", BlockRegisterRequest::getMedium, mediumRepo::findByName, mediumMap);
     }
@@ -389,11 +381,6 @@ public class RegisterValidationImp implements RegisterValidation {
     @Override
     public LabwareType getLabwareType(String name) {
         return ucGet(this.labwareTypeMap, name);
-    }
-
-    @Override
-    public MouldSize getMouldSize(String name) {
-        return ucGet(this.mouldSizeMap, name);
     }
 
     @Override

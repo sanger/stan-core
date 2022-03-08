@@ -25,7 +25,6 @@ public class TissueFieldChecker {
         SL(Tissue::getSpatialLocation, SpatialLocation::getCode, BlockRegisterRequest::getSpatialLocation, "spatial location"),
         REPLICATE(Tissue::getReplicate, BlockRegisterRequest::getReplicateNumber, "replicate number"),
         MEDIUM(Tissue::getMedium, Medium::getName, BlockRegisterRequest::getMedium, "medium"),
-        MOULDSIZE(Tissue::getMouldSize, MouldSize::getName, BlockRegisterRequest::getMouldSize, "mould size"),
         FIXATIVE(Tissue::getFixative, Fixative::getName, BlockRegisterRequest::getFixative, "fixative"),
         ;
 

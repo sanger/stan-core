@@ -45,23 +45,6 @@
         </createTable>
     </changeSet>
 
-    <changeSet id="4" author="dr6">
-        <createTable tableName="mould_size">
-            <column name="id" type="INT" autoIncrement="true">
-                <constraints nullable="false" primaryKey="true"/>
-            </column>
-            <column name="name" type="VARCHAR(64)">
-                <constraints nullable="false" unique="true"/>
-            </column>
-            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
-                <constraints nullable="false"/>
-            </column>
-            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
-                <constraints nullable="false"/>
-            </column>
-        </createTable>
-    </changeSet>
-
     <changeSet id="5" author="dr6">
         <createTable tableName="tissue_type">
             <column name="id" type="INT" autoIncrement="true">
@@ -292,9 +275,6 @@
             </column>
             <column name="medium_id" type="INT">
                 <constraints nullable="false" foreignKeyName="fk_tissue_medium" referencedTableName="medium" referencedColumnNames="id"/>
-            </column>
-            <column name="mould_size_id" type="INT">
-                <constraints nullable="false" foreignKeyName="fk_tissue_mould_size" referencedTableName="mould_size" referencedColumnNames="id"/>
             </column>
             <column name="spatial_location_id" type="INT">
                 <constraints nullable="false" foreignKeyName="fk_tissue_spatial_location" referencedTableName="spatial_location" referencedColumnNames="id"/>
@@ -561,12 +541,6 @@
     <changeSet id="107" author="dr6">
         <loadData tableName="hmdmc" file="db/hmdmcs.csv">
             <column name="hmdmc" header="hmdmc" type="string"/>
-        </loadData>
-    </changeSet>
-
-    <changeSet id="108" author="dr6">
-        <loadData tableName="mould_size" file="db/mouldsizes.csv">
-            <column name="name" header="name" type="string"/>
         </loadData>
     </changeSet>
 
