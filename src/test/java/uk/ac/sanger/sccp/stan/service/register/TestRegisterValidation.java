@@ -36,7 +36,6 @@ public class TestRegisterValidation {
     private HmdmcRepo mockHmdmcRepo;
     private TissueTypeRepo mockTtRepo;
     private LabwareTypeRepo mockLtRepo;
-    private MouldSizeRepo mockMouldSizeRepo;
     private MediumRepo mockMediumRepo;
     private FixativeRepo mockFixativeRepo;
     private TissueRepo mockTissueRepo;
@@ -53,7 +52,6 @@ public class TestRegisterValidation {
         mockHmdmcRepo = mock(HmdmcRepo.class);
         mockTtRepo = mock(TissueTypeRepo.class);
         mockLtRepo = mock(LabwareTypeRepo.class);
-        mockMouldSizeRepo = mock(MouldSizeRepo.class);
         mockMediumRepo = mock(MediumRepo.class);
         mockTissueRepo = mock(TissueRepo.class);
         mockFixativeRepo = mock(FixativeRepo.class);
@@ -73,7 +71,7 @@ public class TestRegisterValidation {
 
     private RegisterValidationImp create(RegisterRequest request) {
         return spy(new RegisterValidationImp(request, mockDonorRepo, mockHmdmcRepo, mockTtRepo, mockLtRepo,
-                mockMouldSizeRepo, mockMediumRepo, mockFixativeRepo, mockTissueRepo, mockSpeciesRepo,
+                mockMediumRepo, mockFixativeRepo, mockTissueRepo, mockSpeciesRepo,
                 mockDonorNameValidation, mockExternalNameValidation, mockReplicateValidator, mockFieldChecker));
     }
 
@@ -82,7 +80,6 @@ public class TestRegisterValidation {
         doNothing().when(validation).validateHmdmcs();
         doNothing().when(validation).validateSpatialLocations();
         doNothing().when(validation).validateLabwareTypes();
-        doNothing().when(validation).validateMouldSizes();
         doNothing().when(validation).validateMediums();
         doNothing().when(validation).validateExistingTissues();
         doNothing().when(validation).validateNewTissues();
@@ -94,7 +91,6 @@ public class TestRegisterValidation {
         verify(validation, verificationMode).validateHmdmcs();
         verify(validation, verificationMode).validateSpatialLocations();
         verify(validation, verificationMode).validateLabwareTypes();
-        verify(validation, verificationMode).validateMouldSizes();
         verify(validation, verificationMode).validateMediums();
         verify(validation, verificationMode).validateExistingTissues();
         verify(validation, verificationMode).validateNewTissues();
@@ -270,20 +266,6 @@ public class TestRegisterValidation {
         testValidateSimpleField(givenLtNames, expectedLts, expectedProblems,
                 RegisterValidationImp::validateLabwareTypes, LabwareType::getName, BlockRegisterRequest::setLabwareType,
                 v -> v.labwareTypeMap, RegisterValidationImp::getLabwareType);
-    }
-
-
-    @ParameterizedTest
-    @MethodSource("mouldSizeData")
-    public void testValidateMouldSizes(List<MouldSize> knownItems, List<String> givenNames,
-                                         List<MouldSize> expectedItems, List<String> expectedProblems) {
-        when(mockMouldSizeRepo.findByName(any())).then(invocation -> {
-            final String arg = invocation.getArgument(0);
-            return knownItems.stream().filter(item -> arg.equalsIgnoreCase(item.getName())).findAny();
-        });
-        testValidateSimpleField(givenNames, expectedItems, expectedProblems,
-                RegisterValidationImp::validateMouldSizes, MouldSize::getName, BlockRegisterRequest::setMouldSize,
-                v -> v.mouldSizeMap, RegisterValidationImp::getMouldSize);
     }
 
     @ParameterizedTest
@@ -593,14 +575,6 @@ public class TestRegisterValidation {
                 Arguments.of(List.of(lt0, lt1), List.of(name0, name1, name0, "", "", "Banana"), List.of(lt0, lt1), List.of("Missing labware type.", "Unknown labware type: [Banana]"))
         );
     }
-
-    private static Stream<Arguments> mouldSizeData() {
-        MouldSize ms = EntityFactory.getMouldSize();
-        return Stream.of(Arguments.of(List.of(ms), List.of(ms.getName()), List.of(ms), List.of()),
-                Arguments.of(List.of(), Arrays.asList(null, ""), List.of(), List.of("Missing mould size.")),
-                Arguments.of(List.of(ms), List.of(ms.getName(), "Sausage"), List.of(ms), List.of("Unknown mould size: [Sausage]")));
-    }
-
 
     private static Stream<Arguments> mediumData() {
         Medium med = EntityFactory.getMedium();

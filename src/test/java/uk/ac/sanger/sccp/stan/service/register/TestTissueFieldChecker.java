@@ -81,7 +81,6 @@ public class TestTissueFieldChecker {
                 Arguments.of(toBRR(tissue, br -> br.setSpatialLocation(18)), tissue, "Expected spatial location to be "+tissue.getSpatialLocation().getCode()+forTissue),
                 Arguments.of(toBRR(tissue, br -> br.setReplicateNumber("-5")), tissue, "Expected replicate number to be "+tissue.getReplicate()+forTissue),
                 Arguments.of(toBRR(tissue, br -> br.setMedium("Custard")), tissue, "Expected medium to be "+tissue.getMedium().getName()+forTissue),
-                Arguments.of(toBRR(tissue, br -> br.setMouldSize("Giant")), tissue, "Expected mould size to be "+tissue.getMouldSize().getName()+forTissue),
                 Arguments.of(toBRR(tissue, br -> br.setFixative("Glue")), tissue, "Expected fixative to be "+tissue.getFixative().getName()+forTissue),
                 Arguments.of(toBRR(tissue, br -> {
                     br.setDonorIdentifier("Foo");
@@ -105,7 +104,6 @@ public class TestTissueFieldChecker {
         br.setSpatialLocation(tissue.getSpatialLocation().getCode());
         br.setReplicateNumber(tissue.getReplicate());
         br.setMedium(tissue.getMedium().getName());
-        br.setMouldSize(tissue.getMouldSize().getName());
         br.setFixative(tissue.getFixative().getName());
         if (adjuster!=null) {
             adjuster.accept(br);

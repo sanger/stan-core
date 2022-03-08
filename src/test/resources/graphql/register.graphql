@@ -12,7 +12,6 @@ mutation {
                 tissueType:"Bone",
                 replicateNumber:"1",
                 medium:"None",
-                mouldSize:"None",
                 fixative:"None",
                 highestSection:0,
             }

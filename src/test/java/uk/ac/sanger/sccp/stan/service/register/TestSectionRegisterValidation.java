@@ -34,7 +34,6 @@ public class TestSectionRegisterValidation {
     private SpeciesRepo mockSpeciesRepo;
     private LabwareTypeRepo mockLwTypeRepo;
     private LabwareRepo mockLwRepo;
-    private MouldSizeRepo mockMouldSizeRepo;
     private HmdmcRepo mockHmdmcRepo;
     private TissueTypeRepo mockTissueTypeRepo;
     private FixativeRepo mockFixativeRepo;
@@ -54,7 +53,6 @@ public class TestSectionRegisterValidation {
         mockSpeciesRepo = mock(SpeciesRepo.class);
         mockLwTypeRepo = mock(LabwareTypeRepo.class);
         mockLwRepo = mock(LabwareRepo.class);
-        mockMouldSizeRepo = mock(MouldSizeRepo.class);
         mockHmdmcRepo = mock(HmdmcRepo.class);
         mockTissueTypeRepo = mock(TissueTypeRepo.class);
         mockFixativeRepo = mock(FixativeRepo.class);
@@ -89,7 +87,7 @@ public class TestSectionRegisterValidation {
             }
         }
         return spy(new SectionRegisterValidation(request, mockDonorRepo, mockSpeciesRepo, mockLwTypeRepo, mockLwRepo,
-                mockMouldSizeRepo, mockHmdmcRepo, mockTissueTypeRepo, mockFixativeRepo, mockMediumRepo,
+                mockHmdmcRepo, mockTissueTypeRepo, mockFixativeRepo, mockMediumRepo,
                 mockTissueRepo, mockBioStateRepo,
                 mockExternalBarcodeValidation, mockDonorNameValidation, mockExternalNameValidation,
                 mockReplicateValidator, mockVisiumLpBarcodeValidation));
@@ -418,7 +416,6 @@ public class TestSectionRegisterValidation {
     @ParameterizedTest
     @MethodSource("validateTissuesArgs")
     public void testValidateTissues(ValidateTissueTestData testData) {
-        when(mockMouldSizeRepo.findByName("None")).thenReturn(Optional.ofNullable(testData.mouldSize));
         when(mockHmdmcRepo.findAllByHmdmcIn(any())).then(findAllAnswer(testData.hmdmcs, Hmdmc::getHmdmc));
         when(mockTissueTypeRepo.findAllByNameIn(any())).then(findAllAnswer(testData.tissueTypes, TissueType::getName));
         when(mockFixativeRepo.findAllByNameIn(any())).then(findAllAnswer(testData.fixatives, Fixative::getName));
@@ -460,9 +457,8 @@ public class TestSectionRegisterValidation {
         final Donor DONOR1 = new Donor(1, "DONOR1", LifeStage.adult, EntityFactory.getHuman());
         final Donor DONOR2 = new Donor(null, "DONOR2", LifeStage.fetal, null);
         List<Donor> donors = List.of(DONOR1, DONOR2);
-        MouldSize mouldSize = new MouldSize(1, "None");
         Supplier<ValidateTissueTestData> testData = () ->
-                new ValidateTissueTestData(hmdmcs, tissueTypes, fixatives, mediums, donors, mouldSize);
+                new ValidateTissueTestData(hmdmcs, tissueTypes, fixatives, mediums, donors);
 
         return Stream.of(
                 // Good request
@@ -470,15 +466,11 @@ public class TestSectionRegisterValidation {
                         .content("EXT1", "4", "Arm", 1, "Donor1", "None", "None", "2021/01", "human")
                         .content("EXT2", "5", "Leg", 2, "Donor1", "butter", "Formalin", "2021/02", "human")
                         .content("EXT3", "5", "Leg", 1, "Donor2", "butter", "Formalin", null, "hamster")
-                        .tissues(new Tissue(null, "EXT1", "4", ARM.getSpatialLocations().get(0), DONOR1, mouldSize, mediumNone, fixNone, hmdmc1),
-                                new Tissue(null, "EXT2", "5", LEG.getSpatialLocations().get(1), DONOR1, mouldSize, medium, fix, hmdmc2),
-                                new Tissue(null, "EXT3", "5", LEG.getSpatialLocations().get(0), DONOR2, mouldSize, medium, fix, null)),
+                        .tissues(new Tissue(null, "EXT1", "4", ARM.getSpatialLocations().get(0), DONOR1, mediumNone, fixNone, hmdmc1),
+                                new Tissue(null, "EXT2", "5", LEG.getSpatialLocations().get(1), DONOR1, medium, fix, hmdmc2),
+                                new Tissue(null, "EXT3", "5", LEG.getSpatialLocations().get(0), DONOR2, medium, fix, null)),
 
                 // Single problems
-                testData.get()
-                        .content("EXT1", "4", "ARM", 1, null, "None", "None", "2021/01", "human")
-                        .noMouldSize()
-                        .problem("Mould size \"None\" not found."),
                 testData.get()
                         .content("EXT1", "4", "ARM", 1, "Donor1", "None", "None", null, "human")
                         .problem("Missing HuMFre number."),
@@ -518,8 +510,8 @@ public class TestSectionRegisterValidation {
                         .content("TISSUE1", "4", "ARM", 1, "Donor1", "none", "none", "2021/01", "human")
                         .content("TISSUE2", "4", "ARM", 1, "Donor1", "none", "none", "2021/01", "human")
                         .content("TISSUE3", "4", "ARM", 1, "Donor1", "none", "none", "2021/01", "human")
-                        .existing(new Tissue(1, "TISSUE1", "3", ARM.getSpatialLocations().get(0), DONOR1, mouldSize, medium, fix, hmdmcs.get(0)),
-                                new Tissue(2, "TISSUE2", "3", ARM.getSpatialLocations().get(0), DONOR1, mouldSize, medium, fix, hmdmcs.get(0)))
+                        .existing(new Tissue(1, "TISSUE1", "3", ARM.getSpatialLocations().get(0), DONOR1, medium, fix, hmdmcs.get(0)),
+                                new Tissue(2, "TISSUE2", "3", ARM.getSpatialLocations().get(0), DONOR1, medium, fix, hmdmcs.get(0)))
                         .problem("External identifiers already in use: [TISSUE1, TISSUE2]"),
                 testData.get()
                         .content("EXT1", "4", null, 1, "Donor1", "None", "None", "2021/01", "Human")
@@ -631,10 +623,9 @@ public class TestSectionRegisterValidation {
         List<Medium> mediums;
         List<Tissue> existingTissues;
         List<Donor> donors;
-        MouldSize mouldSize;
 
         public ValidateTissueTestData(List<Hmdmc> hmdmcs, List<TissueType> tissueTypes, List<Fixative> fixatives,
-                                      List<Medium> mediums, List<Donor> donors, MouldSize mouldSize) {
+                                      List<Medium> mediums, List<Donor> donors) {
             this.expectedProblems = List.of();
             this.expectedTissues = List.of();
             this.contents = new ArrayList<>();
@@ -644,7 +635,6 @@ public class TestSectionRegisterValidation {
             this.mediums = mediums;
             this.existingTissues = List.of();
             this.donors = donors;
-            this.mouldSize = mouldSize;
         }
 
         public ValidateTissueTestData problem(String problem) {
@@ -653,11 +643,6 @@ public class TestSectionRegisterValidation {
         }
         public ValidateTissueTestData problems(String... problems) {
             this.expectedProblems = List.of(problems);
-            return this;
-        }
-
-        public ValidateTissueTestData noMouldSize() {
-            this.mouldSize = null;
             return this;
         }
 
@@ -671,7 +656,8 @@ public class TestSectionRegisterValidation {
             return this;
         }
 
-        public ValidateTissueTestData content(String externalName, String replicate, String tissueType, Integer spatLoc, String donorName, String medium, String fixative, String hmdmc, String species) {
+        public ValidateTissueTestData content(String externalName, String replicate, String tissueType, Integer spatLoc,
+                                              String donorName, String medium, String fixative, String hmdmc, String species) {
             SectionRegisterContent content = new SectionRegisterContent();
             content.setDonorIdentifier(donorName);
             content.setExternalIdentifier(externalName);
