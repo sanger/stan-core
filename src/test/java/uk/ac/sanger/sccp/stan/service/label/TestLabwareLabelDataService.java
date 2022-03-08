@@ -183,6 +183,39 @@ public class TestLabwareLabelDataService {
     }
 
     @Test
+    public void testCheckRowBasedLayout_valid() {
+        Donor donor = EntityFactory.getDonor();
+        SpatialLocation sl = EntityFactory.getSpatialLocation();
+        Labware lw = EntityFactory.makeEmptyLabware(makeAdhLabwareType());
+        Tissue[] tissues = IntStream.range(0,4).mapToObj(i -> EntityFactory.makeTissue(donor, sl)).toArray(Tissue[]::new);
+        Map<Address, List<SimpleContent>> scs = Map.of(
+                new Address(1,1), List.of(new SimpleContent(tissues[0], 1), new SimpleContent(tissues[0], 2)),
+                new Address(2,2), List.of(new SimpleContent(tissues[1], 3)),
+                new Address(3,1), List.of(new SimpleContent(tissues[2], 4)),
+                new Address(4,2), List.of(new SimpleContent(tissues[3], 5))
+        );
+        assertArrayEquals(tissues, service.checkRowBasedLayout(lw, scs));
+    }
+
+    @Test
+    public void testRowBasedLayout_invalid() {
+        Donor donor = EntityFactory.getDonor();
+        SpatialLocation sl = EntityFactory.getSpatialLocation();
+        Labware lw = EntityFactory.makeEmptyLabware(makeAdhLabwareType());
+        Tissue[] tissues = IntStream.range(0,4).mapToObj(i -> EntityFactory.makeTissue(donor, sl)).toArray(Tissue[]::new);
+        Map<Address, List<SimpleContent>> scs = Map.of(
+                new Address(1,1), List.of(new SimpleContent(tissues[0], 1), new SimpleContent(tissues[0], 2)),
+                new Address(2,2), List.of(new SimpleContent(tissues[1], 3)),
+                new Address(3,1), List.of(new SimpleContent(tissues[2], 4)),
+                new Address(4,2), List.of(new SimpleContent(tissues[3], 5), new SimpleContent(tissues[2], 6))
+        );
+
+        assertThat(assertThrows(IllegalArgumentException.class, () -> service.checkRowBasedLayout(lw, scs)))
+                .hasMessage("The specified label template is only suitable for " +
+                        "labware which has one tissue per row.");
+    }
+
+    @Test
     public void testCheckDividedLayout_valid() {
         Donor donor = EntityFactory.getDonor();
         SpatialLocation sl = EntityFactory.getSpatialLocation();
@@ -213,6 +246,79 @@ public class TestLabwareLabelDataService {
         assertThat(assertThrows(IllegalArgumentException.class, () -> service.checkDividedLayout(lw, scs)))
                 .hasMessage("The specified label template is only suitable for " +
                         "labware which has one tissue in the top half and one tissue in the bottom half.");
+    }
+
+    @Test
+    public void testGetRowBasedLabelData_empty() {
+        LabwareType lt = makeAdhLabwareType();
+        Labware lw = EntityFactory.makeEmptyLabware(lt);
+        lw.setCreated(LocalDateTime.of(2022, 1, 12, 10, 0, 0));
+        doReturn(List.of()).when(mockPlanActionRepo).findAllByDestinationLabwareId(lw.getId());
+        LabwareLabelData ld = service.getRowBasedLabelData(lw);
+        assertEquals(lw.getBarcode(), ld.getBarcode());
+        assertNull(ld.getMedium());
+        assertEquals("2022-01-12", ld.getDate());
+        assertThat(ld.getContents()).isEmpty();
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans={true,false})
+    public void testGetRowBasedLabelData_valid(boolean sameMedium) {
+        LabwareType lt = makeAdhLabwareType();
+        Labware lw = EntityFactory.makeEmptyLabware(lt);
+        lw.setCreated(LocalDateTime.of(2022, 1, 12, 10, 0, 0));
+        Address A1 = new Address(1,1);
+        Address A2 = new Address(1,2);
+        Address B1 = new Address(2,1);
+        Address D2 = new Address(4,2);
+        Species species = EntityFactory.getHuman();
+        Donor[] donors = { new Donor(1, "DONOR1", LifeStage.adult, species),
+                new Donor(2, "DONOR2", LifeStage.paediatric, species)};
+        TissueType[] tts = { new TissueType(11, "Heart", "HEA"),
+                new TissueType(12, "Brain", "BRA")};
+        SpatialLocation[] sls = Arrays.stream(tts)
+                .map(tt -> new SpatialLocation(tt.getId()+10, "SL"+(tt.getId()+10), (tt.getId()%10)+1, tt))
+                .toArray(SpatialLocation[]::new);
+        Tissue[] tissues = IntStream.range(0,4)
+                .mapToObj(i -> (i==2 ? null : EntityFactory.makeTissue(donors[i/2], sls[i%2])))
+                .toArray(Tissue[]::new);
+        tissues[0].setReplicate("100");
+        tissues[1].setReplicate("101b");
+        // tissues[2] is null, because that is allowed
+        tissues[3].setReplicate("102");
+        Medium medium = EntityFactory.getMedium();
+        for (Tissue t : tissues) {
+            if (t!=null) {
+                t.setMedium(medium);
+            }
+        }
+        if (!sameMedium) {
+            tissues[1].setMedium(new Medium(50, "bananas"));
+        }
+        Map<Address, List<SimpleContent>> scs = Map.of(
+                A1, List.of(new SimpleContent(tissues[0], 1), new SimpleContent(tissues[0], 2)),
+                A2, List.of(new SimpleContent(tissues[0], 1)),
+                B1, List.of(new SimpleContent(tissues[1], 3), new SimpleContent(tissues[1], 3)),
+                D2, List.of(new SimpleContent(tissues[3], 6), new SimpleContent(tissues[3], 5))
+        );
+        doReturn(scs).when(service).addressToSimpleContent(lw);
+        doReturn(tissues).when(service).checkRowBasedLayout(lw, scs);
+
+        LabwareLabelData ld = service.getRowBasedLabelData(lw);
+        assertEquals(lw.getBarcode(), ld.getBarcode());
+        assertEquals("2022-01-12", ld.getDate());
+        assertEquals(sameMedium ? medium.getName() : null, ld.getMedium());
+        String[] donorNames = { donors[0].getDonorName(), donors[1].getDonorName() };
+        String[] tissueStrings = { tissueString(tissues[0]), tissueString(tissues[1]), null, tissueString(tissues[3]) };
+        String[] reps = { tissues[0].getReplicate(), tissues[1].getReplicate(), null, tissues[3].getReplicate() };
+
+        List<LabelContent> expectedContents = List.of(
+                new LabelContent(donorNames[0], tissueStrings[0], reps[0], "S001+"),
+                new LabelContent(donorNames[0], tissueStrings[1], reps[1], "S003"),
+                new LabelContent(null, null, null, (String) null),
+                new LabelContent(donorNames[1], tissueStrings[3], reps[3], "S005+")
+        );
+        assertEquals(expectedContents, ld.getContents());
     }
 
     @Test

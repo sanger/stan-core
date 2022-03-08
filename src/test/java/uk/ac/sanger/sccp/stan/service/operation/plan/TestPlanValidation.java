@@ -186,11 +186,11 @@ public class TestPlanValidation {
         Labware lw = EntityFactory.getTube();
         UCMap<Labware> sourceLwMap = UCMap.from(Labware::getBarcode, lw);
         if (dividedLayout!=null) {
-            doReturn(dividedLayout).when(validation).hasDividedLayout(any(), any(), any());
+            doReturn(dividedLayout).when(validation).hasDividedLayout(any(), any(), any(), anyInt());
         }
         validation.validateDestinations(sourceLwMap);
         if (dividedLayout==null) {
-            verify(validation, never()).hasDividedLayout(any(), any(), any());
+            verify(validation, never()).hasDividedLayout(any(), any(), any(), anyInt());
         } else {
             assert labwareTypes!=null;
             UCMap<LabwareType> adhLts = labwareTypes.stream()
@@ -199,10 +199,10 @@ public class TestPlanValidation {
             List<PlanRequestLabware> adhPrls = request.getLabware().stream()
                     .filter(prl -> adhLts.get(prl.getLabwareType())!=null)
                     .collect(toList());
-            verify(validation, times(adhPrls.size())).hasDividedLayout(any(), any(), any());
+            verify(validation, times(adhPrls.size())).hasDividedLayout(any(), any(), any(), anyInt());
             for (PlanRequestLabware prl : adhPrls) {
                 final LabwareType lt = adhLts.get(prl.getLabwareType());
-                verify(validation).hasDividedLayout(sourceLwMap, prl, lt);
+                verify(validation).hasDividedLayout(sourceLwMap, prl, lt, 1);
             }
         }
 
@@ -220,10 +220,11 @@ public class TestPlanValidation {
 
     @ParameterizedTest
     @MethodSource("hasDividedLayoutData")
-    public void testHasDividedLayout(UCMap<Labware> sourceLwMap, PlanRequestLabware prl, LabwareType lt, boolean expected) {
+    public void testHasDividedLayout(UCMap<Labware> sourceLwMap, PlanRequestLabware prl, LabwareType lt,
+                                     int rowsPerGroup, boolean expected) {
         PlanRequest request = new PlanRequest("opType", List.of(prl));
         PlanValidationImp validation = makeValidation(request);
-        assertEquals(expected, validation.hasDividedLayout(sourceLwMap, prl, lt));
+        assertEquals(expected, validation.hasDividedLayout(sourceLwMap, prl, lt, rowsPerGroup));
     }
 
     static Stream<Arguments> sourcesData() {
@@ -352,7 +353,7 @@ public class TestPlanValidation {
                         lts, null, true),
                 Arguments.of(List.of(new PlanRequestLabware(adhLt.getName(), null, noActions),
                         new PlanRequestLabware(ltName, null, noActions)), lts,
-                        "Labware of type Visium ADH must have one tissue in its top half and one in its bottom half.",
+                        "Labware of type Visium ADH must have one tissue per row.",
                         false),
 
                 Arguments.of(List.of(), null, "No labware are specified in the plan request.", null),
@@ -416,18 +417,18 @@ public class TestPlanValidation {
                 {true},
                 {A1, blocks[0], A2, blocks[0], A2, blocks[1], C1, blocks[2], false},
                 {A1, blocks[0], C1, blocks[1], D2, blocks[2], false},
-        }).map(arr -> Arguments.of(sourceLwMap, toPRL(lt.getName(), arr), lt, arr[arr.length - 1]));
+        }).map(arr -> Arguments.of(sourceLwMap, toPRL(lt.getName(), arr), lt, 2, arr[arr.length - 1]));
 
         final Stream<Arguments> otherArgStream = Stream.of(
                 Arguments.of(sourceLwMap, new PlanRequestLabware(lt.getName(), null,
                         List.of(
                                 new PlanRequestAction(A1, sams[0].getId(), new PlanRequestSource(blocks[0].getBarcode(), A1), null),
                                 new PlanRequestAction(A1, sams[1].getId(), new PlanRequestSource(blocks[0].getBarcode(), A2), null))),
-                        lt, true), // Invalid source address is ignored
+                        lt, 2, true), // Invalid source address is ignored
                 Arguments.of(sourceLwMap, new PlanRequestLabware(lt.getName(), null,
                         List.of(new PlanRequestAction(A1, sams[0].getId(), new PlanRequestSource(blocks[0].getBarcode(), A1), null),
                                 new PlanRequestAction(A2, sams[1].getId(), new PlanRequestSource(blocks[0].getBarcode(), A1), null))),
-                        lt, true) // Sample id not present in slot is ignored
+                        lt, 2, true) // Sample id not present in slot is ignored
         );
 
         return Stream.concat(argStream, otherArgStream);

@@ -92,7 +92,7 @@ public class TestLabelPrintService {
     }
 
     @Test
-    public void testPrintLabwareWithDividedLabel() throws IOException {
+    public void testPrintLabwareWithRowBasedLabel() throws IOException {
         LabwareType lt = new LabwareType(10, "Visium ADH", 4, 2, new LabelType(6, "adh"), false);
         Labware lw = EntityFactory.makeEmptyLabware(lt);
         when(mockPrinterRepo.getByName(printer.getName())).thenReturn(printer);
@@ -104,7 +104,7 @@ public class TestLabelPrintService {
         );
         LabelPrintRequest expectedRequest = new LabelPrintRequest(lw.getLabwareType().getLabelType(), labelData);
 
-        when(mockLabwareLabelDataService.getDividedLabelData(lw)).thenReturn(labelData.get(0));
+        when(mockLabwareLabelDataService.getRowBasedLabelData(lw)).thenReturn(labelData.get(0));
         doNothing().when(labelPrintService).print(any(), any());
         doReturn(List.of()).when(labelPrintService).recordPrint(any(), any(), any());
 
