@@ -65,7 +65,7 @@ public class LabelPrintService {
         LabelType labelType = labelTypes.iterator().next();
         final Function<Labware, LabwareLabelData> labelFunction;
         if (labelType.getName().equalsIgnoreCase("adh")) {
-            labelFunction = labwareLabelDataService::getDividedLabelData;
+            labelFunction = labwareLabelDataService::getRowBasedLabelData;
         } else {
             labelFunction = labwareLabelDataService::getLabelData;
         }

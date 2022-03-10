@@ -9,11 +9,16 @@ import uk.ac.sanger.sccp.stan.service.label.LabwareLabelData.LabelContent;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
 /**
+ * Service for creating LabwareLabelData from labware.
+ * LabwareLabelData summarises the current or expected contents of labware
+ * into fields suitable to be printed on a label.
  * @author dr6
  */
 @Service
@@ -54,6 +59,56 @@ public class LabwareLabelDataService {
         }
         String dateString = created.format(DateTimeFormatter.ISO_LOCAL_DATE);
         return new LabwareLabelData(labware.getBarcode(), medium, dateString, content);
+    }
+
+    /**
+     * Label data where we list the tissue for each row.
+     * @param labware the labware the label describes
+     * @return label data describing the labware
+     */
+    public LabwareLabelData getRowBasedLabelData(Labware labware) {
+        // 1. Load simple contents into a map.
+        // 2. Check contents are suitable.
+        // 3. Convert to correct number of label contents.
+        Map<Address, List<SimpleContent>> map = addressToSimpleContent(labware);
+        if (map.isEmpty()) {
+            return toLabelData(labware, List.of(), Set.of());
+        }
+        Tissue[] tissues = checkRowBasedLayout(labware, map);
+
+        final int numTissues = tissues.length;
+        String[] donorNames = new String[numTissues];
+        String[] tissueDescs = new String[numTissues];
+        String[] reps = new String[numTissues];
+        Set<String> mediums = new HashSet<>(numTissues);
+
+        for (int i = 0; i < numTissues; i++) {
+            Tissue tissue = tissues[i];
+            if (tissue != null) {
+                donorNames[i] = tissue.getDonor().getDonorName();
+                tissueDescs[i] = getTissueDesc(tissue);
+                reps[i] = tissue.getReplicate();
+                mediums.add(tissue.getMedium().getName());
+            }
+        }
+
+        List<LabelContent> content = new ArrayList<>(numTissues);
+        final int numCols = labware.getLabwareType().getNumColumns();
+        for (int i = 0; i < numTissues; ++i) {
+            Tissue tissue = tissues[i];
+            if (tissue==null) {
+                content.add(new LabelContent(null, null, null));
+            } else {
+                final int row = i+1;
+                Stream<SimpleContent> scStream =  IntStream.range(1, numCols+1)
+                        .mapToObj(col -> map.get(new Address(row, col)))
+                        .filter(Objects::nonNull)
+                        .flatMap(Collection::stream);
+                Integer[] sectionRange = sectionRange(scStream.iterator());
+                content.add(new LabelContent(donorNames[i], tissueDescs[i], reps[i], sectionRange[0], sectionRange[1]));
+            }
+        }
+        return toLabelData(labware, content, mediums);
     }
 
     /**
@@ -112,6 +167,41 @@ public class LabwareLabelDataService {
         return toLabelData(labware, content, mediums);
     }
 
+    /**
+     * Checks that the given labware contents are consistent with a row-based layout
+     * (i.e. that each row contains at most one tissue).
+     * Returns an array of tissues, corresponding to the rows in the labware
+     * @param labware the labware
+     * @param map the simple contents of the labware
+     * @return the tissues in each row of the labware
+     * @exception IllegalArgumentException if the layout is not consistent with a row-based layout
+     */
+    public Tissue[] checkRowBasedLayout(Labware labware, Map<Address, List<SimpleContent>> map) {
+        Tissue[] tissues = new Tissue[labware.getLabwareType().getNumRows()];
+        for (var entry : map.entrySet()) {
+            int index = entry.getKey().getRow() - 1;
+            for (SimpleContent sc : entry.getValue()) {
+                Tissue tissue = sc.tissue;
+                if (tissues[index]==null) {
+                    tissues[index] = tissue;
+                } else if (!tissues[index].equals(tissue)) {
+                    throw new IllegalArgumentException("The specified label template is only suitable for " +
+                            "labware which has one tissue per row.");
+                }
+            }
+        }
+        return tissues;
+    }
+
+    /**
+     * Checks that the given labware contents are consistent with a divided layout
+     * (i.e. that the top half and bottom half each contain at most one tissue).
+     * Returns an array of tissues, representing the top and bottom half.
+     * @param labware the labware
+     * @param map the simple contents of the labware
+     * @return the top and bottom tissues of the labware
+     * @exception IllegalArgumentException if the layout is not consistent with a divided layout
+     */
     public Tissue[] checkDividedLayout(Labware labware, Map<Address, List<SimpleContent>> map) {
         Tissue[] tissues = new Tissue[2];
         int regionRows = labware.getLabwareType().getNumRows() / 2;
@@ -131,25 +221,51 @@ public class LabwareLabelDataService {
         return tissues;
     }
 
-    public Integer[] sectionRange(List<SimpleContent> scs) {
-        if (scs==null || scs.isEmpty()) {
+    /**
+     * Gets the section range (min and max) from a sequence of SimpleContent.
+     * Returns an array <code>{null,null}</code> if there are no sections, or if the given collection
+     * is null or empty.
+     * @param scs an iterator for SimpleContents
+     * @return the min and max of sections in the given collection, in an array
+     */
+    public Integer[] sectionRange(Collection<SimpleContent> scs) {
+        if (scs == null || scs.isEmpty()) {
             return new Integer[] { null, null };
         }
+        return sectionRange(scs.iterator());
+    }
+
+    /**
+     * Gets the section range (min and max) from a sequence of SimpleContent.
+     * Returns an array <code>{null,null}</code> if there are no sections.
+     * @param scs an iterator for SimpleContents
+     * @return the min and max of sections in the given contents, in an array
+     */
+    public Integer[] sectionRange(Iterator<SimpleContent> scs) {
         Integer minSection = null, maxSection = null;
-        for (SimpleContent sc : scs) {
-            if (sc.section==null) {
-                continue;
-            }
-            if (minSection==null || sc.section < minSection) {
-                minSection = sc.section;
-            }
-            if (maxSection==null || sc.section > maxSection) {
-                maxSection = sc.section;
+        while (scs.hasNext()) {
+            SimpleContent sc = scs.next();
+            if (sc.section != null) {
+                if (minSection == null || sc.section < minSection) {
+                    minSection = sc.section;
+                }
+                if (maxSection == null || sc.section > maxSection) {
+                    maxSection = sc.section;
+                }
             }
         }
         return new Integer[] { minSection, maxSection };
+
     }
 
+    /**
+     * Creates a map from each slot address in the labware to the content in that slot,
+     * as a list of SimpleContent.
+     * Addresses of empty slots may be omitted.
+     * If the labware is empty, the planned actions are looked up to find the expected contents.
+     * @param labware the labware to examine
+     * @return a map from slot address to list of SimpleContent
+     */
     public Map<Address, List<SimpleContent>> addressToSimpleContent(Labware labware) {
         Map<Address, List<SimpleContent>> map = new HashMap<>(labware.getSlots().size());
         for (Slot slot : labware.getSlots()) {

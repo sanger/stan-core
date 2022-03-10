@@ -161,9 +161,8 @@ public class PlanValidationImp implements PlanValidation {
                 addProblem("Labware with the external barcode "+lw.getBarcode()+" already exists in the database.");
             }
             if (lt.getLabelType()!=null && lt.getLabelType().getName().equalsIgnoreCase("adh")) {
-                if (!hasDividedLayout(sourceLabwareMap, lw, lt)) {
-                    addProblem("Labware of type "+lt.getName()+" must have one tissue in its top half and " +
-                            "one in its bottom half.");
+                if (!hasDividedLayout(sourceLabwareMap, lw, lt, 1)) {
+                    addProblem("Labware of type "+lt.getName()+" must have one tissue per row.");
                 }
             }
         }
@@ -211,16 +210,15 @@ public class PlanValidationImp implements PlanValidation {
         }
     }
 
-
-    public boolean hasDividedLayout(UCMap<Labware> sourceLwMap, PlanRequestLabware lw, LabwareType lt) {
-        Tissue[] tissues = new Tissue[2];
-        int regionSize = lt.getNumRows()/2;
+    public boolean hasDividedLayout(UCMap<Labware> sourceLwMap, PlanRequestLabware lw, LabwareType lt, int rowsPerGroup) {
+        final int numGroups = lt.getNumRows() / rowsPerGroup;
+        Tissue[] tissues = new Tissue[numGroups];
         for (var pa : lw.getActions()) {
             if (pa.getAddress()==null || pa.getSource()==null || pa.getSource().getBarcode()==null) {
                 continue;
             }
-            int tissueIndex = (pa.getAddress().getRow()-1)/regionSize;
-            if (tissueIndex < 0 || tissueIndex >= 2) {
+            int tissueIndex = (pa.getAddress().getRow()-1)/rowsPerGroup;
+            if (tissueIndex < 0 || tissueIndex >= numGroups) {
                 continue; // must be invalid address, which is handled elsewhere
             }
             Labware sourceLabware = sourceLwMap.get(pa.getSource().getBarcode());
@@ -235,7 +233,8 @@ public class PlanValidationImp implements PlanValidation {
             if (sourceSlot==null) {
                 continue;
             }
-            Sample sample = sourceSlot.getSamples().stream().filter(sam -> sam.getId()==pa.getSampleId())
+            Sample sample = sourceSlot.getSamples().stream()
+                    .filter(sam -> sam.getId()==pa.getSampleId())
                     .findAny().orElse(null);
             if (sample==null) {
                 continue;
