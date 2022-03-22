@@ -9,4 +9,6 @@ import java.util.List;
 
 public interface ReagentActionRepo extends CrudRepository<ReagentAction, Integer> {
     List<ReagentAction> findAllByOperationIdIn(Collection<Integer> opIds);
+
+    List<ReagentAction> findAllByDestinationIdIn(Collection<Integer> slotIds);
 }

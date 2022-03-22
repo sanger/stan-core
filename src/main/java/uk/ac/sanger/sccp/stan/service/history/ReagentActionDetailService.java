@@ -7,6 +7,7 @@ import uk.ac.sanger.sccp.stan.model.reagentplate.ReagentAction;
 import uk.ac.sanger.sccp.stan.repo.*;
 
 import java.util.*;
+import java.util.function.Function;
 
 import static java.util.stream.Collectors.toSet;
 
@@ -26,12 +27,33 @@ public class ReagentActionDetailService {
     }
 
     /**
-     * Creates reagent action details relevant to the given operation ids.
+     * Makes reagent action details relevant to the given operation ids.
      * @param opIds op ids
      * @return a map from operation id to the list of reagent action details for that operation
      */
     public Map<Integer, List<ReagentActionDetail>> loadReagentTransfers(Collection<Integer> opIds) {
         List<ReagentAction> reagentActions = reagentActionRepo.findAllByOperationIdIn(opIds);
+        return toDetailMap(reagentActions, ReagentAction::getOperationId);
+    }
+
+    /**
+     * Makes reagent action details relevant to the given labware slot ids.
+     * @param slotIds the slot ids
+     * @return a map from slot id to the list of reagent action details for that slot
+     */
+    public Map<Integer, List<ReagentActionDetail>> loadReagentTransfersForSlotIds(Collection<Integer> slotIds) {
+        List<ReagentAction> reagentActions = reagentActionRepo.findAllByDestinationIdIn(slotIds);
+        return toDetailMap(reagentActions, ra -> ra.getDestination().getId());
+    }
+    /**
+     * Converts reagent actions to details, and puts them in a multi-valued map.
+     * @param reagentActions the reagent actions
+     * @param keyFunction the function giving the map key
+     * @param <K> the type of key for the map
+     * @return a map of the given keys to the corresponding details
+     */
+    private <K> Map<K, List<ReagentActionDetail>> toDetailMap(Collection<ReagentAction> reagentActions,
+                                                                Function<ReagentAction, K> keyFunction) {
         if (reagentActions.isEmpty()) {
             return Map.of();
         }
@@ -43,11 +65,11 @@ public class ReagentActionDetailService {
         for (var reagentPlate : reagentPlates) {
             reagentPlateBarcodes.put(reagentPlate.getId(), reagentPlate.getBarcode());
         }
-        Map<Integer, List<ReagentActionDetail>> map = new HashMap<>();
+        final Map<K, List<ReagentActionDetail>> map = new HashMap<>();
         for (var ra : reagentActions) {
             ReagentActionDetail rad = new ReagentActionDetail(reagentPlateBarcodes.get(ra.getReagentSlot().getPlateId()),
                     ra.getReagentSlot().getAddress(), ra.getDestination().getAddress(), ra.getDestination().getLabwareId());
-            map.computeIfAbsent(ra.getOperationId(), k -> new ArrayList<>()).add(rad);
+            map.computeIfAbsent(keyFunction.apply(ra), k -> new ArrayList<>()).add(rad);
         }
         return map;
     }
@@ -55,13 +77,13 @@ public class ReagentActionDetailService {
     /**
      * Some presentable information about a reagent action
      */
-    static class ReagentActionDetail {
-        String reagentPlateBarcode;
-        Address reagentSlotAddress;
-        Address destSlotAddress;
-        int destinationLabwareId;
+    public static class ReagentActionDetail {
+        public final String reagentPlateBarcode;
+        public final Address reagentSlotAddress;
+        public final Address destSlotAddress;
+        public final int destinationLabwareId;
 
-        ReagentActionDetail(String reagentPlateBarcode, Address reagentSlotAddress, Address destSlotAddress,
+        public ReagentActionDetail(String reagentPlateBarcode, Address reagentSlotAddress, Address destSlotAddress,
                             int destinationLabwareId) {
             this.reagentPlateBarcode = reagentPlateBarcode;
             this.reagentSlotAddress = reagentSlotAddress;

@@ -7,12 +7,14 @@ import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.service.ComplexStainServiceImp;
+import uk.ac.sanger.sccp.stan.service.history.ReagentActionDetailService;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.Ancestry;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
 
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.*;
@@ -35,11 +37,14 @@ public class ReleaseFileService {
     private final OperationRepo opRepo;
     private final LabwareNoteRepo lwNoteRepo;
 
+    private final ReagentActionDetailService reagentActionDetailService;
+
     @Autowired
     public ReleaseFileService(Ancestoriser ancestoriser,
                               SampleRepo sampleRepo, LabwareRepo labwareRepo, MeasurementRepo measurementRepo,
                               SnapshotRepo snapshotRepo, ReleaseRepo releaseRepo, OperationTypeRepo opTypeRepo,
-                              OperationRepo opRepo, LabwareNoteRepo lwNoteRepo) {
+                              OperationRepo opRepo, LabwareNoteRepo lwNoteRepo,
+                              ReagentActionDetailService reagentActionDetailService) {
         this.releaseRepo = releaseRepo;
         this.sampleRepo = sampleRepo;
         this.labwareRepo = labwareRepo;
@@ -49,6 +54,7 @@ public class ReleaseFileService {
         this.opTypeRepo = opTypeRepo;
         this.opRepo = opRepo;
         this.lwNoteRepo = lwNoteRepo;
+        this.reagentActionDetailService = reagentActionDetailService;
     }
 
     /**
@@ -78,6 +84,7 @@ public class ReleaseFileService {
         loadSources(entries, ancestry, mode);
         loadMeasurements(entries, ancestry);
         loadLastStain(entries);
+        loadReagentSources(entries);
         return new ReleaseFileContent(mode, entries);
     }
 
@@ -350,6 +357,25 @@ public class ReleaseFileService {
                     entry.setCoverage(Integer.valueOf(coverageMeasurement.getValue()));
                 } catch (NumberFormatException e) {
                     log.error("Coverage measurement is not an integer: {}", coverageMeasurement);
+                }
+            }
+        }
+    }
+
+    public void loadReagentSources(Collection<ReleaseEntry> entries) {
+        Set<Integer> slotIds = entries.stream()
+                .map(e -> e.getSlot().getId())
+                .collect(toSet());
+        var radMap = reagentActionDetailService.loadReagentTransfersForSlotIds(slotIds);
+        if (!radMap.isEmpty()) {
+            for (var entry : entries) {
+                var rads = radMap.get(entry.getSlot().getId());
+                if (rads!=null && !rads.isEmpty()) {
+                    String radString = rads.stream()
+                            .map(rad -> rad.reagentPlateBarcode+" : "+rad.reagentSlotAddress)
+                            .distinct()
+                            .collect(Collectors.joining(", "));
+                    entry.setReagentSource(radString);
                 }
             }
         }

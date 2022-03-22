@@ -21,6 +21,7 @@ public class ReleaseEntry {
     private String stainType;
     private String bondBarcode;
     private Integer coverage;
+    private String reagentSource;
 
     public ReleaseEntry(Labware labware, Slot slot, Sample sample) {
         this(labware, slot, sample, null);
@@ -109,6 +110,14 @@ public class ReleaseEntry {
         this.coverage = coverage;
     }
 
+    public String getReagentSource() {
+        return this.reagentSource;
+    }
+
+    public void setReagentSource(String reagentSource) {
+        this.reagentSource = reagentSource;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -124,7 +133,8 @@ public class ReleaseEntry {
                 && Objects.equals(this.storageAddress, that.storageAddress)
                 && Objects.equals(this.stainType, that.stainType)
                 && Objects.equals(this.bondBarcode, that.bondBarcode)
-                && Objects.equals(this.coverage, that.coverage));
+                && Objects.equals(this.coverage, that.coverage)
+                && Objects.equals(this.reagentSource, that.reagentSource));
     }
 
     @Override
@@ -145,6 +155,7 @@ public class ReleaseEntry {
                 .add("stainType", stainType)
                 .add("bondBarcode", bondBarcode)
                 .add("coverage", coverage)
+                .add("reagentSource", reagentSource)
                 .toString();
     }
 }
