@@ -87,6 +87,10 @@ public class OperationType implements HasName, HasIntId {
     public boolean discardSource() {
         return this.has(OperationTypeFlag.DISCARD_SOURCE);
     }
+
+    public boolean transfersReagent() {
+        return this.has(OperationTypeFlag.REAGENT_TRANSFER);
+    }
     //endregion
 
     @Override

@@ -82,7 +82,7 @@ public class LabwareType implements HasIntId, HasName {
     }
 
     /**
-     * Returns the index of the specified address in this labware types valid addresses.
+     * Returns the index of the specified address in this labware type's valid addresses.
      * Returns -1 if the address is not valid for this labware type
      * @param address the address to find
      * @return the index found, or -1 if the address is not valid for this labware type

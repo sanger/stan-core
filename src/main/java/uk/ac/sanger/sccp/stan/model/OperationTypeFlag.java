@@ -7,6 +7,7 @@ public enum OperationTypeFlag {
     STAIN,
     RESULT,
     ANALYSIS,
+    REAGENT_TRANSFER,
 
     // Current limit: 32 flags
     ;
