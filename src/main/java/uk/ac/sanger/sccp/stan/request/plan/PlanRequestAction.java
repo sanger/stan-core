@@ -6,7 +6,7 @@ import uk.ac.sanger.sccp.stan.model.Address;
 import java.util.Objects;
 
 /**
- * An reqeust for an action (i.e. one sample moving from one slot to another slot) in a planned operation.
+ * A request for an action (i.e. one sample moving from one slot to another slot) in a planned operation.
  * @author dr6
  */
 public class PlanRequestAction {

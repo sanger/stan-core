@@ -59,7 +59,7 @@ public class PlanRequest {
     public String toString() {
         return MoreObjects.toStringHelper(this)
                 .add("operationType", operationType)
-                .add("Labwares", labware)
+                .add("labware", labware)
                 .toString();
     }
 }

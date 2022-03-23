@@ -5,23 +5,23 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
 import uk.ac.sanger.sccp.stan.EntityFactory;
+import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.PlanData;
 import uk.ac.sanger.sccp.stan.request.plan.*;
 import uk.ac.sanger.sccp.stan.service.LabwareService;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
+import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
-import static uk.ac.sanger.sccp.stan.Matchers.eqCi;
 
 /**
  * Tests for {@link PlanServiceImp}
@@ -100,39 +100,49 @@ public class TestPlanService {
 
     @Test
     public void testExecutePlanRequest() {
-        PlanOperation plan = new PlanOperation();
-        plan.setId(10);
-        doReturn(plan).when(planService).createPlan(any(), any());
-        Map<String, Labware> sources = Map.of("STAN-1A",
+        PlanOperation plan1 = new PlanOperation(), plan2 = new PlanOperation();
+        plan1.setId(10); plan2.setId(11);
+        doReturn(plan1, plan2).when(planService).createPlan(any(), any());
+
+        UCMap<Labware> sources = UCMap.from(Labware::getBarcode,
                 new Labware(1, "STAN-1A", EntityFactory.getTubeType(), null));
         doReturn(sources).when(planService).lookUpSources(any());
-        final Labware tube = EntityFactory.makeEmptyLabware(EntityFactory.getTubeType());
-        List<Labware> destinations = List.of(tube);
+        final Labware tube1 = EntityFactory.makeEmptyLabware(EntityFactory.getTubeType());
+        final Labware tube2 = EntityFactory.makeEmptyLabware(EntityFactory.getTubeType());
+        List<Labware> destinations = List.of(tube1, tube2);
         doReturn(destinations).when(planService).createDestinations(any());
-        List<PlanAction> actions = List.of(new PlanAction(50, plan.getId(),
-                tube.getFirstSlot(), tube.getFirstSlot(), EntityFactory.getSample(), null, null, null));
-        doReturn(actions).when(planService).createActions(any(), anyInt(), any(), any(), any());
+        List<PlanAction> actions1 = List.of(new PlanAction(50, plan1.getId(),
+                tube1.getFirstSlot(), tube2.getFirstSlot(), EntityFactory.getSample(), null, null, null));
+        List<PlanAction> actions2 = List.of(new PlanAction(51, plan2.getId(),
+                tube1.getFirstSlot(), tube2.getFirstSlot(), EntityFactory.getSample(), null, null, null));
+        doReturn(actions1, actions2).when(planService).createActions(any(), anyInt(), any(), any(), any());
+        OperationType opType = EntityFactory.makeOperationType("Section", null, OperationTypeFlag.SOURCE_IS_BLOCK);
+        when(mockOpTypeRepo.getByName("Section")).thenReturn(opType);
 
-        final PlanRequest request = new PlanRequest("Section", List.of());
+        final PlanRequest request = new PlanRequest("Section", List.of(
+                new PlanRequestLabware(), new PlanRequestLabware()
+        ));
         PlanResult result = planService.executePlanRequest(user, request);
 
         assertNotNull(result);
-        assertThat(result.getOperations()).containsOnly(plan);
+        assertThat(result.getOperations()).containsExactly(plan1, plan2);
         assertThat(result.getLabware()).hasSameElementsAs(destinations);
-        assertEquals(plan.getPlanActions(), actions);
+        assertEquals(plan1.getPlanActions(), actions1);
 
-        verify(planService).createPlan(user, request.getOperationType());
+        verify(planService, times(request.getLabware().size())).createPlan(user, opType);
         verify(planService).lookUpSources(request);
         verify(planService).createDestinations(request);
-        verify(planService).createActions(request, plan.getId(), sources, destinations, null);
+        verify(planService, times(request.getLabware().size())).createActions(any(), anyInt(), same(sources), any(), isNull());
+        verify(planService).createActions(request.getLabware().get(0), plan1.getId(), sources, destinations.get(0), null);
+        verify(planService).createActions(request.getLabware().get(1), plan2.getId(), sources, destinations.get(1), null);
     }
 
     @Test
     public void testCreatePlan() {
         OperationType opType = new OperationType(10, "Section");
-        when(mockOpTypeRepo.getByName(opType.getName())).thenReturn(opType);
+        when(mockPlanRepo.save(any())).then(Matchers.returnArgument());
 
-        PlanOperation plan = planService.createPlan(user, opType.getName());
+        PlanOperation plan = planService.createPlan(user, opType);
 
         assertEquals(plan.getOperationType(), opType);
         assertEquals(plan.getUser(), user);
@@ -144,7 +154,7 @@ public class TestPlanService {
         LabwareType lt = EntityFactory.getTubeType();
         List<Labware> labware = List.of(EntityFactory.makeEmptyLabware(lt),
                 EntityFactory.makeEmptyLabware(lt));
-        labware.forEach(lw -> when(mockLwRepo.getByBarcode(eqCi(lw.getBarcode()))).thenReturn(lw));
+        when(mockLwRepo.getByBarcodeIn(any())).thenReturn(labware);
         Address FIRST = new Address(1, 1);
         PlanRequest request = new PlanRequest("Section",
                 List.of(new PlanRequestLabware(lt.getName(), "STAN-99",
@@ -156,10 +166,10 @@ public class TestPlanService {
                 )
         );
 
-        Map<String, Labware> labwareMap = planService.lookUpSources(request);
-        assertEquals(Map.of(labware.get(0).getBarcode(), labware.get(0),
-                labware.get(1).getBarcode(), labware.get(1)),
-                labwareMap);
+        UCMap<Labware> labwareMap = planService.lookUpSources(request);
+        assertThat(labwareMap).hasSize(2);
+        assertEquals(labware.get(0), labwareMap.get(labware.get(0).getBarcode()));
+        assertEquals(labware.get(1), labwareMap.get(labware.get(1).getBarcode()));
     }
 
     @Test
@@ -213,48 +223,35 @@ public class TestPlanService {
                 })
                 .collect(toList());
         List<String> sourceBarcodes = sources.stream().map(Labware::getBarcode).collect(toList());
-        Map<String, Labware> sourceMap = sources.stream()
-                .collect(toMap(Labware::getBarcode, lw -> lw));
-        List<Labware> destinations = IntStream.range(0,2)
-                .mapToObj(i -> EntityFactory.makeEmptyLabware(lt))
-                .collect(toList());
+        UCMap<Labware> sourceMap = UCMap.from(sources, Labware::getBarcode);
+        Labware destination = EntityFactory.makeEmptyLabware(lt);
         int planId = 99;
-        PlanRequest request = new PlanRequest("Section",
+        PlanRequestLabware prl =  new PlanRequestLabware(lt.getName(), destination.getBarcode(),
                 List.of(
-                        new PlanRequestLabware(lt.getName(), destinations.get(0).getBarcode(),
-                                List.of(
-                                        new PlanRequestAction(FIRST, samples.get(0).getId(),
-                                                new PlanRequestSource(sourceBarcodes.get(0), FIRST), null),
-                                        new PlanRequestAction(SECOND, samples.get(0).getId(),
-                                                new PlanRequestSource(sourceBarcodes.get(0), null), 1)
-                                )),
-                        new PlanRequestLabware(lt.getName(), destinations.get(1).getBarcode(),
-                                List.of(
-                                        new PlanRequestAction(FIRST, samples.get(0).getId(),
-                                                new PlanRequestSource(sourceBarcodes.get(0), null), 2),
-                                        new PlanRequestAction(SECOND, samples.get(1).getId(),
-                                                new PlanRequestSource(sourceBarcodes.get(1), SECOND), 3)
-                                ))
+                        new PlanRequestAction(FIRST, samples.get(0).getId(),
+                                new PlanRequestSource(sourceBarcodes.get(0), FIRST), null),
+                        new PlanRequestAction(SECOND, samples.get(0).getId(),
+                                new PlanRequestSource(sourceBarcodes.get(0), null), 1)
                 ));
 
         List<PlanAction> expectedActions = List.of(
-                new PlanAction(21, planId, sources.get(0).getFirstSlot(), destinations.get(0).getFirstSlot(), samples.get(0), null, null, bioState),
-                new PlanAction(22, planId, sources.get(0).getFirstSlot(), destinations.get(0).getSlot(SECOND), samples.get(0), null, 1, bioState),
-                new PlanAction(23, planId, sources.get(0).getFirstSlot(), destinations.get(1).getFirstSlot(), samples.get(0), null, 2, bioState),
-                new PlanAction(24, planId, sources.get(1).getSlot(SECOND), destinations.get(1).getSlot(SECOND), samples.get(1), null, 3, bioState)
+                new PlanAction(21, planId, sources.get(0).getFirstSlot(), destination.getFirstSlot(), samples.get(0), null, null, bioState),
+                new PlanAction(22, planId, sources.get(0).getFirstSlot(), destination.getSlot(SECOND), samples.get(0), null, 1, bioState)
         );
 
         final int[] planActionIdCounter = {20};
-        when(mockPlanActionRepo.save(any())).then(invocation -> {
-            PlanAction plac = invocation.getArgument(0);
-            plac.setId(++planActionIdCounter[0]);
-            return plac;
+        when(mockPlanActionRepo.saveAll(any())).then(invocation -> {
+            Iterable<PlanAction> pas = invocation.getArgument(0);
+            for (var pa : pas) {
+                pa.setId(++planActionIdCounter[0]);
+            }
+            return pas;
         });
 
-        final List<PlanAction> actions = planService.createActions(request, planId, sourceMap, destinations, bioState);
+        final List<PlanAction> actions = planService.createActions(prl, planId, sourceMap, destination, bioState);
         assertEquals(expectedActions, actions);
 
-        actions.forEach(ac -> verify(mockPlanActionRepo).save(ac));
+        verify(mockPlanActionRepo).saveAll(actions);
     }
 
     @ParameterizedTest
