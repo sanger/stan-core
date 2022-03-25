@@ -8,12 +8,15 @@ import uk.ac.sanger.sccp.stan.request.PlanData;
 import uk.ac.sanger.sccp.stan.request.plan.*;
 import uk.ac.sanger.sccp.stan.service.LabwareService;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
+import uk.ac.sanger.sccp.utils.BasicUtils;
+import uk.ac.sanger.sccp.utils.UCMap;
 
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
 import java.util.function.Predicate;
 
-import static java.util.stream.Collectors.*;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 
 /**
  * @author dr6
@@ -52,34 +55,61 @@ public class PlanServiceImp implements PlanService {
         return executePlanRequest(user, request);
     }
 
+    /**
+     * Creates the plans as requested
+     * @param user the user making the request
+     * @param request the request
+     * @return new plans and labware as requested
+     */
     public PlanResult executePlanRequest(User user, PlanRequest request) {
         // At some point it may be necessary to derive a new biostate as part of this method
-        PlanOperation plan = createPlan(user, request.getOperationType());
-        Map<String, Labware> sources = lookUpSources(request);
+        UCMap<Labware> sources = lookUpSources(request);
+        OperationType opType = opTypeRepo.getByName(request.getOperationType());
         List<Labware> destinations = createDestinations(request);
-        List<PlanAction> actions = createActions(request, plan.getId(), sources, destinations, null);
-        plan.setPlanActions(actions);
-        return new PlanResult(List.of(plan), destinations);
+        Iterator<Labware> destIter = destinations.iterator();
+        List<PlanOperation> plans = new ArrayList<>(destinations.size());
+        for (PlanRequestLabware pl : request.getLabware()) {
+            PlanOperation plan = createPlan(user, opType);
+            Labware lw = destIter.next();
+            List<PlanAction> planActions = createActions(pl, plan.getId(), sources, lw, null);
+            plan.setPlanActions(planActions);
+            plans.add(plan);
+        }
+        return new PlanResult(plans, destinations);
     }
 
-    public PlanOperation createPlan(User user, String opTypeName) {
-        OperationType opType = opTypeRepo.getByName(opTypeName);
+    /**
+     * Creates the plan (without any actions as yet)
+     * @param user the user responsible for the plan
+     * @param opType the operation type of the plan
+     * @return the newly created plan (without actions)
+     */
+    public PlanOperation createPlan(User user, OperationType opType) {
         PlanOperation plan = new PlanOperation();
         plan.setUser(user);
         plan.setOperationType(opType);
-        planRepo.save(plan);
-        return plan;
+        return planRepo.save(plan);
     }
 
-    public Map<String, Labware> lookUpSources(PlanRequest request) {
-        // validation has already confirmed that the source labware exist
-        return request.getLabware().stream()
-                .flatMap(lw -> lw.getActions().stream())
+    /**
+     * Looks up the source labware for the request
+     * @param request the plan request
+     * @return a map of the specified source labware from its barcode
+     */
+    public UCMap<Labware> lookUpSources(PlanRequest request) {
+        Set<String> barcodes = request.getLabware().stream()
+                .flatMap(rlw -> rlw.getActions().stream())
                 .map(ac -> ac.getSource().getBarcode().toUpperCase())
-                .distinct()
-                .collect(toMap(bc -> bc, lwRepo::getByBarcode));
+                .collect(toSet());
+        List<Labware> labware = lwRepo.getByBarcodeIn(barcodes);
+        return UCMap.from(labware, Labware::getBarcode);
     }
 
+    /**
+     * Creates all the destination labware
+     * @param request the request specifying what labware to create
+     * @return a list of new labware, matching the request
+     */
     public List<Labware> createDestinations(PlanRequest request) {
         List<Labware> newLabware = new ArrayList<>(request.getLabware().size());
         LabwareType lt = null;
@@ -99,35 +129,38 @@ public class PlanServiceImp implements PlanService {
         return newLabware;
     }
 
-    public List<PlanAction> createActions(PlanRequest request, int planId,
-                                          Map<String, Labware> sources, List<Labware> destinations,
+    /**
+     * Creates the actions for a plan
+     * @param requestLabware the request for one labware in the plan
+     * @param planId the id of the plan
+     * @param sources a map to look up source labware
+     * @param destination the new destination labware
+     * @param newBioState the new bio state (if any) for the samples
+     * @return a list of newly created actions for the plan
+     */
+    public List<PlanAction> createActions(PlanRequestLabware requestLabware, int planId,
+                                          UCMap<Labware> sources, Labware destination,
                                           BioState newBioState) {
-        assert request.getLabware().size()==destinations.size();
-        Iterator<Labware> destIter = destinations.iterator();
-        List<PlanAction> actions = new ArrayList<>();
-
-        for (PlanRequestLabware prlw : request.getLabware()) {
-            Labware dest = destIter.next();
-            for (PlanRequestAction prac : sortedActions(prlw.getActions())) {
-                Labware source = sources.get(prac.getSource().getBarcode().toUpperCase());
-                Slot slot0;
-                if (prac.getSource().getAddress()!=null) {
-                    slot0 = source.getSlot(prac.getSource().getAddress());
-                } else {
-                    slot0 = source.getFirstSlot();
-                }
-                Slot slot1 = dest.getSlot(prac.getAddress());
-                Sample originalSample = slot0.getSamples().stream()
-                        .filter(sample -> sample.getId() == prac.getSampleId())
-                        .findAny()
-                        .orElseThrow(() -> new EntityNotFoundException("Sample " + prac.getSampleId()
-                                + " not found in " + prac.getSource()));
-                PlanAction action = new PlanAction(null, planId, slot0, slot1, originalSample,
-                        null, prac.getSampleThickness(), newBioState);
-                actions.add(planActionRepo.save(action));
+        final List<PlanAction> actions = new ArrayList<>(requestLabware.getActions().size());
+        for (PlanRequestAction prac : sortedActions(requestLabware.getActions())) {
+            Labware source = sources.get(prac.getSource().getBarcode());
+            Slot slot0;
+            if (prac.getSource().getAddress()!=null) {
+                slot0 = source.getSlot(prac.getSource().getAddress());
+            } else {
+                slot0 = source.getFirstSlot();
             }
+            Slot slot1 = destination.getSlot(prac.getAddress());
+            Sample originalSample = slot0.getSamples().stream()
+                    .filter(sample -> sample.getId() == prac.getSampleId())
+                    .findAny()
+                    .orElseThrow(() -> new EntityNotFoundException("Sample " + prac.getSampleId()
+                            + " not found in " + prac.getSource()));
+            PlanAction action = new PlanAction(null, planId, slot0, slot1, originalSample,
+                    null, prac.getSampleThickness(), newBioState);
+            actions.add(action);
         }
-        return actions;
+        return BasicUtils.asList(planActionRepo.saveAll(actions));
     }
 
     @Override
