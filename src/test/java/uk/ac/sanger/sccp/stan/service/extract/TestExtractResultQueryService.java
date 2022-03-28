@@ -13,6 +13,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -24,6 +26,7 @@ public class TestExtractResultQueryService {
     private LabwareRepo mockLwRepo;
     private OperationTypeRepo mockOpTypeRepo;
     private OperationRepo mockOpRepo;
+    private ActionRepo mockActionRepo;
     private ResultOpRepo mockResultOpRepo;
     private MeasurementRepo mockMeasurementRepo;
     private OperationType extractOpType, resultOpType;
@@ -35,10 +38,11 @@ public class TestExtractResultQueryService {
         mockLwRepo = mock(LabwareRepo.class);
         mockOpTypeRepo = mock(OperationTypeRepo.class);
         mockOpRepo = mock(OperationRepo.class);
+        mockActionRepo = mock(ActionRepo.class);
         mockResultOpRepo = mock(ResultOpRepo.class);
         mockMeasurementRepo = mock(MeasurementRepo.class);
 
-        service = spy(new ExtractResultQueryService(mockLwRepo, mockOpTypeRepo, mockOpRepo, mockResultOpRepo, mockMeasurementRepo));
+        service = spy(new ExtractResultQueryService(mockLwRepo, mockOpTypeRepo, mockOpRepo, mockActionRepo, mockResultOpRepo, mockMeasurementRepo));
     }
 
     private void setupOpTypes() {
@@ -52,30 +56,100 @@ public class TestExtractResultQueryService {
     @ValueSource(booleans = {false, true})
     public void testGetExtractResult(boolean resultExists) {
         Labware lw = EntityFactory.getTube();
-        when(mockLwRepo.getByBarcode(lw.getBarcode())).thenReturn(lw);
-        ResultOp ro = resultExists ? new ResultOp(4, PassFail.pass, 10, 12, 13, 14) : null;
-        doReturn(ro).when(service).selectExtractResult(any());
-        doReturn("700").when(service).getConcentration(any(), any());
-
-        ExtractResult xr = service.getExtractResult(lw.getBarcode());
-        verify(service).selectExtractResult(lw);
+        String barcode = lw.getBarcode();
+        when(mockLwRepo.getByBarcode(barcode)).thenReturn(lw);
+        ExtractResult result = resultExists ? new ExtractResult(lw, PassFail.pass, "200") : null;
+        doReturn(result).when(service).findExtractResult(any());
         if (resultExists) {
-            assertEquals(new ExtractResult(lw, PassFail.pass, "700"), xr);
-            verify(service).getConcentration(10, lw);
+            assertSame(result, service.getExtractResult(barcode));
         } else {
-            assertEquals(new ExtractResult(lw, null, null), xr);
-            verify(service, never()).getConcentration(any(), any());
+            assertEquals(new ExtractResult(lw, null, null), service.getExtractResult(barcode));
         }
+        verify(mockLwRepo).getByBarcode(barcode);
+        verify(service).findExtractResult(lw);
+    }
+
+    @Test
+    public void testFindExtractResult_foundOnLabware() {
+        setupOpTypes();
+        Labware lw = EntityFactory.getTube();
+        ResultOp ro = new ResultOp(20, PassFail.pass, 30, 40, 50, 60);
+        doReturn(ro).when(service).selectExtractResult(List.of(lw));
+        String conc = "20";
+        doReturn(conc).when(service).getConcentration(30, List.of(lw));
+        assertEquals(new ExtractResult(lw, PassFail.pass, conc), service.findExtractResult(lw));
+        verify(service).selectExtractResult(List.of(lw));
+        verify(service).getConcentration(ro.getOperationId(), List.of(lw));
+        verifyNoInteractions(mockActionRepo);
+    }
+
+    @Test
+    public void testFindExtractResult_noSources() {
+        setupOpTypes();
+        Labware lw = EntityFactory.getTube();
+        doReturn(null).when(service).selectExtractResult(List.of(lw));
+        when(mockActionRepo.findSourceLabwareIdsForDestinationLabwareIds(any())).thenReturn(List.of());
+        assertNull(service.findExtractResult(lw));
+        verify(service).selectExtractResult(List.of(lw));
+        verify(service, never()).getConcentration(any(), any());
+        verify(mockActionRepo).findSourceLabwareIdsForDestinationLabwareIds(List.of(lw.getId()));
+        verifyNoInteractions(mockLwRepo);
+    }
+
+    @Test
+    public void testFindExtractResult_foundOnSources() {
+        setupOpTypes();
+        Labware lw = EntityFactory.getTube();
+        final LabwareType lt = lw.getLabwareType();
+        doReturn(null).when(service).selectExtractResult(List.of(lw));
+        List<Labware> sourceLabware = List.of(EntityFactory.makeEmptyLabware(lt), EntityFactory.makeEmptyLabware(lt));
+        List<Integer> sourceLwIds = sourceLabware.stream().map(Labware::getId).collect(toList());
+        when(mockActionRepo.findSourceLabwareIdsForDestinationLabwareIds(any())).thenReturn(sourceLwIds);
+        when(mockLwRepo.findAllByIdIn(any())).thenReturn(sourceLabware);
+        ResultOp ro = new ResultOp(20, PassFail.pass, 30, 40, 50, 60);
+        doReturn(ro).when(service).selectExtractResult(sourceLabware);
+        String conc = "41";
+        doReturn(conc).when(service).getConcentration(any(), any());
+
+        assertEquals(new ExtractResult(lw, PassFail.pass, conc), service.findExtractResult(lw));
+
+        verify(service).selectExtractResult(List.of(lw));
+        verify(mockActionRepo).findSourceLabwareIdsForDestinationLabwareIds(List.of(lw.getId()));
+        verify(mockLwRepo).findAllByIdIn(sourceLwIds);
+        verify(service).selectExtractResult(sourceLabware);
+        verify(service).getConcentration(ro.getOperationId(), sourceLabware);
+    }
+
+    @Test
+    public void testFindExtractResult_notFoundOnSources() {
+        setupOpTypes();
+        Labware lw = EntityFactory.getTube();
+        final LabwareType lt = lw.getLabwareType();
+        doReturn(null).when(service).selectExtractResult(any());
+        List<Labware> sourceLabware = List.of(EntityFactory.makeEmptyLabware(lt), EntityFactory.makeEmptyLabware(lt));
+        List<Integer> sourceLwIds = sourceLabware.stream().map(Labware::getId).collect(toList());
+        when(mockActionRepo.findSourceLabwareIdsForDestinationLabwareIds(any())).thenReturn(sourceLwIds);
+        when(mockLwRepo.findAllByIdIn(any())).thenReturn(sourceLabware);
+
+        assertNull(service.findExtractResult(lw));
+
+        verify(service).selectExtractResult(List.of(lw));
+        verify(mockActionRepo).findSourceLabwareIdsForDestinationLabwareIds(List.of(lw.getId()));
+        verify(mockLwRepo).findAllByIdIn(sourceLwIds);
+        verify(service).selectExtractResult(sourceLabware);
+        verify(service, never()).getConcentration(any(), any());
     }
 
     @Test
     public void testSelectExtractResult_noOps() {
         setupOpTypes();
         Labware lw = EntityFactory.getTube();
+        List<Labware> labware = List.of(lw, EntityFactory.makeEmptyLabware(lw.getLabwareType()));
+        Set<Integer> labwareIds = labware.stream().map(Labware::getId).collect(toSet());
         when(mockOpRepo.findAllByOperationTypeAndDestinationLabwareIdIn(any(), any())).thenReturn(List.of());
 
-        assertNull(service.selectExtractResult(lw));
-        verify(mockOpRepo).findAllByOperationTypeAndDestinationLabwareIdIn(resultOpType, List.of(lw.getId()));
+        assertNull(service.selectExtractResult(labware));
+        verify(mockOpRepo).findAllByOperationTypeAndDestinationLabwareIdIn(resultOpType, labwareIds);
         verifyNoInteractions(mockResultOpRepo);
     }
 
@@ -94,8 +168,8 @@ public class TestExtractResultQueryService {
         );
         when(mockResultOpRepo.findAllByOperationIdIn(any())).thenReturn(ros);
 
-        assertNull(service.selectExtractResult(lw));
-        verify(mockOpRepo).findAllByOperationTypeAndDestinationLabwareIdIn(resultOpType, List.of(lw.getId()));
+        assertNull(service.selectExtractResult(List.of(lw)));
+        verify(mockOpRepo).findAllByOperationTypeAndDestinationLabwareIdIn(resultOpType, Set.of(lw.getId()));
         verify(mockResultOpRepo).findAllByOperationIdIn(List.of(10,11));
         verifyNoMoreInteractions(mockOpRepo);
     }
@@ -124,9 +198,9 @@ public class TestExtractResultQueryService {
         );
         when(mockOpRepo.findAllById(any())).thenReturn(referredOps);
 
-        assertNull(service.selectExtractResult(lw));
+        assertNull(service.selectExtractResult(List.of(lw)));
 
-        verify(mockOpRepo).findAllByOperationTypeAndDestinationLabwareIdIn(resultOpType, List.of(lw.getId()));
+        verify(mockOpRepo).findAllByOperationTypeAndDestinationLabwareIdIn(resultOpType, Set.of(lw.getId()));
         verify(mockResultOpRepo).findAllByOperationIdIn(List.of(10,11));
         verify(mockOpRepo).findAllById(Set.of(5,6));
         verifyNoMoreInteractions(mockOpRepo);
@@ -168,9 +242,9 @@ public class TestExtractResultQueryService {
         );
         when(mockOpRepo.findAllById(any())).thenReturn(referredOps);
 
-        assertSame(ros.get(1), service.selectExtractResult(lw));
+        assertSame(ros.get(1), service.selectExtractResult(List.of(lw)));
 
-        verify(mockOpRepo).findAllByOperationTypeAndDestinationLabwareIdIn(resultOpType, List.of(lw.getId()));
+        verify(mockOpRepo).findAllByOperationTypeAndDestinationLabwareIdIn(resultOpType, Set.of(lw.getId()));
         verify(mockResultOpRepo).findAllByOperationIdIn(List.of(10,11,12,13,14,15));
         verify(mockOpRepo).findAllById(Set.of(5,6,7,8));
     }
@@ -179,6 +253,8 @@ public class TestExtractResultQueryService {
     @ValueSource(booleans = {false, true})
     public void testGetConcentration(boolean found) {
         Labware lw = EntityFactory.getTube();
+        Labware lw2 = EntityFactory.makeEmptyLabware(lw.getLabwareType());
+        List<Labware> labware = List.of(lw, lw2);
         Integer opId = 40;
         Integer slotId = lw.getFirstSlot().getId();
         Integer notSlotId = slotId+1;
@@ -190,9 +266,9 @@ public class TestExtractResultQueryService {
         when(mockMeasurementRepo.findAllByOperationIdIn(any())).thenReturn(measurements);
 
         if (found) {
-            assertEquals("30.0", service.getConcentration(opId, lw));
+            assertEquals("30.0", service.getConcentration(opId, labware));
         } else {
-            assertNull(service.getConcentration(opId, lw));
+            assertNull(service.getConcentration(opId, labware));
         }
         verify(mockMeasurementRepo).findAllByOperationIdIn(List.of(opId));
     }
