@@ -825,6 +825,8 @@ enum WorkStatus {
     completed
     """The work has failed (for some particular reason). This is a final status."""
     failed
+    """The work has been withdrawn (for some particular reason). This is a final status."""
+    withdrawn
 }
 
 """Work that can be used to collect together operations done on related samples for a particular purpose."""

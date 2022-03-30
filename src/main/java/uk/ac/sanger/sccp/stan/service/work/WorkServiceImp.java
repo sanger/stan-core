@@ -237,7 +237,7 @@ public class WorkServiceImp implements WorkService {
                 .map(WorkWithComment::new)
                 .collect(toList());
         List<Integer> pausedOrFailedIds = wcs.stream().map(WorkWithComment::getWork)
-                .filter(work -> work.getStatus()==Status.paused || work.getStatus()==Status.failed)
+                .filter(work -> work.getStatus()==Status.paused || work.getStatus()==Status.failed || work.getStatus()==Status.withdrawn)
                 .map(Work::getId)
                 .collect(toList());
         if (!pausedOrFailedIds.isEmpty()) {
@@ -253,7 +253,7 @@ public class WorkServiceImp implements WorkService {
             WorkEvent event = workEvents.get(work.getId());
             if (event != null && event.getComment()!=null &&
                     (work.getStatus()==Status.paused && event.getType()==WorkEvent.Type.pause
-                            || work.getStatus()==Status.failed && event.getType()==WorkEvent.Type.fail)) {
+                            || work.getStatus()==Status.failed && event.getType()==WorkEvent.Type.fail|| work.getStatus()==Status.withdrawn && event.getType()==WorkEvent.Type.withdraw)) {
                 wc.setComment(event.getComment().getText());
             }
         }
