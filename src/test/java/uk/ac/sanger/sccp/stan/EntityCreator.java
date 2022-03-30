@@ -150,6 +150,10 @@ public class EntityCreator {
         return ltRepo.save(new LabwareType(null, name, rows, columns, getAny(labelTypeRepo), false));
     }
 
+    public BioState createBioState(String name) {
+        return bioStateRepo.save(new BioState(null, name));
+    }
+
     public Snapshot createSnapshot(Labware lw) {
         Snapshot snap = snapshotRepo.save(new Snapshot(lw.getId()));
         Iterable<SnapshotElement> elements = snapshotElementRepo.saveAll(lw.getSlots().stream()

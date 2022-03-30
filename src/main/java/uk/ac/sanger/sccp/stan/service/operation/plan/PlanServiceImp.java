@@ -30,12 +30,14 @@ public class PlanServiceImp implements PlanService {
     private final OperationTypeRepo opTypeRepo;
     private final LabwareRepo lwRepo;
     private final LabwareTypeRepo ltRepo;
+    private final BioStateRepo bsRepo;
 
     @Autowired
     public PlanServiceImp(PlanValidationFactory planValidationFactory,
                           LabwareService lwService,
                           PlanOperationRepo planRepo, PlanActionRepo planActionRepo,
-                          OperationTypeRepo opTypeRepo, LabwareRepo lwRepo, LabwareTypeRepo ltRepo) {
+                          OperationTypeRepo opTypeRepo, LabwareRepo lwRepo, LabwareTypeRepo ltRepo,
+                          BioStateRepo bsRepo) {
         this.planValidationFactory = planValidationFactory;
         this.lwService = lwService;
         this.planRepo = planRepo;
@@ -43,6 +45,7 @@ public class PlanServiceImp implements PlanService {
         this.opTypeRepo = opTypeRepo;
         this.lwRepo = lwRepo;
         this.ltRepo = ltRepo;
+        this.bsRepo = bsRepo;
     }
 
     @Override
@@ -62,16 +65,21 @@ public class PlanServiceImp implements PlanService {
      * @return new plans and labware as requested
      */
     public PlanResult executePlanRequest(User user, PlanRequest request) {
-        // At some point it may be necessary to derive a new biostate as part of this method
         UCMap<Labware> sources = lookUpSources(request);
         OperationType opType = opTypeRepo.getByName(request.getOperationType());
         List<Labware> destinations = createDestinations(request);
+        BioState opTypeBs = opType.getNewBioState();
+        BioState fetalWasteBs = null;
+        if (destinations.stream().anyMatch(lw -> lw.getLabwareType().isFetalWaste())) {
+            fetalWasteBs = bsRepo.getByName("Fetal waste");
+        }
         Iterator<Labware> destIter = destinations.iterator();
         List<PlanOperation> plans = new ArrayList<>(destinations.size());
         for (PlanRequestLabware pl : request.getLabware()) {
             PlanOperation plan = createPlan(user, opType);
             Labware lw = destIter.next();
-            List<PlanAction> planActions = createActions(pl, plan.getId(), sources, lw, null);
+            List<PlanAction> planActions = createActions(pl, plan.getId(), sources, lw,
+                    lw.getLabwareType().isFetalWaste() ? fetalWasteBs : opTypeBs);
             plan.setPlanActions(planActions);
             plans.add(plan);
         }
