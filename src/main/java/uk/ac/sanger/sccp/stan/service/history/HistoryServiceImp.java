@@ -6,6 +6,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.History;
 import uk.ac.sanger.sccp.stan.request.HistoryEntry;
+import uk.ac.sanger.sccp.stan.service.history.ReagentActionDetailService.ReagentActionDetail;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import javax.persistence.EntityNotFoundException;
@@ -33,13 +34,15 @@ public class HistoryServiceImp implements HistoryService {
     private final MeasurementRepo measurementRepo;
     private final LabwareNoteRepo labwareNoteRepo;
     private final ResultOpRepo resultOpRepo;
+    private final ReagentActionDetailService reagentActionDetailService;
 
     @Autowired
     public HistoryServiceImp(OperationRepo opRepo, LabwareRepo lwRepo, SampleRepo sampleRepo, TissueRepo tissueRepo,
                              DonorRepo donorRepo, ReleaseRepo releaseRepo,
                              DestructionRepo destructionRepo, OperationCommentRepo opCommentRepo,
                              SnapshotRepo snapshotRepo, WorkRepo workRepo, MeasurementRepo measurementRepo,
-                             LabwareNoteRepo labwareNoteRepo, ResultOpRepo resultOpRepo) {
+                             LabwareNoteRepo labwareNoteRepo, ResultOpRepo resultOpRepo,
+                             ReagentActionDetailService reagentActionDetailService) {
         this.opRepo = opRepo;
         this.lwRepo = lwRepo;
         this.sampleRepo = sampleRepo;
@@ -53,6 +56,7 @@ public class HistoryServiceImp implements HistoryService {
         this.measurementRepo = measurementRepo;
         this.labwareNoteRepo = labwareNoteRepo;
         this.resultOpRepo = resultOpRepo;
+        this.reagentActionDetailService = reagentActionDetailService;
     }
 
     @Override
@@ -426,7 +430,7 @@ public class HistoryServiceImp implements HistoryService {
      * @param labware the relevant labware
      * @param opWork a map of op id to work numbers
      * @param singleWorkNumber a single work number applicable to all operations
-     * @return a list history entries for the given operations
+     * @return a list of history entries for the given operations
      */
     public List<HistoryEntry> createEntriesForOps(Collection<Operation> operations, Set<Integer> sampleIds,
                                                   Collection<Labware> labware, Map<Integer, Set<String>> opWork,
@@ -435,6 +439,7 @@ public class HistoryServiceImp implements HistoryService {
         var opComments = loadOpComments(opIds);
         var opMeasurements = loadOpMeasurements(opIds);
         var opLabwareNotes = loadOpLabwareNotes(opIds);
+        var opReagentActions = reagentActionDetailService.loadReagentTransfers(opIds);
         var opResults = loadOpResults(operations);
         final Map<Integer, Slot> slotIdMap;
         if (!opComments.isEmpty() || !opMeasurements.isEmpty()) {
@@ -459,6 +464,7 @@ public class HistoryServiceImp implements HistoryService {
             List<OperationComment> comments = opComments.getOrDefault(op.getId(), List.of());
             List<Measurement> measurements = opMeasurements.getOrDefault(op.getId(), List.of());
             List<LabwareNote> lwNotes = opLabwareNotes.getOrDefault(op.getId(), List.of());
+            List<ReagentActionDetail> reagentActions = opReagentActions.getOrDefault(op.getId(), List.of());
             String workNumber;
             if (opWork!=null) {
                 Set<String> workNumbers = opWork.get(op.getId());
@@ -485,6 +491,11 @@ public class HistoryServiceImp implements HistoryService {
                         op.getPerformed(), item.sourceId, item.destId, item.sampleId, username, workNumber);
                 if (stainDetail!=null) {
                     entry.addDetail(stainDetail);
+                }
+                for (ReagentActionDetail rad : reagentActions) {
+                    if (rad.destinationLabwareId==item.destId) {
+                        entry.addDetail(rad.reagentPlateBarcode+" : "+rad.reagentSlotAddress + " -> "+rad.destSlotAddress);
+                    }
                 }
                 for (LabwareNote lwNote : lwNotes) {
                     if (lwNote.getLabwareId() == item.destId) {

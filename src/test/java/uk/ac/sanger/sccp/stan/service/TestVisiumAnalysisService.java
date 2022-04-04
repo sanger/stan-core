@@ -5,8 +5,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
 import org.mockito.ArgumentCaptor;
-import org.mockito.stubbing.Answer;
 import uk.ac.sanger.sccp.stan.EntityFactory;
+import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
@@ -19,6 +19,7 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.stan.Matchers.addProblem;
 
 /**
  * Tests {@link VisiumAnalysisServiceImp}
@@ -104,14 +105,6 @@ public class TestVisiumAnalysisService {
                 eq(request.getSelectedTime()));
 
         verify(service, never()).recordAnalysis(any(), any(), any(), any(), any());
-    }
-
-    private static <X> Answer<X> addProblem(final String problem) {
-        return invocation -> {
-            Collection<String> problems = invocation.getArgument(0);
-            problems.add(problem);
-            return null;
-        };
     }
 
     @ParameterizedTest

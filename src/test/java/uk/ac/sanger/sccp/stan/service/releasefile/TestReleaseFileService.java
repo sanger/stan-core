@@ -7,6 +7,8 @@ import org.junit.jupiter.params.provider.*;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.service.history.ReagentActionDetailService;
+import uk.ac.sanger.sccp.stan.service.history.ReagentActionDetailService.ReagentActionDetail;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.Ancestry;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
 
@@ -37,6 +39,8 @@ public class TestReleaseFileService {
     OperationRepo mockOpRepo;
     LabwareNoteRepo mockLwNoteRepo;
 
+    ReagentActionDetailService mockRadService;
+
     ReleaseFileService service;
 
     private User user;
@@ -59,9 +63,10 @@ public class TestReleaseFileService {
         mockOpTypeRepo = mock(OperationTypeRepo.class);
         mockOpRepo = mock(OperationRepo.class);
         mockLwNoteRepo = mock(LabwareNoteRepo.class);
+        mockRadService = mock(ReagentActionDetailService.class);
 
         service = spy(new ReleaseFileService(mockAncestoriser, mockSampleRepo, mockLabwareRepo, mockMeasurementRepo,
-                mockSnapshotRepo, mockReleaseRepo, mockOpTypeRepo, mockOpRepo, mockLwNoteRepo));
+                mockSnapshotRepo, mockReleaseRepo, mockOpTypeRepo, mockOpRepo, mockLwNoteRepo, mockRadService));
 
         user = EntityFactory.getUser();
         destination = new ReleaseDestination(50, "Venus");
@@ -153,6 +158,7 @@ public class TestReleaseFileService {
         verify(service).loadSources(entries, ancestry, mode);
         verify(service).loadMeasurements(entries, ancestry);
         verify(service).loadLastStain(entries);
+        verify(service).loadReagentSources(entries);
     }
 
     @ParameterizedTest
@@ -421,6 +427,7 @@ public class TestReleaseFileService {
     public void testLoadMeasurements() {
         setupLabware();
         Labware lw0 = EntityFactory.makeLabware(EntityFactory.getTubeType(), sample);
+        // l10 begat lw1 which begat lw2
         var ancestry = makeAncestry(
                 lw2, sample, lw1, sample,
                 lw1, sample, lw0, sample
@@ -429,8 +436,19 @@ public class TestReleaseFileService {
                 new Measurement(1, "Thickness", "8", sample.getId(), 10, lw0.getFirstSlot().getId()),
                 new Measurement(2, "Bananas", "X", sample.getId(), 10, lw1.getFirstSlot().getId()),
                 new Measurement(3, "Thickness", "2", sample1.getId(), 10, lw1.getFirstSlot().getId()),
-                new Measurement(4, "Tissue coverage", "30", sample.getId(), 10, lw0.getFirstSlot().getId())
+                new Measurement(4, "Tissue coverage", "30", sample.getId(), 10, lw0.getFirstSlot().getId()),
+                new Measurement(5, "Cq value", "400", sample.getId(), 10, lw1.getFirstSlot().getId()),
+                new Measurement(6, "Concentration", "5.5", sample.getId(), 11, lw1.getFirstSlot().getId()),
+                new Measurement(7, "Concentration", "6.6", sample.getId(), 12, lw2.getFirstSlot().getId())
         );
+
+        Operation op11 = new Operation();
+        op11.setOperationType(new OperationType(100, "anything"));
+        Operation op12 = new Operation();
+        op12.setOperationType(new OperationType(101, "cdna analysis"));
+        when(mockOpRepo.findById(11)).thenReturn(Optional.of(op11));
+        when(mockOpRepo.findById(12)).thenReturn(Optional.of(op12));
+
         when(mockMeasurementRepo.findAllBySlotIdIn(any())).thenReturn(measurements);
         List<ReleaseEntry> entries = List.of(
                 new ReleaseEntry(lw2, lw2.getFirstSlot(), sample),
@@ -442,6 +460,10 @@ public class TestReleaseFileService {
         assertEquals("2", entries.get(1).getSectionThickness());
         assertEquals(30, entries.get(0).getCoverage());
         assertNull(entries.get(1).getCoverage());
+        assertEquals("6.6", entries.get(0).getCdnaAnalysisConcentration());
+        assertNull(entries.get(1).getCdnaAnalysisConcentration());
+        assertEquals(400, entries.get(0).getCq());
+        assertNull(entries.get(1).getCq());
     }
 
     @Test
@@ -603,6 +625,40 @@ public class TestReleaseFileService {
         Map<Integer, String> results = service.loadBondBarcodes(lwOps);
         verify(mockLwNoteRepo).findAllByOperationIdIn(Set.of(op1id, op2id));
         assertEquals(Map.of(lw1id, bondBc1, lw2id, bondBc2), results);
+    }
+
+    @Test
+    public void testLoadReagentSources() {
+        setupLabware();
+        Slot slot1 = lw1.getFirstSlot();
+        Slot slot2 = lw1.getSlot(new Address(1, 2));
+        Slot slot3 = lw2.getFirstSlot();
+        List<ReleaseEntry> entries = List.of(
+                new ReleaseEntry(lw1, slot1, sample),
+                new ReleaseEntry(lw1, slot2, sample),
+                new ReleaseEntry(lw2, slot3, sample1)
+        );
+        final Address A1 = new Address(1, 1);
+        final Address B1 = new Address(2, 1);
+        final Address B2 = new Address(2,2);
+        Map<Integer, List<ReagentActionDetail>> radMap = Map.of(
+                slot1.getId(), List.of(
+                        new ReagentActionDetail("123", A1, A1, lw1.getId()),
+                        new ReagentActionDetail("123", A1, A1, lw1.getId()),
+                        new ReagentActionDetail("456", B1, A1, lw1.getId())
+                ),
+                slot3.getId(), List.of(
+                        new ReagentActionDetail("456", B2, A1, lw2.getId())
+                )
+        );
+        when(mockRadService.loadReagentTransfersForSlotIds(any())).thenReturn(radMap);
+
+        service.loadReagentSources(entries);
+        verify(mockRadService).loadReagentTransfersForSlotIds(Set.of(slot1.getId(), slot2.getId(), slot3.getId()));
+
+        assertEquals("123 : A1, 456 : B1", entries.get(0).getReagentSource());
+        assertNull(entries.get(1).getReagentSource());
+        assertEquals("456 : B2", entries.get(2).getReagentSource());
     }
 
     private LocalDateTime time(int day) {

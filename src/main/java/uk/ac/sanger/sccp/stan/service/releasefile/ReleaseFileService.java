@@ -7,12 +7,14 @@ import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.service.ComplexStainServiceImp;
+import uk.ac.sanger.sccp.stan.service.history.ReagentActionDetailService;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.Ancestry;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
 
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.*;
@@ -35,11 +37,14 @@ public class ReleaseFileService {
     private final OperationRepo opRepo;
     private final LabwareNoteRepo lwNoteRepo;
 
+    private final ReagentActionDetailService reagentActionDetailService;
+
     @Autowired
     public ReleaseFileService(Ancestoriser ancestoriser,
                               SampleRepo sampleRepo, LabwareRepo labwareRepo, MeasurementRepo measurementRepo,
                               SnapshotRepo snapshotRepo, ReleaseRepo releaseRepo, OperationTypeRepo opTypeRepo,
-                              OperationRepo opRepo, LabwareNoteRepo lwNoteRepo) {
+                              OperationRepo opRepo, LabwareNoteRepo lwNoteRepo,
+                              ReagentActionDetailService reagentActionDetailService) {
         this.releaseRepo = releaseRepo;
         this.sampleRepo = sampleRepo;
         this.labwareRepo = labwareRepo;
@@ -49,6 +54,7 @@ public class ReleaseFileService {
         this.opTypeRepo = opTypeRepo;
         this.opRepo = opRepo;
         this.lwNoteRepo = lwNoteRepo;
+        this.reagentActionDetailService = reagentActionDetailService;
     }
 
     /**
@@ -78,6 +84,7 @@ public class ReleaseFileService {
         loadSources(entries, ancestry, mode);
         loadMeasurements(entries, ancestry);
         loadLastStain(entries);
+        loadReagentSources(entries);
         return new ReleaseFileContent(mode, entries);
     }
 
@@ -316,7 +323,7 @@ public class ReleaseFileService {
     }
 
     /**
-     * Sets the section thickness and coverage for the release entries.
+     * Sets various measurements for the release entries.
      * The measurements may be recorded on the specified slot, or any ancestral slot
      * found through the given ancestry map.
      * @param entries the release entries
@@ -327,16 +334,39 @@ public class ReleaseFileService {
         List<Measurement> measurements = measurementRepo.findAllBySlotIdIn(slotIds);
         Map<Integer, List<Measurement>> slotIdToThickness = new HashMap<>();
         Map<Integer, List<Measurement>> slotIdToCoverage = new HashMap<>();
+        Map<Integer, List<Measurement>> slotIdToCq = new HashMap<>();
+        Map<Integer, List<Measurement>> slotIdToConc = new HashMap<>();
         final String THICKNESS = MeasurementType.Thickness.friendlyName();
         final String COVERAGE = MeasurementType.Tissue_coverage.friendlyName();
+        final String CQ = MeasurementType.Cq_value.friendlyName();
+        final String CONC = MeasurementType.Concentration.friendlyName();
+        final String CDNA_ANALYSIS = "cDNA analysis";
+        Map<Integer, OperationType> opTypeCache = new HashMap<>();
         for (Measurement measurement : measurements) {
-            if (measurement.getOperationId()!=null && measurement.getName().equalsIgnoreCase(THICKNESS)) {
+            if (measurement.getOperationId()==null) {
+                continue;
+            }
+            if (measurement.getName().equalsIgnoreCase(THICKNESS)) {
                 List<Measurement> slotIdMeasurements = slotIdToThickness.computeIfAbsent(measurement.getSlotId(), k -> new ArrayList<>());
                 slotIdMeasurements.add(measurement);
-            }
-            if (measurement.getOperationId()!=null && measurement.getName().equalsIgnoreCase(COVERAGE)) {
+            } else if (measurement.getName().equalsIgnoreCase(COVERAGE)) {
                 List<Measurement> slotIdMeasurements = slotIdToCoverage.computeIfAbsent(measurement.getSlotId(), k -> new ArrayList<>());
                 slotIdMeasurements.add(measurement);
+            } else if (measurement.getName().equalsIgnoreCase(CQ)) {
+                List<Measurement> slotIdMeasurements = slotIdToCq.computeIfAbsent(measurement.getSlotId(), k -> new ArrayList<>());
+                slotIdMeasurements.add(measurement);
+            } else if (measurement.getName().equalsIgnoreCase(CONC)) {
+                final Integer opId = measurement.getOperationId();
+                OperationType opType = opTypeCache.get(opId);
+                if (opType==null) {
+                    Operation op = opRepo.findById(opId).orElseThrow();
+                    opType = op.getOperationType();
+                    opTypeCache.put(opId, opType);
+                }
+                if (opType.getName().equalsIgnoreCase(CDNA_ANALYSIS)) {
+                    List<Measurement> slotIdMeasurements = slotIdToConc.computeIfAbsent(measurement.getSlotId(), k -> new ArrayList<>());
+                    slotIdMeasurements.add(measurement);
+                }
             }
         }
         for (ReleaseEntry entry : entries) {
@@ -350,6 +380,37 @@ public class ReleaseFileService {
                     entry.setCoverage(Integer.valueOf(coverageMeasurement.getValue()));
                 } catch (NumberFormatException e) {
                     log.error("Coverage measurement is not an integer: {}", coverageMeasurement);
+                }
+            }
+            Measurement cqMeasurement = selectMeasurement(entry, slotIdToCq, ancestry);
+            if (cqMeasurement != null) {
+                try {
+                    entry.setCq(Integer.valueOf(cqMeasurement.getValue()));
+                } catch (NumberFormatException e) {
+                    log.error("Cq measurement is not an integer: {}", cqMeasurement);
+                }
+            }
+            Measurement concMeasurement = selectMeasurement(entry, slotIdToConc, ancestry);
+            if (concMeasurement != null) {
+                entry.setCdnaAnalysisConcentration(concMeasurement.getValue());
+            }
+        }
+    }
+
+    public void loadReagentSources(Collection<ReleaseEntry> entries) {
+        Set<Integer> slotIds = entries.stream()
+                .map(e -> e.getSlot().getId())
+                .collect(toSet());
+        var radMap = reagentActionDetailService.loadReagentTransfersForSlotIds(slotIds);
+        if (!radMap.isEmpty()) {
+            for (var entry : entries) {
+                var rads = radMap.get(entry.getSlot().getId());
+                if (rads!=null && !rads.isEmpty()) {
+                    String radString = rads.stream()
+                            .map(rad -> rad.reagentPlateBarcode+" : "+rad.reagentSlotAddress)
+                            .distinct()
+                            .collect(Collectors.joining(", "));
+                    entry.setReagentSource(radString);
                 }
             }
         }

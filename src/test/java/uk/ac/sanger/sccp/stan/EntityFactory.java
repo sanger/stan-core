@@ -1,6 +1,7 @@
 package uk.ac.sanger.sccp.stan;
 
 import uk.ac.sanger.sccp.stan.model.*;
+import uk.ac.sanger.sccp.stan.model.reagentplate.*;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -188,6 +189,19 @@ public class EntityFactory {
     public static Tissue makeTissue(Donor donor, SpatialLocation sl) {
         int id = ++idCounter;
         return new Tissue(id, "TISSUE "+id, String.valueOf(id%7), sl, donor, getMedium(), getFixative(), getHmdmc());
+    }
+
+    public static ReagentPlate makeReagentPlate(String barcode) {
+        int plateId = ++idCounter;
+        ReagentPlate rp = new ReagentPlate(barcode);
+        rp.setId(plateId);
+        ReagentPlateType rpType = rp.getPlateType();
+        int[] slotId = {100*plateId};
+        List<ReagentSlot> rslots = Address.stream(rpType.getNumRows(), rpType.getNumColumns())
+                .map(ad -> new ReagentSlot(++slotId[0], plateId, ad, false))
+                .collect(toList());
+        rp.setSlots(rslots);
+        return rp;
     }
 
     public static PlanOperation makePlanForLabware(OperationType opType, List<Labware> sources, List<Labware> destination) {

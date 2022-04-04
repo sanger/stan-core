@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import uk.ac.sanger.sccp.stan.config.SessionConfig;
 import uk.ac.sanger.sccp.stan.model.*;
+import uk.ac.sanger.sccp.stan.model.reagentplate.ReagentPlate;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.service.*;
@@ -47,6 +48,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final CostCodeRepo costCodeRepo;
     final WorkTypeRepo workTypeRepo;
     final WorkRepo workRepo;
+    final ReagentPlateRepo reagentPlateRepo;
     final LabelPrintService labelPrintService;
     final FindService findService;
     final CommentAdminService commentAdminService;
@@ -68,7 +70,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                SpeciesRepo speciesRepo, HmdmcRepo hmdmcRepo, LabwareRepo labwareRepo,
                                ReleaseDestinationRepo releaseDestinationRepo, ReleaseRecipientRepo releaseRecipientRepo,
                                DestructionReasonRepo destructionReasonRepo, ProjectRepo projectRepo, CostCodeRepo costCodeRepo,
-                               WorkTypeRepo workTypeRepo, WorkRepo workRepo,
+                               WorkTypeRepo workTypeRepo, WorkRepo workRepo, ReagentPlateRepo reagentPlateRepo,
                                LabelPrintService labelPrintService, FindService findService,
                                CommentAdminService commentAdminService, EquipmentAdminService equipmentAdminService,
                                HistoryService historyService, WorkProgressService workProgressService, PlanService planService,
@@ -84,6 +86,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.speciesRepo = speciesRepo;
         this.hmdmcRepo = hmdmcRepo;
         this.labwareRepo = labwareRepo;
+        this.reagentPlateRepo = reagentPlateRepo;
         this.equipmentAdminService = equipmentAdminService;
         this.releaseDestinationRepo = releaseDestinationRepo;
         this.releaseRecipientRepo = releaseRecipientRepo;
@@ -297,6 +300,13 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
             String barcode = dfe.getArgument("barcode");
             String opName = dfe.getArgument("operationType");
             return passFailQueryService.getPassFails(barcode, opName);
+        };
+    }
+
+    public DataFetcher<ReagentPlate> getReagentPlate() {
+        return dfe -> {
+            String barcode = dfe.getArgument("barcode");
+            return reagentPlateRepo.findByBarcode(barcode).orElse(null);
         };
     }
 

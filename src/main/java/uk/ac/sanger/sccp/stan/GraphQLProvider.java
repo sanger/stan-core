@@ -93,6 +93,7 @@ public class GraphQLProvider {
                         .dataFetcher("visiumPermData", graphQLDataFetchers.getVisiumPermData())
                         .dataFetcher("extractResult", graphQLDataFetchers.getExtractResult())
                         .dataFetcher("passFails", graphQLDataFetchers.getPassFails())
+                        .dataFetcher("reagentPlate", graphQLDataFetchers.getReagentPlate())
 
                         .dataFetcher("users", graphQLDataFetchers.getUsers())
                         .dataFetcher("planData", graphQLDataFetchers.getPlanData())
@@ -161,6 +162,7 @@ public class GraphQLProvider {
                         .dataFetcher("recordOpWithSlotMeasurements", transact(graphQLMutation.recordOpWithSlotMeasurements()))
                         .dataFetcher("recordComplexStain", transact(graphQLMutation.recordComplexStain()))
                         .dataFetcher("aliquot", transact(graphQLMutation.aliquot()))
+                        .dataFetcher("reagentTransfer", transact(graphQLMutation.reagentTransfer()))
 
                         .dataFetcher("addUser", transact(graphQLMutation.addUser()))
                         .dataFetcher("setUserRole", transact(graphQLMutation.setUserRole()))
