@@ -29,8 +29,9 @@ public interface WorkService {
 
     /**
      * Updates the status of the work. Records a work event for the change.
-     * The comment id is required for changes that need a reason (i.e. pause and fail); and must be null
-     * for changes that do not need a reason.
+     * The comment id is required for changes that need a reason
+     * (i.e. pause, fail and withdraw); and must be null for changes that
+     * do not need a reason.
      * @param user the user responsible for the change
      * @param workNumber the work to be updated
      * @param newStatus the new status

@@ -46,6 +46,7 @@ public class WorkEventServiceImp implements WorkEventService {
                 case paused: return WorkEvent.Type.pause;
                 case failed: return WorkEvent.Type.fail;
                 case completed: return WorkEvent.Type.complete;
+                case withdrawn: return WorkEvent.Type.withdraw;
             }
         }
         throw new IllegalArgumentException("Cannot determine event type for status "+newStatus);
@@ -65,7 +66,7 @@ public class WorkEventServiceImp implements WorkEventService {
             throw new IllegalArgumentException(String.format("Cannot alter status of %s work: %s", oldStatus, work.getWorkNumber()));
         }
         WorkEvent.Type eventType = findEventType(work.getStatus(), newStatus);
-        boolean needReason = (eventType== WorkEvent.Type.pause || eventType== WorkEvent.Type.fail);
+        boolean needReason = (eventType== WorkEvent.Type.pause || eventType== WorkEvent.Type.fail || eventType==WorkEvent.Type.withdraw);
         if (needReason && commentId==null) {
             throw new IllegalArgumentException("A reason is required to "+eventType+" work.");
         }

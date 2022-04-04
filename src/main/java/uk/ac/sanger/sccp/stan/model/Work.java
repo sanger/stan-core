@@ -14,7 +14,7 @@ import java.util.*;
 public class Work {
     // region inner classes
     public enum Status {
-        unstarted, active, paused, completed, failed
+        unstarted, active, paused, completed, failed, withdrawn
     }
     @Embeddable
     public static class SampleSlotId {
@@ -80,7 +80,7 @@ public class Work {
     @ManyToOne
     private CostCode costCode;
 
-    @Column(columnDefinition = "enum('unstarted', 'active', 'paused', 'completed', 'failed')")
+    @Column(columnDefinition = "enum('unstarted', 'active', 'paused', 'completed', 'failed', 'withdrawn')")
     @Enumerated(EnumType.STRING)
     private Status status;
 
@@ -206,7 +206,7 @@ public class Work {
 
     @JsonIgnore
     public boolean isClosed() {
-        return (status==Status.completed || status==Status.failed);
+        return (status==Status.completed || status==Status.failed || status== Status.withdrawn);
     }
 
     @JsonIgnore

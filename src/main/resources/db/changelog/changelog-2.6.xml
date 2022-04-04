@@ -75,4 +75,13 @@
         </createTable>
     </changeSet>
 
+    <changeSet id="2.6.10" author="st26">
+        <modifyDataType tableName="work" columnName="status"
+                        newDataType="ENUM('unstarted', 'active', 'paused', 'completed', 'failed', 'withdrawn')"/>
+    </changeSet>
+    <changeSet id="2.6.11" author="st26">
+        <modifyDataType tableName="work_event" columnName="type"
+                        newDataType="ENUM('create', 'start', 'pause', 'resume', 'complete', 'fail', 'withdraw')"/>
+    </changeSet>
+
 </databaseChangeLog>

@@ -102,6 +102,7 @@ public class TestWorkService {
             "false,completed,B4,failed,B4,20",
             "true,active,B4,failed,,20",
             "true,active,B4,completed,,",
+            "true,active,B4,withdrawn,,20"
     })
     public void testUpdateStatus(boolean legal, Status oldStatus, String oldPriority, Status newStatus,
                                  String expectedPriority, Integer commentId) {
@@ -204,11 +205,13 @@ public class TestWorkService {
             ",a2,active",
             ",a2,failed",
             ",a2,completed",
+            ",a2,withdrawn",
             "A2,A2,active",
             "A2,B3,active",
             "A2,a2,active",
             "A2,B3,failed",
             "A2,B3,completed",
+            "A2,B3,withdrawn",
             "A2,,active",
             "A2,!4,active",
             ",!4,active",
@@ -295,12 +298,13 @@ public class TestWorkService {
         Work pausedWork = new Work(2, "R&D1002", null, null, null, Status.paused);
         Work completedWork = new Work(3, "SGP1003", null, null, null, Status.completed);
         Work failedWork = new Work(4, "SGP1004", null, null, null, Status.failed);
-
+        Work withdrawnWork = new Work(4, "SGP1005", null, null, null, Status.withdrawn);
         return Arrays.stream(new Object[][] {
                 { activeWork, 0, null },
                 { pausedWork, 1, "R&D1002 cannot be used because it is paused." },
                 { completedWork, 1, "SGP1003 cannot be used because it is completed." },
                 { failedWork, 1, "SGP1004 cannot be used because it is failed." },
+                { withdrawnWork, 1, "SGP1005 cannot be used because it is withdrawn." },
                 { "SGP404", 1, "Unknown work number." },
         }).map(Arguments::of);
     }
@@ -389,6 +393,7 @@ public class TestWorkService {
                 { "SGP5000", Status.paused, IllegalArgumentException.class, "SGP5000 cannot be used because it is paused." },
                 { "SGP5000", Status.completed, IllegalArgumentException.class, "SGP5000 cannot be used because it is completed."  },
                 { "SGP5000", Status.failed, IllegalArgumentException.class, "SGP5000 cannot be used because it is failed."  },
+                { "SGP5000", Status.withdrawn, IllegalArgumentException.class, "SGP5000 cannot be used because it is withdrawn."  },
                 { "SGP404", null, EntityNotFoundException.class, "Work number not recognised: \"SGP404\"" },
                 { null, null, NullPointerException.class, "Work number is null." },
         }).map(Arguments::of);
@@ -430,13 +435,15 @@ public class TestWorkService {
                         {"Work numbers cannot be used because they are paused: [SGP10, SGP11]"}},
                 {{"SGP10", "sgp10"}, {"SGP10", Status.failed},
                         {"Work number cannot be used because it is failed: [SGP10]"}},
+                {{"SGP11", "sgp11"}, {"SGP11", Status.withdrawn},
+                        {"Work number cannot be used because it is withdrawn: [SGP11]"}},
                 {{"SGP1", "sgp1", "SGP404", "sgp404", "SGP10"}, {"SGP1", Status.active, "SGP10", Status.failed},
                         {"Work number not recognised: [\"SGP404\"]",
                                 "Work number cannot be used because it is failed: [SGP10]"}},
-                {{"SGP1", "SGP10", "SGP11", "SGP12"},
-                        {"SGP1", Status.active, "SGP10", Status.failed, "SGP11", Status.completed, "SGP12", Status.paused},
-                {new Matchers.DisorderedStringMatcher("Work numbers cannot be used because they are %, % or %: \\[%, %, %]".replace("%", "(\\S+)"),
-                        List.of("failed", "completed", "paused", "SGP10", "SGP11", "SGP12"))}},
+                {{"SGP1", "SGP10", "SGP11", "SGP12","SGP13"},
+                        {"SGP1", Status.active, "SGP10", Status.failed, "SGP11", Status.completed, "SGP12", Status.paused,"SGP13",Status.withdrawn},
+                        {new Matchers.DisorderedStringMatcher("Work numbers cannot be used because they are %, %, % or %: \\[%, %, %, %]".replace("%", "(\\S+)"),
+                                List.of("failed", "completed", "paused", "withdrawn", "SGP10", "SGP11", "SGP12", "SGP13"))}},
         }).map(Arguments::of);
     }
 
@@ -460,9 +467,10 @@ public class TestWorkService {
 
         if (events!=null) {
             List<Integer> workIds = works.stream()
-                    .filter(work -> work.getStatus()==Status.failed || work.getStatus()==Status.paused)
+                    .filter(work -> work.getStatus()==Status.failed || work.getStatus()==Status.paused || work.getStatus()==Status.withdrawn)
                     .map(Work::getId)
                     .collect(toList());
+
             verify(mockWorkEventService).loadLatestEvents(workIds);
             verify(workService).fillInComments(wcs, eventMap);
         }
@@ -473,14 +481,17 @@ public class TestWorkService {
         Work workC = new Work(2, "SGP2", null, null, null, Status.completed);
         Work workF = new Work(3, "SGP3", null, null, null, Status.failed);
         Work workP = new Work(4, "SGP4", null, null, null, Status.paused);
+        Work workW = new Work(5, "SGP5", null, null, null, Status.withdrawn);
 
         WorkEvent eventF = new WorkEvent(workF, WorkEvent.Type.fail, null, null);
         WorkEvent eventP = new WorkEvent(workP, WorkEvent.Type.pause, null, null);
+        WorkEvent eventW = new WorkEvent(workW, WorkEvent.Type.withdraw, null, null);
 
         return Arrays.stream(new Object[][] {
-                {null, List.of(workA, workC, workF, workP), List.of(eventF, eventP)},
+                {null, List.of(workA, workC, workF, workP,workW), List.of(eventF, eventP,eventW)},
                 {List.of(Status.active, Status.completed), List.of(workA, workC), null},
                 {List.of(Status.failed, Status.paused), List.of(workF, workP), List.of(eventF, eventP)},
+                {List.of(Status.withdrawn, Status.paused), List.of(workW, workP), List.of(eventW, eventP)},
         }).map(Arguments::of);
     }
 
@@ -490,21 +501,25 @@ public class TestWorkService {
         Work workF2 = new Work(2, "SGP2", null, null, null, Status.failed);
         Work workP1 = new Work(3, "SGP3", null, null, null, Status.paused);
         Work workP2 = new Work(4, "SGP4", null, null, null, Status.paused);
+        Work workW1 = new Work(5, "SGP5", null, null, null, Status.withdrawn);
+        Work workW2 = new Work(6, "SGP6", null, null, null, Status.withdrawn);
         Map<Integer, WorkEvent> events = Stream.of(
                 new WorkEvent(workF1, WorkEvent.Type.fail, null, new Comment(1, "Ohio", "")),
                 new WorkEvent(workF2, WorkEvent.Type.create, null, new Comment(2, "Oklahoma", "")),
-                new WorkEvent(workP1, WorkEvent.Type.pause, null, new Comment(3, "Oregon", ""))
+                new WorkEvent(workP1, WorkEvent.Type.pause, null, new Comment(3, "Oregon", "")),
+                new WorkEvent(workW1, WorkEvent.Type.withdraw, null, new Comment(3, "Withdrawn", ""))
         ).collect(BasicUtils.toMap(e -> e.getWork().getId()));
 
-        List<WorkWithComment> wcs = Stream.of(workF1, workF2, workP1, workP2)
+        List<WorkWithComment> wcs = Stream.of(workF1, workF2, workP1, workP2,workW1,workW2)
                 .map(WorkWithComment::new)
                 .collect(toList());
 
         workService.fillInComments(wcs, events);
 
         assertEquals(List.of(new WorkWithComment(workF1, "Ohio"), new WorkWithComment(workF2),
-                        new WorkWithComment(workP1, "Oregon"), new WorkWithComment(workP2)),
-                wcs);
+                        new WorkWithComment(workP1, "Oregon"), new WorkWithComment(workP2),
+                        new WorkWithComment(workW1, "Withdrawn"),new WorkWithComment(workW2)),
+                     wcs);
     }
 
     private Operation makeOp(OperationType opType, int opId, Labware srcLw, Labware dstLw) {
