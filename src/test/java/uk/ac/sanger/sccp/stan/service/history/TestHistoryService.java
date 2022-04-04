@@ -9,6 +9,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.History;
 import uk.ac.sanger.sccp.stan.request.HistoryEntry;
+import uk.ac.sanger.sccp.stan.service.history.ReagentActionDetailService.ReagentActionDetail;
 
 import javax.persistence.EntityNotFoundException;
 import java.time.LocalDateTime;
@@ -39,6 +40,7 @@ public class TestHistoryService {
     private MeasurementRepo mockMeasurementRepo;
     private LabwareNoteRepo mockLwNoteRepo;
     private ResultOpRepo mockResultOpRepo;
+    private ReagentActionDetailService mockRadService;
 
     private HistoryServiceImp service;
 
@@ -61,10 +63,11 @@ public class TestHistoryService {
         mockMeasurementRepo = mock(MeasurementRepo.class);
         mockLwNoteRepo = mock(LabwareNoteRepo.class);
         mockResultOpRepo = mock(ResultOpRepo.class);
+        mockRadService = mock(ReagentActionDetailService.class);
 
         service = spy(new HistoryServiceImp(mockOpRepo, mockLwRepo, mockSampleRepo, mockTissueRepo, mockDonorRepo,
                 mockReleaseRepo, mockDestructionRepo, mockOpCommentRepo, mockSnapshotRepo, mockWorkRepo,
-                mockMeasurementRepo, mockLwNoteRepo, mockResultOpRepo));
+                mockMeasurementRepo, mockLwNoteRepo, mockResultOpRepo, mockRadService));
     }
 
     @Test
@@ -529,6 +532,11 @@ public class TestHistoryService {
         createOps();
         ops.get(0).setEquipment(new Equipment("Feeniks", "scanner"));
         int[] opIds = ops.stream().mapToInt(Operation::getId).toArray();
+        Map<Integer, List<ReagentActionDetail>> radMap = Map.of(opIds[0],
+                List.of(new ReagentActionDetail("123", new Address(1,2), new Address(2,3), labware[1].getId()),
+                        new ReagentActionDetail("456", new Address(3,4), new Address(5,6), labware[1].getId())
+                ));
+        when(mockRadService.loadReagentTransfers(any())).thenReturn(radMap);
         Map<Integer, Set<String>> opWork = Map.of(
                 opIds[0], Set.of("SGP5000"),
                 opIds[1], Set.of()
@@ -584,7 +592,7 @@ public class TestHistoryService {
         List<HistoryEntry> expectedEntries = List.of(
                 new HistoryEntry(opIds[0], opTypeName0, ops.get(0).getPerformed(), labware[0].getId(),
                         labware[1].getId(), samples[0].getId(), username, "SGP5000",
-                        List.of("Alpha: Beta", "Gamma: Delta", "Equipment: Feeniks", "A1: pass", "Alabama", "A1: Alaska", "Thickness: 4\u00a0μm")),
+                        List.of("123 : A2 -> B3", "456 : C4 -> E6", "Alpha: Beta", "Gamma: Delta", "Equipment: Feeniks", "A1: pass", "Alabama", "A1: Alaska", "Thickness: 4\u00a0μm")),
                 new HistoryEntry(opIds[1], opTypeName1, ops.get(1).getPerformed(), labware[0].getId(),
                         labware[3].getId(), samples[2].getId(), username, null,
                         List.of("Stain type: Ribena", "Epsilon: Zeta", "Arizona"))
@@ -592,6 +600,7 @@ public class TestHistoryService {
         assertThat(service.createEntriesForOps(ops, sampleIds, labwareList, opWork, null)).containsExactlyElementsOf(expectedEntries);
 
         verify(service).loadOpMeasurements(Set.of(opIds[0], opIds[1]));
+        verify(mockRadService).loadReagentTransfers(Set.of(opIds[0], opIds[1]));
     }
 
     @Test

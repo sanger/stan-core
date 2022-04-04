@@ -203,4 +203,10 @@ public class FieldValidation {
     public Sanitiser<String> tissueCoverageSanitiser() {
         return new IntSanitiser("Tissue coverage", 0, 100);
     }
+
+    @Bean
+    public Validator<String> reagentPlateBarcodeValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(CharacterType.DIGIT);
+        return new StringValidator("Reagent plate barcode", 24, 24, charTypes);
+    }
 }

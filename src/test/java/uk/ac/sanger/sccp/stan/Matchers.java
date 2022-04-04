@@ -65,6 +65,20 @@ public class Matchers {
         return invocation -> invocation.getArgument(0);
     }
 
+    public static <X> Answer<X> addProblem(final String problem) {
+        return addProblem(problem, null);
+    }
+
+    public static <X> Answer<X> addProblem(final String problem, X returnValue) {
+        return invocation -> {
+            Collection<String> problems = invocation.getArgument(0);
+            problems.add(problem);
+            return returnValue;
+        };
+    }
+
+
+
     private static class CaseInsensitiveStringMatcher implements ArgumentMatcher<String> {
         String string;
 

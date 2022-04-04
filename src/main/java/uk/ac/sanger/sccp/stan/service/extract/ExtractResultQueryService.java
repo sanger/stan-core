@@ -28,15 +28,18 @@ public class ExtractResultQueryService {
     private final LabwareRepo lwRepo;
     private final OperationTypeRepo opTypeRepo;
     private final OperationRepo opRepo;
+    private final ActionRepo actionRepo;
     private final ResultOpRepo resultOpRepo;
     private final MeasurementRepo measurementRepo;
 
     @Autowired
     public ExtractResultQueryService(LabwareRepo lwRepo, OperationTypeRepo opTypeRepo, OperationRepo opRepo,
-                                     ResultOpRepo resultOpRepo, MeasurementRepo measurementRepo) {
+                                     ActionRepo actionRepo, ResultOpRepo resultOpRepo,
+                                     MeasurementRepo measurementRepo) {
         this.lwRepo = lwRepo;
         this.opTypeRepo = opTypeRepo;
         this.opRepo = opRepo;
+        this.actionRepo = actionRepo;
         this.resultOpRepo = resultOpRepo;
         this.measurementRepo = measurementRepo;
     }
@@ -52,15 +55,34 @@ public class ExtractResultQueryService {
      */
     public ExtractResult getExtractResult(String barcode) {
         Labware lw = lwRepo.getByBarcode(barcode);
-        ResultOp resultOp = selectExtractResult(lw);
-        if (resultOp==null) {
-            return new ExtractResult(lw, null, null);
-        }
-        return new ExtractResult(lw, resultOp.getResult(), getConcentration(resultOp.getOperationId(), lw));
+        ExtractResult res = findExtractResult(lw);
+        return (res==null ? new ExtractResult(lw, null, null) : res);
     }
 
     /**
-     * For a given item of labware, does the following:<ul>
+     * Finds the extract result recorded either on the given labware or on the source labware for the given labware
+     * @param lw the item of labware
+     * @return the result op (if any) recorded on the given labware or on the sources of that labware
+     */
+    public ExtractResult findExtractResult(Labware lw) {
+        ResultOp ro = selectExtractResult(List.of(lw));
+        if (ro!=null) {
+            return new ExtractResult(lw, ro.getResult(), getConcentration(ro.getOperationId(), List.of(lw)));
+        }
+        List<Integer> sourceLwIds = actionRepo.findSourceLabwareIdsForDestinationLabwareIds(List.of(lw.getId()));
+        if (sourceLwIds==null || sourceLwIds.isEmpty()) {
+            return null;
+        }
+        List<Labware> sourceLabware = lwRepo.findAllByIdIn(sourceLwIds);
+        ro = selectExtractResult(sourceLabware);
+        if (ro==null) {
+            return null;
+        }
+        return new ExtractResult(lw, ro.getResult(), getConcentration(ro.getOperationId(), sourceLabware));
+    }
+
+    /**
+     * For a given items of labware, does the following:<ul>
      *     <li>Find the Record Result ops recorded on that labware;</li>
      *     <li>Find the ResultOps for those operations that refer to the indicated labware;</li>
      *     <li>Find the prior operations indicated by those ResultOps;</li>
@@ -69,16 +91,22 @@ public class ExtractResultQueryService {
      *     <li>Return the ResultOp for that specific operation.</li>
      *  </ul>
      *  May return null.
-     * @param lw the labware
+     * @param labware the destination labware
      * @return the result op found, or null if none was found
      */
-    public ResultOp selectExtractResult(Labware lw) {
+    public ResultOp selectExtractResult(List<Labware> labware) {
         OperationType opType = opTypeRepo.getByName(RESULT_OP_NAME);
-        List<Operation> ops = opRepo.findAllByOperationTypeAndDestinationLabwareIdIn(opType, List.of(lw.getId()));
+        Set<Integer> labwareIds = labware.stream()
+                .map(Labware::getId)
+                .collect(toSet());
+        List<Operation> ops = opRepo.findAllByOperationTypeAndDestinationLabwareIdIn(opType, labwareIds);
         if (ops.isEmpty()) {
             return null;
         }
-        Set<Integer> slotIdSet = lw.getSlots().stream().map(Slot::getId).collect(toSet());
+        Set<Integer> slotIdSet = labware.stream()
+                .flatMap(lw -> lw.getSlots().stream())
+                .map(Slot::getId)
+                .collect(toSet());
 
         List<Integer> opIds = ops.stream().map(Operation::getId).collect(toList());
         List<ResultOp> resultOps = resultOpRepo.findAllByOperationIdIn(opIds).stream()
@@ -110,14 +138,17 @@ public class ExtractResultQueryService {
     }
 
     /**
-     * Gets the value from the concentration measurement
+     * Gets the value from the concentration measurement. If multiple suitable concentrations are
+     * found, one is returned arbitrarily.
      * @param opId the id of the operation for the measurements
-     * @param lw the labware on which the measurement was recorded
+     * @param labware the labware on which the measurement was recorded
      * @return the value of the concentration measurement, if one was found; null if not
      */
-    public String getConcentration(Integer opId, Labware lw) {
+    public String getConcentration(Integer opId, Collection<Labware> labware) {
         List<Measurement> measurements = measurementRepo.findAllByOperationIdIn(List.of(opId));
-        Set<Integer> slotIdSet = lw.getSlots().stream().map(Slot::getId).collect(toSet());
+        Set<Integer> slotIdSet = labware.stream()
+                .flatMap(lw -> lw.getSlots().stream().map(Slot::getId))
+                .collect(toSet());
         return measurements.stream()
                 .filter(measurement -> measurement.getName().equalsIgnoreCase(CONCENTRATION_NAME)
                         && slotIdSet.contains(measurement.getSlotId()))

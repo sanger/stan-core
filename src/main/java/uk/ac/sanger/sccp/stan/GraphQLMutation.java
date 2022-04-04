@@ -80,6 +80,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final OpWithSlotMeasurementsService opWithSlotMeasurementsService;
     final ComplexStainService complexStainService;
     final AliquotService aliquotService;
+    final ReagentTransferService reagentTransferService;
     final UserAdminService userAdminService;
 
     @Autowired
@@ -100,7 +101,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            PermService permService, RNAAnalysisService rnaAnalysisService,
                            VisiumAnalysisService visiumAnalysisService, OpWithSlotMeasurementsService opWithSlotMeasurementsService,
                            ComplexStainService complexStainService, AliquotService aliquotService,
-                           UserAdminService userAdminService) {
+                           ReagentTransferService reagentTransferService, UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
@@ -137,6 +138,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.opWithSlotMeasurementsService = opWithSlotMeasurementsService;
         this.complexStainService = complexStainService;
         this.aliquotService = aliquotService;
+        this.reagentTransferService = reagentTransferService;
         this.userAdminService = userAdminService;
     }
 
@@ -568,6 +570,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             AliquotRequest request = arg(dfe, "request", AliquotRequest.class);
             logRequest("Aliquot", user, request);
             return aliquotService.perform(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> reagentTransfer() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            ReagentTransferRequest request = arg(dfe, "request", ReagentTransferRequest.class);
+            logRequest("Reagent transfer", user, request);
+            return reagentTransferService.perform(user, request);
         };
     }
 

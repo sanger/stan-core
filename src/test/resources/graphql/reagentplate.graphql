@@ -1,0 +1,9 @@
+query {
+    reagentPlate(barcode: "[RP_BC]") {
+        barcode
+        slots {
+            address
+            used
+        }
+    }
+}

@@ -122,7 +122,8 @@ public class TestReleaseMutation {
         assertThat(tsvMaps.get(0).keySet()).containsOnly("Barcode", "Labware type", "Address", "Donor name",
                 "Life stage", "External identifier", "Tissue type", "Spatial location", "Replicate number", "Section number",
                 "Last section number", "Source barcode", "Section thickness", "Released from box location",
-                "Stain type", "Bond barcode", "Tissue coverage");
+                "Stain type", "Bond barcode", "Tissue coverage", "Cq value", "cDNA analysis concentration",
+                "Reagent source");
         var row0 = tsvMaps.get(0);
         assertEquals(block.getBarcode(), row0.get("Barcode"));
         assertEquals(block.getLabwareType().getName(), row0.get("Labware type"));

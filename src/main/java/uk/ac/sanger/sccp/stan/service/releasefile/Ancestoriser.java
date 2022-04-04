@@ -72,7 +72,9 @@ public class Ancestoriser {
     }
 
     /**
-     * A representation of the ancestry of samples (through slots and other samples)
+     * A representation of the ancestry of samples (through slots and other samples).
+     * It is modelled something like a map with a slot-sample key mapping to the set
+     * of slot-samples that are its direct sources.
      */
     public static class Ancestry {
         private final Map<SlotSample, Set<SlotSample>> map = new HashMap<>();
@@ -143,10 +145,20 @@ public class Ancestoriser {
             return ancestors;
         }
 
+        /**
+         * Gets the set of all the slot-samples which have their sources specified in this ancestry
+         * @return the set of key slot-samples
+         */
         public Set<SlotSample> keySet() {
             return map.keySet();
         }
 
+        /**
+         * Sets the sources for the given slot-sample key.
+         * @param key the slot-sample
+         * @param values the sources for the given key slot-sample
+         * @return the previous value associated with the key
+         */
         public Set<SlotSample> put(SlotSample key, Set<SlotSample> values) {
             return map.put(key, values);
         }

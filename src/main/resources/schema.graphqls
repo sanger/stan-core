@@ -1149,6 +1149,40 @@ input AliquotRequest {
     workNumber: String
 }
 
+"""A slot in a reagent plate."""
+type ReagentSlot {
+    address: Address!
+    used: Boolean!
+}
+
+"""A plate of reagents."""
+type ReagentPlate {
+    barcode: String!
+    slots: [ReagentSlot!]!
+}
+
+"""A specification that a particular reagent slot should be transferred to an address."""
+input ReagentTransfer {
+    """The barcode of a reagent plate."""
+    reagentPlateBarcode: String!
+    """The address of a slot in the reagent plate."""
+    reagentSlotAddress: Address!
+    """The address if a slot in the destination labware."""
+    destinationAddress: Address!
+}
+
+"""A request to transfer reagents from reagent plates to a STAN labware."""
+input ReagentTransferRequest {
+    """The name of the operation being performed."""
+    operationType: String!
+    """The work number to associate with the operation."""
+    workNumber: String
+    """The barcode of the destination labware."""
+    destinationBarcode: String!
+    """The transfers from aliquot slots to destination slots."""
+    transfers: [ReagentTransfer!]!
+}
+
 """
 Get information from the application.
 These typically require no user privilege.
@@ -1222,6 +1256,8 @@ type Query {
     """Get the work progress (some particular timestamps) associated with a specified work number, and/or
     work types, statuses."""
     workProgress(workNumber: String, workTypes: [String!], statuses: [WorkStatus!]): [WorkProgress!]!
+    """Gets a reagent plate, if it exists. May return null."""
+    reagentPlate(barcode: String!): ReagentPlate
 
     """Get the specified storage location."""
     location(locationBarcode: String!): Location!
@@ -1300,6 +1336,7 @@ type Mutation {
     addFixative(name: String!): Fixative!
     """Enable or disable a fixative."""
     setFixativeEnabled(name: String!, enabled: Boolean!): Fixative!
+    """Create a new work type."""
     addWorkType(name: String!): WorkType!
     """Enable or disable a work type."""
     setWorkTypeEnabled(name: String!, enabled: Boolean!): WorkType!
@@ -1339,6 +1376,8 @@ type Mutation {
     recordComplexStain(request: ComplexStainRequest!): OperationResult!
     """Transfer samples from one labware into multiple labware."""
     aliquot(request: AliquotRequest!): OperationResult!
+    """Record an operation transferring reagents from a reagent plate to an item of Stan labware."""
+    reagentTransfer(request: ReagentTransferRequest!): OperationResult!
 
     """Create a new user for the application."""
     addUser(username: String!): User!

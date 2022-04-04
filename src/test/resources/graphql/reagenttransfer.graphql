@@ -1,0 +1,33 @@
+mutation {
+    reagentTransfer(request: {
+        operationType: "[OPTYPE]"
+        destinationBarcode: "[DEST_BC]"
+        workNumber: "[WORKNUM]"
+        transfers: [
+            {
+                reagentPlateBarcode: "[RP_BC]"
+                reagentSlotAddress: "A1"
+                destinationAddress: "A1"
+            },
+            {
+                reagentPlateBarcode: "[RP_BC]"
+                reagentSlotAddress: "B1"
+                destinationAddress: "A2"
+            }
+        ]
+    }) {
+        labware {
+            barcode
+            slots {
+                address
+                samples {
+                    bioState { name }
+                }
+            }
+        }
+        operations {
+            id
+            operationType { name }
+        }
+    }
+}
