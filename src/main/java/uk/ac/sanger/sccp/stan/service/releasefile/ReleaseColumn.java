@@ -28,6 +28,8 @@ public enum ReleaseColumn implements TsvColumn<ReleaseEntry> {
     Stain_type(ReleaseEntry::getStainType),
     Bond_barcode(ReleaseEntry::getBondBarcode),
     Tissue_coverage(ReleaseEntry::getCoverage),
+    Cq_value(ReleaseEntry::getCq),
+    cDNA_analysis_concentration(ReleaseEntry::getCdnaAnalysisConcentration),
     Reagent_source(ReleaseEntry::getReagentSource),
     ;
 

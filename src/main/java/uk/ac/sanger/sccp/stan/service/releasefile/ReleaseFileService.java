@@ -323,7 +323,7 @@ public class ReleaseFileService {
     }
 
     /**
-     * Sets the section thickness and coverage for the release entries.
+     * Sets various measurements for the release entries.
      * The measurements may be recorded on the specified slot, or any ancestral slot
      * found through the given ancestry map.
      * @param entries the release entries
@@ -334,16 +334,39 @@ public class ReleaseFileService {
         List<Measurement> measurements = measurementRepo.findAllBySlotIdIn(slotIds);
         Map<Integer, List<Measurement>> slotIdToThickness = new HashMap<>();
         Map<Integer, List<Measurement>> slotIdToCoverage = new HashMap<>();
+        Map<Integer, List<Measurement>> slotIdToCq = new HashMap<>();
+        Map<Integer, List<Measurement>> slotIdToConc = new HashMap<>();
         final String THICKNESS = MeasurementType.Thickness.friendlyName();
         final String COVERAGE = MeasurementType.Tissue_coverage.friendlyName();
+        final String CQ = MeasurementType.Cq_value.friendlyName();
+        final String CONC = MeasurementType.Concentration.friendlyName();
+        final String CDNA_ANALYSIS = "cDNA analysis";
+        Map<Integer, OperationType> opTypeCache = new HashMap<>();
         for (Measurement measurement : measurements) {
-            if (measurement.getOperationId()!=null && measurement.getName().equalsIgnoreCase(THICKNESS)) {
+            if (measurement.getOperationId()==null) {
+                continue;
+            }
+            if (measurement.getName().equalsIgnoreCase(THICKNESS)) {
                 List<Measurement> slotIdMeasurements = slotIdToThickness.computeIfAbsent(measurement.getSlotId(), k -> new ArrayList<>());
                 slotIdMeasurements.add(measurement);
-            }
-            if (measurement.getOperationId()!=null && measurement.getName().equalsIgnoreCase(COVERAGE)) {
+            } else if (measurement.getName().equalsIgnoreCase(COVERAGE)) {
                 List<Measurement> slotIdMeasurements = slotIdToCoverage.computeIfAbsent(measurement.getSlotId(), k -> new ArrayList<>());
                 slotIdMeasurements.add(measurement);
+            } else if (measurement.getName().equalsIgnoreCase(CQ)) {
+                List<Measurement> slotIdMeasurements = slotIdToCq.computeIfAbsent(measurement.getSlotId(), k -> new ArrayList<>());
+                slotIdMeasurements.add(measurement);
+            } else if (measurement.getName().equalsIgnoreCase(CONC)) {
+                final Integer opId = measurement.getOperationId();
+                OperationType opType = opTypeCache.get(opId);
+                if (opType==null) {
+                    Operation op = opRepo.findById(opId).orElseThrow();
+                    opType = op.getOperationType();
+                    opTypeCache.put(opId, opType);
+                }
+                if (opType.getName().equalsIgnoreCase(CDNA_ANALYSIS)) {
+                    List<Measurement> slotIdMeasurements = slotIdToConc.computeIfAbsent(measurement.getSlotId(), k -> new ArrayList<>());
+                    slotIdMeasurements.add(measurement);
+                }
             }
         }
         for (ReleaseEntry entry : entries) {
@@ -358,6 +381,18 @@ public class ReleaseFileService {
                 } catch (NumberFormatException e) {
                     log.error("Coverage measurement is not an integer: {}", coverageMeasurement);
                 }
+            }
+            Measurement cqMeasurement = selectMeasurement(entry, slotIdToCq, ancestry);
+            if (cqMeasurement != null) {
+                try {
+                    entry.setCq(Integer.valueOf(cqMeasurement.getValue()));
+                } catch (NumberFormatException e) {
+                    log.error("Cq measurement is not an integer: {}", cqMeasurement);
+                }
+            }
+            Measurement concMeasurement = selectMeasurement(entry, slotIdToConc, ancestry);
+            if (concMeasurement != null) {
+                entry.setCdnaAnalysisConcentration(concMeasurement.getValue());
             }
         }
     }

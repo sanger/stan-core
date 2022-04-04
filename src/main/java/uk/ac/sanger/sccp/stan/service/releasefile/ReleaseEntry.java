@@ -22,6 +22,8 @@ public class ReleaseEntry {
     private String bondBarcode;
     private Integer coverage;
     private String reagentSource;
+    private Integer cq;
+    private String cdnaAnalysisConcentration;
 
     public ReleaseEntry(Labware labware, Slot slot, Sample sample) {
         this(labware, slot, sample, null);
@@ -118,6 +120,22 @@ public class ReleaseEntry {
         this.reagentSource = reagentSource;
     }
 
+    public Integer getCq() {
+        return this.cq;
+    }
+
+    public void setCq(Integer cq) {
+        this.cq = cq;
+    }
+
+    public String getCdnaAnalysisConcentration() {
+        return this.cdnaAnalysisConcentration;
+    }
+
+    public void setCdnaAnalysisConcentration(String cdnaAnalysisConcentration) {
+        this.cdnaAnalysisConcentration = cdnaAnalysisConcentration;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -134,7 +152,10 @@ public class ReleaseEntry {
                 && Objects.equals(this.stainType, that.stainType)
                 && Objects.equals(this.bondBarcode, that.bondBarcode)
                 && Objects.equals(this.coverage, that.coverage)
-                && Objects.equals(this.reagentSource, that.reagentSource));
+                && Objects.equals(this.reagentSource, that.reagentSource)
+                && Objects.equals(this.cq, that.cq)
+                && Objects.equals(this.cdnaAnalysisConcentration, that.cdnaAnalysisConcentration)
+        );
     }
 
     @Override
@@ -156,6 +177,8 @@ public class ReleaseEntry {
                 .add("bondBarcode", bondBarcode)
                 .add("coverage", coverage)
                 .add("reagentSource", reagentSource)
+                .add("cq", cq)
+                .add("cdnaAnalysisConcentration", cdnaAnalysisConcentration)
                 .toString();
     }
 }

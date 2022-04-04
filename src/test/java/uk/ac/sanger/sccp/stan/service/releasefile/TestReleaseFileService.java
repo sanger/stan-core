@@ -427,6 +427,7 @@ public class TestReleaseFileService {
     public void testLoadMeasurements() {
         setupLabware();
         Labware lw0 = EntityFactory.makeLabware(EntityFactory.getTubeType(), sample);
+        // l10 begat lw1 which begat lw2
         var ancestry = makeAncestry(
                 lw2, sample, lw1, sample,
                 lw1, sample, lw0, sample
@@ -435,8 +436,19 @@ public class TestReleaseFileService {
                 new Measurement(1, "Thickness", "8", sample.getId(), 10, lw0.getFirstSlot().getId()),
                 new Measurement(2, "Bananas", "X", sample.getId(), 10, lw1.getFirstSlot().getId()),
                 new Measurement(3, "Thickness", "2", sample1.getId(), 10, lw1.getFirstSlot().getId()),
-                new Measurement(4, "Tissue coverage", "30", sample.getId(), 10, lw0.getFirstSlot().getId())
+                new Measurement(4, "Tissue coverage", "30", sample.getId(), 10, lw0.getFirstSlot().getId()),
+                new Measurement(5, "Cq value", "400", sample.getId(), 10, lw1.getFirstSlot().getId()),
+                new Measurement(6, "Concentration", "5.5", sample.getId(), 11, lw1.getFirstSlot().getId()),
+                new Measurement(7, "Concentration", "6.6", sample.getId(), 12, lw2.getFirstSlot().getId())
         );
+
+        Operation op11 = new Operation();
+        op11.setOperationType(new OperationType(100, "anything"));
+        Operation op12 = new Operation();
+        op12.setOperationType(new OperationType(101, "cdna analysis"));
+        when(mockOpRepo.findById(11)).thenReturn(Optional.of(op11));
+        when(mockOpRepo.findById(12)).thenReturn(Optional.of(op12));
+
         when(mockMeasurementRepo.findAllBySlotIdIn(any())).thenReturn(measurements);
         List<ReleaseEntry> entries = List.of(
                 new ReleaseEntry(lw2, lw2.getFirstSlot(), sample),
@@ -448,6 +460,10 @@ public class TestReleaseFileService {
         assertEquals("2", entries.get(1).getSectionThickness());
         assertEquals(30, entries.get(0).getCoverage());
         assertNull(entries.get(1).getCoverage());
+        assertEquals("6.6", entries.get(0).getCdnaAnalysisConcentration());
+        assertNull(entries.get(1).getCdnaAnalysisConcentration());
+        assertEquals(400, entries.get(0).getCq());
+        assertNull(entries.get(1).getCq());
     }
 
     @Test

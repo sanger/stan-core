@@ -13,6 +13,7 @@ public enum MeasurementType {
     Selected_time(MeasurementValueType.TIME),
     DV200(MeasurementValueType.DECIMAL, "%"),
     Tissue_coverage(MeasurementValueType.INT, "%"),
+    Cq_value(MeasurementValueType.INT),
     ;
 
     private final MeasurementValueType valueType;
