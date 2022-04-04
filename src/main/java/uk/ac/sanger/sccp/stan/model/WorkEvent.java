@@ -16,14 +16,14 @@ import java.util.Objects;
 @DynamicInsert
 public class WorkEvent {
     public enum Type {
-        create, start, pause, resume, complete, fail,withdraw
+        create, start, pause, resume, complete, fail, withdraw
     }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(columnDefinition = "enum('create', 'start', 'pause', 'resume', 'complete', 'fail','withdraw')")
+    @Column(columnDefinition = "enum('create', 'start', 'pause', 'resume', 'complete', 'fail', 'withdraw')")
     @Enumerated(EnumType.STRING)
     private Type type;
 
