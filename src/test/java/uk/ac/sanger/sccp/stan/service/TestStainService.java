@@ -15,7 +15,6 @@ import uk.ac.sanger.sccp.stan.request.stain.TimeMeasurement;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 
 import java.util.*;
-import java.util.function.Consumer;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -182,7 +181,9 @@ public class TestStainService {
     @Test
     public void testCreateOperation() {
         User user = EntityFactory.getUser();
-        StainType st = new StainType(1, "Coffee");
+        List<StainType> sts = List.of(
+                new StainType(1, "Coffee"),
+                new StainType(2, "Blood"));
         OperationType opType = new OperationType(6, "Stain");
 
         Sample sam1 = EntityFactory.getSample();
@@ -197,15 +198,11 @@ public class TestStainService {
                 action(slots.get(1), sam1),
                 action(slots.get(2), sam2)
         );
-        when(mockOpService.createOperation(any(), any(), anyList(), any(), any())).then(invocation -> {
-            Consumer<Operation> mut = invocation.getArgument(4);
-            Operation op = new Operation(null, opType, null, expectedActions, user, null);
-            mut.accept(op);
-            return op;
-        });
-        Operation op = service.createOperation(user, lw, opType, st);
-        verify(mockOpService).createOperation(eq(opType), eq(user), Matchers.sameElements(expectedActions), isNull(), isNotNull());
-        assertEquals(op.getStainType(), st);
+        when(mockOpService.createOperationInPlace(any(), any(), any(), any(), any()))
+                .then(invocation -> new Operation(500, opType, null, expectedActions, user, null));
+        Operation op = service.createOperation(user, lw, opType, sts);
+        verify(mockOpService).createOperationInPlace(opType, user, lw, null, null);
+        verify(mockStainTypeRepo).saveOperationStainTypes(op.getId(), sts);
     }
 
     private static Action action(Slot slot, Sample sample) {
@@ -216,19 +213,21 @@ public class TestStainService {
     public void testCreateOperations() {
         OperationType opType = new OperationType(6, "Stain");
         User user = EntityFactory.getUser();
-        StainType stainType = new StainType(1, "Coffee");
+        List<StainType> stainTypes = List.of(
+                new StainType(1, "Coffee"),
+                new StainType(2, "Blood"));
         LabwareType lt = EntityFactory.getTubeType();
         List<Labware> labware = IntStream.range(0,2).mapToObj(i -> EntityFactory.makeEmptyLabware(lt)).collect(toList());
 
         when(mockOpTypeRepo.getByName("Stain")).thenReturn(opType);
         List<Operation> ops = labware.stream().map(lw -> {
             Operation op = new Operation(500+lw.getId(), opType, null, List.of(), user);
-            doReturn(op).when(service).createOperation(user, lw, opType, stainType);
+            doReturn(op).when(service).createOperation(user, lw, opType, stainTypes);
             return op;
         }).collect(toList());
 
-        assertEquals(ops, service.createOperations(user, labware, stainType));
-        labware.forEach(lw -> verify(service).createOperation(user, lw, opType, stainType));
+        assertEquals(ops, service.createOperations(user, labware, stainTypes));
+        labware.forEach(lw -> verify(service).createOperation(user, lw, opType, stainTypes));
     }
 
     @Test
@@ -304,7 +303,7 @@ public class TestStainService {
             verify(service, never()).createOperations(any(), any(), any());
             verify(service, never()).recordMeasurements(any(), any());
         } else {
-            verify(service).createOperations(user, labware, stainType);
+            verify(service).createOperations(user, labware, List.of(stainType));
             verify(service).recordMeasurements(ops, tms);
         }
         if (expectedProblem==null && work!=null) {

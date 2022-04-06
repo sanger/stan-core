@@ -12,11 +12,12 @@ import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
-import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
+import static uk.ac.sanger.sccp.utils.BasicUtils.reprCollection;
 
 /**
  * @author dr6
@@ -24,10 +25,13 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 @Service
 public class ComplexStainServiceImp implements ComplexStainService {
     public static final String STAIN_RNASCOPE = "RNAscope", STAIN_IHC = "IHC";
-    public static final String LW_NOTE_PLEX = "Plex", LW_NOTE_PANEL = "Panel",
+
+    public static final String LW_NOTE_PLEX_RNASCOPE = "RNAscope plex",
+            LW_NOTE_PLEX_IHC = "IHC plex";
+    public static final String LW_NOTE_PANEL = "Panel",
             LW_NOTE_BOND_BARCODE = "Bond barcode", LW_NOTE_BOND_RUN = "Bond run";
 
-    private final Pattern BOND_BARCODE_PTN = Pattern.compile("^[0-9A-Z]{8}$");
+    private final Pattern BOND_BARCODE_PTN = Pattern.compile("^[0-9A-Z]{4,8}$");
 
     private final WorkService workService;
     private final OperationService opService;
@@ -62,39 +66,69 @@ public class ComplexStainServiceImp implements ComplexStainService {
 
         OperationType opType = loadStainOpType(problems);
         UCMap<Labware> labwareMap = loadLabware(problems, request.getLabware());
-        StainType stainType = loadStainType(problems, request.getStainType());
-        validatePanel(problems, request.getPanel());
-        validatePlex(problems, request.getPlex());
+        List<StainType> stainTypes = loadStainTypes(problems, request.getStainTypes());
         UCMap<Work> workMap = loadWorks(problems, request.getLabware());
         validateBondRuns(problems, request.getLabware());
         validateBondBarcodes(problems, request.getLabware());
+        validatePanels(problems, request.getLabware());
+        validatePlexes(problems, stainTypes, request.getLabware());
 
         if (!problems.isEmpty()) {
             throw new ValidationException("The request could not be validated.", problems);
         }
 
-        return record(user, request, opType, stainType, labwareMap, workMap);
+        return record(user, request, opType, stainTypes, labwareMap, workMap);
     }
 
     /**
-     * Checks a valid panel is specified
+     * Checks the panels specified for each labware
      * @param problems receptacle for problems found
-     * @param panel the specified panel
+     * @param csls the labware parts of the request
      */
-    public void validatePanel(Collection<String> problems, StainPanel panel) {
-        if (panel==null) {
-            problems.add("No experiment panel specified.");
+    public void validatePanels(Collection<String> problems, Collection<ComplexStainLabware> csls) {
+        if (csls.stream().anyMatch(csl -> csl.getPanel()==null)) {
+            problems.add("Experiment panel must be specified for each labware.");
         }
     }
 
-    /**
-     * Checks a valid plex number is specified
-     * @param problems receptacle for problems found
-     * @param plex the specified plex number
-     */
-    public void validatePlex(Collection<String> problems, int plex) {
-        if (plex < 1 || plex > 100) {
-            problems.add("The plex number ("+plex+") should be in the range 1-100.");
+    public void validatePlexes(Collection<String> problems, List<StainType> stainTypes,
+                               Collection<ComplexStainLabware> csls) {
+        boolean gotIhc = false;
+        boolean gotRna = false;
+        for (StainType st : stainTypes) {
+            if (st.getName().equalsIgnoreCase(STAIN_RNASCOPE)) {
+                gotRna = true;
+            } else if (st.getName().equalsIgnoreCase(STAIN_IHC)) {
+                gotIhc = true;
+            }
+        }
+        boolean ihcError = false;
+        boolean rnaError = false;
+        boolean invalidRange = false;
+        for (var csl : csls) {
+            if (gotIhc ^ (csl.getPlexIHC()!=null)) {
+                ihcError = true;
+            }
+            if (gotRna ^ (csl.getPlexRNAscope()!=null)) {
+                rnaError = true;
+            }
+            for (Integer plex : new Integer[] { csl.getPlexIHC(), csl.getPlexRNAscope()}) {
+                if (plex != null && (plex < 1 || plex > 100)) {
+                    invalidRange = true;
+                    break;
+                }
+            }
+        }
+        if (ihcError) {
+            problems.add(gotIhc ? "IHC plex number is required for IHC stain." :
+                    "IHC plex number is not expected for non-IHC stain.");
+        }
+        if (rnaError) {
+            problems.add(gotRna ? "RNAscope plex number is required for RNAscope stain." :
+                    "RNAscope plex number is not expected for non-RNAscope stain.");
+        }
+        if (invalidRange) {
+            problems.add("Plex number is expected to be in the range 1 to 100.");
         }
     }
 
@@ -184,27 +218,50 @@ public class ComplexStainServiceImp implements ComplexStainService {
     }
 
     /**
-     * Loads the stain type and checks it is as expected
+     * Loads the stain types and checks they are as expected
      * @param problems receptacle for problems found
-     * @param stainName the name of the stain type
-     * @return the loaded stain type
+     * @param stainNames the names of the stain types
+     * @return the loaded stain types
      */
-    public StainType loadStainType(Collection<String> problems, String stainName) {
-        if (stainName==null || stainName.isEmpty()) {
-            problems.add("No stain type specified.");
-            return null;
+    public List<StainType> loadStainTypes(Collection<String> problems, Collection<String> stainNames) {
+        if (stainNames==null || stainNames.isEmpty()) {
+            problems.add("No stain types specified.");
+            return List.of();
         }
-        var optStainType = stainTypeRepo.findByName(stainName);
-        if (optStainType.isEmpty()) {
-            problems.add("Unknown stain type: "+repr(stainName));
-            return null;
+        List<StainType> stainTypes = stainTypeRepo.findAllByNameIn(stainNames);
+        if (stainTypes.size() < stainNames.size()) {
+            UCMap<StainType> stainTypeMap = UCMap.from(stainTypes, StainType::getName);
+            Set<String> seen = new HashSet<>(stainNames.size());
+            Set<String> notFound = new LinkedHashSet<>();
+            Set<String> repeated = new LinkedHashSet<>();
+            for (String name : stainNames) {
+                String nameUpper = (name==null ? null : name.toUpperCase());
+                if (!seen.add(nameUpper)) {
+                    repeated.add(name);
+                } else if (stainTypeMap.get(name)==null) {
+                    notFound.add(name);
+                }
+            }
+            if (notFound.isEmpty() && repeated.isEmpty()) {
+                problems.add("Couldn't load all specified stain types.");
+            }
+            if (!notFound.isEmpty()) {
+                problems.add("Unknown stain type: "+reprCollection(notFound));
+            }
+            if (!repeated.isEmpty()) {
+                problems.add("Repeated stain type: "+reprCollection(repeated));
+            }
         }
-        StainType stainType = optStainType.get();
-        if (!stainType.getName().equalsIgnoreCase(STAIN_IHC)
-                && !stainType.getName().equalsIgnoreCase(STAIN_RNASCOPE)) {
-            problems.add("The stain type "+stainType.getName()+" was not expected for this type of request.");
+        if (!stainTypes.isEmpty()) {
+            Set<StainType> unexpected = stainTypes.stream()
+                    .filter(st -> !st.getName().equalsIgnoreCase(STAIN_IHC)
+                            && !st.getName().equalsIgnoreCase(STAIN_RNASCOPE))
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
+            if (!unexpected.isEmpty()) {
+                problems.add("The supplied stain type was not expected for this request: " + unexpected);
+            }
         }
-        return stainType;
+        return stainTypes;
     }
 
     /**
@@ -212,20 +269,20 @@ public class ComplexStainServiceImp implements ComplexStainService {
      * @param user the user responsible for the request
      * @param request the request of what to record
      * @param opType the operation type to record
-     * @param stainType the stain type of the operation
+     * @param stainTypes the stain types of the operation
      * @param labwareMap the labware involved, mapped from its barcode
      * @param workMap the works involved, mapped from its work number
      * @return the operations created and their labware
      */
-    public OperationResult record(User user, ComplexStainRequest request, OperationType opType, StainType stainType,
+    public OperationResult record(User user, ComplexStainRequest request, OperationType opType, List<StainType> stainTypes,
                                   UCMap<Labware> labwareMap, UCMap<Work> workMap) {
         List<Labware> lwList = new ArrayList<>(request.getLabware().size());
         List<Operation> opList = new ArrayList<>(request.getLabware().size());
         UCMap<List<Operation>> workOps = new UCMap<>(request.getLabware().size());
         for (ComplexStainLabware csl : request.getLabware()) {
             Labware lw = labwareMap.get(csl.getBarcode());
-            Operation op = createOp(user, lw, opType, stainType);
-            recordLabwareNotes(request, csl, lw.getId(), op.getId());
+            Operation op = createOp(user, lw, opType, stainTypes);
+            recordLabwareNotes(csl, lw.getId(), op.getId());
             lwList.add(lw);
             opList.add(op);
             if (workMap.get(csl.getWorkNumber()) != null) {
@@ -243,27 +300,32 @@ public class ComplexStainServiceImp implements ComplexStainService {
      * @param user the user responsible for the operation
      * @param lw the labware associated with the operation
      * @param opType the op type of the operation
-     * @param stainType the stain type of the operation
+     * @param stainTypes the stain types of the operation
      * @return the created operation
      */
-    public Operation createOp(User user, Labware lw, OperationType opType, StainType stainType) {
-        return opService.createOperationInPlace(opType, user, lw, null, o -> o.setStainType(stainType));
+    public Operation createOp(User user, Labware lw, OperationType opType, Collection<StainType> stainTypes) {
+        Operation op = opService.createOperationInPlace(opType, user, lw, null, null);
+        stainTypeRepo.saveOperationStainTypes(op.getId(), stainTypes);
+        return op;
     }
 
     /**
      * Records the information about the labware specified as labware notes
-     * @param request the stain request
      * @param csl the request pertaining to this specific labware
      * @param lwId the id of the labware
      * @param opId the id of the operation
      */
-    public void recordLabwareNotes(ComplexStainRequest request, ComplexStainLabware csl, Integer lwId, Integer opId) {
-        List<LabwareNote> notes = List.of(
-                new LabwareNote(null, lwId, opId, LW_NOTE_PLEX, String.valueOf(request.getPlex())),
-                new LabwareNote(null, lwId, opId, LW_NOTE_PANEL, request.getPanel().name()),
-                new LabwareNote(null, lwId, opId, LW_NOTE_BOND_BARCODE, csl.getBondBarcode()),
-                new LabwareNote(null, lwId, opId, LW_NOTE_BOND_RUN, String.valueOf(csl.getBondRun()))
-        );
+    public void recordLabwareNotes(ComplexStainLabware csl, Integer lwId, Integer opId) {
+        List<LabwareNote> notes = new ArrayList<>(5);
+        if (csl.getPlexIHC()!=null) {
+            notes.add(new LabwareNote(null, lwId, opId, LW_NOTE_PLEX_IHC, String.valueOf(csl.getPlexIHC())));
+        }
+        if (csl.getPlexRNAscope()!=null) {
+            notes.add(new LabwareNote(null, lwId, opId, LW_NOTE_PLEX_RNASCOPE, String.valueOf(csl.getPlexRNAscope())));
+        }
+        notes.add(new LabwareNote(null, lwId, opId, LW_NOTE_PANEL, csl.getPanel().name()));
+        notes.add(new LabwareNote(null, lwId, opId, LW_NOTE_BOND_BARCODE, csl.getBondBarcode()));
+        notes.add(new LabwareNote(null, lwId, opId, LW_NOTE_BOND_RUN, String.valueOf(csl.getBondRun())));
         lwNoteRepo.saveAll(notes);
     }
 }

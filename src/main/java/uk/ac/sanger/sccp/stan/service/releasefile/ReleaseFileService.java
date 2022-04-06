@@ -36,6 +36,7 @@ public class ReleaseFileService {
     private final OperationTypeRepo opTypeRepo;
     private final OperationRepo opRepo;
     private final LabwareNoteRepo lwNoteRepo;
+    private final StainTypeRepo stainTypeRepo;
 
     private final ReagentActionDetailService reagentActionDetailService;
 
@@ -44,6 +45,7 @@ public class ReleaseFileService {
                               SampleRepo sampleRepo, LabwareRepo labwareRepo, MeasurementRepo measurementRepo,
                               SnapshotRepo snapshotRepo, ReleaseRepo releaseRepo, OperationTypeRepo opTypeRepo,
                               OperationRepo opRepo, LabwareNoteRepo lwNoteRepo,
+                              StainTypeRepo stainTypeRepo,
                               ReagentActionDetailService reagentActionDetailService) {
         this.releaseRepo = releaseRepo;
         this.sampleRepo = sampleRepo;
@@ -54,6 +56,7 @@ public class ReleaseFileService {
         this.opTypeRepo = opTypeRepo;
         this.opRepo = opRepo;
         this.lwNoteRepo = lwNoteRepo;
+        this.stainTypeRepo = stainTypeRepo;
         this.reagentActionDetailService = reagentActionDetailService;
     }
 
@@ -442,7 +445,7 @@ public class ReleaseFileService {
 
     /**
      * Fills in the stain type and bond barcode fields for all the given entries.
-     * These are both taken from the latest stan operation on the particular piece of labware.
+     * These are both taken from the latest stain operation on the particular piece of labware.
      * @param entries the entries to add information to
      */
     public void loadLastStain(Collection<ReleaseEntry> entries) {
@@ -455,13 +458,17 @@ public class ReleaseFileService {
             return;
         }
         Map<Integer, String> bondBarcodes = loadBondBarcodes(lwOps);
+        Map<Integer, List<StainType>> opStainTypes = loadStainTypes(lwOps);
         for (ReleaseEntry entry : entries) {
             Integer labwareId = entry.getLabware().getId();
             Operation op = lwOps.get(labwareId);
             if (op==null) {
                 continue;
             }
-            entry.setStainType(op.getStainType().getName());
+            var stainTypes = opStainTypes.get(op.getId());
+            if (stainTypes!=null && !stainTypes.isEmpty()) {
+                entry.setStainType(stainTypes.stream().map(StainType::getName).collect(joining(", ")));
+            }
             entry.setBondBarcode(bondBarcodes.get(labwareId));
         }
     }
@@ -524,4 +531,13 @@ public class ReleaseFileService {
         return lwBondBarcode;
     }
 
+    /**
+     * Loads the stain types for the given operations.
+     * @param lwOps map to operations
+     * @return a map from operation id to stain types
+     */
+    public Map<Integer, List<StainType>> loadStainTypes(Map<Integer, Operation> lwOps) {
+        Set<Integer> opIds = lwOps.values().stream().map(Operation::getId).collect(toSet());
+        return stainTypeRepo.loadOperationStainTypes(opIds);
+    }
 }

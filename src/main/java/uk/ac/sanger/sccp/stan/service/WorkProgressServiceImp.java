@@ -27,6 +27,7 @@ public class WorkProgressServiceImp implements WorkProgressService {
     private final WorkTypeRepo workTypeRepo;
     private final OperationRepo opRepo;
     private final LabwareRepo lwRepo;
+    private final StainTypeRepo stainTypeRepo;
     // Consider for the future moving these sets to a config class and injecting them
     private final Set<String> includedOpTypes = Set.of("section", "stain", "extract", "visium cdna", "image",
             "rin analysis", "dv200 analysis");
@@ -35,11 +36,12 @@ public class WorkProgressServiceImp implements WorkProgressService {
 
     @Autowired
     public WorkProgressServiceImp(WorkRepo workRepo, WorkTypeRepo workTypeRepo, OperationRepo opRepo,
-                                  LabwareRepo lwRepo) {
+                                  LabwareRepo lwRepo, StainTypeRepo stainTypeRepo) {
         this.workRepo = workRepo;
         this.workTypeRepo = workTypeRepo;
         this.opRepo = opRepo;
         this.lwRepo = lwRepo;
+        this.stainTypeRepo = stainTypeRepo;
     }
 
     @Override
@@ -126,8 +128,10 @@ public class WorkProgressServiceImp implements WorkProgressService {
                                                   Predicate<StainType> specialStainType,
                                                   Predicate<LabwareType> specialLabwareType,
                                                   Map<Integer, LabwareType> labwareIdToType) {
-        Iterable<Operation> ops = opRepo.findAllById(work.getOperationIds());
+        final var opIds = work.getOperationIds();
+        Iterable<Operation> ops = opRepo.findAllById(opIds);
         Map<String, LocalDateTime> opTimes = new HashMap<>();
+        var opStainTypes = stainTypeRepo.loadOperationStainTypes(opIds);
 
         for (Operation op : ops) {
             OperationType opType = op.getOperationType();
@@ -136,7 +140,8 @@ public class WorkProgressServiceImp implements WorkProgressService {
             }
             String key = opType.getName();
             if (opType.has(OperationTypeFlag.STAIN)) {
-                if (specialStainType.test(op.getStainType())) {
+                List<StainType> sts = opStainTypes.get(op.getId());
+                if (sts!=null && sts.stream().anyMatch(specialStainType)) {
                     addTime(opTimes, "RNAscope/IHC stain", op.getPerformed());
                 }
                 Set<LabwareType> labwareTypes = opLabwareTypes(op, labwareIdToType);

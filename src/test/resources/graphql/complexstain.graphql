@@ -1,13 +1,14 @@
 mutation {
     recordComplexStain(request: {
-        stainType: "RNAscope"
-        panel: positive
-        plex: 6
+        stainTypes: ["RNAscope", "IHC"]
         labware: [
             {
                 barcode: "STAN-A1"
                 bondBarcode: "12340ABC"
                 bondRun: 8
+                plexIHC: 12
+                plexRNAscope: 13
+                panel: positive
             }
         ]
     }) {

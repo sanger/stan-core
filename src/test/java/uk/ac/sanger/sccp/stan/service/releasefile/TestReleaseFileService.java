@@ -38,6 +38,7 @@ public class TestReleaseFileService {
     OperationTypeRepo mockOpTypeRepo;
     OperationRepo mockOpRepo;
     LabwareNoteRepo mockLwNoteRepo;
+    StainTypeRepo mockStainTypeRepo;
 
     ReagentActionDetailService mockRadService;
 
@@ -64,9 +65,10 @@ public class TestReleaseFileService {
         mockOpRepo = mock(OperationRepo.class);
         mockLwNoteRepo = mock(LabwareNoteRepo.class);
         mockRadService = mock(ReagentActionDetailService.class);
+        mockStainTypeRepo = mock(StainTypeRepo.class);
 
         service = spy(new ReleaseFileService(mockAncestoriser, mockSampleRepo, mockLabwareRepo, mockMeasurementRepo,
-                mockSnapshotRepo, mockReleaseRepo, mockOpTypeRepo, mockOpRepo, mockLwNoteRepo, mockRadService));
+                mockSnapshotRepo, mockReleaseRepo, mockOpTypeRepo, mockOpRepo, mockLwNoteRepo, mockStainTypeRepo, mockRadService));
 
         user = EntityFactory.getUser();
         destination = new ReleaseDestination(50, "Venus");
@@ -529,18 +531,24 @@ public class TestReleaseFileService {
         when(mockOpTypeRepo.getByName("Stain")).thenReturn(opType);
         StainType st1 = new StainType(1, "StainAlpha");
         StainType st2 = new StainType(2, "StainBeta");
+
         Operation op1 = new Operation(11, opType, null, null, null);
-        op1.setStainType(st1);
         Operation op2 = new Operation(12, opType, null, null, null);
-        op2.setStainType(st2);
         final Map<Integer, Operation> lwOpMap = Map.of(lw1.getId(), op1, lw2.getId(), op2);
         doReturn(lwOpMap).when(service).loadLastOpMap(any(), any());
         doReturn(Map.of(lw1.getId(), "BONDBC01")).when(service).loadBondBarcodes(any());
 
+        Map<Integer, List<StainType>> opStains = Map.of(
+                op1.getId(), List.of(st1, st2),
+                op2.getId(), List.of(st1)
+        );
+
+        doReturn(opStains).when(service).loadStainTypes(lwOpMap);
+
         service.loadLastStain(entries);
         verify(service).loadLastOpMap(opType, Set.of(lw1.getId(), lw2.getId(), lw3.getId()));
         verify(service).loadBondBarcodes(lwOpMap);
-        String[] expectedStainTypes = {"StainAlpha", "StainBeta", null};
+        String[] expectedStainTypes = {"StainAlpha, StainBeta", "StainAlpha", null};
         String[] expectedBondBarcodes = { "BONDBC01", null, null};
         for (int i = 0; i < entries.size(); ++i) {
             ReleaseEntry entry = entries.get(i);
@@ -625,6 +633,23 @@ public class TestReleaseFileService {
         Map<Integer, String> results = service.loadBondBarcodes(lwOps);
         verify(mockLwNoteRepo).findAllByOperationIdIn(Set.of(op1id, op2id));
         assertEquals(Map.of(lw1id, bondBc1, lw2id, bondBc2), results);
+    }
+
+    @Test
+    public void testLoadStainTypes() {
+        final int op1id = 10, op2id=11;
+        final int lw1id = 80, lw2id=81, lw3id=82;
+        Operation op1 = new Operation(op1id, null, null, null, null);
+        Operation op2 = new Operation(op2id, null, null, null, null);
+        Map<Integer, Operation> lwOps = Map.of(lw1id, op1, lw2id, op1, lw3id, op2);
+        StainType st1 = new StainType(1, "Alpha");
+        StainType st2 = new StainType(2, "Beta");
+        Map<Integer, List<StainType>> opStainTypes = Map.of(
+                op1id, List.of(st1, st2)
+        );
+        when(mockStainTypeRepo.loadOperationStainTypes(any())).thenReturn(opStainTypes);
+        assertSame(opStainTypes, service.loadStainTypes(lwOps));
+        verify(mockStainTypeRepo).loadOperationStainTypes(Set.of(op1id, op2id));
     }
 
     @Test

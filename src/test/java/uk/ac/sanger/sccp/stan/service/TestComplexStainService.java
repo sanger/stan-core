@@ -3,8 +3,7 @@ package uk.ac.sanger.sccp.stan.service;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.*;
 import org.mockito.ArgumentCaptor;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.Matchers;
@@ -16,16 +15,14 @@ import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
-import java.util.function.Consumer;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
-import static uk.ac.sanger.sccp.stan.service.ComplexStainServiceImp.STAIN_IHC;
-import static uk.ac.sanger.sccp.stan.service.ComplexStainServiceImp.STAIN_RNASCOPE;
 
 /**
  * Tests {@link ComplexStainServiceImp}
@@ -61,18 +58,18 @@ public class TestComplexStainService {
         User user = EntityFactory.getUser();
         Labware lw = EntityFactory.getTube();
         OperationType opType = EntityFactory.makeOperationType("Stain", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.STAIN);
-        StainType stainType = new StainType(3, "RNAscope");
+        List<StainType> stainTypes = List.of(new StainType(3, "RNAscope"));
         Work work = new Work(50, "SGP50", null, null, null, Work.Status.active);
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lw);
         UCMap<Work> workMap = UCMap.from(Work::getWorkNumber, work);
 
         doReturn(opType).when(service).loadStainOpType(any());
         doReturn(lwMap).when(service).loadLabware(any(), any());
-        doReturn(stainType).when(service).loadStainType(any(), any());
-        doNothing().when(service).validatePanel(any(), any());
-        doNothing().when(service).validatePlex(any(), anyInt());
+        doReturn(stainTypes).when(service).loadStainTypes(any(), any());
         doReturn(workMap).when(service).loadWorks(any(), any());
         doNothing().when(service).validateBondRuns(any(), any());
+        doNothing().when(service).validatePlexes(any(), any(), any());
+        doNothing().when(service).validatePanels(any(), any());
         if (valid) {
             doNothing().when(service).validateBondBarcodes(any(), any());
         } else {
@@ -84,8 +81,9 @@ public class TestComplexStainService {
         }
 
         ComplexStainRequest request = new ComplexStainRequest(
-                stainType.getName(), 4, StainPanel.positive, List.of(
-                new ComplexStainLabware(lw.getBarcode(), "0123 ABC", 5, work.getWorkNumber())
+                List.of("RNAscope"), List.of(
+                new ComplexStainLabware(lw.getBarcode(), "0123 ABC", 5, work.getWorkNumber(),
+                        4, null, StainPanel.positive)
         ));
 
         if (valid) {
@@ -102,41 +100,16 @@ public class TestComplexStainService {
         verify(service).loadStainOpType(problemsCaptor.capture());
         Collection<String> problems = problemsCaptor.getValue();
         verify(service).loadLabware(same(problems), same(request.getLabware()));
-        verify(service).loadStainType(same(problems), eq(request.getStainType()));
-        verify(service).validatePanel(same(problems), eq(request.getPanel()));
-        verify(service).validatePlex(same(problems), eq(request.getPlex()));
+        verify(service).loadStainTypes(same(problems), same(request.getStainTypes()));
+        verify(service).validatePanels(same(problems), same(request.getLabware()));
+        verify(service).validatePlexes(same(problems), eq(stainTypes), same(request.getLabware()));
         verify(service).loadWorks(same(problems), same(request.getLabware()));
         verify(service).validateBondRuns(same(problems), same(request.getLabware()));
         verify(service).validateBondBarcodes(same(problems), same(request.getLabware()));
         if (valid) {
-            verify(service).record(user, request, opType, stainType, lwMap, workMap);
+            verify(service).record(user, request, opType, stainTypes, lwMap, workMap);
         } else {
             verify(service, never()).record(any(), any(), any(), any(), any(), any());
-        }
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = { "positive", "negative", "marker", "null"})
-    public void testValidatePanel(String panelName) {
-        StainPanel panel = (panelName.equals("null") ? null : StainPanel.valueOf(panelName));
-        final List<String> problems = new ArrayList<>(panel==null ? 1 : 0);
-        service.validatePanel(problems, panel);
-        if (panel==null) {
-            assertThat(problems).containsExactly("No experiment panel specified.");
-        } else {
-            assertThat(problems).isEmpty();
-        }
-    }
-
-    @ParameterizedTest
-    @CsvSource({"-1,false", "0,false", "1,true", "2,true", "99,true", "100,true", "101,false", "200,false"})
-    public void testValidatePlex(int plex, boolean valid) {
-        final List<String> problems = new ArrayList<>(valid ? 0 : 1);
-        service.validatePlex(problems, plex);
-        if (valid) {
-            assertThat(problems).isEmpty();
-        } else {
-            assertThat(problems).containsExactly("The plex number ("+plex+") should be in the range 1-100.");
         }
     }
 
@@ -146,10 +119,10 @@ public class TestComplexStainService {
         Work work1 = new Work(50, "SGP50", null, null, null, Work.Status.active);
         Work work2 = new Work(51, "SGP51", null, null, null, Work.Status.active);
         List<ComplexStainLabware> csls = List.of(
-                new ComplexStainLabware("STAN-01", "0000-000", 1, work1.getWorkNumber()),
-                new ComplexStainLabware("STAN-02", "0000-000", 1, work1.getWorkNumber()),
-                new ComplexStainLabware("STAN-03", "0000-000", 1, work2.getWorkNumber()),
-                new ComplexStainLabware("STAN-04", "0000-000", 1, null)
+                new ComplexStainLabware("STAN-01", "0000-000", 1, work1.getWorkNumber(), null, null, null),
+                new ComplexStainLabware("STAN-02", "0000-000", 1, work1.getWorkNumber(), null, null, null),
+                new ComplexStainLabware("STAN-03", "0000-000", 1, work2.getWorkNumber(), null, null, null),
+                new ComplexStainLabware("STAN-04", "0000-000", 1, null, null, null, null)
         );
         UCMap<Work> workMap = UCMap.from(Work::getWorkNumber, work1, work2);
         if (valid) {
@@ -172,11 +145,59 @@ public class TestComplexStainService {
     }
 
     @ParameterizedTest
+    @MethodSource("loadStainTypesArgs")
+    public void testLoadStainTypes(UCMap<StainType> stainTypeMap, List<String> stainNames,
+                                   List<StainType> expectedStainTypes, List<String> expectedProblems) {
+        when(mockStainTypeRepo.findAllByNameIn(any())).then(invocation -> {
+            List<String> names = invocation.getArgument(0);
+            return names.stream()
+                    .map(stainTypeMap::get)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .collect(toList());
+        });
+
+        final List<String> problems = new ArrayList<>(expectedProblems.size());
+        assertThat(service.loadStainTypes(problems, stainNames)).containsExactlyInAnyOrderElementsOf(expectedStainTypes);
+        assertThat(problems).containsExactlyInAnyOrderElementsOf(expectedProblems);
+    }
+
+    static Stream<Arguments> loadStainTypesArgs() {
+        StainType he = new StainType(1, "H&E");
+        StainType mt = new StainType(2, "Masson's Trichrome");
+        StainType rna = new StainType(3, "RNAscope");
+        StainType ihc = new StainType(4, "IHC");
+
+        UCMap<StainType> stainTypeMap = UCMap.from(StainType::getName, he, mt, rna, ihc);
+
+        return Arrays.stream(new Object[][][] {
+                {{"RNAscope"}, {rna}, {}},
+                {{"IHC"}, {ihc}, {}},
+                {{"rnascope", "ihc"}, {rna, ihc}, {}},
+                {{}, {}, {"No stain types specified."}},
+                {null, {}, {"No stain types specified."}},
+                {{"rnascope", "ihc", "RNAscope"}, {rna, ihc}, {"Repeated stain type: [\"RNAscope\"]"}},
+                {{"rnascope", "bananas", "custard"}, {rna}, {"Unknown stain type: [\"bananas\", \"custard\"]"}},
+                {{"h&e", "IHC", "masson's trichrome"}, {ihc, he, mt},
+                        {"The supplied stain type was not expected for this request: [H&E, Masson's Trichrome]"}},
+                {{"rnascope", "IHC", "IHC", "H&E", "Bananas"}, {rna, ihc, he},
+                        {"Unknown stain type: [\"Bananas\"]",
+                        "Repeated stain type: [\"IHC\"]",
+                        "The supplied stain type was not expected for this request: [H&E]"}},
+        }).map(arr -> {
+            List<String> stainNames = arr[0]==null ? null : Arrays.stream(arr[0]).map(x -> (String) x).collect(toList());
+            List<StainType> stainTypes = Arrays.stream(arr[1]).map(x -> (StainType) x).collect(toList());
+            List<String> problems = Arrays.stream(arr[2]).map(x -> (String) x).collect(toList());
+            return Arguments.of(stainTypeMap, stainNames, stainTypes, problems);
+        });
+    }
+
+    @ParameterizedTest
     @ValueSource(booleans={false,true})
     public void testValidateBondRuns(boolean valid) {
         int[] runs = (valid ? new int[] { 1,2,1,9999 } : new int[] { 1,-3,0,-3,10_000 });
         List<ComplexStainLabware> csls = IntStream.range(0, runs.length)
-                .mapToObj(i -> new ComplexStainLabware("STAN-"+i, "000-0000", runs[i], null))
+                .mapToObj(i -> new ComplexStainLabware("STAN-"+i, "000-0000", runs[i], null, null, null, null))
                 .collect(toList());
         List<String> problems = new ArrayList<>(valid ? 0 : 1);
         service.validateBondRuns(problems, csls);
@@ -190,18 +211,105 @@ public class TestComplexStainService {
     @ParameterizedTest
     @ValueSource(booleans={false, true})
     public void testValidateBondBarcodes(boolean valid) {
-        String[] bondBarcodes = (valid? new String[] { "00000000", "00000000", "099A1AZZ"}
-                : new String[] { null, "12340ABC", "0000000%", "0000000%", "1111011", "222202222" });
+        String[] bondBarcodes = (valid? new String[] { "00000000", "00000000", "099A1AZZ", "123A"}
+                : new String[] { null, "12340ABC", "0000000%", "0000000%", "110", "222202222" });
         List<ComplexStainLabware> csls = IntStream.range(0, bondBarcodes.length)
-                .mapToObj(i -> new ComplexStainLabware("STAN-"+i, bondBarcodes[i], 1, null))
+                .mapToObj(i -> new ComplexStainLabware("STAN-"+i, bondBarcodes[i], 1, null, null, null, null))
                 .collect(toList());
         List<String> problems = new ArrayList<>(valid ? 0 : 1);
         service.validateBondBarcodes(problems, csls);
         if (valid) {
             assertThat(problems).isEmpty();
         } else {
-            assertThat(problems).containsExactly("Bond barcodes not of the expected format: [null, 0000000%, 1111011, 222202222]");
+            assertThat(problems).containsExactly("Bond barcodes not of the expected format: [null, 0000000%, 110, 222202222]");
         }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testValidatePanels(boolean missing) {
+        List<ComplexStainLabware> csls = IntStream.range(0, 3).mapToObj(i -> new ComplexStainLabware())
+                .collect(toList());
+        csls.get(0).setPanel(StainPanel.negative);
+        if (!missing) {
+            csls.get(1).setPanel(StainPanel.positive);
+            csls.get(2).setPanel(StainPanel.marker);
+        }
+        List<String> problems = new ArrayList<>(missing ? 1 : 0);
+        service.validatePanels(problems, csls);
+        if (!missing) {
+            assertThat(problems).isEmpty();
+        } else {
+            assertThat(problems).containsExactly("Experiment panel must be specified for each labware.");
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("validatePlexesArgs")
+    public void testValidatePlexes(List<StainType> stainTypes, List<ComplexStainLabware> csls,
+                                   List<String> expectedProblems) {
+        final List<String> problems = new ArrayList<>(expectedProblems.size());
+        service.validatePlexes(problems, stainTypes, csls);
+        assertThat(problems).containsExactlyInAnyOrderElementsOf(expectedProblems);
+    }
+
+    static Stream<Arguments> validatePlexesArgs() {
+        StainType rna = new StainType(3, "RNAscope");
+        StainType ihc = new StainType(4, "IHC");
+        ComplexStainLabware cslr = new ComplexStainLabware(null, null, 0, null, 16, null, null);
+        ComplexStainLabware csli = new ComplexStainLabware(null, null, 0, null, null, 15, null);
+        ComplexStainLabware csl0 = new ComplexStainLabware();
+        ComplexStainLabware cslb = new ComplexStainLabware(null, null, 0, null, 1, 100, null);
+        ComplexStainLabware cslrx = new ComplexStainLabware(null, null, 0, null, 0, null, null);
+        ComplexStainLabware cslix = new ComplexStainLabware(null, null, 0, null, null, 0, null);
+        ComplexStainLabware cslbx = new ComplexStainLabware(null, null, 0, null, 101, 101, null);
+
+        final String rnaMissing = "RNAscope plex number is required for RNAscope stain.";
+        final String rnaUnexpected = "RNAscope plex number is not expected for non-RNAscope stain.";
+        final String ihcMissing = "IHC plex number is required for IHC stain.";
+        final String ihcUnexpected = "IHC plex number is not expected for non-IHC stain.";
+        final String badRange = "Plex number is expected to be in the range 1 to 100.";
+        return Arrays.stream(new Object[][] {
+                { rna, cslr },
+                { rna, csl0, rnaMissing},
+                { rna, cslb, ihcUnexpected},
+                { rna, csli, rnaMissing, ihcUnexpected},
+                { rna, csl0, cslb, rnaMissing, ihcUnexpected},
+                { rna, cslrx, badRange},
+                { rna, cslix, rnaMissing, ihcUnexpected, badRange},
+
+                {ihc, csli},
+                {ihc, csl0, ihcMissing},
+                {ihc, cslb, rnaUnexpected},
+                {ihc, cslr, ihcMissing, rnaUnexpected},
+                {ihc, csl0, cslb, ihcMissing, rnaUnexpected},
+                {ihc, cslix, badRange},
+                {ihc, cslrx, ihcMissing, rnaUnexpected, badRange},
+
+                {cslb, rnaUnexpected, ihcUnexpected},
+                {cslix, cslrx, rnaUnexpected, ihcUnexpected, badRange},
+                {cslbx, rnaUnexpected, ihcUnexpected, badRange},
+
+                {rna, ihc, cslb},
+                {rna, ihc, csli, rnaMissing},
+                {rna, ihc, cslr, ihcMissing},
+                {rna, ihc, cslb, csl0, rnaMissing, ihcMissing},
+                {rna, ihc, cslbx, badRange},
+        }).map(arr -> {
+            List<StainType> stainTypes = new ArrayList<>();
+            List<ComplexStainLabware> csls = new ArrayList<>();
+            List<String> problems = new ArrayList<>();
+            for (Object v : arr) {
+                if (v instanceof StainType) {
+                    stainTypes.add((StainType) v);
+                } else if (v instanceof ComplexStainLabware) {
+                    csls.add((ComplexStainLabware) v);
+                } else if (v instanceof String) {
+                    problems.add((String) v);
+                }
+            }
+            return Arguments.of(stainTypes, csls, problems);
+        });
     }
 
     @ParameterizedTest
@@ -209,7 +317,7 @@ public class TestComplexStainService {
     public void testLoadLabware(boolean valid) {
         String[] barcodes = new String[] {"STAN-1", "STAN-2", "STAN-1", null};
         List<ComplexStainLabware> csls = Arrays.stream(barcodes)
-                .map(bc -> new ComplexStainLabware(bc, "0000-000", 1, null))
+                .map(bc -> new ComplexStainLabware(bc, "0000-000", 1, null, null, null, null))
                 .collect(toList());
         LabwareValidator val = mock(LabwareValidator.class);
         when(mockLwValFactory.getValidator()).thenReturn(val);
@@ -272,50 +380,11 @@ public class TestComplexStainService {
         assertThat(problems).containsExactlyInAnyOrder(expectedErrors);
     }
 
-    @ParameterizedTest
-    @ValueSource(strings={"", "null", "Bananas", "RNAscope", "IHC", "H&E"})
-    public void testLoadStainType(String name) {
-        if (name.equals("null")) {
-            name = null;
-        }
-        if (name==null || name.isEmpty()) {
-            List<String> problems = new ArrayList<>(1);
-            assertNull(service.loadStainType(problems, name));
-            assertThat(problems).containsExactly("No stain type specified.");
-            verifyNoInteractions(mockStainTypeRepo);
-            return;
-        }
-        StainType stainType;
-        String expectedError;
-        switch (name) {
-            case STAIN_RNASCOPE: case STAIN_IHC:
-                stainType = new StainType(3, name);
-                expectedError = null;
-                break;
-            case "H&E":
-                stainType = new StainType(4, name);
-                expectedError = "The stain type "+name+" was not expected for this type of request.";
-                break;
-            default:
-                stainType = null;
-                expectedError = "Unknown stain type: \""+name+"\"";
-                break;
-        }
-        List<String> problems = new ArrayList<>(expectedError==null ? 0 : 1);
-        when(mockStainTypeRepo.findByName(name)).thenReturn(Optional.ofNullable(stainType));
-        assertSame(stainType, service.loadStainType(problems, name));
-        if (expectedError==null) {
-            assertThat(problems).isEmpty();
-        } else {
-            assertThat(problems).containsExactly(expectedError);
-        }
-    }
-
     @Test
     public void testRecord() {
         User user = EntityFactory.getUser();
         OperationType opType = EntityFactory.makeOperationType("Stain", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.STAIN);
-        StainType stainType = new StainType(10, "RNAscope");
+        List<StainType> stainTypes = List.of(new StainType(10, "RNAscope"));
         Work work1 = new Work(1, "SGP1", null, null, null, Work.Status.active);
         Work work2 = new Work(2, "SGP2", null, null, null, Work.Status.active);
         UCMap<Work> workMap = UCMap.from(Work::getWorkNumber, work1, work2);
@@ -325,32 +394,32 @@ public class TestComplexStainService {
                 .toArray(Labware[]::new);
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lws);
         List<ComplexStainLabware> csls = List.of(
-                new ComplexStainLabware(lws[0].getBarcode(), "0000-000", 1, work1.getWorkNumber()),
-                new ComplexStainLabware(lws[1].getBarcode(), "0000-001", 2, work1.getWorkNumber()),
-                new ComplexStainLabware(lws[2].getBarcode(), "0000-002", 3, work2.getWorkNumber()),
-                new ComplexStainLabware(lws[3].getBarcode(), "0000-003", 3, null)
+                new ComplexStainLabware(lws[0].getBarcode(), "0000-000", 1, work1.getWorkNumber(), null, null, null),
+                new ComplexStainLabware(lws[1].getBarcode(), "0000-001", 2, work1.getWorkNumber(), null, null, null),
+                new ComplexStainLabware(lws[2].getBarcode(), "0000-002", 3, work2.getWorkNumber(), null, null, null),
+                new ComplexStainLabware(lws[3].getBarcode(), "0000-003", 3, null, null, null, null)
         );
-        ComplexStainRequest request = new ComplexStainRequest(stainType.getName(), 10, StainPanel.positive, csls);
+        ComplexStainRequest request = new ComplexStainRequest(List.of("RNAscope"), csls);
 
         Operation[] ops = IntStream.range(0, lws.length)
                 .mapToObj(i -> {
                     Operation op = new Operation(200+i, opType, null, null, user);
-                    doReturn(op).when(service).createOp(user, lws[i], opType, stainType);
+                    doReturn(op).when(service).createOp(user, lws[i], opType, stainTypes);
                     return op;
                 })
                 .toArray(Operation[]::new);
-        doNothing().when(service).recordLabwareNotes(any(), any(), anyInt(), anyInt());
+        doNothing().when(service).recordLabwareNotes(any(), anyInt(), anyInt());
         when(mockWorkService.link(any(Work.class), any())).then(Matchers.returnArgument());
 
-        OperationResult opres = service.record(user, request, opType, stainType, lwMap, workMap);
+        OperationResult opres = service.record(user, request, opType, stainTypes, lwMap, workMap);
         assertThat(opres.getLabware()).containsExactly(lws);
         assertThat(opres.getOperations()).containsExactly(ops);
 
         for (int i = 0; i < lws.length; ++i) {
             Labware lw = lws[i];
             Operation op = ops[i];
-            verify(service).createOp(user, lw, opType, stainType);
-            verify(service).recordLabwareNotes(request, csls.get(i), lw.getId(), op.getId());
+            verify(service).createOp(user, lw, opType, stainTypes);
+            verify(service).recordLabwareNotes(csls.get(i), lw.getId(), op.getId());
         }
 
         verify(mockWorkService).link(work1, List.of(ops[0], ops[1]));
@@ -363,33 +432,44 @@ public class TestComplexStainService {
         User user = EntityFactory.getUser();
         OperationType opType = EntityFactory.makeOperationType("Stain", null);
         Labware lw = EntityFactory.getTube();
-        StainType stainType = new StainType(40, "RNAscope");
         final int opId = 40;
         when(mockOpService.createOperationInPlace(same(opType), same(user), same(lw), isNull(), any())).thenAnswer(invocation -> {
             Operation op = new Operation();
             op.setId(opId);
-            Consumer<Operation> opModifier = invocation.getArgument(4);
-            opModifier.accept(op);
             return op;
         });
 
-        Operation op = service.createOp(user, lw, opType, stainType);
+        final List<StainType> stainTypes = List.of(
+                new StainType(4, "RNAscope"),
+                new StainType(5, "Bananas")
+        );
+        Operation op = service.createOp(user, lw, opType, stainTypes);
         assertEquals(opId, op.getId());
-        assertSame(stainType, op.getStainType());
+        verify(mockStainTypeRepo).saveOperationStainTypes(opId, stainTypes);
     }
 
-    @Test
-    public void testRecordLabwareNotes() {
-        ComplexStainLabware csl = new ComplexStainLabware("STAN-01", "1234 ABC", 23, null);
-        ComplexStainRequest request = new ComplexStainRequest("RNAscope", 17, StainPanel.negative, List.of(csl));
+    @ParameterizedTest
+    @ValueSource(strings={"RNAscope", "RNAscope/IHC", "IHC"})
+    public void testRecordLabwareNotes(String stainNames) {
+        boolean rna = stainNames.contains("RNAscope");
+        boolean ihc = stainNames.contains("IHC");
+
+        ComplexStainLabware csl = new ComplexStainLabware("STAN-01", "1234 ABC", 23, null,
+                rna ? 18 : null, ihc ? 17 : null, StainPanel.negative);
+
         final int lwId = 200;
         final int opId = 400;
-        service.recordLabwareNotes(request, csl, lwId, opId);
-        verify(mockLwNoteRepo).saveAll(Matchers.sameElements(List.of(
-                new LabwareNote(null, lwId, opId, ComplexStainServiceImp.LW_NOTE_PANEL, "negative"),
-                new LabwareNote(null, lwId, opId, ComplexStainServiceImp.LW_NOTE_BOND_BARCODE, csl.getBondBarcode()),
-                new LabwareNote(null, lwId, opId, ComplexStainServiceImp.LW_NOTE_PLEX, "17"),
-                new LabwareNote(null, lwId, opId, ComplexStainServiceImp.LW_NOTE_BOND_RUN, "23")
-        )));
+        service.recordLabwareNotes(csl, lwId, opId);
+        List<LabwareNote> expectedNotes = new ArrayList<>(5);
+        if (ihc) {
+            expectedNotes.add(new LabwareNote(null, lwId, opId, ComplexStainServiceImp.LW_NOTE_PLEX_IHC, "17"));
+        }
+        if (rna) {
+            expectedNotes.add(new LabwareNote(null, lwId, opId, ComplexStainServiceImp.LW_NOTE_PLEX_RNASCOPE, "18"));
+        }
+        expectedNotes.add(new LabwareNote(null, lwId, opId, ComplexStainServiceImp.LW_NOTE_PANEL, "negative"));
+        expectedNotes.add(new LabwareNote(null, lwId, opId, ComplexStainServiceImp.LW_NOTE_BOND_BARCODE, csl.getBondBarcode()));
+        expectedNotes.add(new LabwareNote(null, lwId, opId, ComplexStainServiceImp.LW_NOTE_BOND_RUN, "23"));
+        verify(mockLwNoteRepo).saveAll(Matchers.sameElements(expectedNotes));
     }
 }
