@@ -1,5 +1,6 @@
 package uk.ac.sanger.sccp.stan.service;
 
+import liquibase.pro.packaged.O;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
@@ -32,6 +33,7 @@ public class WorkProgressServiceImp implements WorkProgressService {
             "rin analysis", "dv200 analysis");
     private final Set<String> specialStainTypes = Set.of("rnascope", "ihc");
     private final Set<String> specialLabwareTypes = Set.of("visium to", "visium lp");
+    private final Map<String,Set<String>> labwareTypeToStainMap = Map.of("Visium ADH",Set.of("H&E"));
 
     @Autowired
     public WorkProgressServiceImp(WorkRepo workRepo, WorkTypeRepo workTypeRepo, OperationRepo opRepo,
@@ -67,7 +69,7 @@ public class WorkProgressServiceImp implements WorkProgressService {
             if (statuses!=null && !statuses.contains(singleWork.getStatus())) {
                 return List.of();
             }
-            return List.of(getProgressForWork(singleWork, opTypeFilter, stainTypeFilter, labwareTypeFilter, labwareIdToType));
+            return List.of(getProgressForWork(singleWork, opTypeFilter, stainTypeFilter, labwareTypeFilter, labwareIdToType,labwareTypeToStainMap));
         }
         if (workTypes!=null) {
             List<Work> works = workRepo.findAllByWorkTypeIn(workTypes);
@@ -76,7 +78,7 @@ public class WorkProgressServiceImp implements WorkProgressService {
                 workStream = workStream.filter(work -> statuses.contains(work.getStatus()));
             }
             return workStream
-                    .map(work -> getProgressForWork(work, opTypeFilter, stainTypeFilter, labwareTypeFilter, labwareIdToType))
+                    .map(work -> getProgressForWork(work, opTypeFilter, stainTypeFilter, labwareTypeFilter, labwareIdToType,labwareTypeToStainMap))
                     .collect(toList());
         }
         Iterable<Work> works;
@@ -86,7 +88,7 @@ public class WorkProgressServiceImp implements WorkProgressService {
             works = workRepo.findAll();
         }
         return StreamSupport.stream(works.spliterator(), false)
-                .map(work -> getProgressForWork(work, opTypeFilter, stainTypeFilter, labwareTypeFilter, labwareIdToType))
+                .map(work -> getProgressForWork(work, opTypeFilter, stainTypeFilter, labwareTypeFilter, labwareIdToType,labwareTypeToStainMap))
                 .collect(toList());
     }
 
@@ -96,16 +98,17 @@ public class WorkProgressServiceImp implements WorkProgressService {
      * @param includeOpType predicate to filter operation types
      * @param specialStainType predicate to filter stain types for the special stain time
      * @param specialLabwareType predicate to filter labware types where they are mentioned specifically
-     * @param labwareIdToType a cache of labware id to its labware type
+     * @param labwareIdToType a cache of labware id to its labware
+     * @param labwareTypeToStainMap a map of labware id to stain types to record
      * @return the work progress for the given work
      */
     public WorkProgress getProgressForWork(Work work,
                                            Predicate<OperationType> includeOpType,
                                            Predicate<StainType> specialStainType,
                                            Predicate<LabwareType> specialLabwareType,
-                                           Map<Integer, LabwareType> labwareIdToType) {
+                                           Map<Integer, LabwareType> labwareIdToType,Map<String,Set<String>> labwareTypeToStainMap) {
         Map<String, LocalDateTime> opTimes = loadOpTimes(work, includeOpType, specialStainType, specialLabwareType,
-                labwareIdToType);
+                labwareIdToType,labwareTypeToStainMap);
         List<WorkProgressTimestamp> workTimes = opTimes.entrySet().stream()
                 .map(e -> new WorkProgressTimestamp(e.getKey(), e.getValue()))
                 .collect(toList());
@@ -119,13 +122,14 @@ public class WorkProgressServiceImp implements WorkProgressService {
      * @param specialStainType predicate to filter stain types for the special stain time
      * @param specialLabwareType predicate to filter labware types where they are mentioned specifically
      * @param labwareIdToType a cache of labware id to its labware type
+     * @param labwareTypeToStainMap a map of labware id to stain types to record
      * @return a map from event labels to the latest matching operation timestamp
      */
     public Map<String, LocalDateTime> loadOpTimes(Work work,
                                                   Predicate<OperationType> includeOpType,
                                                   Predicate<StainType> specialStainType,
                                                   Predicate<LabwareType> specialLabwareType,
-                                                  Map<Integer, LabwareType> labwareIdToType) {
+                                                  Map<Integer, LabwareType> labwareIdToType,Map<String,Set<String>> labwareTypeToStainMap) {
         Iterable<Operation> ops = opRepo.findAllById(work.getOperationIds());
         Map<String, LocalDateTime> opTimes = new HashMap<>();
 
@@ -136,12 +140,16 @@ public class WorkProgressServiceImp implements WorkProgressService {
             }
             String key = opType.getName();
             if (opType.has(OperationTypeFlag.STAIN)) {
-                if (specialStainType.test(op.getStainType())) {
-                    addTime(opTimes, "RNAscope/IHC stain", op.getPerformed());
-                }
                 Set<LabwareType> labwareTypes = opLabwareTypes(op, labwareIdToType);
                 labwareTypes.stream().filter(specialLabwareType)
                         .forEach(lt -> addTime(opTimes, "Stain "+lt.getName(), op.getPerformed()));
+                Set<String> lwNames = labwareTypes.stream().map(lt->lt.getName().toLowerCase()).collect(toSet());
+                labwareTypeToStainMap.forEach((lwType, stainTypes) -> stainTypes.forEach(stainType -> {
+                    if (op.getStainType().getName().equalsIgnoreCase(stainType) && lwNames.contains(lwType.toLowerCase())) {
+                        addTime(opTimes,  lwType + " " + stainType + " stain", op.getPerformed());
+                    }
+                }));
+                if (specialStainType.test(op.getStainType())) addTime(opTimes, "RNAscope/IHC stain", op.getPerformed());
             }
             if (opType.has(OperationTypeFlag.ANALYSIS)) {
                 key = "Analysis"; // RIN/DV200 analysis
@@ -150,7 +158,6 @@ public class WorkProgressServiceImp implements WorkProgressService {
         }
         return opTimes;
     }
-
     /**
      * Gets all labware types of destinations of the given operation
      * @param op the operation
@@ -166,6 +173,21 @@ public class WorkProgressServiceImp implements WorkProgressService {
     }
 
     /**
+     * Gets all labware of destinations of the given operation
+     * @param op the operation
+     * @param lwIdToLabware a cache of labware id to its labwares to avoid repeated lookups
+     * @return the distinct labware types of destinations in the given operation
+     */
+    public Set<Labware> opLabwares(Operation op, final Map<Integer, Labware> lwIdToLabware) {
+        return op.getActions().stream()
+                .map(a -> a.getDestination().getLabwareId())
+                .distinct()
+                .map(id -> getLabware(id, lwIdToLabware))
+                .collect(toSet());
+    }
+
+
+    /**
      * Gets the labware type for the given labware id
      * @param labwareId the labware id
      * @param lwIdToType a cache to avoid repeated lookups
@@ -178,6 +200,21 @@ public class WorkProgressServiceImp implements WorkProgressService {
             lwIdToType.put(labwareId, lt);
         }
         return lt;
+    }
+
+    /**
+     * Gets the labware type for the given labware id
+     * @param labwareId the labware id
+     * @param lwIdToLabware a cache to avoid repeated lookups
+     * @return the labware type of the given labware id
+     */
+    public Labware getLabware(Integer labwareId, Map<Integer, Labware> lwIdToLabware) {
+        Labware lw = lwIdToLabware.get(labwareId);
+        if (lw==null) {
+            lw = lwRepo.getById(labwareId);
+            lwIdToLabware.put(labwareId, lw);
+        }
+        return lw;
     }
 
     /**
