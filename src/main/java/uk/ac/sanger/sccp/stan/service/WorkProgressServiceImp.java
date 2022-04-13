@@ -28,6 +28,7 @@ public class WorkProgressServiceImp implements WorkProgressService {
     private final WorkTypeRepo workTypeRepo;
     private final OperationRepo opRepo;
     private final LabwareRepo lwRepo;
+    private final ReleaseRepo releaseRepo;
     // Consider for the future moving these sets to a config class and injecting them
     private final Set<String> includedOpTypes = Set.of("section", "stain", "extract", "visium cdna", "image",
             "rin analysis", "dv200 analysis");
@@ -38,11 +39,12 @@ public class WorkProgressServiceImp implements WorkProgressService {
 
     @Autowired
     public WorkProgressServiceImp(WorkRepo workRepo, WorkTypeRepo workTypeRepo, OperationRepo opRepo,
-                                  LabwareRepo lwRepo) {
+                                  LabwareRepo lwRepo,ReleaseRepo releaseRepo) {
         this.workRepo = workRepo;
         this.workTypeRepo = workTypeRepo;
         this.opRepo = opRepo;
         this.lwRepo = lwRepo;
+        this.releaseRepo = releaseRepo;
     }
 
     @Override
@@ -143,18 +145,27 @@ public class WorkProgressServiceImp implements WorkProgressService {
         for (Operation op : ops) {
             OperationType opType = op.getOperationType();
             Set<Labware> labware = opLabwares(op, labwareIdToLabware);
-            labware.stream().filter(lw->lw.isReleased() && releaseLabwareType.test(lw.getLabwareType())).collect(toSet()).forEach(lw-> addTime(opTimes, "Release " +lw.getLabwareType().getName(), op.getPerformed()));
+
+            /*Add release operation for the interested labwareTypes
+              Note :- Release operation is associated with a workNumber from a previous operation
+              ***/
+            Set<Labware> labwareReleased = labware.stream().filter(lw->lw.isReleased() && releaseLabwareType.test(lw.getLabwareType())).collect(toSet());
+            List<Release> releases = releaseRepo.findAllByLabwareIdIn(labwareReleased.stream().map(Labware::getId).collect(toSet())) ;
+            for (Release release : releases) {
+                addTime(opTimes, "Release " +release.getLabware().getLabwareType().getName(), release.getReleased());
+            }
 
             if (!includeOpType.test(opType)) {
                 continue;
             }
-
-
             String key = opType.getName();
             if (opType.has(OperationTypeFlag.STAIN)) {
+                /*Add all stain operations**/
                 Set<LabwareType> labwareTypes = labware.stream().map(Labware::getLabwareType).collect(toSet());
                 labwareTypes.stream().filter(specialLabwareType)
                         .forEach(lt -> addTime(opTimes, "Stain "+lt.getName(), op.getPerformed()));
+
+                /*Add release operation for a particular stain type on a particular labware type as specified in labwareTypeToStainMap **/
                 Set<String> lwNames = labwareTypes.stream().map(lt->lt.getName().toLowerCase()).collect(toSet());
                 labwareTypeToStainMap.forEach((lwType, stainTypes) -> stainTypes.forEach(stainType -> {
                     if (op.getStainType().getName().equalsIgnoreCase(stainType) && lwNames.contains(lwType.toLowerCase())) {
@@ -191,9 +202,7 @@ public class WorkProgressServiceImp implements WorkProgressService {
      * @return the distinct labware types of destinations in the given operation
      */
     public Set<Labware> opLabwares(Operation op, final Map<Integer, Labware> lwIdToLabware) {
-        if(op.getActions() == null) {
-            return new HashSet<Labware>();
-        }
+        if(op.getActions() == null) return Collections.emptySet();
         return op.getActions().stream()
                 .map(a -> a.getDestination().getLabwareId())
                 .distinct()

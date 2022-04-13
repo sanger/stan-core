@@ -4,6 +4,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Import;
+import uk.ac.sanger.sccp.stan.EntityCreator;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.Work.Status;
@@ -15,6 +18,7 @@ import javax.persistence.EntityNotFoundException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -28,23 +32,25 @@ import static org.mockito.Mockito.*;
  * Tests {@link WorkProgressServiceImp}
  * @author dr6
  */
+
 public class TestWorkProgressService {
     private WorkRepo mockWorkRepo;
     private WorkTypeRepo mockWorkTypeRepo;
     private OperationRepo mockOpRepo;
     private LabwareRepo mockLwRepo;
     private StainTypeRepo mockStainTypeRepo;
+    private ReleaseRepo mockReleaseRepo;
 
     private WorkProgressServiceImp service;
-
     @BeforeEach
     void setup() {
         mockWorkRepo = mock(WorkRepo.class);
         mockWorkTypeRepo = mock(WorkTypeRepo.class);
         mockOpRepo = mock(OperationRepo.class);
         mockLwRepo = mock(LabwareRepo.class);
+        mockReleaseRepo = mock(ReleaseRepo.class);
 
-        service = spy(new WorkProgressServiceImp(mockWorkRepo, mockWorkTypeRepo, mockOpRepo, mockLwRepo));
+        service = spy(new WorkProgressServiceImp(mockWorkRepo, mockWorkTypeRepo, mockOpRepo, mockLwRepo,mockReleaseRepo));
     }
 
     @ParameterizedTest
@@ -211,9 +217,6 @@ public class TestWorkProgressService {
         LabwareType lt3 = new LabwareType(3, "96 well plate", 12, 8, null, false);
         LabwareType lt4 = new LabwareType(4, "Visium ADH", 1, 1, null, false);
 
-
-
-
         final Map<String,Set<String>> labwareTypeStainMap = Map.of("Visium ADH",Set.of("H&E"));
 
         Predicate<OperationType> opTypeFilter = x -> (x==sectionType || x==stainOpType || x==rinOpType || x==dv200OpType);
@@ -259,6 +262,17 @@ public class TestWorkProgressService {
         work.setOperationIds(opIds);
         when(mockOpRepo.findAllById(opIds)).thenReturn(ops);
 
+        /*Mock findAllByLabwareIdIn method in Release Repo to return labware lw3*/
+        List<Release> releases = IntStream.range(0, 1)
+                .mapToObj(i -> {
+                    Release release = new Release();
+                    release.setId(5+i);
+                    release.setLabware(lw3);
+                    release.setReleased(times[8]);
+                    return release;
+                }).collect(toList());
+        when(mockReleaseRepo.findAllByLabwareIdIn(Set.of(lw3.getId()))).thenReturn(releases);
+
         var result = service.loadOpTimes(work, opTypeFilter, stainTypeFilter, lwTypeFilter,releaseFilter, lwIdLabwareMap,labwareTypeStainMap);
 
         assertThat(result).containsExactlyInAnyOrderEntriesOf(Map.of(
@@ -292,6 +306,27 @@ public class TestWorkProgressService {
         );
         assertThat(service.opLabwareTypes(op, lwIdToType)).containsExactlyInAnyOrder(lt1, lt2);
         dests.forEach(lw -> verify(service).getLabwareType(eq(lw.getId()), same(lwIdToType)));
+    }
+
+    @Test
+    public void testOpLabwares() {
+        LabwareType lt0 = EntityFactory.makeLabwareType(1,1);
+        LabwareType lt1 = EntityFactory.makeLabwareType(1,1);
+        LabwareType lt2 = EntityFactory.makeLabwareType(1,1);
+        Sample sample = EntityFactory.getSample();
+        Labware lw0 = EntityFactory.makeLabware(lt0, sample);
+        Labware lw1A = EntityFactory.makeLabware(lt1, sample);
+        Labware lw1B = EntityFactory.makeLabware(lt1, sample);
+        Labware lw2 = EntityFactory.makeLabware(lt2, sample);
+        List<Labware> dests = List.of(lw1A, lw1B, lw2);
+        OperationType opType = EntityFactory.makeOperationType("Splat", null);
+        Operation op = EntityFactory.makeOpForLabware(opType, List.of(lw0), dests);
+        Map<Integer, Labware> lwIdToLabware = Map.of();
+        dests.forEach(lw ->
+                doReturn(lw).when(service).getLabware(eq(lw.getId()), same(lwIdToLabware))
+        );
+        assertThat(service.opLabwares(op, lwIdToLabware)).containsExactlyInAnyOrder(lw1A, lw1B, lw2);
+        dests.forEach(lw -> verify(service).getLabware(eq(lw.getId()), same(lwIdToLabware)));
     }
 
     @ParameterizedTest
