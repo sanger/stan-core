@@ -142,7 +142,7 @@ public class TestReleaseFileService {
         doNothing().when(service).loadLastSection(any());
         doNothing().when(service).loadSources(any(), any(), any());
         doNothing().when(service).loadMeasurements(any(), any());
-        doNothing().when(service).loadLastStain(any());
+        doNothing().when(service).loadStains(any(), any());
 
         List<Integer> releaseIds = List.of(this.release1.getId(), release2.getId());
         ReleaseFileContent rfc = service.getReleaseFileContent(releaseIds);
@@ -157,7 +157,7 @@ public class TestReleaseFileService {
         verify(service).findAncestry(entries);
         verify(service).loadSources(entries, ancestry, mode);
         verify(service).loadMeasurements(entries, ancestry);
-        verify(service).loadLastStain(entries);
+        verify(service).loadStains(entries, ancestry);
         verify(service).loadReagentSources(entries);
     }
 
@@ -421,6 +421,186 @@ public class TestReleaseFileService {
 
         ReleaseEntry entry = new ReleaseEntry(lw1, slot1, sam1);
         assertSame(found ? prevSlotSample : null, service.selectSourceForCDNA(entry, ancestry));
+    }
+
+    @Test
+    public void testLabwareIdToOp() {
+        LabwareType lt = EntityFactory.makeLabwareType(1,2);
+        Sample sample = EntityFactory.getSample();
+        Labware lw1 = EntityFactory.makeLabware(lt, sample, sample);
+        Labware lw2 = EntityFactory.makeLabware(lt, sample, sample);
+        Operation op1 = new Operation();
+        Operation op2 = new Operation();
+        op1.setId(1);
+        op2.setId(2);
+        op1.setPerformed(LocalDateTime.of(2022,4,8,14,50));
+        op2.setPerformed(LocalDateTime.of(2022,4,8,14,51));
+        final Address A2 = new Address(1,2);
+        op1.setActions(List.of(
+                new Action(11, 1, lw1.getFirstSlot(), lw1.getFirstSlot(), sample, sample),
+                new Action(12, 1, lw2.getSlot(A2), lw2.getSlot(A2), sample, sample)
+        ));
+
+        op2.setActions(List.of(
+                new Action(21, 2, lw1.getFirstSlot(), lw1.getFirstSlot(),  null, null),
+                new Action(22, 2, lw1.getSlot(A2), lw1.getSlot(A2), sample, sample)
+        ));
+
+        Map<Integer, Operation> map = service.labwareIdToOp(List.of(op1, op2));
+        assertThat(map).hasSize(2);
+        assertSame(op2, map.get(lw1.getId()));
+        assertSame(op1, map.get(lw2.getId()));
+    }
+
+    @Test
+    public void testFindEntryOps() {
+        Operation op1 = new Operation();
+        op1.setId(1);
+        op1.setPerformed(LocalDateTime.of(2022,4,8,15,0));
+        Operation op2 = new Operation();
+        op2.setId(2);
+        op2.setPerformed(op1.getPerformed().plusDays(1));
+
+        final LabwareType lt = EntityFactory.getTubeType();
+        Labware lw1 = EntityFactory.makeEmptyLabware(lt);
+        Labware lw2 = EntityFactory.makeEmptyLabware(lt);
+        Labware lw3 = EntityFactory.makeEmptyLabware(lt);
+        Map<Integer, Operation> lwIdOps = Map.of(lw1.getId(), op1, lw2.getId(), op2);
+        Sample sample = EntityFactory.getSample();
+        ReleaseEntry re1 = new ReleaseEntry(lw1, lw1.getFirstSlot(), sample);
+        ReleaseEntry re2 = new ReleaseEntry(lw2, lw2.getFirstSlot(), sample);
+        ReleaseEntry re3 = new ReleaseEntry(lw3, lw3.getFirstSlot(), sample);
+        Ancestry ancestry = mock(Ancestry.class);
+        when(ancestry.ancestors(any())).then(invocation -> {
+            SlotSample ss = invocation.getArgument(0);
+            return Set.of(ss);
+        });
+
+        final List<ReleaseEntry> entries = List.of(re1, re2, re3);
+        var map = service.findEntryOps(entries, lwIdOps, ancestry);
+
+        for (ReleaseEntry entry : entries) {
+            verify(service).selectOp(entry, lwIdOps, ancestry);
+        }
+        assertThat(map).hasSize(2);
+        assertSame(op1, map.get(re1));
+        assertSame(op2, map.get(re2));
+        assertNull(map.get(re3));
+    }
+
+    @Test
+    public void testSelectOp() {
+        LabwareType lt = EntityFactory.getTubeType();
+        Sample sample = EntityFactory.getSample();
+        Labware[] lw = IntStream.range(0,3)
+                .mapToObj(i -> EntityFactory.makeLabware(lt, sample))
+                .toArray(Labware[]::new);
+        Slot[] slots = Arrays.stream(lw).map(Labware::getFirstSlot).toArray(Slot[]::new);
+        SlotSample[] sss = Arrays.stream(slots).map(slot -> new SlotSample(slot, sample)).toArray(SlotSample[]::new);
+        Ancestry ancestry = new Ancestry();
+        ancestry.put(sss[2], Set.of(sss[1]));
+        ancestry.put(sss[1], Set.of(sss[0]));
+
+        assertNull(service.selectOp(new ReleaseEntry(lw[0], slots[0], sample), Map.of(), ancestry));
+        Operation op1 = new Operation();
+        Operation op2 = new Operation();
+        op1.setId(1);
+        op2.setId(2);
+        Map<Integer, Operation> lwOps = Map.of(lw[0].getId(), op1, lw[2].getId(), op2);
+
+        assertSame(op2, service.selectOp(new ReleaseEntry(lw[2], slots[2], sample), lwOps, ancestry));
+        assertSame(op1, service.selectOp(new ReleaseEntry(lw[1], slots[1], sample), lwOps, ancestry));
+        assertSame(op1, service.selectOp(new ReleaseEntry(lw[0], slots[0], sample), lwOps, ancestry));
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans={false, true})
+    public void testLoadStains_none(boolean anyStainOps) {
+        OperationType stainOpType = EntityFactory.makeOperationType("Stain", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.STAIN);
+        when(mockOpTypeRepo.getByName("Stain")).thenReturn(stainOpType);
+
+        Sample sample = EntityFactory.getSample();
+        LabwareType lt = EntityFactory.getTubeType();
+        Labware[] labware = IntStream.range(0, 3).mapToObj(i -> EntityFactory.makeLabware(lt, sample)).toArray(Labware[]::new);
+        List<ReleaseEntry> entries = List.of(new ReleaseEntry(labware[0], labware[0].getFirstSlot(), sample),
+                new ReleaseEntry(labware[1], labware[1].getFirstSlot(), sample));
+        Ancestry ancestry = new Ancestry();
+        ancestry.put(new SlotSample(labware[0].getFirstSlot(), sample), Set.of(new SlotSample(labware[2].getFirstSlot(), sample)));
+        ancestry.put(new SlotSample(labware[1].getFirstSlot(), sample), Set.of(new SlotSample(labware[2].getFirstSlot(), sample)));
+        Map<Integer, Operation> labwareStainOpMap;
+        List<Operation> stainOps;
+        if (anyStainOps) {
+            stainOps = List.of(new Operation(500, stainOpType, null, null, null));
+            labwareStainOpMap = Map.of(labware[0].getId(), stainOps.get(0));
+            doReturn(labwareStainOpMap).when(service).labwareIdToOp(stainOps);
+            doReturn(Map.of()).when(service).findEntryOps(any(), any(), any());
+        } else {
+            labwareStainOpMap = null;
+            stainOps = List.of();
+        }
+        when(mockOpRepo.findAllByOperationTypeAndDestinationSlotIdIn(any(), any())).thenReturn(stainOps);
+
+        service.loadStains(entries, ancestry);
+
+        verify(mockOpTypeRepo).getByName("Stain");
+        verify(mockOpRepo).findAllByOperationTypeAndDestinationSlotIdIn(stainOpType, Set.of(labware[0].getFirstSlot().getId(), labware[1].getFirstSlot().getId()));
+        if (anyStainOps) {
+            verify(service).labwareIdToOp(stainOps);
+            verify(service).findEntryOps(entries, labwareStainOpMap, ancestry);
+        } else {
+            verify(service, never()).labwareIdToOp(any());
+            verify(service, never()).findEntryOps(any(), any(), any());
+        }
+        for (ReleaseEntry entry : entries) {
+            assertNull(entry.getStainType());
+            assertNull(entry.getBondBarcode());
+        }
+    }
+
+    @Test
+    public void testLoadStains() {
+        OperationType stainOpType = EntityFactory.makeOperationType("Stain", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.STAIN);
+        when(mockOpTypeRepo.getByName("Stain")).thenReturn(stainOpType);
+
+        Sample sample = EntityFactory.getSample();
+        LabwareType lt = EntityFactory.getTubeType();
+        Labware[] labware = IntStream.range(0, 3).mapToObj(i -> EntityFactory.makeLabware(lt, sample)).toArray(Labware[]::new);
+        Slot[] slots = Arrays.stream(labware).map(Labware::getFirstSlot).toArray(Slot[]::new);
+        List<ReleaseEntry> entries = List.of(new ReleaseEntry(labware[0], slots[0], sample),
+                new ReleaseEntry(labware[1], slots[1], sample));
+        Ancestry ancestry = new Ancestry();
+        ancestry.put(new SlotSample(labware[0].getFirstSlot(), sample), Set.of(new SlotSample(labware[2].getFirstSlot(), sample)));
+        ancestry.put(new SlotSample(labware[1].getFirstSlot(), sample), Set.of(new SlotSample(labware[2].getFirstSlot(), sample)));
+
+        Operation op1 = new Operation(500, stainOpType, null, null, null, null);
+        StainType st1 = new StainType(1, "Red");
+        op1.setStainType(st1);
+
+        final String bond1 = "Casino Royale";
+        List<LabwareNote> notes = List.of(
+                new LabwareNote(100, labware[0].getId(), op1.getId(), LW_NOTE_BOND_BARCODE, bond1)
+        );
+
+        when(mockOpRepo.findAllByOperationTypeAndDestinationSlotIdIn(any(), any())).thenReturn(List.of(op1));
+        Map<Integer, Operation> lwStainMap = Map.of(labware[0].getId(), op1);
+        doReturn(lwStainMap).when(service).labwareIdToOp(any());
+        Map<ReleaseEntry, Operation> entryStainOp = Map.of(entries.get(0), op1);
+        doReturn(entryStainOp).when(service).findEntryOps(any(), any(), any());
+
+        when(mockLwNoteRepo.findAllByOperationIdIn(any())).thenReturn(notes);
+
+        service.loadStains(entries, ancestry);
+
+        verify(mockOpTypeRepo).getByName("Stain");
+        verify(mockOpRepo).findAllByOperationTypeAndDestinationSlotIdIn(stainOpType, Set.of(slots[0].getId(), slots[1].getId()));
+        verify(service).labwareIdToOp(List.of(op1));
+        verify(service).findEntryOps(entries, lwStainMap, ancestry);
+        verify(mockLwNoteRepo).findAllByOperationIdIn(Set.of(op1.getId()));
+
+        assertEquals(st1.getName(), entries.get(0).getStainType());
+        assertEquals(bond1, entries.get(0).getBondBarcode());
+        assertNull(entries.get(1).getStainType());
+        assertNull(entries.get(1).getBondBarcode());
     }
 
     @Test
