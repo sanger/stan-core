@@ -34,12 +34,12 @@ public class WorkProgressServiceImp implements WorkProgressService {
             "rin analysis", "dv200 analysis");
     private final Set<String> specialStainTypes = Set.of("rnascope", "ihc");
     private final Set<String> specialLabwareTypes = Set.of("visium to", "visium lp");
-    private final Map<String,Set<String>> labwareTypeToStainMap = Map.of("Visium ADH",Set.of("H&E"));
+    private final Map<String,Set<String>> labwareTypeToStainMap = Map.of("visium adh", Set.of("h&e"));
     private final Set<String> releaseLabwareTypes = Set.of("96 well plate");
 
     @Autowired
     public WorkProgressServiceImp(WorkRepo workRepo, WorkTypeRepo workTypeRepo, OperationRepo opRepo,
-                                  LabwareRepo lwRepo,ReleaseRepo releaseRepo) {
+                                  LabwareRepo lwRepo, ReleaseRepo releaseRepo) {
         this.workRepo = workRepo;
         this.workTypeRepo = workTypeRepo;
         this.opRepo = opRepo;
@@ -64,9 +64,10 @@ public class WorkProgressServiceImp implements WorkProgressService {
         EntityNameFilter<OperationType> opTypeFilter = new EntityNameFilter<>(includedOpTypes);
         EntityNameFilter<StainType> stainTypeFilter = new EntityNameFilter<>(specialStainTypes);
         EntityNameFilter<LabwareType> labwareTypeFilter = new EntityNameFilter<>(specialLabwareTypes);
-        EntityNameFilter<LabwareType> releaselabwareTypeFilter = new EntityNameFilter<>(releaseLabwareTypes);
+        EntityNameFilter<LabwareType> releaseLabwareTypeFilter = new EntityNameFilter<>(releaseLabwareTypes);
 
-        final  Map<Integer, Labware> labwareIdToLabware = new HashMap<>();
+        final Map<Integer, Labware> labwareIdToLabware = new HashMap<>();
+
         if (singleWork!=null) {
             if (workTypes!=null && !workTypes.contains(singleWork.getWorkType())) {
                 return List.of();
@@ -74,7 +75,8 @@ public class WorkProgressServiceImp implements WorkProgressService {
             if (statuses!=null && !statuses.contains(singleWork.getStatus())) {
                 return List.of();
             }
-            return List.of(getProgressForWork(singleWork, opTypeFilter, stainTypeFilter, labwareTypeFilter,releaselabwareTypeFilter, labwareIdToLabware,labwareTypeToStainMap));
+            return List.of(getProgressForWork(singleWork, opTypeFilter, stainTypeFilter, labwareTypeFilter,
+                    releaseLabwareTypeFilter, labwareIdToLabware, labwareTypeToStainMap));
         }
         if (workTypes!=null) {
             List<Work> works = workRepo.findAllByWorkTypeIn(workTypes);
@@ -83,7 +85,8 @@ public class WorkProgressServiceImp implements WorkProgressService {
                 workStream = workStream.filter(work -> statuses.contains(work.getStatus()));
             }
             return workStream
-                    .map(work -> getProgressForWork(work, opTypeFilter, stainTypeFilter, labwareTypeFilter,releaselabwareTypeFilter, labwareIdToLabware,labwareTypeToStainMap))
+                    .map(work -> getProgressForWork(work, opTypeFilter, stainTypeFilter, labwareTypeFilter,
+                            releaseLabwareTypeFilter, labwareIdToLabware, labwareTypeToStainMap))
                     .collect(toList());
         }
         Iterable<Work> works;
@@ -93,7 +96,8 @@ public class WorkProgressServiceImp implements WorkProgressService {
             works = workRepo.findAll();
         }
         return StreamSupport.stream(works.spliterator(), false)
-                .map(work -> getProgressForWork(work, opTypeFilter, stainTypeFilter, labwareTypeFilter, releaselabwareTypeFilter,labwareIdToLabware,labwareTypeToStainMap))
+                .map(work -> getProgressForWork(work, opTypeFilter, stainTypeFilter, labwareTypeFilter,
+                        releaseLabwareTypeFilter, labwareIdToLabware, labwareTypeToStainMap))
                 .collect(toList());
     }
 
@@ -113,9 +117,10 @@ public class WorkProgressServiceImp implements WorkProgressService {
                                            Predicate<StainType> specialStainType,
                                            Predicate<LabwareType> specialLabwareType,
                                            Predicate<LabwareType> releaseLabwareType,
-                                           Map<Integer, Labware> labwareIdToLabware,Map<String,Set<String>> labwareTypeToStainMap) {
+                                           Map<Integer, Labware> labwareIdToLabware,
+                                           Map<String, Set<String>> labwareTypeToStainMap) {
         Map<String, LocalDateTime> opTimes = loadOpTimes(work, includeOpType, specialStainType, specialLabwareType,
-                releaseLabwareType,labwareIdToLabware,labwareTypeToStainMap);
+                releaseLabwareType, labwareIdToLabware, labwareTypeToStainMap);
         List<WorkProgressTimestamp> workTimes = opTimes.entrySet().stream()
                 .map(e -> new WorkProgressTimestamp(e.getKey(), e.getValue()))
                 .collect(toList());
@@ -138,61 +143,63 @@ public class WorkProgressServiceImp implements WorkProgressService {
                                                   Predicate<StainType> specialStainType,
                                                   Predicate<LabwareType> specialLabwareType,
                                                   Predicate<LabwareType> releaseLabwareType,
-                                                  Map<Integer, Labware> labwareIdToLabware,Map<String,Set<String>> labwareTypeToStainMap) {
+                                                  Map<Integer, Labware> labwareIdToLabware,
+                                                  Map<String, Set<String>> labwareTypeToStainMap) {
         Iterable<Operation> ops = opRepo.findAllById(work.getOperationIds());
         Map<String, LocalDateTime> opTimes = new HashMap<>();
 
         for (Operation op : ops) {
             OperationType opType = op.getOperationType();
-            Set<Labware> labware = opLabwares(op, labwareIdToLabware);
-
-            /*Add release operation for the interested labwareTypes
-              Note :- Release operation is associated with a workNumber from a previous operation
-              ***/
-            Set<Labware> labwareReleased = labware.stream().filter(lw->lw.isReleased() && releaseLabwareType.test(lw.getLabwareType())).collect(toSet());
-            List<Release> releases = releaseRepo.findAllByLabwareIdIn(labwareReleased.stream().map(Labware::getId).collect(toSet())) ;
-            for (Release release : releases) {
-                addTime(opTimes, "Release " +release.getLabware().getLabwareType().getName(), release.getReleased());
-            }
-
             if (!includeOpType.test(opType)) {
                 continue;
             }
             String key = opType.getName();
             if (opType.has(OperationTypeFlag.STAIN)) {
-                /*Add all stain operations**/
-                Set<LabwareType> labwareTypes = labware.stream().map(Labware::getLabwareType).collect(toSet());
+                Set<LabwareType> labwareTypes = opLabwares(op, labwareIdToLabware).stream()
+                        .map(Labware::getLabwareType)
+                        .collect(toSet());
                 labwareTypes.stream().filter(specialLabwareType)
                         .forEach(lt -> addTime(opTimes, "Stain "+lt.getName(), op.getPerformed()));
 
-                /*Add release operation for a particular stain type on a particular labware type as specified in labwareTypeToStainMap **/
-                Set<String> lwNames = labwareTypes.stream().map(lt->lt.getName().toLowerCase()).collect(toSet());
-                labwareTypeToStainMap.forEach((lwType, stainTypes) -> stainTypes.forEach(stainType -> {
-                    if (op.getStainType().getName().equalsIgnoreCase(stainType) && lwNames.contains(lwType.toLowerCase())) {
-                        addTime(opTimes,  lwType + " " + stainType + " stain", op.getPerformed());
+                for (LabwareType lt : labwareTypes) {
+                    var stainTypes = labwareTypeToStainMap.get(lt.getName().toLowerCase());
+                    if (stainTypes!=null && stainTypes.contains(op.getStainType().getName().toLowerCase())) {
+                        addTime(opTimes, lt.getName()+" "+op.getStainType().getName() + " stain", op.getPerformed());
                     }
-                }));
-                if (specialStainType.test(op.getStainType())) addTime(opTimes, "RNAscope/IHC stain", op.getPerformed());
+                }
+                if (specialStainType.test(op.getStainType())) {
+                    addTime(opTimes, "RNAscope/IHC stain", op.getPerformed());
+                }
             }
             if (opType.has(OperationTypeFlag.ANALYSIS)) {
                 key = "Analysis"; // RIN/DV200 analysis
             }
             addTime(opTimes, key, op.getPerformed());
         }
+
+        loadReleases(opTimes, ops, releaseLabwareType, labwareIdToLabware);
         return opTimes;
     }
+
     /**
-     * Gets all labware types of destinations of the given operation
-     * @param op the operation
-     * @param lwIdToType a cache of labware id to its labware type to avoid repeated lookups
-     * @return the distinct labware types of destinations in the given operation
+     * Loads releases dates of (filtered) destination labware from any of the given operations.
+     * @param opTimes the map of event labels to times
+     * @param ops the operations to get the labware from
+     * @param releaseLabwareFilter the filter specifying whether each labware should be included
+     * @param labwareIdCache a cache of labware from its id
      */
-    public Set<LabwareType> opLabwareTypes(Operation op, final Map<Integer, LabwareType> lwIdToType) {
-        return op.getActions().stream()
-                .map(a -> a.getDestination().getLabwareId())
-                .distinct()
-                .map(id -> getLabwareType(id, lwIdToType))
+    public void loadReleases(Map<String, LocalDateTime> opTimes, Iterable<Operation> ops,
+                             Predicate<LabwareType> releaseLabwareFilter,
+                             Map<Integer, Labware> labwareIdCache) {
+        Set<Integer> lwIdsToCheckForReleases = StreamSupport.stream(ops.spliterator(), false)
+                .flatMap(op -> op.getActions().stream()
+                        .map(ac -> ac.getDestination().getLabwareId()))
+                .filter(lwid -> releaseLabwareFilter.test(getLabware(lwid, labwareIdCache).getLabwareType()))
                 .collect(toSet());
+
+        for (Release release : releaseRepo.findAllByLabwareIdIn(lwIdsToCheckForReleases)) {
+            addTime(opTimes, "Release " + release.getLabware().getLabwareType().getName(), release.getReleased());
+        }
     }
 
     /**
@@ -202,28 +209,11 @@ public class WorkProgressServiceImp implements WorkProgressService {
      * @return the distinct labware types of destinations in the given operation
      */
     public Set<Labware> opLabwares(Operation op, final Map<Integer, Labware> lwIdToLabware) {
-        if(op.getActions() == null) return Collections.emptySet();
         return op.getActions().stream()
                 .map(a -> a.getDestination().getLabwareId())
                 .distinct()
                 .map(id -> getLabware(id, lwIdToLabware))
                 .collect(toSet());
-    }
-
-
-    /**
-     * Gets the labware type for the given labware id
-     * @param labwareId the labware id
-     * @param lwIdToType a cache to avoid repeated lookups
-     * @return the labware type of the given labware id
-     */
-    public LabwareType getLabwareType(Integer labwareId, Map<Integer, LabwareType> lwIdToType) {
-        LabwareType lt = lwIdToType.get(labwareId);
-        if (lt==null) {
-            lt = lwRepo.getById(labwareId).getLabwareType();
-            lwIdToType.put(labwareId, lt);
-        }
-        return lt;
     }
 
     /**

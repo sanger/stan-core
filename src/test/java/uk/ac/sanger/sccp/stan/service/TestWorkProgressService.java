@@ -4,9 +4,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Import;
-import uk.ac.sanger.sccp.stan.EntityCreator;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.Work.Status;
@@ -18,7 +15,6 @@ import javax.persistence.EntityNotFoundException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -38,7 +34,6 @@ public class TestWorkProgressService {
     private WorkTypeRepo mockWorkTypeRepo;
     private OperationRepo mockOpRepo;
     private LabwareRepo mockLwRepo;
-    private StainTypeRepo mockStainTypeRepo;
     private ReleaseRepo mockReleaseRepo;
 
     private WorkProgressServiceImp service;
@@ -50,7 +45,7 @@ public class TestWorkProgressService {
         mockLwRepo = mock(LabwareRepo.class);
         mockReleaseRepo = mock(ReleaseRepo.class);
 
-        service = spy(new WorkProgressServiceImp(mockWorkRepo, mockWorkTypeRepo, mockOpRepo, mockLwRepo,mockReleaseRepo));
+        service = spy(new WorkProgressServiceImp(mockWorkRepo, mockWorkTypeRepo, mockOpRepo, mockLwRepo, mockReleaseRepo));
     }
 
     @ParameterizedTest
@@ -68,7 +63,7 @@ public class TestWorkProgressService {
         if (expectedError!=null) {
             assertThat(assertThrows(EntityNotFoundException.class, () -> service.getProgress(workNumber, workTypeNames, statuses)))
                     .hasMessage(expectedError);
-            verify(service, never()).getProgressForWork(any(), any(), any(), any(),any(), any(),any());
+            verify(service, never()).getProgressForWork(any(), any(), any(), any(), any(), any(), any());
         } else {
             List<WorkProgress> wps = service.getProgress(workNumber, workTypeNames, statuses);
             verifyProgress(wps, works);
@@ -174,7 +169,7 @@ public class TestWorkProgressService {
 
     private void verifyProgress(List<WorkProgress> wps, List<Work> works) {
         assertThat(wps.stream().map(WorkProgress::getWork)).containsExactlyElementsOf(works);
-        verify(service, times(works.size())).getProgressForWork(notNull(), notNull(), notNull(), notNull(),notNull(), notNull(),notNull());
+        verify(service, times(works.size())).getProgressForWork(notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull());
     }
 
     @Test
@@ -217,7 +212,7 @@ public class TestWorkProgressService {
         LabwareType lt3 = new LabwareType(3, "96 well plate", 12, 8, null, false);
         LabwareType lt4 = new LabwareType(4, "Visium ADH", 1, 1, null, false);
 
-        final Map<String,Set<String>> labwareTypeStainMap = Map.of("Visium ADH",Set.of("H&E"));
+        final Map<String,Set<String>> labwareTypeStainMap = Map.of("visium adh", Set.of("h&e"));
 
         Predicate<OperationType> opTypeFilter = x -> (x==sectionType || x==stainOpType || x==rinOpType || x==dv200OpType);
         Predicate<StainType> stainTypeFilter = x -> (x==st1 || x==st2);
@@ -238,6 +233,7 @@ public class TestWorkProgressService {
                     op.setOperationType(opTypes[i]);
                     op.setPerformed(times[i]);
                     op.setStainType(stainTypes[i]);
+                    op.setActions(List.of());
                     return op;
                 }).collect(toList());
 
@@ -263,17 +259,22 @@ public class TestWorkProgressService {
         when(mockOpRepo.findAllById(opIds)).thenReturn(ops);
 
         /*Mock findAllByLabwareIdIn method in Release Repo to return labware lw3*/
-        List<Release> releases = IntStream.range(0, 1)
-                .mapToObj(i -> {
-                    Release release = new Release();
-                    release.setId(5+i);
-                    release.setLabware(lw3);
-                    release.setReleased(times[8]);
-                    return release;
-                }).collect(toList());
-        when(mockReleaseRepo.findAllByLabwareIdIn(Set.of(lw3.getId()))).thenReturn(releases);
+        Release release = new Release();
+        release.setId(5);
+        release.setLabware(lw3);
+        release.setReleased(times[8]);
 
-        var result = service.loadOpTimes(work, opTypeFilter, stainTypeFilter, lwTypeFilter,releaseFilter, lwIdLabwareMap,labwareTypeStainMap);
+        when(mockReleaseRepo.findAllByLabwareIdIn(any()))
+                .thenReturn(List.of(release));
+
+        doAnswer(invocation -> {
+            Map<String, LocalDateTime> opTimes = invocation.getArgument(0);
+            opTimes.put("Release 96 well plate", times[8]);
+            return null;
+        }).when(service).loadReleases(any(), any(), any(), any());
+
+        var result = service.loadOpTimes(work, opTypeFilter, stainTypeFilter, lwTypeFilter,
+                releaseFilter, lwIdLabwareMap, labwareTypeStainMap);
 
         assertThat(result).containsExactlyInAnyOrderEntriesOf(Map.of(
                 sectionType.getName(), times[3],
@@ -283,29 +284,9 @@ public class TestWorkProgressService {
                 "Stain "+lt2.getName(), times[7],
                 lt4.getName()+" "+st4.getName()+" stain", times[9],
                 "Analysis", times[11],
-                "Release "+lt3.getName(),times[8]
+                "Release "+lt3.getName(), times[8]
         ));
-    }
-
-    @Test
-    public void testOpLabwareTypes() {
-        LabwareType lt0 = EntityFactory.makeLabwareType(1,1);
-        LabwareType lt1 = EntityFactory.makeLabwareType(1,1);
-        LabwareType lt2 = EntityFactory.makeLabwareType(1,1);
-        Sample sample = EntityFactory.getSample();
-        Labware lw0 = EntityFactory.makeLabware(lt0, sample);
-        Labware lw1A = EntityFactory.makeLabware(lt1, sample);
-        Labware lw1B = EntityFactory.makeLabware(lt1, sample);
-        Labware lw2 = EntityFactory.makeLabware(lt2, sample);
-        List<Labware> dests = List.of(lw1A, lw1B, lw2);
-        OperationType opType = EntityFactory.makeOperationType("Splat", null);
-        Operation op = EntityFactory.makeOpForLabware(opType, List.of(lw0), dests);
-        Map<Integer, LabwareType> lwIdToType = Map.of();
-        dests.forEach(lw ->
-                doReturn(lw.getLabwareType()).when(service).getLabwareType(eq(lw.getId()), same(lwIdToType))
-        );
-        assertThat(service.opLabwareTypes(op, lwIdToType)).containsExactlyInAnyOrder(lt1, lt2);
-        dests.forEach(lw -> verify(service).getLabwareType(eq(lw.getId()), same(lwIdToType)));
+        verify(service).loadReleases(any(), eq(ops), same(releaseFilter), eq(lwIdLabwareMap));
     }
 
     @Test
@@ -330,23 +311,25 @@ public class TestWorkProgressService {
     }
 
     @ParameterizedTest
-    @ValueSource(booleans={false, true})
-    public void testGetLabwareType(boolean cached) {
-        LabwareType lt = EntityFactory.makeLabwareType(1, 1);
-        Map<Integer, LabwareType> map = new HashMap<>(1);
+    @ValueSource(booleans={false,true})
+    public void testGetLabware(boolean cached) {
+        Labware lw = EntityFactory.getTube();
+        Integer id = lw.getId();
+        Map<Integer, Labware> cache;
         if (cached) {
-            map.put(4, lt);
-            assertSame(lt, service.getLabwareType(4, map));
-            verifyNoInteractions(mockLwRepo);
-            assertThat(map).containsExactly(Map.entry(4, lt));
+            cache = Map.of(id, lw);
         } else {
-            Labware lw = EntityFactory.makeEmptyLabware(lt);
-            final Integer id = lw.getId();
+            cache = new HashMap<>(1);
             when(mockLwRepo.getById(id)).thenReturn(lw);
-            assertSame(lt, service.getLabwareType(id, map));
-            assertThat(map).containsExactly(Map.entry(id, lt));
+        }
+        assertSame(lw, service.getLabware(id, cache));
+        if (cached) {
+            verifyNoInteractions(mockLwRepo);
+        } else {
+            assertSame(lw, cache.get(id));
         }
     }
+
 
     @ParameterizedTest
     @CsvSource({"-1,false",",true","1,true"})
@@ -364,6 +347,38 @@ public class TestWorkProgressService {
         assert shouldReplace || savedTime!=null;
         service.addTime(opTimes, key, thisTime);
         assertThat(opTimes).containsExactly(Map.entry(key, shouldReplace ? thisTime : savedTime));
+    }
+
+    @Test
+    public void testLoadReleases() {
+        Labware lw1 = EntityFactory.getTube();
+        Sample sample = EntityFactory.getSample();
+        LabwareType includedLwType = new LabwareType(500, "Tub", 1, 1, EntityFactory.getLabelType(), false);
+        Labware lw2 = EntityFactory.makeLabware(includedLwType, sample);
+        List<Action> op1Actions = List.of(
+                new Action(100, 10, lw1.getFirstSlot(), lw1.getFirstSlot(), sample, sample)
+        );
+        Operation op1 = new Operation(10, null, null, op1Actions, null);
+        List<Action> op2Actions = List.of(
+                new Action(110, 11, lw1.getFirstSlot(), lw2.getFirstSlot(), sample, sample)
+        );
+        Operation op2 = new Operation(11, null, null, op2Actions, null);
+
+        Predicate<LabwareType> lwTypeFilter = lt -> lt.getName().equalsIgnoreCase("Tub");
+        Map<Integer, Labware> labwareIdCache = Map.of(lw1.getId(), lw1, lw2.getId(), lw2);
+
+        Release release = new Release();
+        release.setLabware(lw2);
+        release.setReleased(LocalDateTime.of(2022,4,19,9,50));
+
+        when(mockReleaseRepo.findAllByLabwareIdIn(any())).thenReturn(List.of(release));
+        Map<String, LocalDateTime> opTimes = new HashMap<>(1);
+
+        service.loadReleases(opTimes, List.of(op1, op2), lwTypeFilter, labwareIdCache);
+
+        assertThat(opTimes).hasSize(1).containsEntry("Release Tub", release.getReleased());
+
+        verify(mockReleaseRepo).findAllByLabwareIdIn(Set.of(lw2.getId()));
     }
 
     private static Work workWithId(int id) {
