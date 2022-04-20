@@ -152,13 +152,13 @@ public class StainServiceImp implements StainService {
      * Creates the specified stain operations
      * @param user the user recording the operations
      * @param labware the labware
-     * @param stainType the stain type
+     * @param stainTypes the stain types
      * @return the newly created operations
      */
-    public List<Operation> createOperations(User user, Collection<Labware> labware, StainType stainType) {
+    public List<Operation> createOperations(User user, Collection<Labware> labware, Collection<StainType> stainTypes) {
         OperationType opType = opTypeRepo.getByName("Stain");
         return labware.stream()
-                .map(lw -> createOperation(user, lw, opType, stainType))
+                .map(lw -> createOperation(user, lw, opType, stainTypes))
                 .collect(toList());
     }
 
@@ -167,15 +167,13 @@ public class StainServiceImp implements StainService {
      * @param user the user recording the operation
      * @param labware the item of labware
      * @param opType the operation type
-     * @param stainType the stain type for the operation
+     * @param stainTypes the stain types for the operation
      * @return the newly created operation
      */
-    public Operation createOperation(User user, Labware labware, OperationType opType, StainType stainType) {
-        List<Action> actions = labware.getSlots().stream()
-                        .flatMap(slot -> slot.getSamples().stream()
-                                .map(sample -> new Action(null, null, slot, slot, sample, sample)))
-                                .collect(toList());
-        return opService.createOperation(opType, user, actions, null, op -> op.setStainType(stainType));
+    public Operation createOperation(User user, Labware labware, OperationType opType, Collection<StainType> stainTypes) {
+        Operation op = opService.createOperationInPlace(opType, user, labware, null, null);
+        stainTypeRepo.saveOperationStainTypes(op.getId(), stainTypes);
+        return op;
     }
 
     /**
@@ -208,7 +206,7 @@ public class StainServiceImp implements StainService {
             throw new ValidationException("The stain request could not be validated.", problems);
         }
 
-        List<Operation> ops = createOperations(user, labware, stainType);
+        List<Operation> ops = createOperations(user, labware, List.of(stainType));
         recordMeasurements(ops, measurements);
         if (work!=null) {
             workService.link(work, ops);

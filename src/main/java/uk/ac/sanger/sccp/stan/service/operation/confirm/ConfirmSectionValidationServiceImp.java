@@ -242,17 +242,22 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
             addProblem(problems, "Section specified with no address.");
             ok = false;
         } else if (lt.indexOf(address) < 0) {
-            addProblem(problems, "Invalid address %s in labware %s specified for section.", address, lw.getBarcode());
+            addProblem(problems, "Invalid address %s in labware %s specified as destination.", address, lw.getBarcode());
             ok = false;
         }
         final Integer sampleId = con.getSampleId();
         final Integer section = con.getNewSection();
         if (sampleId == null) {
-            addProblem(problems, "No sample id specified for section.");
+            addProblem(problems, "Sample id not specified for section.");
             ok = false;
         }
-        if (section == null) {
-            addProblem(problems, "No section number specified for section.");
+        if (lt.isFetalWaste()) {
+            if (section != null) {
+                addProblem(problems, "Section number not expected for fetal waste.");
+                ok = false;
+            }
+        } else if (section == null) {
+            addProblem(problems, "Section number not specified for section.");
             ok = false;
         } else if (section < 0) {
             addProblem(problems, "Section number cannot be less than zero.");
@@ -273,13 +278,13 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
             sections = new HashSet<>();
             sections.add(section);
             sampleIdSections.put(sampleId, sections);
-        } else if (sections.contains(section)) {
+        } else if (section!=null && sections.contains(section)) {
             addProblem(problems, "Repeated section: %s from sample id %s.", section, sampleId);
         } else {
             sections.add(section);
         }
         Integer maxSection = sampleMaxSection.get(sampleId);
-        if (maxSection != null && section <= maxSection) {
+        if (maxSection != null && section != null && section <= maxSection) {
             addProblem(problems, "Section numbers from sample id %s must be greater than %s.", sampleId, maxSection);
         }
     }

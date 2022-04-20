@@ -35,6 +35,7 @@ public class TestWorkProgressService {
     private OperationRepo mockOpRepo;
     private LabwareRepo mockLwRepo;
     private ReleaseRepo mockReleaseRepo;
+    private StainTypeRepo mockStainTypeRepo;
 
     private WorkProgressServiceImp service;
     @BeforeEach
@@ -44,8 +45,9 @@ public class TestWorkProgressService {
         mockOpRepo = mock(OperationRepo.class);
         mockLwRepo = mock(LabwareRepo.class);
         mockReleaseRepo = mock(ReleaseRepo.class);
+        mockStainTypeRepo = mock(StainTypeRepo.class);
 
-        service = spy(new WorkProgressServiceImp(mockWorkRepo, mockWorkTypeRepo, mockOpRepo, mockLwRepo, mockReleaseRepo));
+        service = spy(new WorkProgressServiceImp(mockWorkRepo, mockWorkTypeRepo, mockOpRepo, mockLwRepo, mockReleaseRepo, mockStainTypeRepo));
     }
 
     @ParameterizedTest
@@ -232,7 +234,6 @@ public class TestWorkProgressService {
                     op.setId(5+i);
                     op.setOperationType(opTypes[i]);
                     op.setPerformed(times[i]);
-                    op.setStainType(stainTypes[i]);
                     op.setActions(List.of());
                     return op;
                 }).collect(toList());
@@ -253,6 +254,15 @@ public class TestWorkProgressService {
                     .when(service).opLabwares(same(ops.get(i)), same(lwIdLabwareMap));
         });
 
+        Map<Integer, List<StainType>> opStainTypes = new HashMap<>(ops.size());
+        for (int i = 0; i < ops.size(); ++i) {
+            StainType st = stainTypes[i];
+            if (st!=null) {
+                opStainTypes.put(ops.get(i).getId(), List.of(st));
+            }
+        }
+
+        when(mockStainTypeRepo.loadOperationStainTypes(any())).thenReturn(opStainTypes);
         List<Integer> opIds = ops.stream().map(Operation::getId).collect(toList());
         Work work = workWithId(17);
         work.setOperationIds(opIds);
@@ -286,7 +296,9 @@ public class TestWorkProgressService {
                 "Analysis", times[11],
                 "Release "+lt3.getName(), times[8]
         ));
+
         verify(service).loadReleases(any(), eq(ops), same(releaseFilter), eq(lwIdLabwareMap));
+        verify(mockStainTypeRepo).loadOperationStainTypes(work.getOperationIds());
     }
 
     @Test

@@ -123,7 +123,7 @@ public class TestReleaseMutation {
                 "Life stage", "External identifier", "Tissue type", "Spatial location", "Replicate number", "Section number",
                 "Last section number", "Source barcode", "Section thickness", "Released from box location",
                 "Stain type", "Bond barcode", "Tissue coverage", "Cq value", "cDNA analysis concentration",
-                "Reagent source");
+                "Dual index plate name");
         var row0 = tsvMaps.get(0);
         assertEquals(block.getBarcode(), row0.get("Barcode"));
         assertEquals(block.getLabwareType().getName(), row0.get("Labware type"));
@@ -154,8 +154,10 @@ public class TestReleaseMutation {
     private void recordStain(Labware lw, StainType st, String bondBarcode, User user) {
         OperationType opType = opTypeRepo.getByName("Stain");
         Operation op = new Operation(null, opType, null, null, user);
-        op.setStainType(st);
         op = opRepo.save(op);
+        if (st!=null) {
+            stainTypeRepo.saveOperationStainTypes(op.getId(), List.of(st));
+        }
         Slot slot = lw.getFirstSlot();
         Sample sample = slot.getSamples().get(0);
         actionRepo.save(new Action(null, op.getId(), slot, slot, sample, sample));

@@ -12,6 +12,7 @@ import uk.ac.sanger.sccp.utils.BasicUtils;
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.*;
@@ -34,6 +35,7 @@ public class HistoryServiceImp implements HistoryService {
     private final MeasurementRepo measurementRepo;
     private final LabwareNoteRepo labwareNoteRepo;
     private final ResultOpRepo resultOpRepo;
+    private final StainTypeRepo stainTypeRepo;
     private final ReagentActionDetailService reagentActionDetailService;
 
     @Autowired
@@ -42,6 +44,7 @@ public class HistoryServiceImp implements HistoryService {
                              DestructionRepo destructionRepo, OperationCommentRepo opCommentRepo,
                              SnapshotRepo snapshotRepo, WorkRepo workRepo, MeasurementRepo measurementRepo,
                              LabwareNoteRepo labwareNoteRepo, ResultOpRepo resultOpRepo,
+                             StainTypeRepo stainTypeRepo,
                              ReagentActionDetailService reagentActionDetailService) {
         this.opRepo = opRepo;
         this.lwRepo = lwRepo;
@@ -56,6 +59,7 @@ public class HistoryServiceImp implements HistoryService {
         this.measurementRepo = measurementRepo;
         this.labwareNoteRepo = labwareNoteRepo;
         this.resultOpRepo = resultOpRepo;
+        this.stainTypeRepo = stainTypeRepo;
         this.reagentActionDetailService = reagentActionDetailService;
     }
 
@@ -439,6 +443,7 @@ public class HistoryServiceImp implements HistoryService {
         var opComments = loadOpComments(opIds);
         var opMeasurements = loadOpMeasurements(opIds);
         var opLabwareNotes = loadOpLabwareNotes(opIds);
+        var opStainTypes = stainTypeRepo.loadOperationStainTypes(opIds);
         var opReagentActions = reagentActionDetailService.loadReagentTransfers(opIds);
         var opResults = loadOpResults(operations);
         final Map<Integer, Slot> slotIdMap;
@@ -453,8 +458,14 @@ public class HistoryServiceImp implements HistoryService {
         for (Operation op : operations) {
             String stainDetail;
             if (op.getOperationType().has(OperationTypeFlag.STAIN)) {
-                StainType st = op.getStainType();
-                stainDetail = (st != null ? "Stain type: "+st.getName() : null);
+                List<StainType> sts = opStainTypes.get(op.getId());
+                if (sts!=null && !sts.isEmpty()) {
+                    stainDetail = "Stain type: "+sts.stream()
+                            .map(StainType::getName)
+                            .collect(Collectors.joining(", "));
+                } else {
+                    stainDetail = null;
+                }
             } else {
                 stainDetail = null;
             }

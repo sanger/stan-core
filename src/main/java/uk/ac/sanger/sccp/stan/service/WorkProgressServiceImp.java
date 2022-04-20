@@ -29,6 +29,7 @@ public class WorkProgressServiceImp implements WorkProgressService {
     private final OperationRepo opRepo;
     private final LabwareRepo lwRepo;
     private final ReleaseRepo releaseRepo;
+    private final StainTypeRepo stainTypeRepo;
     // Consider for the future moving these sets to a config class and injecting them
     private final Set<String> includedOpTypes = Set.of("section", "stain", "extract", "visium cdna", "image",
             "rin analysis", "dv200 analysis");
@@ -39,12 +40,13 @@ public class WorkProgressServiceImp implements WorkProgressService {
 
     @Autowired
     public WorkProgressServiceImp(WorkRepo workRepo, WorkTypeRepo workTypeRepo, OperationRepo opRepo,
-                                  LabwareRepo lwRepo, ReleaseRepo releaseRepo) {
+                                  LabwareRepo lwRepo, ReleaseRepo releaseRepo, StainTypeRepo stainTypeRepo) {
         this.workRepo = workRepo;
         this.workTypeRepo = workTypeRepo;
         this.opRepo = opRepo;
         this.lwRepo = lwRepo;
         this.releaseRepo = releaseRepo;
+        this.stainTypeRepo = stainTypeRepo;
     }
 
     @Override
@@ -145,8 +147,10 @@ public class WorkProgressServiceImp implements WorkProgressService {
                                                   Predicate<LabwareType> releaseLabwareType,
                                                   Map<Integer, Labware> labwareIdToLabware,
                                                   Map<String, Set<String>> labwareTypeToStainMap) {
-        Iterable<Operation> ops = opRepo.findAllById(work.getOperationIds());
+        final var opIds = work.getOperationIds();
+        Iterable<Operation> ops = opRepo.findAllById(opIds);
         Map<String, LocalDateTime> opTimes = new HashMap<>();
+        var opStainTypes = stainTypeRepo.loadOperationStainTypes(opIds);
 
         for (Operation op : ops) {
             OperationType opType = op.getOperationType();
@@ -162,12 +166,19 @@ public class WorkProgressServiceImp implements WorkProgressService {
                         .forEach(lt -> addTime(opTimes, "Stain "+lt.getName(), op.getPerformed()));
 
                 for (LabwareType lt : labwareTypes) {
-                    var stainTypes = labwareTypeToStainMap.get(lt.getName().toLowerCase());
-                    if (stainTypes!=null && stainTypes.contains(op.getStainType().getName().toLowerCase())) {
-                        addTime(opTimes, lt.getName()+" "+op.getStainType().getName() + " stain", op.getPerformed());
+                    var soughtStainTypes = labwareTypeToStainMap.get(lt.getName().toLowerCase());
+                    var thisOpStainTypes = opStainTypes.get(op.getId());
+
+                    if (soughtStainTypes!=null && thisOpStainTypes!=null) {
+                        for (StainType st : thisOpStainTypes) {
+                            if (soughtStainTypes.contains(st.getName().toLowerCase())) {
+                                addTime(opTimes, lt.getName()+" "+st.getName() + " stain", op.getPerformed());
+                            }
+                        }
                     }
                 }
-                if (specialStainType.test(op.getStainType())) {
+                List<StainType> sts = opStainTypes.get(op.getId());
+                if (sts!=null && sts.stream().anyMatch(specialStainType)) {
                     addTime(opTimes, "RNAscope/IHC stain", op.getPerformed());
                 }
             }

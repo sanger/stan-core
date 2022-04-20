@@ -44,7 +44,8 @@ public class TestComplexStainMutation {
     public void testComplexStain() throws Exception {
         Sample sample = entityCreator.createSample(null, 3);
         Labware lw = entityCreator.createLabware("STAN-A1", entityCreator.getTubeType(), sample);
-        StainType stainType = stainTypeRepo.save(new StainType(null, "RNAscope"));
+        StainType st1 = stainTypeRepo.save(new StainType(null, "RNAscope"));
+        StainType st2 = stainTypeRepo.save(new StainType(null, "IHC"));
         User user = entityCreator.createUser("user1");
         tester.setUser(user);
         Object result = tester.post(tester.readGraphQL("complexstain.graphql"));
@@ -53,17 +54,17 @@ public class TestComplexStainMutation {
         Integer opId = chainGet(opData, 0, "id");
         Operation op = opRepo.findById(opId).orElseThrow();
         assertEquals("Stain", op.getOperationType().getName());
-        assertEquals(stainType, op.getStainType());
+        assertEquals(List.of(st1, st2), stainTypeRepo.loadOperationStainTypes(List.of(opId)).get(opId));
         List<LabwareNote> notes = lwNoteRepo.findAllByOperationIdIn(List.of(opId));
-        assertThat(notes).hasSize(4);
-        Map<String, String> noteData = new HashMap<>(4);
+        assertThat(notes).hasSize(5);
+        Map<String, String> noteData = new HashMap<>(notes.size());
         for (LabwareNote note : notes) {
             assertEquals(opId, note.getOperationId());
             assertEquals(lw.getId(), note.getLabwareId());
             noteData.put(note.getName(), note.getValue());
         }
         assertEquals(Map.of("Bond barcode", "12340ABC", "Bond run", "8",
-                        "Panel", "positive", "Plex", "6"),
+                        "Panel", "positive", "RNAscope plex", "13", "IHC plex", "12"),
                 noteData);
     }
 }

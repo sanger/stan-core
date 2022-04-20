@@ -44,6 +44,8 @@ public class TestStainAndSubsequentMutations {
     private TissueRepo tissueRepo;
     @Autowired
     private OperationCommentRepo opCommentRepo;
+    @Autowired
+    private StainTypeRepo stainTypeRepo;
 
     @Transactional
     @Test
@@ -65,7 +67,9 @@ public class TestStainAndSubsequentMutations {
         assertEquals("Stain", chainGet(opData, "operationType", "name"));
 
         Operation op = opRepo.findById(opId).orElseThrow();
-        assertEquals(op.getStainType().getName(), "H&E");
+        final List<StainType> stainTypes = stainTypeRepo.loadOperationStainTypes(List.of(opId)).get(opId);
+        assertThat(stainTypes).hasSize(1);
+        assertEquals("H&E", stainTypes.get(0).getName());
 
         data = tester.post(tester.readGraphQL("workprogress.graphql").replace("SGP500", work.getWorkNumber()));
         Object progressData = chainGet(data, "data", "workProgress", 0);

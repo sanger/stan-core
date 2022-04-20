@@ -326,9 +326,9 @@ public class TestConfirmSectionValidationService {
                 new ConfirmSection(B3, sampleB.getId(), 14)
         );
         Map<Integer, Set<Integer>> sampleIdSections = new HashMap<>();
-        sampleIdSections.put(sampleA.getId()-1, new HashSet<>(List.of(10,11)));
+        sampleIdSections.put(sampleA.getId()-1, hashSetOf(10,11));
 
-        final Set<String> problems = new HashSet<>(List.of("Identifiable problem."));
+        final Set<String> problems = hashSetOf("Identifiable problem.");
 
         doNothing().when(service).validateSection(any(), any(), any(), any(), any(), any());
 
@@ -374,17 +374,21 @@ public class TestConfirmSectionValidationService {
 
         Labware lw = EntityFactory.makeEmptyLabware(lt);
         lw.setBarcode("STAN-01");
-        // Problems to check:
-        //  Section number below last known for sample
+
+        LabwareType fwlt = EntityFactory.makeLabwareType(1,1);
+        fwlt.setName(LabwareType.FETAL_WASTE_NAME);
+        Labware fw = EntityFactory.makeEmptyLabware(fwlt);
+        fw.setBarcode("STAN-FE7A1");
+
         return Arrays.stream(new Object[][] {
                 { lw, new ConfirmSection(null, aid, 20), plannedSampleIds, sampleMaxSection, null,
                         "Section specified with no address.", null },
                 { lw, new ConfirmSection(A1, null, 20), plannedSampleIds, sampleMaxSection, null,
-                        "No sample id specified for section.", null },
+                        "Sample id not specified for section.", null },
                 { lw, new ConfirmSection(A1, aid, null), plannedSampleIds, sampleMaxSection, null,
-                        "No section number specified for section.", null },
+                        "Section number not specified for section.", null },
                 { lw, new ConfirmSection(F8, aid, 20), plannedSampleIds, sampleMaxSection, null,
-                        "Invalid address F8 in labware STAN-01 specified for section.", null },
+                        "Invalid address F8 in labware STAN-01 specified as destination.", null },
                 { lw, new ConfirmSection(A1, aid, -4), plannedSampleIds, sampleMaxSection, null,
                         "Section number cannot be less than zero.", null },
                 { lw, new ConfirmSection(A2, bid, 20), plannedSampleIds, sampleMaxSection, null,
@@ -395,12 +399,21 @@ public class TestConfirmSectionValidationService {
                         "Repeated section: 14 from sample id "+aid+".", null},
                 { lw, new ConfirmSection(A1, aid, 8), plannedSampleIds, sampleMaxSection, null,
                         "Section numbers from sample id "+aid+" must be greater than 12.", Map.of(aid, Set.of(8))},
-                { lw, new ConfirmSection(A1, aid, 12), plannedSampleIds, sampleMaxSection, Map.of(aid, new HashSet<>(List.of(16))),
+                { lw, new ConfirmSection(A1, aid, 12), plannedSampleIds, sampleMaxSection, Map.of(aid, hashSetOf(16)),
                         "Section numbers from sample id "+aid+" must be greater than 12.", Map.of(aid, Set.of(16,12))},
+                { fw, new ConfirmSection(A1, aid, 20), plannedSampleIds, sampleMaxSection, Map.of(aid, hashSetOf(18,19)),
+                        "Section number not expected for fetal waste.", Map.of(aid, Set.of(18,19))},
 
-                { lw, new ConfirmSection(A1, aid, 20), plannedSampleIds, sampleMaxSection, Map.of(aid, new HashSet<>(List.of(18, 19))),
+                { lw, new ConfirmSection(A1, aid, 20), plannedSampleIds, sampleMaxSection, Map.of(aid, hashSetOf(18, 19)),
                         null, Map.of(aid, Set.of(18,19,20))},
+                { fw, new ConfirmSection(A1, aid, null), plannedSampleIds, sampleMaxSection, Map.of(aid, hashSetOf(18, 19)),
+                        null, Map.of(aid, hashSetOf(18,19,null))},
         }).map(toListArguments(5));
+    }
+
+    @SafeVarargs
+    private static <E> HashSet<E> hashSetOf(E... elements) {
+        return new HashSet<>(Arrays.asList(elements));
     }
 
     private static Function<Object[], Arguments> toListArguments(int... indexes) {

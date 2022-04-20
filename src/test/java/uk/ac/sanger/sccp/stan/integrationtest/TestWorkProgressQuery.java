@@ -63,13 +63,6 @@ public class TestWorkProgressQuery {
     @Test
     @Transactional
     public void testWorkProgressQuery() throws Exception {
-        /*
-        existing optypes:
-        Register
-                Section
-        Extract
-        Visium cDNA
-        */
 
         OperationType sectionOpType = opTypeRepo.getByName("Section");
         OperationType cdnaOpType = opTypeRepo.getByName("Visium cDNA");
@@ -151,10 +144,12 @@ public class TestWorkProgressQuery {
 
     private Operation createOp(OperationType opType, StainType stainType, User user, Labware src, Labware dst, int day) {
         Operation op = new Operation(null, opType, null, List.of(), user);
-        op.setStainType(stainType);
         op = opRepo.save(op);
         op.setPerformed(time(day));
         op = opRepo.save(op);
+        if (stainType!=null) {
+            stainTypeRepo.saveOperationStainTypes(op.getId(), List.of(stainType));
+        }
         Sample sample = dst.getFirstSlot().getSamples().get(0);
         actionRepo.save(new Action(null, op.getId(), src.getFirstSlot(), dst.getFirstSlot(), sample, sample));
         entityManager.flush();
