@@ -33,6 +33,7 @@ public class TestWorkProgressService {
     private WorkTypeRepo mockWorkTypeRepo;
     private OperationRepo mockOpRepo;
     private LabwareRepo mockLwRepo;
+    private StainTypeRepo mockStainTypeRepo;
 
     private WorkProgressServiceImp service;
 
@@ -42,8 +43,9 @@ public class TestWorkProgressService {
         mockWorkTypeRepo = mock(WorkTypeRepo.class);
         mockOpRepo = mock(OperationRepo.class);
         mockLwRepo = mock(LabwareRepo.class);
+        mockStainTypeRepo = mock(StainTypeRepo.class);
 
-        service = spy(new WorkProgressServiceImp(mockWorkRepo, mockWorkTypeRepo, mockOpRepo, mockLwRepo));
+        service = spy(new WorkProgressServiceImp(mockWorkRepo, mockWorkTypeRepo, mockOpRepo, mockLwRepo, mockStainTypeRepo));
     }
 
     @ParameterizedTest
@@ -191,7 +193,6 @@ public class TestWorkProgressService {
 
     @Test
     public void testLoadOpTimes() {
-
         OperationType sectionType = EntityFactory.makeOperationType( "Section", null, OperationTypeFlag.SOURCE_IS_BLOCK);
         OperationType stainOpType = EntityFactory.makeOperationType("Stain", null, OperationTypeFlag.STAIN, OperationTypeFlag.IN_PLACE);
         OperationType rinOpType = EntityFactory.makeOperationType("RIN analysis", null, OperationTypeFlag.ANALYSIS);
@@ -223,12 +224,21 @@ public class TestWorkProgressService {
                     op.setId(5+i);
                     op.setOperationType(opTypes[i]);
                     op.setPerformed(times[i]);
-                    op.setStainType(stainTypes[i]);
                     return op;
                 }).collect(toList());
 
+        Map<Integer, List<StainType>> opStainTypes = new HashMap<>(ops.size());
+        for (int i = 0; i < ops.size(); ++i) {
+            StainType st = stainTypes[i];
+            if (st!=null) {
+                opStainTypes.put(ops.get(i).getId(), List.of(st));
+            }
+        }
+
+        when(mockStainTypeRepo.loadOperationStainTypes(any())).thenReturn(opStainTypes);
+
         LabwareType[][] opLwTypes = {
-                null, null, null, null, null, { lt1 }, {lt1, lt2}, {lt2}, {lt3}, null, null,
+                null, null, null, null, null, {lt1}, {lt1, lt2}, {lt2}, {lt3}, null, null,
         };
 
         IntStream.range(0, ops.size()).forEach(i -> {
@@ -252,6 +262,8 @@ public class TestWorkProgressService {
                 "Stain "+lt2.getName(), times[7],
                 "Analysis", times[10]
         ));
+
+        verify(mockStainTypeRepo).loadOperationStainTypes(work.getOperationIds());
     }
 
     @Test

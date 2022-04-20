@@ -35,12 +35,6 @@ public class Operation {
     private Integer planOperationId;
 
     @ManyToOne
-    @JoinTable(name="stain",
-            joinColumns = @JoinColumn(name="operation_id"),
-            inverseJoinColumns = @JoinColumn(name="stain_type_id"))
-    private StainType stainType;
-
-    @ManyToOne
     @JoinTable(name="operation_equipment",
             joinColumns = @JoinColumn(name="operation_id"),
             inverseJoinColumns = @JoinColumn(name="equipment_id"))
@@ -110,14 +104,6 @@ public class Operation {
         this.planOperationId = planOperationId;
     }
 
-    public StainType getStainType() {
-        return this.stainType;
-    }
-
-    public void setStainType(StainType stainType) {
-        this.stainType = stainType;
-    }
-
     public Equipment getEquipment() {
         return this.equipment;
     }
@@ -137,7 +123,6 @@ public class Operation {
                 && Objects.equals(this.user, that.user)
                 && Objects.equals(this.actions, that.actions)
                 && Objects.equals(this.planOperationId, that.planOperationId)
-                && Objects.equals(this.stainType, that.stainType)
                 && Objects.equals(this.equipment, that.equipment));
     }
 
@@ -152,7 +137,6 @@ public class Operation {
                 .add("id", id)
                 .add("performed", performed)
                 .add("operationType", operationType)
-                .addIfNotNull("stainType", stainType)
                 .addIfNotNull("equipment", equipment)
                 .toString();
     }

@@ -9,44 +9,24 @@ import java.util.*;
  * @author dr6
  */
 public class ComplexStainRequest {
-    private String stainType;
-    private int plex;
-    private StainPanel panel;
+    private List<String> stainTypes;
     private List<ComplexStainLabware> labware;
 
     public ComplexStainRequest() {
-        this(null, 0, null, null);
+        this(null, null);
     }
 
-    public ComplexStainRequest(String stainType, int plex, StainPanel panel, List<ComplexStainLabware> labware) {
-        this.stainType = stainType;
-        this.plex = plex;
-        this.panel = panel;
+    public ComplexStainRequest(List<String> stainTypes, List<ComplexStainLabware> labware) {
+        setStainTypes(stainTypes);
         setLabware(labware);
     }
 
-    public String getStainType() {
-        return this.stainType;
+    public List<String> getStainTypes() {
+        return this.stainTypes;
     }
 
-    public void setStainType(String stainType) {
-        this.stainType = stainType;
-    }
-
-    public int getPlex() {
-        return this.plex;
-    }
-
-    public void setPlex(int plex) {
-        this.plex = plex;
-    }
-
-    public StainPanel getPanel() {
-        return this.panel;
-    }
-
-    public void setPanel(StainPanel panel) {
-        this.panel = panel;
+    public void setStainTypes(List<String> stainTypes) {
+        this.stainTypes = (stainTypes==null ? List.of() : stainTypes);
     }
 
     public List<ComplexStainLabware> getLabware() {
@@ -62,23 +42,19 @@ public class ComplexStainRequest {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ComplexStainRequest that = (ComplexStainRequest) o;
-        return (this.plex == that.plex
-                && Objects.equals(this.stainType, that.stainType)
-                && this.panel==that.panel
+        return (Objects.equals(this.stainTypes, that.stainTypes)
                 && Objects.equals(this.labware, that.labware));
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(stainType, plex, panel, labware);
+        return Objects.hash(stainTypes, labware);
     }
 
     @Override
     public String toString() {
         return BasicUtils.describe("ComplexStainRequest")
-                .addRepr("stainType", stainType)
-                .add("plex", plex)
-                .add("panel", panel)
+                .add("stainType", stainTypes)
                 .add("labware", labware)
                 .toString();
     }

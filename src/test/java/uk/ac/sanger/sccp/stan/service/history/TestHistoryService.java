@@ -40,6 +40,7 @@ public class TestHistoryService {
     private MeasurementRepo mockMeasurementRepo;
     private LabwareNoteRepo mockLwNoteRepo;
     private ResultOpRepo mockResultOpRepo;
+    private StainTypeRepo mockStainTypeRepo;
     private ReagentActionDetailService mockRadService;
 
     private HistoryServiceImp service;
@@ -64,10 +65,11 @@ public class TestHistoryService {
         mockLwNoteRepo = mock(LabwareNoteRepo.class);
         mockResultOpRepo = mock(ResultOpRepo.class);
         mockRadService = mock(ReagentActionDetailService.class);
+        mockStainTypeRepo = mock(StainTypeRepo.class);
 
         service = spy(new HistoryServiceImp(mockOpRepo, mockLwRepo, mockSampleRepo, mockTissueRepo, mockDonorRepo,
                 mockReleaseRepo, mockDestructionRepo, mockOpCommentRepo, mockSnapshotRepo, mockWorkRepo,
-                mockMeasurementRepo, mockLwNoteRepo, mockResultOpRepo, mockRadService));
+                mockMeasurementRepo, mockLwNoteRepo, mockResultOpRepo, mockStainTypeRepo, mockRadService));
     }
 
     @Test
@@ -299,7 +301,6 @@ public class TestHistoryService {
             OperationType opType = EntityFactory.makeOperationType("Catapult", null);
             OperationType stainOpType = EntityFactory.makeOperationType("Stain", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.STAIN);
             Operation stain = EntityFactory.makeOpForSlots(stainOpType, List.of(labware[0].getSlot(C1)), List.of(labware[3].getFirstSlot()), getUser());
-            stain.setStainType(new StainType(400, "Ribena"));
             ops = List.of(
                     EntityFactory.makeOpForSlots(opType, streamSlots(labware[0], A1, B1, B1).collect(toList()),
                             Stream.concat(streamSlots(labware[1], A1, B1), streamSlots(labware[2], A1)).collect(toList()), getUser()),
@@ -532,6 +533,14 @@ public class TestHistoryService {
         createOps();
         ops.get(0).setEquipment(new Equipment("Feeniks", "scanner"));
         int[] opIds = ops.stream().mapToInt(Operation::getId).toArray();
+
+        StainType st1 = new StainType(1, "Coffee");
+        StainType st2 = new StainType(2, "Blood");
+        Map<Integer, List<StainType>> opStainTypes = Map.of(
+                opIds[1], List.of(st1, st2)
+        );
+        doReturn(opStainTypes).when(mockStainTypeRepo).loadOperationStainTypes(any());
+
         Map<Integer, List<ReagentActionDetail>> radMap = Map.of(opIds[0],
                 List.of(new ReagentActionDetail("123", new Address(1,2), new Address(2,3), labware[1].getId()),
                         new ReagentActionDetail("456", new Address(3,4), new Address(5,6), labware[1].getId())
@@ -595,11 +604,12 @@ public class TestHistoryService {
                         List.of("123 : A2 -> B3", "456 : C4 -> E6", "Alpha: Beta", "Gamma: Delta", "Equipment: Feeniks", "A1: pass", "Alabama", "A1: Alaska", "Thickness: 4\u00a0μm")),
                 new HistoryEntry(opIds[1], opTypeName1, ops.get(1).getPerformed(), labware[0].getId(),
                         labware[3].getId(), samples[2].getId(), username, null,
-                        List.of("Stain type: Ribena", "Epsilon: Zeta", "Arizona"))
+                        List.of("Stain type: Coffee, Blood", "Epsilon: Zeta", "Arizona"))
         );
         assertThat(service.createEntriesForOps(ops, sampleIds, labwareList, opWork, null)).containsExactlyElementsOf(expectedEntries);
 
         verify(service).loadOpMeasurements(Set.of(opIds[0], opIds[1]));
+        verify(mockStainTypeRepo).loadOperationStainTypes(Set.of(opIds[0], opIds[1]));
         verify(mockRadService).loadReagentTransfers(Set.of(opIds[0], opIds[1]));
     }
 

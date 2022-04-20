@@ -145,7 +145,7 @@ public class OperationServiceTest {
 
     @Test
     public void testCreateOperationInPlace() {
-        OperationType opType = new OperationType(2, "Stain");
+        OperationType opType = new OperationType(2, "Mash");
         User user = EntityFactory.getUser();
         Sample sam1 = EntityFactory.getSample();
         Sample sam2 = new Sample(sam1.getId()+1, 2, sam1.getTissue(), sam1.getBioState());
@@ -154,9 +154,9 @@ public class OperationServiceTest {
         LabwareType lt = EntityFactory.makeLabwareType(3,1);
         Labware lw = EntityFactory.makeLabware(lt, sam1, sam2);
         lw.getFirstSlot().getSamples().add(sam2);
-        StainType st = new StainType(1, "Bananas");
+        Equipment eq = new Equipment(1, "Bananas", "Protein", true);
         Integer planId = 700;
-        Consumer<Operation> opMod = op -> op.setStainType(st);
+        Consumer<Operation> opMod = op -> op.setEquipment(eq);
         Operation op = opService.createOperationInPlace(opType, user, lw, planId, opMod);
         int slot1id = lw.getFirstSlot().getId();
         int slot2id = lw.getSlot(new Address(2,1)).getId();
@@ -166,7 +166,7 @@ public class OperationServiceTest {
         assertThat(savedActions).hasSize(3);
         assertEquals(op.getActions(), savedActions);
         assertEquals(op.getOperationType(), opType);
-        assertEquals(op.getStainType(), st);
+        assertEquals(op.getEquipment(), eq);
         assertEquals(op.getPlanOperationId(), planId);
         List<List<Integer>> slotSampleIds = new ArrayList<>(3);
         for (Action ac : op.getActions()) {

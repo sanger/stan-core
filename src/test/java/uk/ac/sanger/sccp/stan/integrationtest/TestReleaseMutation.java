@@ -154,8 +154,10 @@ public class TestReleaseMutation {
     private void recordStain(Labware lw, StainType st, String bondBarcode, User user) {
         OperationType opType = opTypeRepo.getByName("Stain");
         Operation op = new Operation(null, opType, null, null, user);
-        op.setStainType(st);
         op = opRepo.save(op);
+        if (st!=null) {
+            stainTypeRepo.saveOperationStainTypes(op.getId(), List.of(st));
+        }
         Slot slot = lw.getFirstSlot();
         Sample sample = slot.getSamples().get(0);
         actionRepo.save(new Action(null, op.getId(), slot, slot, sample, sample));

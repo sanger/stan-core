@@ -918,16 +918,18 @@ input ComplexStainLabware {
     bondRun: Int!
     """An optional work number to associate with this operation."""
     workNumber: String
+    """The plex for RNAscope if that is being recorded."""
+    plexRNAscope: Int
+    """The plex for IHC if that is being recorded."""
+    plexIHC: Int
+    """The experiment panel."""
+    panel: StainPanel!
 }
 
 """A request for a stain including bond barcodes and such."""
 input ComplexStainRequest {
-    """The name of the type of stain being recorded."""
-    stainType: String!
-    """The plex number."""
-    plex: Int!
-    """The stain panel."""
-    panel: StainPanel!
+    """The names of the types of stain being recorded."""
+    stainTypes: [String!]!
     """The details of the labware being stained."""
     labware: [ComplexStainLabware!]!
 }
