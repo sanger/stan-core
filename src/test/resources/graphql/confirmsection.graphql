@@ -2,7 +2,7 @@ mutation {
     confirmSection(request: {
         labware: [
             {
-                barcode: "$BARCODE",
+                barcode: "$BARCODE0",
                 confirmSections: [
                     {
                         destinationAddress: "A1"
@@ -31,11 +31,30 @@ mutation {
                         commentId: 1
                     }
                 ]
+            },
+            {
+                barcode: "$BARCODE1"
+                confirmSections: [
+                    {
+                        destinationAddress: "A1"
+                        sampleId: 55555
+                    }
+                ]
+            },
+            {
+                barcode: "$BARCODE2"
+                confirmSections: [
+                    {
+                        destinationAddress: "A1"
+                        sampleId: 55556
+                    }
+                ]
             }
         ]
         workNumber: "SGP4000"
     }) {
         labware {
+            id
             barcode
             slots {
                 address
@@ -43,6 +62,7 @@ mutation {
                     id
                     tissue { externalName }
                     section
+                    bioState { name }
                 }
             }
         }
@@ -62,6 +82,7 @@ mutation {
                     id
                     tissue { externalName }
                     section
+                    bioState { name }
                 }
             }
         }

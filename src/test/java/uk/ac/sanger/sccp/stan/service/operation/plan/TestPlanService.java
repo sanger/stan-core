@@ -39,6 +39,7 @@ public class TestPlanService {
     private OperationTypeRepo mockOpTypeRepo;
     private LabwareRepo mockLwRepo;
     private LabwareTypeRepo mockLtRepo;
+    private BioStateRepo mockBsRepo;
 
     private User user;
 
@@ -52,13 +53,14 @@ public class TestPlanService {
         mockOpTypeRepo = mock(OperationTypeRepo.class);
         mockLwRepo = mock(LabwareRepo.class);
         mockLtRepo = mock(LabwareTypeRepo.class);
+        mockBsRepo = mock(BioStateRepo.class);
 
         user = EntityFactory.getUser();
 
         when(mockPlanValidationFactory.createPlanValidation(any())).thenReturn(mockPlanValidation);
 
         planService = spy(new PlanServiceImp(mockPlanValidationFactory, mockLwService, mockPlanRepo,
-                mockPlanActionRepo, mockOpTypeRepo, mockLwRepo, mockLtRepo));
+                mockPlanActionRepo, mockOpTypeRepo, mockLwRepo, mockLtRepo, mockBsRepo));
     }
 
     @Test
@@ -98,43 +100,112 @@ public class TestPlanService {
         verify(planService).executePlanRequest(user, request);
     }
 
-    @Test
-    public void testExecutePlanRequest() {
-        PlanOperation plan1 = new PlanOperation(), plan2 = new PlanOperation();
-        plan1.setId(10); plan2.setId(11);
-        doReturn(plan1, plan2).when(planService).createPlan(any(), any());
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testExecutePlanRequest_noFetalWaste(boolean useOpBs) {
+        PlanOperation[] plans = IntStream.range(10, 12)
+                .mapToObj(id -> {
+                    PlanOperation plan = new PlanOperation();
+                    plan.setId(id);
+                    return plan;
+                }).toArray(PlanOperation[]::new);
+        doReturn(plans[0], plans[1]).when(planService).createPlan(any(), any());
 
         UCMap<Labware> sources = UCMap.from(Labware::getBarcode,
                 new Labware(1, "STAN-1A", EntityFactory.getTubeType(), null));
         doReturn(sources).when(planService).lookUpSources(any());
+
         final Labware tube1 = EntityFactory.makeEmptyLabware(EntityFactory.getTubeType());
         final Labware tube2 = EntityFactory.makeEmptyLabware(EntityFactory.getTubeType());
         List<Labware> destinations = List.of(tube1, tube2);
         doReturn(destinations).when(planService).createDestinations(any());
-        List<PlanAction> actions1 = List.of(new PlanAction(50, plan1.getId(),
+        List<PlanAction> actions1 = List.of(new PlanAction(50, plans[0].getId(),
                 tube1.getFirstSlot(), tube2.getFirstSlot(), EntityFactory.getSample(), null, null, null));
-        List<PlanAction> actions2 = List.of(new PlanAction(51, plan2.getId(),
+        List<PlanAction> actions2 = List.of(new PlanAction(51, plans[1].getId(),
                 tube1.getFirstSlot(), tube2.getFirstSlot(), EntityFactory.getSample(), null, null, null));
+
         doReturn(actions1, actions2).when(planService).createActions(any(), anyInt(), any(), any(), any());
-        OperationType opType = EntityFactory.makeOperationType("Section", null, OperationTypeFlag.SOURCE_IS_BLOCK);
+        BioState opBs = (useOpBs ? new BioState(2, "Alabama") : null);
+        OperationType opType = EntityFactory.makeOperationType("Section", opBs, OperationTypeFlag.SOURCE_IS_BLOCK);
         when(mockOpTypeRepo.getByName("Section")).thenReturn(opType);
 
-        final PlanRequest request = new PlanRequest("Section", List.of(
-                new PlanRequestLabware(), new PlanRequestLabware()
-        ));
+        final List<PlanRequestLabware> prlws = destinations.stream()
+                .map(unused -> new PlanRequestLabware())
+                .collect(toList());
+        final PlanRequest request = new PlanRequest("Section", prlws);
         PlanResult result = planService.executePlanRequest(user, request);
 
         assertNotNull(result);
-        assertThat(result.getOperations()).containsExactly(plan1, plan2);
+        assertThat(result.getOperations()).containsExactly(plans);
         assertThat(result.getLabware()).hasSameElementsAs(destinations);
-        assertEquals(plan1.getPlanActions(), actions1);
+        assertEquals(plans[0].getPlanActions(), actions1);
+        assertEquals(plans[1].getPlanActions(), actions2);
 
         verify(planService, times(request.getLabware().size())).createPlan(user, opType);
         verify(planService).lookUpSources(request);
         verify(planService).createDestinations(request);
-        verify(planService, times(request.getLabware().size())).createActions(any(), anyInt(), same(sources), any(), isNull());
-        verify(planService).createActions(request.getLabware().get(0), plan1.getId(), sources, destinations.get(0), null);
-        verify(planService).createActions(request.getLabware().get(1), plan2.getId(), sources, destinations.get(1), null);
+        verify(planService, times(request.getLabware().size())).createActions(any(), anyInt(), same(sources), any(), any());
+        verify(planService).createActions(request.getLabware().get(0), plans[0].getId(), sources, destinations.get(0), opBs);
+        verify(planService).createActions(request.getLabware().get(1), plans[1].getId(), sources, destinations.get(1), opBs);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testExecutePlanRequest_fetalWaste(boolean useOpBs) {
+        PlanOperation[] plans = IntStream.range(10, 13)
+                .mapToObj(id -> {
+                    PlanOperation plan = new PlanOperation();
+                    plan.setId(id);
+                    return plan;
+                }).toArray(PlanOperation[]::new);
+        doReturn(plans[0], plans[1], plans[2]).when(planService).createPlan(any(), any());
+
+        BioState fwBs = new BioState(10, "Fetal waste");
+        when(mockBsRepo.getByName("Fetal waste")).thenReturn(fwBs);
+
+        UCMap<Labware> sources = UCMap.from(Labware::getBarcode,
+                new Labware(1, "STAN-1A", EntityFactory.getTubeType(), null));
+        doReturn(sources).when(planService).lookUpSources(any());
+
+        final Labware tube1 = EntityFactory.makeEmptyLabware(EntityFactory.getTubeType());
+        final Labware tube2 = EntityFactory.makeEmptyLabware(EntityFactory.getTubeType());
+        LabwareType fwLt = EntityFactory.makeLabwareType(1, 1);
+        fwLt.setName(LabwareType.FETAL_WASTE_NAME);
+        final Labware fwLw = EntityFactory.makeEmptyLabware(fwLt);
+        List<Labware> destinations = List.of(tube1, tube2, fwLw);
+        doReturn(destinations).when(planService).createDestinations(any());
+        List<PlanAction> actions1 = List.of(new PlanAction(50, plans[0].getId(),
+                tube1.getFirstSlot(), tube2.getFirstSlot(), EntityFactory.getSample(), null, null, null));
+        List<PlanAction> actions2 = List.of(new PlanAction(51, plans[1].getId(),
+                tube1.getFirstSlot(), tube2.getFirstSlot(), EntityFactory.getSample(), null, null, null));
+        List<PlanAction> actions3 =  List.of(new PlanAction(52, plans[2].getId(),
+                    tube1.getFirstSlot(), tube2.getFirstSlot(), EntityFactory.getSample(), null, null, null));
+
+        doReturn(actions1, actions2, actions3).when(planService).createActions(any(), anyInt(), any(), any(), any());
+        BioState opBs = (useOpBs ? new BioState(2, "Alabama") : null);
+        OperationType opType = EntityFactory.makeOperationType("Section", opBs, OperationTypeFlag.SOURCE_IS_BLOCK);
+        when(mockOpTypeRepo.getByName("Section")).thenReturn(opType);
+
+        final List<PlanRequestLabware> prlws = destinations.stream()
+                .map(unused -> new PlanRequestLabware())
+                .collect(toList());
+        final PlanRequest request = new PlanRequest("Section", prlws);
+        PlanResult result = planService.executePlanRequest(user, request);
+
+        assertNotNull(result);
+        assertThat(result.getOperations()).containsExactly(plans);
+        assertThat(result.getLabware()).hasSameElementsAs(destinations);
+        assertEquals(plans[0].getPlanActions(), actions1);
+        assertEquals(plans[1].getPlanActions(), actions2);
+        assertEquals(plans[2].getPlanActions(), actions3);
+
+        verify(planService, times(request.getLabware().size())).createPlan(user, opType);
+        verify(planService).lookUpSources(request);
+        verify(planService).createDestinations(request);
+        verify(planService, times(request.getLabware().size())).createActions(any(), anyInt(), same(sources), any(), any());
+        verify(planService).createActions(request.getLabware().get(0), plans[0].getId(), sources, destinations.get(0), opBs);
+        verify(planService).createActions(request.getLabware().get(1), plans[1].getId(), sources, destinations.get(1), opBs);
+        verify(planService).createActions(request.getLabware().get(2), plans[2].getId(), sources, destinations.get(2), fwBs);
     }
 
     @Test
@@ -212,13 +283,13 @@ public class TestPlanService {
         Sample nonSectionSample = EntityFactory.getSample();
         Sample sectionSample = new Sample(nonSectionSample.getId()+1, null, nonSectionSample.getTissue(), EntityFactory.getBioState());
         List<Sample> samples = List.of(sectionSample, nonSectionSample);
-        final Address FIRST = new Address(1,1);
-        final Address SECOND = new Address(1, 2);
+        final Address A1 = new Address(1,1);
+        final Address A2 = new Address(1, 2);
         List<Labware> sources = samples.stream()
                 .map(sample -> {
                     Labware lw = EntityFactory.makeEmptyLabware(lt);
                     lw.getFirstSlot().getSamples().add(sample);
-                    lw.getSlot(SECOND).getSamples().add(nonSectionSample);
+                    lw.getSlot(A2).getSamples().add(nonSectionSample);
                     return lw;
                 })
                 .collect(toList());
@@ -228,15 +299,15 @@ public class TestPlanService {
         int planId = 99;
         PlanRequestLabware prl =  new PlanRequestLabware(lt.getName(), destination.getBarcode(),
                 List.of(
-                        new PlanRequestAction(FIRST, samples.get(0).getId(),
-                                new PlanRequestSource(sourceBarcodes.get(0), FIRST), null),
-                        new PlanRequestAction(SECOND, samples.get(0).getId(),
+                        new PlanRequestAction(A1, samples.get(0).getId(),
+                                new PlanRequestSource(sourceBarcodes.get(0), A1), null),
+                        new PlanRequestAction(A2, samples.get(0).getId(),
                                 new PlanRequestSource(sourceBarcodes.get(0), null), 1)
                 ));
 
         List<PlanAction> expectedActions = List.of(
                 new PlanAction(21, planId, sources.get(0).getFirstSlot(), destination.getFirstSlot(), samples.get(0), null, null, bioState),
-                new PlanAction(22, planId, sources.get(0).getFirstSlot(), destination.getSlot(SECOND), samples.get(0), null, 1, bioState)
+                new PlanAction(22, planId, sources.get(0).getFirstSlot(), destination.getSlot(A2), samples.get(0), null, 1, bioState)
         );
 
         final int[] planActionIdCounter = {20};

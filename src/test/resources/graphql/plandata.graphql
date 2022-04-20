@@ -2,8 +2,15 @@ query {
     planData(barcode: "$BARCODE") {
         plan {
             operationType { name }
+            planActions {
+                destination {
+                    labwareId
+                    address
+                }
+            }
         }
         destination {
+            labwareType { name }
             barcode
         }
         sources {

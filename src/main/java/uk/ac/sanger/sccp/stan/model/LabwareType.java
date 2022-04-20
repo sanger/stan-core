@@ -8,6 +8,8 @@ import java.util.Objects;
  */
 @Entity
 public class LabwareType implements HasIntId, HasName {
+    public static final String FETAL_WASTE_NAME = "Fetal waste";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
@@ -79,6 +81,10 @@ public class LabwareType implements HasIntId, HasName {
 
     public void setPrebarcoded(boolean prebarcoded) {
         this.prebarcoded = prebarcoded;
+    }
+
+    public boolean isFetalWaste() {
+        return FETAL_WASTE_NAME.equalsIgnoreCase(this.name);
     }
 
     /**
