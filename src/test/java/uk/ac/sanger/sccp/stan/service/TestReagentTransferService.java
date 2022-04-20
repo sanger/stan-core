@@ -12,6 +12,7 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.request.ReagentTransferRequest;
 import uk.ac.sanger.sccp.stan.request.ReagentTransferRequest.ReagentTransfer;
+import uk.ac.sanger.sccp.stan.service.operation.BioStateReplacer;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
@@ -33,13 +34,12 @@ public class TestReagentTransferService {
     private OperationTypeRepo mockOpTypeRepo;
     private ReagentActionRepo mockReagentActionRepo;
     private LabwareRepo mockLwRepo;
-    private SampleRepo mockSampleRepo;
-    private SlotRepo mockSlotRepo;
     private Validator<String> mockReagentPlateBarcodeValidator;
     private LabwareValidatorFactory mockLwValFactory;
     private OperationService mockOpService;
     private ReagentPlateService mockReagentPlateService;
     private WorkService mockWorkService;
+    private BioStateReplacer mockBioStateReplacer;
 
     private ReagentTransferServiceImp service;
 
@@ -49,18 +49,16 @@ public class TestReagentTransferService {
         mockOpTypeRepo = mock(OperationTypeRepo.class);
         mockReagentActionRepo = mock(ReagentActionRepo.class);
         mockLwRepo = mock(LabwareRepo.class);
-        mockSampleRepo = mock(SampleRepo.class);
-        mockSlotRepo = mock(SlotRepo.class);
         mockReagentPlateBarcodeValidator = mock(Validator.class);
         mockLwValFactory = mock(LabwareValidatorFactory.class);
         mockOpService = mock(OperationService.class);
         mockReagentPlateService = mock(ReagentPlateService.class);
         mockWorkService = mock(WorkService.class);
+        mockBioStateReplacer = mock(BioStateReplacer.class);
 
-        service = spy(new ReagentTransferServiceImp(mockOpTypeRepo, mockReagentActionRepo, mockLwRepo, mockSampleRepo,
-                mockSlotRepo,
+        service = spy(new ReagentTransferServiceImp(mockOpTypeRepo, mockReagentActionRepo, mockLwRepo,
                 mockReagentPlateBarcodeValidator, mockLwValFactory, mockOpService, mockReagentPlateService,
-                mockWorkService));
+                mockWorkService, mockBioStateReplacer));
     }
 
     @ParameterizedTest
@@ -293,7 +291,7 @@ public class TestReagentTransferService {
     @Test
     public void testRecord() {
         User user = EntityFactory.getUser();
-        OperationType opType = EntityFactory.makeOperationType("Fry", null);
+        OperationType opType = EntityFactory.makeOperationType("Fry", EntityFactory.getBioState());
         Work work = new Work(1, "SGP1", null, null, null, Work.Status.active);
         List<ReagentTransfer> transfers = List.of(new ReagentTransfer("123", new Address(1,2), new Address(3,4)));
         UCMap<ReagentPlate> rpmap = UCMap.from(ReagentPlate::getBarcode, new ReagentPlate("123"));
@@ -302,14 +300,14 @@ public class TestReagentTransferService {
         List<Action> actions = List.of(new Action(null, null, lw.getFirstSlot(), lw.getFirstSlot(), sam, sam));
         Operation op = EntityFactory.makeOpForLabware(opType, List.of(lw), List.of(lw));
         doNothing().when(service).createReagentPlates(any(), any());
-        doReturn(actions).when(service).updateLabware(any(), any());
+        doReturn(actions).when(mockBioStateReplacer).updateBioStateInPlace(any(), any());
         doReturn(op).when(service).createOperation(any(), any(), any(), any(), any());
         doNothing().when(service).recordTransfers(any(), any(), any(), any());
 
         assertEquals(new OperationResult(List.of(op), List.of(lw)), service.record(user, opType, work, transfers, rpmap, lw));
 
         verify(service).createReagentPlates(transfers, rpmap);
-        verify(service).updateLabware(opType, lw);
+        verify(mockBioStateReplacer).updateBioStateInPlace(opType.getNewBioState(), lw);
         verify(service).createOperation(user, opType, work, lw, actions);
         verify(service).recordTransfers(transfers, rpmap, lw, op.getId());
     }
@@ -377,83 +375,6 @@ public class TestReagentTransferService {
         } else {
             verifyNoInteractions(mockWorkService);
         }
-    }
-
-    @Test
-    public void testUpdateLabware() {
-        BioState bs0 = new BioState(1, "Regular");
-        BioState bs1 = new BioState(2, "Decaf");
-        OperationType opType = EntityFactory.makeOperationType("Decaffeinate", bs1, OperationTypeFlag.IN_PLACE);
-        Tissue tissue = EntityFactory.getTissue();
-        Sample s1 = new Sample(1, 1, tissue, bs0);
-        Sample s2 = new Sample(2, 2, tissue, bs0);
-        Sample s3 = new Sample(3, 3, tissue, bs1);
-        Sample s4 = new Sample(4, 4, tissue, bs1);
-
-        Sample s1b = new Sample(5, 1, tissue, bs1);
-        Sample s2b = new Sample(6, 2, tissue, bs1);
-
-        LabwareType lt = EntityFactory.makeLabwareType(2,2);
-        Labware lw = EntityFactory.makeEmptyLabware(lt);
-        final Slot slotA1 = lw.getSlot(new Address(1,1));
-        final Slot slotA2 = lw.getSlot(new Address(1,2));
-        final Slot slotB1 = lw.getSlot(new Address(2,1));
-        final Slot slotB2 = lw.getSlot(new Address(2,2));
-        slotA1.setSamples(List.of(s1, s2));
-        slotA2.setSamples(List.of(s2));
-        slotB1.setSamples(List.of(s3, s4));
-        slotB2.setSamples(List.of(s3));
-
-        doReturn(s1b).when(service).replaceSample(same(bs1), same(s1), any());
-        doReturn(s2b).when(service).replaceSample(same(bs1), same(s2), any());
-
-        List<Action> expectedActions = List.of(
-                new Action(null, null, slotA1, slotA1, s1b, s1),
-                new Action(null, null, slotA1, slotA1, s2b, s2),
-                new Action(null, null, slotA2, slotA2, s2b, s2),
-                new Action(null, null, slotB1, slotB1, s3, s3),
-                new Action(null, null, slotB1, slotB1, s4, s4),
-                new Action(null, null, slotB2, slotB2, s3, s3)
-        );
-        assertEquals(expectedActions, service.updateLabware(opType, lw));
-
-        assertThat(slotA1.getSamples()).containsExactly(s1b, s2b);
-        assertThat(slotA2.getSamples()).containsExactly(s2b);
-        assertThat(slotB1.getSamples()).containsExactly(s3, s4);
-        assertThat(slotB2.getSamples()).containsExactly(s3);
-        verify(mockSlotRepo, times(2)).save(any());
-        verify(mockSlotRepo).save(slotA1);
-        verify(mockSlotRepo).save(slotA2);
-    }
-
-    @Test
-    public void testUpdateLabware_null() {
-        OperationType opType = EntityFactory.makeOperationType("Fry", null, OperationTypeFlag.IN_PLACE);
-        Labware lw = EntityFactory.getTube();
-        assertNull(service.updateLabware(opType, lw));
-        verify(service, never()).replaceSample(any(), any(), any());
-    }
-
-    @Test
-    public void testReplaceSample() {
-        BioState bs0 = new BioState(1, "Regular");
-        BioState bs1 = new BioState(2, "Decaf");
-        Tissue tissue = EntityFactory.getTissue();
-        Sample sam1 = new Sample(1, 1, tissue, bs1);
-        final Map<Integer, Sample> sampleMap = new HashMap<>();
-        assertSame(sam1, service.replaceSample(bs1, sam1, sampleMap));
-        assertThat(sampleMap).isEmpty();
-        verifyNoInteractions(mockSampleRepo);
-
-        Sample sam2 = new Sample(2, 2, tissue, bs0);
-        Sample sam3 = new Sample(3, 2, tissue, bs1);
-        when(mockSampleRepo.save(any())).thenReturn(sam3);
-        assertSame(sam3, service.replaceSample(bs1, sam2, sampleMap));
-        assertThat(sampleMap).hasSize(1);
-        assertSame(sam3, sampleMap.get(sam2.getId()));
-        assertSame(sam3, service.replaceSample(bs1, sam2, sampleMap));
-        verify(mockSampleRepo).save(any());
-        verify(mockSampleRepo).save(new Sample(null, 2, tissue, bs1));
     }
 
     @Test
