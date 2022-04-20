@@ -30,7 +30,7 @@ public enum ReleaseColumn implements TsvColumn<ReleaseEntry> {
     Tissue_coverage(ReleaseEntry::getCoverage),
     Cq_value(ReleaseEntry::getCq),
     cDNA_analysis_concentration(ReleaseEntry::getCdnaAnalysisConcentration),
-    Reagent_source(ReleaseEntry::getReagentSource),
+    Dual_index_plate_name(ReleaseEntry::getReagentSource),
     ;
 
     private final Function<ReleaseEntry, ?> function;

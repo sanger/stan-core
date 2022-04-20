@@ -86,7 +86,7 @@ public class ReleaseFileService {
         Ancestry ancestry = findAncestry(entries);
         loadSources(entries, ancestry, mode);
         loadMeasurements(entries, ancestry);
-        loadLastStain(entries);
+        loadStains(entries, ancestry);
         loadReagentSources(entries);
         return new ReleaseFileContent(mode, entries);
     }
@@ -323,6 +323,100 @@ public class ReleaseFileService {
             }
         }
         return null;
+    }
+
+    /**
+     * Converts the given operations into a map from (destination) labware id to operation,
+     * using the latest operation for each labware (see {@link #opSupplants}).
+     * @param ops the operations
+     * @return a map from labware id to operation
+     */
+    public Map<Integer, Operation> labwareIdToOp(Collection<Operation> ops) {
+        Map<Integer, Operation> labwareOps = new HashMap<>(); // Map of labware id to the latest stain op on that labware
+        for (Operation op : ops) {
+            Set<Integer> labwareIds = op.getActions().stream().map(a -> a.getDestination().getLabwareId()).collect(toSet());
+            for (Integer labwareId : labwareIds) {
+                if (opSupplants(op, labwareOps.get(labwareId))) {
+                    labwareOps.put(labwareId, op);
+                }
+            }
+        }
+        return labwareOps;
+    }
+
+    /**
+     * Selects the appropriate operation for each release entry, looking through the ancestry for each entry
+     * and using the given map of labware id to operations.
+     * @param entries the entries
+     * @param labwareIdOps a map of labware id to operation on that labware id
+     * @param ancestry the ancestry of slots/samples
+     * @return a map giving the selected operation for each release entry
+     */
+    public Map<ReleaseEntry, Operation> findEntryOps(Collection<ReleaseEntry> entries,
+                                                     Map<Integer, Operation> labwareIdOps,
+                                                     Ancestry ancestry) {
+        Map<ReleaseEntry, Operation> entryOps = new HashMap<>();
+        for (ReleaseEntry entry : entries) {
+            Operation op = selectOp(entry, labwareIdOps, ancestry);
+            if (op!=null) {
+                entryOps.put(entry, op);
+            }
+        }
+        return entryOps;
+    }
+
+    /**
+     * Finds the appropriate operation in the entry's ancestry
+     * @param entry the entry
+     * @param labwareOps a map of labware id to the relevant operation
+     * @param ancestry the ancestry of the slots and samples
+     * @return the appropriate operation for the given entry
+     */
+    public Operation selectOp(ReleaseEntry entry, Map<Integer, Operation> labwareOps, Ancestry ancestry) {
+        for (SlotSample ss : ancestry.ancestors(new SlotSample(entry.getSlot(), entry.getSample()))) {
+            Operation op = labwareOps.get(ss.getSlot().getLabwareId());
+            if (op!=null) {
+                return op;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Loads info about stains on the labware or its antecedents.
+     * @param entries the release entries
+     * @param ancestry the ancestry map
+     */
+    public void loadStains(Collection<ReleaseEntry> entries, Ancestry ancestry) {
+        Set<Integer> slotIds = ancestry.keySet().stream().map(ss -> ss.getSlot().getId()).collect(toSet());
+        OperationType opType = opTypeRepo.getByName("Stain");
+        List<Operation> stainOps = opRepo.findAllByOperationTypeAndDestinationSlotIdIn(opType, slotIds);
+        if (stainOps.isEmpty()) {
+            return;
+        }
+        Map<Integer, Operation> labwareStainOp = labwareIdToOp(stainOps);
+        Map<ReleaseEntry, Operation> entryStainOp = findEntryOps(entries, labwareStainOp, ancestry);
+        if (entryStainOp.isEmpty()) {
+            return;
+        }
+        Set<Integer> opIds = entryStainOp.values().stream().map(Operation::getId).collect(toSet());
+
+        // TODO : when multistain is merged in, we have to get stain types from StainTypeRepo
+        Map<Integer, String> stainOpTypes = entryStainOp.values().stream()
+                .distinct()
+                .collect(toMap(Operation::getId, op -> op.getStainType().getName()));
+
+        Map<Integer, String> opBondBarcodes = lwNoteRepo.findAllByOperationIdIn(opIds).stream()
+                .filter(note -> ComplexStainServiceImp.LW_NOTE_BOND_BARCODE.equalsIgnoreCase(note.getName()))
+                .collect(toMap(LabwareNote::getOperationId, LabwareNote::getValue));
+
+        for (ReleaseEntry entry : entries) {
+            Operation op = entryStainOp.get(entry);
+            if (op!=null) {
+                entry.setStainType(stainOpTypes.get(op.getId()));
+                entry.setBondBarcode(opBondBarcodes.get(op.getId()));
+            }
+        }
     }
 
     /**

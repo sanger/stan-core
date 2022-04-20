@@ -25,6 +25,24 @@ mutation {
                     sampleId: 55556
                 }
             ]
+        }, {
+            labwareType: "Fetal waste"
+            actions:[
+                {
+                    source:{ barcode:"STAN-B70C" }
+                    address: "A1"
+                    sampleId: 55555
+                }
+            ]
+        }, {
+            labwareType: "Fetal waste"
+            actions:[
+                {
+                    source:{ barcode:"STAN-B70D" }
+                    address: "A1"
+                    sampleId: 55556
+                }
+            ]
         }]
     }) {
         labware {

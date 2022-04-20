@@ -14,6 +14,7 @@ import javax.persistence.EntityManager;
 import javax.transaction.Transactional;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.IntStream;
 
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -41,31 +42,48 @@ public class TestPlanAndRecordSectionMutations {
     @Transactional
     public void testPlanAndRecordSection() throws Exception {
         tester.setUser(entityCreator.createUser("dr6"));
-        Sample sample1 = entityCreator.createSample(entityCreator.createTissue(entityCreator.createDonor("DONOR1"), "TISSUE1"), null);
-        Sample sample2 = entityCreator.createSample(entityCreator.createTissue(entityCreator.createDonor("DONOR2"), "TISSUE2"), null);
-        Labware sourceBlock1 = entityCreator.createBlock("STAN-B70C", sample1);
-        Labware sourceBlock2 = entityCreator.createBlock("STAN-B70D", sample2);
+        entityCreator.createLabwareType(LabwareType.FETAL_WASTE_NAME, 1, 1);
+        entityCreator.createBioState("Fetal waste");
+
+        Sample[] blockSamples = {
+                entityCreator.createSample(entityCreator.createTissue(entityCreator.createDonor("DONOR1"), "TISSUE1"), null),
+                entityCreator.createSample(entityCreator.createTissue(entityCreator.createDonor("DONOR2"), "TISSUE2"), null),
+        };
+        Labware[] sourceBlocks = {
+                entityCreator.createBlock("STAN-B70C", blockSamples[0]),
+                entityCreator.createBlock("STAN-B70D", blockSamples[1]),
+        };
 
         // Recording the plan
 
         String mutation = tester.readGraphQL("plan.graphql");
-        mutation = mutation.replace("55555", String.valueOf(sample1.getId()));
-        mutation = mutation.replace("55556", String.valueOf(sample2.getId()));
+        mutation = mutation.replace("55555", String.valueOf(blockSamples[0].getId()));
+        mutation = mutation.replace("55556", String.valueOf(blockSamples[1].getId()));
         Map<String, ?> result = tester.post(mutation);
         assertNull(result.get("errors"));
         Object resultPlan = chainGet(result, "data", "plan");
         List<?> planResultLabware = chainGet(resultPlan, "labware");
-        assertEquals(1, planResultLabware.size());
-        String barcode = chainGet(planResultLabware, 0, "barcode");
-        assertNotNull(barcode);
+        assertEquals(3, planResultLabware.size());
+        String[] barcodes = IntStream.range(0,3)
+                .<String>mapToObj(i -> chainGet(planResultLabware, i, "barcode"))
+                .toArray(String[]::new);
+        for (String barcode : barcodes) {
+            assertNotNull(barcode);
+        }
         assertEquals("Slide", chainGet(planResultLabware, 0, "labwareType", "name"));
+        for (int i = 1; i < 3; ++i) {
+            assertEquals(LabwareType.FETAL_WASTE_NAME, chainGet(planResultLabware, i, "labwareType", "name"));
+        }
         List<?> resultOps = chainGet(resultPlan, "operations");
-        assertEquals(resultOps.size(), 1);
-        assertEquals("Section", chainGet(resultOps, 0, "operationType", "name"));
+        assertEquals(3, resultOps.size());
+
+        for (int i = 0; i < 3; ++i) {
+            assertEquals("Section", chainGet(resultOps, i, "operationType", "name"));
+        }
         List<Map<String, ?>> resultActions = chainGet(resultOps, 0, "planActions");
 
         String[] expectedPlanDestAddresses = { "A1", "A1", "B1", "B2" };
-        int[] expectedPlanSampleId = {sample1.getId(), sample2.getId(), sample1.getId(), sample2.getId()};
+        int[] expectedPlanSampleId = {blockSamples[0].getId(), blockSamples[1].getId(), blockSamples[0].getId(), blockSamples[1].getId()};
         assertEquals(expectedPlanDestAddresses.length, resultActions.size());
 
         for (int i = 0; i < expectedPlanDestAddresses.length; ++i) {
@@ -76,32 +94,57 @@ public class TestPlanAndRecordSectionMutations {
             assertNotNull(chainGet(resultAction, "destination", "labwareId"));
         }
 
-        // Retrieving plan data
+        testRetrievePlanData(barcodes);
 
-        String planQuery = tester.readGraphQL("plandata.graphql").replace("$BARCODE", barcode);
-        result = tester.post(planQuery);
+        testConfirm(blockSamples, sourceBlocks, barcodes);
+    }
+
+    private void testRetrievePlanData(String[] barcodes) throws Exception {
+        String planQuery = tester.readGraphQL("plandata.graphql");
+        Map<String, ?> result = tester.post(planQuery.replace("$BARCODE", barcodes[0]));
 
         Map<String, ?> planData = chainGet(result, "data", "planData");
+        String[] sources = {"STAN-B70C", "STAN-B70D"};
         assertEquals("Section", chainGet(planData, "plan", "operationType", "name"));
-        assertEquals(barcode, chainGet(planData, "destination", "barcode"));
+        assertEquals(barcodes[0], chainGet(planData, "destination", "barcode"));
         assertThat(IntegrationTestUtils.<Map<String, String>>chainGetList(planData, "sources").stream()
                 .map(m -> m.get("barcode"))
-                .collect(toList())).containsExactlyInAnyOrder("STAN-B70C", "STAN-B70D");
+                .collect(toList())).containsExactlyInAnyOrder(sources);
+        List<Map<String,?>> planActionsData = chainGet(planData, "plan", "planActions");
+        assertThat(planActionsData).hasSize(4);
 
-        // Confirming
+        for (int i = 1; i < barcodes.length; ++i) {
+            String barcode = barcodes[i]; // fetal waste barcode
+            result = tester.post(planQuery.replace("$BARCODE", barcode));
+            planData = chainGet(result, "data", "planData");
+            assertEquals("Section", chainGet(planData, "plan", "operationType", "name"));
+            assertEquals(barcode, chainGet(planData, "destination", "barcode"));
+            assertEquals("Fetal waste", chainGet(planData, "destination", "labwareType", "name"));
+            assertThat(IntegrationTestUtils.<Map<String, String>>chainGetList(planData, "sources").stream()
+                    .map(m -> m.get("barcode"))
+                    .collect(toList())).containsExactlyInAnyOrder(sources[i-1]);
+            planActionsData = chainGet(planData, "plan", "planActions");
+            assertThat(planActionsData).hasSize(1);
+        }
+    }
+
+    private void testConfirm(Sample[] blockSamples, Labware[] sourceBlocks, String[] barcodes) throws Exception {
+        String barcode = barcodes[0];
         Work work = entityCreator.createWork(null, null, null);
 
-        String recordMutation = tester.readGraphQL("confirmsection.graphql");
-        recordMutation = recordMutation.replace("$BARCODE", barcode)
-                .replace("55555", String.valueOf(sample1.getId()))
-                .replace("55556", String.valueOf(sample2.getId()))
-                .replace("SGP4000", work.getWorkNumber());
-        result = tester.post(recordMutation);
+        StringBuilder sb = new StringBuilder(tester.readGraphQL("confirmsection.graphql"));
+        for (int i=0; i < 3; ++i) {
+            sbReplace(sb, "$BARCODE"+i, barcodes[i]);
+        }
+        sbReplace(sb, "55555", String.valueOf(blockSamples[0].getId()));
+        sbReplace(sb, "55556", String.valueOf(blockSamples[1].getId()));
+        sbReplace(sb, "SGP4000", work.getWorkNumber());
+        Map<String, ?> result = tester.post(sb.toString());
         assertNull(result.get("errors"));
 
         Object resultConfirm = chainGet(result, "data", "confirmSection");
         List<?> resultLabware = chainGet(resultConfirm, "labware");
-        assertEquals(1, resultLabware.size());
+        assertEquals(3, resultLabware.size());
         assertEquals(barcode, chainGet(resultLabware, 0, "barcode"));
         List<?> slots = chainGet(resultLabware, 0, "slots");
         assertEquals(6, slots.size()); // Slide has 6 slots
@@ -119,6 +162,7 @@ public class TestPlanAndRecordSectionMutations {
             Map<String, ?> sam = a1Samples.get(i);
             assertEquals(expectedTissueNames[i], chainGet(sam, "tissue", "externalName"));
             assertEquals(expectedSecNum[i], (int) sam.get("section"));
+            assertEquals("Tissue", chainGet(sam, "bioState", "name"));
         }
 
         List<Map<String, ?>> b2Samples = chainGetList(slots.stream()
@@ -131,13 +175,13 @@ public class TestPlanAndRecordSectionMutations {
         assertEquals("TISSUE2", chainGet(sam, "tissue", "externalName"));
         assertEquals(17, (int) sam.get("section"));
 
-        resultOps = chainGet(resultConfirm, "operations");
-        assertEquals(resultOps.size(), 1);
-        Object resultOp = resultOps.get(0);
+        List<Map<String, ?>> resultOps = chainGet(resultConfirm, "operations");
+        assertEquals(3, resultOps.size());
+        Map<String, ?> resultOp = resultOps.get(0);
         assertNotNull(chainGet(resultOp, "performed"));
         assertEquals("Section", chainGet(resultOp, "operationType", "name"));
         List<Map<String,?>> actions = chainGet(resultOp, "actions");
-        int[] expectedSourceLabwareIds = {sourceBlock1.getId(), sourceBlock1.getId(), sourceBlock2.getId(), sourceBlock2.getId()};
+        int[] expectedSourceLabwareIds = {sourceBlocks[0].getId(), sourceBlocks[0].getId(), sourceBlocks[1].getId(), sourceBlocks[1].getId()};
         String[] expectedDestAddress = { "A1", "A1", "A1", "B2" };
         String[] expectedActionTissues = { "TISSUE1", "TISSUE1", "TISSUE2", "TISSUE2" };
         int[] expectedActionSecNum = { 14,15,15,17 };
@@ -157,14 +201,57 @@ public class TestPlanAndRecordSectionMutations {
             assertEquals(expectedActionTissues[i], chainGet(action, "sample", "tissue", "externalName"));
             assertEquals(expectedActionSecNum[i], (int) chainGet(action, "sample", "section"));
         }
+
+        // Check the fetal waste tubes:
+        for (int i = 1; i < 3; ++i) {
+            assertEquals(barcodes[i], chainGet(resultLabware, i, "barcode"));
+            Integer labwareId = chainGet(resultLabware, i, "id");
+            assertNotNull(labwareId);
+            List<Map<String, ?>> slotsData = chainGet(resultLabware, i, "slots");
+            assertThat(slotsData).hasSize(1);
+            Map<String, ?> slotData = slotsData.get(0);
+            assertEquals("A1", slotData.get("address"));
+            assertThat((List<?>) slotData.get("samples")).hasSize(1);
+            Map<String, ?> samData = chainGet(slotData, "samples", 0);
+            assertThat(samData).containsKey("section");
+            assertNull(samData.get("section"));
+            assertEquals("Fetal waste", chainGet(samData, "bioState", "name"));
+            assertEquals("TISSUE"+i, chainGet(samData, "tissue", "externalName"));
+
+            resultOp = resultOps.get(i);
+            assertNotNull(resultOp.get("performed"));
+            assertEquals("Section", chainGet(resultOp, "operationType", "name"));
+            assertThat((List<?>) resultOp.get("actions")).hasSize(1);
+            Map<String, ?> action = chainGet(resultOp, "actions", 0);
+            assertEquals(sourceBlocks[i-1].getId(), chainGet(action, "source", "labwareId"));
+            assertEquals("A1", chainGet(action, "source", "address"));
+            assertEquals(labwareId, chainGet(action, "destination", "labwareId"));
+            assertEquals("A1", chainGet(action, "destination", "address"));
+            //noinspection unchecked
+            sam = (Map<String, ?>) action.get("sample");
+            assertThat(sam).containsKey("section");
+            assertNull(sam.get("section"));
+            assertEquals("Fetal waste", chainGet(sam, "bioState", "name"));
+        }
+
+
         // Check that the source blocks' highest section numbers have been updated
-        entityManager.refresh(sourceBlock1);
-        entityManager.refresh(sourceBlock2);
-        assertEquals(15, sourceBlock1.getFirstSlot().getBlockHighestSection());
-        assertEquals(17, sourceBlock2.getFirstSlot().getBlockHighestSection());
+        entityManager.refresh(sourceBlocks[0]);
+        entityManager.refresh(sourceBlocks[1]);
+        assertEquals(15, sourceBlocks[0].getFirstSlot().getBlockHighestSection());
+        assertEquals(17, sourceBlocks[1].getFirstSlot().getBlockHighestSection());
         entityManager.flush();
         entityManager.refresh(work);
-        assertThat(work.getOperationIds()).hasSize(1);
-        assertThat(work.getSampleSlotIds()).hasSize(4);
+        assertThat(work.getOperationIds()).hasSize(3);
+        assertThat(work.getSampleSlotIds()).hasSize(6);
+    }
+
+    private static StringBuilder sbReplace(StringBuilder sb, String original, String replacement) {
+        int i = 0;
+        while ((i = sb.indexOf(original, i)) >= 0) {
+            sb.replace(i, i + original.length(), replacement);
+            i += replacement.length();
+        }
+        return sb;
     }
 }

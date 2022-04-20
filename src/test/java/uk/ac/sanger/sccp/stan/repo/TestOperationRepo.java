@@ -99,6 +99,14 @@ public class TestOperationRepo {
         assertThat(foundOps).containsExactlyInAnyOrder(ops[0], ops[1]);
     }
 
+    @Test
+    @Transactional
+    public void testFindAllByOperationTypeAndDestinationSlotIdIn() {
+        setUpOps();
+        List<Operation> foundOps = opRepo.findAllByOperationTypeAndDestinationSlotIdIn(opType1, List.of(lws[0].getFirstSlot().getId(), lws[1].getFirstSlot().getId()));
+        assertThat(foundOps).containsExactlyInAnyOrder(ops[0], ops[1]);
+    }
+
     private Operation makeOp(OperationType opType, Labware... labware) {
         if (user==null) {
             user = entityCreator.createUser("user1");

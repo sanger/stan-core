@@ -31,6 +31,7 @@ public class TestAncestoriser {
 
     private Sample sampleB;
     private Sample sampleB1;
+    private Sample sampleB1b;
 
     @BeforeEach
     void setup() {
@@ -45,12 +46,14 @@ public class TestAncestoriser {
     private void setupSamples() {
         Tissue tissue = EntityFactory.getTissue();
         BioState bioState = EntityFactory.getBioState();
+        BioState bs2 = new BioState(bioState.getId()+1, "Asleep");
         sample = new Sample(1, null, tissue, bioState);
         sample1 = new Sample(2, 1, tissue, bioState);
         sample2 = new Sample(3, 2, tissue, bioState);
         Tissue tissue2 = EntityFactory.makeTissue(tissue.getDonor(), EntityFactory.getSpatialLocation());
         sampleB = new Sample(4, null, tissue2, bioState);
         sampleB1 = new Sample(5, 1, tissue2, bioState);
+        sampleB1b = new Sample(6, 1, tissue2, bs2);
     }
 
     @Test
@@ -60,7 +63,7 @@ public class TestAncestoriser {
         Labware lw2 = EntityFactory.makeLabware(lt, sample2);
         Labware lw2beta = EntityFactory.makeLabware(lt, sample2);
         Labware lwB = EntityFactory.makeLabware(lt, sampleB);
-        Labware lwB1 = EntityFactory.makeLabware(lt, sampleB1);
+        Labware lwB1 = EntityFactory.makeLabware(lt, sampleB1b);
 
         Labware lw3 = EntityFactory.makeEmptyLabware(lt);
         lw3.getFirstSlot().getSamples().addAll(List.of(sample, sample1, sample2, sampleB1));
@@ -74,7 +77,8 @@ public class TestAncestoriser {
                 lw2, lw3, sample2, sample2,
                 lw2beta, lw3, sample2, sample2,
                 lwB, lw3, sampleB1, sampleB,
-                lw3, lwB1, sampleB1, sampleB1
+                lw3, lwB1, sampleB1, sampleB1,
+                lwB1, lwB1, sampleB1b, sampleB1
         );
 
         when(mockActionRepo.findAllByDestinationIn(anyCollection())).then(invocation -> {
@@ -85,13 +89,14 @@ public class TestAncestoriser {
         });
 
         var ancestry = ancestoriser.findAncestry(makeSlotSamples(
-                lwB1, sampleB1,
+                lwB1, sampleB1b,
                 lw3, sample2,
                 lw3, sample
         ));
 
 
         Object[][] expectedData = {
+                { lwB1, sampleB1b, lwB1, sampleB1 },
                 { lwB1, sampleB1, lw3, sampleB1 },
                 { lw3, sampleB1, lwB, sampleB },
                 { lw3, sample2, lw2, sample2, lw2beta, sample2 },
@@ -102,7 +107,10 @@ public class TestAncestoriser {
                 { lwB, sampleB, },
         };
         Set<SlotSample> keys = new HashSet<>();
+        int r = 0;
         for (Object[] data : expectedData) {
+            System.out.println("Row "+r);
+            ++r;
             SlotSample key = slotSample(data[0], (Sample) data[1]);
             Set<SlotSample> values = new HashSet<>(data.length/2-1);
             for (int i = 2; i < data.length; i+=2) {

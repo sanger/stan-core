@@ -40,7 +40,7 @@ public class Ancestoriser {
             Map<Integer, List<Action>> destSlotIdActions = new HashMap<>();
             for (Action action : actions) {
                 Integer destSlotId = action.getDestination().getId();
-                if (destSlotId.equals(action.getSource().getId())) {
+                if (destSlotId.equals(action.getSource().getId()) && action.getSample().getId().equals(action.getSourceSample().getId())) {
                     continue;
                 }
                 List<Action> ac = destSlotIdActions.computeIfAbsent(destSlotId, k -> new ArrayList<>());
