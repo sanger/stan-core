@@ -576,7 +576,8 @@ public class TestReleaseFileService {
 
         Operation op1 = new Operation(500, stainOpType, null, null, null, null);
         StainType st1 = new StainType(1, "Red");
-        op1.setStainType(st1);
+        StainType st2 = new StainType(2, "Blue");
+        when(mockStainTypeRepo.loadOperationStainTypes(any())).thenReturn(Map.of(op1.getId(), List.of(st1, st2)));
 
         final String bond1 = "Casino Royale";
         List<LabwareNote> notes = List.of(
@@ -598,8 +599,9 @@ public class TestReleaseFileService {
         verify(service).labwareIdToOp(List.of(op1));
         verify(service).findEntryOps(entries, lwStainMap, ancestry);
         verify(mockLwNoteRepo).findAllByOperationIdIn(Set.of(op1.getId()));
+        verify(mockStainTypeRepo).loadOperationStainTypes(Set.of(op1.getId()));
 
-        assertEquals(st1.getName(), entries.get(0).getStainType());
+        assertEquals("Red, Blue", entries.get(0).getStainType());
         assertEquals(bond1, entries.get(0).getBondBarcode());
         assertNull(entries.get(1).getStainType());
         assertNull(entries.get(1).getBondBarcode());

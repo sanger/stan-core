@@ -401,10 +401,8 @@ public class ReleaseFileService {
         }
         Set<Integer> opIds = entryStainOp.values().stream().map(Operation::getId).collect(toSet());
 
-        // TODO : when multistain is merged in, we have to get stain types from StainTypeRepo
-        Map<Integer, String> stainOpTypes = entryStainOp.values().stream()
-                .distinct()
-                .collect(toMap(Operation::getId, op -> op.getStainType().getName()));
+        Map<Integer, String> stainOpTypes = stainTypeRepo.loadOperationStainTypes(opIds).entrySet().stream()
+                .collect(toMap(Map.Entry::getKey, e -> e.getValue().stream().map(StainType::getName).collect(joining(", "))));
 
         Map<Integer, String> opBondBarcodes = lwNoteRepo.findAllByOperationIdIn(opIds).stream()
                 .filter(note -> ComplexStainServiceImp.LW_NOTE_BOND_BARCODE.equalsIgnoreCase(note.getName()))
