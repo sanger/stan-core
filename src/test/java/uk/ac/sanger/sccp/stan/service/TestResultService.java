@@ -74,10 +74,10 @@ public class TestResultService {
         request.setLabwareResults(List.of());
 
         OperationResult opRes = new OperationResult();
-        doReturn(opRes).when(service).recordResultForOperation(any(), any(), any());
+        doReturn(opRes).when(service).recordResultForOperation(any(), any(), any(), anyBoolean());
 
         assertSame(opRes, service.recordStainQC(user, request));
-        verify(service).recordResultForOperation(same(user), same(request), eq("Stain"));
+        verify(service).recordResultForOperation(same(user), same(request), eq("Stain"), eq(true));
         assertEquals("Record result", request.getOperationType());
     }
 
@@ -92,10 +92,10 @@ public class TestResultService {
         request.setOperationType(resultOpName);
 
         OperationResult opRes = new OperationResult();
-        doReturn(opRes).when(service).recordResultForOperation(any(), any(), any());
+        doReturn(opRes).when(service).recordResultForOperation(any(), any(), any(), anyBoolean());
 
         assertSame(opRes, service.recordVisiumQC(user, request));
-        verify(service).recordResultForOperation(same(user), same(request), eq("Visium permeabilisation"));
+        verify(service).recordResultForOperation(same(user), same(request), eq("Visium permeabilisation"), eq(false));
         assertEquals(resultOpName, request.getOperationType());
     }
 
@@ -116,13 +116,13 @@ public class TestResultService {
         Map<Integer, Integer> lwStainMap = Map.of(100,200);
         final String stainMapProblem = "Stain map problem";
         if (valid) {
-            doReturn(lwStainMap).when(service).lookUpPrecedingOps(any(), any(), any());
+            doReturn(lwStainMap).when(service).lookUpPrecedingOps(any(), any(), any(), anyBoolean());
         } else {
             doAnswer(invocation -> {
                 Collection<String> problems = invocation.getArgument(0);
                 problems.add(stainMapProblem);
                 return lwStainMap;
-            }).when(service).lookUpPrecedingOps(any(), any(), any());
+            }).when(service).lookUpPrecedingOps(any(), any(), any(), anyBoolean());
         }
         Map<Integer, Comment> commentMap = Map.of(17, new Comment());
         doReturn(commentMap).when(service).validateComments(any(), any());
@@ -144,10 +144,10 @@ public class TestResultService {
         final List<LabwareResult> lrs = request.getLabwareResults();
         if (valid) {
             User user = EntityFactory.getUser();
-            assertSame(opRes, service.recordResultForOperation(user, request, setupOpType.getName()));
+            assertSame(opRes, service.recordResultForOperation(user, request, setupOpType.getName(), true));
             verify(service).createResults(user, resultOpType, lrs, lwMap, lwStainMap, commentMap, measurementMap, work);
         } else {
-            ValidationException exc = assertThrows(ValidationException.class, () -> service.recordResultForOperation(null, request, setupOpType.getName()));
+            ValidationException exc = assertThrows(ValidationException.class, () -> service.recordResultForOperation(null, request, setupOpType.getName(), true));
             assertThat(exc).hasMessage("The result request could not be validated.");
             //noinspection unchecked
             assertThat((Collection<Object>) exc.getProblems()).containsExactlyInAnyOrder(stainMapProblem, "No user specified.");
@@ -161,7 +161,7 @@ public class TestResultService {
         verify(service).validateComments(anyCollection(), eq(lrs));
         verify(service).validateMeasurements(anyCollection(), eq(lwMap), same(lrs));
         verify(mockWorkService).validateUsableWork(anyCollection(), eq(request.getWorkNumber()));
-        verify(service).lookUpPrecedingOps(anyCollection(), eq(setupOpType), eq(lwMap.values()));
+        verify(service).lookUpPrecedingOps(anyCollection(), eq(setupOpType), eq(lwMap.values()), eq(true));
     }
 
     @ParameterizedTest
@@ -487,8 +487,8 @@ public class TestResultService {
     }
 
     @ParameterizedTest
-    @CsvSource(value={"true,false", "true,true", "false,true", "false,false"})
-    public void testLookUpPrecedingOps(boolean anyStained, boolean anyUnstained) {
+    @CsvSource(value={"true,false,true", "true,true,true", "false,true,true", "false,false,true", "false,false,false", "false,true,false"})
+    public void testLookUpPrecedingOps(boolean anyStained, boolean anyUnstained, boolean required) {
         OperationType opType = EntityFactory.makeOperationType("Setup op", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.STAIN);
         final List<String> problems = new ArrayList<>();
         int numLabware = (anyStained ? 1 : 0) + (anyUnstained ? 1 : 0);
@@ -517,7 +517,7 @@ public class TestResultService {
         }
 
         if (numLabware==0) {
-            assertThat(service.lookUpPrecedingOps(problems, opType, labware)).isEmpty();
+            assertThat(service.lookUpPrecedingOps(problems, opType, labware, required)).isEmpty();
             assertThat(problems).isEmpty();
             verifyNoInteractions(mockOpRepo);
             verify(service, never()).makeLabwareOpIdMap(any());
@@ -532,12 +532,12 @@ public class TestResultService {
         Map<Integer, Integer> opsMap = (slw!=null ? Map.of(slw.getId(), op.getId()) : Map.of());
         doReturn(opsMap).when(service).makeLabwareOpIdMap(any());
 
-        assertSame(opsMap, service.lookUpPrecedingOps(problems, opType, labware));
+        assertSame(opsMap, service.lookUpPrecedingOps(problems, opType, labware, required));
 
         verify(mockOpRepo).findAllByOperationTypeAndDestinationLabwareIdIn(opType, labwareIds);
         verify(service).makeLabwareOpIdMap(ops);
 
-        if (anyUnstained) {
+        if (anyUnstained && required) {
             assertThat(problems).containsExactly("No Setup op operation has been recorded on the following labware: [STAN-U]");
         } else {
             assertThat(problems).isEmpty();
