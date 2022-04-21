@@ -160,7 +160,7 @@ public class ExtractResultServiceImp extends BaseResultService implements Extrac
         if (extractOpType==null || labware.isEmpty()) {
             return Map.of();
         }
-        return lookUpLatestOpIds(problems, extractOpType, labware);
+        return lookUpLatestOpIds(problems, extractOpType, labware, true);
     }
 
     /**

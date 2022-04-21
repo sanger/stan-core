@@ -117,7 +117,8 @@ public class ExtractResultQueryService {
         }
 
         Map<Integer, Operation> referredToOps = Streamable.of(
-                        opRepo.findAllById(resultOps.stream().map(ResultOp::getRefersToOpId).collect(toSet()))
+                        opRepo.findAllById(resultOps.stream().map(ResultOp::getRefersToOpId).
+                                filter(Objects::nonNull).collect(toSet()))
                 ).stream()
                 .filter(op -> op.getOperationType().getName().equalsIgnoreCase(EXTRACT_OP_NAME))
                 .collect(BasicUtils.toMap(Operation::getId));

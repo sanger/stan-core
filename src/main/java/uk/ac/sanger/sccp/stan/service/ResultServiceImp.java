@@ -56,15 +56,15 @@ public class ResultServiceImp extends BaseResultService implements ResultService
         if (request!=null && request.getOperationType()==null) {
             request.setOperationType("Record result");
         }
-        return recordResultForOperation(user, request, "Stain");
+        return recordResultForOperation(user, request, "Stain", true);
     }
 
     @Override
     public OperationResult recordVisiumQC(User user, ResultRequest request) {
-        return recordResultForOperation(user, request, "Visium permeabilisation");
+        return recordResultForOperation(user, request, "Visium permeabilisation", false);
     }
 
-    public OperationResult recordResultForOperation(User user, ResultRequest request, String refersToOpName) {
+    public OperationResult recordResultForOperation(User user, ResultRequest request, String refersToOpName, boolean refersRequired) {
         Set<String> problems = new LinkedHashSet<>();
         if (user==null) {
             problems.add("No user specified.");
@@ -85,7 +85,7 @@ public class ResultServiceImp extends BaseResultService implements ResultService
         UCMap<List<SlotMeasurementRequest>> measurementMap = validateMeasurements(problems, labware, request.getLabwareResults());
         Map<Integer, Comment> commentMap = validateComments(problems, request.getLabwareResults());
         Work work = workService.validateUsableWork(problems, request.getWorkNumber());
-        Map<Integer, Integer> referredOpIds = lookUpPrecedingOps(problems, refersToOpType, labware.values());
+        Map<Integer, Integer> referredOpIds = lookUpPrecedingOps(problems, refersToOpType, labware.values(), refersRequired);
 
         if (!problems.isEmpty()) {
             throw new ValidationException("The result request could not be validated.", problems);
@@ -235,14 +235,15 @@ public class ResultServiceImp extends BaseResultService implements ResultService
      * @param problems receptacle for problems
      * @param opType the type of op to look up
      * @param labware the labware to look up ops for
+     * @param required whether the preceding op missing constitutes a problem
      * @return a map of labware id to the operation id
      */
     public Map<Integer, Integer> lookUpPrecedingOps(Collection<String> problems, OperationType opType,
-                                                    Collection<Labware> labware) {
+                                                    Collection<Labware> labware, boolean required) {
         if (opType==null || labware.isEmpty()) {
             return Map.of();
         }
-        return lookUpLatestOpIds(problems, opType, labware);
+        return lookUpLatestOpIds(problems, opType, labware, required);
     }
 
     /**

@@ -254,13 +254,13 @@ public class TestExtractResultService {
         if (opTypeExists && anyLabware) {
             idMap = Map.of(4, 5);
             if (allFine) {
-                doReturn(idMap).when(service).lookUpLatestOpIds(any(), any(), any());
+                doReturn(idMap).when(service).lookUpLatestOpIds(any(), any(), any(), anyBoolean());
             } else {
                 doAnswer(invocation -> {
                     Collection<String> problems = invocation.getArgument(0);
                     problems.add(opError);
                     return idMap;
-                }).when(service).lookUpLatestOpIds(any(), any(), any());
+                }).when(service).lookUpLatestOpIds(any(), any(), any(), anyBoolean());
             }
         } else {
             idMap = Map.of();
@@ -281,9 +281,9 @@ public class TestExtractResultService {
         }
 
         if (opTypeExists && anyLabware) {
-            verify(service).lookUpLatestOpIds(problems, opType, lwList);
+            verify(service).lookUpLatestOpIds(problems, opType, lwList, true);
         } else {
-            verify(service, never()).lookUpLatestOpIds(any(), any(), any());
+            verify(service, never()).lookUpLatestOpIds(any(), any(), any(), anyBoolean());
         }
     }
 
