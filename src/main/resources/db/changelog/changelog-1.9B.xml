@@ -21,7 +21,7 @@
                 <constraints nullable="false" foreignKeyName="fk_result_op_slot" referencedTableName="slot" referencedColumnNames="id"/>
             </column>
             <column name="refers_to_op_id" type="INT">
-                <constraints nullable="false" foreignKeyName="fk_result_op_refers_to_op" referencedTableName="operation" referencedColumnNames="id"/>
+                <constraints nullable="true" foreignKeyName="fk_result_op_refers_to_op" referencedTableName="operation" referencedColumnNames="id"/>
             </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
