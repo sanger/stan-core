@@ -9,6 +9,7 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.request.ReagentTransferRequest;
 import uk.ac.sanger.sccp.stan.request.ReagentTransferRequest.ReagentTransfer;
+import uk.ac.sanger.sccp.stan.service.operation.BioStateReplacer;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
@@ -29,8 +30,6 @@ public class ReagentTransferServiceImp implements ReagentTransferService {
     private final OperationTypeRepo opTypeRepo;
     private final ReagentActionRepo reagentActionRepo;
     private final LabwareRepo lwRepo;
-    private final SampleRepo sampleRepo;
-    private final SlotRepo slotRepo;
 
     private final Validator<String> reagentPlateBarcodeValidator;
     private final LabwareValidatorFactory lwValFactory;
@@ -38,24 +37,24 @@ public class ReagentTransferServiceImp implements ReagentTransferService {
     private final OperationService opService;
     private final ReagentPlateService reagentPlateService;
     private final WorkService workService;
+    private final BioStateReplacer bioStateReplacer;
 
     @Autowired
     public ReagentTransferServiceImp(OperationTypeRepo opTypeRepo, ReagentActionRepo reagentActionRepo,
-                                     LabwareRepo lwRepo, SampleRepo sampleRepo, SlotRepo slotRepo,
+                                     LabwareRepo lwRepo,
                                      @Qualifier("reagentPlateBarcodeValidator") Validator<String> reagentPlateBarcodeValidator,
                                      LabwareValidatorFactory lwValFactory,
                                      OperationService opService, ReagentPlateService reagentPlateService,
-                                     WorkService workService) {
+                                     WorkService workService, BioStateReplacer bioStateReplacer) {
         this.opTypeRepo = opTypeRepo;
         this.reagentActionRepo = reagentActionRepo;
         this.lwRepo = lwRepo;
-        this.sampleRepo = sampleRepo;
-        this.slotRepo = slotRepo;
         this.reagentPlateBarcodeValidator = reagentPlateBarcodeValidator;
         this.lwValFactory = lwValFactory;
         this.opService = opService;
         this.reagentPlateService = reagentPlateService;
         this.workService = workService;
+        this.bioStateReplacer = bioStateReplacer;
     }
 
     @Override
@@ -265,7 +264,7 @@ public class ReagentTransferServiceImp implements ReagentTransferService {
     public OperationResult record(User user, OperationType opType, Work work, Collection<ReagentTransfer> transfers,
                                   UCMap<ReagentPlate> reagentPlates, Labware lw) {
         createReagentPlates(transfers, reagentPlates);
-        List<Action> actions = updateLabware(opType, lw);
+        List<Action> actions = bioStateReplacer.updateBioStateInPlace(opType.getNewBioState(), lw);
         Operation op = createOperation(user, opType, work, lw, actions);
         recordTransfers(transfers, reagentPlates, lw, op.getId());
         return new OperationResult(List.of(op), List.of(lw));
@@ -306,63 +305,6 @@ public class ReagentTransferServiceImp implements ReagentTransferService {
             workService.link(work, List.of(op));
         }
         return op;
-    }
-
-    /**
-     * Updates the labware affected by the given op type being recorded on it.
-     * If any samples are updated, returns <i>all</i> the appropriate actions for the operation, linking
-     * all old samples to their new counterparts.
-     * @param opType the type of op being recorded
-     * @param lw the labware affected
-     * @return a list of actions describing the source and destination samples in their appropriate slots
-     */
-    public List<Action> updateLabware(OperationType opType, Labware lw) {
-        BioState bs = opType.getNewBioState();
-        if (bs==null) {
-            return null;
-        }
-        final List<Action> actions = new ArrayList<>();
-        Map<Integer, Sample> newSamples = new HashMap<>();
-        for (Slot slot : lw.getSlots()) {
-            if (slot.getSamples().stream().allMatch(sam -> bs.equals(sam.getBioState()))) {
-                for (Sample sample : slot.getSamples()) {
-                    actions.add(new Action(null, null, slot, slot, sample, sample));
-                }
-            } else {
-                slot.setSamples(slot.getSamples().stream()
-                        .map(oldSample -> {
-                            Sample newSample = replaceSample(bs, oldSample, newSamples);
-                            actions.add(new Action(null, null, slot, slot, newSample, oldSample));
-                            return newSample;
-                        })
-                        .collect(toList()));
-                slotRepo.save(slot);
-            }
-        }
-        return actions;
-    }
-
-    /**
-     * Gets a sample of the given biostate to replace the given sample.
-     * The sampleMap is a cache of old sample id to new sample.
-     * If the old sample already has the specified bio state, it is returned.
-     * Otherwise, if the old sample id already has a new sample in the cache, that is returned.
-     * Otherwise, a new sample is created, added to the cache and returned.
-     * @param bs the required bio state
-     * @param oldSample the sample being replaced
-     * @param sampleMap a map of old sample id to new (replacement) sample
-     * @return the appropriate sample, in the correct bio state
-     */
-    public Sample replaceSample(BioState bs, Sample oldSample, Map<Integer, Sample> sampleMap) {
-        if (bs.equals(oldSample.getBioState())) {
-            return oldSample;
-        }
-        Sample newSample = sampleMap.get(oldSample.getId());
-        if (newSample==null) {
-            newSample = sampleRepo.save(new Sample(null, oldSample.getSection(), oldSample.getTissue(), bs));
-            sampleMap.put(oldSample.getId(), newSample);
-        }
-        return newSample;
     }
 
     /**

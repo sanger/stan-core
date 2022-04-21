@@ -30,6 +30,7 @@ public class TestInPlaceOpService {
     private LabwareValidatorFactory mockLabwareValidatorFactory;
     private OperationService mockOpService;
     private WorkService mockWorkService;
+    private BioStateReplacer mockBioStateReplacer;
     private EquipmentRepo mockEquipmentRepo;
     private OperationTypeRepo mockOpTypeRepo;
     private LabwareRepo mockLwRepo;
@@ -39,12 +40,13 @@ public class TestInPlaceOpService {
         mockLabwareValidatorFactory = mock(LabwareValidatorFactory.class);
         mockOpService = mock(OperationService.class);
         mockWorkService = mock(WorkService.class);
+        mockBioStateReplacer = mock(BioStateReplacer.class);
         mockEquipmentRepo = mock(EquipmentRepo.class);
         mockOpTypeRepo = mock(OperationTypeRepo.class);
         mockLwRepo = mock(LabwareRepo.class);
 
         service = spy(new InPlaceOpServiceImp(mockLabwareValidatorFactory, mockOpService, mockWorkService,
-                mockEquipmentRepo, mockOpTypeRepo, mockLwRepo));
+                mockBioStateReplacer, mockEquipmentRepo, mockOpTypeRepo, mockLwRepo));
     }
 
     @ParameterizedTest
@@ -186,7 +188,7 @@ public class TestInPlaceOpService {
     }
 
     @Test
-    public void testMakeActions() {
+    public void testMakeActions_nobs() {
         Sample sam1 = EntityFactory.getSample();
         Sample sam2 = new Sample(sam1.getId()+1, 500, sam1.getTissue(), sam1.getBioState());
         LabwareType lt = EntityFactory.makeLabwareType(3,1);
@@ -194,11 +196,25 @@ public class TestInPlaceOpService {
         Slot slot1 = lw.getFirstSlot();
         Slot slot2 = lw.getSlot(new Address(2,1));
         slot1.setSamples(List.of(sam1, sam2));
-        assertThat(service.makeActions(lw)).containsExactlyInAnyOrder(
+        assertThat(service.makeActions(null, lw)).containsExactlyInAnyOrder(
                 new Action(null, null, slot1, slot1, sam1, sam1),
                 new Action(null, null, slot1, slot1, sam2, sam2),
                 new Action(null, null, slot2, slot2, sam2, sam2)
         );
+        verifyNoInteractions(mockBioStateReplacer);
+    }
+
+    @Test
+    public void testMakeActions_bs() {
+        Labware lw = EntityFactory.getTube();
+        Slot slot = lw.getFirstSlot();
+        Sample sample = slot.getSamples().get(0);
+        BioState bs = EntityFactory.getBioState();
+        List<Action> actions = List.of(new Action(null, null, slot, slot, sample, sample));
+        when(mockBioStateReplacer.updateBioStateInPlace(any(), any())).thenReturn(actions);
+
+        assertSame(actions, service.makeActions(bs, lw));
+        verify(mockBioStateReplacer).updateBioStateInPlace(bs, lw);
     }
 
     @Test
@@ -207,9 +223,9 @@ public class TestInPlaceOpService {
         Labware lw = EntityFactory.makeLabware(EntityFactory.getTubeType(), sample);
         Slot slot = lw.getFirstSlot();
         List<Action> actions = List.of(new Action(null, null, slot, slot, sample, sample));
-        OperationType opType = new OperationType(20, "Scan");
+        OperationType opType = EntityFactory.makeOperationType("Scan", EntityFactory.getBioState(), OperationTypeFlag.IN_PLACE);
         User user = EntityFactory.getUser();
-        doReturn(actions).when(service).makeActions(any());
+        doReturn(actions).when(service).makeActions(any(), any());
         //noinspection unchecked
         Consumer<Operation> opModifier = mock(Consumer.class);
         Operation op = new Operation();
@@ -217,7 +233,7 @@ public class TestInPlaceOpService {
         when(mockOpService.createOperation(any(), any(), any(), any(), any())).thenReturn(op);
 
         assertSame(op, service.createOperation(user, lw, opType, opModifier));
-        verify(service).makeActions(lw);
+        verify(service).makeActions(opType.getNewBioState(), lw);
         verify(mockOpService).createOperation(opType, user, actions, null, opModifier);
     }
 

@@ -22,17 +22,19 @@ public class InPlaceOpServiceImp implements InPlaceOpService {
     private final LabwareValidatorFactory labwareValidatorFactory;
     private final OperationService opService;
     private final WorkService workService;
+    private final BioStateReplacer bioStateReplacer;
 
     private final EquipmentRepo equipmentRepo;
     private final OperationTypeRepo opTypeRepo;
     private final LabwareRepo lwRepo;
 
     public InPlaceOpServiceImp(LabwareValidatorFactory labwareValidatorFactory,
-                               OperationService opService, WorkService workService,
+                               OperationService opService, WorkService workService, BioStateReplacer bioStateReplacer,
                                EquipmentRepo equipmentRepo, OperationTypeRepo opTypeRepo, LabwareRepo lwRepo) {
         this.labwareValidatorFactory = labwareValidatorFactory;
         this.opService = opService;
         this.workService = workService;
+        this.bioStateReplacer = bioStateReplacer;
         this.equipmentRepo = equipmentRepo;
         this.opTypeRepo = opTypeRepo;
         this.lwRepo = lwRepo;
@@ -113,15 +115,21 @@ public class InPlaceOpServiceImp implements InPlaceOpService {
     }
 
     /**
-     * Gets actions appropriate for an in-place operation on the given labware
+     * Gets actions appropriate for an in-place operation on the given labware.
+     * Updates the samples in the slots if necessary
+     * @param newBioState the new bio state (if any)
      * @param lw an item of labware
      * @return a list of new unsaved actions
      */
-    public List<Action> makeActions(Labware lw) {
-        return lw.getSlots().stream()
-                .flatMap(slot -> slot.getSamples().stream()
-                        .map(sam -> new Action(null, null, slot, slot, sam, sam))
-                ).collect(toList());
+    public List<Action> makeActions(BioState newBioState, Labware lw) {
+        if (newBioState==null) {
+            return lw.getSlots().stream()
+                    .flatMap(slot -> slot.getSamples().stream()
+                            .map(sam -> new Action(null, null, slot, slot, sam, sam))
+                    ).collect(toList());
+        } else {
+            return bioStateReplacer.updateBioStateInPlace(newBioState, lw);
+        }
     }
 
     /**
@@ -133,7 +141,7 @@ public class InPlaceOpServiceImp implements InPlaceOpService {
      * @return the newly created operation
      */
     public Operation createOperation(User user, Labware lw, OperationType opType, Consumer<Operation> opModifier) {
-        List<Action> actions = makeActions(lw);
+        List<Action> actions = makeActions(opType.getNewBioState(), lw);
         return opService.createOperation(opType, user, actions, null, opModifier);
     }
 
