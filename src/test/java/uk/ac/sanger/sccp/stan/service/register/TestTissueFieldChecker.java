@@ -8,6 +8,7 @@ import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.Tissue;
 import uk.ac.sanger.sccp.stan.request.register.BlockRegisterRequest;
 
+import java.time.LocalDate;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
@@ -72,9 +73,13 @@ public class TestTissueFieldChecker {
     static Stream<Arguments> checkArgs() {
         final Tissue tissue = EntityFactory.getTissue();
         final String forTissue = " for existing tissue "+tissue.getExternalName()+".";
+        final Tissue tissueWithDate = EntityFactory.makeTissue(tissue.getDonor(), tissue.getSpatialLocation());
+        tissueWithDate.setCollectionDate(LocalDate.of(2021,2,3));
 
         return Stream.of(
                 Arguments.of(toBRR(tissue, null), tissue, null),
+                Arguments.of(toBRR(tissueWithDate, null), tissueWithDate, null),
+                Arguments.of(toBRR(tissue, br -> br.setSampleCollectionDate(LocalDate.of(2020,1,2))), tissue, null),
                 Arguments.of(toBRR(tissue, br -> br.setDonorIdentifier("Foo")), tissue, "Expected donor identifier to be "+tissue.getDonor().getDonorName()+forTissue),
                 Arguments.of(toBRR(tissue, br -> br.setHmdmc("12/345")), tissue, "Expected HuMFre number to be "+tissue.getHmdmc().getHmdmc()+forTissue),
                 Arguments.of(toBRR(tissue, br -> br.setTissueType("Plumbus")), tissue, "Expected tissue type to be "+tissue.getTissueType().getName()+forTissue),
@@ -82,6 +87,7 @@ public class TestTissueFieldChecker {
                 Arguments.of(toBRR(tissue, br -> br.setReplicateNumber("-5")), tissue, "Expected replicate number to be "+tissue.getReplicate()+forTissue),
                 Arguments.of(toBRR(tissue, br -> br.setMedium("Custard")), tissue, "Expected medium to be "+tissue.getMedium().getName()+forTissue),
                 Arguments.of(toBRR(tissue, br -> br.setFixative("Glue")), tissue, "Expected fixative to be "+tissue.getFixative().getName()+forTissue),
+                Arguments.of(toBRR(tissueWithDate, br -> br.setSampleCollectionDate(LocalDate.of(2020,1,2))), tissueWithDate, "Expected sample collection date to be "+tissueWithDate.getCollectionDate()+" for existing tissue "+tissueWithDate.getExternalName()+"."),
                 Arguments.of(toBRR(tissue, br -> {
                     br.setDonorIdentifier("Foo");
                     br.setHmdmc("12/345");
@@ -105,6 +111,7 @@ public class TestTissueFieldChecker {
         br.setReplicateNumber(tissue.getReplicate());
         br.setMedium(tissue.getMedium().getName());
         br.setFixative(tissue.getFixative().getName());
+        br.setSampleCollectionDate(tissue.getCollectionDate());
         if (adjuster!=null) {
             adjuster.accept(br);
         }

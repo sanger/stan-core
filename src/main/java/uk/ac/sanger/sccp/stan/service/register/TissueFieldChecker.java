@@ -23,25 +23,28 @@ public class TissueFieldChecker {
         HMDMC(Tissue::getHmdmc, Hmdmc::getHmdmc, BlockRegisterRequest::getHmdmc, "HuMFre number"),
         TTYPE(Tissue::getTissueType, TissueType::getName, BlockRegisterRequest::getTissueType, "tissue type"),
         SL(Tissue::getSpatialLocation, SpatialLocation::getCode, BlockRegisterRequest::getSpatialLocation, "spatial location"),
-        REPLICATE(Tissue::getReplicate, BlockRegisterRequest::getReplicateNumber, "replicate number"),
+        REPLICATE(Tissue::getReplicate, BlockRegisterRequest::getReplicateNumber, "replicate number", false),
         MEDIUM(Tissue::getMedium, Medium::getName, BlockRegisterRequest::getMedium, "medium"),
         FIXATIVE(Tissue::getFixative, Fixative::getName, BlockRegisterRequest::getFixative, "fixative"),
+        COLLECTION_DATE(Tissue::getCollectionDate, BlockRegisterRequest::getSampleCollectionDate, "sample collection date", true),
         ;
 
         private final Function<Tissue, ?> tissueFunction;
         private final Function<BlockRegisterRequest, ?> brFunction;
         private final String description;
+        private final boolean replaceMissing;
 
         Field(Function<Tissue, ?> tissueFunction, Function<BlockRegisterRequest, ?> brFunction,
-              String description) {
+              String description, boolean replaceMissing) {
             this.tissueFunction = tissueFunction;
             this.brFunction = brFunction;
             this.description = description;
+            this.replaceMissing = replaceMissing;
         }
 
         <X> Field(Function<Tissue, X> tissueFunction, Function<? super X, ?> xFunction, Function<BlockRegisterRequest, ?> brFunction,
                   String description) {
-            this(chain(tissueFunction, xFunction), brFunction, description);
+            this(chain(tissueFunction, xFunction), brFunction, description, false);
         }
 
         public Object apply(Tissue tissue) {
@@ -55,6 +58,9 @@ public class TissueFieldChecker {
     public void check(Consumer<String> problemConsumer, BlockRegisterRequest br, Tissue tissue) {
         for (Field field : Field.values()) {
             Object oldValue = field.apply(tissue);
+            if (field.replaceMissing && oldValue==null) {
+                continue;
+            }
             Object newValue = field.apply(br);
             if (!match(oldValue, newValue)) {
                 problemConsumer.accept(String.format("Expected %s to be %s for existing tissue %s.",

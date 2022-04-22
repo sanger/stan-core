@@ -16,6 +16,7 @@ import uk.ac.sanger.sccp.stan.request.register.RegisterRequest;
 import uk.ac.sanger.sccp.stan.service.Validator;
 import uk.ac.sanger.sccp.stan.service.register.RegisterValidationImp.StringIntKey;
 
+import java.time.LocalDate;
 import java.util.*;
 import java.util.function.*;
 import java.util.stream.Stream;
@@ -84,6 +85,7 @@ public class TestRegisterValidation {
         doNothing().when(validation).validateExistingTissues();
         doNothing().when(validation).validateNewTissues();
         doNothing().when(validation).validateFixatives();
+        doNothing().when(validation).validateCollectionDates();
     }
 
     private void verifyValidateMethods(RegisterValidationImp validation, VerificationMode verificationMode) {
@@ -95,6 +97,7 @@ public class TestRegisterValidation {
         verify(validation, verificationMode).validateExistingTissues();
         verify(validation, verificationMode).validateNewTissues();
         verify(validation, verificationMode).validateFixatives();
+        verify(validation, verificationMode).validateCollectionDates();
     }
 
     @Test
@@ -398,6 +401,68 @@ public class TestRegisterValidation {
                         ValidateExistingTissueTestData.externalName(tissue2.getExternalName()).fieldProblem("Bad spatial location.")),
                         List.of(tissue, tissue2), List.of("Bad tissue type.", "Bad spatial location."))
         );
+    }
+
+    @ParameterizedTest
+    @MethodSource("validateCollectionDatesArgs")
+    public void testValidateCollectionDates(List<BlockRegisterRequest> brrs, List<String> expectedProblems) {
+        RegisterRequest request = new RegisterRequest(brrs);
+        RegisterValidationImp validation = create(request);
+        validation.validateCollectionDates();
+        assertThat(validation.getProblems()).containsExactlyInAnyOrderElementsOf(expectedProblems);
+    }
+
+    static Stream<Arguments> validateCollectionDatesArgs() {
+        LocalDate future1 = LocalDate.now().plusDays(7);
+        LocalDate future2 = future1.plusDays(2);
+        return Arrays.stream(new Object[][]{
+                { toBrr("Human", LifeStage.fetal, LocalDate.of(2022,1,20)) },
+                { toBrr("Hamster", LifeStage.fetal, null) },
+                { toBrr("Human", LifeStage.adult, null) },
+                { toBrr("Human", LifeStage.paediatric, null) },
+
+                { toBrr("Human", LifeStage.fetal, LocalDate.of(2021,5,6)),
+                        toBrr("Human", LifeStage.paediatric, null),
+                        toBrr("Hamster", LifeStage.fetal, null),
+                        toBrr(null, LifeStage.fetal, null),
+                        toBrr("Human", null, null),
+                },
+
+                { toBrr("Human", LifeStage.fetal, null),
+                        "Human fetal samples must have a collection date." },
+                { toBrr("Human", LifeStage.fetal, future1),
+                        toBrr("Hamster", LifeStage.adult, future2),
+                        "Invalid sample collection dates: ["+future1+", "+future2+"]"},
+                { toBrr("Human", LifeStage.fetal, LocalDate.of(2021,1,2), "Ext1"),
+                        toBrr("Human", LifeStage.fetal, LocalDate.of(2021,1,3), "ext1"),
+                        "Inconsistent collection dates specified for tissue EXT1."},
+
+                { toBrr("Human", LifeStage.fetal, LocalDate.of(2020,2,1), "EXT2"),
+                        toBrr("Human", LifeStage.adult, LocalDate.of(2020,2,2), "ext1"),
+                                toBrr("Human", LifeStage.adult, null, "ext1"),
+                        toBrr(null, null, null),
+                        toBrr("Human", LifeStage.fetal, null),
+                        toBrr("Human", LifeStage.adult, future1),
+                        "Human fetal samples must have a collection date.",
+                        "Invalid sample collection date: ["+future1+"]",
+                        "Inconsistent collection dates specified for tissue EXT1."},
+        }).map(arr -> Arguments.of(Arrays.stream(arr).filter(obj -> obj instanceof BlockRegisterRequest)
+                .collect(toList()),
+                Arrays.stream(arr).filter(obj -> obj instanceof String)
+                .collect(toList())));
+    }
+
+    static BlockRegisterRequest toBrr(String species, LifeStage lifeStage, LocalDate collectionDate, String ext) {
+        BlockRegisterRequest brr = new BlockRegisterRequest();
+        brr.setSpecies(species);
+        brr.setLifeStage(lifeStage);
+        brr.setSampleCollectionDate(collectionDate);
+        brr.setExternalIdentifier(ext);
+        return brr;
+    }
+
+    static BlockRegisterRequest toBrr(String species, LifeStage lifeStage, LocalDate collectionDate) {
+        return toBrr(species, lifeStage, collectionDate, null);
     }
 
     private <E> void testValidateSimpleField(List<String> givenStrings,

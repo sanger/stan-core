@@ -6,6 +6,7 @@ import uk.ac.sanger.sccp.stan.request.register.BlockRegisterRequest;
 import uk.ac.sanger.sccp.stan.request.register.RegisterRequest;
 import uk.ac.sanger.sccp.stan.service.Validator;
 
+import java.time.LocalDate;
 import java.util.*;
 import java.util.function.Function;
 
@@ -74,6 +75,7 @@ public class RegisterValidationImp implements RegisterValidation {
         validateLabwareTypes();
         validateMediums();
         validateFixatives();
+        validateCollectionDates();
         validateExistingTissues();
         validateNewTissues();
         return problems;
@@ -246,6 +248,39 @@ public class RegisterValidationImp implements RegisterValidation {
 
     public void validateFixatives() {
         validateByName("fixative", BlockRegisterRequest::getFixative, fixativeRepo::findByName, fixativeMap);
+    }
+
+    public void validateCollectionDates() {
+        boolean missing = false;
+        LocalDate today = LocalDate.now();
+        Set<LocalDate> badDates = new LinkedHashSet<>();
+        Map<String, LocalDate> extToDate = new HashMap<>(request.getBlocks().size());
+        for (BlockRegisterRequest block : blocks()) {
+            if (block.getSampleCollectionDate()==null) {
+                if (block.getLifeStage()==LifeStage.fetal && block.getSpecies()!=null
+                        && block.getSpecies().equalsIgnoreCase("Human")) {
+                    missing = true;
+                }
+            } else if (block.getSampleCollectionDate().isAfter(today)) {
+                badDates.add(block.getSampleCollectionDate());
+            }
+            if (block.getExternalIdentifier()!=null && !block.getExternalIdentifier().isEmpty()) {
+                String key = block.getExternalIdentifier().trim().toUpperCase();
+                if (!key.isEmpty()) {
+                    if (extToDate.containsKey(key) && !Objects.equals(extToDate.get(key), block.getSampleCollectionDate())) {
+                        addProblem("Inconsistent collection dates specified for tissue " + key + ".");
+                    } else {
+                        extToDate.put(key, block.getSampleCollectionDate());
+                    }
+                }
+            }
+        }
+        if (missing) {
+            addProblem("Human fetal samples must have a collection date.");
+        }
+        if (!badDates.isEmpty()) {
+            addProblem(pluralise("Invalid sample collection date{s}: ", badDates.size()) + badDates);
+        }
     }
 
     public void validateExistingTissues() {

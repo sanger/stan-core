@@ -328,7 +328,7 @@ public class SectionRegisterValidation {
             }
 
             Tissue tissue = new Tissue(null, externalIdentifier, content.getReplicateNumber().toLowerCase(),
-                    spatialLocation, donor, medium, fixative, hmdmc);
+                    spatialLocation, donor, medium, fixative, hmdmc, null);
             tissueMap.put(externalIdentifier, tissue);
         }
 
