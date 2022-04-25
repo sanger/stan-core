@@ -90,6 +90,7 @@ public class DestructionServiceImp implements DestructionService {
     public List<Labware> loadAndValidateLabware(Collection<String> barcodes) {
         LabwareValidator validator = labwareValidatorFactory.getValidator();
         validator.setUniqueRequired(true);
+        validator.setUsedAllowed(true);
         List<Labware> labware = validator.loadLabware(labwareRepo, barcodes);
         validator.validateSources();
         validator.throwError(IllegalArgumentException::new);

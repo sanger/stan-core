@@ -22,6 +22,7 @@ import java.util.stream.IntStream;
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.*;
 
 /**
@@ -126,7 +127,7 @@ public class TestSlotCopyMutation {
 
         entityManager.flush();
         entityManager.refresh(slide1);
-        assertTrue(slide1.isDiscarded());
+        assertTrue(slide1.isUsed());
         Operation op = opRepo.findById(opId).orElseThrow();
         assertNotNull(op.getPerformed());
         assertEquals("Visium cDNA", op.getOperationType().getName());
@@ -137,7 +138,8 @@ public class TestSlotCopyMutation {
         assertThat(newLabware.getSlot(A2).getSamples()).hasSize(2);
         assertTrue(newLabware.getSlot(A2).getSamples().stream().allMatch(sam -> sam.getBioState().getName().equals("cDNA")));
 
-        verifyStorelightQuery(mockStorelightClient, List.of("STAN-01"), user.getUsername());
+        verifyNoInteractions(mockStorelightClient);
+        //verifyStorelightQuery(mockStorelightClient, List.of("STAN-01"), user.getUsername());
         entityManager.refresh(work);
         assertThat(work.getOperationIds()).containsExactly(opId);
         assertThat(work.getSampleSlotIds()).hasSize(3);

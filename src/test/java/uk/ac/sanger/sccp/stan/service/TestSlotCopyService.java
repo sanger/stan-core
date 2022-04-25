@@ -76,7 +76,7 @@ public class TestSlotCopyService {
         MockitoAnnotations.initMocks(this);
         tissue = new BioState(1, "Tissue");
         cdna = new BioState(3, "cDNA");
-        opType = EntityFactory.makeOperationType("cDNA", cdna, OperationTypeFlag.DISCARD_SOURCE);
+        opType = EntityFactory.makeOperationType("cDNA", cdna, OperationTypeFlag.MARK_SOURCE_USED);
         plateType = EntityFactory.makeLabwareType(8, 12);
         plateType.setName("platetype");
         slideType = EntityFactory.makeLabwareType(4, 1);
@@ -133,8 +133,27 @@ public class TestSlotCopyService {
             assertSame(ex, assertThrows(ValidationException.class, () -> service.perform(user, request)));
         }
         verify(service).performInsideTransaction(user, request);
-        // Unstore will be executed because the optype of the operation has the "discard sources" flag
-        verify(service, times(valid ? 1 : 0)).unstoreSources(user, request);
+        // Unstore will not be executed because the optype does not have the the "discard sources" flag
+        verify(service, never()).unstoreSources(any(), any());
+    }
+
+    @Test
+    public void testPerformAndDiscard() {
+        SlotCopyRequest request = new SlotCopyRequest("op", "thing", List.of(), null);
+        OperationType discardingOpType = EntityFactory.makeOperationType("dot", null, OperationTypeFlag.DISCARD_SOURCE);
+        Operation op = new Operation(200, discardingOpType, null, null, null);
+        OperationResult result = new OperationResult(List.of(op), List.of());
+        when(transactor.transact(any(), any())).then(invocation -> {
+            Supplier<?> sup = invocation.getArgument(1);
+            return sup.get();
+        });
+        doReturn(result).when(service).performInsideTransaction(any(), any());
+        doNothing().when(service).unstoreSources(any(), any());
+
+        assertSame(result, service.perform(user, request));
+        verify(service).performInsideTransaction(user, request);
+        // Unstore will be executed because the optype has the "discard sources" flag
+        verify(service).unstoreSources(user, request);
     }
 
     @ParameterizedTest
@@ -322,10 +341,11 @@ public class TestSlotCopyService {
     }
 
     @ParameterizedTest
-    @ValueSource(booleans = {false, true})
-    public void testExecute(boolean discardSources) {
+    @ValueSource(strings={"DISCARD_SOURCE", "MARK_SOURCE_USED"})
+    public void testExecute(OperationTypeFlag opFlag) {
         UCMap<Labware> lwMap = makeLabwareMap();
-        opType.setFlags(discardSources ? OperationTypeFlag.DISCARD_SOURCE.bit() : 0);
+
+        opType.setFlags(opFlag==null ? 0 : opFlag.bit());
         Labware emptyLw = EntityFactory.makeEmptyLabware(plateType);
         doReturn(emptyLw).when(mockLwService).create(any(LabwareType.class));
         Map<Integer, Sample> sampleMap = Map.of(1, sourceSamples.get(0));
@@ -345,7 +365,10 @@ public class TestSlotCopyService {
         verify(mockLwService).create(plateType);
         verify(service).createSamples(contents, lwMap, cdna);
         verify(service).fillLabware(emptyLw, contents, lwMap, sampleMap);
-        verify(service, discardSources ? times(1) : never()).discardSources(lwMap.values());
+        boolean discard = (opFlag==OperationTypeFlag.DISCARD_SOURCE);
+        boolean used = (opFlag==OperationTypeFlag.MARK_SOURCE_USED);
+        verify(service, times(discard ? 1 : 0)).discardSources(lwMap.values());
+        verify(service, times(used ? 1 : 0)).markSourcesUsed(lwMap.values());
         verify(service).createOperation(user, contents, opType, lwMap, filledLabware, sampleMap);
         verify(mockWorkService).link(work, List.of(op));
 
@@ -473,6 +496,18 @@ public class TestSlotCopyService {
         service.discardSources(labware);
         for (Labware lw : labware) {
             assertTrue(lw.isDiscarded());
+        }
+        verify(mockLwRepo).saveAll(labware);
+    }
+
+    @Test
+    public void testMarkSourcesUsed() {
+        List<Labware> labware = IntStream.range(0,3)
+                .mapToObj(i -> EntityFactory.makeEmptyLabware(slideType))
+                .collect(toList());
+        service.markSourcesUsed(labware);
+        for (Labware lw : labware) {
+            assertTrue(lw.isUsed());
         }
         verify(mockLwRepo).saveAll(labware);
     }

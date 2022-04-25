@@ -51,6 +51,7 @@ public class PlanValidationImp implements PlanValidation {
         Set<String> destroyedBarcodes = new LinkedHashSet<>();
         Set<String> releasedBarcodes = new LinkedHashSet<>();
         Set<String> discardedBarcodes = new LinkedHashSet<>();
+        Set<String> usedBarcodes = new LinkedHashSet<>();
         for (PlanRequestAction action : (Iterable<PlanRequestAction>) (actions()::iterator)) {
             PlanRequestSource source = action.getSource();
             if (source==null || source.getBarcode()==null || source.getBarcode().isEmpty()) {
@@ -76,6 +77,8 @@ public class PlanValidationImp implements PlanValidation {
                     releasedBarcodes.add(lw.getBarcode());
                 } else if (lw.isDiscarded()) {
                     discardedBarcodes.add(lw.getBarcode());
+                } else if (lw.isUsed()) {
+                    usedBarcodes.add(lw.getBarcode());
                 }
             }
             Address address = (source.getAddress()==null ? new Address(1,1) : source.getAddress());
@@ -108,6 +111,9 @@ public class PlanValidationImp implements PlanValidation {
         }
         if (!discardedBarcodes.isEmpty()) {
             addProblem("Labware already discarded: "+discardedBarcodes);
+        }
+        if (!usedBarcodes.isEmpty()) {
+            addProblem("Labware already used: "+usedBarcodes);
         }
         return labwareMap;
     }

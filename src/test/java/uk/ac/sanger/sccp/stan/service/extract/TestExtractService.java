@@ -5,8 +5,7 @@ import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InOrder;
-import uk.ac.sanger.sccp.stan.EntityFactory;
-import uk.ac.sanger.sccp.stan.Transactor;
+import uk.ac.sanger.sccp.stan.*;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.ExtractRequest;
@@ -148,6 +147,7 @@ public class TestExtractService {
 
         verify(service, never()).loadAndValidateLabware(any());
         verify(service, never()).discardSources(any());
+        verify(service, never()).markSourcesUsed(any());
         verify(service, never()).createNewLabware(any(), any());
         verify(service, never()).createSamples(any(), any());
         verify(service, never()).createOperations(any(), any(), any());
@@ -202,12 +202,24 @@ public class TestExtractService {
 
     @Test
     public void testDiscardSources() {
-        when(mockLwRepo.save(any())).then(invocation -> invocation.getArgument(0));
+        when(mockLwRepo.save(any())).then(Matchers.returnArgument());
         List<Labware> labware = List.of(EntityFactory.makeEmptyLabware(lwType), EntityFactory.makeEmptyLabware(lwType));
         assertEquals(labware, service.discardSources(labware));
 
         for (Labware lw : labware) {
             assertTrue(lw.isDiscarded());
+            verify(mockLwRepo).save(lw);
+        }
+    }
+
+    @Test
+    public void testMarkSourcesUsed() {
+        when(mockLwRepo.save(any())).then(Matchers.returnArgument());
+        List<Labware> labware = List.of(EntityFactory.makeEmptyLabware(lwType), EntityFactory.makeEmptyLabware(lwType));
+        assertEquals(labware, service.markSourcesUsed(labware));
+
+        for (Labware lw : labware) {
+            assertTrue(lw.isUsed());
             verify(mockLwRepo).save(lw);
         }
     }

@@ -264,6 +264,8 @@ public class TestReleaseService {
         LabwareType lt = EntityFactory.getTubeType();
         Sample sample = EntityFactory.getSample();
         Labware good = EntityFactory.makeLabware(lt, sample);
+        Labware used = EntityFactory.makeLabware(lt, sample);
+        used.setUsed(true);
         Labware empty = EntityFactory.makeEmptyLabware(lt);
         Labware destroyed = EntityFactory.makeLabware(lt, sample);
         destroyed.setDestroyed(true);
@@ -277,7 +279,7 @@ public class TestReleaseService {
         String destroyedError = "Labware cannot be released because it is destroyed: ["+destroyed.getBarcode()+"]";
         String discardedError = "Labware cannot be released because it is discarded: ["+discarded.getBarcode()+"]";
         return Stream.of(
-                Arguments.of(List.of(good), null),
+                Arguments.of(List.of(good, used), null),
                 Arguments.of(List.of(good, empty), emptyError),
                 Arguments.of(List.of(empty, good), emptyError),
                 Arguments.of(List.of(destroyed), destroyedError),
