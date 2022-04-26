@@ -8,7 +8,7 @@ import java.util.Objects;
  */
 @Entity
 public class LabwareType implements HasIntId, HasName {
-    public static final String FETAL_WASTE_NAME = "Fetal waste";
+    public static final String FETAL_WASTE_NAME = "Fetal waste container";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
