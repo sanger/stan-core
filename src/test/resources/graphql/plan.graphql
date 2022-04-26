@@ -26,7 +26,7 @@ mutation {
                 }
             ]
         }, {
-            labwareType: "Fetal waste"
+            labwareType: "Fetal waste container"
             actions:[
                 {
                     source:{ barcode:"STAN-B70C" }
@@ -35,7 +35,7 @@ mutation {
                 }
             ]
         }, {
-            labwareType: "Fetal waste"
+            labwareType: "Fetal waste container"
             actions:[
                 {
                     source:{ barcode:"STAN-B70D" }

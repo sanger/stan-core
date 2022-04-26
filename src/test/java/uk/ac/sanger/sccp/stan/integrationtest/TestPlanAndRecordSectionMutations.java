@@ -119,7 +119,7 @@ public class TestPlanAndRecordSectionMutations {
             planData = chainGet(result, "data", "planData");
             assertEquals("Section", chainGet(planData, "plan", "operationType", "name"));
             assertEquals(barcode, chainGet(planData, "destination", "barcode"));
-            assertEquals("Fetal waste", chainGet(planData, "destination", "labwareType", "name"));
+            assertEquals(LabwareType.FETAL_WASTE_NAME, chainGet(planData, "destination", "labwareType", "name"));
             assertThat(IntegrationTestUtils.<Map<String, String>>chainGetList(planData, "sources").stream()
                     .map(m -> m.get("barcode"))
                     .collect(toList())).containsExactlyInAnyOrder(sources[i-1]);
