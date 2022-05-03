@@ -3,6 +3,7 @@ package uk.ac.sanger.sccp.stan.request.register;
 import com.google.common.base.MoreObjects;
 import uk.ac.sanger.sccp.stan.model.LifeStage;
 
+import java.time.LocalDate;
 import java.util.Objects;
 
 /**
@@ -23,6 +24,7 @@ public class BlockRegisterRequest {
     private String fixative;
     private String species;
     private boolean existingTissue;
+    private LocalDate sampleCollectionDate;
 
     public String getDonorIdentifier() {
         return this.donorIdentifier;
@@ -128,6 +130,14 @@ public class BlockRegisterRequest {
         this.existingTissue = existingTissue;
     }
 
+    public LocalDate getSampleCollectionDate() {
+        return this.sampleCollectionDate;
+    }
+
+    public void setSampleCollectionDate(LocalDate sampleCollectionDate) {
+        this.sampleCollectionDate = sampleCollectionDate;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -145,7 +155,9 @@ public class BlockRegisterRequest {
                 && Objects.equals(this.labwareType, that.labwareType)
                 && Objects.equals(this.medium, that.medium)
                 && Objects.equals(this.fixative, that.fixative)
-                && Objects.equals(this.species, that.species));
+                && Objects.equals(this.species, that.species)
+                && Objects.equals(this.sampleCollectionDate, that.sampleCollectionDate)
+        );
     }
 
     @Override
@@ -169,6 +181,7 @@ public class BlockRegisterRequest {
                 .add("fixative", fixative)
                 .add("species", species)
                 .add("existingTissue", existingTissue)
+                .add("sampleCollectionDate", sampleCollectionDate)
                 .toString();
     }
 }

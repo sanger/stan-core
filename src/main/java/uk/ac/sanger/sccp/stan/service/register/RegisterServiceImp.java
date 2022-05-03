@@ -58,6 +58,7 @@ public class RegisterServiceImp implements RegisterService {
         if (!problems.isEmpty()) {
             throw new ValidationException("The register request could not be validated.", problems);
         }
+        updateExistingTissues(request, validation);
         return create(request, user, validation);
     }
 
@@ -110,10 +111,31 @@ public class RegisterServiceImp implements RegisterService {
                     donor,
                     validation.getMedium(block.getMedium()),
                     validation.getFixative(block.getFixative()),
-                    hmdmc);
+                    hmdmc, block.getSampleCollectionDate());
             tissueMap.put(tissueKey, tissueRepo.save(tissue));
         }
         return tissueMap;
+    }
+
+    /**
+     * Updates any existing tissues that now have a collection date
+     * @param request specification
+     * @param validation validation result to look up tissues
+     */
+    public void updateExistingTissues(RegisterRequest request, RegisterValidation validation) {
+        List<Tissue> toUpdate = new ArrayList<>();
+        for (BlockRegisterRequest brr : request.getBlocks()) {
+            if (brr.isExistingTissue() && brr.getSampleCollectionDate()!=null) {
+                Tissue tissue = validation.getTissue(brr.getExternalIdentifier());
+                if (tissue!=null && tissue.getCollectionDate()==null) {
+                    tissue.setCollectionDate(brr.getSampleCollectionDate());
+                    toUpdate.add(tissue);
+                }
+            }
+        }
+        if (!toUpdate.isEmpty()) {
+            tissueRepo.saveAll(toUpdate);
+        }
     }
 
     public RegisterResult create(RegisterRequest request, User user, RegisterValidation validation) {

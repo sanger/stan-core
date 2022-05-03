@@ -3,6 +3,7 @@ package uk.ac.sanger.sccp.stan.model;
 import com.google.common.base.MoreObjects;
 
 import javax.persistence.*;
+import java.time.LocalDate;
 import java.util.Objects;
 
 /**
@@ -26,11 +27,12 @@ public class Tissue {
     private Fixative fixative;
     @ManyToOne
     private Hmdmc hmdmc;
+    private LocalDate collectionDate;
 
     public Tissue() {}
 
     public Tissue(Integer id, String externalName, String replicate, SpatialLocation spatialLocation, Donor donor,
-                  Medium medium, Fixative fixative, Hmdmc hmdmc) {
+                  Medium medium, Fixative fixative, Hmdmc hmdmc, LocalDate collectionDate) {
         this.id = id;
         this.externalName = externalName;
         this.replicate = replicate;
@@ -39,6 +41,7 @@ public class Tissue {
         this.medium = medium;
         this.fixative = fixative;
         this.hmdmc = hmdmc;
+        this.collectionDate = collectionDate;
     }
 
     public Integer getId() {
@@ -109,6 +112,14 @@ public class Tissue {
         this.hmdmc = hmdmc;
     }
 
+    public LocalDate getCollectionDate() {
+        return this.collectionDate;
+    }
+
+    public void setCollectionDate(LocalDate collectionDate) {
+        this.collectionDate = collectionDate;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -121,7 +132,9 @@ public class Tissue {
                 && Objects.equals(this.medium, that.medium)
                 && Objects.equals(this.donor, that.donor)
                 && Objects.equals(this.hmdmc, that.hmdmc)
-                && Objects.equals(this.fixative, that.fixative));
+                && Objects.equals(this.fixative, that.fixative)
+                && Objects.equals(this.collectionDate, that.collectionDate)
+        );
     }
 
     @Override
@@ -140,6 +153,7 @@ public class Tissue {
                 .add("medium", medium)
                 .add("fixative", fixative)
                 .add("hmdmc", hmdmc)
+                .add("collectionDate", collectionDate)
                 .toString();
     }
 }

@@ -10,5 +10,13 @@
         <addForeignKeyConstraint baseTableName="stain" baseColumnNames="operation_id" constraintName="fk_stain_operation"
                                  referencedTableName="operation" referencedColumnNames="id"/>
     </changeSet>
+    
+    <changeSet id="2.7.1" author="dr6">
+        <addColumn tableName="tissue">
+            <column name="collection_date" type="DATE" defaultValue="NULL">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
 
 </databaseChangeLog>
