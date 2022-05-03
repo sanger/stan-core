@@ -27,6 +27,8 @@ enum LabwareState {
     released
     """The labware has been destroyed for a specific reason."""
     destroyed
+    """The labware has been used but may still be stored."""
+    used
 }
 
 """A pass or fail result."""
@@ -189,6 +191,8 @@ type Labware {
     destroyed: Boolean!
     """Has this labware been discarded?"""
     discarded: Boolean!
+    """Has this labware been marked as used?"""
+    used: Boolean!
     """The state, derived from the contents and other fields on the labware."""
     state: LabwareState!
     """The time when this labware was created in the application."""

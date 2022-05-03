@@ -2,4 +2,4 @@ name	flags	new_bio_state_id
 Register	1	1
 Section	2	null
 Extract	4	2
-Visium cDNA	4	3
+Visium cDNA	128	3

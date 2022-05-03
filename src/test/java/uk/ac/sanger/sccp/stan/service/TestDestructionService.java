@@ -159,6 +159,7 @@ public class TestDestructionService {
             assertThrows(IllegalArgumentException.class, () -> destructionService.loadAndValidateLabware(barcodes));
         }
 
+        verify(mockValidator).setUsedAllowed(true);
         verify(mockValidator).setUniqueRequired(true);
         verify(mockValidator).loadLabware(mockLabwareRepo, barcodes);
         verify(mockValidator).validateSources();

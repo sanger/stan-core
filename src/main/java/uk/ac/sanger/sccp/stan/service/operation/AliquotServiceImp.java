@@ -164,6 +164,10 @@ public class AliquotServiceImp implements AliquotService {
             sourceLw.setDiscarded(true);
             sourceLw = lwRepo.save(sourceLw);
         }
+        if (opType.markSourceUsed()) {
+            sourceLw.setUsed(true);
+            sourceLw = lwRepo.save(sourceLw);
+        }
         final String sourceBarcode = sourceLw.getBarcode();
         // We previously verified that the labware contained a single sample in a single slot
         Slot sourceSlot = sourceLw.getSlots().stream()

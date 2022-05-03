@@ -235,11 +235,14 @@ public class TestStoreService {
         destroyedLabware.setDestroyed(true);
         Labware discardedLabware = EntityFactory.makeEmptyLabware(lt);
         discardedLabware.setDiscarded(true);
+        Labware usedLabware = EntityFactory.makeLabware(lt, sample);
+        usedLabware.setUsed(true);
 
         return Stream.of(
                 Arguments.of("Bananas", "No labware found with barcode \"Bananas\""),
 
                 Arguments.of(okLabware, null),
+                Arguments.of(usedLabware, null),
                 Arguments.of(releasedLabware, "Labware %bc cannot be stored because it is released."),
                 Arguments.of(destroyedLabware, "Labware %bc cannot be stored because it is destroyed."),
                 Arguments.of(discardedLabware, "Labware %bc cannot be stored because it is discarded."),
@@ -272,6 +275,9 @@ public class TestStoreService {
         Sample sample = EntityFactory.getSample();
         Labware okLabware = EntityFactory.makeLabware(lt, sample);
         okLabware.setBarcode("STAN-OK");
+        Labware usedLabware = EntityFactory.makeLabware(lt, sample);
+        usedLabware.setBarcode("STAN-USED");
+        usedLabware.setUsed(true);
         Labware emptyLabware = EntityFactory.makeEmptyLabware(lt);
         emptyLabware.setBarcode("STAN-EMPTY");
         Labware releasedLabware = EntityFactory.makeEmptyLabware(lt);
@@ -284,10 +290,12 @@ public class TestStoreService {
         discardedLabware.setBarcode("STAN-DIS");
         discardedLabware.setDiscarded(true);
 
-        UCMap<Labware> labware = UCMap.from(Labware::getBarcode, okLabware, emptyLabware, releasedLabware, destroyedLabware, discardedLabware);
+        UCMap<Labware> labware = UCMap.from(Labware::getBarcode, okLabware, emptyLabware, releasedLabware,
+                destroyedLabware, discardedLabware, usedLabware);
 
         return Arrays.stream(new Object[][] {
                 {okLabware, null},
+                {usedLabware, null},
                 {emptyLabware, "Labware [STAN-EMPTY] cannot be stored because it is [empty]."},
                 {releasedLabware, "Labware [STAN-REL] cannot be stored because it is [released]."},
                 {destroyedLabware, "Labware [STAN-DES] cannot be stored because it is [destroyed]."},

@@ -18,7 +18,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 public class Labware {
 
     public enum State {
-        empty, active, discarded, released, destroyed
+        empty, active, discarded, released, destroyed, used
     }
 
     @Id
@@ -38,6 +38,7 @@ public class Labware {
     private boolean discarded;
     private boolean released;
     private boolean destroyed;
+    private boolean used;
 
     @Generated(GenerationTime.INSERT)
     private LocalDateTime created;
@@ -159,6 +160,14 @@ public class Labware {
         this.destroyed = destroyed;
     }
 
+    public boolean isUsed() {
+        return this.used;
+    }
+
+    public void setUsed(boolean used) {
+        this.used = used;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -171,7 +180,9 @@ public class Labware {
                 && Objects.equals(this.slots, that.slots)
                 && this.discarded == that.discarded
                 && this.released == that.released
-                && this.destroyed == that.destroyed);
+                && this.destroyed == that.destroyed
+                && this.used == that.used
+        );
     }
 
     @Override
@@ -185,7 +196,7 @@ public class Labware {
     }
 
     @JsonIgnore
-    public boolean isUsable() {
+    public boolean isStorable() {
         return !(isReleased() || isDestroyed() || isDiscarded());
     }
 
@@ -200,6 +211,7 @@ public class Labware {
         if (isReleased()) return State.released;
         if (isDiscarded()) return State.discarded;
         if (isEmpty()) return State.empty;
+        if (isUsed()) return State.used;
         return State.active;
     }
 }

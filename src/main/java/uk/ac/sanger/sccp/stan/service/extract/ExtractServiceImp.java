@@ -88,6 +88,9 @@ public class ExtractServiceImp implements ExtractService {
         if (opType.discardSource()) {
             sources = discardSources(sources);
         }
+        if (opType.markSourceUsed()) {
+            sources = markSourcesUsed(sources);
+        }
         Map<Labware, Labware> labwareMap = createNewLabware(labwareType, sources);
         createSamples(labwareMap, bioState);
         List<Operation> ops = createOperations(user, opType, labwareMap);
@@ -139,6 +142,20 @@ public class ExtractServiceImp implements ExtractService {
         return sources.stream()
                 .map(lw -> {
                     lw.setDiscarded(true);
+                    return labwareRepo.save(lw);
+                }).collect(toList());
+    }
+
+
+    /**
+     * Updates the given labware as used (and saves them). Returns a list of updated labware.
+     * @param sources the labware to update
+     * @return the updated labware
+     */
+    public List<Labware> markSourcesUsed(List<Labware> sources) {
+        return sources.stream()
+                .map(lw -> {
+                    lw.setUsed(true);
                     return labwareRepo.save(lw);
                 }).collect(toList());
     }

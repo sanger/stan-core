@@ -88,6 +88,10 @@ public class OperationType implements HasName, HasIntId {
         return this.has(OperationTypeFlag.DISCARD_SOURCE);
     }
 
+    public boolean markSourceUsed() {
+        return this.has(OperationTypeFlag.MARK_SOURCE_USED);
+    }
+
     public boolean transfersReagent() {
         return this.has(OperationTypeFlag.REAGENT_TRANSFER);
     }

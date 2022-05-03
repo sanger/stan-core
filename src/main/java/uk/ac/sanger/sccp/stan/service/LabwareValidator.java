@@ -21,6 +21,7 @@ public class LabwareValidator {
     private Collection<String> givenBarcodes;
     private boolean uniqueRequired = true;
     private boolean singleSample = false;
+    private boolean usedAllowed = false;
 
     /**
      * Creates a new validator with no labware specified
@@ -77,6 +78,22 @@ public class LabwareValidator {
      */
     public boolean isSingleSample() {
         return this.singleSample;
+    }
+
+    /**
+     * Are used labware allowed? By default they are not allowed.
+     * @return whether used labware are allowed
+     */
+    public boolean isUsedAllowed() {
+        return this.usedAllowed;
+    }
+
+    /**
+     * Sets whether used labware are allowed. By default they are not allowed.
+     * @param usedAllowed whether to allow used labware
+     */
+    public void setUsedAllowed(boolean usedAllowed) {
+        this.usedAllowed = usedAllowed;
     }
 
     /**
@@ -247,7 +264,7 @@ public class LabwareValidator {
     }
 
     /**
-     * Checks the labware is not discarded, released or destroyed.
+     * Checks the labware is not discarded, released, destroyed, or used.
      * Adds an error for each of those cases.
      */
     public void validateStates() {
@@ -257,6 +274,9 @@ public class LabwareValidator {
         validateState(Labware::isDiscarded, "discarded");
         validateState(Labware::isReleased, "released");
         validateState(Labware::isDestroyed, "destroyed");
+        if (!isUsedAllowed()) {
+            validateState(Labware::isUsed, "used");
+        }
     }
 
     /**

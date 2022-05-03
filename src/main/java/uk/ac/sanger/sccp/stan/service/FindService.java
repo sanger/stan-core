@@ -144,7 +144,7 @@ public class FindService {
             return List.of();
         }
         List<Labware> labware = labwareService.findBySample(samples).stream()
-                .filter(Labware::isUsable)
+                .filter(Labware::isStorable)
                 .collect(toList());
         if (labware.isEmpty()) {
             return List.of();

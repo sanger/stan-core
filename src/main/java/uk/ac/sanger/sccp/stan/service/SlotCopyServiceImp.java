@@ -220,6 +220,9 @@ public class SlotCopyServiceImp implements SlotCopyService {
         if (opType.discardSource()) {
             discardSources(labwareMap.values());
         }
+        if (opType.markSourceUsed()) {
+            markSourcesUsed(labwareMap.values());
+        }
         Operation op = createOperation(user, contents, opType, labwareMap, filledLabware, oldSampleIdToNewSample);
         List<Operation> ops = List.of(op);
         if (work!=null) {
@@ -321,6 +324,13 @@ public class SlotCopyServiceImp implements SlotCopyService {
     public void discardSources(Collection<Labware> labware) {
         for (Labware lw : labware) {
             lw.setDiscarded(true);
+        }
+        lwRepo.saveAll(labware);
+    }
+
+    public void markSourcesUsed(Collection<Labware> labware) {
+        for (Labware lw : labware) {
+            lw.setUsed(true);
         }
         lwRepo.saveAll(labware);
     }

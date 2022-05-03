@@ -81,6 +81,8 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
                 addProblem(problems, "Labware %s is released.", bc);
             } else if (lw.isDiscarded()) {
                 addProblem(problems, "Labware %s is already discarded.", bc);
+            } else if (lw.isUsed()) {
+                addProblem(problems, "Labware %s is already used.", bc);
             } else if (!lw.isEmpty()) {
                 addProblem(problems, "Labware %s already has contents.", bc);
             }

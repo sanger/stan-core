@@ -8,6 +8,7 @@ public enum OperationTypeFlag {
     RESULT,
     ANALYSIS,
     REAGENT_TRANSFER,
+    MARK_SOURCE_USED,
 
     // Current limit: 32 flags
     ;

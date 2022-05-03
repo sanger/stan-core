@@ -150,36 +150,39 @@ public class TestLabwareValidator {
         testValidator(List.of(nonemptyLabware, emptyLabware), action,errorBarcode("Labware is empty", emptyLabware));
     }
 
+    @Test
+    public void testValidateStates_noLabware() {
+        validator.setLabware(List.of());
+        validator.validateStates();
+        verify(validator, never()).validateState(any(), any());
+    }
+
     @ParameterizedTest
     @ValueSource(booleans={false, true})
-    public void testValidateStates(boolean anyLabware) {
-        List<Labware> lw;
-        if (anyLabware) {
-            LabwareType lt = EntityFactory.getTubeType();
-            lw = IntStream.range(0, 4).mapToObj(i -> EntityFactory.makeEmptyLabware(lt)).collect(toList());
-            lw.get(1).setDiscarded(true);
-            lw.get(2).setDestroyed(true);
-            lw.get(3).setReleased(true);
-        } else {
-            lw = List.of();
-        }
+    public void testValidateStates(boolean usedAllowed) {
+        LabwareType lt = EntityFactory.getTubeType();
+        List<Labware> lw = IntStream.range(0, 5).mapToObj(i -> EntityFactory.makeEmptyLabware(lt)).collect(toList());
+        lw.get(1).setDiscarded(true);
+        lw.get(2).setDestroyed(true);
+        lw.get(3).setReleased(true);
+        lw.get(4).setUsed(true);
         validator.setLabware(lw);
+        validator.setUsedAllowed(usedAllowed);
         validator.validateStates();
-        if (!anyLabware) {
-            verify(validator, never()).validateState(any(), anyString());
-            return;
-        }
 
         // cannot verify the identity of method references
         verify(validator).validateState(any(), eq("discarded"));
         verify(validator).validateState(any(), eq("destroyed"));
         verify(validator).validateState(any(), eq("released"));
+        verify(validator, times(usedAllowed ? 0 : 1)).validateState(any(), eq("used"));
         // ... so we'll verify the effects instead
-        assertThat(validator.getErrors()).containsOnly(
-                errorBarcode("Labware is discarded", lw.get(1)),
-                errorBarcode("Labware is destroyed", lw.get(2)),
-                errorBarcode("Labware is released", lw.get(3))
-        );
+        assertThat(validator.getErrors()).hasSize(usedAllowed ? 3 : 4);
+        assertThat(validator.getErrors()).contains(errorBarcode("Labware is discarded", lw.get(1)));
+        assertThat(validator.getErrors()).contains(errorBarcode("Labware is destroyed", lw.get(2)));
+        assertThat(validator.getErrors()).contains(errorBarcode("Labware is released", lw.get(3)));
+        if (!usedAllowed) {
+            assertThat(validator.getErrors()).contains(errorBarcode("Labware is used", lw.get(4)));
+        }
     }
 
     @Test
