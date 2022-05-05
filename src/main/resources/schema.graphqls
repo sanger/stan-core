@@ -1193,7 +1193,7 @@ input ReagentTransferRequest {
     transfers: [ReagentTransfer!]!
 }
 
-"""A chemical a sample is put in. For example Ethanol"""
+"""A chemical a sample is put in, e.g Ethanol"""
 type SolutionSample {
     name:String!
     enabled:Boolean!
