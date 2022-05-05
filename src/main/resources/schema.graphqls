@@ -1193,6 +1193,47 @@ input ReagentTransferRequest {
     transfers: [ReagentTransfer!]!
 }
 
+"""A chemical a sample is put in. For example Ethanol"""
+type SolutionSample {
+    name:String!
+    enabled:Boolean!
+}
+
+"""A request to register one or more samples of tissue sample."""
+input SampleRegisterRequest {
+    """The string to use as the donor name."""
+    donorIdentifier: String!
+    """The life stage of the donor."""
+    lifeStage: LifeStage!
+    """The HMDMC to use for the tissue."""
+    hmdmc: String
+    """The name of the tissue type (the organ from which the tissue is taken)."""
+    tissueType: String!
+    """The code for the spatial location from which the tissue is taken."""
+    spatialLocation: Int!
+    """The string to use for the replicate number of the tissue."""
+    replicateNumber: String
+    """The external identifier used to identify the tissue."""
+    externalIdentifier: String
+    """The name of the type of labware containing the sample."""
+    labwareType: String!
+    """The solution sample used for the tissue."""
+    solutionSample: String!
+    """The fixative used for the tissue."""
+    fixative: String!
+    """The species of the donor."""
+    species: String!
+    """The date the original sample was collected, if known."""
+    sampleCollectionDate: Date
+}
+
+"""A request to register one or more samples of tissue sample."""
+input TissueSampleRegisterRequest {
+    samples: [SampleRegisterRequest!]!
+}
+
+
+
 """
 Get information from the application.
 These typically require no user privilege.
@@ -1210,6 +1251,8 @@ type Query {
     mediums: [Medium!]!
     """Get all the fixatives that are enabled, or get all including those that are disabled."""
     fixatives(includeDisabled: Boolean): [Fixative!]!
+    """Get all the solution samples available."""
+    solutionSamples(includeDisabled: Boolean): [SolutionSample!]!
     """Get all the species that are enabled, or get all including those that are disabled."""
     species(includeDisabled: Boolean): [Species!]!
     """Get the labware with the given barcode."""
@@ -1290,6 +1333,8 @@ type Mutation {
     register(request: RegisterRequest!): RegisterResult!
     """Register sections of tissue."""
     registerSections(request: SectionRegisterRequest): RegisterResult!
+    """Register samples of tissue."""
+    registerTissueSamples(request: TissueSampleRegisterRequest!): RegisterResult!
     """Record planned operations."""
     plan(request: PlanRequest!): PlanResult!
     """Print the specified labware barcodes on the specified printer."""
@@ -1350,6 +1395,10 @@ type Mutation {
     addWorkType(name: String!): WorkType!
     """Enable or disable a work type."""
     setWorkTypeEnabled(name: String!, enabled: Boolean!): WorkType!
+    """Create a new chemical for sample to put in."""
+    addSolutionSample(name: String!): SolutionSample!
+    """Enable or disable a solution sample."""
+    setSolutionSampleEnabled(solutionSample: String!, enabled: Boolean!): SolutionSample!
 
     """Create a new work, which will be allocated a new work number with the given prefix."""
     createWork(prefix: String!, workType: String!, project: String!, costCode: String!, numBlocks: Int, numSlides: Int): Work!
