@@ -86,6 +86,7 @@ public class ReleaseFileService {
         Ancestry ancestry = findAncestry(entries);
         loadSources(entries, ancestry, mode);
         loadMeasurements(entries, ancestry);
+        loadSectionDate(entries, ancestry);
         loadStains(entries, ancestry);
         loadReagentSources(entries);
         return new ReleaseFileContent(mode, entries);
@@ -383,6 +384,26 @@ public class ReleaseFileService {
     }
 
     /**
+     * Loads the section date for samples that have been sectioned
+     * @param entries the release entries
+     * @param ancestry the ancestry map
+     */
+    public void loadSectionDate(Collection<ReleaseEntry> entries, Ancestry ancestry) {
+        Set<Integer> slotIds = ancestry.keySet().stream().map(ss -> ss.getSlot().getId()).collect(toSet());
+        OperationType opType = opTypeRepo.getByName("Section");
+        List<Operation> sectionOps = opRepo.findAllByOperationTypeAndDestinationSlotIdIn(opType, slotIds);
+        if (!sectionOps.isEmpty()) {
+            Map<Integer, Operation> labwareSectionOp = labwareIdToOp(sectionOps);
+            Map<ReleaseEntry, Operation> entrySectionOp = findEntryOps(entries, labwareSectionOp, ancestry);
+            entrySectionOp.forEach((entry, op) -> {
+                if (op != null) {
+                    entry.setSectionDate(op.getPerformed().toLocalDate());
+                }
+            });
+        }
+    }
+
+    /**
      * Loads info about stains on the labware or its antecedents.
      * @param entries the release entries
      * @param ancestry the ancestry map
@@ -536,36 +557,6 @@ public class ReleaseFileService {
     }
 
     /**
-     * Fills in the stain type and bond barcode fields for all the given entries.
-     * These are both taken from the latest stain operation on the particular piece of labware.
-     * @param entries the entries to add information to
-     */
-    public void loadLastStain(Collection<ReleaseEntry> entries) {
-        Set<Integer> labwareIds = entries.stream().map(re -> re.getLabware().getId()).collect(toSet());
-        if (labwareIds.isEmpty()) {
-            return;
-        }
-        Map<Integer, Operation> lwOps = loadLastOpMap(opTypeRepo.getByName("Stain"), labwareIds);
-        if (lwOps.isEmpty()) {
-            return;
-        }
-        Map<Integer, String> bondBarcodes = loadBondBarcodes(lwOps);
-        Map<Integer, List<StainType>> opStainTypes = loadStainTypes(lwOps);
-        for (ReleaseEntry entry : entries) {
-            Integer labwareId = entry.getLabware().getId();
-            Operation op = lwOps.get(labwareId);
-            if (op==null) {
-                continue;
-            }
-            var stainTypes = opStainTypes.get(op.getId());
-            if (stainTypes!=null && !stainTypes.isEmpty()) {
-                entry.setStainType(stainTypes.stream().map(StainType::getName).collect(joining(", ")));
-            }
-            entry.setBondBarcode(bondBarcodes.get(labwareId));
-        }
-    }
-
-    /**
      * Gets the latest op of the given type on each specified labware (as a destination)
      * @param opType the type of op we are looking for
      * @param labwareIds the ids of the labware we are interested in
@@ -598,29 +589,6 @@ public class ReleaseFileService {
         }
         int d = newOp.getPerformed().compareTo(savedOp.getPerformed());
         return (d > 0 || d==0 && newOp.getId() > savedOp.getId());
-    }
-
-    /**
-     * Finds the appropriate bond barcode for each labware/op combination
-     * @param lwOps map of labware ids to the stain operation we are looking for information on
-     * @return a map of labware id to bond barcode (if any)
-     */
-    public Map<Integer, String> loadBondBarcodes(Map<Integer, Operation> lwOps) {
-        Set<Integer> opIds = lwOps.values().stream().map(Operation::getId).collect(toSet());
-        List<LabwareNote> notes = lwNoteRepo.findAllByOperationIdIn(opIds);
-        if (notes.isEmpty()) {
-            return Map.of();
-        }
-        Map<Integer, String> lwBondBarcode = new HashMap<>(lwOps.size());
-        for (LabwareNote note : notes) {
-            if (note.getName().equalsIgnoreCase(ComplexStainServiceImp.LW_NOTE_BOND_BARCODE)) {
-                Operation op = lwOps.get(note.getLabwareId());
-                if (op!=null && op.getId().equals(note.getOperationId())) {
-                    lwBondBarcode.put(note.getLabwareId(), note.getValue());
-                }
-            }
-        }
-        return lwBondBarcode;
     }
 
     /**

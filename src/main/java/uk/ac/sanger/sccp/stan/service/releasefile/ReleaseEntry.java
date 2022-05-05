@@ -3,6 +3,7 @@ package uk.ac.sanger.sccp.stan.service.releasefile;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
+import java.time.LocalDate;
 import java.util.Objects;
 
 /**
@@ -24,6 +25,9 @@ public class ReleaseEntry {
     private String reagentSource;
     private Integer cq;
     private String cdnaAnalysisConcentration;
+    private Integer rnascopePlex;
+    private Integer ihcPlex;
+    private LocalDate sectionDate;
 
     public ReleaseEntry(Labware labware, Slot slot, Sample sample) {
         this(labware, slot, sample, null);
@@ -136,6 +140,30 @@ public class ReleaseEntry {
         this.cdnaAnalysisConcentration = cdnaAnalysisConcentration;
     }
 
+    public Integer getRnascopePlex() {
+        return this.rnascopePlex;
+    }
+
+    public void setRnascopePlex(Integer rnascopePlex) {
+        this.rnascopePlex = rnascopePlex;
+    }
+
+    public Integer getIhcPlex() {
+        return this.ihcPlex;
+    }
+
+    public void setIhcPlex(Integer ihcPlex) {
+        this.ihcPlex = ihcPlex;
+    }
+
+    public LocalDate getSectionDate() {
+        return this.sectionDate;
+    }
+
+    public void setSectionDate(LocalDate sectionDate) {
+        this.sectionDate = sectionDate;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -155,6 +183,9 @@ public class ReleaseEntry {
                 && Objects.equals(this.reagentSource, that.reagentSource)
                 && Objects.equals(this.cq, that.cq)
                 && Objects.equals(this.cdnaAnalysisConcentration, that.cdnaAnalysisConcentration)
+                && Objects.equals(this.rnascopePlex, that.rnascopePlex)
+                && Objects.equals(this.ihcPlex, that.ihcPlex)
+                && Objects.equals(this.sectionDate, that.sectionDate)
         );
     }
 
@@ -179,6 +210,9 @@ public class ReleaseEntry {
                 .add("reagentSource", reagentSource)
                 .add("cq", cq)
                 .add("cdnaAnalysisConcentration", cdnaAnalysisConcentration)
+                .add("rnascopePlex", rnascopePlex)
+                .add("ihcPlex", ihcPlex)
+                .add("sectionDate", sectionDate)
                 .toString();
     }
 }

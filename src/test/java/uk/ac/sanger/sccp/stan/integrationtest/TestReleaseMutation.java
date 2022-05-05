@@ -123,7 +123,7 @@ public class TestReleaseMutation {
                 "Life stage", "External identifier", "Tissue type", "Spatial location", "Replicate number", "Section number",
                 "Last section number", "Source barcode", "Section thickness", "Released from box location",
                 "Stain type", "Bond barcode", "Tissue coverage", "Cq value", "cDNA analysis concentration",
-                "Dual index plate name");
+                "Dual index plate name", "RNAscope plex", "IHC plex", "Date sectioned");
         var row0 = tsvMaps.get(0);
         assertEquals(block.getBarcode(), row0.get("Barcode"));
         assertEquals(block.getLabwareType().getName(), row0.get("Labware type"));
