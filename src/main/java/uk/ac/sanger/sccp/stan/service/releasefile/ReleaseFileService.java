@@ -425,15 +425,38 @@ public class ReleaseFileService {
         Map<Integer, String> stainOpTypes = stainTypeRepo.loadOperationStainTypes(opIds).entrySet().stream()
                 .collect(toMap(Map.Entry::getKey, e -> e.getValue().stream().map(StainType::getName).collect(joining(", "))));
 
-        Map<Integer, String> opBondBarcodes = lwNoteRepo.findAllByOperationIdIn(opIds).stream()
-                .filter(note -> ComplexStainServiceImp.LW_NOTE_BOND_BARCODE.equalsIgnoreCase(note.getName()))
-                .collect(toMap(LabwareNote::getOperationId, LabwareNote::getValue));
+        Map<Integer, String> opBondBarcodes = new HashMap<>();
+        Map<Integer, Integer> opRnaPlex = new HashMap<>();
+        Map<Integer, Integer> opIhcPlex = new HashMap<>();
+
+        for (var note : lwNoteRepo.findAllByOperationIdIn(opIds)) {
+            final String name = note.getName();
+            final Integer opId = note.getOperationId();
+            final String value = note.getValue();
+            if (name.equalsIgnoreCase(ComplexStainServiceImp.LW_NOTE_BOND_BARCODE)) {
+                opBondBarcodes.put(opId, value);
+            } else if (name.equalsIgnoreCase(ComplexStainServiceImp.LW_NOTE_PLEX_RNASCOPE)) {
+                try {
+                    opRnaPlex.put(opId, Integer.valueOf(value));
+                } catch (NumberFormatException e) {
+                    log.error("Should be an integer: "+note);
+                }
+            } else if (name.equalsIgnoreCase(ComplexStainServiceImp.LW_NOTE_PLEX_IHC)) {
+                try {
+                    opIhcPlex.put(opId, Integer.valueOf(value));
+                } catch (NumberFormatException e) {
+                    log.error("Should be an integer: "+note);
+                }
+            }
+        }
 
         for (ReleaseEntry entry : entries) {
             Operation op = entryStainOp.get(entry);
             if (op!=null) {
                 entry.setStainType(stainOpTypes.get(op.getId()));
                 entry.setBondBarcode(opBondBarcodes.get(op.getId()));
+                entry.setRnascopePlex(opRnaPlex.get(op.getId()));
+                entry.setIhcPlex(opIhcPlex.get(op.getId()));
             }
         }
     }

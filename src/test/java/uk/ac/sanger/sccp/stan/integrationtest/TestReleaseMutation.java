@@ -80,7 +80,9 @@ public class TestReleaseMutation {
 
         StainType st = stainTypeRepo.save(new StainType(null, "Varnish"));
         String bondBarcode = "1234ABCD";
-        recordStain(lw, st, bondBarcode, user);
+        Integer rnaPlex = 15;
+        Integer ihcPlex = 16;
+        recordStain(lw, st, bondBarcode, rnaPlex, ihcPlex, user);
 
         ReleaseDestination destination = entityCreator.createReleaseDestination("Venus");
         ReleaseRecipient recipient = entityCreator.createReleaseRecipient("Mekon");
@@ -136,6 +138,8 @@ public class TestReleaseMutation {
             assertEquals("C4", row.get("Released from box location"));
             assertEquals(st.getName(), row.get("Stain type"));
             assertEquals(bondBarcode, row.get("Bond barcode"));
+            assertEquals(String.valueOf(ihcPlex), row.get("IHC plex"));
+            assertEquals(String.valueOf(rnaPlex), row.get("RNAscope plex"));
         }
 
         entityCreator.createOpType("Unrelease", null, OperationTypeFlag.IN_PLACE);
@@ -151,7 +155,7 @@ public class TestReleaseMutation {
         assertTrue(lw.isReleased());
     }
 
-    private void recordStain(Labware lw, StainType st, String bondBarcode, User user) {
+    private void recordStain(Labware lw, StainType st, String bondBarcode, Integer rnaPlex, Integer ihcPlex, User user) {
         OperationType opType = opTypeRepo.getByName("Stain");
         Operation op = new Operation(null, opType, null, null, user);
         op = opRepo.save(op);
@@ -162,6 +166,12 @@ public class TestReleaseMutation {
         Sample sample = slot.getSamples().get(0);
         actionRepo.save(new Action(null, op.getId(), slot, slot, sample, sample));
         lwNoteRepo.save(new LabwareNote(null, lw.getId(), op.getId(), "Bond barcode", bondBarcode));
+        if (rnaPlex!=null) {
+            lwNoteRepo.save(new LabwareNote(null, lw.getId(), op.getId(), "RNAscope plex", String.valueOf(rnaPlex)));
+        }
+        if (ihcPlex!=null) {
+            lwNoteRepo.save(new LabwareNote(null, lw.getId(), op.getId(), "IHC plex", String.valueOf(ihcPlex)));
+        }
         entityManager.refresh(op);
     }
 
