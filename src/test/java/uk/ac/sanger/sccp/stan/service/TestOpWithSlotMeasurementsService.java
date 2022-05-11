@@ -65,8 +65,8 @@ public class TestOpWithSlotMeasurementsService {
         Work work = new Work(10, "SGP10", null, null, null, Work.Status.active);
         final Address A1 = new Address(1,1);
         OpWithSlotMeasurementsRequest request = new OpWithSlotMeasurementsRequest(lw.getBarcode(), opType.getName(), work.getWorkNumber(),
-                List.of(new SlotMeasurementRequest(A1, "CONCENTRATION", "10")));
-        List<SlotMeasurementRequest> sanMeas = List.of(new SlotMeasurementRequest(A1, "Concentration", "10.000"));
+                List.of(new SlotMeasurementRequest(A1, "CDNA CONCENTRATION", "10")));
+        List<SlotMeasurementRequest> sanMeas = List.of(new SlotMeasurementRequest(A1, "cDNA Concentration", "10.000"));
         stubValidation(lw, opType, work, sanMeas, null);
 
         OperationResult opres = new OperationResult(List.of(), List.of(lw));
@@ -98,8 +98,8 @@ public class TestOpWithSlotMeasurementsService {
         Work work = new Work(10, "SGP10", null, null, null, Work.Status.active);
         final Address A1 = new Address(1,1);
         OpWithSlotMeasurementsRequest request = new OpWithSlotMeasurementsRequest(lw.getBarcode(), opType.getName(), work.getWorkNumber(),
-                List.of(new SlotMeasurementRequest(A1, "CONCENTRATION", "10")));
-        List<SlotMeasurementRequest> sanMeas = List.of(new SlotMeasurementRequest(A1, "Concentration", "10.000"));
+                List.of(new SlotMeasurementRequest(A1, "CDNA CONCENTRATION", "10")));
+        List<SlotMeasurementRequest> sanMeas = List.of(new SlotMeasurementRequest(A1, "cDNA Concentration", "10.000"));
         final String problem = "Everything is bad.";
         stubValidation(lw, opType, work, sanMeas, problem);
 
@@ -391,12 +391,12 @@ public class TestOpWithSlotMeasurementsService {
     @CsvSource({
             OP_CDNA_AMP+",Cq value,Cq value",
             OP_CDNA_AMP+",CQ VALUE,Cq value",
-            OP_CDNA_ANALYSIS+",Concentration,Concentration",
-            OP_CDNA_ANALYSIS+",CONCENTRATION,Concentration",
-            OP_CDNA_AMP+",Concentration,",
+            OP_CDNA_ANALYSIS+",cDNA Concentration,cDNA Concentration",
+            OP_CDNA_ANALYSIS+",CDNA CONCENTRATION,cDNA Concentration",
+            OP_CDNA_AMP+",cDNA Concentration,",
             OP_CDNA_ANALYSIS+",Cq value,",
             ",Cq value,",
-            ",Concentration,",
+            ",cDNA Concentration,",
             "Bananas,Cq value,",
             OP_CDNA_ANALYSIS+",Custard,",
     })
@@ -407,8 +407,8 @@ public class TestOpWithSlotMeasurementsService {
 
     @ParameterizedTest
     @CsvSource({
-            "Concentration,10,10,",
-            "Concentration,10,10.0,",
+            "cDNA Concentration,10,10,",
+            "cDNA Concentration,10,10.0,",
             "Cq value,20,20,",
             "Cq value,20,20.0,",
             "Sploop,20,,",
@@ -416,7 +416,7 @@ public class TestOpWithSlotMeasurementsService {
     })
     public void testSanitiseMeasurementValue(String name, String value, String sanValue, String problem) {
         Sanitiser<String> san, otherSan;
-        if (name.equals("Concentration")) {
+        if (name.equals("cDNA Concentration")) {
             san = mockConcSan;
             otherSan = mockCqSan;
         } else if (name.equals("Cq value")) {

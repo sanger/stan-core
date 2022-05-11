@@ -338,7 +338,7 @@ public class TestExtractResultService {
                 new OperationComment(null, comment, op2.getId(), sampleId, slot2id, null)
         ));
         verify(mockMeasurementRepo).saveAll(List.of(
-                new Measurement(null, "Concentration", "55.00", sampleId, op1.getId(), slot1id)
+                new Measurement(null, "RNA Concentration", "55.00", sampleId, op1.getId(), slot1id)
         ));
         verify(mockWorkService).link(work, List.of(op1, op2));
     }
@@ -368,7 +368,7 @@ public class TestExtractResultService {
 
         assertThat(ros).containsExactly(new ResultOp(null, pf, resultOpId, sampleId, slotId, refersToOpId));
         if (concentrationValue!=null) {
-            assertThat(measurements).containsExactly(new Measurement(null, "Concentration", concentrationValue,
+            assertThat(measurements).containsExactly(new Measurement(null, "RNA Concentration", concentrationValue,
                     sampleId, resultOpId, slotId));
         } else {
             assertThat(measurements).isEmpty();

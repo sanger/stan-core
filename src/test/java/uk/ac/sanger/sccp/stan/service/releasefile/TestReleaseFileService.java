@@ -622,8 +622,8 @@ public class TestReleaseFileService {
                 new Measurement(3, "Thickness", "2", sample1.getId(), 10, lw1.getFirstSlot().getId()),
                 new Measurement(4, "Tissue coverage", "30", sample.getId(), 10, lw0.getFirstSlot().getId()),
                 new Measurement(5, "Cq value", "400", sample.getId(), 10, lw1.getFirstSlot().getId()),
-                new Measurement(6, "Concentration", "5.5", sample.getId(), 11, lw1.getFirstSlot().getId()),
-                new Measurement(7, "Concentration", "6.6", sample.getId(), 12, lw2.getFirstSlot().getId())
+                new Measurement(6, "cDNA Concentration", "5.5", sample.getId(), 11, lw1.getFirstSlot().getId()),
+                new Measurement(7, "cDNA Concentration", "6.6", sample.getId(), 12, lw2.getFirstSlot().getId())
         );
 
         Operation op11 = new Operation();

@@ -430,11 +430,11 @@ public class ReleaseFileService {
         Map<Integer, List<Measurement>> slotIdToThickness = new HashMap<>();
         Map<Integer, List<Measurement>> slotIdToCoverage = new HashMap<>();
         Map<Integer, List<Measurement>> slotIdToCq = new HashMap<>();
-        Map<Integer, List<Measurement>> slotIdToConc = new HashMap<>();
+        Map<Integer, List<Measurement>> slotIdToCDNAConc = new HashMap<>();
         final String THICKNESS = MeasurementType.Thickness.friendlyName();
         final String COVERAGE = MeasurementType.Tissue_coverage.friendlyName();
         final String CQ = MeasurementType.Cq_value.friendlyName();
-        final String CONC = MeasurementType.Concentration.friendlyName();
+        final String CDNA_CONC = MeasurementType.cDNA_Concentration.friendlyName();
         final String CDNA_ANALYSIS = "cDNA analysis";
         Map<Integer, OperationType> opTypeCache = new HashMap<>();
         for (Measurement measurement : measurements) {
@@ -450,7 +450,7 @@ public class ReleaseFileService {
             } else if (measurement.getName().equalsIgnoreCase(CQ)) {
                 List<Measurement> slotIdMeasurements = slotIdToCq.computeIfAbsent(measurement.getSlotId(), k -> new ArrayList<>());
                 slotIdMeasurements.add(measurement);
-            } else if (measurement.getName().equalsIgnoreCase(CONC)) {
+            } else if (measurement.getName().equalsIgnoreCase(CDNA_CONC)) {
                 final Integer opId = measurement.getOperationId();
                 OperationType opType = opTypeCache.get(opId);
                 if (opType==null) {
@@ -459,7 +459,7 @@ public class ReleaseFileService {
                     opTypeCache.put(opId, opType);
                 }
                 if (opType.getName().equalsIgnoreCase(CDNA_ANALYSIS)) {
-                    List<Measurement> slotIdMeasurements = slotIdToConc.computeIfAbsent(measurement.getSlotId(), k -> new ArrayList<>());
+                    List<Measurement> slotIdMeasurements = slotIdToCDNAConc.computeIfAbsent(measurement.getSlotId(), k -> new ArrayList<>());
                     slotIdMeasurements.add(measurement);
                 }
             }
@@ -485,7 +485,7 @@ public class ReleaseFileService {
                     log.error("Cq measurement is not an integer: {}", cqMeasurement);
                 }
             }
-            Measurement concMeasurement = selectMeasurement(entry, slotIdToConc, ancestry);
+            Measurement concMeasurement = selectMeasurement(entry, slotIdToCDNAConc, ancestry);
             if (concMeasurement != null) {
                 entry.setCdnaAnalysisConcentration(concMeasurement.getValue());
             }

@@ -231,7 +231,7 @@ public class ExtractResultServiceImp extends BaseResultService implements Extrac
         ResultOp ro = new ResultOp(null, erl.getResult(), resultOpId, sampleId, slotId, refersToOpId);
         resultOps.add(ro);
         if (concentration!=null) {
-            Measurement measurement = new Measurement(null, "Concentration", concentration, sampleId,
+            Measurement measurement = new Measurement(null, "RNA Concentration", concentration, sampleId,
                     resultOpId, slotId);
             measurements.add(measurement);
         }
