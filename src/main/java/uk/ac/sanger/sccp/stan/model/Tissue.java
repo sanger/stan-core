@@ -28,11 +28,15 @@ public class Tissue {
     @ManyToOne
     private Hmdmc hmdmc;
     private LocalDate collectionDate;
+    @ManyToOne
+    private SolutionSample solutionSample;
+    private Integer parentId;
 
     public Tissue() {}
 
     public Tissue(Integer id, String externalName, String replicate, SpatialLocation spatialLocation, Donor donor,
-                  Medium medium, Fixative fixative, Hmdmc hmdmc, LocalDate collectionDate) {
+                  Medium medium, Fixative fixative, Hmdmc hmdmc, LocalDate collectionDate,
+                  SolutionSample solutionSample, Integer parentId) {
         this.id = id;
         this.externalName = externalName;
         this.replicate = replicate;
@@ -42,6 +46,8 @@ public class Tissue {
         this.fixative = fixative;
         this.hmdmc = hmdmc;
         this.collectionDate = collectionDate;
+        this.solutionSample = solutionSample;
+        this.parentId = parentId;
     }
 
     public Integer getId() {
@@ -120,6 +126,26 @@ public class Tissue {
         this.collectionDate = collectionDate;
     }
 
+    public SolutionSample getSolutionSample() {
+        return this.solutionSample;
+    }
+
+    public void setSolutionSample(SolutionSample solutionSample) {
+        this.solutionSample = solutionSample;
+    }
+
+    /**
+     * The original tissue from which this tissue was derived, if any
+     * @return the id of the parent tissue
+     */
+    public Integer getParentId() {
+        return this.parentId;
+    }
+
+    public void setParentId(Integer parentId) {
+        this.parentId = parentId;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -134,6 +160,8 @@ public class Tissue {
                 && Objects.equals(this.hmdmc, that.hmdmc)
                 && Objects.equals(this.fixative, that.fixative)
                 && Objects.equals(this.collectionDate, that.collectionDate)
+                && Objects.equals(this.solutionSample, that.solutionSample)
+                && Objects.equals(this.parentId, that.parentId)
         );
     }
 
@@ -154,6 +182,8 @@ public class Tissue {
                 .add("fixative", fixative)
                 .add("hmdmc", hmdmc)
                 .add("collectionDate", collectionDate)
+                .add("solutionSample", solutionSample)
+                .add("parentId", parentId)
                 .toString();
     }
 }

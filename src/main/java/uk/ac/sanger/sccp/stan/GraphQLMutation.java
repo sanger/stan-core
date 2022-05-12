@@ -27,8 +27,7 @@ import uk.ac.sanger.sccp.stan.service.operation.InPlaceOpService;
 import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmOperationService;
 import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmSectionService;
 import uk.ac.sanger.sccp.stan.service.operation.plan.PlanService;
-import uk.ac.sanger.sccp.stan.service.register.RegisterService;
-import uk.ac.sanger.sccp.stan.service.register.SectionRegisterService;
+import uk.ac.sanger.sccp.stan.service.register.*;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.stan.service.work.WorkTypeService;
 
@@ -81,6 +80,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final ComplexStainService complexStainService;
     final AliquotService aliquotService;
     final ReagentTransferService reagentTransferService;
+    final OriginalSampleRegisterService originalSampleRegisterService;
     final UserAdminService userAdminService;
 
     @Autowired
@@ -101,7 +101,8 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            PermService permService, RNAAnalysisService rnaAnalysisService,
                            VisiumAnalysisService visiumAnalysisService, OpWithSlotMeasurementsService opWithSlotMeasurementsService,
                            ComplexStainService complexStainService, AliquotService aliquotService,
-                           ReagentTransferService reagentTransferService, UserAdminService userAdminService) {
+                           ReagentTransferService reagentTransferService, OriginalSampleRegisterService originalSampleRegisterService,
+                           UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
@@ -139,6 +140,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.complexStainService = complexStainService;
         this.aliquotService = aliquotService;
         this.reagentTransferService = reagentTransferService;
+        this.originalSampleRegisterService = originalSampleRegisterService;
         this.userAdminService = userAdminService;
     }
 
@@ -581,6 +583,16 @@ public class GraphQLMutation extends BaseGraphQLResource {
             return reagentTransferService.perform(user, request);
         };
     }
+
+    public DataFetcher<RegisterResult> registerOriginalSamples() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            OriginalSampleRegisterRequest request = arg(dfe, "request", OriginalSampleRegisterRequest.class);
+            logRequest("Register original samples", user, request);
+            return originalSampleRegisterService.register(user, request);
+        };
+    }
+
 
     public DataFetcher<User> addUser() {
         return adminAdd(userAdminService::addUser, "AddUser", "username");

@@ -163,6 +163,7 @@ public class GraphQLProvider {
                         .dataFetcher("recordComplexStain", transact(graphQLMutation.recordComplexStain()))
                         .dataFetcher("aliquot", transact(graphQLMutation.aliquot()))
                         .dataFetcher("reagentTransfer", transact(graphQLMutation.reagentTransfer()))
+                        .dataFetcher("registerOriginalSamples", transact(graphQLMutation.registerOriginalSamples()))
 
                         .dataFetcher("addUser", transact(graphQLMutation.addUser()))
                         .dataFetcher("setUserRole", transact(graphQLMutation.setUserRole()))

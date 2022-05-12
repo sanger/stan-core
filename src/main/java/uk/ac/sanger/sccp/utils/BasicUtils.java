@@ -367,4 +367,11 @@ public class BasicUtils {
     public static boolean startsWithIgnoreCase(String string, String sub) {
         return StringUtils.startsWithIgnoreCase(string, sub);
     }
+
+    /**
+     * Is the given string null or empty?
+     */
+    public static boolean nullOrEmpty(String string) {
+        return (string==null || string.isEmpty());
+    }
 }
