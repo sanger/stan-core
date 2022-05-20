@@ -193,7 +193,7 @@ public class TestExtractMutation {
         assertThat(measurements).hasSize(1);
         Measurement meas = measurements.get(0);
         assertEquals(dests[0].getFirstSlot().getId(), meas.getSlotId());
-        assertEquals("RNA Concentration", meas.getName());
+        assertEquals("RNA concentration", meas.getName());
         assertEquals("-200.00", meas.getValue());
         assertEquals(resultOpIds.get(0), meas.getOperationId());
 

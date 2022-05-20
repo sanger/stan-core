@@ -51,7 +51,7 @@ public class TestRecordOpWithSlotMeasurementsMutation {
         String measName, measValue, sanMeasName, sanMeasValue;
         if (opName.equalsIgnoreCase("cDNA analysis")) {
             measName = "CDNA CONCENTRATION";
-            sanMeasName = "cDNA Concentration";
+            sanMeasName = "cDNA concentration";
             measValue = "0123.5";
             sanMeasValue = "123.50";
         } else {

@@ -434,7 +434,7 @@ public class ReleaseFileService {
         final String THICKNESS = MeasurementType.Thickness.friendlyName();
         final String COVERAGE = MeasurementType.Tissue_coverage.friendlyName();
         final String CQ = MeasurementType.Cq_value.friendlyName();
-        final String CDNA_CONC = MeasurementType.cDNA_Concentration.friendlyName();
+        final String CDNA_CONC = MeasurementType.cDNA_concentration.friendlyName();
         final String CDNA_ANALYSIS = "cDNA analysis";
         Map<Integer, OperationType> opTypeCache = new HashMap<>();
         for (Measurement measurement : measurements) {
