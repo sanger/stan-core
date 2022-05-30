@@ -24,6 +24,8 @@ public interface LabwareRepo extends CrudRepository<Labware, Integer> {
 
     List<Labware> findByBarcodeIn(Collection<String> barcodes);
 
+    List<Labware> findByExternalBarcodeIn(Collection<String> barcodes);
+
     List<Labware> findAllByIdIn(Collection<Integer> ids);
 
     /**

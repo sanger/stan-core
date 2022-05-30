@@ -204,6 +204,32 @@ public class LabwareValidator {
     }
 
     /**
+     * Checks that all the samples in the labware are in the given bio state.
+     * Errors are added where samples are in other bio states.
+     * @param bs the required bio state
+     */
+    public void validateBioState(BioState bs) {
+        Set<String> wrongBS = new LinkedHashSet<>();
+        Set<Integer> checkedLabwareIds = new HashSet<>();
+        labwareLoop:
+        for (Labware lw : labware) {
+            if (checkedLabwareIds.add(lw.getId())) {
+                for (Slot slot : lw.getSlots()) {
+                    for (Sample sample : slot.getSamples()) {
+                        if (!sample.getBioState().equals(bs)) {
+                            wrongBS.add(lw.getBarcode());
+                            continue labwareLoop;
+                        }
+                    }
+                }
+            }
+        }
+        if (!wrongBS.isEmpty()) {
+            addError("Labware contains samples not in bio state %s: %s.", bs.getName(), wrongBS);
+        }
+    }
+
+    /**
      * Checks for repeated labware.
      * If any are found, an error is added.
      */

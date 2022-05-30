@@ -5,8 +5,8 @@ import org.mockito.ArgumentMatcher;
 import org.mockito.stubbing.Answer;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
 
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
@@ -45,6 +45,29 @@ public class Matchers {
      */
     public static <E, C extends Collection<E>> C sameElements(C collection) {
         return argThat(new OrderInsensitiveCollectionMatcher<>(collection));
+    }
+
+    /**
+     * A function mapping the given example input to the given output.
+     * @param input example input for the function
+     * @param output example output for the function
+     * @param <T> the input type of the function
+     * @param <R> the output type of the function
+     */
+    public static <T, R> Function<T, R> functionGiving(T input, R output) {
+        return argThat(new FunctionMatcher<>(input, output));
+    }
+
+    /**
+     * A function that behaves like the example function.
+     * The behaviour is tested using the given {@code input}.
+     * @param function the example function
+     * @param input an example input for the function
+     * @param <T> the input type of the function
+     * @param <R> the output type of the function
+     */
+    public static <T, R> Function<T, R> functionLike(Function<T, R> function, T input) {
+        return functionGiving(input, function.apply(input));
     }
 
     /**
@@ -107,6 +130,26 @@ public class Matchers {
         @Override
         public String toString() {
             return "in any order "+this.collection;
+        }
+    }
+
+    private static class FunctionMatcher<T, R> implements ArgumentMatcher<Function<T,R>> {
+        T input;
+        R output;
+
+        public FunctionMatcher(T input, R output) {
+            this.input = input;
+            this.output = output;
+        }
+
+        @Override
+        public boolean matches(Function<T, R> argument) {
+            return Objects.equals(argument.apply(this.input), this.output);
+        }
+
+        @Override
+        public String toString() {
+            return "function mapping ["+this.input+"] to ["+this.output+"]";
         }
     }
 
