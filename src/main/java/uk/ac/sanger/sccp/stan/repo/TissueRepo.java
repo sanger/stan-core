@@ -19,7 +19,7 @@ public interface TissueRepo extends CrudRepository<Tissue, Integer> {
             String replicate
     );
 
-    Optional<Tissue> findByDonorIdAndSpatialLocationId(int donorId, int spatialLocationId);
+    List<Tissue> findAllByDonorIdAndSpatialLocationId(int donorId, int spatialLocationId);
 
     default Tissue getByExternalName(String externalName) throws EntityNotFoundException {
         return findByExternalName(externalName).orElseThrow(

@@ -388,9 +388,9 @@ public class OriginalSampleRegisterServiceImp implements OriginalSampleRegisterS
             if (sl==null) {
                 continue;
             }
-            var optTissue = tissueRepo.findByDonorIdAndSpatialLocationId(donor.getId(), sl.getId());
-            if (optTissue.isPresent()) {
-                Tissue tissue = optTissue.get();
+            var tissueClashes = tissueRepo.findAllByDonorIdAndSpatialLocationId(donor.getId(), sl.getId());
+            if (!tissueClashes.isEmpty()) {
+                Tissue tissue = tissueClashes.get(0);
                 problems.add("Tissue from donor "+tissue.getDonor().getDonorName()+", "+tissue.getTissueType().getName()
                         +", spatial location "+sl.getCode()+" already exists in the database.");
             }
