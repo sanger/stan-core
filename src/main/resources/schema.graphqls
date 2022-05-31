@@ -1193,22 +1193,6 @@ input ReagentTransferRequest {
     transfers: [ReagentTransfer!]!
 }
 
-
-input TissueBlockRequest {
-    workNumber: String
-    labware: [TissueBlockLabware!]!
-    discardSourceBarcodes: [String!]
-}
-
-input TissueBlockLabware {
-    sourceBarcode: String!
-    labwareType: String!
-    preBarcode: String
-    commentId: Int
-    replicate: String!
-    medium: String!
-}
-
 """
 Get information from the application.
 These typically require no user privilege.
@@ -1314,9 +1298,6 @@ type Mutation {
     confirmOperation(request: ConfirmOperationRequest!): ConfirmOperationResult!
     """Confirm sections previously planned."""
     confirmSection(request: ConfirmSectionRequest!): OperationResult!
-
-    performTissueBlock(request: TissueBlockRequest!): OperationResult!
-
     """Release some labware."""
     release(request: ReleaseRequest!): ReleaseResult!
     """Record extract operations."""
