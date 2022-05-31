@@ -488,14 +488,14 @@ public class OriginalSampleRegisterServiceTest {
                                                     UCMap<TissueType> tissueTypes, Collection<Tissue> existingTissues,
                                                     Collection<String> expectedProblems) {
         if (existingTissues==null || existingTissues.isEmpty()) {
-            when(mockTissueRepo.findByDonorIdAndSpatialLocationId(anyInt(), anyInt())).thenReturn(Optional.empty());
+            when(mockTissueRepo.findAllByDonorIdAndSpatialLocationId(anyInt(), anyInt())).thenReturn(List.of());
         } else {
-            when(mockTissueRepo.findByDonorIdAndSpatialLocationId(anyInt(), anyInt())).then(invocation -> {
+            when(mockTissueRepo.findAllByDonorIdAndSpatialLocationId(anyInt(), anyInt())).then(invocation -> {
                 final int donorId = invocation.getArgument(0);
                 final int slId = invocation.getArgument(1);
                 return existingTissues.stream()
                         .filter(t -> t.getDonor().getId() == donorId && t.getSpatialLocation().getId() == slId)
-                        .findAny();
+                        .collect(toList());
             });
         }
 

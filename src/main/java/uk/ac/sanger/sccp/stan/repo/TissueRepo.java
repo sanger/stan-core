@@ -19,7 +19,7 @@ public interface TissueRepo extends CrudRepository<Tissue, Integer> {
             String replicate
     );
 
-    Optional<Tissue> findByDonorIdAndSpatialLocationId(int donorId, int spatialLocationId); // TODO - should this be a list?
+    List<Tissue> findAllByDonorIdAndSpatialLocationId(int donorId, int spatialLocationId);
 
     List<Tissue> findByDonorIdAndSpatialLocationIdAndReplicate(int donorId, int spatialLocationId, String replicate);
 
