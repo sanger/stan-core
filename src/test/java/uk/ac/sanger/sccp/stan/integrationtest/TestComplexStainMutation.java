@@ -44,6 +44,11 @@ public class TestComplexStainMutation {
     public void testComplexStain() throws Exception {
         Sample sample = entityCreator.createSample(null, 3);
         Labware lw = entityCreator.createLabware("STAN-A1", entityCreator.getTubeType(), sample);
+        WorkType wt = entityCreator.createWorkType("Rocks");
+        Project pr = entityCreator.createProject("Stargate");
+        CostCode cc = entityCreator.createCostCode("4");
+        Work work = entityCreator.createWork(wt, pr, cc);
+        work.setWorkNumber("SGP1");
         StainType st1 = stainTypeRepo.save(new StainType(null, "RNAscope"));
         StainType st2 = stainTypeRepo.save(new StainType(null, "IHC"));
         User user = entityCreator.createUser("user1");

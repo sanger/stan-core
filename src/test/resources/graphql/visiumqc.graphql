@@ -1,6 +1,7 @@
 mutation {
     recordVisiumQC(request: {
         operationType: "Slide processing"
+        workNumber: "SGP500"
         labwareResults: [
             {
                 barcode: "STAN-50"

@@ -163,7 +163,6 @@ public class RNAAnalysisServiceImp extends BaseResultService implements RNAAnaly
     public UCMap<Work> validateWork(Collection<String> problems, Collection<RNAAnalysisLabware> requestLabware) {
         Set<String> workNumbers = requestLabware.stream()
                 .map(RNAAnalysisLabware::getWorkNumber)
-                .filter(Objects::nonNull)
                 .collect(toSet());
         return workService.validateUsableWorks(problems, workNumbers);
     }
@@ -194,10 +193,8 @@ public class RNAAnalysisServiceImp extends BaseResultService implements RNAAnaly
             labware.add(lw);
             Operation op = opService.createOperationInPlace(opType, user, lw, null, null);
             ops.add(op);
-            Work work = requestLw.getWorkNumber()==null ? null : workMap.get(requestLw.getWorkNumber());
-            if (work!=null) {
-                workOps.computeIfAbsent(work, k -> new ArrayList<>()).add(op);
-            }
+            Work work = workMap.get(requestLw.getWorkNumber());
+            workOps.computeIfAbsent(work, k -> new ArrayList<>()).add(op);
             List<StringMeasurement> sms = smMap.get(lw.getBarcode());
             if (sms!=null) {
                 addMeasurements(measurements, op.getId(), lw, sms);

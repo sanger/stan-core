@@ -7,6 +7,7 @@ mutation {
                 bondBarcode: "12340ABC"
                 bondRun: 8
                 plexIHC: 12
+                workNumber: "SGP1"
                 plexRNAscope: 13
                 panel: positive
             }

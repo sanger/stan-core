@@ -12,6 +12,7 @@ mutation {
                 controlBarcode: "STAN-C0"
             }
         ]
+        workNumber: "SGP500"
     }) {
         operations {id}
     }
