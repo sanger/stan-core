@@ -81,8 +81,12 @@ public class EntityFactory {
         return tubeType;
     }
 
+    public static LabwareType makeLabwareType(int numRows, int numColumns, String name) {
+        return new LabwareType(++idCounter, name, numRows, numColumns, getLabelType(), false);
+    }
+
     public static LabwareType makeLabwareType(int numRows, int numColumns) {
-        return new LabwareType(++idCounter, numRows+"x"+numColumns, numRows, numColumns, getLabelType(), false);
+        return makeLabwareType(numRows, numColumns, numRows+"x"+numColumns);
     }
 
     public static Hmdmc getHmdmc() {

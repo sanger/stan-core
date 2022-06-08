@@ -1,0 +1,15 @@
+mutation {
+    performPotProcessing(request: {
+        sourceBarcode: "BARCODE"
+        workNumber: "WORKNUMBER"
+        sourceDiscarded: true
+        destinations: [{
+            labwareType: "Pot"
+            commentId: 1
+            fixative: "Formalin"
+        }]
+    }) {
+        labware { barcode }
+        operations { id }
+    }
+}

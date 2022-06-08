@@ -83,12 +83,15 @@ public class TestRegisterOriginalSamplesMutation {
         assertNull(tissue.getReplicate());
         assertEquals(Labware.State.active, lw.getState());
 
-        testBlockProcessing(barcode);
+        Work work = entityCreator.createWork(null, null, null);
+        testBlockProcessing(barcode, work);
+        lw.setDiscarded(false);
+        lwRepo.save(lw);
+        testPotProcessing(barcode, work);
     }
 
-    private void testBlockProcessing(String sourceBarcode) throws Exception {
+    private void testBlockProcessing(String sourceBarcode, Work work) throws Exception {
         OperationType opType = entityCreator.createOpType("Block processing", null);
-        Work work = entityCreator.createWork(null, null, null);
         String mutation = tester.readGraphQL("tissueblock.graphql")
                 .replace("WORKNUMBER", work.getWorkNumber())
                 .replace("BARCODE", sourceBarcode);
@@ -97,6 +100,26 @@ public class TestRegisterOriginalSamplesMutation {
         Integer opId = chainGet(result, "data", "performTissueBlock", "operations", 0, "id");
         Labware dest = lwRepo.getByBarcode(destBarcode);
         assertEquals("5c", dest.getFirstSlot().getSamples().get(0).getTissue().getReplicate());
+        Labware src = lwRepo.getByBarcode(sourceBarcode);
+        assertTrue(src.isDiscarded());
+
+        Operation op = opRepo.findById(opId).orElseThrow();
+        assertEquals(opType, op.getOperationType());
+    }
+
+    private void testPotProcessing(String sourceBarcode, Work work) throws Exception {
+        OperationType opType = entityCreator.createOpType("Pot processing", null);
+        LabwareType potLt = entityCreator.createLabwareType("Pot", 1, 1);
+        String mutation = tester.readGraphQL("potprocessing.graphql")
+                .replace("WORKNUMBER", work.getWorkNumber())
+                .replace("BARCODE", sourceBarcode);
+        Object result = tester.post(mutation);
+        String destBarcode = chainGet(result, "data", "performPotProcessing", "labware", 0, "barcode");
+        Integer opId = chainGet(result, "data", "performPotProcessing", "operations", 0, "id");
+        Labware dest = lwRepo.getByBarcode(destBarcode);
+        Sample sample = dest.getFirstSlot().getSamples().get(0);
+        assertEquals(potLt, dest.getLabwareType());
+        assertEquals("Formalin", sample.getTissue().getFixative().getName());
         Labware src = lwRepo.getByBarcode(sourceBarcode);
         assertTrue(src.isDiscarded());
 
