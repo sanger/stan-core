@@ -1279,8 +1279,8 @@ input PotProcessingRequest {
 input PotProcessingDestination {
     """The name of the type of labware."""
     labwareType: String!
-    """The fixative (if any)."""
-    fixative: String
+    """The fixative."""
+    fixative: String!
     """Comment to record, if any."""
     commentId: Int
 }
