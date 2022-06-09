@@ -344,7 +344,7 @@ public class RegisterValidationImp implements RegisterValidation {
                 }
                 if (!externalNames.add(block.getExternalIdentifier().toUpperCase())) {
                     addProblem("Repeated external identifier: " + block.getExternalIdentifier());
-                } else if (tissueRepo.findByExternalName(block.getExternalIdentifier()).isPresent()) {
+                } else if (!tissueRepo.findAllByExternalName(block.getExternalIdentifier()).isEmpty()) {
                     addProblem(String.format("There is already tissue in the database with external identifier %s.",
                             block.getExternalIdentifier()));
                 }

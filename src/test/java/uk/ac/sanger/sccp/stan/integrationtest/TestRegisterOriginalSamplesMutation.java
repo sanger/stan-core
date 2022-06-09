@@ -1,6 +1,8 @@
 package uk.ac.sanger.sccp.stan.integrationtest;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -40,14 +42,18 @@ public class TestRegisterOriginalSamplesMutation {
     @Autowired
     private OperationRepo opRepo;
 
-    @Test
+    @ParameterizedTest
     @Transactional
-    public void testRegisterOriginalSamples() throws Exception {
+    @ValueSource(booleans={false,true})
+    public void testRegisterOriginalSamples(boolean hasExternalName) throws Exception {
         User user = entityCreator.createUser("user1");
         tester.setUser(user);
         SolutionSample solution = solutionSampleRepo.save(new SolutionSample(null, "Glue"));
-
+        String externalName = (hasExternalName ? "EXT1" : null);
         String mutation = tester.readGraphQL("registeroriginal.graphql");
+        if (!hasExternalName) {
+            mutation = mutation.replace("externalIdentifier: \"EXT1\"", "");
+        }
         Map<String, ?> result = tester.post(mutation);
         assertThat((List<?>) result.get("errors")).isNullOrEmpty();
         assertThat((List<?>) result.get("clashes")).isNullOrEmpty();
@@ -60,7 +66,7 @@ public class TestRegisterOriginalSamplesMutation {
         assertThat((List<?>) lwData.get("slots")).hasSize(1);
         assertThat(chainGetList(lwData, "slots", 0, "samples")).hasSize(1);
         Map<String, ?> tissueData = chainGet(lwData, "slots", 0, "samples", 0, "tissue");
-        assertNull(tissueData.get("externalName"));
+        assertEquals(externalName, tissueData.get("externalName"));
         assertEquals("Human", chainGet(tissueData, "donor", "species", "name"));
         assertEquals("2022-05-19", tissueData.get("collectionDate"));
         assertEquals("None", chainGet(tissueData, "medium", "name"));
@@ -79,7 +85,7 @@ public class TestRegisterOriginalSamplesMutation {
         assertEquals(solution, tissue.getSolutionSample());
         assertNull(tissue.getParentId());
         assertEquals("None", tissue.getMedium().getName());
-        assertNull(tissue.getExternalName());
+        assertEquals(externalName, tissue.getExternalName());
         assertNull(tissue.getReplicate());
         assertEquals(Labware.State.active, lw.getState());
 
@@ -110,11 +116,14 @@ public class TestRegisterOriginalSamplesMutation {
     private void testPotProcessing(String sourceBarcode, Work work) throws Exception {
         OperationType opType = entityCreator.createOpType("Pot processing", null);
         LabwareType potLt = entityCreator.createLabwareType("Pot", 1, 1);
+        LabwareType fwLt = entityCreator.createLabwareType("Fetal waste container", 1, 1);
+        BioState fwBs = entityCreator.createBioState("Fetal waste");
         String mutation = tester.readGraphQL("potprocessing.graphql")
                 .replace("WORKNUMBER", work.getWorkNumber())
                 .replace("BARCODE", sourceBarcode);
         Object result = tester.post(mutation);
         String destBarcode = chainGet(result, "data", "performPotProcessing", "labware", 0, "barcode");
+        String fwBarcode = chainGet(result, "data", "performPotProcessing", "labware", 1, "barcode");
         Integer opId = chainGet(result, "data", "performPotProcessing", "operations", 0, "id");
         Labware dest = lwRepo.getByBarcode(destBarcode);
         Sample sample = dest.getFirstSlot().getSamples().get(0);
@@ -122,6 +131,11 @@ public class TestRegisterOriginalSamplesMutation {
         assertEquals("Formalin", sample.getTissue().getFixative().getName());
         Labware src = lwRepo.getByBarcode(sourceBarcode);
         assertTrue(src.isDiscarded());
+
+        Labware fw = lwRepo.getByBarcode(fwBarcode);
+        Sample fwSample = fw.getFirstSlot().getSamples().get(0);
+        assertEquals(fwLt, fw.getLabwareType());
+        assertEquals(fwBs, fwSample.getBioState());
 
         Operation op = opRepo.findById(opId).orElseThrow();
         assertEquals(opType, op.getOperationType());

@@ -259,12 +259,12 @@ public class TestFindService {
     @Test
     public void testFindByTissueExternalName() {
         String invalidName = "TISSUE_X";
-        doThrow(EntityNotFoundException.class).when(mockTissueRepo).getByExternalName(invalidName);
+        doThrow(EntityNotFoundException.class).when(mockTissueRepo).getAllByExternalName(invalidName);
         assertThrows(EntityNotFoundException.class, () -> findService.findByTissueExternalName(invalidName));
         verify(findService, never()).findByTissueIds(any());
 
         Tissue tissue = EntityFactory.getTissue();
-        when(mockTissueRepo.getByExternalName(tissue.getExternalName())).thenReturn(tissue);
+        when(mockTissueRepo.getAllByExternalName(tissue.getExternalName())).thenReturn(List.of(tissue));
         Labware lw = EntityFactory.getTube();
         Sample sample = EntityFactory.getSample();
         List<LabwareSample> lss = List.of(new LabwareSample(lw, sample));

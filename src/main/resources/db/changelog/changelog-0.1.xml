@@ -268,7 +268,7 @@
                 <constraints nullable="false" primaryKey="true"/>
             </column>
             <column name="external_name" type="VARCHAR(64)">
-                <constraints nullable="false" unique="true"/>
+                <constraints nullable="false"/>
             </column>
             <column name="replicate" type="INT">
                 <constraints nullable="false"/>
@@ -295,6 +295,9 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
+        <createIndex tableName="tissue" indexName="ix_tissue_external_name" unique="false">
+            <column name="external_name" />
+        </createIndex>
     </changeSet>
 
     <changeSet id="16" author="dr6">

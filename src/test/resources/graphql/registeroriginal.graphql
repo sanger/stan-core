@@ -12,6 +12,7 @@ mutation {
                 fixative:"None"
                 sampleCollectionDate: "2022-05-19"
                 solutionSample: "Glue"
+                externalIdentifier: "EXT1"
             }
         ]
     }) {

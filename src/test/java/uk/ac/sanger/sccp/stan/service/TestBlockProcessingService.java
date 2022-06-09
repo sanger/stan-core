@@ -645,7 +645,7 @@ public class TestBlockProcessingService {
         assertEquals(500, tissue.getId());
         assertEquals(600, sample.getId());
         Tissue original = lw.getFirstSlot().getSamples().get(0).getTissue();
-        assertEquals(new Tissue(500, null, "2c", original.getSpatialLocation(), original.getDonor(),
+        assertEquals(new Tissue(500, tissue.getExternalName(), "2c", original.getSpatialLocation(), original.getDonor(),
                 med, original.getFixative(), original.getHmdmc(), original.getCollectionDate(),
                 original.getSolutionSample(), original.getId()), tissue);
         assertEquals(new Sample(600, null, tissue, bs), sample);

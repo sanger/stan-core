@@ -41,14 +41,14 @@ public class TestTissueRepo {
 
     @Test
     @Transactional
-    public void testGetByExternalName() {
+    public void testGetAllByExternalName() {
         Donor donor = entityCreator.createDonor("DONOR1");
         Tissue tissue1 = entityCreator.createTissue(donor, "TISSUE1", "1");
         Tissue tissue2 = entityCreator.createTissue(donor, "TISSUE2", "2a");
 
-        assertEquals(tissue1, tissueRepo.getByExternalName("tissue1"));
-        assertEquals(tissue2, tissueRepo.getByExternalName("tissue2"));
-        assertThat(assertThrows(EntityNotFoundException.class, () -> tissueRepo.getByExternalName("Bananas")))
+        assertThat(tissueRepo.getAllByExternalName("tissue1")).containsExactly(tissue1);
+        assertThat(tissueRepo.getAllByExternalName("tissue2")).containsExactly(tissue2);
+        assertThat(assertThrows(EntityNotFoundException.class, () -> tissueRepo.getAllByExternalName("Bananas")))
                 .hasMessage("Tissue external name not found: \"Bananas\"");
     }
 
