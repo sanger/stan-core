@@ -82,6 +82,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final AliquotService aliquotService;
     final ReagentTransferService reagentTransferService;
     final OriginalSampleRegisterService originalSampleRegisterService;
+    final BlockProcessingService blockProcessingService;
     final UserAdminService userAdminService;
 
     @Autowired
@@ -104,6 +105,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            VisiumAnalysisService visiumAnalysisService, OpWithSlotMeasurementsService opWithSlotMeasurementsService,
                            ComplexStainService complexStainService, AliquotService aliquotService,
                            ReagentTransferService reagentTransferService, OriginalSampleRegisterService originalSampleRegisterService,
+                           BlockProcessingService blockProcessingService,
                            UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
@@ -144,6 +146,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.aliquotService = aliquotService;
         this.reagentTransferService = reagentTransferService;
         this.originalSampleRegisterService = originalSampleRegisterService;
+        this.blockProcessingService = blockProcessingService;
         this.userAdminService = userAdminService;
     }
 
@@ -604,6 +607,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
         };
     }
 
+
+    public DataFetcher<OperationResult> performTissueBlock() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            TissueBlockRequest request = arg(dfe, "request", TissueBlockRequest.class);
+            logRequest("Perform tissue block", user, request);
+            return blockProcessingService.perform(user, request);
+        };
+    }
 
     public DataFetcher<User> addUser() {
         return adminAdd(userAdminService::addUser, "AddUser", "username");

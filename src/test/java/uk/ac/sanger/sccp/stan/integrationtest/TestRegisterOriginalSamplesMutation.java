@@ -9,10 +9,8 @@ import org.springframework.test.context.ActiveProfiles;
 import uk.ac.sanger.sccp.stan.EntityCreator;
 import uk.ac.sanger.sccp.stan.GraphQLTester;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
-import uk.ac.sanger.sccp.stan.repo.SolutionSampleRepo;
+import uk.ac.sanger.sccp.stan.repo.*;
 
-import javax.persistence.EntityManager;
 import javax.transaction.Transactional;
 import java.util.List;
 import java.util.Map;
@@ -36,11 +34,11 @@ public class TestRegisterOriginalSamplesMutation {
     @Autowired
     private EntityCreator entityCreator;
     @Autowired
-    private EntityManager entityManager;
-    @Autowired
     private SolutionSampleRepo solutionSampleRepo;
     @Autowired
     private LabwareRepo lwRepo;
+    @Autowired
+    private OperationRepo opRepo;
 
     @Test
     @Transactional
@@ -84,5 +82,25 @@ public class TestRegisterOriginalSamplesMutation {
         assertNull(tissue.getExternalName());
         assertNull(tissue.getReplicate());
         assertEquals(Labware.State.active, lw.getState());
+
+        testBlockProcessing(barcode);
+    }
+
+    private void testBlockProcessing(String sourceBarcode) throws Exception {
+        OperationType opType = entityCreator.createOpType("Block processing", null);
+        Work work = entityCreator.createWork(null, null, null);
+        String mutation = tester.readGraphQL("tissueblock.graphql")
+                .replace("WORKNUMBER", work.getWorkNumber())
+                .replace("BARCODE", sourceBarcode);
+        Object result = tester.post(mutation);
+        String destBarcode = chainGet(result, "data", "performTissueBlock", "labware", 0, "barcode");
+        Integer opId = chainGet(result, "data", "performTissueBlock", "operations", 0, "id");
+        Labware dest = lwRepo.getByBarcode(destBarcode);
+        assertEquals("5c", dest.getFirstSlot().getSamples().get(0).getTissue().getReplicate());
+        Labware src = lwRepo.getByBarcode(sourceBarcode);
+        assertTrue(src.isDiscarded());
+
+        Operation op = opRepo.findById(opId).orElseThrow();
+        assertEquals(opType, op.getOperationType());
     }
 }

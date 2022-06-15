@@ -21,6 +21,8 @@ public interface TissueRepo extends CrudRepository<Tissue, Integer> {
 
     List<Tissue> findAllByDonorIdAndSpatialLocationId(int donorId, int spatialLocationId);
 
+    List<Tissue> findByDonorIdAndSpatialLocationIdAndReplicate(int donorId, int spatialLocationId, String replicate);
+
     default Tissue getByExternalName(String externalName) throws EntityNotFoundException {
         return findByExternalName(externalName).orElseThrow(
                 () -> new EntityNotFoundException("Tissue external name not found: "+repr(externalName))

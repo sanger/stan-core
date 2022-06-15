@@ -1237,6 +1237,32 @@ input ReagentTransferRequest {
     transfers: [ReagentTransfer!]!
 }
 
+"""A request to process original tissue into blocks."""
+input TissueBlockRequest {
+    """The work number associated with this request."""
+    workNumber: String
+    """The labware (blocks) being created by this request."""
+    labware: [TissueBlockLabware!]!
+    """Which source barcodes (if any) to discard as part of this request."""
+    discardSourceBarcodes: [String!]
+}
+
+"""The input about a new block being created."""
+input TissueBlockLabware {
+    """The original tissue barcode."""
+    sourceBarcode: String!
+    """The labware type for the new labware."""
+    labwareType: String!
+    """The barcode of the new labware, if it is prebarcoded."""
+    preBarcode: String
+    """The comment (if any) associated with this operation."""
+    commentId: Int
+    """The replicate number for the new block."""
+    replicate: String!
+    """The medium for the new block."""
+    medium: String!
+}
+
 """
 Get information from the application.
 These typically require no user privilege.
@@ -1440,6 +1466,8 @@ type Mutation {
     reagentTransfer(request: ReagentTransferRequest!): OperationResult!
     """Register original samples."""
     registerOriginalSamples(request: OriginalSampleRegisterRequest!): RegisterResult!
+    """Process tissue into blocks."""
+    performTissueBlock(request: TissueBlockRequest!): OperationResult!
 
     """Create a new user for the application."""
     addUser(username: String!): User!
