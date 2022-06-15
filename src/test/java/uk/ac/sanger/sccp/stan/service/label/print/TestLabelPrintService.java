@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.service.LabwareService;
 import uk.ac.sanger.sccp.stan.service.label.*;
 import uk.ac.sanger.sccp.stan.service.label.LabwareLabelData.LabelContent;
 
@@ -31,6 +32,8 @@ public class TestLabelPrintService {
     private LabwarePrintRepo mockLabwarePrintRepo;
     private LabelTypeRepo mockLabelTypeRepo;
 
+    private LabwareService mockLabwareService;
+
     private LabelPrintService labelPrintService;
     private User user;
     private Printer printer;
@@ -44,9 +47,10 @@ public class TestLabelPrintService {
         mockPrinterRepo = mock(PrinterRepo.class);
         mockLabwarePrintRepo = mock(LabwarePrintRepo.class);
         mockLabelTypeRepo = mock(LabelTypeRepo.class);
+        mockLabwareService = mock(LabwareService.class);
 
         labelPrintService = spy(new LabelPrintService(mockLabwareLabelDataService, mockPrintClientFactory, mockLabwareRepo,
-                mockPrinterRepo, mockLabwarePrintRepo, mockLabelTypeRepo));
+                mockPrinterRepo, mockLabwarePrintRepo, mockLabelTypeRepo, mockLabwareService));
         user = EntityFactory.getUser();
         printer = EntityFactory.getPrinter();
         LabwareType lt = EntityFactory.getTubeType();
@@ -83,6 +87,8 @@ public class TestLabelPrintService {
 
         when(mockLabwareLabelDataService.getLabelData(labware.get(0))).thenReturn(labelData.get(0));
         when(mockLabwareLabelDataService.getLabelData(labware.get(1))).thenReturn(labelData.get(1));
+        when(mockLabwareService.calculateLabelType(labware.get(0))).thenReturn(labware.get(0).getLabwareType().getLabelType());
+        when(mockLabwareService.calculateLabelType(labware.get(1))).thenReturn(labware.get(1).getLabwareType().getLabelType());
         doNothing().when(labelPrintService).print(any(), any());
         doReturn(List.of()).when(labelPrintService).recordPrint(any(), any(), any());
 
@@ -105,6 +111,7 @@ public class TestLabelPrintService {
         LabelPrintRequest expectedRequest = new LabelPrintRequest(lw.getLabwareType().getLabelType(), labelData);
 
         when(mockLabwareLabelDataService.getRowBasedLabelData(lw)).thenReturn(labelData.get(0));
+        when(mockLabwareService.calculateLabelType(lw)).thenReturn(lw.getLabwareType().getLabelType());
         doNothing().when(labelPrintService).print(any(), any());
         doReturn(List.of()).when(labelPrintService).recordPrint(any(), any(), any());
 
@@ -128,6 +135,8 @@ public class TestLabelPrintService {
                 .map(labelType -> new LabwareType(10+labelType.getId(), "lw type "+labelType.getId(), 1, 1, labelType, false))
                 .map(EntityFactory::makeEmptyLabware)
                 .collect(toList());
+        when(mockLabwareService.calculateLabelType(labware.get(0))).thenReturn(labware.get(0).getLabwareType().getLabelType());
+        when(mockLabwareService.calculateLabelType(labware.get(1))).thenReturn(labware.get(1).getLabwareType().getLabelType());
         assertThat(assertThrows(IllegalArgumentException.class, () -> labelPrintService.printLabware(user, printer.getName(), labware)))
                 .hasMessage("Cannot perform a print request incorporating multiple different label types.");
     }

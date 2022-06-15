@@ -41,14 +41,14 @@ public class TestTissueRepo {
 
     @Test
     @Transactional
-    public void testGetByExternalName() {
+    public void testGetAllByExternalName() {
         Donor donor = entityCreator.createDonor("DONOR1");
         Tissue tissue1 = entityCreator.createTissue(donor, "TISSUE1", "1");
         Tissue tissue2 = entityCreator.createTissue(donor, "TISSUE2", "2a");
 
-        assertEquals(tissue1, tissueRepo.getByExternalName("tissue1"));
-        assertEquals(tissue2, tissueRepo.getByExternalName("tissue2"));
-        assertThat(assertThrows(EntityNotFoundException.class, () -> tissueRepo.getByExternalName("Bananas")))
+        assertThat(tissueRepo.getAllByExternalName("tissue1")).containsExactly(tissue1);
+        assertThat(tissueRepo.getAllByExternalName("tissue2")).containsExactly(tissue2);
+        assertThat(assertThrows(EntityNotFoundException.class, () -> tissueRepo.getAllByExternalName("Bananas")))
                 .hasMessage("Tissue external name not found: \"Bananas\"");
     }
 
@@ -68,7 +68,7 @@ public class TestTissueRepo {
         String rep2 = "2";
 
         Tissue tissue = tissueRepo.save(new Tissue(null, "TISSUE1", rep1, sl1, donor1,
-                med1, fix1, entityCreator.getAny(hmdmcRepo), null));
+                med1, fix1, entityCreator.getAny(hmdmcRepo), null, null, null));
 
         assertThat(tissueRepo.findByDonorIdAndSpatialLocationIdAndMediumIdAndFixativeIdAndReplicate(donor1.getId(), sl1.getId(), med1.getId(), fix1.getId(), rep1))
                 .contains(tissue);
@@ -126,7 +126,7 @@ public class TestTissueRepo {
         Hmdmc hmdmc = entityCreator.getAny(hmdmcRepo);
         Tissue[] tissues = IntStream.range(0, 3)
                 .mapToObj(i -> tissueRepo.save(new Tissue(null, "TISSUE"+i, String.valueOf(i+1), sls[i],
-                        donor, med, fix, hmdmc, null)))
+                        donor, med, fix, hmdmc, null, null, null)))
                 .toArray(Tissue[]::new);
         assertThat(tissueRepo.findByTissueTypeId(tt1.getId())).containsExactly(tissues[0], tissues[1]);
     }

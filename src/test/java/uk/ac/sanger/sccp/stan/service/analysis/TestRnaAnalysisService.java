@@ -271,7 +271,7 @@ public class TestRnaAnalysisService {
                 new RNAAnalysisLabware("STAN-1", "SGP15", null, null),
                 new RNAAnalysisLabware("STAN-2", "SGP15", null, null),
                 new RNAAnalysisLabware("STAN-3", "SGP16", null, null),
-                new RNAAnalysisLabware("STAN-4", null, null, null)
+                new RNAAnalysisLabware("STAN-4", "SGP16", null, null)
         );
         final List<String> problems = new ArrayList<>(1);
         assertSame(workMap, service.validateWork(problems, rlws));
@@ -282,8 +282,9 @@ public class TestRnaAnalysisService {
     @Test
     public void testRecordAnalysisSimple() {
         Labware lw = EntityFactory.getTube();
+        Work work1 = new Work(50, "SGP50", null, null, null, Work.Status.active);
         RNAAnalysisRequest request = new RNAAnalysisRequest(RIN_OP_NAME,
-                List.of(new RNAAnalysisLabware(lw.getBarcode(), null, null, null))
+                List.of(new RNAAnalysisLabware(lw.getBarcode(), work1.getWorkNumber(), null, null))
         );
         OperationType opType = new OperationType(4, RIN_OP_NAME);
         Operation op = new Operation(17, opType, null, null, null);
@@ -291,19 +292,20 @@ public class TestRnaAnalysisService {
         User user = EntityFactory.getUser();
         UCMap<List<StringMeasurement>> smMap = new UCMap<>(0);
         Map<Integer, Comment> commentMap = Map.of();
-        UCMap<Work> workMap = new UCMap<>(0);
+        UCMap<Work> workMap = UCMap.from(Work::getWorkNumber, work1);
 
         when(mockOpService.createOperationInPlace(any(), any(), any(), any(), any())).thenReturn(op);
+        when(mockWorkService.validateUsableWorks(any(), any())).thenReturn(workMap);
 
         OperationResult result = service.recordAnalysis(user, request, opType, lwMap, smMap, commentMap, workMap);
         assertThat(result.getOperations()).containsExactly(op);
         assertThat(result.getLabware()).containsExactly(lw);
 
         verify(mockOpService).createOperationInPlace(opType, user, lw, null, null);
+        verify(mockWorkService).link(work1,List.of(op));
 
         verify(service, never()).addMeasurements(any(), any(), any(), any());
         verify(service, never()).addOpComs(any(), any(), any(), any());
-        verifyNoInteractions(mockWorkService);
         verifyNoInteractions(mockMeasurementRepo);
         verifyNoInteractions(mockOpComRepo);
     }

@@ -93,7 +93,7 @@ public class TestHistoryService {
         History history = new History();
         Sample sample = EntityFactory.getSample();
         Tissue tissue = sample.getTissue();
-        when(mockTissueRepo.getByExternalName(tissue.getExternalName())).thenReturn(tissue);
+        when(mockTissueRepo.getAllByExternalName(tissue.getExternalName())).thenReturn(List.of(tissue));
         Sample sample2 = new Sample(sample.getId()+1, 10, sample.getTissue(), sample.getBioState());
         List<Sample> samples = List.of(sample, sample2);
         when(mockSampleRepo.findAllByTissueIdIn(List.of(tissue.getId()))).thenReturn(samples);

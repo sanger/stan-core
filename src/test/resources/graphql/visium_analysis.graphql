@@ -3,6 +3,7 @@ mutation {
         barcode: "STAN-50"
         selectedAddress: "A1"
         selectedTime: 120
+        workNumber: "SGP500"
     }) {
         operations {
             id

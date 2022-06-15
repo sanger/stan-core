@@ -23,7 +23,7 @@ public class ExtractResultQueryService {
     private static final String
             RESULT_OP_NAME = "Record result",
             EXTRACT_OP_NAME = "Extract",
-            CONCENTRATION_NAME = "Concentration";
+            CONCENTRATION_NAME = "RNA concentration";
 
     private final LabwareRepo lwRepo;
     private final OperationTypeRepo opTypeRepo;

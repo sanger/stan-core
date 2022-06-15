@@ -181,7 +181,8 @@ public class WorkServiceImp implements WorkService {
 
     @Override
     public Work validateUsableWork(Collection<String> problems, String workNumber) {
-        if (workNumber ==null) {
+        if (workNumber==null) {
+            problems.add("Work number is not specified.");
             return null;
         }
         Optional<Work> optWork = workRepo.findByWorkNumber(workNumber);
@@ -198,15 +199,27 @@ public class WorkServiceImp implements WorkService {
 
     @Override
     public UCMap<Work> validateUsableWorks(Collection<String> problems, Collection<String> workNumbers) {
+        // Check if there are any null workNumbers given
+        for (String number : workNumbers) {
+            if (number == null) {
+                problems.add("Work number is not specified.");
+            }
+        }
+        // Filter out the null numbers for the rest of the checks
+        workNumbers.removeAll(Collections.singleton(null));
+        // Check there are non-null values before running other checks
         if (workNumbers.isEmpty()) {
+            problems.add("No work numbers given.");
             return new UCMap<>(0);
         }
         UCMap<Work> workMap = workRepo.findAllByWorkNumberIn(workNumbers).stream()
                 .collect(UCMap.toUCMap(Work::getWorkNumber));
+
         List<String> missing = workNumbers.stream()
                 .filter(s -> workMap.get(s)==null)
                 .filter(BasicUtils.distinctUCSerial())
                 .collect(toList());
+
         if (!missing.isEmpty()) {
             problems.add((missing.size()==1 ? "Work number" : "Work numbers") +" not recognised: "+
                     BasicUtils.reprCollection(missing));

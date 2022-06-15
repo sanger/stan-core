@@ -27,8 +27,7 @@ import uk.ac.sanger.sccp.stan.service.operation.InPlaceOpService;
 import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmOperationService;
 import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmSectionService;
 import uk.ac.sanger.sccp.stan.service.operation.plan.PlanService;
-import uk.ac.sanger.sccp.stan.service.register.RegisterService;
-import uk.ac.sanger.sccp.stan.service.register.SectionRegisterService;
+import uk.ac.sanger.sccp.stan.service.register.*;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.stan.service.work.WorkTypeService;
 
@@ -68,6 +67,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final ProjectService projectService;
     final CostCodeService costCodeService;
     final FixativeService fixativeService;
+    final SolutionSampleAdminService solutionSampleAdminService;
     final WorkTypeService workTypeService;
     final WorkService workService;
     final StainService stainService;
@@ -81,6 +81,9 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final ComplexStainService complexStainService;
     final AliquotService aliquotService;
     final ReagentTransferService reagentTransferService;
+    final OriginalSampleRegisterService originalSampleRegisterService;
+    final BlockProcessingService blockProcessingService;
+    final PotProcessingService potProcessingService;
     final UserAdminService userAdminService;
 
     @Autowired
@@ -96,12 +99,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            HmdmcAdminService hmdmcAdminService, ReleaseDestinationAdminService releaseDestinationAdminService,
                            ReleaseRecipientAdminService releaseRecipientAdminService, SpeciesAdminService speciesAdminService,
                            ProjectService projectService, CostCodeService costCodeService, FixativeService fixativeService,
+                           SolutionSampleAdminService solutionSampleAdminService,
                            WorkTypeService workTypeService, WorkService workService, StainService stainService,
                            UnreleaseService unreleaseService, ResultService resultService, ExtractResultService extractResultService,
                            PermService permService, RNAAnalysisService rnaAnalysisService,
                            VisiumAnalysisService visiumAnalysisService, OpWithSlotMeasurementsService opWithSlotMeasurementsService,
                            ComplexStainService complexStainService, AliquotService aliquotService,
-                           ReagentTransferService reagentTransferService, UserAdminService userAdminService) {
+                           ReagentTransferService reagentTransferService, OriginalSampleRegisterService originalSampleRegisterService,
+                           BlockProcessingService blockProcessingService, PotProcessingService potProcessingService,
+                           UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
@@ -126,6 +132,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.projectService = projectService;
         this.costCodeService = costCodeService;
         this.fixativeService = fixativeService;
+        this.solutionSampleAdminService = solutionSampleAdminService;
         this.workTypeService = workTypeService;
         this.workService = workService;
         this.stainService = stainService;
@@ -139,6 +146,9 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.complexStainService = complexStainService;
         this.aliquotService = aliquotService;
         this.reagentTransferService = reagentTransferService;
+        this.originalSampleRegisterService = originalSampleRegisterService;
+        this.blockProcessingService = blockProcessingService;
+        this.potProcessingService = potProcessingService;
         this.userAdminService = userAdminService;
     }
 
@@ -405,6 +415,14 @@ public class GraphQLMutation extends BaseGraphQLResource {
         return adminSetEnabled(fixativeService::setEnabled, "SetFixativeEnabled", "name");
     }
 
+    public DataFetcher<SolutionSample> addSolutionSample() {
+        return adminAdd(solutionSampleAdminService::addNew, "AddSolutionSample", "name");
+    }
+
+    public DataFetcher<SolutionSample> setSolutionSampleEnabled() {
+        return adminSetEnabled(solutionSampleAdminService::setEnabled, "SetSolutionSampleEnabled", "name");
+    }
+
     public DataFetcher<WorkType> addWorkType() {
         return adminAdd(workTypeService::addNew, "AddWorkType", "name");
     }
@@ -579,6 +597,34 @@ public class GraphQLMutation extends BaseGraphQLResource {
             ReagentTransferRequest request = arg(dfe, "request", ReagentTransferRequest.class);
             logRequest("Reagent transfer", user, request);
             return reagentTransferService.perform(user, request);
+        };
+    }
+
+    public DataFetcher<RegisterResult> registerOriginalSamples() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.admin);
+            OriginalSampleRegisterRequest request = arg(dfe, "request", OriginalSampleRegisterRequest.class);
+            logRequest("Register original samples", user, request);
+            return originalSampleRegisterService.register(user, request);
+        };
+    }
+
+
+    public DataFetcher<OperationResult> performTissueBlock() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            TissueBlockRequest request = arg(dfe, "request", TissueBlockRequest.class);
+            logRequest("Perform tissue block", user, request);
+            return blockProcessingService.perform(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> performPotProcessing() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            PotProcessingRequest request = arg(dfe, "request", PotProcessingRequest.class);
+            logRequest("Perform pot processing", user, request);
+            return potProcessingService.perform(user, request);
         };
     }
 

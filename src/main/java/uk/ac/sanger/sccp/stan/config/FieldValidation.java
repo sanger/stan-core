@@ -37,6 +37,13 @@ public class FieldValidation {
     }
 
     @Bean
+    public Validator<String> tubePrebarcodeValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA, CharacterType.DIGIT);
+        Pattern pattern = Pattern.compile("[A-Z]{2}[0-9]{8}", Pattern.CASE_INSENSITIVE);
+        return new StringValidator("Prebarcode", 10, 10, charTypes, false, pattern);
+    }
+
+    @Bean
     public Validator<String> externalNameValidator() {
         Set<CharacterType> charTypes = EnumSet.of(
                 CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN,
@@ -151,6 +158,15 @@ public class FieldValidation {
                 CharacterType.SLASH, CharacterType.PAREN, CharacterType.FULL_STOP, CharacterType.APOSTROPHE
         );
         return new StringValidator("Project name", 2, 64, charTypes);
+    }
+
+    @Bean
+    public Validator<String> solutionSampleValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(
+                CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN, CharacterType.SPACE,
+                CharacterType.SLASH, CharacterType.PAREN, CharacterType.FULL_STOP, CharacterType.APOSTROPHE
+        );
+        return new StringValidator("Solution sample", 2, 64, charTypes);
     }
 
     @Bean

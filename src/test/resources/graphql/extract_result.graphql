@@ -12,6 +12,7 @@ mutation {
                 commentId: 1
             }
         ]
+        workNumber: "$WORKNUM$"
     }) {
         operations {
             operationType { name }

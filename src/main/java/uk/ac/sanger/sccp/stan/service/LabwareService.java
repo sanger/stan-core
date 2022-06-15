@@ -23,14 +23,16 @@ public class LabwareService {
     private final SlotRepo slotRepo;
     private final BarcodeSeedRepo barcodeSeedRepo;
     private final EntityManager entityManager;
+    private final LabelTypeRepo labelTypeRepo;
 
     @Autowired
     public LabwareService(EntityManager entityManager, LabwareRepo labwareRepo, SlotRepo slotRepo,
-                          BarcodeSeedRepo barcodeSeedRepo) {
+                          BarcodeSeedRepo barcodeSeedRepo, LabelTypeRepo labelTypeRepo) {
         this.labwareRepo = labwareRepo;
         this.slotRepo = slotRepo;
         this.barcodeSeedRepo = barcodeSeedRepo;
         this.entityManager = entityManager;
+        this.labelTypeRepo = labelTypeRepo;
     }
 
     /**
@@ -132,5 +134,24 @@ public class LabwareService {
                 .map(Slot::getLabwareId)
                 .collect(toSet());
         return labwareRepo.findAllByIdIn(labwareIds);
+    }
+
+    /**
+     * Calculates what LabelType to use when given a piece of labware
+     * Initially implemented to enable 4 Slot slides to print on slide labels when they contain less than 4 samples
+     * @param lw a piece of labware
+     * @return a LabelType
+     */
+    public LabelType calculateLabelType(Labware lw) {
+        if (lw.getLabwareType().getName().equalsIgnoreCase("4 Slot Slide")) {
+            int sampleCount = 0;
+            for(Slot slot : lw.getSlots()) {
+                sampleCount += slot.getSamples().size();
+            }
+            if (sampleCount < 4 ) {
+                return labelTypeRepo.getByName("Slide");
+            }
+        }
+        return lw.getLabwareType().getLabelType();
     }
 }

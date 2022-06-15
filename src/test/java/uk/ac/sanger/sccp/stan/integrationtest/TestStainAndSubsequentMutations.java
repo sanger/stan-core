@@ -51,14 +51,18 @@ public class TestStainAndSubsequentMutations {
     @Test
     public void testStainAndWorkProgressAndRecordResult() throws Exception {
         entityCreator.createOpType("Record result", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.RESULT);
-        Work work = entityCreator.createWork(null, null, null);
+        WorkType wt = entityCreator.createWorkType("Rocks");
+        Project pr = entityCreator.createProject("Stargate");
+        CostCode cc = entityCreator.createCostCode("4");
+        Work work = entityCreator.createWork(wt, pr, cc);
+        work.setWorkNumber("SGP500");
         User user = entityCreator.createUser("user1");
         Sample sam = entityCreator.createSample(entityCreator.createTissue(entityCreator.createDonor("DONOR1"), "TISSUE1"), 5);
         LabwareType lt = entityCreator.createLabwareType("lt1", 1, 2);
         Labware lw = entityCreator.createLabware("STAN-50", lt, sam);
 
         tester.setUser(user);
-        Object data = tester.post(tester.readGraphQL("stain.graphql").replace("SGP500", work.getWorkNumber()));
+        Object data = tester.post(tester.readGraphQL("stain.graphql"));
         Object stainData = chainGet(data, "data", "stain");
         assertThat(chainGetList(stainData, "operations")).hasSize(1);
         Map<String, ?> opData = chainGet(stainData, "operations", 0);
@@ -71,7 +75,7 @@ public class TestStainAndSubsequentMutations {
         assertThat(stainTypes).hasSize(1);
         assertEquals("H&E", stainTypes.get(0).getName());
 
-        data = tester.post(tester.readGraphQL("workprogress.graphql").replace("SGP500", work.getWorkNumber()));
+        data = tester.post(tester.readGraphQL("workprogress.graphql"));
         Object progressData = chainGet(data, "data", "workProgress", 0);
         assertEquals(work.getWorkNumber(), chainGet(progressData, "work", "workNumber"));
         assertEquals(work.getWorkType().getName(), chainGet(progressData, "work", "workType", "name"));

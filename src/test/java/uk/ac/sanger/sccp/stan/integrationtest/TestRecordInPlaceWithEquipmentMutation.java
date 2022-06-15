@@ -46,7 +46,10 @@ public class TestRecordInPlaceWithEquipmentMutation {
     @Transactional
     @Test
     public void testRecordInPlaceWithEquipment() throws Exception {
-        Work work = entityCreator.createWork(null, null, null);
+        WorkType wt = entityCreator.createWorkType("Rocks");
+        Project pr = entityCreator.createProject("Stargate");
+        CostCode cc = entityCreator.createCostCode("4");
+        Work work = entityCreator.createWork(wt, pr, cc);
         User user = entityCreator.createUser("user1");
         Sample sam = entityCreator.createSample(entityCreator.createTissue(entityCreator.createDonor("DONOR1"), "TISSUE1"), 5);
         LabwareType lt = entityCreator.createLabwareType("lt1", 1, 1);

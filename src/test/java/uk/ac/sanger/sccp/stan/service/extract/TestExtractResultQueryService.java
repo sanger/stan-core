@@ -260,8 +260,8 @@ public class TestExtractResultQueryService {
         Integer notSlotId = slotId+1;
         List<Measurement> measurements = List.of(
                 new Measurement(1, "Bananas", "Custard", 10, opId, slotId),
-                new Measurement(2, "Concentration", "30.0", 10, opId, found ? slotId : notSlotId),
-                new Measurement(3, "Concentration", "40.0", 10, opId, notSlotId)
+                new Measurement(2, "RNA concentration", "30.0", 10, opId, found ? slotId : notSlotId),
+                new Measurement(3, "RNA concentration", "40.0", 10, opId, notSlotId)
         );
         when(mockMeasurementRepo.findAllByOperationIdIn(any())).thenReturn(measurements);
 

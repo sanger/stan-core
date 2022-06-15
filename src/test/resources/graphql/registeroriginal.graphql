@@ -1,0 +1,46 @@
+mutation {
+    registerOriginalSamples(request:{
+        samples:[
+            {
+                labwareType:"proviasette"
+                donorIdentifier:"DONOR1"
+                species: "Human"
+                lifeStage:adult
+                hmdmc:"20/0002"
+                spatialLocation:0
+                tissueType:"Bone"
+                fixative:"None"
+                sampleCollectionDate: "2022-05-19"
+                solutionSample: "Glue"
+                externalIdentifier: "EXT1"
+            }
+        ]
+    }) {
+        labware {
+            barcode
+            slots {
+                samples {
+                    id
+                    tissue {
+                        externalName
+                        donor {
+                            species { name }
+                        }
+                        collectionDate
+                        medium { name }
+                        fixative { name }
+                        spatialLocation {
+                            code
+                            tissueType { name }
+                        }
+                        solutionSample { name }
+                    }
+                }
+            }
+        }
+        clashes {
+            tissue { externalName }
+            labware { barcode }
+        }
+    }
+}

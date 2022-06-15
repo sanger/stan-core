@@ -86,6 +86,7 @@ public class ReleaseFileService {
         Ancestry ancestry = findAncestry(entries);
         loadSources(entries, ancestry, mode);
         loadMeasurements(entries, ancestry);
+        loadSectionDate(entries, ancestry);
         loadStains(entries, ancestry);
         loadReagentSources(entries);
         return new ReleaseFileContent(mode, entries);
@@ -383,6 +384,26 @@ public class ReleaseFileService {
     }
 
     /**
+     * Loads the section date for samples that have been sectioned
+     * @param entries the release entries
+     * @param ancestry the ancestry map
+     */
+    public void loadSectionDate(Collection<ReleaseEntry> entries, Ancestry ancestry) {
+        Set<Integer> slotIds = ancestry.keySet().stream().map(ss -> ss.getSlot().getId()).collect(toSet());
+        OperationType opType = opTypeRepo.getByName("Section");
+        List<Operation> sectionOps = opRepo.findAllByOperationTypeAndDestinationSlotIdIn(opType, slotIds);
+        if (!sectionOps.isEmpty()) {
+            Map<Integer, Operation> labwareSectionOp = labwareIdToOp(sectionOps);
+            Map<ReleaseEntry, Operation> entrySectionOp = findEntryOps(entries, labwareSectionOp, ancestry);
+            entrySectionOp.forEach((entry, op) -> {
+                if (op != null) {
+                    entry.setSectionDate(op.getPerformed().toLocalDate());
+                }
+            });
+        }
+    }
+
+    /**
      * Loads info about stains on the labware or its antecedents.
      * @param entries the release entries
      * @param ancestry the ancestry map
@@ -404,15 +425,38 @@ public class ReleaseFileService {
         Map<Integer, String> stainOpTypes = stainTypeRepo.loadOperationStainTypes(opIds).entrySet().stream()
                 .collect(toMap(Map.Entry::getKey, e -> e.getValue().stream().map(StainType::getName).collect(joining(", "))));
 
-        Map<Integer, String> opBondBarcodes = lwNoteRepo.findAllByOperationIdIn(opIds).stream()
-                .filter(note -> ComplexStainServiceImp.LW_NOTE_BOND_BARCODE.equalsIgnoreCase(note.getName()))
-                .collect(toMap(LabwareNote::getOperationId, LabwareNote::getValue));
+        Map<Integer, String> opBondBarcodes = new HashMap<>();
+        Map<Integer, Integer> opRnaPlex = new HashMap<>();
+        Map<Integer, Integer> opIhcPlex = new HashMap<>();
+
+        for (var note : lwNoteRepo.findAllByOperationIdIn(opIds)) {
+            final String name = note.getName();
+            final Integer opId = note.getOperationId();
+            final String value = note.getValue();
+            if (name.equalsIgnoreCase(ComplexStainServiceImp.LW_NOTE_BOND_BARCODE)) {
+                opBondBarcodes.put(opId, value);
+            } else if (name.equalsIgnoreCase(ComplexStainServiceImp.LW_NOTE_PLEX_RNASCOPE)) {
+                try {
+                    opRnaPlex.put(opId, Integer.valueOf(value));
+                } catch (NumberFormatException e) {
+                    log.error("Should be an integer: "+note);
+                }
+            } else if (name.equalsIgnoreCase(ComplexStainServiceImp.LW_NOTE_PLEX_IHC)) {
+                try {
+                    opIhcPlex.put(opId, Integer.valueOf(value));
+                } catch (NumberFormatException e) {
+                    log.error("Should be an integer: "+note);
+                }
+            }
+        }
 
         for (ReleaseEntry entry : entries) {
             Operation op = entryStainOp.get(entry);
             if (op!=null) {
                 entry.setStainType(stainOpTypes.get(op.getId()));
                 entry.setBondBarcode(opBondBarcodes.get(op.getId()));
+                entry.setRnascopePlex(opRnaPlex.get(op.getId()));
+                entry.setIhcPlex(opIhcPlex.get(op.getId()));
             }
         }
     }
@@ -430,11 +474,11 @@ public class ReleaseFileService {
         Map<Integer, List<Measurement>> slotIdToThickness = new HashMap<>();
         Map<Integer, List<Measurement>> slotIdToCoverage = new HashMap<>();
         Map<Integer, List<Measurement>> slotIdToCq = new HashMap<>();
-        Map<Integer, List<Measurement>> slotIdToConc = new HashMap<>();
+        Map<Integer, List<Measurement>> slotIdToCDNAConc = new HashMap<>();
         final String THICKNESS = MeasurementType.Thickness.friendlyName();
         final String COVERAGE = MeasurementType.Tissue_coverage.friendlyName();
         final String CQ = MeasurementType.Cq_value.friendlyName();
-        final String CONC = MeasurementType.Concentration.friendlyName();
+        final String CDNA_CONC = MeasurementType.cDNA_concentration.friendlyName();
         final String CDNA_ANALYSIS = "cDNA analysis";
         Map<Integer, OperationType> opTypeCache = new HashMap<>();
         for (Measurement measurement : measurements) {
@@ -450,7 +494,7 @@ public class ReleaseFileService {
             } else if (measurement.getName().equalsIgnoreCase(CQ)) {
                 List<Measurement> slotIdMeasurements = slotIdToCq.computeIfAbsent(measurement.getSlotId(), k -> new ArrayList<>());
                 slotIdMeasurements.add(measurement);
-            } else if (measurement.getName().equalsIgnoreCase(CONC)) {
+            } else if (measurement.getName().equalsIgnoreCase(CDNA_CONC)) {
                 final Integer opId = measurement.getOperationId();
                 OperationType opType = opTypeCache.get(opId);
                 if (opType==null) {
@@ -459,7 +503,7 @@ public class ReleaseFileService {
                     opTypeCache.put(opId, opType);
                 }
                 if (opType.getName().equalsIgnoreCase(CDNA_ANALYSIS)) {
-                    List<Measurement> slotIdMeasurements = slotIdToConc.computeIfAbsent(measurement.getSlotId(), k -> new ArrayList<>());
+                    List<Measurement> slotIdMeasurements = slotIdToCDNAConc.computeIfAbsent(measurement.getSlotId(), k -> new ArrayList<>());
                     slotIdMeasurements.add(measurement);
                 }
             }
@@ -485,7 +529,7 @@ public class ReleaseFileService {
                     log.error("Cq measurement is not an integer: {}", cqMeasurement);
                 }
             }
-            Measurement concMeasurement = selectMeasurement(entry, slotIdToConc, ancestry);
+            Measurement concMeasurement = selectMeasurement(entry, slotIdToCDNAConc, ancestry);
             if (concMeasurement != null) {
                 entry.setCdnaAnalysisConcentration(concMeasurement.getValue());
             }
@@ -536,36 +580,6 @@ public class ReleaseFileService {
     }
 
     /**
-     * Fills in the stain type and bond barcode fields for all the given entries.
-     * These are both taken from the latest stain operation on the particular piece of labware.
-     * @param entries the entries to add information to
-     */
-    public void loadLastStain(Collection<ReleaseEntry> entries) {
-        Set<Integer> labwareIds = entries.stream().map(re -> re.getLabware().getId()).collect(toSet());
-        if (labwareIds.isEmpty()) {
-            return;
-        }
-        Map<Integer, Operation> lwOps = loadLastOpMap(opTypeRepo.getByName("Stain"), labwareIds);
-        if (lwOps.isEmpty()) {
-            return;
-        }
-        Map<Integer, String> bondBarcodes = loadBondBarcodes(lwOps);
-        Map<Integer, List<StainType>> opStainTypes = loadStainTypes(lwOps);
-        for (ReleaseEntry entry : entries) {
-            Integer labwareId = entry.getLabware().getId();
-            Operation op = lwOps.get(labwareId);
-            if (op==null) {
-                continue;
-            }
-            var stainTypes = opStainTypes.get(op.getId());
-            if (stainTypes!=null && !stainTypes.isEmpty()) {
-                entry.setStainType(stainTypes.stream().map(StainType::getName).collect(joining(", ")));
-            }
-            entry.setBondBarcode(bondBarcodes.get(labwareId));
-        }
-    }
-
-    /**
      * Gets the latest op of the given type on each specified labware (as a destination)
      * @param opType the type of op we are looking for
      * @param labwareIds the ids of the labware we are interested in
@@ -598,29 +612,6 @@ public class ReleaseFileService {
         }
         int d = newOp.getPerformed().compareTo(savedOp.getPerformed());
         return (d > 0 || d==0 && newOp.getId() > savedOp.getId());
-    }
-
-    /**
-     * Finds the appropriate bond barcode for each labware/op combination
-     * @param lwOps map of labware ids to the stain operation we are looking for information on
-     * @return a map of labware id to bond barcode (if any)
-     */
-    public Map<Integer, String> loadBondBarcodes(Map<Integer, Operation> lwOps) {
-        Set<Integer> opIds = lwOps.values().stream().map(Operation::getId).collect(toSet());
-        List<LabwareNote> notes = lwNoteRepo.findAllByOperationIdIn(opIds);
-        if (notes.isEmpty()) {
-            return Map.of();
-        }
-        Map<Integer, String> lwBondBarcode = new HashMap<>(lwOps.size());
-        for (LabwareNote note : notes) {
-            if (note.getName().equalsIgnoreCase(ComplexStainServiceImp.LW_NOTE_BOND_BARCODE)) {
-                Operation op = lwOps.get(note.getLabwareId());
-                if (op!=null && op.getId().equals(note.getOperationId())) {
-                    lwBondBarcode.put(note.getLabwareId(), note.getValue());
-                }
-            }
-        }
-        return lwBondBarcode;
     }
 
     /**

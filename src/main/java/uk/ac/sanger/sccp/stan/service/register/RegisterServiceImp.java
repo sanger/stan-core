@@ -111,7 +111,7 @@ public class RegisterServiceImp implements RegisterService {
                     donor,
                     validation.getMedium(block.getMedium()),
                     validation.getFixative(block.getFixative()),
-                    hmdmc, block.getSampleCollectionDate());
+                    hmdmc, block.getSampleCollectionDate(), null, null);
             tissueMap.put(tissueKey, tissueRepo.save(tissue));
         }
         return tissueMap;

@@ -10,7 +10,23 @@ import java.util.*;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 public interface TissueRepo extends CrudRepository<Tissue, Integer> {
-    Optional<Tissue> findByExternalName(String externalName);
+    List<Tissue> findAllByExternalName(String externalName);
+
+    /**
+     * Gets tissues with the given external name.
+     * Throws an exception if none are found.
+     * @param externalName the external name (external identifier) to find.
+     * @return the tissues found with the given external name (non-empty)
+     * @exception EntityNotFoundException if no such tissues were found
+     */
+    default List<Tissue> getAllByExternalName(String externalName) throws EntityNotFoundException {
+        List<Tissue> tissues = findAllByExternalName(externalName);
+        if (tissues.isEmpty()) {
+            throw new EntityNotFoundException("Tissue external name not found: "+repr(externalName));
+        }
+        return tissues;
+    }
+
     Optional<Tissue> findByDonorIdAndSpatialLocationIdAndMediumIdAndFixativeIdAndReplicate(
             int donorId,
             int spatialLocationId,
@@ -19,11 +35,9 @@ public interface TissueRepo extends CrudRepository<Tissue, Integer> {
             String replicate
     );
 
-    default Tissue getByExternalName(String externalName) throws EntityNotFoundException {
-        return findByExternalName(externalName).orElseThrow(
-                () -> new EntityNotFoundException("Tissue external name not found: "+repr(externalName))
-        );
-    }
+    List<Tissue> findAllByDonorIdAndSpatialLocationId(int donorId, int spatialLocationId);
+
+    List<Tissue> findByDonorIdAndSpatialLocationIdAndReplicate(int donorId, int spatialLocationId, String replicate);
 
     List<Tissue> findByDonorId(int donorId);
 

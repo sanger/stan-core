@@ -50,8 +50,8 @@ public class TestRecordOpWithSlotMeasurementsMutation {
         User user = entityCreator.createUser("user1");
         String measName, measValue, sanMeasName, sanMeasValue;
         if (opName.equalsIgnoreCase("cDNA analysis")) {
-            measName = "CONCENTRATION";
-            sanMeasName = "Concentration";
+            measName = "CDNA CONCENTRATION";
+            sanMeasName = "cDNA concentration";
             measValue = "0123.5";
             sanMeasValue = "123.50";
         } else {

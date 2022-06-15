@@ -12,12 +12,14 @@ import uk.ac.sanger.sccp.stan.request.FindResult.FindEntry;
 import uk.ac.sanger.sccp.stan.request.FindResult.LabwareLocation;
 import uk.ac.sanger.sccp.stan.service.store.StoreService;
 
+import javax.persistence.EntityNotFoundException;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.*;
+import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
  * Service for finding stored labware
@@ -103,8 +105,8 @@ public class FindService {
      * @return LabwareSamples for each labware containing samples for the specified tissue
      */
     public List<LabwareSample> findByTissueExternalName(String externalName) {
-        Tissue tissue = tissueRepo.getByExternalName(externalName);
-        return findByTissueIds(List.of(tissue.getId()));
+        List<Tissue> tissues = tissueRepo.getAllByExternalName(externalName);
+        return findByTissueIds(tissues.stream().map(Tissue::getId).collect(toList()));
     }
 
     /**

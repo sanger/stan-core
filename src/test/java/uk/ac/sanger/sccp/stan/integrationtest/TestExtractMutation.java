@@ -74,7 +74,10 @@ public class TestExtractMutation {
 
         stubStorelightUnstore(mockStorelightClient);
 
-        Work work = entityCreator.createWork(null, null, null);
+        WorkType wt = entityCreator.createWorkType("Rocks");
+        Project pr = entityCreator.createProject("Stargate");
+        CostCode cc = entityCreator.createCostCode("4");
+        Work work = entityCreator.createWork(wt, pr, cc);
 
         String mutation = tester.readGraphQL("extract.graphql")
                 .replace("[]", "[\"STAN-A1\", \"STAN-A2\"]")
@@ -132,7 +135,6 @@ public class TestExtractMutation {
         Operation[] ops = Arrays.stream(opIds)
                 .mapToObj(id -> opRepo.findById(id).orElseThrow())
                 .toArray(Operation[]::new);
-
         for (int i = 0; i < 2; ++i) {
             entityManager.refresh(sources[i]);
             assertTrue(sources[i].isDiscarded());
@@ -165,7 +167,8 @@ public class TestExtractMutation {
 
         mutation = tester.readGraphQL("extract_result.graphql")
                 .replace("$BARCODE1$", dests[0].getBarcode())
-                .replace("$BARCODE2$", dests[1].getBarcode());
+                .replace("$BARCODE2$", dests[1].getBarcode())
+                .replace("$WORKNUM$", work.getWorkNumber());
         result = tester.post(mutation);
 
         List<Map<String,?>> opsData = chainGet(result, "data", "recordExtractResult", "operations");
@@ -193,7 +196,7 @@ public class TestExtractMutation {
         assertThat(measurements).hasSize(1);
         Measurement meas = measurements.get(0);
         assertEquals(dests[0].getFirstSlot().getId(), meas.getSlotId());
-        assertEquals("Concentration", meas.getName());
+        assertEquals("RNA concentration", meas.getName());
         assertEquals("-200.00", meas.getValue());
         assertEquals(resultOpIds.get(0), meas.getOperationId());
 

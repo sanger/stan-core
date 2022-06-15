@@ -259,12 +259,12 @@ public class TestFindService {
     @Test
     public void testFindByTissueExternalName() {
         String invalidName = "TISSUE_X";
-        doThrow(EntityNotFoundException.class).when(mockTissueRepo).getByExternalName(invalidName);
+        doThrow(EntityNotFoundException.class).when(mockTissueRepo).getAllByExternalName(invalidName);
         assertThrows(EntityNotFoundException.class, () -> findService.findByTissueExternalName(invalidName));
         verify(findService, never()).findByTissueIds(any());
 
         Tissue tissue = EntityFactory.getTissue();
-        when(mockTissueRepo.getByExternalName(tissue.getExternalName())).thenReturn(tissue);
+        when(mockTissueRepo.getAllByExternalName(tissue.getExternalName())).thenReturn(List.of(tissue));
         Labware lw = EntityFactory.getTube();
         Sample sample = EntityFactory.getSample();
         List<LabwareSample> lss = List.of(new LabwareSample(lw, sample));
@@ -329,7 +329,7 @@ public class TestFindService {
         SpatialLocation sl2 = new SpatialLocation(201, "SL2", 2, tt2);
         Donor donor2 = new Donor(null, "DONOR2", LifeStage.fetal, species);
         Tissue tissue2 = new Tissue(201, "TISSUE2", "4", sl2, donor2, tissue1.getMedium(),
-                tissue1.getFixative(), tissue1.getHmdmc(), null);
+                tissue1.getFixative(), tissue1.getHmdmc(), null, null, null);
         Sample sample2 = new Sample(202, 2, tissue2, EntityFactory.getBioState());
 
         List<LabwareSample> lss = List.of(

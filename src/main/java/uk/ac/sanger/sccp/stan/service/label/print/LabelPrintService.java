@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.service.LabwareService;
 import uk.ac.sanger.sccp.stan.service.label.*;
 
 import javax.persistence.EntityNotFoundException;
@@ -27,17 +28,19 @@ public class LabelPrintService {
     private final PrinterRepo printerRepo;
     private final LabwarePrintRepo labwarePrintRepo;
     private final LabelTypeRepo labelTypeRepo;
+    private final LabwareService labwareService;
 
     @Autowired
     public LabelPrintService(LabwareLabelDataService labwareLabelDataService, PrintClientFactory printClientFactory,
                              LabwareRepo labwareRepo, PrinterRepo printerRepo, LabwarePrintRepo labwarePrintRepo,
-                             LabelTypeRepo labelTypeRepo) {
+                             LabelTypeRepo labelTypeRepo, LabwareService labwareService) {
         this.labwareLabelDataService = labwareLabelDataService;
         this.printClientFactory = printClientFactory;
         this.labwareRepo = labwareRepo;
         this.printerRepo = printerRepo;
         this.labwarePrintRepo = labwarePrintRepo;
         this.labelTypeRepo = labelTypeRepo;
+        this.labwareService = labwareService;
     }
 
     public void printLabwareBarcodes(User user, String printerName, List<String> barcodes) throws IOException {
@@ -54,7 +57,7 @@ public class LabelPrintService {
         }
         Printer printer = printerRepo.getByName(printerName);
         Set<LabelType> labelTypes = labware.stream()
-                .map(lw -> lw.getLabwareType().getLabelType())
+                .map(lw -> labwareService.calculateLabelType(lw))
                 .collect(toSet());
         if (labelTypes.contains(null)) {
             throw new IllegalArgumentException("Cannot print label for labware without a label type.");

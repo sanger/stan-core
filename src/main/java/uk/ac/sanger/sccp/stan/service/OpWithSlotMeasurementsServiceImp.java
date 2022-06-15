@@ -19,7 +19,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 @Service
 public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsService {
     public static final String OP_CDNA_AMP = "cDNA amplification", OP_CDNA_ANALYSIS = "cDNA analysis";
-    public static final String MEAS_CQ = "Cq value", MEAS_CONC = "Concentration";
+    public static final String MEAS_CQ = "Cq value", MEAS_CONC = "cDNA concentration";
 
     private final OperationTypeRepo opTypeRepo;
     private final MeasurementRepo measurementRepo;
