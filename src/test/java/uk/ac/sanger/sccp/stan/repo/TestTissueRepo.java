@@ -68,7 +68,7 @@ public class TestTissueRepo {
         String rep2 = "2";
 
         Tissue tissue = tissueRepo.save(new Tissue(null, "TISSUE1", rep1, sl1, donor1,
-                med1, fix1, entityCreator.getAny(hmdmcRepo), null));
+                med1, fix1, entityCreator.getAny(hmdmcRepo), null, null, null));
 
         assertThat(tissueRepo.findByDonorIdAndSpatialLocationIdAndMediumIdAndFixativeIdAndReplicate(donor1.getId(), sl1.getId(), med1.getId(), fix1.getId(), rep1))
                 .contains(tissue);
@@ -126,7 +126,7 @@ public class TestTissueRepo {
         Hmdmc hmdmc = entityCreator.getAny(hmdmcRepo);
         Tissue[] tissues = IntStream.range(0, 3)
                 .mapToObj(i -> tissueRepo.save(new Tissue(null, "TISSUE"+i, String.valueOf(i+1), sls[i],
-                        donor, med, fix, hmdmc, null)))
+                        donor, med, fix, hmdmc, null, null, null)))
                 .toArray(Tissue[]::new);
         assertThat(tissueRepo.findByTissueTypeId(tt1.getId())).containsExactly(tissues[0], tissues[1]);
     }

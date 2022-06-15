@@ -466,9 +466,9 @@ public class TestSectionRegisterValidation {
                         .content("EXT1", "4", "Arm", 1, "Donor1", "None", "None", "2021/01", "human")
                         .content("EXT2", "5", "Leg", 2, "Donor1", "butter", "Formalin", "2021/02", "human")
                         .content("EXT3", "5", "Leg", 1, "Donor2", "butter", "Formalin", null, "hamster")
-                        .tissues(new Tissue(null, "EXT1", "4", ARM.getSpatialLocations().get(0), DONOR1, mediumNone, fixNone, hmdmc1, null),
-                                new Tissue(null, "EXT2", "5", LEG.getSpatialLocations().get(1), DONOR1, medium, fix, hmdmc2, null),
-                                new Tissue(null, "EXT3", "5", LEG.getSpatialLocations().get(0), DONOR2, medium, fix, null, null)),
+                        .tissues(new Tissue(null, "EXT1", "4", ARM.getSpatialLocations().get(0), DONOR1, mediumNone, fixNone, hmdmc1, null, null, null),
+                                new Tissue(null, "EXT2", "5", LEG.getSpatialLocations().get(1), DONOR1, medium, fix, hmdmc2, null, null, null),
+                                new Tissue(null, "EXT3", "5", LEG.getSpatialLocations().get(0), DONOR2, medium, fix, null, null, null, null)),
 
                 // Single problems
                 testData.get()
@@ -510,8 +510,8 @@ public class TestSectionRegisterValidation {
                         .content("TISSUE1", "4", "ARM", 1, "Donor1", "none", "none", "2021/01", "human")
                         .content("TISSUE2", "4", "ARM", 1, "Donor1", "none", "none", "2021/01", "human")
                         .content("TISSUE3", "4", "ARM", 1, "Donor1", "none", "none", "2021/01", "human")
-                        .existing(new Tissue(1, "TISSUE1", "3", ARM.getSpatialLocations().get(0), DONOR1, medium, fix, hmdmcs.get(0), null),
-                                new Tissue(2, "TISSUE2", "3", ARM.getSpatialLocations().get(0), DONOR1, medium, fix, hmdmcs.get(0), null))
+                        .existing(new Tissue(1, "TISSUE1", "3", ARM.getSpatialLocations().get(0), DONOR1, medium, fix, hmdmcs.get(0), null, null, null),
+                                new Tissue(2, "TISSUE2", "3", ARM.getSpatialLocations().get(0), DONOR1, medium, fix, hmdmcs.get(0), null, null, null))
                         .problem("External identifiers already in use: [TISSUE1, TISSUE2]"),
                 testData.get()
                         .content("EXT1", "4", null, 1, "Donor1", "None", "None", "2021/01", "Human")

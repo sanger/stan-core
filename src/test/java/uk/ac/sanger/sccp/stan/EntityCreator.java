@@ -97,7 +97,7 @@ public class EntityCreator {
             donor = createDonor("DONOR1");
         }
         return tissueRepo.save(new Tissue(null, externalName, replicate, getAny(slRepo), donor,
-                getAny(mediumRepo), getAny(fixativeRepo), getAny(hmdmcRepo), null));
+                getAny(mediumRepo), getAny(fixativeRepo), getAny(hmdmcRepo), null, null, null));
     }
 
     public Sample createSample(Tissue tissue, Integer section) {

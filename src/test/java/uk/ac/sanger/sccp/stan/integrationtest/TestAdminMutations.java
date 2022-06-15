@@ -52,6 +52,8 @@ public class TestAdminMutations {
     private FixativeRepo fixativeRepo;
     @Autowired
     private WorkTypeRepo workTypeRepo;
+    @Autowired
+    private SolutionSampleRepo solutionSampleRepo;
 
 
     @Test
@@ -143,5 +145,11 @@ public class TestAdminMutations {
     @Transactional
     public void testAddNewWorkTypeAndSetEnabled() throws Exception {
         testGenericAddNewAndSetEnabled("WorkType", "name", "Drywalling", workTypeRepo::findByName, WorkType::getName, "workTypes");
+    }
+
+    @Test
+    @Transactional
+    public void testAddNewSolutionSampleAndSetEnabled() throws Exception {
+        testGenericAddNewAndSetEnabled("SolutionSample", "name", "Glue", solutionSampleRepo::findByName, SolutionSample::getName, "solutionSamples");
     }
 }

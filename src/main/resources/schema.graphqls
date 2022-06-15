@@ -135,9 +135,9 @@ type BioState {
 
 """A piece of tissue from which multiple samples may originate."""
 type Tissue {
-    externalName: String!
+    externalName: String
     """A number (optionall followed by a letter) that helps to distinguish this tissue from other similar tissues."""
-    replicate: String!
+    replicate: String
     """The location in a particular organ from which this tissue was taken."""
     spatialLocation: SpatialLocation!
     """The individual from whom this tissue was taken."""
@@ -149,6 +149,8 @@ type Tissue {
     fixative: Fixative!
     """The date the original sample was collected, if known."""
     collectionDate: Date
+    """The solution sample used when registering original samples."""
+    solutionSample: SolutionSample
 }
 
 """A particular sample of tissue, in a particular state."""
@@ -199,6 +201,14 @@ type Labware {
     state: LabwareState!
     """The time when this labware was created in the application."""
     created: Timestamp!
+}
+
+"""A solution linked to a sample being registered."""
+type SolutionSample {
+    """The unique name of the solution sample."""
+    name: String!
+    """Whether the solution sample is available for use."""
+    enabled: Boolean!
 }
 
 """A request to register a new block of tissue."""
@@ -282,6 +292,40 @@ input SectionRegisterLabware {
 input SectionRegisterRequest {
     labware: [SectionRegisterLabware!]!
 }
+
+"""Data about registering a new original sample."""
+input OriginalSampleData {
+    """The string to use as the donor name."""
+    donorIdentifier: String!
+    """The life stage of the donor."""
+    lifeStage: LifeStage!
+    """The HMDMC to use for the tissue."""
+    hmdmc: String
+    """The name of the tissue type (the organ from which the tissue is taken)."""
+    tissueType: String!
+    """The code for the spatial location from which the tissue is taken."""
+    spatialLocation: Int!
+    """The string to use for the replicate number of the tissue (optional)."""
+    replicateNumber: String
+    """The external identifier used to identify the tissue."""
+    externalIdentifier: String
+    """The name of the type of labware containing the sample."""
+    labwareType: String!
+    """The solution sample used for the tissue."""
+    solutionSample: String!
+    """The fixative used for the tissue."""
+    fixative: String!
+    """The species of the donor."""
+    species: String!
+    """The date the original sample was collected, if known."""
+    sampleCollectionDate: Date
+}
+
+"""A request to register one or more original samples of tissue."""
+input OriginalSampleRegisterRequest {
+    samples: [OriginalSampleData!]!
+}
+
 
 """Information about a clash, where a given tissue name already exists in the database."""
 type RegisterClash {
@@ -1230,6 +1274,8 @@ type Query {
     projects(includeDisabled: Boolean): [Project!]!
     """Get all the cost codes that are enabled, or get all including those that are disabled."""
     costCodes(includeDisabled: Boolean): [CostCode!]!
+    """Get all the solution samples that are enabled, or get all including those that are disabled."""
+    solutionSamples(includeDisabled: Boolean): [SolutionSample!]!
     """Get all the work types that are enabled, or get all including those that are disabled."""
     workTypes(includeDisabled: Boolean): [WorkType!]!
     """Get all the works, or get all the works in the given specified statuses."""
@@ -1350,6 +1396,10 @@ type Mutation {
     addWorkType(name: String!): WorkType!
     """Enable or disable a work type."""
     setWorkTypeEnabled(name: String!, enabled: Boolean!): WorkType!
+    """Add a new solution sample."""
+    addSolutionSample(name: String!): SolutionSample!
+    """Enable or disable a solution sample."""
+    setSolutionSampleEnabled(name: String!, enabled: Boolean!): SolutionSample!
 
     """Create a new work, which will be allocated a new work number with the given prefix."""
     createWork(prefix: String!, workType: String!, project: String!, costCode: String!, numBlocks: Int, numSlides: Int): Work!
@@ -1388,6 +1438,8 @@ type Mutation {
     aliquot(request: AliquotRequest!): OperationResult!
     """Record an operation transferring reagents from a reagent plate to an item of Stan labware."""
     reagentTransfer(request: ReagentTransferRequest!): OperationResult!
+    """Register original samples."""
+    registerOriginalSamples(request: OriginalSampleRegisterRequest!): RegisterResult!
 
     """Create a new user for the application."""
     addUser(username: String!): User!
