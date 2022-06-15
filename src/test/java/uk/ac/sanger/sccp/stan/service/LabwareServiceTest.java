@@ -24,7 +24,7 @@ public class LabwareServiceTest {
     private SlotRepo mockSlotRepo;
     private BarcodeSeedRepo mockBarcodeSeedRepo;
     private EntityManager mockEntityManager;
-
+    private LabelTypeRepo mockLabelTypeRepo;
     private LabwareService labwareService;
     private int idCounter = 1000;
     private List<Labware> savedLabware;
@@ -36,12 +36,13 @@ public class LabwareServiceTest {
         mockSlotRepo = mock(SlotRepo.class);
         mockBarcodeSeedRepo = mock(BarcodeSeedRepo.class);
         mockEntityManager = mock(EntityManager.class);
+        mockLabelTypeRepo = mock(LabelTypeRepo.class);
 
         mockLabwareSave();
         mockSlotSave();
         mockRefresh();
 
-        labwareService = spy(new LabwareService(mockEntityManager, mockLabwareRepo, mockSlotRepo, mockBarcodeSeedRepo));
+        labwareService = spy(new LabwareService(mockEntityManager, mockLabwareRepo, mockSlotRepo, mockBarcodeSeedRepo, mockLabelTypeRepo));
         savedLabware = new ArrayList<>();
         savedSlots = new ArrayList<>();
     }
@@ -197,5 +198,30 @@ public class LabwareServiceTest {
                 .containsExactlyInAnyOrder(labware[0], labware[1], labware[2], labware[3]);
         assertThat(labwareService.findBySample(List.of()))
                 .isEmpty();
+    }
+
+    @Test
+    public void calculateLabelType() {
+        Sample sample1 = EntityFactory.getSample();
+        Sample sample2 = new Sample(sample1.getId() + 1, 100, sample1.getTissue(), sample1.getBioState());
+        Sample sample3 = new Sample(sample1.getId() + 2, 100, sample1.getTissue(), sample1.getBioState());
+        Sample sample4 = new Sample(sample1.getId() + 3, 100, sample1.getTissue(), sample1.getBioState());
+
+        LabelType slideLabel = new LabelType(51, "slide");
+        LabelType fourSlotLabel = new LabelType(50, "4slotslide");
+        LabwareType fourSlotSlide = new LabwareType(50, "4 slot slide", 4, 1, fourSlotLabel, false);
+        Labware fourSampleLabware = EntityFactory.makeLabware(fourSlotSlide, sample1, sample2, sample3, sample4);
+        Labware threeSampleLabware = EntityFactory.makeLabware(fourSlotSlide, sample1, sample2, sample3);
+        Labware twoSampleLabware = EntityFactory.makeLabware(fourSlotSlide, sample1, sample2);
+        Labware oneSampleLabware = EntityFactory.makeLabware(fourSlotSlide, sample1);
+
+        when(mockLabelTypeRepo.getByName("Slide")).thenReturn(slideLabel);
+
+        // When a 4 slot slide has 4 samples we should return the fourSlotLabel
+        assertEquals(labwareService.calculateLabelType(fourSampleLabware), fourSlotLabel);
+        // When we have less than 4 samples we should return slideLabel
+        assertEquals(labwareService.calculateLabelType(threeSampleLabware), slideLabel);
+        assertEquals(labwareService.calculateLabelType(twoSampleLabware), slideLabel);
+        assertEquals(labwareService.calculateLabelType(oneSampleLabware), slideLabel);
     }
 }
