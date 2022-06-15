@@ -168,6 +168,7 @@ public class GraphQLProvider {
                         .dataFetcher("reagentTransfer", transact(graphQLMutation.reagentTransfer()))
                         .dataFetcher("registerOriginalSamples", transact(graphQLMutation.registerOriginalSamples()))
                         .dataFetcher("performTissueBlock", transact(graphQLMutation.performTissueBlock()))
+                        .dataFetcher("performPotProcessing", transact(graphQLMutation.performPotProcessing()))
 
                         .dataFetcher("addUser", transact(graphQLMutation.addUser()))
                         .dataFetcher("setUserRole", transact(graphQLMutation.setUserRole()))

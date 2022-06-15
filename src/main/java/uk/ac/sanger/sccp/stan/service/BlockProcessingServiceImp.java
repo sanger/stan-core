@@ -355,7 +355,7 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
         Tissue original = getSample(sourceLabware)
                 .map(Sample::getTissue)
                 .orElseThrow();
-        Tissue newTissue = new Tissue(null, null, block.getReplicate().toLowerCase(),
+        Tissue newTissue = new Tissue(null, original.getExternalName(), block.getReplicate().toLowerCase(),
                 original.getSpatialLocation(), original.getDonor(), medium,
                 original.getFixative(), original.getHmdmc(), original.getCollectionDate(),
                 original.getSolutionSample(), original.getId());

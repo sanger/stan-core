@@ -83,6 +83,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final ReagentTransferService reagentTransferService;
     final OriginalSampleRegisterService originalSampleRegisterService;
     final BlockProcessingService blockProcessingService;
+    final PotProcessingService potProcessingService;
     final UserAdminService userAdminService;
 
     @Autowired
@@ -105,7 +106,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            VisiumAnalysisService visiumAnalysisService, OpWithSlotMeasurementsService opWithSlotMeasurementsService,
                            ComplexStainService complexStainService, AliquotService aliquotService,
                            ReagentTransferService reagentTransferService, OriginalSampleRegisterService originalSampleRegisterService,
-                           BlockProcessingService blockProcessingService,
+                           BlockProcessingService blockProcessingService, PotProcessingService potProcessingService,
                            UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
@@ -147,6 +148,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.reagentTransferService = reagentTransferService;
         this.originalSampleRegisterService = originalSampleRegisterService;
         this.blockProcessingService = blockProcessingService;
+        this.potProcessingService = potProcessingService;
         this.userAdminService = userAdminService;
     }
 
@@ -614,6 +616,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             TissueBlockRequest request = arg(dfe, "request", TissueBlockRequest.class);
             logRequest("Perform tissue block", user, request);
             return blockProcessingService.perform(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> performPotProcessing() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            PotProcessingRequest request = arg(dfe, "request", PotProcessingRequest.class);
+            logRequest("Perform pot processing", user, request);
+            return potProcessingService.perform(user, request);
         };
     }
 

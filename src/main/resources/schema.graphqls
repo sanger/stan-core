@@ -1263,6 +1263,28 @@ input TissueBlockLabware {
     medium: String!
 }
 
+"""A request to transfer original sample into pots."""
+input PotProcessingRequest {
+    """The source barcode."""
+    sourceBarcode: String!
+    """The work number."""
+    workNumber: String!
+    """The destinations that will be created."""
+    destinations: [PotProcessingDestination!]!
+    """Is the source labware discarded?"""
+    sourceDiscarded: Boolean
+}
+
+"""A destination for pot processing."""
+input PotProcessingDestination {
+    """The name of the type of labware."""
+    labwareType: String!
+    """The fixative."""
+    fixative: String!
+    """Comment to record, if any."""
+    commentId: Int
+}
+
 """
 Get information from the application.
 These typically require no user privilege.
@@ -1468,6 +1490,8 @@ type Mutation {
     registerOriginalSamples(request: OriginalSampleRegisterRequest!): RegisterResult!
     """Process tissue into blocks."""
     performTissueBlock(request: TissueBlockRequest!): OperationResult!
+    """Process an original sample into pots."""
+    performPotProcessing(request: PotProcessingRequest!): OperationResult!
 
     """Create a new user for the application."""
     addUser(username: String!): User!

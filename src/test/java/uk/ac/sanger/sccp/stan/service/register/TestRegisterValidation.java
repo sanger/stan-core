@@ -309,12 +309,12 @@ public class TestRegisterValidation {
             }
             return false;
         });
-        when(mockTissueRepo.findByExternalName(anyString())).then(invocation -> {
+        when(mockTissueRepo.findAllByExternalName(anyString())).then(invocation -> {
             final String name = invocation.getArgument(0);
             return testData.stream()
                     .filter(td -> td.anyWithSameIdentifier && td.externalName.equalsIgnoreCase(name))
-                    .findAny()
-                    .map(td -> EntityFactory.getTissue());
+                    .map(td -> EntityFactory.getTissue())
+                    .collect(toList());
         });
         when(mockReplicateValidator.validate(any(), any())).then(invocation -> {
             String replicate = invocation.getArgument(0);
