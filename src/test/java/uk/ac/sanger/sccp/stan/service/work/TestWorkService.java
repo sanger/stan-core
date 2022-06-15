@@ -371,7 +371,7 @@ public class TestWorkService {
         List<String> problems = new ArrayList<>(1);
         if (workNumber==null) {
             assertNull(workService.validateUsableWork(problems, null));
-            assertThat(problems).isEmpty();
+            assertThat(problems).containsExactly("Work number is not specified.");
             verifyNoInteractions(mockWorkRepo);
             return;
         }
@@ -407,7 +407,7 @@ public class TestWorkService {
         List<Work> works = IntStream.range(0, workData.length/2)
                 .mapToObj(i -> new Work(i, (String) workData[2*i], null, null, null, (Status) workData[2*i+1]))
                 .collect(toList());
-        List<String> workNumbersList = (List) Arrays.asList(workNumbers);
+        List<String> workNumbersList = new LinkedList(Arrays.asList(workNumbers));
         when(mockWorkRepo.findAllByWorkNumberIn(workNumbersList)).thenReturn(works);
 
         final List<String> problems = new ArrayList<>(expectedErrors.length);
@@ -427,7 +427,9 @@ public class TestWorkService {
 
     static Stream<Arguments> usableWorksArgs() {
         return Arrays.stream(new Object[][][] {
-                {{},{},{}},
+                {{},{},{"No work numbers given."}},
+                {{null},{},{"Work number is not specified.", "No work numbers given."}},
+                {{"SGP1", null}, {"SGP1", Status.active}, {"Work number is not specified."}},
                 {{"SGP1", "sgp2", "SGP2"}, {"SGP1", Status.active, "SGP2", Status.active}, {}},
                 {{"SGP1", "SGP2", "SGP404", "SGP405"}, {"SGP1", Status.active, "SGP2", Status.active},
                         {"Work numbers not recognised: [\"SGP404\", \"SGP405\"]"}},

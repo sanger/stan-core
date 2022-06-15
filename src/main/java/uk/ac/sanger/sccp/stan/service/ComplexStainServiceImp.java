@@ -141,7 +141,6 @@ public class ComplexStainServiceImp implements ComplexStainService {
     public UCMap<Work> loadWorks(Collection<String> problems, Collection<ComplexStainLabware> csls) {
         Set<String> workNumbers = csls.stream()
                 .map(ComplexStainLabware::getWorkNumber)
-                .filter(Objects::nonNull)
                 .collect(toSet());
         return workService.validateUsableWorks(problems, workNumbers);
     }
@@ -285,9 +284,7 @@ public class ComplexStainServiceImp implements ComplexStainService {
             recordLabwareNotes(csl, lw.getId(), op.getId());
             lwList.add(lw);
             opList.add(op);
-            if (workMap.get(csl.getWorkNumber()) != null) {
-                workOps.computeIfAbsent(csl.getWorkNumber(), k -> new ArrayList<>()).add(op);
-            }
+            workOps.computeIfAbsent(csl.getWorkNumber(), k -> new ArrayList<>()).add(op);
         }
         for (var entry : workOps.entrySet()) {
             workService.link(workMap.get(entry.getKey()), entry.getValue());

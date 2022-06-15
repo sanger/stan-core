@@ -122,7 +122,7 @@ public class TestComplexStainService {
                 new ComplexStainLabware("STAN-01", "0000-000", 1, work1.getWorkNumber(), null, null, null),
                 new ComplexStainLabware("STAN-02", "0000-000", 1, work1.getWorkNumber(), null, null, null),
                 new ComplexStainLabware("STAN-03", "0000-000", 1, work2.getWorkNumber(), null, null, null),
-                new ComplexStainLabware("STAN-04", "0000-000", 1, null, null, null, null)
+                new ComplexStainLabware("STAN-04", "0000-000", 1, work2.getWorkNumber(), null, null, null)
         );
         UCMap<Work> workMap = UCMap.from(Work::getWorkNumber, work1, work2);
         if (valid) {
@@ -397,7 +397,7 @@ public class TestComplexStainService {
                 new ComplexStainLabware(lws[0].getBarcode(), "0000-000", 1, work1.getWorkNumber(), null, null, null),
                 new ComplexStainLabware(lws[1].getBarcode(), "0000-001", 2, work1.getWorkNumber(), null, null, null),
                 new ComplexStainLabware(lws[2].getBarcode(), "0000-002", 3, work2.getWorkNumber(), null, null, null),
-                new ComplexStainLabware(lws[3].getBarcode(), "0000-003", 3, null, null, null, null)
+                new ComplexStainLabware(lws[3].getBarcode(), "0000-003", 3, work2.getWorkNumber(), null, null, null)
         );
         ComplexStainRequest request = new ComplexStainRequest(List.of("RNAscope"), csls);
 
@@ -423,7 +423,7 @@ public class TestComplexStainService {
         }
 
         verify(mockWorkService).link(work1, List.of(ops[0], ops[1]));
-        verify(mockWorkService).link(work2, List.of(ops[2]));
+        verify(mockWorkService).link(work2, List.of(ops[2], ops[3]));
         verifyNoMoreInteractions(mockWorkService);
     }
 
