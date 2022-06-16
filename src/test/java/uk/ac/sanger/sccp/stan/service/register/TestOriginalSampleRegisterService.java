@@ -818,7 +818,10 @@ public class TestOriginalSampleRegisterService {
                 .mapToObj(i -> EntityFactory.makeLabware(lt, sample))
                 .toArray(Labware[]::new);
 
-        Map<OriginalSampleData, Labware> lwMap = Map.of(osds[0], labware[0], osds[1], labware[1]);
+        Map<OriginalSampleData, Labware> lwMap = new LinkedHashMap<>(2);
+        for (int i = 0; i < 2; ++i) {
+            lwMap.put(osds[i], labware[i]);
+        }
 
         assertEquals(Map.of(osds[0], ops.get(0), osds[1], ops.get(1)), service.recordRegistrations(user, lwMap));
 
