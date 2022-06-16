@@ -353,9 +353,9 @@ public class TestRegisterService {
 
         Tissue[] tissues = new Tissue[]{
                 new Tissue(5000, block0.getExternalIdentifier(), block0.getReplicateNumber(),
-                        sls[0], donor1, medium, fixative, hmdmcs[0], block0.getSampleCollectionDate(), null, null),
+                        sls[0], donor1, medium, fixative, hmdmcs[0], block0.getSampleCollectionDate(), null),
                 new Tissue(5001, block1.getExternalIdentifier(), block1.getReplicateNumber(),
-                        sls[1], donor2, medium, fixative, null, block1.getSampleCollectionDate(), null, null),
+                        sls[1], donor2, medium, fixative, null, block1.getSampleCollectionDate(), null),
         };
 
         BioState bioState = opType.getNewBioState();
@@ -387,7 +387,7 @@ public class TestRegisterService {
                             medium,
                             fixative,
                             i==0 ? hmdmcs[i] : null,
-                            block.getSampleCollectionDate(), null, null));
+                            block.getSampleCollectionDate(), null));
             verify(mockSampleRepo).save(new Sample(null, null, tissues[i], bioState));
             verify(mockLabwareService).create(lts[i]);
             Labware lw = lws[i];
@@ -454,7 +454,7 @@ public class TestRegisterService {
         when(mockLabwareService.create(lt)).thenReturn(lw);
 
         final Tissue tissue = new Tissue(5000, block.getExternalIdentifier(), block.getReplicateNumber(),
-                sl, donor, medium, fixative, hmdmc, null, null, null);
+                sl, donor, medium, fixative, hmdmc, null, null);
 
         BioState bioState = opType.getNewBioState();
         Sample sample = new Sample(6000, null, tissue, bioState);
@@ -483,7 +483,7 @@ public class TestRegisterService {
                         medium,
                         fixative,
                         hmdmc,
-                        null, null, null));
+                        null, null));
         verify(mockSampleRepo).save(new Sample(null, null, tissue, bioState));
         verify(mockLabwareService).create(lt);
         verify(mockEntityManager).refresh(lw);

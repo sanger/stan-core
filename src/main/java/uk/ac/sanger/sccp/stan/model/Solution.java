@@ -8,20 +8,20 @@ import java.util.Objects;
  * @author dr6
  */
 @Entity
-public class SolutionSample implements HasIntId, HasName, HasEnabled {
+public class Solution implements HasIntId, HasName, HasEnabled {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
     private String name;
     private boolean enabled = true;
 
-    public SolutionSample() {}
+    public Solution() {}
 
-    public SolutionSample(Integer id, String name) {
+    public Solution(Integer id, String name) {
         this(id, name, true);
     }
 
-    public SolutionSample(Integer id, String name, boolean enabled) {
+    public Solution(Integer id, String name, boolean enabled) {
         this.id = id;
         this.name = name;
         this.enabled = enabled;
@@ -59,7 +59,7 @@ public class SolutionSample implements HasIntId, HasName, HasEnabled {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        SolutionSample that = (SolutionSample) o;
+        Solution that = (Solution) o;
         return (this.enabled == that.enabled
                 && Objects.equals(this.id, that.id)
                 && Objects.equals(this.name, that.name));

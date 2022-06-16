@@ -358,7 +358,7 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
         Tissue newTissue = new Tissue(null, original.getExternalName(), block.getReplicate().toLowerCase(),
                 original.getSpatialLocation(), original.getDonor(), medium,
                 original.getFixative(), original.getHmdmc(), original.getCollectionDate(),
-                original.getSolutionSample(), original.getId());
+                original.getId());
         Tissue tissue = tissueRepo.save(newTissue);
         Sample newSample = new Sample(null, null, tissue, bs);
         return sampleRepo.save(newSample);

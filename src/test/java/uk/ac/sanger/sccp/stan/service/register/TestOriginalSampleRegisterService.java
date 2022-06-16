@@ -29,7 +29,7 @@ import static uk.ac.sanger.sccp.stan.Matchers.assertValidationException;
  * Tests {@link OriginalSampleRegisterServiceImp}
  */
 @SuppressWarnings("FieldCanBeLocal")
-public class OriginalSampleRegisterServiceTest {
+public class TestOriginalSampleRegisterService {
     private DonorRepo mockDonorRepo;
     private TissueRepo mockTissueRepo;
     private TissueTypeRepo mockTissueTypeRepo;
@@ -40,9 +40,10 @@ public class OriginalSampleRegisterServiceTest {
     private SpeciesRepo mockSpeciesRepo;
     private FixativeRepo mockFixativeRepo;
     private MediumRepo mockMediumRepo;
-    private SolutionSampleRepo mockSolutionRepo;
+    private SolutionRepo mockSolutionRepo;
     private LabwareTypeRepo mockLtRepo;
     private OperationTypeRepo mockOpTypeRepo;
+    private OperationSolutionRepo mockOpSolRepo;
     private Validator<String> mockDonorNameValidator;
     private Validator<String> mockExternalNameValidator;
     private Validator<String> mockHmdmcValidator;
@@ -65,9 +66,10 @@ public class OriginalSampleRegisterServiceTest {
         mockSpeciesRepo = mock(SpeciesRepo.class);
         mockFixativeRepo = mock(FixativeRepo.class);
         mockMediumRepo = mock(MediumRepo.class);
-        mockSolutionRepo = mock(SolutionSampleRepo.class);
+        mockSolutionRepo = mock(SolutionRepo.class);
         mockLtRepo = mock(LabwareTypeRepo.class);
         mockOpTypeRepo = mock(OperationTypeRepo.class);
+        mockOpSolRepo = mock(OperationSolutionRepo.class);
         mockDonorNameValidator = mock(Validator.class);
         mockExternalNameValidator = mock(Validator.class);
         mockHmdmcValidator = mock(Validator.class);
@@ -77,7 +79,7 @@ public class OriginalSampleRegisterServiceTest {
 
         service = spy(new OriginalSampleRegisterServiceImp(mockDonorRepo, mockTissueRepo, mockTissueTypeRepo,
                 mockSampleRepo, mockBsRepo, mockSlotRepo, mockHmdmcRepo, mockSpeciesRepo, mockFixativeRepo,
-                mockMediumRepo, mockSolutionRepo, mockLtRepo, mockOpTypeRepo, mockDonorNameValidator, mockExternalNameValidator,
+                mockMediumRepo, mockSolutionRepo, mockLtRepo, mockOpTypeRepo, mockOpSolRepo, mockDonorNameValidator, mockExternalNameValidator,
                 mockHmdmcValidator, mockReplicateValidator, mockLabwareService, mockOpService));
     }
 
@@ -135,16 +137,17 @@ public class OriginalSampleRegisterServiceTest {
                 "Tissue type wrong: TISSUE1",
                 "Spatial location wrong: 5",
                 "Fixative wrong: FIX1",
-                "Solution sample wrong: SOL1",
+                "Solution wrong: SOL1",
                 "Labware type wrong: LT1");
 
         verifyValidationMethods(request, donors);
 
         verify(service, never()).createNewDonors(any(), any(), any());
-        verify(service, never()).createNewTissues(any(), any(), any(), any(), any(), any());
+        verify(service, never()).createNewTissues(any(), any(), any(), any(), any());
         verify(service, never()).createSamples(any(), any());
         verify(service, never()).createLabware(any(), any(), any());
         verify(service, never()).recordRegistrations(any(), any());
+        verify(service, never()).recordSolutions(any(), any());
     }
 
     @Test
@@ -160,7 +163,7 @@ public class OriginalSampleRegisterServiceTest {
         UCMap<Hmdmc> hmdmcs = UCMap.from(Hmdmc::getHmdmc, new Hmdmc(10, "HMDMC1"));
         UCMap<Species> species = UCMap.from(Species::getName, new Species(20, "SPEC1"));
         UCMap<Fixative> fixatives = UCMap.from(Fixative::getName, new Fixative(30, "FIX1"));
-        UCMap<SolutionSample> solutions = UCMap.from(SolutionSample::getName, new SolutionSample(40, "SOL1", true));
+        UCMap<Solution> solutions = UCMap.from(Solution::getName, new Solution(40, "SOL1", true));
         UCMap<LabwareType> lwTypes = UCMap.from(LabwareType::getName, new LabwareType(50, "LT1", 1, 1, null, false));
 
         UCMap<Donor> donors = UCMap.from(Donor::getDonorName, new Donor(100, "DONOR1", LifeStage.adult, null));
@@ -169,7 +172,7 @@ public class OriginalSampleRegisterServiceTest {
         doReturn(hmdmcs).when(service).checkExistence(any(), any(), eq("HuMFre number"), any(), any());
         doReturn(species).when(service).checkExistence(any(), any(), eq("species"), any(), any());
         doReturn(fixatives).when(service).checkExistence(any(), any(), eq("fixative"), any(), any());
-        doReturn(solutions).when(service).checkExistence(any(), any(), eq("solution sample"), any(), any());
+        doReturn(solutions).when(service).checkExistence(any(), any(), eq("solution"), any(), any());
         doReturn(lwTypes).when(service).checkExistence(any(), any(), eq("labware type"), any(), any());
 
         doReturn(donors).when(service).loadDonors(any());
@@ -180,23 +183,25 @@ public class OriginalSampleRegisterServiceTest {
 
         doNothing().when(service).createNewDonors(any(), any(), any());
         Map<OriginalSampleData, Tissue> tissues = Map.of(data, EntityFactory.getTissue());
-        doReturn(tissues).when(service).createNewTissues(any(), any(), any(), any(), any(), any());
+        doReturn(tissues).when(service).createNewTissues(any(), any(), any(), any(), any());
         Map<OriginalSampleData, Sample> samples = Map.of(data, EntityFactory.getSample());
         doReturn(samples).when(service).createSamples(any(), any());
         Map<OriginalSampleData, Labware> labware = Map.of(data, EntityFactory.getTube());
         doReturn(labware).when(service).createLabware(any(), any(), any());
-        List<Operation> ops = List.of(new Operation());
+        Map<OriginalSampleData, Operation> ops = Map.of(data, new Operation());
         doReturn(ops).when(service).recordRegistrations(any(), any());
+        doNothing().when(service).recordSolutions(any(), any());
 
         RegisterResult result = service.register(user, request);
 
         verifyValidationMethods(request, donors);
 
         verify(service).createNewDonors(request, donors, species);
-        verify(service).createNewTissues(request, donors, ttypes, hmdmcs, fixatives, solutions);
+        verify(service).createNewTissues(request, donors, ttypes, hmdmcs, fixatives);
         verify(service).createSamples(request, tissues);
         verify(service).createLabware(request, lwTypes, samples);
-        verify(service).recordRegistrations(user, labware.values());
+        verify(service).recordRegistrations(user, labware);
+        verify(service).recordSolutions(ops, solutions);
 
         assertThat(result.getClashes()).isEmpty();
         assertThat(result.getLabware()).containsExactlyElementsOf(labware.values());
@@ -212,7 +217,7 @@ public class OriginalSampleRegisterServiceTest {
         verify(service).checkFormat(any(), same(request), eq("Tissue type"), any(), eq(true), isNull());
         verify(service).checkFormat(any(), same(request), eq("Spatial location"), any(), eq(true), isNull());
         verify(service).checkFormat(any(), same(request), eq("Fixative"), any(), eq(true), isNull());
-        verify(service).checkFormat(any(), same(request), eq("Solution sample"), any(), eq(true), isNull());
+        verify(service).checkFormat(any(), same(request), eq("Solution"), any(), eq(true), isNull());
         verify(service).checkFormat(any(), same(request), eq("Labware type"), any(), eq(true), isNull());
 
         verify(service).checkHmdmcsForSpecies(any(), same(request));
@@ -220,7 +225,7 @@ public class OriginalSampleRegisterServiceTest {
         verify(service).checkExistence(any(), same(request), eq("HuMFre number"), any(), any());
         verify(service).checkExistence(any(), same(request), eq("species"), any(), any());
         verify(service).checkExistence(any(), same(request), eq("fixative"), any(), any());
-        verify(service).checkExistence(any(), same(request), eq("solution sample"), any(), any());
+        verify(service).checkExistence(any(), same(request), eq("solution"), any(), any());
         verify(service).checkExistence(any(), same(request), eq("labware type"), any(), any());
 
         verify(service).loadDonors(same(request));
@@ -448,7 +453,7 @@ public class OriginalSampleRegisterServiceTest {
     }
 
     static Stream<Arguments> checkExternalNamesUniqueArgs() {
-        Tissue tissue = new Tissue(1, "EXT1", null, null, null, null, null, null, null, null, null);
+        Tissue tissue = new Tissue(1, "EXT1", null, null, null, null, null, null, null, null);
         String name1 = tissue.getExternalName();
         List<Tissue> tissues = List.of(tissue);
         return Arrays.stream(new Object[][] {
@@ -530,8 +535,8 @@ public class OriginalSampleRegisterServiceTest {
         OriginalSampleData old1 = osdWithDonorSL("donor1", "arm", 0);
         OriginalSampleData old2 = osdWithDonorSL("DONOR2", "LEG", 1);
 
-        Tissue tissue1 = new Tissue(1, "EXT1", "R1", t1.getSpatialLocations().get(0), d1, null, null, null, null, null, null);
-        Tissue tissue2 = new Tissue(2, "EXT2", "R2", t2.getSpatialLocations().get(1), d2, null, null, null, null, null, null);
+        Tissue tissue1 = new Tissue(1, "EXT1", "R1", t1.getSpatialLocations().get(0), d1, null, null, null, null, null);
+        Tissue tissue2 = new Tissue(2, "EXT2", "R2", t2.getSpatialLocations().get(1), d2, null, null, null, null, null);
         List<Tissue> existingTissues = List.of(tissue1, tissue2);
 
         return Arrays.stream(new Object[][] {
@@ -678,7 +683,6 @@ public class OriginalSampleRegisterServiceTest {
         tt.setSpatialLocations(List.of(sl));
         Hmdmc hmdmc = new Hmdmc(4, "HMDMC1");
         Fixative fix = new Fixative(5, "FIX1");
-        SolutionSample solution = new SolutionSample(6, "SOL1", true);
         LocalDate date1 = LocalDate.of(2022, 1, 5);
         OriginalSampleRegisterRequest request = new OriginalSampleRegisterRequest(List.of(
                 osd("donor1", "EXT1", "R1", "arm", 0, "fix1", "hmdmc1",
@@ -700,8 +704,7 @@ public class OriginalSampleRegisterServiceTest {
                 UCMap.from(Donor::getDonorName, donor),
                 UCMap.from(TissueType::getName, tt),
                 UCMap.from(Hmdmc::getHmdmc, hmdmc),
-                UCMap.from(Fixative::getName, fix),
-                UCMap.from(SolutionSample::getName, solution)
+                UCMap.from(Fixative::getName, fix)
         );
         assertThat(result).hasSize(2);
         assertThat(savedTissues).hasSize(2);
@@ -722,7 +725,6 @@ public class OriginalSampleRegisterServiceTest {
             assertSame(sl, tissue.getSpatialLocation());
             assertSame(noneMedium, tissue.getMedium());
             assertSame(hmdmc, tissue.getHmdmc());
-            assertSame(solution, tissue.getSolutionSample());
             assertNull(tissue.getParentId());
         }
     }
@@ -808,16 +810,55 @@ public class OriginalSampleRegisterServiceTest {
         User user = EntityFactory.getUser();
         Sample sample = EntityFactory.getSample();
         LabwareType lt = EntityFactory.getTubeType();
-        List<Labware> labware = IntStream.range(0,2)
+        OriginalSampleData[] osds = IntStream.range(0,2)
+                .mapToObj(i -> osdWithDonor(""+i))
+                .toArray(OriginalSampleData[]::new);
+
+        Labware[] labware = IntStream.range(0,2)
                 .mapToObj(i -> EntityFactory.makeLabware(lt, sample))
-                .collect(toList());
+                .toArray(Labware[]::new);
 
-        assertThat(service.recordRegistrations(user, labware)).containsExactlyElementsOf(ops);
+        Map<OriginalSampleData, Labware> lwMap = Map.of(osds[0], labware[0], osds[1], labware[1]);
 
-        assertThat(ops).hasSize(labware.size());
+        assertEquals(Map.of(osds[0], ops.get(0), osds[1], ops.get(1)), service.recordRegistrations(user, lwMap));
+
+        assertThat(ops).hasSize(lwMap.size());
         for (Labware lw : labware) {
             verify(mockOpService).createOperationInPlace(opType, user, lw, null, null);
         }
+    }
+
+    @Test
+    public void testRecordSolutions() {
+        Solution[] solutions = { new Solution(1, "sol1"), new Solution(2, "sol2") };
+        OriginalSampleData[] osds = Arrays.stream(solutions)
+                .map(TestOriginalSampleRegisterService::osdForSolution)
+                .toArray(OriginalSampleData[]::new);
+        Operation[] ops = IntStream.range(0, 2)
+                .mapToObj(i -> new Operation())
+                .toArray(Operation[]::new);
+        Sample sample = EntityFactory.getSample();
+        LabwareType lt = EntityFactory.getTubeType();
+        Labware[] lw = IntStream.range(0, 2)
+                .mapToObj(i -> EntityFactory.makeLabware(lt, sample))
+                .toArray(Labware[]::new);
+        for (int i = 0; i < ops.length; ++i) {
+            Operation op = ops[i];
+            op.setId(10+i);
+            Slot slot = lw[i].getFirstSlot();
+            Action action = new Action(100+i, op.getId(), slot, slot, sample, sample);
+            op.setActions(List.of(action));
+        }
+        Map<OriginalSampleData, Operation> opMap = Map.of(osds[0], ops[0], osds[1], ops[1]);
+        UCMap<Solution> solutionMap = UCMap.from(Solution::getName, solutions);
+
+        service.recordSolutions(opMap, solutionMap);
+
+        Set<OperationSolution> expectedSolutions = new LinkedHashSet<>(2);
+        for (int i = 0; i < ops.length; ++i) {
+            expectedSolutions.add(new OperationSolution(ops[i].getId(), solutions[i].getId(), lw[i].getId(), sample.getId()));
+        }
+        verify(mockOpSolRepo).saveAll(expectedSolutions);
     }
 
     static OriginalSampleData osd(String donorName, String extName, String rep, String tissueTypeName, Integer slCode,
@@ -831,7 +872,15 @@ public class OriginalSampleRegisterServiceTest {
         data.setFixative(fixative);
         data.setHmdmc(hmdmc);
         data.setSampleCollectionDate(collectionDate);
-        data.setSolutionSample(solutionName);
+        data.setSolution(solutionName);
+        return data;
+    }
+
+    static OriginalSampleData osdForSolution(Solution solution) {
+        OriginalSampleData data = new OriginalSampleData();
+        if (solution!=null) {
+            data.setSolution(solution.getName());
+        }
         return data;
     }
 

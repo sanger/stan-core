@@ -46,7 +46,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final DestructionReasonRepo destructionReasonRepo;
     final ProjectRepo projectRepo;
     final CostCodeRepo costCodeRepo;
-    final SolutionSampleRepo solutionSampleRepo;
+    final SolutionRepo solutionRepo;
     final WorkTypeRepo workTypeRepo;
     final WorkRepo workRepo;
     final ReagentPlateRepo reagentPlateRepo;
@@ -71,7 +71,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                SpeciesRepo speciesRepo, HmdmcRepo hmdmcRepo, LabwareRepo labwareRepo,
                                ReleaseDestinationRepo releaseDestinationRepo, ReleaseRecipientRepo releaseRecipientRepo,
                                DestructionReasonRepo destructionReasonRepo, ProjectRepo projectRepo, CostCodeRepo costCodeRepo,
-                               SolutionSampleRepo solutionSampleRepo, WorkTypeRepo workTypeRepo, WorkRepo workRepo,
+                               SolutionRepo solutionRepo, WorkTypeRepo workTypeRepo, WorkRepo workRepo,
                                ReagentPlateRepo reagentPlateRepo,
                                LabelPrintService labelPrintService, FindService findService,
                                CommentAdminService commentAdminService, EquipmentAdminService equipmentAdminService,
@@ -88,7 +88,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.speciesRepo = speciesRepo;
         this.hmdmcRepo = hmdmcRepo;
         this.labwareRepo = labwareRepo;
-        this.solutionSampleRepo = solutionSampleRepo;
+        this.solutionRepo = solutionRepo;
         this.reagentPlateRepo = reagentPlateRepo;
         this.equipmentAdminService = equipmentAdminService;
         this.releaseDestinationRepo = releaseDestinationRepo;
@@ -193,8 +193,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         return allOrEnabled(costCodeRepo::findAll, costCodeRepo::findAllByEnabled);
     }
 
-    public DataFetcher<Iterable<SolutionSample>> getSolutionSamples() {
-        return allOrEnabled(solutionSampleRepo::findAll, solutionSampleRepo::findAllByEnabled);
+    public DataFetcher<Iterable<Solution>> getSolutions() {
+        return allOrEnabled(solutionRepo::findAll, solutionRepo::findAllByEnabled);
     }
 
     public DataFetcher<Iterable<WorkType>> getWorkTypes() {

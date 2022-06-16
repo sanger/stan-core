@@ -149,8 +149,6 @@ type Tissue {
     fixative: Fixative!
     """The date the original sample was collected, if known."""
     collectionDate: Date
-    """The solution sample used when registering original samples."""
-    solutionSample: SolutionSample
 }
 
 """A particular sample of tissue, in a particular state."""
@@ -203,11 +201,11 @@ type Labware {
     created: Timestamp!
 }
 
-"""A solution linked to a sample being registered."""
-type SolutionSample {
-    """The unique name of the solution sample."""
+"""A solution used in an operation."""
+type Solution {
+    """The unique name of the solution."""
     name: String!
-    """Whether the solution sample is available for use."""
+    """Whether the solution is available for use."""
     enabled: Boolean!
 }
 
@@ -311,8 +309,8 @@ input OriginalSampleData {
     externalIdentifier: String
     """The name of the type of labware containing the sample."""
     labwareType: String!
-    """The solution sample used for the tissue."""
-    solutionSample: String!
+    """The solution used for the tissue."""
+    solution: String!
     """The fixative used for the tissue."""
     fixative: String!
     """The species of the donor."""
@@ -1322,8 +1320,8 @@ type Query {
     projects(includeDisabled: Boolean): [Project!]!
     """Get all the cost codes that are enabled, or get all including those that are disabled."""
     costCodes(includeDisabled: Boolean): [CostCode!]!
-    """Get all the solution samples that are enabled, or get all including those that are disabled."""
-    solutionSamples(includeDisabled: Boolean): [SolutionSample!]!
+    """Get all the solutions that are enabled, or get all including those that are disabled."""
+    solutions(includeDisabled: Boolean): [Solution!]!
     """Get all the work types that are enabled, or get all including those that are disabled."""
     workTypes(includeDisabled: Boolean): [WorkType!]!
     """Get all the works, or get all the works in the given specified statuses."""
@@ -1444,10 +1442,10 @@ type Mutation {
     addWorkType(name: String!): WorkType!
     """Enable or disable a work type."""
     setWorkTypeEnabled(name: String!, enabled: Boolean!): WorkType!
-    """Add a new solution sample."""
-    addSolutionSample(name: String!): SolutionSample!
-    """Enable or disable a solution sample."""
-    setSolutionSampleEnabled(name: String!, enabled: Boolean!): SolutionSample!
+    """Add a new solution."""
+    addSolution(name: String!): Solution!
+    """Enable or disable a solution."""
+    setSolutionEnabled(name: String!, enabled: Boolean!): Solution!
 
     """Create a new work, which will be allocated a new work number with the given prefix."""
     createWork(prefix: String!, workType: String!, project: String!, costCode: String!, numBlocks: Int, numSlides: Int): Work!

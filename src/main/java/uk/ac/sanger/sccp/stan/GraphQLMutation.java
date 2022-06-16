@@ -67,7 +67,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final ProjectService projectService;
     final CostCodeService costCodeService;
     final FixativeService fixativeService;
-    final SolutionSampleAdminService solutionSampleAdminService;
+    final SolutionAdminService solutionAdminService;
     final WorkTypeService workTypeService;
     final WorkService workService;
     final StainService stainService;
@@ -99,7 +99,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            HmdmcAdminService hmdmcAdminService, ReleaseDestinationAdminService releaseDestinationAdminService,
                            ReleaseRecipientAdminService releaseRecipientAdminService, SpeciesAdminService speciesAdminService,
                            ProjectService projectService, CostCodeService costCodeService, FixativeService fixativeService,
-                           SolutionSampleAdminService solutionSampleAdminService,
+                           SolutionAdminService solutionAdminService,
                            WorkTypeService workTypeService, WorkService workService, StainService stainService,
                            UnreleaseService unreleaseService, ResultService resultService, ExtractResultService extractResultService,
                            PermService permService, RNAAnalysisService rnaAnalysisService,
@@ -132,7 +132,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.projectService = projectService;
         this.costCodeService = costCodeService;
         this.fixativeService = fixativeService;
-        this.solutionSampleAdminService = solutionSampleAdminService;
+        this.solutionAdminService = solutionAdminService;
         this.workTypeService = workTypeService;
         this.workService = workService;
         this.stainService = stainService;
@@ -415,12 +415,12 @@ public class GraphQLMutation extends BaseGraphQLResource {
         return adminSetEnabled(fixativeService::setEnabled, "SetFixativeEnabled", "name");
     }
 
-    public DataFetcher<SolutionSample> addSolutionSample() {
-        return adminAdd(solutionSampleAdminService::addNew, "AddSolutionSample", "name");
+    public DataFetcher<Solution> addSolution() {
+        return adminAdd(solutionAdminService::addNew, "AddSolution", "name");
     }
 
-    public DataFetcher<SolutionSample> setSolutionSampleEnabled() {
-        return adminSetEnabled(solutionSampleAdminService::setEnabled, "SetSolutionSampleEnabled", "name");
+    public DataFetcher<Solution> setSolutionEnabled() {
+        return adminSetEnabled(solutionAdminService::setEnabled, "SetSolutionEnabled", "name");
     }
 
     public DataFetcher<WorkType> addWorkType() {
