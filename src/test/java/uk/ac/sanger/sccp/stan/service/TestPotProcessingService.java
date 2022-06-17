@@ -330,7 +330,7 @@ public class TestPotProcessingService {
         UCMap<LabwareType> lwTypes = UCMap.from(LabwareType::getName, EntityFactory.getTubeType());
         Map<Integer, Comment> commentMap = Map.of(200, new Comment(200, "Custard", "non-newtonion"));
         Tissue newTissue = new Tissue(100, null, null, ogTissue.getSpatialLocation(), ogTissue.getDonor(),
-                ogTissue.getMedium(), fix1, ogTissue.getHmdmc(), ogTissue.getCollectionDate(), ogTissue.getSolutionSample(),
+                ogTissue.getMedium(), fix1, ogTissue.getHmdmc(), ogTissue.getCollectionDate(),
                 ogTissue.getId());
         final Sample newSample = new Sample(100, null, newTissue, ogSample.getBioState());
         List<Labware> destLabware = List.of(EntityFactory.makeLabware(EntityFactory.getTubeType(), newSample));
@@ -393,7 +393,7 @@ public class TestPotProcessingService {
         Fixative fix1 = new Fixative(2, "fix1");
         Tissue ogTissue = new Tissue(100, null, null, EntityFactory.getSpatialLocation(), EntityFactory.getDonor(),
                 EntityFactory.getMedium(), noFix, EntityFactory.getHmdmc(), LocalDate.of(2022,6,7),
-                new SolutionSample(300, "sol"), null);
+                null);
         when(mockTissueRepo.save(any())).then(invocation -> {
             Tissue t = invocation.getArgument(0);
             assertNull(t.getId());
@@ -404,7 +404,7 @@ public class TestPotProcessingService {
         verify(mockTissueRepo).save(newTissue);
         assertEquals(new Tissue(500, ogTissue.getExternalName(), ogTissue.getReplicate(), ogTissue.getSpatialLocation(),
                 ogTissue.getDonor(), ogTissue.getMedium(), fix1, ogTissue.getHmdmc(), ogTissue.getCollectionDate(),
-                ogTissue.getSolutionSample(), ogTissue.getId()), newTissue);
+                ogTissue.getId()), newTissue);
     }
 
     @ParameterizedTest

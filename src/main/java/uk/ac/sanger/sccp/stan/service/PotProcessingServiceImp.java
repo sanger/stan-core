@@ -273,7 +273,7 @@ public class PotProcessingServiceImp implements PotProcessingService {
     public Tissue createTissue(Tissue ogTissue, Fixative fixative) {
         Tissue newTissue = new Tissue(null, ogTissue.getExternalName(), ogTissue.getReplicate(), ogTissue.getSpatialLocation(),
                 ogTissue.getDonor(), ogTissue.getMedium(), fixative, ogTissue.getHmdmc(), ogTissue.getCollectionDate(),
-                ogTissue.getSolutionSample(), ogTissue.getId());
+                ogTissue.getId());
         return tissueRepo.save(newTissue);
     }
 

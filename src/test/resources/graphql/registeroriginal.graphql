@@ -11,7 +11,7 @@ mutation {
                 tissueType:"Bone"
                 fixative:"None"
                 sampleCollectionDate: "2022-05-19"
-                solutionSample: "Glue"
+                solution: "Glue"
                 externalIdentifier: "EXT1"
             }
         ]
@@ -33,7 +33,6 @@ mutation {
                             code
                             tissueType { name }
                         }
-                        solutionSample { name }
                     }
                 }
             }

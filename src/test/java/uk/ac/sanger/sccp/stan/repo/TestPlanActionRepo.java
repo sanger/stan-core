@@ -74,7 +74,7 @@ public class TestPlanActionRepo {
         Donor donor = new Donor(null, "DONOR", LifeStage.adult, entityCreator.getHuman());
         donorRepo.save(donor);
         Tissue tissue = new Tissue(null, "TISSUE1", "1", any(slRepo), donor,
-                any(mediumRepo), any(fixativeRepo), any(hmdmcRepo), null, null, null);
+                any(mediumRepo), any(fixativeRepo), any(hmdmcRepo), null, null);
         BioState bioState = any(bioStateRepo);
         tissueRepo.save(tissue);
         final Sample sample = new Sample(null, 3, tissue, bioState);

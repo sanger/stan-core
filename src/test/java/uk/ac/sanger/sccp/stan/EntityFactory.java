@@ -106,7 +106,7 @@ public class EntityFactory {
     public static Tissue getTissue() {
         if (tissue==null) {
             tissue = new Tissue(80, "TISSUE1", "1", getSpatialLocation(), getDonor(),
-                    getMedium(), getFixative(), getHmdmc(), null, null, null);
+                    getMedium(), getFixative(), getHmdmc(), null, null);
         }
         return tissue;
     }
@@ -192,7 +192,7 @@ public class EntityFactory {
 
     public static Tissue makeTissue(Donor donor, SpatialLocation sl) {
         int id = ++idCounter;
-        return new Tissue(id, "TISSUE "+id, String.valueOf(id%7), sl, donor, getMedium(), getFixative(), getHmdmc(), null, null, null);
+        return new Tissue(id, "TISSUE "+id, String.valueOf(id%7), sl, donor, getMedium(), getFixative(), getHmdmc(), null, null);
     }
 
     public static ReagentPlate makeReagentPlate(String barcode) {

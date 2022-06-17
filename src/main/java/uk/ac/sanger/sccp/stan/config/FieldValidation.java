@@ -161,12 +161,12 @@ public class FieldValidation {
     }
 
     @Bean
-    public Validator<String> solutionSampleValidator() {
+    public Validator<String> solutionValidator() {
         Set<CharacterType> charTypes = EnumSet.of(
                 CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN, CharacterType.SPACE,
                 CharacterType.SLASH, CharacterType.PAREN, CharacterType.FULL_STOP, CharacterType.APOSTROPHE
         );
-        return new StringValidator("Solution sample", 2, 64, charTypes);
+        return new StringValidator("Solution", 2, 64, charTypes);
     }
 
     @Bean

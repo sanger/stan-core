@@ -1,6 +1,5 @@
 package uk.ac.sanger.sccp.stan.integrationtest;
 
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,11 +35,15 @@ public class TestRegisterOriginalSamplesMutation {
     @Autowired
     private EntityCreator entityCreator;
     @Autowired
-    private SolutionSampleRepo solutionSampleRepo;
+    private SolutionRepo solutionRepo;
     @Autowired
     private LabwareRepo lwRepo;
     @Autowired
+    private OperationTypeRepo opTypeRepo;
+    @Autowired
     private OperationRepo opRepo;
+    @Autowired
+    private OperationSolutionRepo opSolRepo;
 
     @ParameterizedTest
     @Transactional
@@ -48,7 +51,7 @@ public class TestRegisterOriginalSamplesMutation {
     public void testRegisterOriginalSamples(boolean hasExternalName) throws Exception {
         User user = entityCreator.createUser("user1");
         tester.setUser(user);
-        SolutionSample solution = solutionSampleRepo.save(new SolutionSample(null, "Glue"));
+        Solution solution = solutionRepo.save(new Solution(null, "Glue"));
         String externalName = (hasExternalName ? "EXT1" : null);
         String mutation = tester.readGraphQL("registeroriginal.graphql");
         if (!hasExternalName) {
@@ -73,7 +76,6 @@ public class TestRegisterOriginalSamplesMutation {
         assertEquals("None", chainGet(tissueData, "fixative", "name"));
         assertEquals((Integer) 0, chainGet(tissueData, "spatialLocation", "code"));
         assertEquals("Bone", chainGet(tissueData, "spatialLocation", "tissueType", "name"));
-        assertEquals(solution.getName(), chainGet(tissueData, "solutionSample", "name"));
 
         Labware lw = lwRepo.getByBarcode(barcode);
         Slot slot = lw.getFirstSlot();
@@ -82,7 +84,9 @@ public class TestRegisterOriginalSamplesMutation {
         assertNull(sample.getSection());
         assertEquals("Original sample", sample.getBioState().getName());
         Tissue tissue = sample.getTissue();
-        assertEquals(solution, tissue.getSolutionSample());
+        Operation op = opRepo.findAllByOperationTypeAndDestinationSlotIdIn(opTypeRepo.getByName("Register"), List.of(slot.getId())).get(0);
+        var opSols = opSolRepo.findAllByOperationId(op.getId());
+        assertThat(opSols).containsExactly(new OperationSolution(op.getId(), solution.getId(), lw.getId(), sample.getId()));
         assertNull(tissue.getParentId());
         assertEquals("None", tissue.getMedium().getName());
         assertEquals(externalName, tissue.getExternalName());

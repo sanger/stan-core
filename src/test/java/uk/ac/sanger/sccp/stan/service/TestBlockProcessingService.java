@@ -542,7 +542,7 @@ public class TestBlockProcessingService {
     }
 
     static Tissue makeTissue(Integer id, String name, String replicate, SpatialLocation sl, Donor d) {
-        return new Tissue(id, name, replicate, sl, d, null, null, null, null, null,  null);
+        return new Tissue(id, name, replicate, sl, d, null, null, null, null, null);
     }
 
     static TissueBlockRequest requestForReplicates(String... barcodesAndReplicates) {
@@ -647,7 +647,7 @@ public class TestBlockProcessingService {
         Tissue original = lw.getFirstSlot().getSamples().get(0).getTissue();
         assertEquals(new Tissue(500, tissue.getExternalName(), "2c", original.getSpatialLocation(), original.getDonor(),
                 med, original.getFixative(), original.getHmdmc(), original.getCollectionDate(),
-                original.getSolutionSample(), original.getId()), tissue);
+                original.getId()), tissue);
         assertEquals(new Sample(600, null, tissue, bs), sample);
     }
 
