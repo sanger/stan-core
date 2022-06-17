@@ -33,9 +33,10 @@ public class OriginalSampleRegisterServiceImp implements OriginalSampleRegisterS
     private final FixativeRepo fixativeRepo;
     private final MediumRepo mediumRepo;
 
-    private final SolutionSampleRepo solutionRepo;
+    private final SolutionRepo solutionRepo;
     private final LabwareTypeRepo ltRepo;
     private final OperationTypeRepo opTypeRepo;
+    private final OperationSolutionRepo opSolutionRepo;
 
 
     private final Validator<String> donorNameValidator;
@@ -51,9 +52,8 @@ public class OriginalSampleRegisterServiceImp implements OriginalSampleRegisterS
                                             TissueTypeRepo tissueTypeRepo, SampleRepo sampleRepo,
                                             BioStateRepo bsRepo, SlotRepo slotRepo,
                                             HmdmcRepo hmdmcRepo, SpeciesRepo speciesRepo, FixativeRepo fixativeRepo,
-                                            MediumRepo mediumRepo, SolutionSampleRepo solutionRepo, LabwareTypeRepo ltRepo,
-                                            OperationTypeRepo opTypeRepo,
-
+                                            MediumRepo mediumRepo, SolutionRepo solutionRepo, LabwareTypeRepo ltRepo,
+                                            OperationTypeRepo opTypeRepo, OperationSolutionRepo opSolutionRepo,
                                             @Qualifier("donorNameValidator") Validator<String> donorNameValidator,
                                             @Qualifier("externalNameValidator") Validator<String> externalNameValidator,
                                             @Qualifier("hmdmcValidator") Validator<String> hmdmcValidator,
@@ -71,6 +71,7 @@ public class OriginalSampleRegisterServiceImp implements OriginalSampleRegisterS
         this.solutionRepo = solutionRepo;
         this.ltRepo = ltRepo;
         this.opTypeRepo = opTypeRepo;
+        this.opSolutionRepo = opSolutionRepo;
         this.donorNameValidator = donorNameValidator;
         this.externalNameValidator = externalNameValidator;
         this.hmdmcValidator = hmdmcValidator;
@@ -100,7 +101,7 @@ public class OriginalSampleRegisterServiceImp implements OriginalSampleRegisterS
         checkFormat(problems, request, "Tissue type", OriginalSampleData::getTissueType, true, null);
         checkFormat(problems, request, "Spatial location", OriginalSampleData::getSpatialLocation, true, null);
         checkFormat(problems, request, "Fixative", OriginalSampleData::getFixative, true, null);
-        checkFormat(problems, request, "Solution sample", OriginalSampleData::getSolutionSample, true, null);
+        checkFormat(problems, request, "Solution", OriginalSampleData::getSolution, true, null);
         checkFormat(problems, request, "Labware type", OriginalSampleData::getLabwareType, true, null);
         checkHmdmcsForSpecies(problems, request);
         checkCollectionDates(problems, request);
@@ -108,7 +109,7 @@ public class OriginalSampleRegisterServiceImp implements OriginalSampleRegisterS
         UCMap<Hmdmc> hmdmcs = checkExistence(problems, request, "HuMFre number", OriginalSampleData::getHmdmc, hmdmcRepo::findByHmdmc);
         UCMap<Species> species = checkExistence(problems, request, "species", OriginalSampleData::getSpecies, speciesRepo::findByName);
         UCMap<Fixative> fixatives = checkExistence(problems, request, "fixative", OriginalSampleData::getFixative, fixativeRepo::findByName);
-        UCMap<SolutionSample> solutions = checkExistence(problems, request, "solution sample", OriginalSampleData::getSolutionSample, solutionRepo::findByName);
+        UCMap<Solution> solutions = checkExistence(problems, request, "solution", OriginalSampleData::getSolution, solutionRepo::findByName);
         UCMap<LabwareType> lwTypes = checkExistence(problems, request, "labware type", OriginalSampleData::getLabwareType, ltRepo::findByName);
 
         UCMap<Donor> donors = loadDonors(request);
@@ -124,11 +125,12 @@ public class OriginalSampleRegisterServiceImp implements OriginalSampleRegisterS
         }
 
         createNewDonors(request, donors, species);
-        var tissues = createNewTissues(request, donors, tissueTypes, hmdmcs, fixatives, solutions);
+        var tissues = createNewTissues(request, donors, tissueTypes, hmdmcs, fixatives);
 
         Map<OriginalSampleData, Sample> samples = createSamples(request, tissues);
         Map<OriginalSampleData, Labware> labware = createLabware(request, lwTypes, samples);
-        recordRegistrations(user, labware.values());
+        var ops = recordRegistrations(user, labware);
+        recordSolutions(ops, solutions);
 
         return new RegisterResult(new ArrayList<>(labware.values()));
     }
@@ -476,12 +478,11 @@ public class OriginalSampleRegisterServiceImp implements OriginalSampleRegisterS
      * @param tissueTypes map to look up tissue types
      * @param hmdmcs map to look up hmdmcs
      * @param fixatives map to look up fixatives
-     * @param solutions map to look up solution samples
      * @return a map of tissues from their external name
      */
     public Map<OriginalSampleData, Tissue> createNewTissues(OriginalSampleRegisterRequest request, UCMap<Donor> donors,
                                           UCMap<TissueType> tissueTypes, UCMap<Hmdmc> hmdmcs,
-                                          UCMap<Fixative> fixatives, UCMap<SolutionSample> solutions) {
+                                          UCMap<Fixative> fixatives) {
         Medium medium = mediumRepo.getByName("None");
 
         Map<OriginalSampleData, Tissue> map = new HashMap<>(request.getSamples().size());
@@ -494,12 +495,34 @@ public class OriginalSampleRegisterServiceImp implements OriginalSampleRegisterS
                     medium, fixatives.get(data.getFixative()),
                     hmdmcs.get(data.getHmdmc()),
                     data.getSampleCollectionDate(),
-                    solutions.get(data.getSolutionSample()),
                     null
             );
             map.put(data, tissueRepo.save(tissue));
         }
         return map;
+    }
+
+    /**
+     * Link the operations (and labware and samples) to the solutions used
+     * @param operations the operations, mapped from their parts of the request
+     * @param solutions the solutions, mapped from their names
+     */
+    public void recordSolutions(Map<OriginalSampleData, Operation> operations, UCMap<Solution> solutions) {
+        Collection<OperationSolution> opSols = new LinkedHashSet<>();
+        for (var entry : operations.entrySet()) {
+            OriginalSampleData osd = entry.getKey();
+            Operation op = entry.getValue();
+            if (!nullOrEmpty(osd.getSolution())) {
+                Solution solution = solutions.get(osd.getSolution());
+                for (Action ac : op.getActions()) {
+                    opSols.add(new OperationSolution(op.getId(), solution.getId(),
+                            ac.getDestination().getLabwareId(), ac.getSample().getId()));
+                }
+            }
+        }
+        if (!opSols.isEmpty()) {
+            opSolutionRepo.saveAll(opSols);
+        }
     }
 
     /**
@@ -546,16 +569,17 @@ public class OriginalSampleRegisterServiceImp implements OriginalSampleRegisterS
     /**
      * Records register operations
      * @param user the user responsible for the operations
-     * @param labware the newly created labware
-     * @return the new operations
+     * @param labware the map of request to labware
+     * @return the new operations mapped from the original sample data request
      */
-    public List<Operation> recordRegistrations(User user, Collection<Labware> labware) {
-        List<Operation> ops = new ArrayList<>(labware.size());
+    public Map<OriginalSampleData, Operation> recordRegistrations(User user, Map<OriginalSampleData, Labware> labware) {
+        Map<OriginalSampleData, Operation> opMap = new HashMap<>(labware.size());
         OperationType opType = opTypeRepo.getByName("Register");
-        for (Labware lw : labware) {
-            ops.add(opService.createOperationInPlace(opType, user, lw, null, null));
+        for (var entry : labware.entrySet()) {
+            Labware lw = entry.getValue();
+            opMap.put(entry.getKey(), opService.createOperationInPlace(opType, user, lw, null, null));
         }
-        return ops;
+        return opMap;
     }
 
     /**

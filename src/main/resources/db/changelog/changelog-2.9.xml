@@ -4,7 +4,7 @@
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
 
     <changeSet id="2.9.0" author="dr6">
-        <createTable tableName="solution_sample">
+        <createTable tableName="solution">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
             </column>
@@ -24,17 +24,36 @@
     </changeSet>
 
     <changeSet id="2.9.1" author="dr6">
-        <dropNotNullConstraint tableName="tissue" columnName="external_name" columnDataType="VARCHAR(64)"/>
-        <dropNotNullConstraint tableName="tissue" columnName="replicate" columnDataType="VARCHAR(8)"/>
-
         <addColumn tableName="tissue">
             <column name="parent_id" type="INT">
                 <constraints nullable="true" foreignKeyName="tissue_fk_parent" referencedTableName="tissue" referencedColumnNames="id"/>
             </column>
-            <column name="solution_sample_id" type="INT">
-                <constraints nullable="true" foreignKeyName="tissue_fk_solution_sample" referencedTableName="solution_sample" referencedColumnNames="id"/>
-            </column>
         </addColumn>
+        <dropNotNullConstraint tableName="tissue" columnName="external_name" columnDataType="VARCHAR(64)"/>
+        <dropNotNullConstraint tableName="tissue" columnName="replicate" columnDataType="VARCHAR(8)"/>
+        <dropNotNullConstraint tableName="tissue" columnName="medium_id" columnDataType="INT"/>
+    </changeSet>
+
+    <changeSet id="2.9.2" author="dr6">
+        <createTable tableName="operation_solution">
+            <column name="operation_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_operation_solution_operation" referencedTableName="operation" referencedColumnNames="id"/>
+            </column>
+            <column name="solution_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_operation_solution_solution" referencedTableName="solution" referencedColumnNames="id"/>
+            </column>
+            <column name="labware_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_operation_solution_labware" referencedTableName="labware" referencedColumnNames="id"/>
+            </column>
+            <column name="sample_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_operation_solution_sample" referencedTableName="sample" referencedColumnNames="id"/>
+            </column>
+        </createTable>
+        <addPrimaryKey tableName="operation_solution" columnNames="operation_id,solution_id,labware_id,sample_id"/>
+        <rollback>
+            <dropAllForeignKeyConstraints baseTableName="operation_solution"/>
+            <dropTable tableName="operation_solution"/>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

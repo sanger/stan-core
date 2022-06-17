@@ -19,7 +19,7 @@ public class OriginalSampleData {
     private String replicateNumber;
     private String externalIdentifier;
     private String labwareType;
-    private String solutionSample;
+    private String solution;
     private String fixative;
     private String species;
     private LocalDate sampleCollectionDate;
@@ -28,7 +28,7 @@ public class OriginalSampleData {
 
     public OriginalSampleData(String donorIdentifier, LifeStage lifeStage, String hmdmc, String tissueType,
                               Integer spatialLocation, String replicateNumber, String externalIdentifier,
-                              String labwareType, String solutionSample, String fixative, String species,
+                              String labwareType, String solution, String fixative, String species,
                               LocalDate sampleCollectionDate) {
         this.donorIdentifier = donorIdentifier;
         this.lifeStage = lifeStage;
@@ -38,7 +38,7 @@ public class OriginalSampleData {
         this.replicateNumber = replicateNumber;
         this.externalIdentifier = externalIdentifier;
         this.labwareType = labwareType;
-        this.solutionSample = solutionSample;
+        this.solution = solution;
         this.fixative = fixative;
         this.species = species;
         this.sampleCollectionDate = sampleCollectionDate;
@@ -133,14 +133,14 @@ public class OriginalSampleData {
     }
 
     /**
-     * The solution sample used for the tissue.
+     * The solution used for the tissue.
      */
-    public String getSolutionSample() {
-        return this.solutionSample;
+    public String getSolution() {
+        return this.solution;
     }
 
-    public void setSolutionSample(String solutionSample) {
-        this.solutionSample = solutionSample;
+    public void setSolution(String solution) {
+        this.solution = solution;
     }
 
     /**
@@ -189,7 +189,7 @@ public class OriginalSampleData {
                 && Objects.equals(this.replicateNumber, that.replicateNumber)
                 && Objects.equals(this.externalIdentifier, that.externalIdentifier)
                 && Objects.equals(this.labwareType, that.labwareType)
-                && Objects.equals(this.solutionSample, that.solutionSample)
+                && Objects.equals(this.solution, that.solution)
                 && Objects.equals(this.fixative, that.fixative)
                 && Objects.equals(this.species, that.species)
                 && Objects.equals(this.sampleCollectionDate, that.sampleCollectionDate)
@@ -199,7 +199,7 @@ public class OriginalSampleData {
     @Override
     public int hashCode() {
         return Objects.hash(donorIdentifier, lifeStage, hmdmc, tissueType, spatialLocation, replicateNumber,
-                externalIdentifier, labwareType, solutionSample, fixative, species, sampleCollectionDate);
+                externalIdentifier, labwareType, solution, fixative, species, sampleCollectionDate);
     }
 
     @Override
@@ -213,7 +213,7 @@ public class OriginalSampleData {
                 .add("replicateNumber", replicateNumber)
                 .add("externalIdentifier", externalIdentifier)
                 .add("labwareType", labwareType)
-                .add("solutionSample", solutionSample)
+                .add("solution", solution)
                 .add("fixative", fixative)
                 .add("species", species)
                 .add("sampleCollectionDate", sampleCollectionDate)
