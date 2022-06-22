@@ -84,6 +84,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final OriginalSampleRegisterService originalSampleRegisterService;
     final BlockProcessingService blockProcessingService;
     final PotProcessingService potProcessingService;
+    final SolutionTransferService solutionTransferService;
     final UserAdminService userAdminService;
 
     @Autowired
@@ -107,7 +108,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            ComplexStainService complexStainService, AliquotService aliquotService,
                            ReagentTransferService reagentTransferService, OriginalSampleRegisterService originalSampleRegisterService,
                            BlockProcessingService blockProcessingService, PotProcessingService potProcessingService,
-                           UserAdminService userAdminService) {
+                           SolutionTransferService solutionTransferService, UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
@@ -149,6 +150,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.originalSampleRegisterService = originalSampleRegisterService;
         this.blockProcessingService = blockProcessingService;
         this.potProcessingService = potProcessingService;
+        this.solutionTransferService = solutionTransferService;
         this.userAdminService = userAdminService;
     }
 
@@ -625,6 +627,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             PotProcessingRequest request = arg(dfe, "request", PotProcessingRequest.class);
             logRequest("Perform pot processing", user, request);
             return potProcessingService.perform(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> performSolutionTransfer() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            SolutionTransferRequest request = arg(dfe, "request", SolutionTransferRequest.class);
+            logRequest("Perform solution transfer", user, request);
+            return solutionTransferService.perform(user, request);
         };
     }
 
