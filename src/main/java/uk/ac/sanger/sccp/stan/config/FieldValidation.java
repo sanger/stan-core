@@ -164,7 +164,8 @@ public class FieldValidation {
     public Validator<String> solutionValidator() {
         Set<CharacterType> charTypes = EnumSet.of(
                 CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN, CharacterType.SPACE,
-                CharacterType.SLASH, CharacterType.PAREN, CharacterType.FULL_STOP, CharacterType.APOSTROPHE
+                CharacterType.SLASH, CharacterType.PAREN, CharacterType.FULL_STOP, CharacterType.APOSTROPHE,
+                CharacterType.PERCENT
         );
         return new StringValidator("Solution", 2, 64, charTypes);
     }
