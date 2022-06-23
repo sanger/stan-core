@@ -960,7 +960,7 @@ enum StainPanel {
 
 """The details for a particular labware in a complex stain request."""
 input ComplexStainLabware {
-    """The barcode of the lawbare."""
+    """The barcode of the labware."""
     barcode: String!
     """The bond barcode for the stain."""
     bondBarcode: String!
@@ -1283,6 +1283,13 @@ input PotProcessingDestination {
     commentId: Int
 }
 
+input AddExternalIDRequest {
+    """The external identifier used to identify the tissue."""
+    externalName: String!
+    """The existing labware containing the tissue"""
+    labwareBarcode: String!
+}
+
 """
 Get information from the application.
 These typically require no user privilege.
@@ -1490,6 +1497,9 @@ type Mutation {
     performTissueBlock(request: TissueBlockRequest!): OperationResult!
     """Process an original sample into pots."""
     performPotProcessing(request: PotProcessingRequest!): OperationResult!
+    """Record an operation adding a external ID to a sample."""
+    addExternalID(request: AddExternalIDRequest!): OperationResult!
+
 
     """Create a new user for the application."""
     addUser(username: String!): User!
