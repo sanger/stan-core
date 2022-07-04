@@ -95,6 +95,7 @@ public class GraphQLProvider {
                         .dataFetcher("extractResult", graphQLDataFetchers.getExtractResult())
                         .dataFetcher("passFails", graphQLDataFetchers.getPassFails())
                         .dataFetcher("reagentPlate", graphQLDataFetchers.getReagentPlate())
+                        .dataFetcher("nextReplicateNumbers", graphQLDataFetchers.nextReplicateNumbers())
 
                         .dataFetcher("users", graphQLDataFetchers.getUsers())
                         .dataFetcher("planData", graphQLDataFetchers.getPlanData())
