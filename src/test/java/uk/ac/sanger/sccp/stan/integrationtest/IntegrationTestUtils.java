@@ -17,8 +17,7 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 /**
  * Utility functions used within Stan's integration tests
@@ -109,5 +108,15 @@ public class IntegrationTestUtils {
         verify(mockStorelightClient).postQuery(queryCaptor.capture(), eq(username));
         String storelightQuery = queryCaptor.getValue();
         assertThat(storelightQuery).contains(contents);
+    }
+
+    @SafeVarargs
+    public static void verifyStorelightQueries(StorelightClient mockStorelightClient, String username, Collection<String>... contents) throws Exception {
+        ArgumentCaptor<String> queryCaptor = ArgumentCaptor.forClass(String.class);
+        verify(mockStorelightClient, times(contents.length)).postQuery(queryCaptor.capture(), eq(username));
+        List<String> queries = queryCaptor.getAllValues();
+        for (int i = 0; i < contents.length; ++i) {
+            assertThat(queries.get(i)).contains(contents[i]);
+        }
     }
 }

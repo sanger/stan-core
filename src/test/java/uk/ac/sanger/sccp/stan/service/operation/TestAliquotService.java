@@ -6,13 +6,13 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
 import org.mockito.ArgumentCaptor;
 import org.mockito.stubbing.Answer;
-import uk.ac.sanger.sccp.stan.EntityFactory;
-import uk.ac.sanger.sccp.stan.Matchers;
+import uk.ac.sanger.sccp.stan.*;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.AliquotRequest;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.service.*;
+import uk.ac.sanger.sccp.stan.service.store.StoreService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 
 import java.util.*;
@@ -40,6 +40,8 @@ public class TestAliquotService {
     private OperationService mockOpService;
 
     private AliquotServiceImp service;
+    private StoreService mockStoreService;
+    private Transactor mockTransactor;
 
     @BeforeEach
     void setup() {
@@ -52,9 +54,11 @@ public class TestAliquotService {
         mockWorkService = mock(WorkService.class);
         mockLwService = mock(LabwareService.class);
         mockOpService = mock(OperationService.class);
+        mockStoreService = mock(StoreService.class);
+        mockTransactor = mock(Transactor.class);
 
         service = spy(new AliquotServiceImp(mockLwRepo, mockLwTypeRepo, mockSlotRepo, mockOpTypeRepo, mockSampleRepo,
-                mockLwValFactory, mockWorkService, mockLwService, mockOpService));
+                mockLwValFactory, mockWorkService, mockLwService, mockOpService, mockStoreService, mockTransactor));
     }
 
     private static <R> Answer<R> addProblem(String problem, R returnValue) {
@@ -67,8 +71,44 @@ public class TestAliquotService {
         };
     }
 
+    @ParameterizedTest
+    @CsvSource({"true,true", "true,false", "false,true"})
+    public void testPerform(boolean succeeds, boolean discard) {
+        User user = EntityFactory.getUser();
+        AliquotRequest request = new AliquotRequest();
+        request.setOperationType("Aliquot");
+        request.setBarcode("STAN-A1");
+        OperationType opType = EntityFactory.makeOperationType("Aliquot", null);
+        if (discard) {
+            opType.setFlags(OperationTypeFlag.DISCARD_SOURCE.bit());
+        }
+        Operation op = new Operation();
+        op.setOperationType(opType);
+        OperationResult opres = new OperationResult(List.of(op), List.of());
+        Matchers.mockTransactor(mockTransactor);
+
+        if (succeeds) {
+            doReturn(opres).when(service).performInTransaction(any(), any());
+        } else {
+            doThrow(ValidationException.class).when(service).performInTransaction(any(), any());
+        }
+
+        if (succeeds) {
+            assertSame(opres, service.perform(user, request));
+        } else {
+            assertThrows(ValidationException.class, () -> service.perform(user, request));
+        }
+        verify(mockTransactor).transact(any(), any());
+        verify(service).performInTransaction(user, request);
+        if (succeeds && discard) {
+            verify(mockStoreService).discardStorage(user, List.of("STAN-A1"));
+        } else {
+            verifyNoInteractions(mockStoreService);
+        }
+    }
+
     @Test
-    public void testPerform_valid() {
+    public void testPerformInTransaction_valid() {
         final User user = EntityFactory.getUser();
         OperationType opType = EntityFactory.makeOperationType("Aliquot", null);
         LabwareType lt = EntityFactory.makeLabwareType(1, 2);
@@ -85,7 +125,7 @@ public class TestAliquotService {
 
         AliquotRequest request = new AliquotRequest(opType.getName(), sourceLw.getBarcode(), lt.getName(),
                 3, work.getWorkNumber());
-        assertSame(result, service.perform(user, request));
+        assertSame(result, service.performInTransaction(user, request));
 
         verify(service).loadOpType(anyCollection(), eq(request.getOperationType()));
         verify(service).loadSourceLabware(anyCollection(), eq(request.getBarcode()));
@@ -97,7 +137,7 @@ public class TestAliquotService {
     }
 
     @Test
-    public void testPerform_invalid() {
+    public void testPerformInTransaction_invalid() {
         final User user = EntityFactory.getUser();
         OperationType opType = EntityFactory.makeOperationType("Aliquot", null);
         LabwareType lt = EntityFactory.makeLabwareType(1, 2);
@@ -111,7 +151,7 @@ public class TestAliquotService {
         doAnswer(addProblem("Bad work", null)).when(mockWorkService).validateUsableWork(any(), any());
         doAnswer(addProblem("Bad request", null)).when(service).validateRequest(any(), any(), any(), any());
 
-        ValidationException ex = assertThrows(ValidationException.class, () -> service.perform(user, request));
+        ValidationException ex = assertThrows(ValidationException.class, () -> service.performInTransaction(user, request));
         //noinspection unchecked
         assertThat((Collection<Object>) ex.getProblems()).containsExactlyInAnyOrder(
                 "Bad op", "Bad lw", "Bad lt", "Bad work", "Bad request"

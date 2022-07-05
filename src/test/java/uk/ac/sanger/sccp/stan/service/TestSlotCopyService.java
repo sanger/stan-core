@@ -7,8 +7,7 @@ import org.junit.jupiter.params.provider.*;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.invocation.InvocationOnMock;
-import uk.ac.sanger.sccp.stan.EntityFactory;
-import uk.ac.sanger.sccp.stan.Transactor;
+import uk.ac.sanger.sccp.stan.*;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
@@ -120,10 +119,7 @@ public class TestSlotCopyService {
         ValidationException ex = valid ? null : new ValidationException("Bad", List.of());
         Operation op = new Operation(200, opType, null, null, null);
         OperationResult result = valid ? new OperationResult(List.of(op), List.of()) : null;
-        when(transactor.transact(any(), any())).then(invocation -> {
-            Supplier<?> sup = invocation.getArgument(1);
-            return sup.get();
-        });
+        Matchers.mockTransactor(transactor);
         (valid ? doReturn(result) : doThrow(ex)).when(service).performInsideTransaction(any(), any());
         doNothing().when(service).unstoreSources(any(), any());
 
@@ -143,10 +139,7 @@ public class TestSlotCopyService {
         OperationType discardingOpType = EntityFactory.makeOperationType("dot", null, OperationTypeFlag.DISCARD_SOURCE);
         Operation op = new Operation(200, discardingOpType, null, null, null);
         OperationResult result = new OperationResult(List.of(op), List.of());
-        when(transactor.transact(any(), any())).then(invocation -> {
-            Supplier<?> sup = invocation.getArgument(1);
-            return sup.get();
-        });
+        Matchers.mockTransactor(transactor);
         doReturn(result).when(service).performInsideTransaction(any(), any());
         doNothing().when(service).unstoreSources(any(), any());
 

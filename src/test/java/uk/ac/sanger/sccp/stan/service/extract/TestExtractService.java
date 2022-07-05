@@ -103,10 +103,7 @@ public class TestExtractService {
             exception = new IllegalArgumentException();
             doThrow(exception).when(service).extract(any(), any());
         }
-        when(mockTransactor.transact(any(), any())).then(invocation -> {
-            Supplier<?> supplier = invocation.getArgument(1);
-            return supplier.get();
-        });
+        Matchers.mockTransactor(mockTransactor);
 
         if (successful) {
             assertSame(opResult, service.transactExtract(user, request));

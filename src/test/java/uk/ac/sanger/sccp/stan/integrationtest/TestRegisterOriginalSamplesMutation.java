@@ -5,12 +5,14 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import uk.ac.sanger.sccp.stan.EntityCreator;
 import uk.ac.sanger.sccp.stan.GraphQLTester;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.service.store.StorelightClient;
 
 import javax.transaction.Transactional;
 import java.util.List;
@@ -18,8 +20,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
-import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGet;
-import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGetList;
+import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.*;
 
 /**
  * Tests the mutation to register new original samples
@@ -44,11 +45,15 @@ public class TestRegisterOriginalSamplesMutation {
     private OperationRepo opRepo;
     @Autowired
     private OperationSolutionRepo opSolRepo;
+    @MockBean
+    private StorelightClient mockStorelight;
 
     @ParameterizedTest
     @Transactional
     @ValueSource(booleans={false,true})
     public void testRegisterOriginalSamples(boolean hasExternalName) throws Exception {
+        stubStorelightUnstore(mockStorelight);
+
         User user = entityCreator.createUser("user1");
         tester.setUser(user);
         Solution solution = solutionRepo.save(new Solution(null, "Glue"));
@@ -98,6 +103,7 @@ public class TestRegisterOriginalSamplesMutation {
         lw.setDiscarded(false);
         lwRepo.save(lw);
         testPotProcessing(barcode, work);
+        verifyStorelightQueries(mockStorelight, user.getUsername(), List.of(barcode), List.of(barcode));
     }
 
     private void testBlockProcessing(String sourceBarcode, Work work) throws Exception {

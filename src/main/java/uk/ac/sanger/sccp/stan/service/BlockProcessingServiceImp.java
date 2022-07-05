@@ -3,11 +3,13 @@ package uk.ac.sanger.sccp.stan.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import uk.ac.sanger.sccp.stan.Transactor;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.request.TissueBlockRequest;
 import uk.ac.sanger.sccp.stan.request.TissueBlockRequest.TissueBlockLabware;
+import uk.ac.sanger.sccp.stan.service.store.StoreService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.UCMap;
@@ -41,6 +43,9 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
     private final OperationService opService;
     private final LabwareService lwService;
     private final WorkService workService;
+    private final StoreService storeService;
+
+    private final Transactor transactor;
 
     @Autowired
     public BlockProcessingServiceImp(LabwareValidatorFactory lwValFactory,
@@ -50,7 +55,7 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
                                      OperationCommentRepo opCommentRepo, MediumRepo mediumRepo, LabwareTypeRepo ltRepo,
                                      BioStateRepo bsRepo, TissueRepo tissueRepo, SampleRepo sampleRepo,
                                      CommentValidationService commentValidationService, OperationService opService,
-                                     LabwareService lwService, WorkService workService) {
+                                     LabwareService lwService, WorkService workService, StoreService storeService, Transactor transactor) {
         this.lwValFactory = lwValFactory;
         this.prebarcodeValidator = prebarcodeValidator;
         this.replicateValidator = replicateValidator;
@@ -67,10 +72,20 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
         this.opService = opService;
         this.lwService = lwService;
         this.workService = workService;
+        this.storeService = storeService;
+        this.transactor = transactor;
     }
 
     @Override
     public OperationResult perform(User user, TissueBlockRequest request) throws ValidationException {
+        OperationResult opres = transactor.transact("Block processing", () -> performInsideTransaction(user, request));
+        if (!request.getDiscardSourceBarcodes().isEmpty()) {
+            storeService.discardStorage(user, request.getDiscardSourceBarcodes());
+        }
+        return opres;
+    }
+
+    public OperationResult performInsideTransaction(User user, TissueBlockRequest request) throws ValidationException {
         requireNonNull(user, "User is null.");
         requireNonNull(request, "Request is null.");
         Collection<String> problems = new LinkedHashSet<>();
