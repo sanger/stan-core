@@ -1,4 +1,4 @@
-"""A row/column combination, either in the form "B5" (row 2, column 5), or "32.15" (row 32, column 15)"""
+"""A row/column combination, either in the form "B5" (row 2, column 5), or "32,15" (row 32, column 15)"""
 scalar Address
 """A point in time, typically in the format yyyy-mm-dd HH:MM:SS."""
 scalar Timestamp

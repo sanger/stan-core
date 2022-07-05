@@ -1,11 +1,13 @@
 package uk.ac.sanger.sccp.stan.service;
 
 import org.springframework.stereotype.Service;
+import uk.ac.sanger.sccp.stan.Transactor;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.request.PotProcessingRequest;
 import uk.ac.sanger.sccp.stan.request.PotProcessingRequest.PotProcessingDestination;
+import uk.ac.sanger.sccp.stan.service.store.StoreService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.UCMap;
@@ -25,6 +27,9 @@ public class PotProcessingServiceImp implements PotProcessingService {
     private final LabwareValidatorFactory lwValidatorFactory;
     private final WorkService workService;
     private final CommentValidationService commentValidationService;
+    private final StoreService storeService;
+    private final Transactor transactor;
+
     private final LabwareService lwService;
     private final OperationService opService;
     private final LabwareRepo lwRepo;
@@ -38,14 +43,16 @@ public class PotProcessingServiceImp implements PotProcessingService {
     private final OperationCommentRepo opComRepo;
 
     public PotProcessingServiceImp(LabwareValidatorFactory lwValidatorFactory, WorkService workService,
-                                   CommentValidationService commentValidationService, LabwareService lwService,
-                                   OperationService opService,
+                                   CommentValidationService commentValidationService, StoreService storeService,
+                                   Transactor transactor, LabwareService lwService, OperationService opService,
                                    LabwareRepo lwRepo, BioStateRepo bsRepo, FixativeRepo fixRepo,
                                    LabwareTypeRepo lwTypeRepo, TissueRepo tissueRepo, SampleRepo sampleRepo,
                                    SlotRepo slotRepo, OperationTypeRepo opTypeRepo, OperationCommentRepo opComRepo) {
         this.lwValidatorFactory = lwValidatorFactory;
         this.workService = workService;
         this.commentValidationService = commentValidationService;
+        this.storeService = storeService;
+        this.transactor = transactor;
         this.lwService = lwService;
         this.opService = opService;
         this.lwRepo = lwRepo;
@@ -61,6 +68,14 @@ public class PotProcessingServiceImp implements PotProcessingService {
 
     @Override
     public OperationResult perform(User user, PotProcessingRequest request) throws ValidationException {
+        OperationResult opres = transactor.transact("Pot processing", () -> performInTransaction(user, request));
+        if (request.isSourceDiscarded()) {
+            storeService.discardStorage(user, List.of(request.getSourceBarcode()));
+        }
+        return opres;
+    }
+
+    public OperationResult performInTransaction(User user, PotProcessingRequest request) throws ValidationException {
         requireNonNull(user, "User is null.");
         requireNonNull(request, "Request is null.");
         final Collection<String> problems = new LinkedHashSet<>();

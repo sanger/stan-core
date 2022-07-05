@@ -6,13 +6,13 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
-import uk.ac.sanger.sccp.stan.EntityFactory;
-import uk.ac.sanger.sccp.stan.Matchers;
+import uk.ac.sanger.sccp.stan.*;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.request.PotProcessingRequest;
 import uk.ac.sanger.sccp.stan.request.PotProcessingRequest.PotProcessingDestination;
+import uk.ac.sanger.sccp.stan.service.store.StoreService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
@@ -37,6 +37,9 @@ public class TestPotProcessingService {
     private CommentValidationService mockCommentValidationService;
     private LabwareService mockLwService;
     private OperationService mockOpService;
+    private StoreService mockStoreService;
+    private Transactor mockTransactor;
+
     private LabwareRepo mockLwRepo;
     private BioStateRepo mockBsRepo;
     private FixativeRepo mockFixRepo;
@@ -65,14 +68,47 @@ public class TestPotProcessingService {
         mockSlotRepo = mock(SlotRepo.class);
         mockOpTypeRepo = mock(OperationTypeRepo.class);
         mockOpComRepo = mock(OperationCommentRepo.class);
+        mockStoreService = mock(StoreService.class);
+        mockTransactor = mock(Transactor.class);
 
         service = spy(new PotProcessingServiceImp(mockLwValidatorFactory, mockWorkService, mockCommentValidationService,
-                mockLwService, mockOpService, mockLwRepo, mockBsRepo, mockFixRepo, mockLwTypeRepo, mockTissueRepo,
+                mockStoreService, mockTransactor, mockLwService, mockOpService, mockLwRepo, mockBsRepo, mockFixRepo, mockLwTypeRepo, mockTissueRepo,
                 mockSampleRepo, mockSlotRepo, mockOpTypeRepo, mockOpComRepo));
     }
 
+    @ParameterizedTest
+    @CsvSource({"true,true", "true,false", "false,true"})
+    public void testPerform(boolean succeed, boolean discard) {
+        User user = EntityFactory.getUser();
+        PotProcessingRequest request = new PotProcessingRequest();
+        request.setSourceBarcode("STAN-A1");
+        request.setSourceDiscarded(discard);
+
+        OperationResult opres;
+        if (succeed) {
+            opres = new OperationResult(List.of(), List.of());
+            doReturn(opres).when(service).performInTransaction(any(), any());
+        } else {
+            opres = null;
+            doThrow(ValidationException.class).when(service).performInTransaction(any(), any());
+        }
+        Matchers.mockTransactor(mockTransactor);
+        if (succeed) {
+            assertSame(opres, service.perform(user, request));
+        } else {
+            assertThrows(ValidationException.class, () -> service.perform(user, request));
+        }
+        verify(mockTransactor).transact(any(), any());
+        verify(service).performInTransaction(user, request);
+        if (succeed && discard) {
+            verify(mockStoreService).discardStorage(user, List.of(request.getSourceBarcode()));
+        } else {
+            verifyNoInteractions(mockStoreService);
+        }
+    }
+
     @Test
-    public void testPerform_none() {
+    public void testPerformInTransaction_none() {
         User user = EntityFactory.getUser();
         Labware source = EntityFactory.getTube();
 
@@ -80,7 +116,7 @@ public class TestPotProcessingService {
         doReturn(source).when(service).loadSource(any(), any());
         when(mockWorkService.validateUsableWork(any(), any())).then(Matchers.addProblem("Bad work."));
 
-        assertValidationException(() -> service.perform(user, request), "The request could not be validated.",
+        assertValidationException(() -> service.performInTransaction(user, request), "The request could not be validated.",
                 "Bad work.", "No destinations specified.");
 
         verify(service).loadSource(any(), eq(request.getSourceBarcode()));
@@ -92,7 +128,7 @@ public class TestPotProcessingService {
     }
 
     @Test
-    public void testPerform_valid() {
+    public void testPerformInTransaction_valid() {
         Work work = new Work(5, "SGP1", null, null, null, null, null);
         Labware source = EntityFactory.getTube();
         List<PotProcessingDestination> dests = List.of(
@@ -116,7 +152,7 @@ public class TestPotProcessingService {
         doNothing().when(service).checkFixatives(any(), any(), any());
         doReturn(result).when(service).record(any(), any(), any(), any(), any(), any(), any());
 
-        assertSame(result, service.perform(user, request));
+        assertSame(result, service.performInTransaction(user, request));
 
         verifyValidation(request, work, fixatives);
 
@@ -124,7 +160,7 @@ public class TestPotProcessingService {
     }
 
     @Test
-    public void testPerform_invalid() {
+    public void testPerformInTransaction_invalid() {
         List<PotProcessingDestination> dests = List.of(new PotProcessingDestination());
         PotProcessingRequest request = new PotProcessingRequest("STAN-1", "", dests);
         User user = EntityFactory.getUser();
@@ -137,7 +173,7 @@ public class TestPotProcessingService {
         doAnswer(Matchers.addProblem("Bad comment id", comments)).when(service).loadComments(any(), any());
         doAnswer(Matchers.addProblem("Unexpected fixative")).when(service).checkFixatives(any(), any(), any());
 
-        assertValidationException(() -> service.perform(user, request), "The request could not be validated.",
+        assertValidationException(() -> service.performInTransaction(user, request), "The request could not be validated.",
                 "Bad source", "Bad fixative", "Bad lw type", "Bad comment id", "Unexpected fixative", "No work number was supplied.");
         verifyValidation(request, null, fixatives);
         verify(service, never()).record(any(), any(), any(), any(), any(), any(), any());
