@@ -438,12 +438,14 @@ public class GraphQLMutation extends BaseGraphQLResource {
             String code = dfe.getArgument("costCode");
             String prefix = dfe.getArgument("prefix");
             String workTypeName = dfe.getArgument("workType");
+            String workRequesterName = dfe.getArgument("workRequester");
             Integer numBlocks = dfe.getArgument("numBlocks");
             Integer numSlides = dfe.getArgument("numSlides");
+            Integer numOriginalSamples = dfe.getArgument("numOriginalSamples");
             logRequest("Create work", user,
-                    String.format("project: %s, costCode: %s, prefix: %s, workType: %s, numBlocks: %s, numSlides: %s",
-                    projectName, code, prefix, workTypeName, numBlocks, numSlides));
-            return workService.createWork(user, prefix, workTypeName, projectName, code, numBlocks, numSlides);
+                    String.format("project: %s, costCode: %s, prefix: %s, workType: %s, workRequesterName: %s, numBlocks: %s, numSlides: %s, numOriginalSamples: %s",
+                    projectName, code, prefix, workTypeName, workRequesterName, numBlocks, numSlides, numOriginalSamples));
+            return workService.createWork(user, prefix, workTypeName, workRequesterName, projectName, code, numBlocks, numSlides, numOriginalSamples);
         };
     }
 
@@ -466,6 +468,17 @@ public class GraphQLMutation extends BaseGraphQLResource {
             logRequest("Update work numSlides", user,
                     String.format("Work number: %s, numSlides: %s", workNumber, newValue));
             return workService.updateWorkNumSlides(user, workNumber, newValue);
+        };
+    }
+
+    public DataFetcher<Work> updateWorkNumOriginalSamples() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            String workNumber = dfe.getArgument("workNumber");
+            Integer newValue = dfe.getArgument("numOriginalSamples");
+            logRequest("Update work numOriginalSamples", user,
+                    String.format("Work number: %s, numOriginalSamples: %s", workNumber, newValue));
+            return workService.updateWorkNumOriginalSamples(user, workNumber, newValue);
         };
     }
 

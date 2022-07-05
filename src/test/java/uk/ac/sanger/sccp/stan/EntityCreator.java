@@ -208,7 +208,7 @@ public class EntityCreator {
         return workTypeRepo.save(new WorkType(null, name));
     }
 
-    public Work createWork(WorkType workType, Project project, CostCode cc) {
+    public Work createWork(WorkType workType, Project project, CostCode cc, ReleaseRecipient workRequester) {
         if (project==null) {
             project = createProject("Stargate");
         }
@@ -218,8 +218,11 @@ public class EntityCreator {
         if (workType ==null) {
             workType = createWorkType("Drywalling");
         }
+        if (workRequester ==null) {
+            workRequester = createReleaseRecipient("test1");
+        }
         String workNumber = workRepo.createNumber("SGP");
-        return workRepo.save(new Work(null, workNumber, workType, project, cc, Work.Status.active));
+        return workRepo.save(new Work(null, workNumber, workType, workRequester, project, cc, Work.Status.active));
     }
 
     public Printer createPrinter(String name, LabelType labelType) {

@@ -100,7 +100,7 @@ public class TestBlockProcessingService {
         LabwareType lt = EntityFactory.makeLabwareType(1,1);
         lt.setName("lt");
         UCMap<LabwareType> lwTypes = UCMap.from(LabwareType::getName, lt);
-        Work work = new Work(5, "SGP5", null, null, null, null);
+        Work work = new Work(5, "SGP5", null, null, null, null, null);
         Map<Integer, Comment> commentMap = Map.of(50, new Comment(50, "Interesting", "science"));
         UCMap<Medium> mediums = UCMap.from(Medium::getName, new Medium(100, "med"));
 
@@ -117,7 +117,7 @@ public class TestBlockProcessingService {
     @ParameterizedTest
     @ValueSource(booleans={false,true})
     public void testPerform(boolean simple) {
-        Work work = (simple ? null : new Work(5, "SGP5", null, null, null, null));
+        Work work = (simple ? null : new Work(5, "SGP5", null, null, null, null, null));
         Comment comment = (simple ? null : new Comment(50, "Interesting", "science"));
         TissueBlockLabware block = new TissueBlockLabware("STAN-1", "lt", "1a", "Med");
         TissueBlockRequest request = new TissueBlockRequest(List.of(block));

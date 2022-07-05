@@ -104,7 +104,7 @@ public class TestWorkProgressQuery {
         release.setReleased(time(12));
         releaseRepo.save(release);
 
-        Work work = entityCreator.createWork(null, null, null);
+        Work work = entityCreator.createWork(null, null, null, null);
         work.setOperationIds(Arrays.stream(ops).map(Operation::getId).collect(toList()));
         work = workRepo.save(work);
         String query = tester.readGraphQL("workprogress.graphql").replace("SGP500", work.getWorkNumber());

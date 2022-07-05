@@ -104,7 +104,7 @@ public class TestReagentTransferMutation {
         OperationType opType = entityCreator.createOpType("Decaffeinate", bs1,
                 OperationTypeFlag.IN_PLACE, OperationTypeFlag.REAGENT_TRANSFER);
 
-        Work work = entityCreator.createWork(null, null, null);
+        Work work = entityCreator.createWork(null, null, null, null);
 
         String mutation = tester.readGraphQL("reagenttransfer.graphql")
                 .replace("[RP_BC]", rpBarcode)

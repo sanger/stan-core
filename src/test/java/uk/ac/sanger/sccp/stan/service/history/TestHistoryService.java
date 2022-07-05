@@ -139,7 +139,7 @@ public class TestHistoryService {
 
     @Test
     public void testGetHistoryForWorkNumber() {
-        Work work = new Work(10, "SGP10", null, null, null, Work.Status.active);
+        Work work = new Work(10, "SGP10", null, null, null, null, Work.Status.active);
         List<Operation> ops = List.of(
                 new Operation(20, null, null, null, null),
                 new Operation(21, null, null, null, null)
@@ -173,7 +173,7 @@ public class TestHistoryService {
 
     @Test
     public void testGetHistoryForWorkNumber_noOps() {
-        Work work = new Work(10, "SGP10", null, null, null, Work.Status.active);
+        Work work = new Work(10, "SGP10", null, null, null, null, Work.Status.active);
         work.setOperationIds(List.of());
         final String workNumber = "sgp10";
         when(mockWorkRepo.getByWorkNumber(workNumber)).thenReturn(work);

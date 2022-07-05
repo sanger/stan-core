@@ -73,7 +73,7 @@ public class TestAliquotService {
         OperationType opType = EntityFactory.makeOperationType("Aliquot", null);
         LabwareType lt = EntityFactory.makeLabwareType(1, 2);
         Labware sourceLw = EntityFactory.getTube();
-        Work work = new Work(50, "SGP50", null, null, null, Work.Status.active);
+        Work work = new Work(50, "SGP50", null, null, null, null, Work.Status.active);
         OperationResult result = new OperationResult(List.of(), List.of());
 
         doReturn(opType).when(service).loadOpType(any(), any());
@@ -281,7 +281,7 @@ public class TestAliquotService {
             opType = EntityFactory.makeOperationType("Aliquot", bs);
         }
         Work work = (hasWork ?
-                    new Work(50, "SGP50", null, null, null, Work.Status.active)
+                    new Work(50, "SGP50", null, null, null, null, Work.Status.active)
                     : null);
         User user = EntityFactory.getUser();
         Sample srcSample = EntityFactory.getSample();

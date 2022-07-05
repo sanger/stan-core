@@ -262,7 +262,7 @@ public class TestStainService {
     @ParameterizedTest
     @MethodSource("recordStainArgs")
     public void testRecordStain(String expectedProblem, String workNumber) {
-        Work work = (workNumber==null ? null : new Work(5000, workNumber, null, null, null, Work.Status.active));
+        Work work = (workNumber==null ? null : new Work(5000, workNumber, null, null, null, null, Work.Status.active));
         Collection<Labware> labware = List.of(EntityFactory.getTube());
         StainType stainType = new StainType(6, "Coffee");
         List<TimeMeasurement> tms = List.of(new TimeMeasurement("Blueing", 500));
