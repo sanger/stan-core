@@ -18,6 +18,7 @@ public interface WorkService {
      * @param user the user responsible for creating the work
      * @param prefix the prefix ({@code SGP} or {@code R&D}) for the work
      * @param workTypeName the name of a work type for the work number
+     * @param workRequesterName the name of the ReleaseRecipient requesting the work
      * @param projectName the name of the project for the work number
      * @param costCode the code of the cost code for the work number
      * @param numBlocks the value for the "numBlocks" field (may be null)

@@ -889,8 +889,8 @@ type Work {
     costCode: CostCode!
     """The unique (generated) string identifying this work."""
     workNumber: String!
-    """The name of the person requesting the work."""
-    workRequester: ReleaseRecipient!
+    """The name of the person requesting the work.(Note sure how to deal with this as the existing work will all be null but future work we want it mandatory?)"""
+    workRequester: ReleaseRecipient
     """The current status of the work."""
     status: WorkStatus!
     """The number of blocks that this work still needs to be done on.
