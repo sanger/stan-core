@@ -14,6 +14,7 @@ import uk.ac.sanger.sccp.stan.request.OperationResult;
 import java.util.*;
 
 import static java.util.Objects.requireNonNull;
+import static java.util.stream.Collectors.toSet;
 
 @Service
 public class SampleProcessingServiceImp implements SampleProcessingService {
@@ -47,12 +48,9 @@ public class SampleProcessingServiceImp implements SampleProcessingService {
 
         Labware lw = labwareRepo.getByBarcode(request.getLabwareBarcode());
         String externalName = request.getExternalName();
-        List<Sample> samples = new ArrayList<>();
-        lw.getSlots().forEach((slot) -> {
-            if (slot.getSamples() != null) {
-                samples.addAll(slot.getSamples());
-            }
-        });
+        Set<Sample> samples = lw.getSlots().stream()
+                .flatMap(slot -> slot.getSamples().stream())
+                .collect(toSet());
 
         validateSamples(problems, samples);
         validateExternalName(problems, externalName);
@@ -61,14 +59,14 @@ public class SampleProcessingServiceImp implements SampleProcessingService {
             throw new ValidationException("The request could not be validated.", problems);
         }
 
-        Tissue tissue = samples.get(0).getTissue();
+        Tissue tissue = samples.iterator().next().getTissue();
         tissue.setExternalName(externalName);
         OperationType opType = opTypeRepo.getByName("Add external ID");
         Operation op = opService.createOperationInPlace(opType, user, lw, null, null);
         return new OperationResult(List.of(op), List.of(lw));
     }
 
-    public void validateSamples(Collection<String> problems, List<Sample> samples) {
+    public void validateSamples(Collection<String> problems, Set<Sample> samples) {
         if (samples.isEmpty()) {
             problems.add("Could not find a sample associated with this labware");
             return;
@@ -77,11 +75,11 @@ public class SampleProcessingServiceImp implements SampleProcessingService {
             problems.add("There are too many samples associated with this labware");
             return;
         }
-        Tissue tissue = samples.get(0).getTissue();
-        if (!tissue.getExternalName().isEmpty() || tissue.getExternalName() == null) {
+        Tissue tissue = samples.iterator().next().getTissue();
+        if (tissue.getExternalName() != null && !tissue.getExternalName().isEmpty()) {
             problems.add("The associated tissue already has an external identifier: " + tissue.getExternalName());
         }
-        if (tissue.getReplicate().isEmpty() || tissue.getReplicate() == null) {
+        if (tissue.getReplicate() == null || tissue.getReplicate().isEmpty()) {
             problems.add("The associated tissue does not have a replicate number");
         }
     }
@@ -91,8 +89,8 @@ public class SampleProcessingServiceImp implements SampleProcessingService {
             problems.add("No external identifier provided");
             return;
         }
-        if (tissueRepo.findAllByExternalName(externalName).size() > 0) {
-            problems.add("External identifier is already associated with another a sample: " + externalName);
+        if (!tissueRepo.findAllByExternalName(externalName).isEmpty()) {
+            problems.add("External identifier is already associated with another sample: " + externalName);
         }
         externalNameValidator.validate(externalName, problems::add);
     }

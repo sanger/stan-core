@@ -13,12 +13,18 @@ import uk.ac.sanger.sccp.stan.request.OperationResult;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.Matchers.assertValidationException;
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * Tests {@link SampleProcessingServiceImp}
+ * @author bt8
+ **/
 public class TestSampleProcessingService {
 
     private SampleRepo mockSampleRepo;
@@ -62,7 +68,7 @@ public class TestSampleProcessingService {
         Assertions.assertEquals(opRes, sampleProcessingService.addExternalID(user, request));
 
         verify(mockLabwareRepo).getByBarcode(eq(lw.getBarcode()));
-        verify(sampleProcessingService).validateSamples(any(), eq(List.of(sample)));
+        verify(sampleProcessingService).validateSamples(any(), eq(Set.of(sample)));
         verify(sampleProcessingService).validateExternalName(any(), eq("ExternalName"));
         verify(mockTissueRepo).findAllByExternalName(eq("ExternalName"));
     }
@@ -86,7 +92,7 @@ public class TestSampleProcessingService {
         );
 
         verify(mockLabwareRepo).getByBarcode(eq(lw.getBarcode()));
-        verify(sampleProcessingService).validateSamples(any(), eq(List.of(sample)));
+        verify(sampleProcessingService).validateSamples(any(), eq(Set.of(sample)));
         verify(sampleProcessingService).validateExternalName(any(), eq(tissue.getExternalName()));
         verify(mockTissueRepo).findAllByExternalName(eq(tissue.getExternalName()));
         verifyNoInteractions(mockOpTypeRepo);
@@ -102,7 +108,7 @@ public class TestSampleProcessingService {
         when(mockTissueRepo.findAllByExternalName(any())).thenReturn(List.of(tissue));
 
         sampleProcessingService.validateExternalName(problems, tissue.getExternalName());
-        assertThat(problems).contains(String.format("External identifier is already associated with another a sample: %s", tissue.getExternalName()));
+        assertThat(problems).contains(String.format("External identifier is already associated with another sample: %s", tissue.getExternalName()));
         verify(mockTissueRepo).findAllByExternalName(eq(tissue.getExternalName()));
         verify(mockExternalNameValidator).validate(eq(tissue.getExternalName()), any());
     }
@@ -110,7 +116,7 @@ public class TestSampleProcessingService {
     @Test
     public void testNoSamplesValidation() {
         Collection<String> problems = new LinkedHashSet<>();
-        sampleProcessingService.validateSamples(problems, List.of());
+        sampleProcessingService.validateSamples(problems, Set.of());
         assertThat(problems).contains("Could not find a sample associated with this labware");
     }
 
@@ -123,7 +129,7 @@ public class TestSampleProcessingService {
         Sample sample1 = new Sample(1, 100, tissue, null);
         Sample sample2 = new Sample(2, 100, tissue, null);
 
-        sampleProcessingService.validateSamples(problems, List.of(sample1, sample2));
+        sampleProcessingService.validateSamples(problems, Set.of(sample1, sample2));
         assertThat(problems).contains("There are too many samples associated with this labware");
     }
 
@@ -135,7 +141,7 @@ public class TestSampleProcessingService {
         Tissue tissue = EntityFactory.makeTissue(donor, sl);
         Sample sample1 = new Sample(1, 100, tissue, null);
 
-        sampleProcessingService.validateSamples(problems, List.of(sample1));
+        sampleProcessingService.validateSamples(problems, Set.of(sample1));
         assertThat(problems).contains(String.format("The associated tissue already has an external identifier: %s", tissue.getExternalName()));
     }
 
@@ -149,7 +155,7 @@ public class TestSampleProcessingService {
         tissue.setExternalName("");
         Sample sample1 = new Sample(1, 100, tissue, null);
 
-        sampleProcessingService.validateSamples(problems, List.of(sample1));
+        sampleProcessingService.validateSamples(problems, Set.of(sample1));
         assertThat(problems).contains(String.format("The associated tissue does not have a replicate number"));
     }
 }
