@@ -7,6 +7,7 @@ import org.junit.jupiter.params.provider.*;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
+import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
 import java.util.function.Function;
@@ -96,6 +97,44 @@ public class TestLabwareValidator {
         verify(validator).validateNonEmpty();
         verify(validator, times(single ? 1 : 0)).validateSingleSample();
         verify(validator).validateStates();
+    }
+
+    @ParameterizedTest
+    @CsvSource(value = {"right, right, right;",
+            "wrong, right, right; Labware contains samples not in bio state Right: [(STAN-A1, wrong)].",
+            "wrong, Right, bad; Labware contains samples not in bio state Right: [(STAN-A1, wrong), (STAN-A3, bad)]."
+    },delimiterString = ";")
+    public void testValidateBioState(String statesJoined, String expectedError) {
+        UCMap<BioState> namedBioStates = new UCMap<>();
+        BioState rightState = new BioState(1, "Right");
+        namedBioStates.put("Right", rightState);
+        final String[] stateNames = statesJoined.split(",\\s*");
+        Tissue tissue = EntityFactory.getTissue();
+        final Sample[] samples = new Sample[stateNames.length];
+        for (int i = 0; i < stateNames.length; i++) {
+            String stateName = stateNames[i];
+            BioState bs = namedBioStates.get(stateName);
+            if (bs == null) {
+                bs = new BioState(i+2, stateName);
+                namedBioStates.put(stateName, bs);
+            }
+            samples[i] = new Sample(i+10, null, tissue, bs);
+        }
+        LabwareType lt = EntityFactory.getTubeType();
+        List<Labware> labware = Arrays.stream(samples)
+                .map(sam -> EntityFactory.makeLabware(lt, sam))
+                .collect(toList());
+        for (int i = 0; i < labware.size(); ++i) {
+            labware.get(i).setBarcode("STAN-A"+(i+1));
+        }
+
+        validator.setLabware(labware);
+        validator.validateBioState(rightState);
+        if (expectedError==null) {
+            assertThat(validator.getErrors()).isEmpty();
+        } else {
+            assertThat(validator.getErrors()).containsExactly(expectedError);
+        }
     }
 
     @Test
