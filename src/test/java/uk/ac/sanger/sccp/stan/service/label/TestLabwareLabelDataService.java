@@ -342,6 +342,8 @@ public class TestLabwareLabelDataService {
         assertThat(ld.getContents()).isEmpty();
     }
 
+
+
     @ParameterizedTest
     @ValueSource(booleans={true,false})
     public void testGetDividedLabelData_valid(boolean sameMedium) {
@@ -410,6 +412,37 @@ public class TestLabwareLabelDataService {
         SpatialLocation sl = new SpatialLocation(null, "SL-6", 6, tt);
         Tissue tissue = EntityFactory.makeTissue(donor, sl);
         assertEquals(tissueString(tissue), service.getTissueDesc(tissue));
+    }
+
+    @ParameterizedTest
+    @MethodSource("getContentArgs")
+    public void testGetContent(Sample sample, LabelContent expected) {
+        assertEquals(expected, service.getContent(sample));
+    }
+
+    static Stream<Arguments> getContentArgs() {
+        final String donorName = "DONOR";
+        final String rep = "15b";
+        Donor donor = new Donor(1, donorName, LifeStage.adult, EntityFactory.getHuman());
+        TissueType tissueType = new TissueType(1, "Heart", "HEA");
+        SpatialLocation sl = new SpatialLocation(1, "SL1", 1, tissueType);
+        Tissue tissue = EntityFactory.makeTissue(donor, sl);
+        tissue.setReplicate(rep);
+        BioState tissueState = new BioState(1, "Tissue");
+        BioState originalState = new BioState(2, "Original sample");
+        BioState custardState = new BioState(3, "Custard");
+
+        Sample sam1 = new Sample(1, 5, tissue, tissueState);
+        Sample sam2 = new Sample(2, null, tissue, originalState);
+        Sample sam3 = new Sample(3, 7, tissue, custardState);
+
+        String tissueDesc = "HEA-1";
+
+        return Arrays.stream(new Object[][] {
+                {sam1, new LabelContent(donorName, tissueDesc, rep, "S005")},
+                {sam2, new LabelContent(donorName, tissueDesc, rep, "Original")},
+                {sam3, new LabelContent(donorName, tissueDesc, rep, custardState.getName())},
+        }).map(Arguments::of);
     }
 
     private String tissueString(Tissue tissue) {
