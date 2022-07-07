@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import uk.ac.sanger.sccp.stan.EntityCreator;
@@ -11,6 +12,7 @@ import uk.ac.sanger.sccp.stan.GraphQLTester;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
 import uk.ac.sanger.sccp.stan.repo.OperationRepo;
+import uk.ac.sanger.sccp.stan.service.store.StorelightClient;
 
 import javax.persistence.EntityManager;
 import javax.transaction.Transactional;
@@ -19,7 +21,7 @@ import java.util.*;
 import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
-import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGet;
+import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.*;
 
 /**
  * Tests the aliquot mutation
@@ -42,9 +44,13 @@ public class TestAliquotMutation {
     @Autowired
     private OperationRepo opRepo;
 
+    @MockBean
+    private StorelightClient mockStorelight;
+
     @Test
     @Transactional
     public void testAliquot() throws Exception {
+        stubStorelightUnstore(mockStorelight);
         OperationType opType = entityCreator.createOpType("Aliquot", null, OperationTypeFlag.DISCARD_SOURCE);
         LabwareType tubeType = entityCreator.getTubeType();
         Tissue tissue = entityCreator.createTissue(null, "EXT1");
@@ -129,5 +135,7 @@ public class TestAliquotMutation {
             dests.add(action.getDestination());
         }
         assertEquals(destSlots, dests);
+
+        verifyStorelightQuery(mockStorelight, List.of(sourceLw.getBarcode()), user.getUsername());
     }
 }

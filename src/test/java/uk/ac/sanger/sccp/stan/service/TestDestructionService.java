@@ -5,8 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
-import uk.ac.sanger.sccp.stan.EntityFactory;
-import uk.ac.sanger.sccp.stan.Transactor;
+import uk.ac.sanger.sccp.stan.*;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.DestroyRequest;
@@ -133,10 +132,7 @@ public class TestDestructionService {
         DestroyRequest request = new DestroyRequest(List.of("STAN-A1"), 1);
         DestroyResult result = new DestroyResult(List.of(new Destruction()));
         doReturn(result).when(destructionService).destroy(any(), any());
-        when(mockTransactor.transact(any(), any())).then(invocation -> {
-            Supplier<?> supplier = invocation.getArgument(1);
-            return supplier.get();
-        });
+        Matchers.mockTransactor(mockTransactor);
 
         assertSame(result, destructionService.transactDestroy(user, request));
 

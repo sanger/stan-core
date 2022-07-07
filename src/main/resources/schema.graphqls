@@ -1,4 +1,4 @@
-"""A row/column combination, either in the form "B5" (row 2, column 5), or "32.15" (row 32, column 15)"""
+"""A row/column combination, either in the form "B5" (row 2, column 5), or "32,15" (row 32, column 15)"""
 scalar Address
 """A point in time, typically in the format yyyy-mm-dd HH:MM:SS."""
 scalar Timestamp
@@ -1213,6 +1213,20 @@ type ReagentPlate {
     slots: [ReagentSlot!]!
 }
 
+"""
+The data about original tissues and their next replicate numbers.
+"""
+type NextReplicateData {
+    """The source barcodes for the new replicates."""
+    barcodes: [String!]!
+    """The id of the donor."""
+    donorId: Int!
+    """The id of the spatial location."""
+    spatialLocationId: Int!
+    """The next replicate number for this group."""
+    nextReplicateNumber: Int!
+}
+
 """A specification that a particular reagent slot should be transferred to an address."""
 input ReagentTransfer {
     """The barcode of a reagent plate."""
@@ -1367,6 +1381,8 @@ type Query {
     workProgress(workNumber: String, workTypes: [String!], statuses: [WorkStatus!]): [WorkProgress!]!
     """Gets a reagent plate, if it exists. May return null."""
     reagentPlate(barcode: String!): ReagentPlate
+    """Gets the next replicate data for the given source labware barcodes."""
+    nextReplicateNumbers(barcodes: [String!]!): [NextReplicateData!]!
 
     """Get the specified storage location."""
     location(locationBarcode: String!): Location!
