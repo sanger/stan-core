@@ -4,10 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
-import uk.ac.sanger.sccp.stan.repo.OperationTypeRepo;
-import uk.ac.sanger.sccp.stan.repo.SampleRepo;
-import uk.ac.sanger.sccp.stan.repo.TissueRepo;
+import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.AddExternalIDRequest;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 
@@ -18,7 +15,6 @@ import static java.util.stream.Collectors.toSet;
 
 @Service
 public class SampleProcessingServiceImp implements SampleProcessingService {
-    private final SampleRepo sampleRepo;
     private final TissueRepo tissueRepo;
     private final OperationTypeRepo opTypeRepo;
     private final LabwareRepo labwareRepo;
@@ -26,13 +22,11 @@ public class SampleProcessingServiceImp implements SampleProcessingService {
     private final Validator<String> externalNameValidator;
 
     @Autowired
-    public SampleProcessingServiceImp(SampleRepo sampleRepo,
-                                      TissueRepo tissueRepo,
+    public SampleProcessingServiceImp(TissueRepo tissueRepo,
                                       OperationTypeRepo opTypeRepo,
                                       LabwareRepo labwareRepo,
                                       OperationService opService,
                                       @Qualifier("externalNameValidator") Validator<String> externalNameValidator) {
-        this.sampleRepo = sampleRepo;
         this.tissueRepo = tissueRepo;
         this.opTypeRepo = opTypeRepo;
         this.labwareRepo = labwareRepo;
@@ -66,6 +60,13 @@ public class SampleProcessingServiceImp implements SampleProcessingService {
         return new OperationResult(List.of(op), List.of(lw));
     }
 
+    /**
+     * Checks for problems with the samples in the labware.
+     * There should be one sample in the labware, and the tissue for that sample
+     * should have a replicate number and no external name.
+     * @param problems receptacle for problems
+     * @param samples the samples in the labware
+     */
     public void validateSamples(Collection<String> problems, Set<Sample> samples) {
         if (samples.isEmpty()) {
             problems.add("Could not find a sample associated with this labware");
@@ -84,6 +85,11 @@ public class SampleProcessingServiceImp implements SampleProcessingService {
         }
     }
 
+    /**
+     * Checks for problems with the given external name.
+     * @param problems receptacle for problems
+     * @param externalName the given external name.
+     */
     public void validateExternalName(Collection<String> problems, String externalName) {
         if (externalName==null || externalName.isEmpty()) {
             problems.add("No external identifier provided");

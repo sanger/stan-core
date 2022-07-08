@@ -26,8 +26,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author bt8
  **/
 public class TestSampleProcessingService {
-
-    private SampleRepo mockSampleRepo;
     private TissueRepo mockTissueRepo;
     private OperationTypeRepo mockOpTypeRepo;
     private LabwareRepo mockLabwareRepo;
@@ -37,14 +35,14 @@ public class TestSampleProcessingService {
 
     @BeforeEach
     void setup() {
-        mockSampleRepo = mock(SampleRepo.class);
         mockTissueRepo = mock(TissueRepo.class);
         mockOpTypeRepo = mock(OperationTypeRepo.class);
         mockLabwareRepo = mock(LabwareRepo.class);
         mockOpService = mock(OperationService.class);
+        //noinspection unchecked
         mockExternalNameValidator = mock(Validator.class);
 
-        sampleProcessingService = spy(new SampleProcessingServiceImp(mockSampleRepo, mockTissueRepo, mockOpTypeRepo, mockLabwareRepo, mockOpService, mockExternalNameValidator));
+        sampleProcessingService = spy(new SampleProcessingServiceImp(mockTissueRepo, mockOpTypeRepo, mockLabwareRepo, mockOpService, mockExternalNameValidator));
     }
 
     @Test
@@ -88,7 +86,7 @@ public class TestSampleProcessingService {
         // Use an existing tissue with external name
         AddExternalIDRequest request = new AddExternalIDRequest(lw.getBarcode(), tissue.getExternalName());
         assertValidationException(() -> sampleProcessingService.addExternalID(user, request), "The request could not be validated.",
-                String.format("The associated tissue already has an external identifier: %s", tissue.getExternalName())
+                "The associated tissue already has an external identifier: " + tissue.getExternalName()
         );
 
         verify(mockLabwareRepo).getByBarcode(eq(lw.getBarcode()));
@@ -108,7 +106,7 @@ public class TestSampleProcessingService {
         when(mockTissueRepo.findAllByExternalName(any())).thenReturn(List.of(tissue));
 
         sampleProcessingService.validateExternalName(problems, tissue.getExternalName());
-        assertThat(problems).contains(String.format("External identifier is already associated with another sample: %s", tissue.getExternalName()));
+        assertThat(problems).contains("External identifier is already associated with another sample: "+tissue.getExternalName());
         verify(mockTissueRepo).findAllByExternalName(eq(tissue.getExternalName()));
         verify(mockExternalNameValidator).validate(eq(tissue.getExternalName()), any());
     }
@@ -142,7 +140,7 @@ public class TestSampleProcessingService {
         Sample sample1 = new Sample(1, 100, tissue, null);
 
         sampleProcessingService.validateSamples(problems, Set.of(sample1));
-        assertThat(problems).contains(String.format("The associated tissue already has an external identifier: %s", tissue.getExternalName()));
+        assertThat(problems).contains("The associated tissue already has an external identifier: "+tissue.getExternalName());
     }
 
     @Test
@@ -156,6 +154,6 @@ public class TestSampleProcessingService {
         Sample sample1 = new Sample(1, 100, tissue, null);
 
         sampleProcessingService.validateSamples(problems, Set.of(sample1));
-        assertThat(problems).contains(String.format("The associated tissue does not have a replicate number"));
+        assertThat(problems).contains("The associated tissue does not have a replicate number");
     }
 }
