@@ -1,0 +1,18 @@
+mutation {
+    recordSampleProcessingComments(request: {labware: [
+        {
+            barcode: "STAN-A1"
+            commentId: 1
+        }
+        {
+            barcode: "STAN-A1"
+            commentId: 2
+        }]}) {
+        operations {
+            operationType {
+                name
+            }
+            id
+        }
+    }
+}

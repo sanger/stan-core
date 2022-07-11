@@ -170,6 +170,7 @@ public class GraphQLProvider {
                         .dataFetcher("registerOriginalSamples", transact(graphQLMutation.registerOriginalSamples()))
                         .dataFetcher("performTissueBlock", graphQLMutation.performTissueBlock()) // internal transaction
                         .dataFetcher("performPotProcessing", graphQLMutation.performPotProcessing()) // internal transaction
+                        .dataFetcher("recordSampleProcessingComments", transact(graphQLMutation.addSampleProcessingComments()))
 
                         .dataFetcher("addUser", transact(graphQLMutation.addUser()))
                         .dataFetcher("setUserRole", transact(graphQLMutation.setUserRole()))
