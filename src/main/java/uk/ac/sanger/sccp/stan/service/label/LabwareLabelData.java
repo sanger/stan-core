@@ -132,6 +132,10 @@ public class LabwareLabelData {
             return this.stateDesc;
         }
 
+        public LabelContent withStateDesc(String newStateDesc) {
+            return new LabelContent(this.donorName, this.tissueDesc, this.replicate, newStateDesc);
+        }
+
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;

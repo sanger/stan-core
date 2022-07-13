@@ -8,7 +8,9 @@ import java.util.Objects;
  */
 @Entity
 public class LabwareType implements HasIntId, HasName {
-    public static final String FETAL_WASTE_NAME = "Fetal waste container";
+    public static final String FETAL_WASTE_NAME = "Fetal waste container",
+            PROVIASETTE_NAME = "Proviasette",
+            CASSETTE_NAME = "Cassette";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -85,6 +87,13 @@ public class LabwareType implements HasIntId, HasName {
 
     public boolean isFetalWaste() {
         return FETAL_WASTE_NAME.equalsIgnoreCase(this.name);
+    }
+
+    /**
+     * Should labware of this type show medium in the state space on the label?
+     */
+    public boolean showMediumAsStateOnLabel() {
+        return (name!=null && (name.equalsIgnoreCase(PROVIASETTE_NAME) || name.equalsIgnoreCase(CASSETTE_NAME)));
     }
 
     /**

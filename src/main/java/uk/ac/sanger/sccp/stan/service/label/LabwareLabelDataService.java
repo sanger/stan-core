@@ -48,6 +48,12 @@ public class LabwareLabelDataService {
                 content = getPlannedContent(planActions);
             }
         }
+        if (labware.getLabwareType().showMediumAsStateOnLabel() && content.size()==1 && mediums.size()==1) {
+            String mediumName = mediums.iterator().next();
+            content = content.stream()
+                    .map(d -> d.withStateDesc(mediumName))
+                    .collect(toList());
+        }
         return toLabelData(labware, content, mediums);
     }
 
