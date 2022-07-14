@@ -30,6 +30,7 @@ import uk.ac.sanger.sccp.stan.service.operation.plan.PlanService;
 import uk.ac.sanger.sccp.stan.service.register.*;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.stan.service.work.WorkTypeService;
+import uk.ac.sanger.sccp.stan.service.SampleProcessingService;
 
 import java.util.*;
 import java.util.function.BiFunction;
@@ -84,6 +85,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final OriginalSampleRegisterService originalSampleRegisterService;
     final BlockProcessingService blockProcessingService;
     final PotProcessingService potProcessingService;
+    final SampleProcessingService sampleProcessingService;
     final SolutionTransferService solutionTransferService;
     final FFPEProcessingService ffpeProcessingService;
     final UserAdminService userAdminService;
@@ -109,7 +111,8 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            ComplexStainService complexStainService, AliquotService aliquotService,
                            ReagentTransferService reagentTransferService, OriginalSampleRegisterService originalSampleRegisterService,
                            BlockProcessingService blockProcessingService, PotProcessingService potProcessingService,
-                           SolutionTransferService solutionTransferService, FFPEProcessingService ffpeProcessingService,
+                           SampleProcessingService sampleProcessingService, SolutionTransferService solutionTransferService,
+                           FFPEProcessingService ffpeProcessingService,
                            UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
@@ -152,6 +155,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.originalSampleRegisterService = originalSampleRegisterService;
         this.blockProcessingService = blockProcessingService;
         this.potProcessingService = potProcessingService;
+        this.sampleProcessingService = sampleProcessingService;
         this.solutionTransferService = solutionTransferService;
         this.ffpeProcessingService = ffpeProcessingService;
         this.userAdminService = userAdminService;
@@ -633,6 +637,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
         };
     }
 
+    public DataFetcher<OperationResult> addExternalID() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            AddExternalIDRequest request = arg(dfe, "request", AddExternalIDRequest.class);
+            logRequest("Perform add external ID", user, request);
+            return sampleProcessingService.addExternalID(user, request);
+        };
+    }
+
     public DataFetcher<OperationResult> performSolutionTransfer() {
         return dfe -> {
             User user = checkUser(dfe, User.Role.normal);
@@ -641,6 +654,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
             return solutionTransferService.perform(user, request);
         };
     }
+
     public DataFetcher<OperationResult> performFFPEProcessing() {
         return dfe -> {
             User user = checkUser(dfe, User.Role.normal);
