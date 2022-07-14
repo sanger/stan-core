@@ -1297,6 +1297,22 @@ input PotProcessingDestination {
     commentId: Int
 }
 
+"""A request to perform solution transfer."""
+input SolutionTransferRequest {
+    """The work number for the operations."""
+    workNumber: String!
+    """The details of the labware in the request."""
+    labware: [SolutionTransferLabware!]!
+}
+
+"""A labware in a solution transfer request."""
+input SolutionTransferLabware {
+    """The barcode of the labware."""
+    barcode: String!
+    """The name solution."""
+    solution: String!
+}
+
 """A request to record FFPE processing."""
 input FFPEProcessingRequest {
     """The work number."""
@@ -1516,6 +1532,8 @@ type Mutation {
     performTissueBlock(request: TissueBlockRequest!): OperationResult!
     """Process an original sample into pots."""
     performPotProcessing(request: PotProcessingRequest!): OperationResult!
+    """Add solutions to labware."""
+    performSolutionTransfer(request: SolutionTransferRequest!): OperationResult!
     """Perform FFPE processing."""
     performFFPEProcessing(request: FFPEProcessingRequest!): OperationResult!
 
