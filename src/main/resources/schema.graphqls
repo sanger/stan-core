@@ -889,6 +889,8 @@ type Work {
     costCode: CostCode!
     """The unique (generated) string identifying this work."""
     workNumber: String!
+    """The name of the person requesting the work.(Note sure how to deal with this as the existing work will all be null but future work we want it mandatory?)"""
+    workRequester: ReleaseRecipient
     """The current status of the work."""
     status: WorkStatus!
     """The number of blocks that this work still needs to be done on.
@@ -897,6 +899,9 @@ type Work {
     """The number of slides that this work still needs to be done on.
     This is set and updated by users during the course of the work."""
     numSlides: Int
+    """The number of original samples that this work still needs to be done on.
+    This is set and updated by users during the course of the work."""
+    numOriginalSamples: Int
     """A string describing the priority of this work.
     This is set and updated by users during the course of the work."""
     priority: String
@@ -960,7 +965,7 @@ enum StainPanel {
 
 """The details for a particular labware in a complex stain request."""
 input ComplexStainLabware {
-    """The barcode of the lawbare."""
+    """The barcode of the labware."""
     barcode: String!
     """The bond barcode for the stain."""
     bondBarcode: String!
@@ -1311,6 +1316,39 @@ input SampleProcessingCommentRequest  {
     labware: [SampleProcessingComment!]!
 }
 
+input AddExternalIDRequest {
+    """The external identifier used to identify the tissue."""
+    externalName: String!
+    """The existing labware containing the tissue"""
+    labwareBarcode: String!
+}
+
+"""A request to perform solution transfer."""
+input SolutionTransferRequest {
+    """The work number for the operations."""
+    workNumber: String!
+    """The details of the labware in the request."""
+    labware: [SolutionTransferLabware!]!
+}
+
+"""A labware in a solution transfer request."""
+input SolutionTransferLabware {
+    """The barcode of the labware."""
+    barcode: String!
+    """The name solution."""
+    solution: String!
+}
+
+"""A request to record FFPE processing."""
+input FFPEProcessingRequest {
+    """The work number."""
+    workNumber: String!
+    """The labware barcodes."""
+    barcodes: [String!]!
+    """The comment ID."""
+    commentId: Int!
+}
+
 """
 Get information from the application.
 These typically require no user privilege.
@@ -1478,13 +1516,15 @@ type Mutation {
     setSolutionEnabled(name: String!, enabled: Boolean!): Solution!
 
     """Create a new work, which will be allocated a new work number with the given prefix."""
-    createWork(prefix: String!, workType: String!, project: String!, costCode: String!, numBlocks: Int, numSlides: Int): Work!
+    createWork(prefix: String!, workType: String!, workRequester: String!, project: String!, costCode: String!, numBlocks: Int, numSlides: Int, numOriginalSamples: Int): Work!
     """Update the status of an existing work."""
     updateWorkStatus(workNumber: String!, status: WorkStatus!, commentId: Int): WorkWithComment!
     """Update the number of blocks field in a work."""
     updateWorkNumBlocks(workNumber: String!, numBlocks: Int): Work!
     """Update the number of slides field in a work."""
     updateWorkNumSlides(workNumber: String!, numSlides: Int): Work!
+    """Update the number of original samples field in a work."""
+    updateWorkNumOriginalSamples(workNumber: String!, numOriginalSamples: Int): Work!
     """Update the priority of a work."""
     updateWorkPriority(workNumber: String!, priority: String): Work!
 
@@ -1522,6 +1562,12 @@ type Mutation {
     performPotProcessing(request: PotProcessingRequest!): OperationResult!
     """Record ops to add sample processing comments."""
     recordSampleProcessingComments(request: SampleProcessingCommentRequest!): OperationResult!
+    """Add solutions to labware."""
+    performSolutionTransfer(request: SolutionTransferRequest!): OperationResult!
+    """Perform FFPE processing."""
+    performFFPEProcessing(request: FFPEProcessingRequest!): OperationResult!
+    """Record an operation adding a external ID to a sample."""
+    addExternalID(request: AddExternalIDRequest!): OperationResult!
 
     """Create a new user for the application."""
     addUser(username: String!): User!

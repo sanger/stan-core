@@ -49,7 +49,8 @@ public class TestRecordInPlaceWithEquipmentMutation {
         WorkType wt = entityCreator.createWorkType("Rocks");
         Project pr = entityCreator.createProject("Stargate");
         CostCode cc = entityCreator.createCostCode("4");
-        Work work = entityCreator.createWork(wt, pr, cc);
+        ReleaseRecipient wr = entityCreator.createReleaseRecipient("test1");
+        Work work = entityCreator.createWork(wt, pr, cc, wr);
         User user = entityCreator.createUser("user1");
         Sample sam = entityCreator.createSample(entityCreator.createTissue(entityCreator.createDonor("DONOR1"), "TISSUE1"), 5);
         LabwareType lt = entityCreator.createLabwareType("lt1", 1, 1);
@@ -74,7 +75,7 @@ public class TestRecordInPlaceWithEquipmentMutation {
     @Transactional
     @Test
     public void testRecordInPlaceChangeBioState() throws Exception {
-        Work work = entityCreator.createWork(null, null, null);
+        Work work = entityCreator.createWork(null, null, null, null);
         User user = entityCreator.createUser("user1");
         final Tissue tissue = entityCreator.createTissue(entityCreator.createDonor("DONOR1"), "TISSUE1");
         Sample[] samples = IntStream.range(5,8)

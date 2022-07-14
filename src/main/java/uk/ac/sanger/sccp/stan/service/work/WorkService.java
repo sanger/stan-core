@@ -18,14 +18,16 @@ public interface WorkService {
      * @param user the user responsible for creating the work
      * @param prefix the prefix ({@code SGP} or {@code R&D}) for the work
      * @param workTypeName the name of a work type for the work number
+     * @param workRequesterName the name of the ReleaseRecipient requesting the work
      * @param projectName the name of the project for the work number
      * @param costCode the code of the cost code for the work number
      * @param numBlocks the value for the "numBlocks" field (may be null)
      * @param numSlides the value for the "numSlides" field (may be null)
+     * @param numOriginalSamples the value for the "numOriginalSamples" field (may be null)
      * @return the new work
      */
-    Work createWork(User user, String prefix, String workTypeName, String projectName, String costCode,
-                    Integer numBlocks, Integer numSlides);
+    Work createWork(User user, String prefix, String workTypeName, String workRequesterName, String projectName, String costCode,
+                    Integer numBlocks, Integer numSlides, Integer numOriginalSamples);
 
     /**
      * Updates the status of the work. Records a work event for the change.
@@ -57,6 +59,15 @@ public interface WorkService {
      * @return the updated work
      */
     Work updateWorkNumSlides(User user, String workNumber, Integer numSlides);
+
+    /**
+     * Updates the numOriginalSamples field on an existing work.
+     * @param user the user responsible for the change
+     * @param workNumber the work number of an existing work
+     * @param numOriginalSamples the new value of numOriginalSamples (may be null)
+     * @return the updated work
+     */
+    Work updateWorkNumOriginalSamples(User user, String workNumber, Integer numOriginalSamples);
 
     /**
      * Updates the priority field on an existing work.

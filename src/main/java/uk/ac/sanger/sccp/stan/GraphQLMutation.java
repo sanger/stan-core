@@ -30,6 +30,7 @@ import uk.ac.sanger.sccp.stan.service.operation.plan.PlanService;
 import uk.ac.sanger.sccp.stan.service.register.*;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.stan.service.work.WorkTypeService;
+import uk.ac.sanger.sccp.stan.service.SampleProcessingService;
 
 import java.util.*;
 import java.util.function.BiFunction;
@@ -85,6 +86,9 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final BlockProcessingService blockProcessingService;
     final PotProcessingService potProcessingService;
     final InPlaceOpCommentService inPlaceOpCommentService;
+    final SampleProcessingService sampleProcessingService;
+    final SolutionTransferService solutionTransferService;
+    final FFPEProcessingService ffpeProcessingService;
     final UserAdminService userAdminService;
 
     @Autowired
@@ -108,7 +112,10 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            ComplexStainService complexStainService, AliquotService aliquotService,
                            ReagentTransferService reagentTransferService, OriginalSampleRegisterService originalSampleRegisterService,
                            BlockProcessingService blockProcessingService, PotProcessingService potProcessingService,
-                           InPlaceOpCommentService inPlaceOpCommentService, UserAdminService userAdminService) {
+                           InPlaceOpCommentService inPlaceOpCommentService,
+                           SampleProcessingService sampleProcessingService, SolutionTransferService solutionTransferService,
+                           FFPEProcessingService ffpeProcessingService,
+                           UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
@@ -151,6 +158,9 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.blockProcessingService = blockProcessingService;
         this.potProcessingService = potProcessingService;
         this.inPlaceOpCommentService = inPlaceOpCommentService;
+        this.sampleProcessingService = sampleProcessingService;
+        this.solutionTransferService = solutionTransferService;
+        this.ffpeProcessingService = ffpeProcessingService;
         this.userAdminService = userAdminService;
     }
 
@@ -440,12 +450,14 @@ public class GraphQLMutation extends BaseGraphQLResource {
             String code = dfe.getArgument("costCode");
             String prefix = dfe.getArgument("prefix");
             String workTypeName = dfe.getArgument("workType");
+            String workRequesterName = dfe.getArgument("workRequester");
             Integer numBlocks = dfe.getArgument("numBlocks");
             Integer numSlides = dfe.getArgument("numSlides");
+            Integer numOriginalSamples = dfe.getArgument("numOriginalSamples");
             logRequest("Create work", user,
-                    String.format("project: %s, costCode: %s, prefix: %s, workType: %s, numBlocks: %s, numSlides: %s",
-                    projectName, code, prefix, workTypeName, numBlocks, numSlides));
-            return workService.createWork(user, prefix, workTypeName, projectName, code, numBlocks, numSlides);
+                    String.format("project: %s, costCode: %s, prefix: %s, workType: %s, workRequesterName: %s, numBlocks: %s, numSlides: %s, numOriginalSamples: %s",
+                    projectName, code, prefix, workTypeName, workRequesterName, numBlocks, numSlides, numOriginalSamples));
+            return workService.createWork(user, prefix, workTypeName, workRequesterName, projectName, code, numBlocks, numSlides, numOriginalSamples);
         };
     }
 
@@ -468,6 +480,17 @@ public class GraphQLMutation extends BaseGraphQLResource {
             logRequest("Update work numSlides", user,
                     String.format("Work number: %s, numSlides: %s", workNumber, newValue));
             return workService.updateWorkNumSlides(user, workNumber, newValue);
+        };
+    }
+
+    public DataFetcher<Work> updateWorkNumOriginalSamples() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            String workNumber = dfe.getArgument("workNumber");
+            Integer newValue = dfe.getArgument("numOriginalSamples");
+            logRequest("Update work numOriginalSamples", user,
+                    String.format("Work number: %s, numOriginalSamples: %s", workNumber, newValue));
+            return workService.updateWorkNumOriginalSamples(user, workNumber, newValue);
         };
     }
 
@@ -637,6 +660,33 @@ public class GraphQLMutation extends BaseGraphQLResource {
             SampleProcessingCommentRequest request = arg(dfe, "request", SampleProcessingCommentRequest.class);
             logRequest("Record sample processing comments", user, request);
             return inPlaceOpCommentService.perform(user, "Add sample processing comments", request.getLabware());
+        };
+    }
+
+    public DataFetcher<OperationResult> addExternalID() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            AddExternalIDRequest request = arg(dfe, "request", AddExternalIDRequest.class);
+            logRequest("Perform add external ID", user, request);
+            return sampleProcessingService.addExternalID(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> performSolutionTransfer() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            SolutionTransferRequest request = arg(dfe, "request", SolutionTransferRequest.class);
+            logRequest("Perform solution transfer", user, request);
+            return solutionTransferService.perform(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> performFFPEProcessing() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            FFPEProcessingRequest request = arg(dfe, "request", FFPEProcessingRequest.class);
+            logRequest("Perform FFPE processing", user, request);
+            return ffpeProcessingService.perform(user, request);
         };
     }
 

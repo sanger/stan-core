@@ -128,7 +128,7 @@ public class TestExtractService {
         List<Labware> sources = List.of(src);
         List<String> bcs = List.of(src.getBarcode());
         List<Operation> ops = List.of(EntityFactory.makeOpForLabware(opType, sources, List.of(dst), user));
-        Work work = new Work(500, "SGP5000", new WorkType(1, "Bananas"), null, null, Work.Status.active);
+        Work work = new Work(500, "SGP5000", new WorkType(1, "Bananas"), null, null, null, Work.Status.active);
 
         when(mockWorkService.getUsableWork(work.getWorkNumber())).thenReturn(work);
 

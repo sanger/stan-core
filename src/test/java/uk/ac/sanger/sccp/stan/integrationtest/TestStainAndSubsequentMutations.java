@@ -54,7 +54,8 @@ public class TestStainAndSubsequentMutations {
         WorkType wt = entityCreator.createWorkType("Rocks");
         Project pr = entityCreator.createProject("Stargate");
         CostCode cc = entityCreator.createCostCode("4");
-        Work work = entityCreator.createWork(wt, pr, cc);
+        ReleaseRecipient wr = entityCreator.createReleaseRecipient("test1");
+        Work work = entityCreator.createWork(wt, pr, cc, wr);
         work.setWorkNumber("SGP500");
         User user = entityCreator.createUser("user1");
         Sample sam = entityCreator.createSample(entityCreator.createTissue(entityCreator.createDonor("DONOR1"), "TISSUE1"), 5);

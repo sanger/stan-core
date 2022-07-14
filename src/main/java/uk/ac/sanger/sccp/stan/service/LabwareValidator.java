@@ -64,7 +64,7 @@ public class LabwareValidator {
 
     /**
      * Sets whether labware are required to be unique.
-     * If it is set to false, that indicates that it is appropriate to call {@link #validateUnique}.
+     * If it is set to true, that indicates that it is appropriate to call {@link #validateUnique}.
      * @param uniqueRequired whether labware must be unique
      */
     public void setUniqueRequired(boolean uniqueRequired) {

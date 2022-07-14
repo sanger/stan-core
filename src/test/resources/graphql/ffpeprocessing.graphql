@@ -1,0 +1,15 @@
+mutation {
+    performFFPEProcessing(request: {
+        commentId: 1
+        workNumber: "WORK"
+        barcodes: ["STAN-A1"]
+    }) {
+        operations {
+            id
+            operationType { name }
+        }
+        labware {
+            barcode
+        }
+    }
+}

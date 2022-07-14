@@ -1,0 +1,11 @@
+mutation {
+    addExternalID(request: {
+        labwareBarcode: "Barcode1"
+        externalName: "ExternalName"
+    }) {
+        operations {
+            operationType { name }
+            id
+        }
+    }
+}

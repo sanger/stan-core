@@ -56,4 +56,15 @@
         </rollback>
     </changeSet>
 
+    <changeSet id="2.9.3" author="bt8">
+        <addColumn tableName="work">
+            <column name="num_original_samples" type="INT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="work_requester_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_work_requester" referencedTableName="release_recipient" referencedColumnNames="id"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
 </databaseChangeLog>

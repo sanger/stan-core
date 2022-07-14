@@ -1,5 +1,6 @@
 package uk.ac.sanger.sccp.stan.integrationtest;
 
+import liquibase.pro.packaged.R;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -11,6 +12,7 @@ import uk.ac.sanger.sccp.stan.GraphQLTester;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.CostCodeRepo;
 import uk.ac.sanger.sccp.stan.repo.ProjectRepo;
+import uk.ac.sanger.sccp.stan.repo.ReleaseRecipientRepo;
 
 import javax.transaction.Transactional;
 import java.util.List;
@@ -38,6 +40,8 @@ public class TestWorkMutation {
     private ProjectRepo projectRepo;
     @Autowired
     private CostCodeRepo costCodeRepo;
+    @Autowired
+    private ReleaseRecipientRepo releaseRecipientRepo;
 
     @Transactional
     @Test
@@ -45,9 +49,10 @@ public class TestWorkMutation {
         Project project = projectRepo.save(new Project(null, "Stargate"));
         CostCode cc = costCodeRepo.save(new CostCode(null, "S666"));
         WorkType workType = entityCreator.createWorkType("Drywalling");
+        ReleaseRecipient workRequester = releaseRecipientRepo.save(new ReleaseRecipient(null, "test1"));
         User user = entityCreator.createUser("user1", User.Role.normal);
 
-        String worksQuery  = "query { works(status: [active]) { workNumber, workType {name}, project {name}, costCode {code}, status } }";
+        String worksQuery  = "query { works(status: [active]) { workNumber, workType {name}, workRequester {username}, project {name}, costCode {code}, status } }";
         Object data = tester.post(worksQuery);
         List<Map<String,?>> worksData = chainGet(data, "data", "works");
         assertNotNull(worksData);
@@ -62,6 +67,7 @@ public class TestWorkMutation {
         assertEquals(project.getName(), chainGet(workData, "project", "name"));
         assertEquals(cc.getCode(), chainGet(workData, "costCode", "code"));
         assertEquals(workType.getName(), chainGet(workData, "workType", "name"));
+        assertEquals(workRequester.getUsername(), chainGet(workData, "workRequester", "username"));
         assertEquals("unstarted", workData.get("status"));
 
         data = tester.post(worksQuery);
@@ -96,17 +102,25 @@ public class TestWorkMutation {
         workData.put("status", "active");
         assertThat(worksData).contains(workData);
 
-        data = tester.post("mutation { updateWorkNumBlocks(workNumber: \""+workNumber+"\", numBlocks: 5) { workNumber, numBlocks, numSlides }}");
+        data = tester.post("mutation { updateWorkNumBlocks(workNumber: \""+workNumber+"\", numBlocks: 5) { workNumber, numBlocks, numSlides, numOriginalSamples }}");
         workData = chainGet(data, "data", "updateWorkNumBlocks");
         assertEquals(workNumber, workData.get("workNumber"));
         assertEquals(5, workData.get("numBlocks"));
         assertNull(workData.get("numSlides"));
+        assertNull(workData.get("numOriginalSamples"));
 
-        data = tester.post("mutation { updateWorkNumSlides(workNumber: \""+workNumber+"\", numSlides: 0) { workNumber, numBlocks, numSlides }}");
+        data = tester.post("mutation { updateWorkNumSlides(workNumber: \""+workNumber+"\", numSlides: 0) { workNumber, numBlocks, numSlides, numOriginalSamples }}");
         workData = chainGet(data, "data", "updateWorkNumSlides");
         assertEquals(workNumber, workData.get("workNumber"));
         assertEquals(5, workData.get("numBlocks"));
         assertEquals(0, workData.get("numSlides"));
+
+        data = tester.post("mutation { updateWorkNumOriginalSamples(workNumber: \""+workNumber+"\", numOriginalSamples: 2) { workNumber, numBlocks, numSlides, numOriginalSamples }}");
+        workData = chainGet(data, "data", "updateWorkNumOriginalSamples");
+        assertEquals(workNumber, workData.get("workNumber"));
+        assertEquals(5, workData.get("numBlocks"));
+        assertEquals(0, workData.get("numSlides"));
+        assertEquals(2, workData.get("numOriginalSamples"));
 
         data = tester.post("mutation { updateWorkStatus(workNumber: \""+workNumber+"\", status: completed) {work{status,priority}}}");
         assertEquals("completed", chainGet(data, "data", "updateWorkStatus", "work", "status"));

@@ -1,0 +1,17 @@
+mutation {
+    performSolutionTransfer(request: {
+        workNumber: "SGP1"
+        labware: [{
+            barcode: "STAN-A1"
+            solution: "Columbo"
+        }]
+    }) {
+        labware {
+            barcode
+        }
+        operations {
+            id
+            operationType { name }
+        }
+    }
+}

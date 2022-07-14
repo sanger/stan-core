@@ -63,7 +63,7 @@ public class TestPermService {
         doNothing().when(service).validateLabware(any(), any());
         doReturn(controlLw).when(service).lookUpControlLabware(any(), any());
         doNothing().when(service).validateControlLabware(any(), any());
-        Work work = new Work(300, "SGP-2000", null, null, null, Work.Status.active);
+        Work work = new Work(300, "SGP-2000", null, null, null, null, Work.Status.active);
         when(mockWorkService.validateUsableWork(any(), any())).thenReturn(work);
         if (valid) {
             doNothing().when(service).validatePermData(any(), any(), any());
@@ -365,7 +365,7 @@ public class TestPermService {
     @ValueSource(booleans = {false, true})
     public void testRecord(boolean hasControlLabware) {
         OperationType opType = EntityFactory.makeOperationType("Visium permeabilisation", null);
-        Work work = new Work(14, "SGP14", null, null, null, Work.Status.active);
+        Work work = new Work(14, "SGP14", null, null, null, null, Work.Status.active);
         User user = EntityFactory.getUser();
         Labware lw = EntityFactory.getTube();
         final Address A1 = new Address(1,1), A2 = new Address(1,2);

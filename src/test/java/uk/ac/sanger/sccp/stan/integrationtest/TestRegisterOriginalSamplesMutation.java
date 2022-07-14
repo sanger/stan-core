@@ -98,7 +98,7 @@ public class TestRegisterOriginalSamplesMutation {
         assertNull(tissue.getReplicate());
         assertEquals(Labware.State.active, lw.getState());
 
-        Work work = entityCreator.createWork(null, null, null);
+        Work work = entityCreator.createWork(null, null, null, null);
         testBlockProcessing(barcode, work);
         lw.setDiscarded(false);
         lwRepo.save(lw);

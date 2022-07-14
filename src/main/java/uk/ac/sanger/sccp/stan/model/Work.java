@@ -75,6 +75,9 @@ public class Work {
     private WorkType workType;
 
     @ManyToOne
+    private ReleaseRecipient workRequester;
+    
+    @ManyToOne
     private Project project;
 
     @ManyToOne
@@ -93,27 +96,29 @@ public class Work {
     @CollectionTable(name="work_sample", joinColumns=@JoinColumn(name="work_id"))
     private List<SampleSlotId> sampleSlotIds;
 
-    private Integer numBlocks, numSlides;
+    private Integer numBlocks, numSlides, numOriginalSamples;
 
     private String priority;
 
     public Work() {}
 
-    public Work(Integer id, String workNumber, WorkType workType, Project project, CostCode costCode, Status status,
-                Integer numBlocks, Integer numSlides, String priority) {
+    public Work(Integer id, String workNumber, WorkType workType, ReleaseRecipient workRequester, Project project, CostCode costCode, Status status,
+                Integer numBlocks, Integer numSlides, Integer numOriginalSamples, String priority) {
         this.id = id;
         this.workNumber = workNumber;
         this.workType = workType;
+        this.workRequester = workRequester;
         this.project = project;
         this.costCode = costCode;
         this.status = status;
         this.numBlocks = numBlocks;
         this.numSlides = numSlides;
+        this.numOriginalSamples = numOriginalSamples;
         this.priority = priority;
     }
 
-    public Work(Integer id, String workNumber, WorkType workType, Project project, CostCode costCode, Status status) {
-        this(id, workNumber, workType, project, costCode, status, null, null, null);
+    public Work(Integer id, String workNumber, WorkType workType, ReleaseRecipient workRequester, Project project, CostCode costCode, Status status) {
+        this(id, workNumber, workType, workRequester, project, costCode, status, null, null, null, null);
     }
 
     public Integer getId() {
@@ -138,6 +143,14 @@ public class Work {
 
     public void setWorkType(WorkType workType) {
         this.workType = workType;
+    }
+
+    public ReleaseRecipient getWorkRequester() {
+        return this.workRequester;
+    }
+
+    public void setWorkRequester(ReleaseRecipient workRequester) {
+        this.workRequester = workRequester;
     }
 
     public Project getProject() {
@@ -196,6 +209,14 @@ public class Work {
         this.numSlides = numSlides;
     }
 
+    public Integer getNumOriginalSamples() {
+        return this.numOriginalSamples;
+    }
+
+    public void setNumOriginalSamples(Integer numOriginalSamples) {
+        this.numOriginalSamples = numOriginalSamples;
+    }
+
     public String getPriority() {
         return this.priority;
     }
@@ -227,10 +248,12 @@ public class Work {
         return (Objects.equals(this.id, that.id)
                 && Objects.equals(this.workType, that.workType)
                 && Objects.equals(this.workNumber, that.workNumber)
+                && Objects.equals(this.workRequester, that.workRequester)
                 && Objects.equals(this.project, that.project)
                 && Objects.equals(this.costCode, that.costCode)
                 && Objects.equals(this.numBlocks, that.numBlocks)
                 && Objects.equals(this.numSlides, that.numSlides)
+                && Objects.equals(this.numOriginalSamples, that.numOriginalSamples)
                 && Objects.equals(this.priority, that.priority)
                 && this.status == that.status);
     }

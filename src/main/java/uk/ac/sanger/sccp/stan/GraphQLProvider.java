@@ -154,6 +154,7 @@ public class GraphQLProvider {
                         .dataFetcher("updateWorkStatus", transact(graphQLMutation.updateWorkStatus()))
                         .dataFetcher("updateWorkNumBlocks", transact(graphQLMutation.updateWorkNumBlocks()))
                         .dataFetcher("updateWorkNumSlides", transact(graphQLMutation.updateWorkNumSlides()))
+                        .dataFetcher("updateWorkNumOriginalSamples", transact(graphQLMutation.updateWorkNumOriginalSamples()))
                         .dataFetcher("updateWorkPriority", transact(graphQLMutation.updateWorkPriority()))
                         .dataFetcher("stain", transact(graphQLMutation.stain()))
                         .dataFetcher("unrelease", transact(graphQLMutation.unrelease()))
@@ -171,6 +172,9 @@ public class GraphQLProvider {
                         .dataFetcher("performTissueBlock", graphQLMutation.performTissueBlock()) // internal transaction
                         .dataFetcher("performPotProcessing", graphQLMutation.performPotProcessing()) // internal transaction
                         .dataFetcher("recordSampleProcessingComments", transact(graphQLMutation.addSampleProcessingComments()))
+                        .dataFetcher("addExternalID", transact(graphQLMutation.addExternalID()))
+                        .dataFetcher("performFFPEProcessing", transact(graphQLMutation.performFFPEProcessing()))
+                        .dataFetcher("performSolutionTransfer", transact(graphQLMutation.performSolutionTransfer()))
 
                         .dataFetcher("addUser", transact(graphQLMutation.addUser()))
                         .dataFetcher("setUserRole", transact(graphQLMutation.setUserRole()))
