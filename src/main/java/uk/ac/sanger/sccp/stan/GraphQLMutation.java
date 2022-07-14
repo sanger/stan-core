@@ -86,6 +86,8 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final BlockProcessingService blockProcessingService;
     final PotProcessingService potProcessingService;
     final SampleProcessingService sampleProcessingService;
+    final SolutionTransferService solutionTransferService;
+    final FFPEProcessingService ffpeProcessingService;
     final UserAdminService userAdminService;
 
     @Autowired
@@ -109,7 +111,9 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            ComplexStainService complexStainService, AliquotService aliquotService,
                            ReagentTransferService reagentTransferService, OriginalSampleRegisterService originalSampleRegisterService,
                            BlockProcessingService blockProcessingService, PotProcessingService potProcessingService,
-                           SampleProcessingService sampleProcessingService, UserAdminService userAdminService) {
+                           SampleProcessingService sampleProcessingService, SolutionTransferService solutionTransferService,
+                           FFPEProcessingService ffpeProcessingService,
+                           UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
@@ -152,6 +156,8 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.blockProcessingService = blockProcessingService;
         this.potProcessingService = potProcessingService;
         this.sampleProcessingService = sampleProcessingService;
+        this.solutionTransferService = solutionTransferService;
+        this.ffpeProcessingService = ffpeProcessingService;
         this.userAdminService = userAdminService;
     }
 
@@ -637,6 +643,24 @@ public class GraphQLMutation extends BaseGraphQLResource {
             AddExternalIDRequest request = arg(dfe, "request", AddExternalIDRequest.class);
             logRequest("Perform add external ID", user, request);
             return sampleProcessingService.addExternalID(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> performSolutionTransfer() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            SolutionTransferRequest request = arg(dfe, "request", SolutionTransferRequest.class);
+            logRequest("Perform solution transfer", user, request);
+            return solutionTransferService.perform(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> performFFPEProcessing() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            FFPEProcessingRequest request = arg(dfe, "request", FFPEProcessingRequest.class);
+            logRequest("Perform FFPE processing", user, request);
+            return ffpeProcessingService.perform(user, request);
         };
     }
 

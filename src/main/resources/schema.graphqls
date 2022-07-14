@@ -1304,6 +1304,32 @@ input AddExternalIDRequest {
     labwareBarcode: String!
 }
 
+"""A request to perform solution transfer."""
+input SolutionTransferRequest {
+    """The work number for the operations."""
+    workNumber: String!
+    """The details of the labware in the request."""
+    labware: [SolutionTransferLabware!]!
+}
+
+"""A labware in a solution transfer request."""
+input SolutionTransferLabware {
+    """The barcode of the labware."""
+    barcode: String!
+    """The name solution."""
+    solution: String!
+}
+
+"""A request to record FFPE processing."""
+input FFPEProcessingRequest {
+    """The work number."""
+    workNumber: String!
+    """The labware barcodes."""
+    barcodes: [String!]!
+    """The comment ID."""
+    commentId: Int!
+}
+
 """
 Get information from the application.
 These typically require no user privilege.
@@ -1513,9 +1539,12 @@ type Mutation {
     performTissueBlock(request: TissueBlockRequest!): OperationResult!
     """Process an original sample into pots."""
     performPotProcessing(request: PotProcessingRequest!): OperationResult!
+    """Add solutions to labware."""
+    performSolutionTransfer(request: SolutionTransferRequest!): OperationResult!
+    """Perform FFPE processing."""
+    performFFPEProcessing(request: FFPEProcessingRequest!): OperationResult!
     """Record an operation adding a external ID to a sample."""
     addExternalID(request: AddExternalIDRequest!): OperationResult!
-
 
     """Create a new user for the application."""
     addUser(username: String!): User!

@@ -64,7 +64,7 @@ public class LabwareValidator {
 
     /**
      * Sets whether labware are required to be unique.
-     * If it is set to false, that indicates that it is appropriate to call {@link #validateUnique}.
+     * If it is set to true, that indicates that it is appropriate to call {@link #validateUnique}.
      * @param uniqueRequired whether labware must be unique
      */
     public void setUniqueRequired(boolean uniqueRequired) {
@@ -217,7 +217,7 @@ public class LabwareValidator {
                 for (Slot slot : lw.getSlots()) {
                     for (Sample sample : slot.getSamples()) {
                         if (!sample.getBioState().equals(bs)) {
-                            wrongBS.add(lw.getBarcode());
+                            wrongBS.add(String.format("(%s, %s)", lw.getBarcode(), sample.getBioState()));
                             continue labwareLoop;
                         }
                     }
