@@ -14,8 +14,7 @@ import java.util.List;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Tests {@link TissueRepo}
@@ -38,6 +37,8 @@ public class TestTissueRepo {
     private FixativeRepo fixativeRepo;
     @Autowired
     private HmdmcRepo hmdmcRepo;
+
+    private int externalNameSeed = 1;
 
     @Test
     @Transactional
@@ -129,5 +130,35 @@ public class TestTissueRepo {
                         donor, med, fix, hmdmc, null, null)))
                 .toArray(Tissue[]::new);
         assertThat(tissueRepo.findByTissueTypeId(tt1.getId())).containsExactly(tissues[0], tissues[1]);
+    }
+
+    @Test
+    @Transactional
+    public void testFindMaxReplicateForDonorIdAndSpatialLocationId() {
+        Donor d1 = entityCreator.createDonor("DONOR1");
+        Donor d2 = entityCreator.createDonor("DONOR2");
+        TissueType tt1 = tissueTypeRepo.findByName("Heart").orElseThrow();
+        SpatialLocation sl1 = tt1.getSpatialLocations().get(0);
+        SpatialLocation sl2 = tt1.getSpatialLocations().get(1);
+        createTissue(d2, sl1, "5");
+        createTissue(d1, sl2, "6");
+        assertNull(tissueRepo.findMaxReplicateForDonorIdAndSpatialLocationId(d1.getId(), sl1.getId()));
+        createTissue(d1, sl1, "1");
+        createTissue(d1, sl1, "2");
+        assertEquals(2, tissueRepo.findMaxReplicateForDonorIdAndSpatialLocationId(d1.getId(), sl1.getId()));
+        createTissue(d1, sl1, "10");
+        createTissue(d1, sl1, "3");
+        assertEquals(10, tissueRepo.findMaxReplicateForDonorIdAndSpatialLocationId(d1.getId(), sl1.getId()));
+        createTissue(d1, sl1, "5a");
+        assertEquals(10, tissueRepo.findMaxReplicateForDonorIdAndSpatialLocationId(d1.getId(), sl1.getId()));
+        createTissue(d1, sl1, "10a");
+        assertEquals(10, tissueRepo.findMaxReplicateForDonorIdAndSpatialLocationId(d1.getId(), sl1.getId()));
+        createTissue(d1, sl1, "11a");
+        assertEquals(11, tissueRepo.findMaxReplicateForDonorIdAndSpatialLocationId(d1.getId(), sl1.getId()));
+    }
+
+    private Tissue createTissue(Donor donor, SpatialLocation sl, String rep) {
+        String name = "" + (++externalNameSeed);
+        return entityCreator.createTissue(donor, sl, name, rep);
     }
 }

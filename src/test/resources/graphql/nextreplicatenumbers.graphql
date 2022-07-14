@@ -1,0 +1,8 @@
+query {
+    nextReplicateNumbers(barcodes: ["STAN-A1", "STAN-A2", "STAN-A4", "stan-a2"]) {
+        barcodes
+        donorId
+        spatialLocationId
+        nextReplicateNumber
+    }
+}

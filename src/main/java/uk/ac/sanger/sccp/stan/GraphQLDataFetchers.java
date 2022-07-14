@@ -62,6 +62,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final PassFailQueryService passFailQueryService;
     final WorkService workService;
     final VisiumPermDataService visiumPermDataService;
+    final NextReplicateService nextReplicateService;
 
     @Autowired
     public GraphQLDataFetchers(ObjectMapper objectMapper, AuthenticationComponent authComp, UserRepo userRepo,
@@ -78,7 +79,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                HistoryService historyService, WorkProgressService workProgressService, PlanService planService,
                                StainService stainService, ExtractResultQueryService extractResultQueryService,
                                PassFailQueryService passFailQueryService,
-                               WorkService workService, VisiumPermDataService visiumPermDataService) {
+                               WorkService workService, VisiumPermDataService visiumPermDataService,
+                               NextReplicateService nextReplicateService) {
         super(objectMapper, authComp, userRepo);
         this.sessionConfig = sessionConfig;
         this.tissueTypeRepo = tissueTypeRepo;
@@ -109,6 +111,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.passFailQueryService = passFailQueryService;
         this.workService = workService;
         this.visiumPermDataService = visiumPermDataService;
+        this.nextReplicateService = nextReplicateService;
     }
 
     public DataFetcher<User> getUser() {
@@ -314,6 +317,13 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         return dfe -> {
             String barcode = dfe.getArgument("barcode");
             return reagentPlateRepo.findByBarcode(barcode).orElse(null);
+        };
+    }
+
+    public DataFetcher<List<NextReplicateData>> nextReplicateNumbers() {
+        return dfe -> {
+            List<String> barcodes = dfe.getArgument("barcodes");
+            return nextReplicateService.getNextReplicateData(barcodes);
         };
     }
 

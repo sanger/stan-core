@@ -95,6 +95,7 @@ public class GraphQLProvider {
                         .dataFetcher("extractResult", graphQLDataFetchers.getExtractResult())
                         .dataFetcher("passFails", graphQLDataFetchers.getPassFails())
                         .dataFetcher("reagentPlate", graphQLDataFetchers.getReagentPlate())
+                        .dataFetcher("nextReplicateNumbers", graphQLDataFetchers.nextReplicateNumbers())
 
                         .dataFetcher("users", graphQLDataFetchers.getUsers())
                         .dataFetcher("planData", graphQLDataFetchers.getPlanData())
@@ -164,11 +165,12 @@ public class GraphQLProvider {
                         .dataFetcher("recordVisiumQC", transact(graphQLMutation.recordVisiumQC()))
                         .dataFetcher("recordOpWithSlotMeasurements", transact(graphQLMutation.recordOpWithSlotMeasurements()))
                         .dataFetcher("recordComplexStain", transact(graphQLMutation.recordComplexStain()))
-                        .dataFetcher("aliquot", transact(graphQLMutation.aliquot()))
+                        .dataFetcher("aliquot", graphQLMutation.aliquot()) // internal transaction
                         .dataFetcher("reagentTransfer", transact(graphQLMutation.reagentTransfer()))
                         .dataFetcher("registerOriginalSamples", transact(graphQLMutation.registerOriginalSamples()))
-                        .dataFetcher("performTissueBlock", transact(graphQLMutation.performTissueBlock()))
-                        .dataFetcher("performPotProcessing", transact(graphQLMutation.performPotProcessing()))
+                        .dataFetcher("performTissueBlock", graphQLMutation.performTissueBlock()) // internal transaction
+                        .dataFetcher("performPotProcessing", graphQLMutation.performPotProcessing()) // internal transaction
+                        .dataFetcher("performFFPEProcessing", transact(graphQLMutation.performFFPEProcessing()))
                         .dataFetcher("performSolutionTransfer", transact(graphQLMutation.performSolutionTransfer()))
 
                         .dataFetcher("addUser", transact(graphQLMutation.addUser()))

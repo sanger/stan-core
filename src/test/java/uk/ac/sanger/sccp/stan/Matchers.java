@@ -7,6 +7,7 @@ import uk.ac.sanger.sccp.stan.service.ValidationException;
 
 import java.util.*;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
@@ -14,7 +15,9 @@ import java.util.stream.IntStream;
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.when;
 import static uk.ac.sanger.sccp.utils.BasicUtils.sameContents;
 
 /**
@@ -98,6 +101,14 @@ public class Matchers {
             problems.add(problem);
             return returnValue;
         };
+    }
+
+    public static Transactor mockTransactor(final Transactor mockTransactor) {
+        when(mockTransactor.transact(any(), any())).then(invocation -> {
+            Supplier<?> sup = invocation.getArgument(1);
+            return sup.get();
+        });
+        return mockTransactor;
     }
 
 

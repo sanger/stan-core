@@ -93,11 +93,19 @@ public class EntityCreator {
     }
 
     public Tissue createTissue(Donor donor, String externalName, String replicate) {
+        return createTissue(donor, null, externalName, replicate);
+    }
+
+    public Tissue createTissue(Donor donor, SpatialLocation sl, String externalName, String replicate) {
         if (donor==null) {
             donor = createDonor("DONOR1");
         }
-        return tissueRepo.save(new Tissue(null, externalName, replicate, getAny(slRepo), donor,
+        if (sl==null) {
+            sl = getAny(slRepo);
+        }
+        return tissueRepo.save(new Tissue(null, externalName, replicate, sl, donor,
                 getAny(mediumRepo), getAny(fixativeRepo), getAny(hmdmcRepo), null, null));
+
     }
 
     public Sample createSample(Tissue tissue, Integer section) {
