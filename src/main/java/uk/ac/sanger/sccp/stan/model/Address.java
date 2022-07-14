@@ -57,7 +57,7 @@ public class Address implements Comparable<Address> {
      * <p>Formats:
      * <ul>
      *     <li><tt>"B13"</tt> for row 2, column 13 (if {@code row <= 26})</li>
-     *     <li><tt>"32,15"</tt> for row 32, column 15 (if {@code row > 26}</li>
+     *     <li><tt>"32,15"</tt> for row 32, column 15 (if {@code row > 26})</li>
      * </ul>
      * @return a string representation of this address
      */

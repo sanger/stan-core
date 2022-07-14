@@ -5,19 +5,18 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
 import org.mockito.ArgumentCaptor;
-import uk.ac.sanger.sccp.stan.EntityFactory;
-import uk.ac.sanger.sccp.stan.Matchers;
+import uk.ac.sanger.sccp.stan.*;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.request.TissueBlockRequest;
 import uk.ac.sanger.sccp.stan.request.TissueBlockRequest.TissueBlockLabware;
+import uk.ac.sanger.sccp.stan.service.store.StoreService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
-import java.util.function.Consumer;
-import java.util.function.Function;
+import java.util.function.*;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -48,6 +47,8 @@ public class TestBlockProcessingService {
     private OperationService mockOpService;
     private LabwareService mockLwService;
     private WorkService mockWorkService;
+    private StoreService mockStoreService;
+    private Transactor mockTransactor;
 
     private BlockProcessingServiceImp service;
 
@@ -70,18 +71,53 @@ public class TestBlockProcessingService {
         mockOpService = mock(OperationService.class);
         mockLwService = mock(LabwareService.class);
         mockWorkService = mock(WorkService.class);
+        mockStoreService = mock(StoreService.class);
+        mockTransactor = mock(Transactor.class);
 
         service = spy(new BlockProcessingServiceImp(mockLwValFactory, mockPrebarcodeValidator, mockReplicateValidator,
                 mockLwRepo, mockSlotRepo, mockOpTypeRepo, mockOpCommentRepo, mockMediumRepo, mockLtRepo,
                 mockBsRepo, mockTissueRepo, mockSampleRepo,
-                mockCommentValidationService, mockOpService, mockLwService, mockWorkService));
+                mockCommentValidationService, mockOpService, mockLwService, mockWorkService, mockStoreService,
+                mockTransactor));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"true,true", "true,false", "false,true"})
+    public void testPerform(boolean succeeds, boolean discard) {
+        User user = EntityFactory.getUser();
+        TissueBlockRequest request = new TissueBlockRequest(List.of());
+        if (discard) {
+            request.setDiscardSourceBarcodes(List.of("STAN-A1"));
+        }
+        Matchers.mockTransactor(mockTransactor);
+        OperationResult opres;
+        if (succeeds) {
+            opres = new OperationResult(List.of(), List.of());
+            doReturn(opres).when(service).performInsideTransaction(any(), any());
+        } else {
+            opres = null;
+            doThrow(ValidationException.class).when(service).performInsideTransaction(any(), any());
+        }
+
+        if (succeeds) {
+            assertSame(opres, service.perform(user, request));
+        } else {
+            assertThrows(ValidationException.class, () -> service.perform(user, request));
+        }
+        verify(mockTransactor).transact(any(), any());
+        verify(service).performInsideTransaction(user, request);
+        if (succeeds && discard) {
+            verify(mockStoreService).discardStorage(user, request.getDiscardSourceBarcodes());
+        } else {
+            verifyNoInteractions(mockStoreService);
+        }
     }
 
     @Test
-    public void testPerform_noLabware() {
+    public void testPerformInTransaction_noLabware() {
         User user = EntityFactory.getUser();
         TissueBlockRequest request = new TissueBlockRequest(List.of());
-        assertValidationException(() -> service.perform(user, request),
+        assertValidationException(() -> service.performInsideTransaction(user, request),
                 "The request could not be validated.",
                 "No labware specified in request.");
         verifyNoInteractions(mockWorkService);
@@ -92,7 +128,7 @@ public class TestBlockProcessingService {
     }
 
     @Test
-    public void testPerform_invalid() {
+    public void testPerformInsideTransaction_invalid() {
         User user = EntityFactory.getUser();
         TissueBlockLabware block = new TissueBlockLabware("STAN-1", "lt", "1a", "med");
         TissueBlockRequest request = new TissueBlockRequest(List.of(block), "SGP5", List.of("STAN-1"));
@@ -108,7 +144,7 @@ public class TestBlockProcessingService {
 
         stubValidation(sources, lwTypes, work, commentMap, mediums, problem);
 
-        assertValidationException(() -> service.perform(user, request),
+        assertValidationException(() -> service.performInsideTransaction(user, request),
                 "The request could not be validated.", problem);
 
         verifyValidation(request, sources, lwTypes);
@@ -116,7 +152,7 @@ public class TestBlockProcessingService {
 
     @ParameterizedTest
     @ValueSource(booleans={false,true})
-    public void testPerform(boolean simple) {
+    public void testPerformInTransaction(boolean simple) {
         Work work = (simple ? null : new Work(5, "SGP5", null, null, null, null));
         Comment comment = (simple ? null : new Comment(50, "Interesting", "science"));
         TissueBlockLabware block = new TissueBlockLabware("STAN-1", "lt", "1a", "Med");
@@ -146,7 +182,7 @@ public class TestBlockProcessingService {
         doNothing().when(service).discardSources(any(), any());
 
         User user = EntityFactory.getUser();
-        assertEquals(new OperationResult(ops, dests), service.perform(user, request));
+        assertEquals(new OperationResult(ops, dests), service.performInsideTransaction(user, request));
 
         verifyValidation(request, sources, ltMap);
         verifyCreation(request, user, sources, dests, mediums, commentMap, work, samples, ltMap, ops);

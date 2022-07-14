@@ -604,7 +604,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
 
     public DataFetcher<RegisterResult> registerOriginalSamples() {
         return dfe -> {
-            User user = checkUser(dfe, User.Role.admin);
+            User user = checkUser(dfe, User.Role.normal);
             OriginalSampleRegisterRequest request = arg(dfe, "request", OriginalSampleRegisterRequest.class);
             logRequest("Register original samples", user, request);
             return originalSampleRegisterService.register(user, request);

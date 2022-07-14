@@ -299,10 +299,13 @@ public class LabwareLabelDataService {
 
     public LabelContent getContent(Sample sample) {
         Tissue tissue = sample.getTissue();
-        final String stateDesc = sample.getBioState().getName();
+        String stateDesc = sample.getBioState().getName();
         if (stateDesc.equalsIgnoreCase("Tissue")) {
             return new LabelContent(tissue.getDonor().getDonorName(),
                     getTissueDesc(tissue), tissue.getReplicate(), sample.getSection());
+        }
+        if (stateDesc.equalsIgnoreCase("Original sample")) {
+            stateDesc = "Original";
         }
         return new LabelContent(tissue.getDonor().getDonorName(),
                 getTissueDesc(tissue), tissue.getReplicate(), stateDesc);

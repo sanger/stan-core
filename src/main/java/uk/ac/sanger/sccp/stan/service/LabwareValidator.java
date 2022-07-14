@@ -217,7 +217,7 @@ public class LabwareValidator {
                 for (Slot slot : lw.getSlots()) {
                     for (Sample sample : slot.getSamples()) {
                         if (!sample.getBioState().equals(bs)) {
-                            wrongBS.add(lw.getBarcode());
+                            wrongBS.add(String.format("(%s, %s)", lw.getBarcode(), sample.getBioState()));
                             continue labwareLoop;
                         }
                     }

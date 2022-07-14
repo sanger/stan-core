@@ -2,11 +2,13 @@ package uk.ac.sanger.sccp.stan.service.operation;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import uk.ac.sanger.sccp.stan.Transactor;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.AliquotRequest;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.service.*;
+import uk.ac.sanger.sccp.stan.service.store.StoreService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 
 import java.util.*;
@@ -30,12 +32,15 @@ public class AliquotServiceImp implements AliquotService {
     private final WorkService workService;
     private final LabwareService lwService;
     private final OperationService opService;
+    private final StoreService storeService;
+    private final Transactor transactor;
 
     @Autowired
     public AliquotServiceImp(LabwareRepo lwRepo, LabwareTypeRepo lwTypeRepo, SlotRepo slotRepo,
                              OperationTypeRepo opTypeRepo, SampleRepo sampleRepo,
                              LabwareValidatorFactory lwValFactory,
-                             WorkService workService, LabwareService lwService, OperationService opService) {
+                             WorkService workService, LabwareService lwService, OperationService opService,
+                             StoreService storeService, Transactor transactor) {
         this.lwRepo = lwRepo;
         this.lwTypeRepo = lwTypeRepo;
         this.slotRepo = slotRepo;
@@ -45,10 +50,21 @@ public class AliquotServiceImp implements AliquotService {
         this.workService = workService;
         this.lwService = lwService;
         this.opService = opService;
+        this.storeService = storeService;
+        this.transactor = transactor;
     }
 
     @Override
     public OperationResult perform(User user, AliquotRequest request) throws ValidationException {
+        OperationResult opres = transactor.transact("Aliquoting", () -> performInTransaction(user, request));
+        OperationType opType = opres.getOperations().get(0).getOperationType();
+        if (opType.discardSource()) {
+            storeService.discardStorage(user, List.of(request.getBarcode()));
+        }
+        return opres;
+    }
+
+    public OperationResult performInTransaction(User user, AliquotRequest request) throws ValidationException {
         requireNonNull(user, "User is null");
         requireNonNull(request, "Request is null");
         final Set<String> problems = new LinkedHashSet<>();
