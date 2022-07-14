@@ -153,7 +153,7 @@ public class TestSlotCopyService {
     @ValueSource(booleans={false, true})
     public void testPerformInsideTransaction(boolean valid) {
         List<SlotCopyContent> contents = List.of(new SlotCopyContent("SOURCE1", new Address(1, 2), new Address(3, 4)));
-        Work work = new Work(50, "SGP5000", null, null, null, Work.Status.active);
+        Work work = new Work(50, "SGP5000", null, null, null, null, Work.Status.active);
         when(mockWorkService.validateUsableWork(any(), any())).thenReturn(work);
         SlotCopyRequest request = new SlotCopyRequest(opType.getName(), plateType.getName(), contents, work.getWorkNumber());
         when(mockOpTypeRepo.findByName(any())).thenReturn(Optional.of(opType));
@@ -349,7 +349,7 @@ public class TestSlotCopyService {
         Operation op = new Operation(100, opType, null, null, null);
         doReturn(op).when(service).createOperation(any(), any(), any(), any(), any(), any());
         final Address A1 = new Address(1,1);
-        Work work = new Work(14, "SGP5000", null, null, null, Work.Status.active);
+        Work work = new Work(14, "SGP5000", null, null, null, null, Work.Status.active);
 
         List<SlotCopyContent> contents = List.of(new SlotCopyContent("STAN-001", A1, A1));
 

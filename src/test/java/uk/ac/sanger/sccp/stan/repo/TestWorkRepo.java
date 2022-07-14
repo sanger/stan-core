@@ -96,8 +96,9 @@ public class TestWorkRepo {
         Project pr = entityCreator.createProject("Stargate");
         CostCode cc = entityCreator.createCostCode("S5000");
         WorkType workType = entityCreator.createWorkType("Drywalling");
+        ReleaseRecipient workRequester = entityCreator.createReleaseRecipient("test1");
         assertThrows(EntityNotFoundException.class, () -> workRepo.getByWorkNumber("SGP404"));
-        Work work = workRepo.save(new Work(null, "SGP404", workType, pr, cc, Status.active));
+        Work work = workRepo.save(new Work(null, "SGP404", workType, workRequester, pr, cc, Status.active));
         assertEquals(work, workRepo.getByWorkNumber("sgp404"));
     }
 
@@ -107,7 +108,8 @@ public class TestWorkRepo {
         Project pr = entityCreator.createProject("Stargate");
         CostCode cc = entityCreator.createCostCode("S5000");
         WorkType workType = entityCreator.createWorkType("Drywalling");
-        List<Work> newWorks = IntStream.range(0,3).mapToObj(n -> new Work(null, "SGP"+n, workType, pr, cc, Status.active))
+        ReleaseRecipient workRequester = entityCreator.createReleaseRecipient("test1");
+        List<Work> newWorks = IntStream.range(0,3).mapToObj(n -> new Work(null, "SGP"+n, workType, workRequester, pr, cc, Status.active))
                 .collect(toList());
         var saved = workRepo.saveAll(newWorks);
         List<Work> loaded = workRepo.findAllByWorkNumberIn(List.of("SGP0", "SGP1", "SGP2", "SGP404"));
@@ -120,11 +122,12 @@ public class TestWorkRepo {
         Project pr = entityCreator.createProject("Stargate");
         CostCode cc = entityCreator.createCostCode("S5000");
         WorkType type = entityCreator.createWorkType("Drywalling");
+        ReleaseRecipient workRequester = entityCreator.createReleaseRecipient("test1");
         Map<Status, Work> works = new EnumMap<>(Status.class);
         final Status[] statuses = Status.values();
         int n = 7000;
         for (Status st : statuses) {
-            works.put(st, workRepo.save(new Work(null, "SGP" + n, type, pr, cc, st)));
+            works.put(st, workRepo.save(new Work(null, "SGP" + n, type, workRequester, pr, cc, st)));
             ++n;
         }
         for (Status st : statuses) {
@@ -142,10 +145,11 @@ public class TestWorkRepo {
         WorkType type1 = entityCreator.createWorkType("Drywalling");
         WorkType type2 = entityCreator.createWorkType("Lasers");
         WorkType type3 = entityCreator.createWorkType("Death Star");
+        ReleaseRecipient workRequester = entityCreator.createReleaseRecipient("test1");
         Status st = Status.active;
-        Work work1 = workRepo.save(new Work(null, "SGP1", type1, pr, cc, st));
-        Work work2 = workRepo.save(new Work(null, "SGP2", type2, pr, cc, st));
-        Work work3 = workRepo.save(new Work(null, "SGP3", type1, pr, cc, st));
+        Work work1 = workRepo.save(new Work(null, "SGP1", type1, workRequester, pr, cc, st));
+        Work work2 = workRepo.save(new Work(null, "SGP2", type2, workRequester, pr, cc, st));
+        Work work3 = workRepo.save(new Work(null, "SGP3", type1, workRequester, pr, cc, st));
         assertThat(workRepo.findAllByWorkTypeIn(List.of(type1))).containsExactlyInAnyOrder(work1, work3);
         assertThat(workRepo.findAllByWorkTypeIn(List.of(type1, type2))).containsExactlyInAnyOrder(work1, work2, work3);
         assertThat(workRepo.findAllByWorkTypeIn(List.of(type3))).isEmpty();
@@ -163,7 +167,8 @@ public class TestWorkRepo {
         CostCode cc = entityCreator.createCostCode("S1000");
         Project project = entityCreator.createProject("Stargate");
         WorkType workType = entityCreator.createWorkType("Drywalling");
-        Work work = workRepo.save(new Work(null, "SGP123", workType, project, cc, Status.active));
+        ReleaseRecipient workRequester = entityCreator.createReleaseRecipient("test1");
+        Work work = workRepo.save(new Work(null, "SGP123", workType, workRequester, project, cc, Status.active));
         assertNotNull(work.getId());
         List<Integer> opIds;
         if (problem==1) {
@@ -211,8 +216,8 @@ public class TestWorkRepo {
     @Transactional
     @Test
     public void testFindLabwareIdsForWorkIds() {
-        Work work1 = entityCreator.createWork(null, null, null);
-        Work work2 = entityCreator.createWork(work1.getWorkType(), work1.getProject(), work1.getCostCode());
+        Work work1 = entityCreator.createWork(null, null,null, null);
+        Work work2 = entityCreator.createWork(work1.getWorkType(), work1.getProject(), work1.getCostCode(), work1.getWorkRequester());
 
         List<Integer> labwareIds = workRepo.findLabwareIdsForWorkIds(List.of(work1.getId(), work2.getId()));
         assertThat(labwareIds).isEmpty();
@@ -245,8 +250,8 @@ public class TestWorkRepo {
     @Transactional
     @Test
     public void testFindWorkNumbersForOpIds() {
-        Work work1 = entityCreator.createWork(null, null, null);
-        Work work2 = entityCreator.createWork(work1.getWorkType(), work1.getProject(), work1.getCostCode());
+        Work work1 = entityCreator.createWork(null, null, null, null);
+        Work work2 = entityCreator.createWork(work1.getWorkType(), work1.getProject(), work1.getCostCode(), work1.getWorkRequester());
         String workNum1 = work1.getWorkNumber();
         String workNum2 = work2.getWorkNumber();
         int[] opIds = IntStream.range(0,4).map(i -> createOpId()).toArray();

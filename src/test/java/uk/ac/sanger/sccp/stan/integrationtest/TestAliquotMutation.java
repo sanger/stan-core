@@ -56,7 +56,7 @@ public class TestAliquotMutation {
         Tissue tissue = entityCreator.createTissue(null, "EXT1");
         Sample sample = entityCreator.createSample(tissue, null);
         Labware sourceLw = entityCreator.createLabware("STAN-1A", tubeType, sample);
-        Work work = entityCreator.createWork(null, null, null);
+        Work work = entityCreator.createWork(null, null, null, null);
         String mutation = tester.readGraphQL("aliquot.graphql")
                 .replace("SOURCE", sourceLw.getBarcode())
                 .replace("WORK", work.getWorkNumber())

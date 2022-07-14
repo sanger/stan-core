@@ -53,7 +53,7 @@ public class TestVisiumAnalysisService {
         User user = EntityFactory.getUser();
         String workNumber = (withWorkNumber ? "SGP500" : null);
         Work work = (withWorkNumber ?
-                new Work(500, workNumber, null, null, null, Work.Status.active)
+                new Work(500, workNumber, null, null, null, null, Work.Status.active)
                 : null);
         Labware lw = EntityFactory.getTube();
         String barcode = lw.getBarcode();
@@ -201,7 +201,7 @@ public class TestVisiumAnalysisService {
         when(mockOpService.createOperationInPlace(opType, user, lw, null, null)).thenReturn(op);
         doReturn(List.of()).when(service).createMeasurement(slot, "240", op.getId());
         Work work = (withWork ?
-                new Work(20, "SGP20", null, null, null, Work.Status.active)
+                new Work(20, "SGP20", null, null, null, null, Work.Status.active)
                 : null);
         OperationResult opres = service.recordAnalysis(user, lw, A1, 240, work);
         assertThat(opres.getOperations()).containsExactly(op);

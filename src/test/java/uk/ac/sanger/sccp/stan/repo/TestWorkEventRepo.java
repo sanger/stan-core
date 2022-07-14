@@ -40,8 +40,9 @@ public class TestWorkEventRepo {
         WorkType wt = entityCreator.createWorkType("Rocks");
         Project pr = entityCreator.createProject("Stargate");
         CostCode cc = entityCreator.createCostCode("4");
-        Work work1 = entityCreator.createWork(wt, pr, cc);
-        Work work2 = entityCreator.createWork(wt, pr, cc);
+        ReleaseRecipient wr = entityCreator.createReleaseRecipient("test1");
+        Work work1 = entityCreator.createWork(wt, pr, cc, wr);
+        Work work2 = entityCreator.createWork(wt, pr, cc, wr);
         Comment com1 = commentRepo.save(new Comment(null, "Alpha", "work"));
         Comment com2 = commentRepo.save(new Comment(null, "Beta", "work"));
 

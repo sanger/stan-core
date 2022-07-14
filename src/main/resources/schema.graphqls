@@ -889,6 +889,8 @@ type Work {
     costCode: CostCode!
     """The unique (generated) string identifying this work."""
     workNumber: String!
+    """The name of the person requesting the work.(Note sure how to deal with this as the existing work will all be null but future work we want it mandatory?)"""
+    workRequester: ReleaseRecipient
     """The current status of the work."""
     status: WorkStatus!
     """The number of blocks that this work still needs to be done on.
@@ -897,6 +899,9 @@ type Work {
     """The number of slides that this work still needs to be done on.
     This is set and updated by users during the course of the work."""
     numSlides: Int
+    """The number of original samples that this work still needs to be done on.
+    This is set and updated by users during the course of the work."""
+    numOriginalSamples: Int
     """A string describing the priority of this work.
     This is set and updated by users during the course of the work."""
     priority: String
@@ -1497,13 +1502,15 @@ type Mutation {
     setSolutionEnabled(name: String!, enabled: Boolean!): Solution!
 
     """Create a new work, which will be allocated a new work number with the given prefix."""
-    createWork(prefix: String!, workType: String!, project: String!, costCode: String!, numBlocks: Int, numSlides: Int): Work!
+    createWork(prefix: String!, workType: String!, workRequester: String!, project: String!, costCode: String!, numBlocks: Int, numSlides: Int, numOriginalSamples: Int): Work!
     """Update the status of an existing work."""
     updateWorkStatus(workNumber: String!, status: WorkStatus!, commentId: Int): WorkWithComment!
     """Update the number of blocks field in a work."""
     updateWorkNumBlocks(workNumber: String!, numBlocks: Int): Work!
     """Update the number of slides field in a work."""
     updateWorkNumSlides(workNumber: String!, numSlides: Int): Work!
+    """Update the number of original samples field in a work."""
+    updateWorkNumOriginalSamples(workNumber: String!, numOriginalSamples: Int): Work!
     """Update the priority of a work."""
     updateWorkPriority(workNumber: String!, priority: String): Work!
 

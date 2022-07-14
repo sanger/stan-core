@@ -1,7 +1,8 @@
 mutation {
-    createWork(prefix: "SGP", workType: "Drywalling", project: "Stargate", costCode: "S666") {
+    createWork(prefix: "SGP", workType: "Drywalling", workRequester: "test1", project: "Stargate", costCode: "S666") {
         workNumber
         workType {name}
+        workRequester {username}
         project {name}
         costCode {code}
         status

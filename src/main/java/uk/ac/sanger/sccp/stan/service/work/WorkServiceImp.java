@@ -26,17 +26,19 @@ public class WorkServiceImp implements WorkService {
     private final CostCodeRepo costCodeRepo;
     private final WorkTypeRepo workTypeRepo;
     private final WorkRepo workRepo;
+    private final ReleaseRecipientRepo recipientRepo;
     private final WorkEventService workEventService;
     private final Validator<String> priorityValidator;
 
     @Autowired
     public WorkServiceImp(ProjectRepo projectRepo, CostCodeRepo costCodeRepo, WorkTypeRepo workTypeRepo, WorkRepo workRepo,
-                          WorkEventService workEventService,
+                          ReleaseRecipientRepo recipientRepo, WorkEventService workEventService,
                           @Qualifier("workPriorityValidator") Validator<String> priorityValidator) {
         this.projectRepo = projectRepo;
         this.costCodeRepo = costCodeRepo;
         this.workTypeRepo = workTypeRepo;
         this.workRepo = workRepo;
+        this.recipientRepo = recipientRepo;
         this.workEventService = workEventService;
         this.priorityValidator = priorityValidator;
     }
@@ -51,22 +53,26 @@ public class WorkServiceImp implements WorkService {
     }
 
     @Override
-    public Work createWork(User user, String prefix, String workTypeName, String projectName, String costCode,
-                           Integer numBlocks, Integer numSlides) {
+    public Work createWork(User user, String prefix, String workTypeName, String workRequesterName, String projectName, String costCode,
+                           Integer numBlocks, Integer numSlides, Integer numOriginalSamples) {
         checkPrefix(prefix);
 
         Project project = projectRepo.getByName(projectName);
         CostCode cc = costCodeRepo.getByCode(costCode);
         WorkType type = workTypeRepo.getByName(workTypeName);
+        ReleaseRecipient workRequester = recipientRepo.getByUsername(workRequesterName);
         if (numBlocks!=null && numBlocks < 0) {
             throw new IllegalArgumentException("Number of blocks cannot be a negative number.");
         }
         if (numSlides!=null && numSlides < 0) {
             throw new IllegalArgumentException("Number of slides cannot be a negative number.");
         }
+        if (numOriginalSamples!=null && numOriginalSamples < 0) {
+            throw new IllegalArgumentException("Number of original samples cannot be a negative number.");
+        }
 
         String workNumber = workRepo.createNumber(prefix);
-        Work work = workRepo.save(new Work(null, workNumber, type, project, cc, Status.unstarted, numBlocks, numSlides, null));
+        Work work = workRepo.save(new Work(null, workNumber, type, workRequester, project, cc, Status.unstarted, numBlocks, numSlides, numOriginalSamples, null));
         workEventService.recordEvent(user, work, WorkEvent.Type.create, null);
         return work;
     }
@@ -104,6 +110,19 @@ public class WorkServiceImp implements WorkService {
                 throw new IllegalArgumentException("Number of slides cannot be a negative number.");
             }
             work.setNumSlides(numSlides);
+            work = workRepo.save(work);
+        }
+        return work;
+    }
+
+    @Override
+    public Work updateWorkNumOriginalSamples(User user, String workNumber, Integer numOriginalSamples) {
+        Work work = workRepo.getByWorkNumber(workNumber);
+        if (!Objects.equals(work.getNumOriginalSamples(), numOriginalSamples)) {
+            if (numOriginalSamples != null && numOriginalSamples < 0) {
+                throw new IllegalArgumentException("Number of original samples cannot be a negative number.");
+            }
+            work.setNumOriginalSamples(numOriginalSamples);
             work = workRepo.save(work);
         }
         return work;

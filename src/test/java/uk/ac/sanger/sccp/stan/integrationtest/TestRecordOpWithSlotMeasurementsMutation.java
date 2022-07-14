@@ -46,7 +46,7 @@ public class TestRecordOpWithSlotMeasurementsMutation {
         Sample sam = entityCreator.createSample(entityCreator.createTissue(entityCreator.createDonor("DONOR1"), "TISSUE1"), 1);
         LabwareType lt = entityCreator.createLabwareType("lt1", 1,1);
         Labware lw = entityCreator.createLabware("STAN-A", lt, sam);
-        Work work = entityCreator.createWork(null, null, null);
+        Work work = entityCreator.createWork(null, null, null, null);
         User user = entityCreator.createUser("user1");
         String measName, measValue, sanMeasName, sanMeasValue;
         if (opName.equalsIgnoreCase("cDNA analysis")) {
