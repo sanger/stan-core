@@ -105,6 +105,27 @@ public class TestLabwareLabelDataService {
     }
 
     @Test
+    public void testLabelDataProviasette() {
+        Medium medium = new Medium(1, "Sosostris");
+        Donor donor = EntityFactory.getDonor();
+        SpatialLocation sl = EntityFactory.getSpatialLocation();
+        Tissue tissue = EntityFactory.makeTissue(donor, sl);
+        tissue.setMedium(medium);
+        Sample sample = new Sample(1, null, tissue, EntityFactory.getBioState());
+        LabwareType provType = EntityFactory.makeLabwareType(1, 1, "Proviasette");
+        Labware lw = EntityFactory.makeLabware(provType, sample);
+
+        LabwareLabelData actual = service.getLabelData(lw);
+
+        assertEquals(lw.getBarcode(), actual.getBarcode());
+        assertEquals(medium.getName(), actual.getMedium());
+        assertNotNull(actual.getDate());
+        LabelContent content = new LabelContent(donor.getDonorName(),
+                sl.getTissueType().getCode()+"-"+sl.getCode(), tissue.getReplicate(), medium.getName());
+        assertThat(actual.getContents()).containsExactly(content);
+    }
+
+    @Test
     public void testAddressToSimpleContent_populated() {
         LabwareType lt = makeAdhLabwareType();
         Labware lw = EntityFactory.makeLabware(lt);
