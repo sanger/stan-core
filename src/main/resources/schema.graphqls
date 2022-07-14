@@ -1302,6 +1302,20 @@ input PotProcessingDestination {
     commentId: Int
 }
 
+"""A labware barcode and a comment id to add."""
+input SampleProcessingComment  {
+    """The barcode of the labware."""
+    barcode: String!
+    """The id of the comment."""
+    commentId: Int!
+}
+
+"""Request to record operations and add comments to labware."""
+input SampleProcessingCommentRequest  {
+    """The comments to add for each labware."""
+    labware: [SampleProcessingComment!]!
+}
+
 input AddExternalIDRequest {
     """The external identifier used to identify the tissue."""
     externalName: String!
@@ -1546,6 +1560,8 @@ type Mutation {
     performTissueBlock(request: TissueBlockRequest!): OperationResult!
     """Process an original sample into pots."""
     performPotProcessing(request: PotProcessingRequest!): OperationResult!
+    """Record ops to add sample processing comments."""
+    recordSampleProcessingComments(request: SampleProcessingCommentRequest!): OperationResult!
     """Add solutions to labware."""
     performSolutionTransfer(request: SolutionTransferRequest!): OperationResult!
     """Perform FFPE processing."""

@@ -85,6 +85,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final OriginalSampleRegisterService originalSampleRegisterService;
     final BlockProcessingService blockProcessingService;
     final PotProcessingService potProcessingService;
+    final InPlaceOpCommentService inPlaceOpCommentService;
     final SampleProcessingService sampleProcessingService;
     final SolutionTransferService solutionTransferService;
     final FFPEProcessingService ffpeProcessingService;
@@ -111,6 +112,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            ComplexStainService complexStainService, AliquotService aliquotService,
                            ReagentTransferService reagentTransferService, OriginalSampleRegisterService originalSampleRegisterService,
                            BlockProcessingService blockProcessingService, PotProcessingService potProcessingService,
+                           InPlaceOpCommentService inPlaceOpCommentService,
                            SampleProcessingService sampleProcessingService, SolutionTransferService solutionTransferService,
                            FFPEProcessingService ffpeProcessingService,
                            UserAdminService userAdminService) {
@@ -155,6 +157,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.originalSampleRegisterService = originalSampleRegisterService;
         this.blockProcessingService = blockProcessingService;
         this.potProcessingService = potProcessingService;
+        this.inPlaceOpCommentService = inPlaceOpCommentService;
         this.sampleProcessingService = sampleProcessingService;
         this.solutionTransferService = solutionTransferService;
         this.ffpeProcessingService = ffpeProcessingService;
@@ -647,6 +650,16 @@ public class GraphQLMutation extends BaseGraphQLResource {
             PotProcessingRequest request = arg(dfe, "request", PotProcessingRequest.class);
             logRequest("Perform pot processing", user, request);
             return potProcessingService.perform(user, request);
+        };
+    }
+
+
+    public DataFetcher<OperationResult> addSampleProcessingComments() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            SampleProcessingCommentRequest request = arg(dfe, "request", SampleProcessingCommentRequest.class);
+            logRequest("Record sample processing comments", user, request);
+            return inPlaceOpCommentService.perform(user, "Add sample processing comments", request.getLabware());
         };
     }
 

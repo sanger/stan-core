@@ -9,56 +9,56 @@ import org.springframework.test.context.ActiveProfiles;
 import uk.ac.sanger.sccp.stan.EntityCreator;
 import uk.ac.sanger.sccp.stan.GraphQLTester;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.repo.CommentRepo;
 import uk.ac.sanger.sccp.stan.repo.OperationCommentRepo;
 
 import javax.transaction.Transactional;
-
 import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGet;
 
 /**
- * Tests the mutation performFFPEProcessing
+ * Test recordSampleProcessingComments mutation
  * @author dr6
  */
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
 @ActiveProfiles("test")
 @Import({GraphQLTester.class, EntityCreator.class})
-public class TestFFPEProcessingMutation {
+public class TestRecordSampleProcessingCommentsMutation {
     @Autowired
     private GraphQLTester tester;
     @Autowired
     private EntityCreator entityCreator;
-
     @Autowired
     private OperationCommentRepo opComRepo;
 
-    @Test
     @Transactional
-    public void testFFPEProcessing() throws Exception {
-        OperationType opType = entityCreator.createOpType("FFPE processing", null, OperationTypeFlag.IN_PLACE);
+    @Test
+    public void testSampleProcessingCommentRequest() throws Exception {
+        User user = entityCreator.createUser("user1");
+        OperationType opType = entityCreator.createOpType("Add sample processing comments", null, OperationTypeFlag.IN_PLACE);
+        tester.setUser(user);
+        String mutation = tester.readGraphQL("recordSampleProcessingComments.graphql");
         Sample sample = entityCreator.createSample(null, null);
         LabwareType lt = entityCreator.getTubeType();
         Labware lw = entityCreator.createLabware("STAN-A1", lt, sample);
-        User user = entityCreator.createUser("user1");
-        Work work = entityCreator.createWork(null, null, null, null);
-        tester.setUser(user);
-        String mutation = tester.readGraphQL("ffpeprocessing.graphql")
-                .replace("WORK", work.getWorkNumber());
         Object result = tester.post(mutation);
-        Object data = chainGet(result, "data", "performFFPEProcessing");
-        assertEquals(lw.getBarcode(), chainGet(data, "labware", 0, "barcode"));
-        Map<String, ?> opData = chainGet(data, "operations", 0);
+        List<Map<String, ?>> opsData = chainGet(result, "data", "recordSampleProcessingComments", "operations");
+        assertThat(opsData).hasSize(1);
+        Map<String, ?> opData = opsData.get(0);
         assertEquals(opType.getName(), chainGet(opData, "operationType", "name"));
         Integer opId = (Integer) opData.get("id");
-        final List<OperationComment> opComments = opComRepo.findAllByOperationIdIn(List.of(opId));
-        assertThat(opComments).hasSize(1);
-        var opComment = opComments.get(0);
-        assertEquals(1, opComment.getComment().getId());
+        assertNotNull(opId);
+        List<OperationComment> opComs = opComRepo.findAllByOperationIdIn(List.of(opId));
+        assertThat(opComs).hasSize(2);
+        assertThat(opComs.stream().map(oc -> oc.getComment().getId())).containsExactlyInAnyOrder(1,2);
+        for (OperationComment opCom : opComs) {
+            assertEquals(opId, opCom.getOperationId());
+            assertEquals(lw.getFirstSlot().getId(), opCom.getSlotId());
+        }
     }
 }
