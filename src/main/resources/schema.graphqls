@@ -1297,6 +1297,16 @@ input PotProcessingDestination {
     commentId: Int
 }
 
+"""A request to record FFPE processing."""
+input FFPEProcessingRequest {
+    """The work number."""
+    workNumber: String!
+    """The labware barcodes."""
+    barcodes: [String!]!
+    """The comment ID."""
+    commentId: Int!
+}
+
 """
 Get information from the application.
 These typically require no user privilege.
@@ -1506,6 +1516,8 @@ type Mutation {
     performTissueBlock(request: TissueBlockRequest!): OperationResult!
     """Process an original sample into pots."""
     performPotProcessing(request: PotProcessingRequest!): OperationResult!
+    """Perform FFPE processing."""
+    performFFPEProcessing(request: FFPEProcessingRequest!): OperationResult!
 
     """Create a new user for the application."""
     addUser(username: String!): User!
