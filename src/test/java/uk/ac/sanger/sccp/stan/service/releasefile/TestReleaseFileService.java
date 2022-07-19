@@ -47,10 +47,10 @@ public class TestReleaseFileService {
     private User user;
     private ReleaseDestination destination;
     private ReleaseRecipient recipient;
-    private Sample sample, sample1;
-    private Labware lw1, lw2;
-    private Release release1, release2;
-    private Snapshot snap1, snap2;
+    private Sample sample, sample1,sample2, sample3;
+    private Labware lw1, lw2,lwTOSlide,lw96WellPlate;
+    private Release release1, release2, release3,release4;
+    private Snapshot snap1, snap2,snap3,snap4;
 
 
     @BeforeEach
@@ -77,6 +77,7 @@ public class TestReleaseFileService {
 
     private void setupLabware() {
         LabwareType lt = EntityFactory.makeLabwareType(1, 2);
+
         Tissue tissue = EntityFactory.getTissue();
         BioState bioState = EntityFactory.getBioState();
         sample = new Sample(10, null, tissue, bioState);
@@ -86,6 +87,16 @@ public class TestReleaseFileService {
         lw1.getSlots().get(1).getSamples().add(sample);
 
         lw2 = EntityFactory.makeLabware(lt, sample);
+        LabwareType ltTOSlide = new LabwareType(1, "Visium TO", 4, 2, null, false);
+        sample2 = new Sample(12, 1, tissue, bioState);
+        lwTOSlide =EntityFactory.makeLabware(ltTOSlide);
+        lwTOSlide.getFirstSlot().getSamples().add(sample2);
+
+        LabwareType lt96WellPlate = new LabwareType(2, "96 well plate", 12, 8, null, false);
+        lt96WellPlate.setName("96 Well Plate");
+        sample3 = new Sample(13, 1, tissue, bioState);
+        lw96WellPlate =EntityFactory.makeLabware(lt96WellPlate);
+        lw96WellPlate.getFirstSlot().getSamples().add(sample3);
     }
 
     private void setupReleases() {
@@ -94,8 +105,12 @@ public class TestReleaseFileService {
         }
         snap1 = EntityFactory.makeSnapshot(lw1);
         snap2 = EntityFactory.makeSnapshot(lw2);
+        snap3 = EntityFactory.makeSnapshot(lwTOSlide);
+        snap4 = EntityFactory.makeSnapshot(lw96WellPlate);
         release1 = release(1, lw1, snap1);
         release2 = release(2, lw2, snap2);
+        release3 = release(3, lwTOSlide, snap3);
+        release4 = release(4, lw96WellPlate, snap4);
     }
 
     private Map<Integer, Snapshot> snapMap() {
@@ -666,11 +681,18 @@ public class TestReleaseFileService {
     public void testLoadMeasurements() {
         setupLabware();
         Labware lw0 = EntityFactory.makeLabware(EntityFactory.getTubeType(), sample);
+
+
+        Labware lw96WellPlateSource = EntityFactory.makeLabware(new LabwareType(6, "96 Well Plate", 12, 8, null, false), sample3);
+
+
         // lw0 begat lw1 which begat lw2
         var ancestry = makeAncestry(
                 lw2, sample, lw1, sample,
-                lw1, sample, lw0, sample
+                lw1, sample, lw0, sample,
+                lw96WellPlate,sample3,lw96WellPlateSource,sample3
         );
+
         List<Measurement> measurements = List.of(
                 new Measurement(1, "Thickness", "8", sample.getId(), 10, lw0.getFirstSlot().getId()),
                 new Measurement(2, "Bananas", "X", sample.getId(), 10, lw1.getFirstSlot().getId()),
@@ -678,20 +700,27 @@ public class TestReleaseFileService {
                 new Measurement(4, "Tissue coverage", "30", sample.getId(), 10, lw0.getFirstSlot().getId()),
                 new Measurement(5, "Cq value", "400", sample.getId(), 10, lw1.getFirstSlot().getId()),
                 new Measurement(6, "cDNA concentration", "5.5", sample.getId(), 11, lw1.getFirstSlot().getId()),
-                new Measurement(7, "cDNA concentration", "6.6", sample.getId(), 12, lw2.getFirstSlot().getId())
+                new Measurement(7, "cDNA concentration", "6.6", sample.getId(), 12, lw2.getFirstSlot().getId()),
+                new Measurement(8, "Permeabilisation time", "10", sample2.getId(), 13, lwTOSlide.getFirstSlot().getId()),
+                new Measurement(9, "Permeabilisation time", "40", sample3.getId(), 13, lw96WellPlateSource.getFirstSlot().getId())
         );
 
         Operation op11 = new Operation();
         op11.setOperationType(new OperationType(100, "anything"));
         Operation op12 = new Operation();
         op12.setOperationType(new OperationType(101, "cdna analysis"));
+        Operation op13 = new Operation();
+        op13.setOperationType(new OperationType(102, "Visium permeabilisation"));
         when(mockOpRepo.findById(11)).thenReturn(Optional.of(op11));
         when(mockOpRepo.findById(12)).thenReturn(Optional.of(op12));
+        when(mockOpRepo.findById(13)).thenReturn(Optional.of(op13));
 
         when(mockMeasurementRepo.findAllBySlotIdIn(any())).thenReturn(measurements);
         List<ReleaseEntry> entries = List.of(
                 new ReleaseEntry(lw2, lw2.getFirstSlot(), sample),
-                new ReleaseEntry(lw1, lw1.getFirstSlot(), sample1)
+                new ReleaseEntry(lw1, lw1.getFirstSlot(), sample1),
+                new ReleaseEntry(lwTOSlide, lwTOSlide.getFirstSlot(), sample2),
+                new ReleaseEntry(lw96WellPlate, lw96WellPlate.getFirstSlot(), sample3)
         );
 
         service.loadMeasurements(entries, ancestry);
@@ -702,6 +731,8 @@ public class TestReleaseFileService {
         assertEquals("6.6", entries.get(0).getCdnaAnalysisConcentration());
         assertNull(entries.get(1).getCdnaAnalysisConcentration());
         assertEquals(400, entries.get(0).getCq());
+        assertEquals(10, entries.get(2).getPermTime());
+        assertEquals(40, entries.get(3).getPermTime());
         assertNull(entries.get(1).getCq());
     }
 

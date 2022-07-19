@@ -28,6 +28,7 @@ public class ReleaseEntry {
     private Integer rnascopePlex;
     private Integer ihcPlex;
     private LocalDate sectionDate;
+    private Integer permTime;
 
     public ReleaseEntry(Labware labware, Slot slot, Sample sample) {
         this(labware, slot, sample, null);
@@ -164,6 +165,14 @@ public class ReleaseEntry {
         this.sectionDate = sectionDate;
     }
 
+    public Integer getPermTime() {
+        return this.permTime;
+    }
+
+    public void setPermTime(Integer permTime) {
+        this.permTime = permTime;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -182,10 +191,12 @@ public class ReleaseEntry {
                 && Objects.equals(this.coverage, that.coverage)
                 && Objects.equals(this.reagentSource, that.reagentSource)
                 && Objects.equals(this.cq, that.cq)
+                && Objects.equals(this.permTime, that.permTime)
                 && Objects.equals(this.cdnaAnalysisConcentration, that.cdnaAnalysisConcentration)
                 && Objects.equals(this.rnascopePlex, that.rnascopePlex)
                 && Objects.equals(this.ihcPlex, that.ihcPlex)
                 && Objects.equals(this.sectionDate, that.sectionDate)
+
         );
     }
 
@@ -213,6 +224,7 @@ public class ReleaseEntry {
                 .add("rnascopePlex", rnascopePlex)
                 .add("ihcPlex", ihcPlex)
                 .add("sectionDate", sectionDate)
+                .add("permTime",permTime)
                 .toString();
     }
 }
