@@ -49,8 +49,8 @@ public class TestReleaseFileService {
     private ReleaseRecipient recipient;
     private Sample sample, sample1,sample2, sample3;
     private Labware lw1, lw2,lwTOSlide,lw96WellPlate;
-    private Release release1, release2, release3,release4;
-    private Snapshot snap1, snap2,snap3,snap4;
+    private Release release1, release2, release3, release4;
+    private Snapshot snap1, snap2, snap3, snap4;
 
 
     @BeforeEach
@@ -87,15 +87,16 @@ public class TestReleaseFileService {
         lw1.getSlots().get(1).getSamples().add(sample);
 
         lw2 = EntityFactory.makeLabware(lt, sample);
+
         LabwareType ltTOSlide = new LabwareType(1, "Visium TO", 4, 2, null, false);
         sample2 = new Sample(12, 1, tissue, bioState);
-        lwTOSlide =EntityFactory.makeLabware(ltTOSlide);
+        lwTOSlide = EntityFactory.makeLabware(ltTOSlide);
         lwTOSlide.getFirstSlot().getSamples().add(sample2);
 
         LabwareType lt96WellPlate = new LabwareType(2, "96 well plate", 12, 8, null, false);
         lt96WellPlate.setName("96 Well Plate");
         sample3 = new Sample(13, 1, tissue, bioState);
-        lw96WellPlate =EntityFactory.makeLabware(lt96WellPlate);
+        lw96WellPlate = EntityFactory.makeLabware(lt96WellPlate);
         lw96WellPlate.getFirstSlot().getSamples().add(sample3);
     }
 
@@ -681,10 +682,7 @@ public class TestReleaseFileService {
     public void testLoadMeasurements() {
         setupLabware();
         Labware lw0 = EntityFactory.makeLabware(EntityFactory.getTubeType(), sample);
-
-
         Labware lw96WellPlateSource = EntityFactory.makeLabware(new LabwareType(6, "96 Well Plate", 12, 8, null, false), sample3);
-
 
         // lw0 begat lw1 which begat lw2
         var ancestry = makeAncestry(
