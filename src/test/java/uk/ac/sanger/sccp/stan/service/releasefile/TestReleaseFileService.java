@@ -47,10 +47,10 @@ public class TestReleaseFileService {
     private User user;
     private ReleaseDestination destination;
     private ReleaseRecipient recipient;
-    private Sample sample, sample1,sample2, sample3;
-    private Labware lw1, lw2,lwTOSlide,lw96WellPlate;
-    private Release release1, release2, release3, release4;
-    private Snapshot snap1, snap2, snap3, snap4;
+    private Sample sample, sample1, sample2, sample3;
+    private Labware lw1, lw2, lwTOSlide,lw96WellPlate;
+    private Release release1, release2;
+    private Snapshot snap1, snap2;
 
 
     @BeforeEach
@@ -106,12 +106,8 @@ public class TestReleaseFileService {
         }
         snap1 = EntityFactory.makeSnapshot(lw1);
         snap2 = EntityFactory.makeSnapshot(lw2);
-        snap3 = EntityFactory.makeSnapshot(lwTOSlide);
-        snap4 = EntityFactory.makeSnapshot(lw96WellPlate);
         release1 = release(1, lw1, snap1);
         release2 = release(2, lw2, snap2);
-        release3 = release(3, lwTOSlide, snap3);
-        release4 = release(4, lw96WellPlate, snap4);
     }
 
     private Map<Integer, Snapshot> snapMap() {

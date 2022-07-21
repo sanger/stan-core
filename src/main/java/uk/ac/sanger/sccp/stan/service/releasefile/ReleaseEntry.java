@@ -196,7 +196,6 @@ public class ReleaseEntry {
                 && Objects.equals(this.rnascopePlex, that.rnascopePlex)
                 && Objects.equals(this.ihcPlex, that.ihcPlex)
                 && Objects.equals(this.sectionDate, that.sectionDate)
-
         );
     }
 
@@ -224,7 +223,7 @@ public class ReleaseEntry {
                 .add("rnascopePlex", rnascopePlex)
                 .add("ihcPlex", ihcPlex)
                 .add("sectionDate", sectionDate)
-                .add("permTime",permTime)
+                .add("permTime", permTime)
                 .toString();
     }
 }

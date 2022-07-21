@@ -483,8 +483,7 @@ public class ReleaseFileService {
         final String CDNA_CONC = MeasurementType.cDNA_concentration.friendlyName();
         final String CDNA_ANALYSIS = "cDNA analysis";
         final String PERM_TIME= MeasurementType.Permeabilisation_time.friendlyName();
-        final String VISIUM_TO = "Visium TO";
-        final String VISIUM_LP = "Visium LP";
+        final String VISIUM_TO = "Visium TO", VISIUM_LP = "Visium LP", PLATE_96 = "96 well plate";
         Map<Integer, OperationType> opTypeCache = new HashMap<>();
 
         for (Measurement measurement : measurements) {
@@ -543,7 +542,9 @@ public class ReleaseFileService {
                 entry.setCdnaAnalysisConcentration(concMeasurement.getValue());
             }
 
-            if(entry.getLabware().getLabwareType().getName().equalsIgnoreCase(VISIUM_TO) || entry.getLabware().getLabwareType().getName().equalsIgnoreCase(VISIUM_LP)) {
+            String labwareTypeName = entry.getLabware().getLabwareType().getName();
+
+            if (labwareTypeName.equalsIgnoreCase(VISIUM_TO) || labwareTypeName.equalsIgnoreCase(VISIUM_LP)) {
                 //Retrieving measurements only from released labware (not from ancestors)
                 List<Measurement> permMeasurements = slotIdToPermTimes.get(entry.getSlot().getId());
                 if (permMeasurements!=null && !permMeasurements.isEmpty()) {
@@ -559,8 +560,7 @@ public class ReleaseFileService {
                         }
                     }
                 }
-            }
-            if(entry.getLabware().getLabwareType().getName().equalsIgnoreCase("96 Well Plate")) {
+            } else if (labwareTypeName.equalsIgnoreCase(PLATE_96)) {
                 Measurement permMeasurement = selectMeasurement(entry, slotIdToPermTimes, ancestry);
                 if (permMeasurement != null) {
                     try {
