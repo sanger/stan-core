@@ -486,6 +486,7 @@ public class ReleaseFileService {
         final String VISIUM_TO = "Visium TO";
         final String VISIUM_LP = "Visium LP";
         Map<Integer, OperationType> opTypeCache = new HashMap<>();
+
         for (Measurement measurement : measurements) {
             if (measurement.getOperationId()==null) {
                 continue;
@@ -543,7 +544,7 @@ public class ReleaseFileService {
             }
 
             if(entry.getLabware().getLabwareType().getName().equalsIgnoreCase(VISIUM_TO) || entry.getLabware().getLabwareType().getName().equalsIgnoreCase(VISIUM_LP)) {
-                //Checking only on releases labware not on ancestors
+                //Retrieving measurements only from released labware (not from ancestors)
                 List<Measurement> permMeasurements = slotIdToPermTimes.get(entry.getSlot().getId());
                 if (permMeasurements!=null && !permMeasurements.isEmpty()) {
                     var optMeasurement = permMeasurements.stream()
