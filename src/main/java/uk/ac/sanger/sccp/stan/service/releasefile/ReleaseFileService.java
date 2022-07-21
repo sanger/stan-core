@@ -483,6 +483,8 @@ public class ReleaseFileService {
         final String CDNA_CONC = MeasurementType.cDNA_concentration.friendlyName();
         final String CDNA_ANALYSIS = "cDNA analysis";
         final String PERM_TIME= MeasurementType.Permeabilisation_time.friendlyName();
+        final String VISIUM_TO = "Visium TO";
+        final String VISIUM_LP = "Visium LP";
         Map<Integer, OperationType> opTypeCache = new HashMap<>();
         for (Measurement measurement : measurements) {
             if (measurement.getOperationId()==null) {
@@ -540,7 +542,7 @@ public class ReleaseFileService {
                 entry.setCdnaAnalysisConcentration(concMeasurement.getValue());
             }
 
-            if(entry.getLabware().getLabwareType().getName().equalsIgnoreCase("Visium TO") || entry.getLabware().getLabwareType().getName().equalsIgnoreCase("Visium LP")) {
+            if(entry.getLabware().getLabwareType().getName().equalsIgnoreCase(VISIUM_TO) || entry.getLabware().getLabwareType().getName().equalsIgnoreCase(VISIUM_LP)) {
                 //Checking only on releases labware not on ancestors
                 List<Measurement> permMeasurements = slotIdToPermTimes.get(entry.getSlot().getId());
                 if (permMeasurements!=null && !permMeasurements.isEmpty()) {
