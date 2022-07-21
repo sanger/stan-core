@@ -541,7 +541,7 @@ public class ReleaseFileService {
             }
 
             if(entry.getLabware().getLabwareType().getName().equalsIgnoreCase("Visium TO") || entry.getLabware().getLabwareType().getName().equalsIgnoreCase("Visium LP")) {
-                //Checking only on releases labware not on ancestrors
+                //Checking only on releases labware not on ancestors
                 List<Measurement> permMeasurements = slotIdToPermTimes.get(entry.getSlot().getId());
                 if (permMeasurements!=null && !permMeasurements.isEmpty()) {
                     var optMeasurement = permMeasurements.stream()
