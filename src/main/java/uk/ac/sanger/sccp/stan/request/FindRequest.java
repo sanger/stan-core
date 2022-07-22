@@ -17,6 +17,7 @@ public class FindRequest {
     private String donorName;
     private String tissueExternalName;
     private String tissueTypeName;
+    private String workNumber;
     private LocalDate createdMin;
     private LocalDate createdMax;
 
@@ -25,12 +26,13 @@ public class FindRequest {
     public FindRequest() {}
 
     public FindRequest(String labwareBarcode, String donorName, String tissueExternalName, String tissueTypeName,
-                       int maxRecords, LocalDate createdMin, LocalDate createdMax) {
+                       int maxRecords, String workNumber, LocalDate createdMin, LocalDate createdMax) {
         this.labwareBarcode = labwareBarcode;
         this.donorName = donorName;
         this.tissueExternalName = tissueExternalName;
         this.tissueTypeName = tissueTypeName;
         this.maxRecords = maxRecords;
+        this.workNumber = workNumber;
         this.createdMin = createdMin;
         this.createdMax = createdMax;
     }
@@ -109,6 +111,21 @@ public class FindRequest {
         this.maxRecords = maxRecords;
     }
 
+    /**
+     * A work number to find
+     */
+    public String getWorkNumber() {
+        return this.workNumber;
+    }
+
+    /**
+     * Sets the work number to find
+     */
+    public void setWorkNumber(String workNumber) {
+        this.workNumber = workNumber;
+    }
+
+
     public LocalDate getCreatedMin() {
         return this.createdMin;
     }
@@ -134,7 +151,8 @@ public class FindRequest {
                 && Objects.equals(this.donorName, that.donorName)
                 && Objects.equals(this.tissueExternalName, that.tissueExternalName)
                 && Objects.equals(this.tissueTypeName, that.tissueTypeName)
-                && this.maxRecords==that.maxRecords);
+                && this.maxRecords==that.maxRecords)
+                && Objects.equals(this.workNumber, that.workNumber);
     }
 
     @Override
@@ -150,6 +168,7 @@ public class FindRequest {
                 .add("tissueExternalName", tissueExternalName)
                 .add("tissueTypeName", tissueTypeName)
                 .add("maxRecords", maxRecords)
+                .add("workNumber", workNumber)
                 .add("createdMin", createdMin)
                 .add("createdMax", createdMax)
                 .omitNullValues()

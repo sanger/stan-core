@@ -6,6 +6,7 @@ import uk.ac.sanger.sccp.stan.model.store.Location;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * The result of a find request.
@@ -154,12 +155,14 @@ public class FindResult {
     public static class FindEntry {
         private int sampleId;
         private int labwareId;
+        private Set<String> workNumbers;
 
         public FindEntry() {}
 
-        public FindEntry(int sampleId, int labwareId) {
+        public FindEntry(int sampleId, int labwareId, Set<String> workNumbers) {
             this.sampleId = sampleId;
             this.labwareId = labwareId;
+            this.workNumbers = workNumbers;
         }
 
         /** The id of a sample */
@@ -182,23 +185,32 @@ public class FindResult {
             this.labwareId = labwareId;
         }
 
+        /** The workNumbers assoicated with the entry */
+        public Set<String> getWorkNumbers() {
+            return this.workNumbers;
+        }
+
+        /** Sets the workNumbers for this entry */
+        public void setWorkNumbers(Set<String> workNumbers) { this.workNumbers = workNumbers;}
+
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             FindEntry that = (FindEntry) o;
             return (this.sampleId == that.sampleId
-                    && this.labwareId == that.labwareId);
+                    && this.labwareId == that.labwareId
+                    && this.workNumbers == that.workNumbers);
         }
 
         @Override
         public int hashCode() {
-            return 31*sampleId + labwareId;
+            return Objects.hash(labwareId, sampleId, workNumbers);
         }
 
         @Override
         public String toString() {
-            return String.format("(sampleId=%s, labwareId=%s)", sampleId, labwareId);
+            return String.format("(sampleId=%s, labwareId=%s, workNumbers=%s)", sampleId, labwareId, workNumbers);
         }
     }
 
