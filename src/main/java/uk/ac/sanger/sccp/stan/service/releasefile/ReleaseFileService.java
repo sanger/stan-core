@@ -37,7 +37,6 @@ public class ReleaseFileService {
     private final OperationRepo opRepo;
     private final LabwareNoteRepo lwNoteRepo;
     private final StainTypeRepo stainTypeRepo;
-
     private final ReagentActionDetailService reagentActionDetailService;
 
     @Autowired
@@ -178,7 +177,7 @@ public class ReleaseFileService {
 
     /**
      * Loads and returns a map of snapshot id to shapshot.
-     * Errors if any shapshots cannot be found.
+     * Errors if any snapshots cannot be found.
      * @param releases the releases indicating the snapshots
      * @return a map of snapshots keyed by their id
      * @exception EntityNotFoundException if any snapshots could not be found
@@ -309,6 +308,8 @@ public class ReleaseFileService {
             }
         }
     }
+
+
 
     /**
      * The source for cdna is the first sample found in the ancestry that does not have biostate cDNA.
@@ -475,12 +476,16 @@ public class ReleaseFileService {
         Map<Integer, List<Measurement>> slotIdToCoverage = new HashMap<>();
         Map<Integer, List<Measurement>> slotIdToCq = new HashMap<>();
         Map<Integer, List<Measurement>> slotIdToCDNAConc = new HashMap<>();
+        Map<Integer, List<Measurement>> slotIdToPermTimes = new HashMap<>();
         final String THICKNESS = MeasurementType.Thickness.friendlyName();
         final String COVERAGE = MeasurementType.Tissue_coverage.friendlyName();
         final String CQ = MeasurementType.Cq_value.friendlyName();
         final String CDNA_CONC = MeasurementType.cDNA_concentration.friendlyName();
         final String CDNA_ANALYSIS = "cDNA analysis";
+        final String PERM_TIME= MeasurementType.Permeabilisation_time.friendlyName();
+        final String VISIUM_TO = "Visium TO", VISIUM_LP = "Visium LP", PLATE_96 = "96 well plate";
         Map<Integer, OperationType> opTypeCache = new HashMap<>();
+
         for (Measurement measurement : measurements) {
             if (measurement.getOperationId()==null) {
                 continue;
@@ -506,6 +511,9 @@ public class ReleaseFileService {
                     List<Measurement> slotIdMeasurements = slotIdToCDNAConc.computeIfAbsent(measurement.getSlotId(), k -> new ArrayList<>());
                     slotIdMeasurements.add(measurement);
                 }
+            } else if (measurement.getName().equalsIgnoreCase(PERM_TIME)) {
+                List<Measurement> slotIdMeasurements = slotIdToPermTimes.computeIfAbsent(measurement.getSlotId(), k -> new ArrayList<>());
+                slotIdMeasurements.add(measurement);
             }
         }
         for (ReleaseEntry entry : entries) {
@@ -532,6 +540,35 @@ public class ReleaseFileService {
             Measurement concMeasurement = selectMeasurement(entry, slotIdToCDNAConc, ancestry);
             if (concMeasurement != null) {
                 entry.setCdnaAnalysisConcentration(concMeasurement.getValue());
+            }
+
+            String labwareTypeName = entry.getLabware().getLabwareType().getName();
+
+            if (labwareTypeName.equalsIgnoreCase(VISIUM_TO) || labwareTypeName.equalsIgnoreCase(VISIUM_LP)) {
+                //Retrieving measurements only from released labware (not from ancestors)
+                List<Measurement> permMeasurements = slotIdToPermTimes.get(entry.getSlot().getId());
+                if (permMeasurements!=null && !permMeasurements.isEmpty()) {
+                    var optMeasurement = permMeasurements.stream()
+                            .filter(m -> m.getSampleId().equals(entry.getSample().getId()))
+                            .findAny();
+                    if (optMeasurement.isPresent()) {
+                        Measurement permMeasurementResult = optMeasurement.get();
+                        try {
+                            entry.setPermTime(Integer.valueOf(permMeasurementResult.getValue()));
+                        } catch (NumberFormatException e) {
+                            log.error("Permeabilisation time measurement is not an integer: {}", permMeasurementResult.getValue());
+                        }
+                    }
+                }
+            } else if (labwareTypeName.equalsIgnoreCase(PLATE_96)) {
+                Measurement permMeasurement = selectMeasurement(entry, slotIdToPermTimes, ancestry);
+                if (permMeasurement != null) {
+                    try {
+                        entry.setPermTime(Integer.valueOf(permMeasurement.getValue()));
+                    } catch (NumberFormatException e) {
+                        log.error("Permeabilisation time measurement is not an integer: {}", permMeasurement);
+                    }
+                }
             }
         }
     }
