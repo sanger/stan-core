@@ -47,9 +47,7 @@ public class GraphQLProvider {
 
     @PostConstruct
     public void init() throws IOException {
-        //noinspection UnstableApiUsage
         URL url = Resources.getResource("schema.graphqls");
-        //noinspection UnstableApiUsage
         String sdl = Resources.toString(url, Charsets.UTF_8);
         GraphQLSchema graphQLSchema = buildSchema(sdl);
         this.graphQL = GraphQL.newGraphQL(graphQLSchema)

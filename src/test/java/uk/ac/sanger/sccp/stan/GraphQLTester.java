@@ -66,7 +66,6 @@ public class GraphQLTester {
         return this.mockPrintClientFactory;
     }
 
-    @SuppressWarnings("UnstableApiUsage")
     public String readGraphQL(String path) throws IOException {
         URL url = Resources.getResource("graphql/"+path);
         return Resources.toString(url, Charsets.UTF_8);

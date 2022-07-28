@@ -78,7 +78,6 @@ public class SprintConfig {
         }
     }
 
-    @SuppressWarnings("UnstableApiUsage")
     private StringTemplate readTemplate(String filename) throws IOException {
         URL url = Resources.getResource(filename);
         String templateString = Resources.toString(url, Charsets.UTF_8);
