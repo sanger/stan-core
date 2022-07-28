@@ -425,7 +425,6 @@ public class StoreService {
      * @return the content of the file
      * @exception IOException the resource could not be loaded
      */
-    @SuppressWarnings("UnstableApiUsage")
     protected String readResource(String path) throws IOException {
         URL url = Resources.getResource("storelight/"+path+".graphql");
         return Resources.toString(url, Charsets.UTF_8);
