@@ -18,7 +18,7 @@ public class StanExceptionHandler implements DataFetcherExceptionHandler {
     public DataFetcherExceptionHandlerResult onException(DataFetcherExceptionHandlerParameters handlerParameters) {
         Throwable exception = handlerParameters.getException();
         SourceLocation sourceLocation = handlerParameters.getSourceLocation();
-        ExecutionPath path = handlerParameters.getPath();
+        var path = handlerParameters.getPath();
 
         ExceptionWhileDataFetching error = new ExceptionWhileDataFetching(path, exception, sourceLocation);
         String message = error.getMessage();
