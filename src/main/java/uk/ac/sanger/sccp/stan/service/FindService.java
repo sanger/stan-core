@@ -307,13 +307,13 @@ public class FindService {
             return Set.of();
         }
         return labware.getSlots().stream().flatMap(slot -> {
-            if (slot.getSamples() != null && !slot.getSamples().isEmpty() && slot.getSamples().contains(sample)) {
+            if (slot.getSamples() != null && slot.getSamples().contains(sample)) {
                 Set<Work> works = workRepo.findWorkForSampleIdAndSlotId(sample.getId(), slot.getId());
                 if (works != null && !works.isEmpty()) {
                     return works.stream().map(Work::getWorkNumber);
                 }
             }
-            return null;
+            return Stream.empty();
         }).collect(toSet());
     }
 

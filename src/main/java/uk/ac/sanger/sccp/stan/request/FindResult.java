@@ -185,7 +185,7 @@ public class FindResult {
             this.labwareId = labwareId;
         }
 
-        /** The workNumbers assoicated with the entry */
+        /** The workNumbers associated with the entry */
         public Set<String> getWorkNumbers() {
             return this.workNumbers;
         }
@@ -200,7 +200,7 @@ public class FindResult {
             FindEntry that = (FindEntry) o;
             return (this.sampleId == that.sampleId
                     && this.labwareId == that.labwareId
-                    && this.workNumbers == that.workNumbers);
+                    && Objects.equals(this.workNumbers, that.workNumbers));
         }
 
         @Override

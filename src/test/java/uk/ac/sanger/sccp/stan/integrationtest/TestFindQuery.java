@@ -68,6 +68,18 @@ public class TestFindQuery {
                 entityCreator.createLabware("STAN-03", lt1, samples[2]),
         };
 
+        Project pr = new Project(1, "project", true);
+        CostCode cc = new CostCode(1, "cc1");
+        WorkType workType = new WorkType(1, "worktype", true);
+        ReleaseRecipient workRequester = new ReleaseRecipient(1, "test1");
+        Work work = entityCreator.createWork(workType, pr, cc,workRequester);
+        List<String> workNumbers = List.of(work.getWorkNumber());
+        work.setSampleSlotIds(List.of(
+                new Work.SampleSlotId(samples[0].getId(), labware[0].getSlots().get(0).getId()),
+                new Work.SampleSlotId(samples[1].getId(), labware[1].getSlots().get(0).getId()),
+                new Work.SampleSlotId(samples[2].getId(), labware[2].getSlots().get(0).getId())
+        ));
+
         Location[] locations = {
                 new Location(), new Location()
         };
@@ -106,7 +118,7 @@ public class TestFindQuery {
         List<Map<String, ?>> entriesData = chainGet(findData, "entries");
         assertThat(entriesData).containsExactlyInAnyOrderElementsOf(
                 IntStream.range(0, 2)
-                        .mapToObj(i -> Map.of("labwareId", labware[i].getId(), "sampleId", samples[i].getId()))
+                        .mapToObj(i -> Map.of("labwareId", labware[i].getId(), "sampleId", samples[i].getId(), "workNumbers", workNumbers))
                         .collect(toList())
         );
 

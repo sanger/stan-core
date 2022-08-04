@@ -11,6 +11,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import javax.persistence.EntityManager;
 import javax.transaction.Transactional;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static java.util.stream.Collectors.toList;
@@ -60,5 +61,26 @@ public class TestSlotRepo {
         assertThat(slotRepo.findDistinctBySamplesIn(samples)).hasSize(3).hasSameElementsAs(slots.subList(0,3));
         assertThat(slotRepo.findDistinctBySamplesIn(samples.subList(1,3))).hasSize(2).containsOnly(slots.get(0), slots.get(2));
         assertThat(slotRepo.findDistinctBySamplesIn(samples.subList(2,3))).isEmpty();
+    }
+
+    @Test
+    @Transactional
+    public void testFindAllByIdIn() {
+        Tissue tissue = entityCreator.createTissue(entityCreator.createDonor("DONOR1"),
+                "TISSUE1");
+        BioState bioState = entityCreator.anyBioState();
+        List<Sample> samples = IntStream.range(0,3)
+                .mapToObj(i -> entityCreator.createSample(tissue, i, bioState))
+                .collect(toList());
+        LabwareType lt = entityCreator.createLabwareType("lwtype", 1, 4);
+        Labware lw1 = entityCreator.createLabware("STAN-A1", lt, samples.get(0), samples.get(1));
+        Labware lw2 = entityCreator.createLabware("STAN-A2", lt, samples.get(2));
+        List<Slot> slots1 = lw1.getSlots();
+        List<Slot> slots2 = lw2.getSlots();
+        List<Integer> slot1Ids = slots1.stream().map(Slot::getId).collect(toList());
+        List<Integer> slot2Ids = slots2.stream().map(Slot::getId).collect(toList());
+
+        assertThat(slotRepo.findAllByIdIn(slot1Ids)).isEqualTo(slots1);
+        assertThat(slotRepo.findAllByIdIn(slot2Ids)).isEqualTo(slots2);
     }
 }
