@@ -218,9 +218,6 @@ public class EntityCreator {
         if (workType ==null) {
             workType = createWorkType("Drywalling");
         }
-        if (workRequester ==null) {
-            workRequester = createReleaseRecipient("test1");
-        }
         String workNumber = workRepo.createNumber("SGP");
         return workRepo.save(new Work(null, workNumber, workType, workRequester, project, cc, Work.Status.active));
     }

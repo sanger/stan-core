@@ -62,7 +62,7 @@
                 <constraints nullable="true"/>
             </column>
             <column name="work_requester_id" type="INT">
-                <constraints nullable="false" foreignKeyName="fk_work_requester" referencedTableName="release_recipient" referencedColumnNames="id"/>
+                <constraints nullable="true" foreignKeyName="fk_work_requester" referencedTableName="release_recipient" referencedColumnNames="id"/>
             </column>
         </addColumn>
     </changeSet>
