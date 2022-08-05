@@ -1,0 +1,7 @@
+query {
+    worksSummary {
+        workType { name }
+        status
+        numWorks
+    }
+}

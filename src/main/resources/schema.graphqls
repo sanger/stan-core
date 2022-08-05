@@ -1232,6 +1232,18 @@ type NextReplicateData {
     nextReplicateNumber: Int!
 }
 
+"""A group in a work summary."""
+type WorkSummaryGroup {
+    """The work type of this group."""
+    workType: WorkType!
+    """The work status of this group."""
+    status: WorkStatus!
+    """The number of works in this group."""
+    numWorks: Int!
+    """The total number of labware required as specified in these works."""
+    totalLabwareRequired: Int!
+}
+
 """A specification that a particular reagent slot should be transferred to an address."""
 input ReagentTransfer {
     """The barcode of a reagent plate."""
@@ -1396,6 +1408,8 @@ type Query {
     work(workNumber: String!): Work!
     """Get all the works with associated comment, or get all the ones in the given statuses."""
     worksWithComments(status: [WorkStatus!]): [WorkWithComment!]!
+    """Get summary of works."""
+    worksSummary: [WorkSummaryGroup!]!
     """Get all the users that are enabled, or get all including those that are disabled."""
     users(includeDisabled: Boolean): [User!]!
     """Find where labware is stored, given some criteria."""
