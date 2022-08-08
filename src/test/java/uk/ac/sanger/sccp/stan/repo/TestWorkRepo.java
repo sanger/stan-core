@@ -249,6 +249,46 @@ public class TestWorkRepo {
 
     @Transactional
     @Test
+    public void testFindWorkForSampleIdAndSlotId() {
+        Donor donor = entityCreator.createDonor("DONOR1");
+        Tissue tissue1 = entityCreator.createTissue(donor, "TISSUE1");
+        BioState bs = entityCreator.anyBioState();
+        Tissue tissue2 = entityCreator.createTissue(donor, "TISSUE2", "2");
+        Sample[] samples = {
+                entityCreator.createSample(tissue1, 1, bs),
+                entityCreator.createSample(tissue1, 2, bs),
+                entityCreator.createSample(tissue2, 3, bs),
+        };
+
+        LabwareType lt1 = entityCreator.createLabwareType("lt1", 1, 1);
+
+        Labware[] labware = {
+                entityCreator.createLabware("STAN-01", lt1, samples[0]),
+                entityCreator.createLabware("STAN-02", lt1, samples[1]),
+                entityCreator.createLabware("STAN-03", lt1, samples[2]),
+        };
+
+        Work work1 = entityCreator.createWork(null, null, null, null);
+        Work work2 = entityCreator.createWork(work1.getWorkType(), work1.getProject(), work1.getCostCode(), work1.getWorkRequester());
+
+        work1.setSampleSlotIds(List.of(new Work.SampleSlotId(samples[0].getId(), labware[0].getSlots().get(0).getId())));
+        work2.setSampleSlotIds(List.of(
+                new Work.SampleSlotId(samples[0].getId(), labware[0].getSlots().get(0).getId()),
+                new Work.SampleSlotId(samples[1].getId(), labware[1].getSlots().get(0).getId())
+        ));
+
+        Set<Work> works = workRepo.findWorkForSampleIdAndSlotId(samples[0].getId(), labware[0].getSlots().get(0).getId());
+        assertThat(works).containsExactlyInAnyOrder(work1, work2);
+
+        works = workRepo.findWorkForSampleIdAndSlotId(samples[1].getId(), labware[1].getSlots().get(0).getId());
+        assertThat(works).containsExactlyInAnyOrder(work2);
+
+        works = workRepo.findWorkForSampleIdAndSlotId(samples[2].getId(), labware[2].getSlots().get(0).getId());
+        assertThat(works).isEmpty();
+    }
+
+    @Transactional
+    @Test
     public void testFindWorkNumbersForOpIds() {
         Work work1 = entityCreator.createWork(null, null, null, null);
         Work work2 = entityCreator.createWork(work1.getWorkType(), work1.getProject(), work1.getCostCode(), work1.getWorkRequester());

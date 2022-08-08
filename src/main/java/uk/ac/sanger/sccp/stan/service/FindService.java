@@ -12,14 +12,12 @@ import uk.ac.sanger.sccp.stan.request.FindResult.FindEntry;
 import uk.ac.sanger.sccp.stan.request.FindResult.LabwareLocation;
 import uk.ac.sanger.sccp.stan.service.store.StoreService;
 
-import javax.persistence.EntityNotFoundException;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.*;
-import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
  * Service for finding stored labware
@@ -35,11 +33,12 @@ public class FindService {
     private final TissueRepo tissueRepo;
     private final SampleRepo sampleRepo;
     private final TissueTypeRepo tissueTypeRepo;
-
+    private final WorkRepo workRepo;
+    private final SlotRepo slotRepo;
     @Autowired
     public FindService(LabwareService labwareService, StoreService storeService,
                        LabwareRepo labwareRepo, DonorRepo donorRepo, TissueRepo tissueRepo, SampleRepo sampleRepo,
-                       TissueTypeRepo tissueTypeRepo) {
+                       TissueTypeRepo tissueTypeRepo, WorkRepo workRepo, SlotRepo slotRepo) {
         this.labwareService = labwareService;
         this.storeService = storeService;
         this.labwareRepo = labwareRepo;
@@ -47,6 +46,8 @@ public class FindService {
         this.tissueRepo = tissueRepo;
         this.sampleRepo = sampleRepo;
         this.tissueTypeRepo = tissueTypeRepo;
+        this.workRepo = workRepo;
+        this.slotRepo = slotRepo;
     }
 
     /**
@@ -63,8 +64,10 @@ public class FindService {
             labwareSamples = findByTissueExternalName(request.getTissueExternalName());
         } else if (request.getDonorName()!=null) {
             labwareSamples = findByDonorName(request.getDonorName());
-        } else {
+        } else if (request.getTissueTypeName()!=null) {
             labwareSamples = findByTissueType(request.getTissueTypeName());
+        } else {
+            labwareSamples = findByWorkNumber(request.getWorkNumber());
         }
 
         labwareSamples = filter(labwareSamples, request);
@@ -80,8 +83,8 @@ public class FindService {
      */
     public void validateRequest(FindRequest request) {
         if (request.getDonorName()==null && request.getTissueExternalName()==null && request.getLabwareBarcode()==null
-                && request.getTissueTypeName()==null) {
-            throw new IllegalArgumentException("Donor name or external name or labware barcode or tissue type must be specified.");
+                && request.getTissueTypeName()==null && request.getWorkNumber()==null) {
+            throw new IllegalArgumentException("Donor name or external name or labware barcode or tissue type or work number must be specified.");
         }
     }
 
@@ -95,7 +98,10 @@ public class FindService {
         return lw.getSlots().stream()
                 .flatMap(slot -> slot.getSamples().stream())
                 .distinct()
-                .map(sample -> new LabwareSample(lw, sample))
+                .map(sample -> {
+                    Set<String> workNumbers = getWorkNumbers(lw, sample);
+                    return new LabwareSample(lw, sample, workNumbers);
+                })
                 .collect(toList());
     }
 
@@ -158,6 +164,28 @@ public class FindService {
     }
 
     /**
+     * Finds LabwareSamples given work number.
+     * @param workNumber the number of the work
+     * @return LabwareSamples for each labware containing samples for the specified workNumber
+     */
+    public List<LabwareSample> findByWorkNumber(String workNumber) {
+        Work work = workRepo.getByWorkNumber(workNumber);
+        List<Integer> slotIds = work.getSampleSlotIds().stream().map(Work.SampleSlotId::getSlotId).collect(toList());
+        List<Slot> slots = slotRepo.findAllByIdIn(slotIds);
+        Set<Integer> labwareIds = slots.stream().map(Slot::getLabwareId).collect(toSet());
+        List<Labware> labware = labwareRepo.findAllByIdIn(labwareIds);
+
+        return labware.stream().flatMap(lw -> lw.getSlots().stream()
+                .flatMap(slot -> slot.getSamples().stream())
+                .distinct()
+                .map(sample -> {
+                    Set<String> workNumbers = getWorkNumbers(lw, sample);
+                    return new LabwareSample(lw, sample, workNumbers);
+                }))
+                .collect(toList());
+    }
+
+    /**
      * Gets LabwareSamples for the given labware filtering with the given set of sample ids
      * @param lw a piece of labware
      * @param sampleIds some sample ids
@@ -169,7 +197,10 @@ public class FindService {
                 .flatMap(slot -> slot.getSamples().stream())
                 .filter(slot -> sampleIds.contains(slot.getId()))
                 .distinct()
-                .map(sample -> new LabwareSample(lw, sample));
+                .map(sample -> {
+                    Set<String> workNumbers = getWorkNumbers(lw, sample);
+                    return new LabwareSample(lw, sample, workNumbers);
+                });
     }
 
     /**
@@ -212,6 +243,12 @@ public class FindService {
         if (tissueTypeName!=null) {
             predicate = andPredicate(predicate,
                     ls -> tissueTypeName.equalsIgnoreCase(ls.getSample().getTissue().getTissueType().getName())
+            );
+        }
+        final String workNumber = request.getWorkNumber();
+        if (workNumber!=null) {
+            predicate = andPredicate(predicate,
+                    ls -> ls.getWorkNumbers().contains(workNumber)
             );
         }
         predicate = andPredicate(predicate, datePredicate(request.getCreatedMin(), request.getCreatedMax()));
@@ -260,6 +297,27 @@ public class FindService {
     }
 
     /**
+     * Fetches works numbers for the given labware and sample
+     * @param labware the labware to search for
+     * @param sample the sample to search for
+     * @return a set of work numbers
+     */
+    public Set<String> getWorkNumbers(Labware labware, Sample sample) {
+        if (labware == null || sample == null) {
+            return Set.of();
+        }
+        return labware.getSlots().stream().flatMap(slot -> {
+            if (slot.getSamples() != null && slot.getSamples().contains(sample)) {
+                Set<Work> works = workRepo.findWorkForSampleIdAndSlotId(sample.getId(), slot.getId());
+                if (works != null && !works.isEmpty()) {
+                    return works.stream().map(Work::getWorkNumber);
+                }
+            }
+            return Stream.empty();
+        }).collect(toSet());
+    }
+
+    /**
      * Puts together accumulated info into a FindResult.
      * Of the LabwareSamples given, only the ones with storage locations will be included in the result,
      * except if the labware is specified by its barcode in the request.
@@ -305,7 +363,7 @@ public class FindService {
                     locationMap.putIfAbsent(loc.getId(), loc);
                 }
             }
-            entries.add(new FindEntry(ls.sample.getId(), ls.labware.getId()));
+            entries.add(new FindEntry(ls.sample.getId(), ls.labware.getId(), ls.workNumbers));
         }
 
         return new FindResult(recordCount, entries, new ArrayList<>(sampleMap.values()),
@@ -314,15 +372,17 @@ public class FindService {
     }
 
     /**
-     * A labware and a sample, used as an intermediate in finding results.
+     * A labware, sample and set of work numbers used as an intermediate in finding results.
      */
     static class LabwareSample {
         Labware labware;
         Sample sample;
+        Set<String> workNumbers;
 
-        public LabwareSample(Labware labware, Sample sample) {
+        public LabwareSample(Labware labware, Sample sample, Set<String> workNumbers) {
             this.labware = labware;
             this.sample = sample;
+            this.workNumbers = workNumbers;
         }
 
         public Labware getLabware() {
@@ -333,23 +393,26 @@ public class FindService {
             return this.sample;
         }
 
+        public Set<String> getWorkNumbers() {
+            return this.workNumbers;
+        }
+
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             LabwareSample that = (LabwareSample) o;
-            return (this.labware.getId().equals(that.labware.getId())
-                    && this.sample.getId().equals(that.sample.getId()));
+            return Objects.equals(labware, that.labware) && Objects.equals(sample, that.sample) && Objects.equals(workNumbers, that.workNumbers);
         }
 
         @Override
         public int hashCode() {
-            return 31*this.labware.getId() + this.sample.getId();
+            return Objects.hash(labware, sample, workNumbers);
         }
 
         @Override
         public String toString() {
-            return String.format("(labware=%s, sample=%s)", getLabware().getId(), getSample().getId());
+            return String.format("(labware=%s, sample=%s, workNumbers=%s)", getLabware().getId(), getSample().getId(), getWorkNumbers());
         }
     }
 }

@@ -756,6 +756,8 @@ type FindEntry {
     sampleId: Int!
     """The id of the labware where the sample was found."""
     labwareId: Int!
+    """The list of work numbers assoicated with the entry."""
+    workNumbers: [String]!
 }
 
 """Information that a particular labware was found in a particular location."""
@@ -796,6 +798,8 @@ input FindRequest {
     tissueTypeName: String
     """The maximum number of records to return. Use a negative value to indicate no limit."""
     maxRecords: Int
+    """The work number associated with the labware."""
+    workNumber: String
     """The minimum creation date for the labware."""
     createdMin: Date
     """The maximum creation date for the labware."""

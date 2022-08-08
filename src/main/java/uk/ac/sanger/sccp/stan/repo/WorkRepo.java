@@ -84,4 +84,13 @@ public interface WorkRepo extends CrudRepository<Work, Integer> {
 
     @Query(value="select distinct labware_id from work_sample ws join slot on (ws.slot_id=slot.id) where ws.work_id IN (?1)", nativeQuery = true)
     List<Integer> findLabwareIdsForWorkIds(Collection<Integer> workIds);
+
+    /**
+     * Gets set of work numbers based on sample and slot id
+     * @param sampleId id of sample to search
+     * @param slotId id of slot to search
+     * @return set of the matching works
+     */
+    @Query(value="select * from work_sample ws join work on (ws.work_id=work.id) where ws.sample_id=(?1) and ws.slot_id = (?2)", nativeQuery = true)
+    Set<Work> findWorkForSampleIdAndSlotId(Integer sampleId, Integer slotId);
 }
