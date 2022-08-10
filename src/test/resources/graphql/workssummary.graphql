@@ -3,5 +3,8 @@ query {
         workType { name }
         status
         numWorks
+        totalNumBlocks
+        totalNumSlides
+        totalNumOriginalSamples
     }
 }
