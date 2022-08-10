@@ -12,13 +12,16 @@ public class WorkSummaryGroup {
     private WorkType workType;
     private Work.Status status;
     private int numWorks;
-    private int totalLabwareRequired;
+    private int totalNumBlocks, totalNumSlides, totalNumOriginalSamples;
 
-    public WorkSummaryGroup(WorkType workType, Work.Status status, int numWorks, int totalLabwareRequired) {
+    public WorkSummaryGroup(WorkType workType, Work.Status status, int numWorks,
+                            int totalNumBlocks, int totalNumSlides, int totalNumOriginalSamples) {
         this.workType = workType;
         this.status = status;
         this.numWorks = numWorks;
-        this.totalLabwareRequired = totalLabwareRequired;
+        this.totalNumBlocks = totalNumBlocks;
+        this.totalNumSlides = totalNumSlides;
+        this.totalNumOriginalSamples = totalNumOriginalSamples;
     }
 
     public WorkSummaryGroup() {}
@@ -57,15 +60,38 @@ public class WorkSummaryGroup {
     }
 
     /**
-     * The total number of labware required as specified in these works.
+     * The total number of blocks required as specified in these works.
      */
-    public int getTotalLabwareRequired() {
-        return this.totalLabwareRequired;
+    public int getTotalNumBlocks() {
+        return this.totalNumBlocks;
     }
 
-    public void setTotalLabwareRequired(int totalLabwareRequired) {
-        this.totalLabwareRequired = totalLabwareRequired;
+    public void setTotalNumBlocks(int totalNumBlocks) {
+        this.totalNumBlocks = totalNumBlocks;
     }
+
+    /**
+     * The total number of slides required as specified in these works.
+     */
+    public int getTotalNumSlides() {
+        return this.totalNumSlides;
+    }
+
+    public void setTotalNumSlides(int totalNumSlides) {
+        this.totalNumSlides = totalNumSlides;
+    }
+
+    /**
+     * The total number of original samples required as specified in these works.
+     */
+    public int getTotalNumOriginalSamples() {
+        return this.totalNumOriginalSamples;
+    }
+
+    public void setTotalNumOriginalSamples(int totalNumOriginalSamples) {
+        this.totalNumOriginalSamples = totalNumOriginalSamples;
+    }
+
 
     @Override
     public boolean equals(Object o) {
@@ -73,7 +99,9 @@ public class WorkSummaryGroup {
         if (o == null || getClass() != o.getClass()) return false;
         WorkSummaryGroup that = (WorkSummaryGroup) o;
         return (this.numWorks == that.numWorks
-                && this.totalLabwareRequired == that.totalLabwareRequired
+                && this.totalNumBlocks == that.totalNumBlocks
+                && this.totalNumSlides == that.totalNumSlides
+                && this.totalNumOriginalSamples == that.totalNumOriginalSamples
                 && Objects.equals(this.workType, that.workType)
                 && this.status == that.status);
     }
@@ -85,11 +113,13 @@ public class WorkSummaryGroup {
 
     @Override
     public String toString() {
-        return BasicUtils.describe(this)
-                .add("workType", workType==null ? null : workType.getName())
+        return BasicUtils.describe("WorkSummaryGroup")
+                .add("workType", workType)
                 .add("status", status)
                 .add("numWorks", numWorks)
-                .add("totalLabwareRequired", totalLabwareRequired)
+                .add("totalNumBlocks", totalNumBlocks)
+                .add("totalNumSlides", totalNumSlides)
+                .add("totalNumOriginalSamples", totalNumOriginalSamples)
                 .toString();
     }
 }

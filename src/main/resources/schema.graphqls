@@ -1240,8 +1240,12 @@ type WorkSummaryGroup {
     status: WorkStatus!
     """The number of works in this group."""
     numWorks: Int!
-    """The total number of labware required as specified in these works."""
-    totalLabwareRequired: Int!
+    """The total number of blocks required as specified in these works."""
+    totalNumBlocks: Int!
+    """The total number of slides required as specified in these works."""
+    totalNumSlides: Int!
+    """The total number of original samples required as specified in these works."""
+    totalNumOriginalSamples: Int!
 }
 
 """A specification that a particular reagent slot should be transferred to an address."""

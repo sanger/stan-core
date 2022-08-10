@@ -6,7 +6,6 @@ import uk.ac.sanger.sccp.stan.model.WorkSummaryGroup;
 import uk.ac.sanger.sccp.stan.repo.WorkRepo;
 
 import java.util.*;
-import java.util.stream.Stream;
 
 /**
  * @author dr6
@@ -33,31 +32,32 @@ public class WorkSummaryServiceImp implements WorkSummaryService {
     public Collection<WorkSummaryGroup> createGroups(Iterable<Work> works) {
         Map<GroupKey, WorkSummaryGroup> groupMap = new HashMap<>();
         for (Work work : works) {
-            int lwNum = totalLabwareRequired(work);
             GroupKey key = groupKey(work);
             WorkSummaryGroup group = groupMap.get(key);
+            int numSlides = intOrZero(work.getNumSlides());
+            int numBlocks = intOrZero(work.getNumBlocks());
+            int numOriginalSamples = intOrZero(work.getNumOriginalSamples());
             if (group==null) {
-                group = new WorkSummaryGroup(work.getWorkType(), work.getStatus(), 1, lwNum);
+                group = new WorkSummaryGroup(work.getWorkType(), work.getStatus(), 1,
+                        numBlocks, numSlides, numOriginalSamples);
                 groupMap.put(key, group);
             } else {
                 group.setNumWorks(group.getNumWorks()+1);
-                group.setTotalLabwareRequired(group.getTotalLabwareRequired() + lwNum);
+                group.setTotalNumSlides(group.getTotalNumSlides() + numSlides);
+                group.setTotalNumBlocks(group.getTotalNumBlocks() + numBlocks);
+                group.setTotalNumOriginalSamples(group.getTotalNumOriginalSamples() + numOriginalSamples);
             }
         }
         return groupMap.values();
     }
 
     /**
-     * Finds the total labware required (numBlocks plus numSlides plus numOriginalSamples)
-     * for the work.
-     * @param work the work
-     * @return the total number of labware required, specified in the work
+     * Gets the int value of a number, or zero if the number is null
+     * @param number a number object that may be null
+     * @return the int value of the number, or zero
      */
-    public int totalLabwareRequired(Work work) {
-        return Stream.of(work.getNumBlocks(), work.getNumSlides(), work.getNumOriginalSamples())
-                .filter(Objects::nonNull)
-                .mapToInt(Integer::intValue)
-                .sum();
+    public static int intOrZero(Number number) {
+        return (number==null ? 0 : number.intValue());
     }
 
     /**

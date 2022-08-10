@@ -15,6 +15,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.mockito.Mockito.*;
 
+/**
+ * Tests {@link WorkSummaryServiceImp}
+ */
 public class TestWorkSummaryService {
     private WorkRepo mockWorkRepo;
     private WorkSummaryServiceImp service;
@@ -31,10 +34,10 @@ public class TestWorkSummaryService {
     public void testLoadWorkSummary() {
         WorkType workType = new WorkType(1, "Frying");
 
-        List<Work> works = List.of(work(workType, Status.active, 1, 2, 3));
+        List<Work> works = List.of(work(workType, Status.active, 1, null, 3));
 
         when(mockWorkRepo.findAll()).thenReturn(works);
-        assertThat(service.loadWorkSummary()).containsExactly(new WorkSummaryGroup(workType, Status.active, 1, 6));
+        assertThat(service.loadWorkSummary()).containsExactly(new WorkSummaryGroup(workType, Status.active, 1, 1, 0, 3));
 
         verify(service).createGroups(works);
     }
@@ -44,25 +47,25 @@ public class TestWorkSummaryService {
         WorkType wt1 = new WorkType(1, "Frying");
         WorkType wt2 = new WorkType(2, "Baking");
         List<Work> works = List.of(
-                work(wt1, Status.active, 2, 0, 0),
-                work(wt1, Status.completed, 0, 3, 0),
-                work(wt2, Status.active, 0, 0, 4),
+                work(wt1, Status.active, 2, null, 0),
+                work(wt1, Status.completed, 0, 3, null),
+                work(wt2, Status.active, null, 0, 4),
                 work(wt1, Status.active, 0, 5, 0),
+                work(wt1, Status.active, 5, 6, 7),
                 work(wt2, Status.failed, 0, 0, 6)
         );
         assertThat(service.createGroups(works)).containsExactlyInAnyOrder(
-                new WorkSummaryGroup(wt1, Status.active, 2, 7),
-                new WorkSummaryGroup(wt1, Status.completed, 1, 3),
-                new WorkSummaryGroup(wt2, Status.active, 1, 4),
-                new WorkSummaryGroup(wt2, Status.failed, 1, 6)
+                new WorkSummaryGroup(wt1, Status.active, 3, 7, 11, 7),
+                new WorkSummaryGroup(wt1, Status.completed, 1, 0, 3, 0),
+                new WorkSummaryGroup(wt2, Status.active, 1, 0, 0, 4),
+                new WorkSummaryGroup(wt2, Status.failed, 1, 0, 0, 6)
         );
     }
 
     @ParameterizedTest
-    @CsvSource({"0,0,0,0", "3,0,0,3", "0,4,0,4", "0,0,7,7", "1,2,3,6", ",,,0", ",2,,2"})
-    public void testTotalLabwareRequired(Integer numBlocks, Integer numSlides, Integer numOriginal, int expected) {
-        Work work = work(null, null, numBlocks, numSlides, numOriginal);
-        assertEquals(expected, service.totalLabwareRequired(work));
+    @CsvSource({",0", "1,1", "2,2", "-3,-3"})
+    public void testIntOrZero(Integer arg, int expected) {
+        assertEquals(expected, WorkSummaryServiceImp.intOrZero(arg));
     }
 
     @ParameterizedTest
