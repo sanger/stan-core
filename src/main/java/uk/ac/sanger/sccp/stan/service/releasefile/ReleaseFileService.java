@@ -554,7 +554,7 @@ public class ReleaseFileService {
                     if (optMeasurement.isPresent()) {
                         Measurement permMeasurementResult = optMeasurement.get();
                         try {
-                            entry.setPermTime(Integer.valueOf(permMeasurementResult.getValue()));
+                            entry.setPermTime(toMinutes(permMeasurementResult.getValue()));
                         } catch (NumberFormatException e) {
                             log.error("Permeabilisation time measurement is not an integer: {}", permMeasurementResult.getValue());
                         }
@@ -564,13 +564,29 @@ public class ReleaseFileService {
                 Measurement permMeasurement = selectMeasurement(entry, slotIdToPermTimes, ancestry);
                 if (permMeasurement != null) {
                     try {
-                        entry.setPermTime(Integer.valueOf(permMeasurement.getValue()));
+                        entry.setPermTime(toMinutes(permMeasurement.getValue()));
                     } catch (NumberFormatException e) {
                         log.error("Permeabilisation time measurement is not an integer: {}", permMeasurement);
                     }
                 }
             }
         }
+    }
+
+    public static String toMinutes(String secondsValue) {
+        int sec = Integer.parseInt(secondsValue);
+        if (sec==0) {
+            return "0 min";
+        }
+        int min = sec / 60;
+        sec %= 60;
+        if (min==0) {
+            return sec+" sec";
+        }
+        if (sec==0) {
+            return min+" min";
+        }
+        return String.format("%d min, %d sec", min, sec);
     }
 
     public void loadReagentSources(Collection<ReleaseEntry> entries) {

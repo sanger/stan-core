@@ -28,7 +28,7 @@ public class ReleaseEntry {
     private Integer rnascopePlex;
     private Integer ihcPlex;
     private LocalDate sectionDate;
-    private Integer permTime;
+    private String permTime;
 
     public ReleaseEntry(Labware labware, Slot slot, Sample sample) {
         this(labware, slot, sample, null);
@@ -165,11 +165,11 @@ public class ReleaseEntry {
         this.sectionDate = sectionDate;
     }
 
-    public Integer getPermTime() {
+    public String getPermTime() {
         return this.permTime;
     }
 
-    public void setPermTime(Integer permTime) {
+    public void setPermTime(String permTime) {
         this.permTime = permTime;
     }
 
