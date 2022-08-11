@@ -696,7 +696,7 @@ public class TestReleaseFileService {
                 new Measurement(6, "cDNA concentration", "5.5", sample.getId(), 11, lw1.getFirstSlot().getId()),
                 new Measurement(7, "cDNA concentration", "6.6", sample.getId(), 12, lw2.getFirstSlot().getId()),
                 new Measurement(8, "Permeabilisation time", "10", sample2.getId(), 13, lwTOSlide.getFirstSlot().getId()),
-                new Measurement(9, "Permeabilisation time", "40", sample3.getId(), 13, lw96WellPlateSource.getFirstSlot().getId())
+                new Measurement(9, "Permeabilisation time", "120", sample3.getId(), 13, lw96WellPlateSource.getFirstSlot().getId())
         );
 
         Operation op11 = new Operation();
@@ -725,8 +725,8 @@ public class TestReleaseFileService {
         assertEquals("6.6", entries.get(0).getCdnaAnalysisConcentration());
         assertNull(entries.get(1).getCdnaAnalysisConcentration());
         assertEquals(400, entries.get(0).getCq());
-        assertEquals(10, entries.get(2).getPermTime());
-        assertEquals(40, entries.get(3).getPermTime());
+        assertEquals("10 sec", entries.get(2).getPermTime());
+        assertEquals("2 min", entries.get(3).getPermTime());
         assertNull(entries.get(1).getCq());
     }
 
