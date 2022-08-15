@@ -5,6 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
+		<!-- Deploying with sprint-boot version 2.6 or above prevents stan-client from working -->
 		<version>2.5.14</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
