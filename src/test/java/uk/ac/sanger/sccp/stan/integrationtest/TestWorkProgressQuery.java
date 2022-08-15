@@ -112,6 +112,7 @@ public class TestWorkProgressQuery {
         List<?> workProgresses = chainGet(result, "data", "workProgress");
         assertThat(workProgresses).hasSize(1);
         assertEquals(work.getWorkNumber(), chainGet(workProgresses, 0, "work", "workNumber"));
+        assertEquals("Release 96 well plate", chainGet(workProgresses, 0, "mostRecentOperation"));
         List<Map<String,String>> timestamps = chainGet(workProgresses,0, "timestamps");
         // time values are strings
         Map<String,String>[] expected = Arrays.stream(new Object[][] {

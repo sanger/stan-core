@@ -194,6 +194,7 @@ public class TestWorkProgressService {
                 new WorkProgressTimestamp("Section", sectionTime),
                 new WorkProgressTimestamp("Stain", stainTime)
         );
+        assertSame(wp.getMostRecentOperation(), "Section");
     }
 
     @Test
@@ -391,6 +392,20 @@ public class TestWorkProgressService {
         assertThat(opTimes).hasSize(1).containsEntry("Release Tub", release.getReleased());
 
         verify(mockReleaseRepo).findAllByLabwareIdIn(Set.of(lw2.getId()));
+    }
+
+    @Test
+    public void testGetMostRecentOperation() {
+        List<WorkProgressTimestamp> wpts = new ArrayList<>(List.of(
+                new WorkProgressTimestamp("Stain", LocalDateTime.of(2021, 9, 22, 12, 0)),
+                new WorkProgressTimestamp("Section", LocalDateTime.of(2021, 9, 22, 10, 0)),
+                new WorkProgressTimestamp("Analysis", LocalDateTime.of(2022, 1, 22, 12, 0))
+        ));
+        List<WorkProgressTimestamp> wpt = new ArrayList<>(List.of(wpts.get(0)));
+
+        assertSame(service.getMostRecentOperation(wpts),"Analysis");
+        assertSame(service.getMostRecentOperation(wpt),"Stain");
+        assertSame(service.getMostRecentOperation(List.of()),null);
     }
 
     private static Work workWithId(int id) {

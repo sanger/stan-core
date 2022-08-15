@@ -126,7 +126,8 @@ public class WorkProgressServiceImp implements WorkProgressService {
         List<WorkProgressTimestamp> workTimes = opTimes.entrySet().stream()
                 .map(e -> new WorkProgressTimestamp(e.getKey(), e.getValue()))
                 .collect(toList());
-        return new WorkProgress(work, workTimes);
+        String mostRecentOperation = getMostRecentOperation(workTimes);
+        return new WorkProgress(work, workTimes, mostRecentOperation);
     }
 
     /**
@@ -190,6 +191,18 @@ public class WorkProgressServiceImp implements WorkProgressService {
 
         loadReleases(opTimes, ops, releaseLabwareType, labwareIdToLabware);
         return opTimes;
+    }
+
+    /**
+     * Calculates the last operation that occurred
+     * @param workProgressTimestamps the list of workProgressTimestamps (work peration times)
+     */
+    public String getMostRecentOperation(List<WorkProgressTimestamp> workProgressTimestamps) {
+        if (workProgressTimestamps != null && !workProgressTimestamps.isEmpty()) {
+            workProgressTimestamps.sort(Comparator.comparing(WorkProgressTimestamp::getTimestamp, Comparator.reverseOrder()));
+            return workProgressTimestamps.get(0).getType();
+        }
+        return null;
     }
 
     /**

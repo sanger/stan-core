@@ -933,6 +933,8 @@ type WorkProgress {
     work: Work!
     """The things that happened for that work, and when they happened."""
     timestamps: [WorkProgressTimestamp!]!
+    """The most recent operation for a given piece of work"""
+    mostRecentOperation: String
 }
 
 """A measurement given as a number of seconds for some particular named measure."""

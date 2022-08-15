@@ -60,6 +60,7 @@ public class WorkProgress {
 
     private Work work;
     private List<WorkProgressTimestamp> timestamps;
+    private String mostRecentOperation;
 
     public WorkProgress() {
         this(null);
@@ -68,11 +69,13 @@ public class WorkProgress {
     public WorkProgress(Work work) {
         this.work = work;
         this.timestamps = new ArrayList<>();
+        this.mostRecentOperation = null;
     }
 
-    public WorkProgress(Work work, List<WorkProgressTimestamp> timestamps) {
+    public WorkProgress(Work work, List<WorkProgressTimestamp> timestamps, String mostRecentOperation) {
         this.work = work;
         this.timestamps = timestamps;
+        this.mostRecentOperation = mostRecentOperation;
     }
 
     public Work getWork() {
@@ -91,6 +94,14 @@ public class WorkProgress {
         this.timestamps = timestamps;
     }
 
+    public String getMostRecentOperation() {
+        return this.mostRecentOperation;
+    }
+
+    public void setMostRecentOperation(String mostRecentOperation) {
+        this.mostRecentOperation = mostRecentOperation;
+    }
+
     public void addTime(String type, LocalDateTime timestamp) {
         this.timestamps.add(new WorkProgressTimestamp(type, timestamp));
     }
@@ -101,16 +112,17 @@ public class WorkProgress {
         if (o == null || getClass() != o.getClass()) return false;
         WorkProgress that = (WorkProgress) o;
         return (Objects.equals(this.work, that.work)
-                && Objects.equals(this.timestamps, that.timestamps));
+                && Objects.equals(this.timestamps, that.timestamps))
+                && this.mostRecentOperation==that.mostRecentOperation;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(work, timestamps);
+        return Objects.hash(work, timestamps, mostRecentOperation);
     }
 
     @Override
     public String toString() {
-        return String.format("WorkProgress(%s, %s)", work==null ? null : work.getWorkNumber(), timestamps);
+        return String.format("WorkProgress(%s, %s, %s)", work==null ? null : work.getWorkNumber(), timestamps, mostRecentOperation);
     }
 }
