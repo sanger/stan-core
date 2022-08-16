@@ -195,12 +195,13 @@ public class WorkProgressServiceImp implements WorkProgressService {
 
     /**
      * Calculates the last operation that occurred
-     * @param workProgressTimestamps the list of workProgressTimestamps (work peration times)
+     * @param workProgressTimestamps the list of workProgressTimestamps (work operation times)
+     * @return the name of the latest operation in the list
      */
     public String getMostRecentOperation(List<WorkProgressTimestamp> workProgressTimestamps) {
         if (workProgressTimestamps != null && !workProgressTimestamps.isEmpty()) {
-            workProgressTimestamps.sort(Comparator.comparing(WorkProgressTimestamp::getTimestamp, Comparator.reverseOrder()));
-            return workProgressTimestamps.get(0).getType();
+            WorkProgressTimestamp maxwpt = workProgressTimestamps.stream().max(Comparator.comparing(WorkProgressTimestamp::getTimestamp)).get();
+            return maxwpt.getType();
         }
         return null;
     }

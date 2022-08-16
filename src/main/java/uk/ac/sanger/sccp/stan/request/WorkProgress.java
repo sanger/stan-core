@@ -113,7 +113,7 @@ public class WorkProgress {
         WorkProgress that = (WorkProgress) o;
         return (Objects.equals(this.work, that.work)
                 && Objects.equals(this.timestamps, that.timestamps))
-                && this.mostRecentOperation==that.mostRecentOperation;
+                && Objects.equals(this.mostRecentOperation, that.mostRecentOperation);
     }
 
     @Override

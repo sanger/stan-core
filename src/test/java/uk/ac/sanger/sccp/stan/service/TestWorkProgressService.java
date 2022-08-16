@@ -20,8 +20,7 @@ import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 /**
@@ -194,7 +193,7 @@ public class TestWorkProgressService {
                 new WorkProgressTimestamp("Section", sectionTime),
                 new WorkProgressTimestamp("Stain", stainTime)
         );
-        assertSame(wp.getMostRecentOperation(), "Section");
+        assertEquals(wp.getMostRecentOperation(), "Section");
     }
 
     @Test
@@ -403,9 +402,9 @@ public class TestWorkProgressService {
         ));
         List<WorkProgressTimestamp> wpt = new ArrayList<>(List.of(wpts.get(0)));
 
-        assertSame(service.getMostRecentOperation(wpts),"Analysis");
-        assertSame(service.getMostRecentOperation(wpt),"Stain");
-        assertSame(service.getMostRecentOperation(List.of()),null);
+        assertEquals(service.getMostRecentOperation(wpts),"Analysis");
+        assertEquals(service.getMostRecentOperation(wpt),"Stain");
+        assertNull(service.getMostRecentOperation(List.of()));
     }
 
     private static Work workWithId(int id) {
