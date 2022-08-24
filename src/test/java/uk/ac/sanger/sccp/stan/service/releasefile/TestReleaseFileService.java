@@ -702,7 +702,7 @@ public class TestReleaseFileService {
         Operation op11 = new Operation();
         op11.setOperationType(new OperationType(100, "anything"));
         Operation op12 = new Operation();
-        op12.setOperationType(new OperationType(101, "cdna analysis"));
+        op12.setOperationType(new OperationType(101, "cdna concentration"));
         Operation op13 = new Operation();
         op13.setOperationType(new OperationType(102, "Visium permeabilisation"));
         when(mockOpRepo.findById(11)).thenReturn(Optional.of(op11));

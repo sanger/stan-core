@@ -9,6 +9,7 @@ public enum MeasurementType {
     Eosin(MeasurementValueType.TIME),
     Blueing(MeasurementValueType.TIME),
     cDNA_concentration(MeasurementValueType.DECIMAL, "pg/μL"),
+    Library_concentration(MeasurementValueType.DECIMAL, "pg/μL"),
     RNA_concentration(MeasurementValueType.DECIMAL, "ng/μL"),
     Permeabilisation_time(MeasurementValueType.TIME),
     Selected_time(MeasurementValueType.TIME),

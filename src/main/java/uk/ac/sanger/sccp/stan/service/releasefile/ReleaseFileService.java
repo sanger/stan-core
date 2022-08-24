@@ -481,7 +481,7 @@ public class ReleaseFileService {
         final String COVERAGE = MeasurementType.Tissue_coverage.friendlyName();
         final String CQ = MeasurementType.Cq_value.friendlyName();
         final String CDNA_CONC = MeasurementType.cDNA_concentration.friendlyName();
-        final String CDNA_ANALYSIS = "cDNA analysis";
+        final String CDNA_ANALYSIS = "cDNA concentration";
         final String PERM_TIME= MeasurementType.Permeabilisation_time.friendlyName();
         final String VISIUM_TO = "Visium TO", VISIUM_LP = "Visium LP", PLATE_96 = "96 well plate";
         Map<Integer, OperationType> opTypeCache = new HashMap<>();

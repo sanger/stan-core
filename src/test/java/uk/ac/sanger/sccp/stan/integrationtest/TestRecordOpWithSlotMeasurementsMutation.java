@@ -40,7 +40,7 @@ public class TestRecordOpWithSlotMeasurementsMutation {
 
     @Transactional
     @ParameterizedTest
-    @ValueSource(strings={"cDNA amplification", "cDNA analysis"})
+    @ValueSource(strings={"cDNA amplification", "cDNA concentration"})
     public void testRecordOpWithSlotMeasurements(String opName) throws Exception {
         OperationType opType = entityCreator.createOpType(opName, null, OperationTypeFlag.IN_PLACE);
         Sample sam = entityCreator.createSample(entityCreator.createTissue(entityCreator.createDonor("DONOR1"), "TISSUE1"), 1);
@@ -49,7 +49,7 @@ public class TestRecordOpWithSlotMeasurementsMutation {
         Work work = entityCreator.createWork(null, null, null, null);
         User user = entityCreator.createUser("user1");
         String measName, measValue, sanMeasName, sanMeasValue;
-        if (opName.equalsIgnoreCase("cDNA analysis")) {
+        if (opName.equalsIgnoreCase("cDNA concentration")) {
             measName = "CDNA CONCENTRATION";
             sanMeasName = "cDNA concentration";
             measValue = "0123.5";
