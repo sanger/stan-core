@@ -18,6 +18,7 @@ import uk.ac.sanger.sccp.stan.service.history.HistoryService;
 import uk.ac.sanger.sccp.stan.service.label.print.LabelPrintService;
 import uk.ac.sanger.sccp.stan.service.operation.plan.PlanService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
+import uk.ac.sanger.sccp.stan.service.work.WorkSummaryService;
 
 import javax.persistence.EntityNotFoundException;
 import java.util.Collection;
@@ -63,6 +64,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final WorkService workService;
     final VisiumPermDataService visiumPermDataService;
     final NextReplicateService nextReplicateService;
+    final WorkSummaryService workSummaryService;
 
     @Autowired
     public GraphQLDataFetchers(ObjectMapper objectMapper, AuthenticationComponent authComp, UserRepo userRepo,
@@ -80,7 +82,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                StainService stainService, ExtractResultQueryService extractResultQueryService,
                                PassFailQueryService passFailQueryService,
                                WorkService workService, VisiumPermDataService visiumPermDataService,
-                               NextReplicateService nextReplicateService) {
+                               NextReplicateService nextReplicateService, WorkSummaryService workSummaryService) {
         super(objectMapper, authComp, userRepo);
         this.sessionConfig = sessionConfig;
         this.tissueTypeRepo = tissueTypeRepo;
@@ -112,6 +114,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.workService = workService;
         this.visiumPermDataService = visiumPermDataService;
         this.nextReplicateService = nextReplicateService;
+        this.workSummaryService = workSummaryService;
     }
 
     public DataFetcher<User> getUser() {
@@ -287,6 +290,10 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
             List<Work.Status> statuses = arg(dfe, "statuses", new TypeReference<>() {});
             return workProgressService.getProgress(workNumber, workTypeNames, statuses);
         };
+    }
+
+    public DataFetcher<Collection<WorkSummaryGroup>> worksSummary() {
+        return dfe -> workSummaryService.loadWorkSummary();
     }
   
     public DataFetcher<PlanData> getPlanData() {

@@ -1,0 +1,10 @@
+query {
+    worksSummary {
+        workType { name }
+        status
+        numWorks
+        totalNumBlocks
+        totalNumSlides
+        totalNumOriginalSamples
+    }
+}
