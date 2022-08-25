@@ -20,8 +20,7 @@ import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 /**
@@ -194,6 +193,7 @@ public class TestWorkProgressService {
                 new WorkProgressTimestamp("Section", sectionTime),
                 new WorkProgressTimestamp("Stain", stainTime)
         );
+        assertEquals(wp.getMostRecentOperation(), "Section");
     }
 
     @Test
@@ -391,6 +391,20 @@ public class TestWorkProgressService {
         assertThat(opTimes).hasSize(1).containsEntry("Release Tub", release.getReleased());
 
         verify(mockReleaseRepo).findAllByLabwareIdIn(Set.of(lw2.getId()));
+    }
+
+    @Test
+    public void testGetMostRecentOperation() {
+        List<WorkProgressTimestamp> wpts = new ArrayList<>(List.of(
+                new WorkProgressTimestamp("Stain", LocalDateTime.of(2021, 9, 22, 12, 0)),
+                new WorkProgressTimestamp("Section", LocalDateTime.of(2021, 9, 22, 10, 0)),
+                new WorkProgressTimestamp("Analysis", LocalDateTime.of(2022, 1, 22, 12, 0))
+        ));
+        List<WorkProgressTimestamp> wpt = new ArrayList<>(List.of(wpts.get(0)));
+
+        assertEquals(service.getMostRecentOperation(wpts),"Analysis");
+        assertEquals(service.getMostRecentOperation(wpt),"Stain");
+        assertNull(service.getMostRecentOperation(List.of()));
     }
 
     private static Work workWithId(int id) {
