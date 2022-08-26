@@ -130,11 +130,11 @@ public class TestResultService {
         final ResultRequest request = new ResultRequest();
         request.setWorkNumber(work.getWorkNumber());
         List<SlotMeasurementRequest> givenSms = List.of(
-                new SlotMeasurementRequest(new Address(1,1), "tissue coverage", "5")
+                new SlotMeasurementRequest(new Address(1,1), "tissue coverage", "5", null)
         );
         UCMap<List<SlotMeasurementRequest>> measurementMap = new UCMap<>(1);
         measurementMap.put(lw.getBarcode(), List.of(
-                new SlotMeasurementRequest(new Address(1,1), "Tissue coverage", "5")
+                new SlotMeasurementRequest(new Address(1,1), "Tissue coverage", "5", null)
         ));
         request.setLabwareResults(List.of(new LabwareResult(lw.getBarcode(), List.of(new SampleResult()), givenSms)));
         doReturn(measurementMap).when(service).validateMeasurements(any(), any(), any());
@@ -280,10 +280,10 @@ public class TestResultService {
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lw1, lw2);
         List<LabwareResult> lrs = List.of(
                 new LabwareResult(lw1.getBarcode(), List.of(), List.of(
-                        new SlotMeasurementRequest(new Address(1,1), "Alpha", "10")
+                        new SlotMeasurementRequest(new Address(1,1), "Alpha", "10", null)
                 )),
                 new LabwareResult(lw2.getBarcode(), List.of(), List.of(
-                        new SlotMeasurementRequest(new Address(1,2), "Beta", "20")
+                        new SlotMeasurementRequest(new Address(1,2), "Beta", "20", null)
                 ))
         );
         SlotMeasurementValidator val = mock(SlotMeasurementValidator.class);
@@ -317,20 +317,20 @@ public class TestResultService {
         final Address A1 = new Address(1, 1);
         List<LabwareResult> lrs = List.of(
                 new LabwareResult(lw1.getBarcode(), List.of(), List.of(
-                        new SlotMeasurementRequest(A1, "TISSUE COVERAGE", "10")
+                        new SlotMeasurementRequest(A1, "TISSUE COVERAGE", "10", null)
                 )),
                 new LabwareResult(lw2.getBarcode(), List.of(), List.of(
-                        new SlotMeasurementRequest(A1, "tissue coverage", "20")
+                        new SlotMeasurementRequest(A1, "tissue coverage", "20", null)
                 ))
         );
         SlotMeasurementValidator val = mock(SlotMeasurementValidator.class);
         when(mockSlotMeasurementValidatorFactory.getSlotMeasurementValidator(any())).thenReturn(val);
         final List<SlotMeasurementRequest> sanMeas1 = List.of(
-                new SlotMeasurementRequest(A1, measName, "10")
+                new SlotMeasurementRequest(A1, measName, "10", null)
         );
         when(val.validateSlotMeasurements(lw1, lrs.get(0).getSlotMeasurements())).thenReturn(sanMeas1);
         final List<SlotMeasurementRequest> sanMeas2 = List.of(
-                new SlotMeasurementRequest(A1, measName, "20")
+                new SlotMeasurementRequest(A1, measName, "20", null)
         );
         when(val.validateSlotMeasurements(lw2, lrs.get(1).getSlotMeasurements())).thenReturn(sanMeas2);
         when(val.compileProblems()).thenReturn(Set.of());
@@ -640,8 +640,8 @@ public class TestResultService {
         UCMap<List<SlotMeasurementRequest>> measurementMap = new UCMap<>(1);
         final String measName = "Tissue coverage";
         measurementMap.put(lw1.getBarcode(), List.of(
-                new SlotMeasurementRequest(A1, measName, "10"),
-                new SlotMeasurementRequest(A2, measName, "20")
+                new SlotMeasurementRequest(A1, measName, "10", null),
+                new SlotMeasurementRequest(A2, measName, "20", null)
         ));
 
         OperationResult opResult = service.createResults(user, resultOpType, List.of(lr1, lr2),
@@ -683,8 +683,8 @@ public class TestResultService {
         Labware lw = EntityFactory.makeLabware(lt, sam1, sam3, sam1);
         lw.getSlot(A1).addSample(sam2);
         List<SlotMeasurementRequest> sms = List.of(
-                new SlotMeasurementRequest(A1, "Alpha", "10"),
-                new SlotMeasurementRequest(A2, "Beta", "20")
+                new SlotMeasurementRequest(A1, "Alpha", "10", null),
+                new SlotMeasurementRequest(A2, "Beta", "20", null)
         );
         final List<Measurement> measurements = new ArrayList<>(3);
         final Integer opId = 500;
