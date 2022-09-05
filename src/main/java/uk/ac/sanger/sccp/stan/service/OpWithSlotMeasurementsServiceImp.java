@@ -21,7 +21,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
  */
 @Service
 public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsService {
-    public static final String OP_CDNA_AMP = "cDNA amplification", OP_CDNA_ANALYSIS = "cDNA analysis";
+    public static final String OP_CDNA_AMP = "cDNA amplification", OP_VISIUM_CONC = "Visium concentration";
     public static final String MEAS_CQ = "Cq value", MEAS_CDNA = "cDNA concentration",
             MEAS_LIBR = "Library concentration";
 
@@ -121,7 +121,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
         OperationType opType = optOpType.get();
         if (!opType.inPlace()) {
             problems.add("Operation cannot be recorded in place: "+opType.getName());
-        } else if (!opType.getName().equalsIgnoreCase(OP_CDNA_AMP) && !opType.getName().equalsIgnoreCase(OP_CDNA_ANALYSIS)) {
+        } else if (!opType.getName().equalsIgnoreCase(OP_CDNA_AMP) && !opType.getName().equalsIgnoreCase(OP_VISIUM_CONC)) {
             problems.add("Operation not expected for this request: "+opType.getName());
         }
         return opType;
@@ -258,7 +258,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
             if (name.equalsIgnoreCase(MEAS_CQ)) {
                 return MEAS_CQ;
             }
-        } else if (opType.getName().equalsIgnoreCase(OP_CDNA_ANALYSIS)) {
+        } else if (opType.getName().equalsIgnoreCase(OP_VISIUM_CONC)) {
             if (name.equalsIgnoreCase(MEAS_CDNA)) {
                 return MEAS_CDNA;
             }

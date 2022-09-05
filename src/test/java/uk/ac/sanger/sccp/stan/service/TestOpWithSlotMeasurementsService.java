@@ -194,7 +194,7 @@ public class TestOpWithSlotMeasurementsService {
     @ParameterizedTest
     @CsvSource({
             "cDNA amplification,",
-            "cDNA analysis,",
+            "Visium concentration,",
             "Bake, Operation not expected for this request: Bake",
             "'', No operation type specified.",
             ", No operation type specified.",
@@ -204,7 +204,7 @@ public class TestOpWithSlotMeasurementsService {
     public void testLoadOpType(String opName, String expectedProblem) {
         OperationType opType;
         switch (coalesce(opName, "")) {
-            case OP_CDNA_ANALYSIS: case OP_CDNA_AMP: case "Bake":
+            case OP_VISIUM_CONC: case OP_CDNA_AMP: case "Bake":
                 opType = EntityFactory.makeOperationType(opName, null, OperationTypeFlag.IN_PLACE);
                 break;
             case "Transfer":
@@ -400,16 +400,16 @@ public class TestOpWithSlotMeasurementsService {
     @CsvSource({
             OP_CDNA_AMP+",Cq value,Cq value",
             OP_CDNA_AMP+",CQ VALUE,Cq value",
-            OP_CDNA_ANALYSIS+",cDNA concentration,cDNA concentration",
-            OP_CDNA_ANALYSIS+",CDNA CONCENTRATION,cDNA concentration",
-            OP_CDNA_ANALYSIS+",library concentration,Library concentration",
-            OP_CDNA_ANALYSIS+",LIBRARY CONCENTRATION,Library concentration",
+            OP_VISIUM_CONC+",cDNA concentration,cDNA concentration",
+            OP_VISIUM_CONC+",CDNA CONCENTRATION,cDNA concentration",
+            OP_VISIUM_CONC+",library concentration,Library concentration",
+            OP_VISIUM_CONC+",LIBRARY CONCENTRATION,Library concentration",
             OP_CDNA_AMP+",cDNA concentration,",
-            OP_CDNA_ANALYSIS+",Cq value,",
+            OP_VISIUM_CONC+",Cq value,",
             ",Cq value,",
             ",cDNA concentration,",
             "Bananas,Cq value,",
-            OP_CDNA_ANALYSIS+",Custard,",
+            OP_VISIUM_CONC+",Custard,",
     })
     public void testSanitiseMeasurementName(String opTypeName, String name, String expected) {
         OperationType opType = (opTypeName==null ? null : EntityFactory.makeOperationType(opTypeName, null, OperationTypeFlag.IN_PLACE));
