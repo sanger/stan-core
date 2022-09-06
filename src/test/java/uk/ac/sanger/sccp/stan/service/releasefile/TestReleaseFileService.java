@@ -695,14 +695,15 @@ public class TestReleaseFileService {
                 new Measurement(5, "Cq value", "400", sample.getId(), 10, lw1.getFirstSlot().getId()),
                 new Measurement(6, "cDNA concentration", "5.5", sample.getId(), 11, lw1.getFirstSlot().getId()),
                 new Measurement(7, "cDNA concentration", "6.6", sample.getId(), 12, lw2.getFirstSlot().getId()),
-                new Measurement(8, "Permeabilisation time", "10", sample2.getId(), 13, lwTOSlide.getFirstSlot().getId()),
-                new Measurement(9, "Permeabilisation time", "120", sample3.getId(), 13, lw96WellPlateSource.getFirstSlot().getId())
+                new Measurement(8, "Library concentration", "3.3", sample2.getId(), 12, lwTOSlide.getFirstSlot().getId()),
+                new Measurement(9, "Permeabilisation time", "10", sample2.getId(), 13, lwTOSlide.getFirstSlot().getId()),
+                new Measurement(10, "Permeabilisation time", "120", sample3.getId(), 13, lw96WellPlateSource.getFirstSlot().getId())
         );
 
         Operation op11 = new Operation();
         op11.setOperationType(new OperationType(100, "anything"));
         Operation op12 = new Operation();
-        op12.setOperationType(new OperationType(101, "cdna analysis"));
+        op12.setOperationType(new OperationType(101, "Visium concentration"));
         Operation op13 = new Operation();
         op13.setOperationType(new OperationType(102, "Visium permeabilisation"));
         when(mockOpRepo.findById(11)).thenReturn(Optional.of(op11));
@@ -722,8 +723,12 @@ public class TestReleaseFileService {
         assertEquals("2", entries.get(1).getSectionThickness());
         assertEquals(30, entries.get(0).getCoverage());
         assertNull(entries.get(1).getCoverage());
-        assertEquals("6.6", entries.get(0).getCdnaAnalysisConcentration());
-        assertNull(entries.get(1).getCdnaAnalysisConcentration());
+        assertEquals("6.6", entries.get(0).getVisiumConcentration());
+        assertEquals("cDNA", entries.get(0).getVisiumConcentrationType());
+        assertNull(entries.get(1).getVisiumConcentration());
+        assertNull(entries.get(1).getVisiumConcentrationType());
+        assertEquals("3.3", entries.get(2).getVisiumConcentration());
+        assertEquals("Library", entries.get(2).getVisiumConcentrationType());
         assertEquals(400, entries.get(0).getCq());
         assertEquals("10 sec", entries.get(2).getPermTime());
         assertEquals("2 min", entries.get(3).getPermTime());

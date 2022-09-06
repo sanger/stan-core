@@ -24,7 +24,8 @@ public class ReleaseEntry {
     private Integer coverage;
     private String reagentSource;
     private Integer cq;
-    private String cdnaAnalysisConcentration;
+    private String visiumConcentration;
+    private String visiumConcentrationType;
     private Integer rnascopePlex;
     private Integer ihcPlex;
     private LocalDate sectionDate;
@@ -133,12 +134,20 @@ public class ReleaseEntry {
         this.cq = cq;
     }
 
-    public String getCdnaAnalysisConcentration() {
-        return this.cdnaAnalysisConcentration;
+    public String getVisiumConcentration() {
+        return this.visiumConcentration;
     }
 
-    public void setCdnaAnalysisConcentration(String cdnaAnalysisConcentration) {
-        this.cdnaAnalysisConcentration = cdnaAnalysisConcentration;
+    public void setVisiumConcentration(String visiumConcentration) {
+        this.visiumConcentration = visiumConcentration;
+    }
+
+    public String getVisiumConcentrationType() {
+        return this.visiumConcentrationType;
+    }
+
+    public void setVisiumConcentrationType(String visiumConcentrationType) {
+        this.visiumConcentrationType = visiumConcentrationType;
     }
 
     public Integer getRnascopePlex() {
@@ -192,7 +201,8 @@ public class ReleaseEntry {
                 && Objects.equals(this.reagentSource, that.reagentSource)
                 && Objects.equals(this.cq, that.cq)
                 && Objects.equals(this.permTime, that.permTime)
-                && Objects.equals(this.cdnaAnalysisConcentration, that.cdnaAnalysisConcentration)
+                && Objects.equals(this.visiumConcentration, that.visiumConcentration)
+                && Objects.equals(this.visiumConcentrationType, that.visiumConcentrationType)
                 && Objects.equals(this.rnascopePlex, that.rnascopePlex)
                 && Objects.equals(this.ihcPlex, that.ihcPlex)
                 && Objects.equals(this.sectionDate, that.sectionDate)
@@ -219,7 +229,8 @@ public class ReleaseEntry {
                 .add("coverage", coverage)
                 .add("reagentSource", reagentSource)
                 .add("cq", cq)
-                .add("cdnaAnalysisConcentration", cdnaAnalysisConcentration)
+                .add("visiumConcentration", visiumConcentration)
+                .add("visiumConcentrationType", visiumConcentrationType)
                 .add("rnascopePlex", rnascopePlex)
                 .add("ihcPlex", ihcPlex)
                 .add("sectionDate", sectionDate)
