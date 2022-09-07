@@ -544,7 +544,6 @@ public class ReleaseFileService {
                 entry.setVisiumConcentration(concMeasurement.getValue());
                 if (concMeasurement.getName().equalsIgnoreCase(CDNA_CONC)) {
                     entry.setVisiumConcentrationType("cDNA");
-                    entry.setVisiumConcentrationType("cDNA");
                 } else if (concMeasurement.getName().equalsIgnoreCase(LIBRARY_CONC)) {
                     entry.setVisiumConcentrationType("Library");
                 }
