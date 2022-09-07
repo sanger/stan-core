@@ -17,8 +17,7 @@ import java.util.function.Function;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
-import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
-import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
+import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 @Service
 public class OriginalSampleRegisterServiceImp implements OriginalSampleRegisterService {
@@ -118,7 +117,8 @@ public class OriginalSampleRegisterServiceImp implements OriginalSampleRegisterS
 
         UCMap<TissueType> tissueTypes = checkTissueTypesAndSpatialLocations(problems, request);
 
-        checkDonorSpatialLocationUnique(problems, request, donors, tissueTypes);
+        // NB It is allowed to have the same spatial location and donor multiple times
+        // checkDonorSpatialLocationUnique(problems, request, donors, tissueTypes);
 
         if (!problems.isEmpty()) {
             throw new ValidationException("The request validation failed.", problems);
@@ -352,54 +352,6 @@ public class OriginalSampleRegisterServiceImp implements OriginalSampleRegisterS
     }
 
     /**
-     * Checks that the same spatial location is not indicated multiple times for the same donor (or already
-     * exists in the database)
-     * @param problems receptacle for problems
-     * @param request register request
-     * @param donors map to look up donors
-     * @param tissueTypeMap map to look up tissue types
-     */
-    public void checkDonorSpatialLocationUnique(Collection<String> problems, OriginalSampleRegisterRequest request,
-                                                UCMap<Donor> donors, UCMap<TissueType> tissueTypeMap) {
-        Set<TissueKey> keys = new HashSet<>(request.getSamples().size());
-        Set<TissueKey> repeated = new LinkedHashSet<>();
-        for (OriginalSampleData data : request.getSamples()) {
-            if (nullOrEmpty(data.getDonorIdentifier()) || nullOrEmpty(data.getTissueType())
-                || data.getSpatialLocation()==null) {
-                continue;
-            }
-            TissueKey key = new TissueKey(data.getDonorIdentifier(), data.getTissueType(), data.getSpatialLocation());
-            if (!keys.add(key)) {
-                repeated.add(key);
-            }
-        }
-        if (!repeated.isEmpty()) {
-            problems.add("Same donor name, tissue type and spatial location specified multiple times: "+repeated);
-        }
-
-        for (TissueKey key : keys) {
-            Donor donor = donors.get(key.donorName);
-            if (donor==null) {
-                continue;
-            }
-            TissueType tt = tissueTypeMap.get(key.tissueTypeName);
-            if (tt==null) {
-                continue;
-            }
-            SpatialLocation sl = getSpatialLocation(tt, key.slCode);
-            if (sl==null) {
-                continue;
-            }
-            var tissueClashes = tissueRepo.findAllByDonorIdAndSpatialLocationId(donor.getId(), sl.getId());
-            if (!tissueClashes.isEmpty()) {
-                Tissue tissue = tissueClashes.get(0);
-                problems.add("Tissue from donor "+tissue.getDonor().getDonorName()+", "+tissue.getTissueType().getName()
-                        +", spatial location "+sl.getCode()+" already exists in the database.");
-            }
-        }
-    }
-
-    /**
      * Looks up the tissue types and checks the spatial locations are valid
      * @param problems receptacle for problems
      * @param request register request
@@ -488,8 +440,8 @@ public class OriginalSampleRegisterServiceImp implements OriginalSampleRegisterS
         Map<OriginalSampleData, Tissue> map = new HashMap<>(request.getSamples().size());
 
         for (OriginalSampleData data : request.getSamples()) {
-            Tissue tissue = new Tissue(null, nullOrEmpty(data.getExternalIdentifier()) ? null : data.getExternalIdentifier(),
-                    nullOrEmpty(data.getReplicateNumber()) ? null : data.getReplicateNumber(),
+            Tissue tissue = new Tissue(null, emptyToNull(data.getExternalIdentifier()),
+                    emptyToNull(data.getReplicateNumber()),
                     getSpatialLocation(tissueTypes.get(data.getTissueType()), data.getSpatialLocation()),
                     donors.get(data.getDonorIdentifier()),
                     medium, fixatives.get(data.getFixative()),
@@ -581,47 +533,4 @@ public class OriginalSampleRegisterServiceImp implements OriginalSampleRegisterS
         }
         return opMap;
     }
-
-    /**
-     * The unique fields associated with a tissue
-     */
-    static class TissueKey {
-        /** The name of the donor */
-        String donorName;
-        String donorNameUpperCase;
-        /** The name of the tissue type */
-        String tissueTypeName;
-        String tissueTypeNameUpperCase;
-        /** The spatial location code */
-        int slCode;
-
-        public TissueKey(String donorName, String tissueTypeName, int slCode) {
-            this.donorName = donorName;
-            this.donorNameUpperCase = donorName.toUpperCase();
-            this.tissueTypeName = tissueTypeName;
-            this.tissueTypeNameUpperCase = tissueTypeName.toUpperCase();
-            this.slCode = slCode;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            TissueKey that = (TissueKey) o;
-            return (this.slCode == that.slCode
-                    && Objects.equals(this.donorNameUpperCase, that.donorNameUpperCase)
-                    && Objects.equals(this.tissueTypeNameUpperCase, that.tissueTypeNameUpperCase));
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(donorNameUpperCase, tissueTypeNameUpperCase, slCode);
-        }
-
-        @Override
-        public String toString() {
-            return String.format("(%s, %s, %s)", donorName, tissueTypeName, slCode);
-        }
-    }
-
 }

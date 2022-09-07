@@ -123,7 +123,6 @@ public class TestOriginalSampleRegisterService {
 
         doNothing().when(service).checkExternalNamesUnique(any(), any());
         doNothing().when(service).checkDonorFieldsAreConsistent(any(), any(), any());
-        doNothing().when(service).checkDonorSpatialLocationUnique(any(), any(), any(), any());
 
         User user = EntityFactory.getUser();
 
@@ -179,7 +178,6 @@ public class TestOriginalSampleRegisterService {
         doNothing().when(service).checkExternalNamesUnique(any(), any());
         doNothing().when(service).checkDonorFieldsAreConsistent(any(), any(), any());
         doReturn(ttypes).when(service).checkTissueTypesAndSpatialLocations(any(), any());
-        doNothing().when(service).checkDonorSpatialLocationUnique(any(), any(), any(), any());
 
         doNothing().when(service).createNewDonors(any(), any(), any());
         Map<OriginalSampleData, Tissue> tissues = Map.of(data, EntityFactory.getTissue());
@@ -485,75 +483,6 @@ public class TestOriginalSampleRegisterService {
                 {null, 1, null},
                 {null, null, null},
         }).map(Arguments::of);
-    }
-
-    @ParameterizedTest
-    @MethodSource("checkDonorSpatialArgs")
-    public void testCheckDonorSpatialLocationUnique(OriginalSampleRegisterRequest request, UCMap<Donor> donors,
-                                                    UCMap<TissueType> tissueTypes, Collection<Tissue> existingTissues,
-                                                    Collection<String> expectedProblems) {
-        if (existingTissues==null || existingTissues.isEmpty()) {
-            when(mockTissueRepo.findAllByDonorIdAndSpatialLocationId(anyInt(), anyInt())).thenReturn(List.of());
-        } else {
-            when(mockTissueRepo.findAllByDonorIdAndSpatialLocationId(anyInt(), anyInt())).then(invocation -> {
-                final int donorId = invocation.getArgument(0);
-                final int slId = invocation.getArgument(1);
-                return existingTissues.stream()
-                        .filter(t -> t.getDonor().getId() == donorId && t.getSpatialLocation().getId() == slId)
-                        .collect(toList());
-            });
-        }
-
-        List<String> problems = new ArrayList<>(expectedProblems.size());
-        service.checkDonorSpatialLocationUnique(problems, request, donors, tissueTypes);
-        assertThat(problems).containsExactlyInAnyOrderElementsOf(expectedProblems);
-    }
-
-    static Stream<Arguments> checkDonorSpatialArgs() {
-        Donor d1 = new Donor(1, "DONOR1", LifeStage.adult, null);
-        Donor d2 = new Donor(2, "DONOR2", LifeStage.fetal, null);
-        UCMap<Donor> donors = UCMap.from(Donor::getDonorName, d1, d2);
-        TissueType t1 = new TissueType(1, "Arm", "ARM");
-        TissueType t2 = new TissueType(2, "Leg", "LEG");
-        UCMap<TissueType> tissueTypes = UCMap.from(TissueType::getName, t1, t2);
-        for (TissueType tt : tissueTypes.values()) {
-            List<SpatialLocation> sls = List.of(
-                    new SpatialLocation(10*tt.getId(), "Unknown", 0, tt),
-                    new SpatialLocation(10*tt.getId()+1, "Alpha", 1, tt)
-            );
-            tt.setSpatialLocations(sls);
-        }
-
-        OriginalSampleData new1 = osdWithDonorSL("DONORX", "Arm", 0);
-        OriginalSampleData new1b = osdWithDonorSL("donorX", "arm", 0);
-        OriginalSampleData new2 = osdWithDonorSL("DONOR1", "ARM", 1);
-        OriginalSampleData new2b = osdWithDonorSL("Donor1", "Arm", 1);
-        OriginalSampleData new3 = osdWithDonorSL("DONOR1", "Leg", 0);
-        OriginalSampleData new4 = osdWithDonorSL(null, "Arm", 0);
-        OriginalSampleData new5 = osdWithDonorSL("DONOR1", null, 0);
-        OriginalSampleData new6 = osdWithDonorSL("DONOR1", "Arm", null);
-        OriginalSampleData old1 = osdWithDonorSL("donor1", "arm", 0);
-        OriginalSampleData old2 = osdWithDonorSL("DONOR2", "LEG", 1);
-
-        Tissue tissue1 = new Tissue(1, "EXT1", "R1", t1.getSpatialLocations().get(0), d1, null, null, null, null, null);
-        Tissue tissue2 = new Tissue(2, "EXT2", "R2", t2.getSpatialLocations().get(1), d2, null, null, null, null, null);
-        List<Tissue> existingTissues = List.of(tissue1, tissue2);
-
-        return Arrays.stream(new Object[][] {
-                { new1, new2, new3, new4, new5, new6 },
-                { new1, new1b, new2, new2b,
-                  "Same donor name, tissue type and spatial location specified multiple times: [(donorX, arm, 0), (Donor1, Arm, 1)]"},
-                { new1, old1, old2,
-                  "Tissue from donor DONOR1, Arm, spatial location 0 already exists in the database.",
-                  "Tissue from donor DONOR2, Leg, spatial location 1 already exists in the database." },
-                { new1, new1b, old1,
-                        "Same donor name, tissue type and spatial location specified multiple times: [(donorX, arm, 0)]",
-                        "Tissue from donor DONOR1, Arm, spatial location 0 already exists in the database." },
-        }).map(arr -> {
-            List<OriginalSampleData> osds = typeFilterToList(arr, OriginalSampleData.class);
-            List<String> problems = typeFilterToList(arr, String.class);
-            return Arguments.of(new OriginalSampleRegisterRequest(osds), donors, tissueTypes, existingTissues, problems);
-        });
     }
 
     @ParameterizedTest

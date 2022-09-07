@@ -374,4 +374,13 @@ public class BasicUtils {
     public static boolean nullOrEmpty(String string) {
         return (string==null || string.isEmpty());
     }
+
+    /**
+     * If the string is empty, return null. Otherwise, return the string.
+     * @param string the string that may be empty
+     * @return the nonempty string, or null
+     */
+    public static String emptyToNull(String string) {
+        return (string==null || string.isEmpty() ? null : string);
+    }
 }
