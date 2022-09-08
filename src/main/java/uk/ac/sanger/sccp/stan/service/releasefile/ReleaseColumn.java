@@ -71,9 +71,9 @@ public enum ReleaseColumn implements TsvColumn<ReleaseEntry> {
 
     @Override
     public String toString() {
-        if (this.name() == "Visium_concentration") {
-            // A bit hacky but because we are using an invalid char we can't include it by default in the enum name
-            return this.name().replace('_',' ').concat(" pg/uL");
+        if (this == Visium_concentration) {
+            // Since we want to include invalid chars we can't use the enum name
+            return "Visium concentration (pg/uL)";
         }
         return this.name().replace('_',' ');
     }
