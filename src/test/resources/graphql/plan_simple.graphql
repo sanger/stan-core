@@ -1,0 +1,19 @@
+mutation {
+    plan(request:{
+        operationType: "Section",
+        labware:[{
+            labwareType:"Slide",
+            actions:[
+                {
+                    source:{ barcode:"BARCODE0" }
+                    address: "A1"
+                    sampleId: 55555
+                }
+            ]
+        }]
+    }) {
+        labware {
+            barcode
+        }
+    }
+}

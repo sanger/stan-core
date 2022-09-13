@@ -725,6 +725,7 @@ public class TestBlockProcessingService {
 
         assertSame(lw, service.createDestination(lt, sample, prebarcode));
         assertThat(lw.getFirstSlot().getSamples()).containsExactly(sample);
+        assertTrue(lw.getFirstSlot().isBlock());
         verify(mockLwService).create(lt, prebarcode, prebarcode);
         verify(mockSlotRepo).save(lw.getFirstSlot());
     }
