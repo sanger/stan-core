@@ -52,23 +52,23 @@ public class TestSlotMeasurementValidator {
         final Address B2 = new Address(2,2);
         final Address C1 = new Address(3,1);
         List<SlotMeasurementRequest> sms1 = List.of(
-                new SlotMeasurementRequest(A1, "alpha", "v1"),
-                new SlotMeasurementRequest(A1, "beta", "v2!"),
-                new SlotMeasurementRequest(A2, "alpha", "v3"),
-                new SlotMeasurementRequest(A2, "ALPHA", "v33"),
-                new SlotMeasurementRequest(A2, "BETA", "v34"),
-                new SlotMeasurementRequest(A2, "beta", "v34"),
-                new SlotMeasurementRequest(A2, "Gamma", "v4"),
-                new SlotMeasurementRequest(B1, "ALPHA", "v5"),
-                new SlotMeasurementRequest(C1, "Alpha", "V6"),
-                new SlotMeasurementRequest(null, "Alpha", "v1"),
-                new SlotMeasurementRequest(B2, null, "v1"),
-                new SlotMeasurementRequest(B2, "BETA", null),
-                new SlotMeasurementRequest(B2, "Alpha", "Yikes!")
+                new SlotMeasurementRequest(A1, "alpha", "v1", null),
+                new SlotMeasurementRequest(A1, "beta", "v2!", null),
+                new SlotMeasurementRequest(A2, "alpha", "v3", null),
+                new SlotMeasurementRequest(A2, "ALPHA", "v33", null),
+                new SlotMeasurementRequest(A2, "BETA", "v34", null),
+                new SlotMeasurementRequest(A2, "beta", "v34", null),
+                new SlotMeasurementRequest(A2, "Gamma", "v4", null),
+                new SlotMeasurementRequest(B1, "ALPHA", "v5", null),
+                new SlotMeasurementRequest(C1, "Alpha", "V6", null),
+                new SlotMeasurementRequest(null, "Alpha", "v1", null),
+                new SlotMeasurementRequest(B2, null, "v1", null),
+                new SlotMeasurementRequest(B2, "BETA", null, null),
+                new SlotMeasurementRequest(B2, "Alpha", "Yikes!", null)
         );
 
         List<SlotMeasurementRequest> sms2 = List.of(
-                new SlotMeasurementRequest(A1, "Delta", "Zoom!")
+                new SlotMeasurementRequest(A1, "Delta", "Zoom!", null)
         );
 
         val.validateSlotMeasurements(lw, sms1);
@@ -104,9 +104,9 @@ public class TestSlotMeasurementValidator {
         final Address A1 = new Address(1,1);
         final Address A2 = new Address(1,2);
         List<SlotMeasurementRequest> sms = List.of(
-                new SlotMeasurementRequest(A1, "alpha", "j1"),
-                new SlotMeasurementRequest(A1, "BETA", "J2!"),
-                new SlotMeasurementRequest(A2, "Alpha", "J3")
+                new SlotMeasurementRequest(A1, "alpha", "j1", null),
+                new SlotMeasurementRequest(A1, "BETA", "J2!", null),
+                new SlotMeasurementRequest(A2, "Alpha", "J3", null)
         );
         List<SlotMeasurementRequest> san = val.validateSlotMeasurements(lw, sms);
 
@@ -116,9 +116,9 @@ public class TestSlotMeasurementValidator {
             verify(val).sanitiseSlotMeasurement(same(lw), same(sm), anySet(), anySet());
         }
         assertThat(san).containsExactly(
-                new SlotMeasurementRequest(A1, "Alpha", "j1"),
-                new SlotMeasurementRequest(A1, "Beta", "J2!"),
-                new SlotMeasurementRequest(A2, "Alpha", "j3")
+                new SlotMeasurementRequest(A1, "Alpha", "j1", null),
+                new SlotMeasurementRequest(A1, "Beta", "J2!", null),
+                new SlotMeasurementRequest(A2, "Alpha", "j3", null)
         );
 
         assertThat(val.compileProblems()).isEmpty();
@@ -155,26 +155,26 @@ public class TestSlotMeasurementValidator {
         final Address B1 = new Address(2,1);
         final Address C1 = new Address(3,1);
         return Arrays.stream(new Object[][] {
-                {lw, new SlotMeasurementRequest(A1, "alpha", "VALUE"),
-                 new SlotMeasurementRequest(A1, "Alpha", "value")},
-                {lw, new SlotMeasurementRequest(A1, "Beta", "Value!"),
-                 new SlotMeasurementRequest(A1, "Beta", "Value!")},
-                {null, new SlotMeasurementRequest(C1, "Alpha", "value"), null},
-                {lw, new SlotMeasurementRequest(A1, null, "value"), null,
+                {lw, new SlotMeasurementRequest(A1, "alpha", "VALUE", null),
+                 new SlotMeasurementRequest(A1, "Alpha", "value", null)},
+                {lw, new SlotMeasurementRequest(A1, "Beta", "Value!", null),
+                 new SlotMeasurementRequest(A1, "Beta", "Value!", null)},
+                {null, new SlotMeasurementRequest(C1, "Alpha", "value", null), null},
+                {lw, new SlotMeasurementRequest(A1, null, "value", null), null,
                         "Measurements given without a name."},
-                {lw, new SlotMeasurementRequest(A1, "Alpha", null), null,
+                {lw, new SlotMeasurementRequest(A1, "Alpha", null, null), null,
                         "Measurements given without a value."},
-                {lw, new SlotMeasurementRequest(null, "Alpha", "value"), null,
+                {lw, new SlotMeasurementRequest(null, "Alpha", "value", null), null,
                         "Measurements given without a slot address."},
-                {lw, new SlotMeasurementRequest(null, "", ""), null,
+                {lw, new SlotMeasurementRequest(null, "", "", null), null,
                         "Measurements given without a name.",
                         "Measurements given without a value.",
                         "Measurements given without a slot address."},
-                {lw, new SlotMeasurementRequest(A1, "Gamma", "value"), null,
+                {lw, new SlotMeasurementRequest(A1, "Gamma", "value", null), null,
                         "Unexpected measurement specified for this operation: [Gamma]"},
-                {lw, new SlotMeasurementRequest(B1, "Alpha", "value"), null},
-                {lw, new SlotMeasurementRequest(C1, "Alpha", "value"), null},
-                {lw, new SlotMeasurementRequest(A1, "Alpha", "value!"), null,
+                {lw, new SlotMeasurementRequest(B1, "Alpha", "value", null), null},
+                {lw, new SlotMeasurementRequest(C1, "Alpha", "value", null), null},
+                {lw, new SlotMeasurementRequest(A1, "Alpha", "value!", null), null,
                         "Bad measurement value: value!"},
         }).map(arr -> {
             Set<String> expectedProblems = new HashSet<>(arr.length-3);

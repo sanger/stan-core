@@ -7,9 +7,12 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.service.sanitiser.Sanitiser;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
+import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import java.util.*;
+import java.util.stream.Stream;
 
+import static java.util.stream.Collectors.toList;
 import static uk.ac.sanger.sccp.utils.BasicUtils.pluralise;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
@@ -18,33 +21,39 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
  */
 @Service
 public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsService {
-    public static final String OP_CDNA_AMP = "cDNA amplification", OP_CDNA_ANALYSIS = "cDNA analysis";
-    public static final String MEAS_CQ = "Cq value", MEAS_CONC = "cDNA concentration";
+    public static final String OP_CDNA_AMP = "cDNA amplification", OP_VISIUM_CONC = "Visium concentration";
+    public static final String MEAS_CQ = "Cq value", MEAS_CDNA = "cDNA concentration",
+            MEAS_LIBR = "Library concentration";
 
     private final OperationTypeRepo opTypeRepo;
     private final MeasurementRepo measurementRepo;
     private final LabwareRepo lwRepo;
+    private final OperationCommentRepo opComRepo;
 
     private final LabwareValidatorFactory labwareValidatorFactory;
     private final Sanitiser<String> cqSanitiser;
     private final Sanitiser<String> concentrationSanitiser;
     private final WorkService workService;
     private final OperationService opService;
+    private final CommentValidationService commentValidationService;
 
     public OpWithSlotMeasurementsServiceImp(OperationTypeRepo opTypeRepo, MeasurementRepo measurementRepo,
-                                            LabwareRepo lwRepo,
+                                            LabwareRepo lwRepo, OperationCommentRepo opComRepo,
                                             LabwareValidatorFactory labwareValidatorFactory,
                                             @Qualifier("cqSanitiser") Sanitiser<String> cqSanitiser,
                                             @Qualifier("concentrationSanitiser") Sanitiser<String> concentrationSanitiser,
-                                            WorkService workService, OperationService opService) {
+                                            WorkService workService, OperationService opService,
+                                            CommentValidationService commentValidationService) {
         this.opTypeRepo = opTypeRepo;
         this.measurementRepo = measurementRepo;
         this.lwRepo = lwRepo;
+        this.opComRepo = opComRepo;
         this.labwareValidatorFactory = labwareValidatorFactory;
         this.cqSanitiser = cqSanitiser;
         this.concentrationSanitiser = concentrationSanitiser;
         this.workService = workService;
         this.opService = opService;
+        this.commentValidationService = commentValidationService;
     }
 
     @Override
@@ -63,6 +72,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
         if (lw!=null) {
             validateAddresses(problems, lw, request.getSlotMeasurements());
         }
+        List<Comment> comments = validateComments(problems, request.getSlotMeasurements());
         List<SlotMeasurementRequest> sanitisedMeasurements = sanitiseMeasurements(problems, opType, request.getSlotMeasurements());
         checkForDupeMeasurements(problems, sanitisedMeasurements);
 
@@ -70,7 +80,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
             throw new ValidationException("The request could not be validated.", problems);
         }
 
-        return execute(user, lw, opType, work, sanitisedMeasurements);
+        return execute(user, lw, opType, work, comments, sanitisedMeasurements);
     }
 
     /**
@@ -111,7 +121,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
         OperationType opType = optOpType.get();
         if (!opType.inPlace()) {
             problems.add("Operation cannot be recorded in place: "+opType.getName());
-        } else if (!opType.getName().equalsIgnoreCase(OP_CDNA_AMP) && !opType.getName().equalsIgnoreCase(OP_CDNA_ANALYSIS)) {
+        } else if (!opType.getName().equalsIgnoreCase(OP_CDNA_AMP) && !opType.getName().equalsIgnoreCase(OP_VISIUM_CONC)) {
             problems.add("Operation not expected for this request: "+opType.getName());
         }
         return opType;
@@ -151,6 +161,19 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
         if (!emptyAddresses.isEmpty()) {
             problems.add(pluralise("Slot{s} {is|are} empty: ", emptyAddresses.size()) + emptyAddresses);
         }
+    }
+
+    /**
+     * Checks for problems with comment ids, if any.
+     * @param problems receptacle for problems found
+     * @param sms the slot measurement requests
+     * @return the indicated comments
+     */
+    public List<Comment> validateComments(Collection<String> problems, Collection<SlotMeasurementRequest> sms) {
+        Stream<Integer> commentIdStream = sms.stream()
+                .map(SlotMeasurementRequest::getCommentId)
+                .filter(Objects::nonNull);
+        return commentValidationService.validateCommentIds(problems, commentIdStream);
     }
 
     /**
@@ -215,8 +238,8 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
         if (opType !=null && name != null && value != null) {
             value = sanitiseMeasurementValue(problems, name, value);
         }
-        if (opType !=null && name !=null && smr.getAddress()!=null && value !=null) {
-            return new SlotMeasurementRequest(smr.getAddress(), name, value);
+        if (opType != null && name != null && smr.getAddress() != null && value !=null) {
+            return smr.withNameAndValue(name, value);
         }
         return null;
     }
@@ -235,11 +258,12 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
             if (name.equalsIgnoreCase(MEAS_CQ)) {
                 return MEAS_CQ;
             }
-        } else {
-            if (opType.getName().equalsIgnoreCase(OP_CDNA_ANALYSIS)) {
-                if (name.equalsIgnoreCase(MEAS_CONC)) {
-                    return MEAS_CONC;
-                }
+        } else if (opType.getName().equalsIgnoreCase(OP_VISIUM_CONC)) {
+            if (name.equalsIgnoreCase(MEAS_CDNA)) {
+                return MEAS_CDNA;
+            }
+            if (name.equalsIgnoreCase(MEAS_LIBR)) {
+                return MEAS_LIBR;
             }
         }
         return null;
@@ -254,8 +278,10 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
      */
     public String sanitiseMeasurementValue(Collection<String> problems, String name, String value) {
         switch (name) {
-            case MEAS_CONC: return concentrationSanitiser.sanitise(problems, value);
-            case MEAS_CQ: return cqSanitiser.sanitise(problems, value);
+            case MEAS_CDNA: case MEAS_LIBR:
+                return concentrationSanitiser.sanitise(problems, value);
+            case MEAS_CQ:
+                return cqSanitiser.sanitise(problems, value);
         }
         return null;
     }
@@ -273,7 +299,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
         Set<SlotMeasurementRequest> seen = new HashSet<>();
         Set<SlotMeasurementRequest> repeated = new LinkedHashSet<>();
         for (SlotMeasurementRequest smr : smrs) {
-            SlotMeasurementRequest key = new SlotMeasurementRequest(smr.getAddress(), smr.getName(), null);
+            SlotMeasurementRequest key = new SlotMeasurementRequest(smr.getAddress(), smr.getName(), null, null);
             if (!seen.add(key)) {
                 repeated.add(key);
             }
@@ -298,12 +324,16 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
      * @return the op and labware
      */
     public OperationResult execute(User user, Labware lw, OperationType opType, Work work,
+                                   Collection<Comment> comments,
                                    Collection<SlotMeasurementRequest> sanitisedMeasurements) {
         Operation op = opService.createOperationInPlace(opType, user, lw, null, null);
         createMeasurements(op.getId(), lw, sanitisedMeasurements);
         List<Operation> ops = List.of(op);
         if (work!=null) {
             workService.link(work, ops);
+        }
+        if (!comments.isEmpty()) {
+            recordComments(op.getId(), comments, lw, sanitisedMeasurements);
         }
         return new OperationResult(ops, List.of(lw));
     }
@@ -330,5 +360,35 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
             }
         }
         return measurementRepo.saveAll(measurements);
+    }
+
+    /**
+     * Records operation comments, if any
+     * @param opId the id of the operation
+     * @param sms the slot measurement requests
+     */
+    public void recordComments(Integer opId, Collection<Comment> comments, Labware lw,
+                               Collection<SlotMeasurementRequest> sms) {
+        Map<Integer, Comment> commentMap = comments.stream().collect(BasicUtils.toMap(Comment::getId));
+
+        List<OperationComment> opComs = sms.stream()
+                .filter(sm -> sm.getCommentId()!=null)
+                .flatMap(sm -> newOpComs(opId, lw.getSlot(sm.getAddress()), commentMap.get(sm.getCommentId())))
+                .collect(toList());
+        if (!opComs.isEmpty()) {
+            opComRepo.saveAll(opComs);
+        }
+    }
+
+    /**
+     * Returns new (unsaved) operation comments
+     * @param opId operation id
+     * @param slot the slot in the labware
+     * @param comment the comment to record
+     * @return a stream of new opcoms
+     */
+    private Stream<OperationComment> newOpComs(Integer opId, Slot slot, Comment comment) {
+        return slot.getSamples().stream()
+                .map(sam -> new OperationComment(null, comment, opId, sam.getId(), slot.getId(), null));
     }
 }

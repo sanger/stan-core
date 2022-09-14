@@ -8,6 +8,7 @@ import org.junit.jupiter.params.provider.*;
 import org.mockito.ArgumentCaptor;
 import org.mockito.stubbing.Answer;
 import uk.ac.sanger.sccp.stan.EntityFactory;
+import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.*;
@@ -22,8 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.EntityFactory.objToCollection;
-import static uk.ac.sanger.sccp.stan.service.OpWithSlotMeasurementsServiceImp.OP_CDNA_AMP;
-import static uk.ac.sanger.sccp.stan.service.OpWithSlotMeasurementsServiceImp.OP_CDNA_ANALYSIS;
+import static uk.ac.sanger.sccp.stan.service.OpWithSlotMeasurementsServiceImp.*;
 import static uk.ac.sanger.sccp.utils.BasicUtils.coalesce;
 
 /**
@@ -33,11 +33,13 @@ public class TestOpWithSlotMeasurementsService {
     private OperationTypeRepo mockOpTypeRepo;
     private MeasurementRepo mockMeasRepo;
     private LabwareRepo mockLwRepo;
+    private OperationCommentRepo mockOpComRepo;
     private LabwareValidatorFactory mockLwValFactory;
     private Sanitiser<String> mockCqSan;
     private Sanitiser<String> mockConcSan;
     private WorkService mockWorkService;
     private OperationService mockOpService;
+    private CommentValidationService mockCommentValidationService;
 
     private OpWithSlotMeasurementsServiceImp service;
 
@@ -47,14 +49,16 @@ public class TestOpWithSlotMeasurementsService {
         mockOpTypeRepo = mock(OperationTypeRepo.class);
         mockMeasRepo = mock(MeasurementRepo.class);
         mockLwRepo = mock(LabwareRepo.class);
+        mockOpComRepo = mock(OperationCommentRepo.class);
         mockLwValFactory = mock(LabwareValidatorFactory.class);
         mockCqSan = mock(Sanitiser.class);
         mockConcSan = mock(Sanitiser.class);
         mockWorkService = mock(WorkService.class);
         mockOpService = mock(OperationService.class);
+        mockCommentValidationService = mock(CommentValidationService.class);
 
-        service = spy(new OpWithSlotMeasurementsServiceImp(mockOpTypeRepo, mockMeasRepo, mockLwRepo,
-                mockLwValFactory, mockCqSan, mockConcSan, mockWorkService, mockOpService));
+        service = spy(new OpWithSlotMeasurementsServiceImp(mockOpTypeRepo, mockMeasRepo, mockLwRepo, mockOpComRepo,
+                mockLwValFactory, mockCqSan, mockConcSan, mockWorkService, mockOpService, mockCommentValidationService));
     }
 
     @Test
@@ -65,17 +69,19 @@ public class TestOpWithSlotMeasurementsService {
         Work work = new Work(10, "SGP10", null, null, null, null, Work.Status.active);
         final Address A1 = new Address(1,1);
         OpWithSlotMeasurementsRequest request = new OpWithSlotMeasurementsRequest(lw.getBarcode(), opType.getName(), work.getWorkNumber(),
-                List.of(new SlotMeasurementRequest(A1, "CDNA CONCENTRATION", "10")));
-        List<SlotMeasurementRequest> sanMeas = List.of(new SlotMeasurementRequest(A1, "cDNA concentration", "10.000"));
+                List.of(new SlotMeasurementRequest(A1, "CDNA CONCENTRATION", "10", null)));
+        List<SlotMeasurementRequest> sanMeas = List.of(new SlotMeasurementRequest(A1, "cDNA concentration", "10.000", null));
         stubValidation(lw, opType, work, sanMeas, null);
+        List<Comment> comments = List.of(new Comment(50, "Banana", "custard"));
+        doReturn(comments).when(service).validateComments(any(), any());
 
         OperationResult opres = new OperationResult(List.of(), List.of(lw));
-        doReturn(opres).when(service).execute(any(), any(), any(), any(), any());
+        doReturn(opres).when(service).execute(any(), any(), any(), any(), any(), any());
 
         assertSame(opres, service.perform(user, request));
         verifyValidation(lw, opType, request, sanMeas);
 
-        verify(service).execute(user, lw, opType, work, sanMeas);
+        verify(service).execute(user, lw, opType, work, comments, sanMeas);
     }
 
     @Test
@@ -87,7 +93,8 @@ public class TestOpWithSlotMeasurementsService {
         verify(service, never()).validateAddresses(any(), any(), any());
         verify(service, never()).sanitiseMeasurements(any(), any(), any());
         verify(service, never()).checkForDupeMeasurements(any(), any());
-        verify(service, never()).execute(any(), any(), any(), any(), any());
+        verify(service, never()).validateComments(any(), any());
+        verify(service, never()).execute(any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -98,15 +105,15 @@ public class TestOpWithSlotMeasurementsService {
         Work work = new Work(10, "SGP10", null, null, null, null, Work.Status.active);
         final Address A1 = new Address(1,1);
         OpWithSlotMeasurementsRequest request = new OpWithSlotMeasurementsRequest(lw.getBarcode(), opType.getName(), work.getWorkNumber(),
-                List.of(new SlotMeasurementRequest(A1, "CDNA CONCENTRATION", "10")));
-        List<SlotMeasurementRequest> sanMeas = List.of(new SlotMeasurementRequest(A1, "cDNA concentration", "10.000"));
+                List.of(new SlotMeasurementRequest(A1, "CDNA CONCENTRATION", "10", null)));
+        List<SlotMeasurementRequest> sanMeas = List.of(new SlotMeasurementRequest(A1, "cDNA concentration", "10.000", null));
         final String problem = "Everything is bad.";
         stubValidation(lw, opType, work, sanMeas, problem);
 
         assertValidationError(() -> service.perform(user, request), problem);
         verifyValidation(lw, opType, request, sanMeas);
 
-        verify(service, never()).execute(any(), any(), any(), any(), any());
+        verify(service, never()).execute(any(), any(), any(), any(), any(), any());
     }
 
     private void stubValidation(Labware lw, OperationType opType, Work work, List<SlotMeasurementRequest> sanMeas,
@@ -116,6 +123,7 @@ public class TestOpWithSlotMeasurementsService {
         doReturn(work).when(mockWorkService).validateUsableWork(any(), any());
         doNothing().when(service).validateAddresses(any(), any(), any());
         doReturn(sanMeas).when(service).sanitiseMeasurements(any(), any(), any());
+        doReturn(List.of()).when(service).validateComments(any(), any());
         if (problem==null) {
             doNothing().when(service).checkForDupeMeasurements(any(), any());
         } else {
@@ -142,6 +150,7 @@ public class TestOpWithSlotMeasurementsService {
         verify(mockWorkService).validateUsableWork(same(problems), eq(request.getWorkNumber()));
         verify(service).validateAddresses(same(problems), same(lw), same(request.getSlotMeasurements()));
         verify(service).sanitiseMeasurements(same(problems), same(opType), same(request.getSlotMeasurements()));
+        verify(service).validateComments(same(problems), same(request.getSlotMeasurements()));
         verify(service).checkForDupeMeasurements(same(problems), same(sanMeas));
     }
 
@@ -185,7 +194,7 @@ public class TestOpWithSlotMeasurementsService {
     @ParameterizedTest
     @CsvSource({
             "cDNA amplification,",
-            "cDNA analysis,",
+            "Visium concentration,",
             "Bake, Operation not expected for this request: Bake",
             "'', No operation type specified.",
             ", No operation type specified.",
@@ -195,7 +204,7 @@ public class TestOpWithSlotMeasurementsService {
     public void testLoadOpType(String opName, String expectedProblem) {
         OperationType opType;
         switch (coalesce(opName, "")) {
-            case OP_CDNA_ANALYSIS: case OP_CDNA_AMP: case "Bake":
+            case OP_VISIUM_CONC: case OP_CDNA_AMP: case "Bake":
                 opType = EntityFactory.makeOperationType(opName, null, OperationTypeFlag.IN_PLACE);
                 break;
             case "Transfer":
@@ -219,7 +228,7 @@ public class TestOpWithSlotMeasurementsService {
     @MethodSource("validateAddressesArgs")
     public void testValidateAddresses(Labware lw, Collection<Address> addresses, Collection<String> expectedProblems) {
         List<SlotMeasurementRequest> srms = addresses.stream()
-                .map(ad -> new SlotMeasurementRequest(ad, "Alpha", "Beta"))
+                .map(ad -> new SlotMeasurementRequest(ad, "Alpha", "Beta", null))
                 .collect(toList());
         List<String> problems = new ArrayList<>(expectedProblems.size());
         service.validateAddresses(problems, lw, srms);
@@ -285,7 +294,7 @@ public class TestOpWithSlotMeasurementsService {
                 ok = false;
             }
             if (ok && smr.getAddress()!=null && opType!=null) {
-                return new SlotMeasurementRequest(smr.getAddress(), smr.getName()+"san", smr.getValue()+"san");
+                return new SlotMeasurementRequest(smr.getAddress(), smr.getName()+"san", smr.getValue()+"san", null);
             }
             return null;
         };
@@ -295,35 +304,35 @@ public class TestOpWithSlotMeasurementsService {
         final Address A2 = new Address(1,2);
         return Arrays.stream(new Object[][] {
                 {opType, null, null, null},
-                {opType, new SlotMeasurementRequest(A1, "Alpha", "10"), new SlotMeasurementRequest(A1, "Alphasan", "10san"), null},
-                {opType, new SlotMeasurementRequest(null, "Alpha", "10"), null, null},
-                {null, new SlotMeasurementRequest(A1, "Alpha", "10"), null, null},
+                {opType, new SlotMeasurementRequest(A1, "Alpha", "10", null), new SlotMeasurementRequest(A1, "Alphasan", "10san", null), null},
+                {opType, new SlotMeasurementRequest(null, "Alpha", "10", null), null, null},
+                {null, new SlotMeasurementRequest(A1, "Alpha", "10", null), null, null},
                 {opType, List.of(
-                        new SlotMeasurementRequest(A1, "Alpha", "10"),
-                        new SlotMeasurementRequest(A2, "Beta", "20")
+                        new SlotMeasurementRequest(A1, "Alpha", "10", null),
+                        new SlotMeasurementRequest(A2, "Beta", "20", null)
                     ),
                     List.of(
-                        new SlotMeasurementRequest(A1, "Alphasan", "10san"),
-                        new SlotMeasurementRequest(A2, "Betasan", "20san")
+                        new SlotMeasurementRequest(A1, "Alphasan", "10san", null),
+                        new SlotMeasurementRequest(A2, "Betasan", "20san", null)
                     ),null
                 },
-                {opType, new SlotMeasurementRequest(A1, "Alpha", null), null, "Missing value for measurement."},
-                {opType, new SlotMeasurementRequest(A1, null, "10"), null, "Missing name for measurement."},
-                {opType, new SlotMeasurementRequest(A1, "Alpha", "10!"), null, "Invalid value: 10!"},
-                {opType, new SlotMeasurementRequest(A1, "Alpha!", "10"), null, "Unexpected measurements given for operation "+OP_CDNA_AMP+": [Alpha!]"},
+                {opType, new SlotMeasurementRequest(A1, "Alpha", null, null), null, "Missing value for measurement."},
+                {opType, new SlotMeasurementRequest(A1, null, "10", null), null, "Missing name for measurement."},
+                {opType, new SlotMeasurementRequest(A1, "Alpha", "10!", null), null, "Invalid value: 10!"},
+                {opType, new SlotMeasurementRequest(A1, "Alpha!", "10", null), null, "Unexpected measurements given for operation "+OP_CDNA_AMP+": [Alpha!]"},
                 {opType, List.of(
-                        new SlotMeasurementRequest(A1, "Alpha", "10"),
-                        new SlotMeasurementRequest(A1, "Alpha!", "20"),
-                        new SlotMeasurementRequest(A1, "Beta!", "20"),
-                        new SlotMeasurementRequest(null, "Beta", "30"),
-                        new SlotMeasurementRequest(A1, "Gamma", null),
-                        new SlotMeasurementRequest(A1, "Delta", "40!"),
-                        new SlotMeasurementRequest(A1, null, "40"),
-                        new SlotMeasurementRequest(A2, "Epsilon", "50")
+                        new SlotMeasurementRequest(A1, "Alpha", "10", null),
+                        new SlotMeasurementRequest(A1, "Alpha!", "20", null),
+                        new SlotMeasurementRequest(A1, "Beta!", "20", null),
+                        new SlotMeasurementRequest(null, "Beta", "30", null),
+                        new SlotMeasurementRequest(A1, "Gamma", null, null),
+                        new SlotMeasurementRequest(A1, "Delta", "40!", null),
+                        new SlotMeasurementRequest(A1, null, "40", null),
+                        new SlotMeasurementRequest(A2, "Epsilon", "50", null)
                     ),
                     List.of(
-                        new SlotMeasurementRequest(A1, "Alphasan", "10san"),
-                        new SlotMeasurementRequest(A2, "Epsilonsan", "50san")
+                        new SlotMeasurementRequest(A1, "Alphasan", "10san", null),
+                        new SlotMeasurementRequest(A2, "Epsilonsan", "50san", null)
                         ),
                     List.of("Unexpected measurements given for operation "+OP_CDNA_AMP+": [Alpha!, Beta!]", "Invalid value: 40!",
                             "Missing name for measurement.", "Missing value for measurement.")
@@ -372,18 +381,18 @@ public class TestOpWithSlotMeasurementsService {
         final String BAD_VALUE = "Bad value!";
         OperationType opType = EntityFactory.makeOperationType(OP_CDNA_AMP, null, OperationTypeFlag.IN_PLACE);
         return Arrays.stream(new Object[][] {
-                {new SlotMeasurementRequest(A1, null, "10"), opType, null, false, "10", null, "Missing name for measurement.", null},
-                {new SlotMeasurementRequest(A1, "", "10"), opType, null, false, "10", null, "Missing name for measurement.", null},
-                {new SlotMeasurementRequest(A1, "Alpha", null), opType, "Alpha", false, null, null, "Missing value for measurement.", null},
-                {new SlotMeasurementRequest(A1, "Alpha", ""), opType, "Alpha", false, null, null, "Missing value for measurement.", null},
-                {new SlotMeasurementRequest(A1, "Alpha", "10"), null, null, false, "10", null, null, null},
-                {new SlotMeasurementRequest(A1, "Alpha!", "10"), opType, null, true, "10", null, null, null},
-                {new SlotMeasurementRequest(A1, "Alpha", "10!"), opType, "Alpha", false, null, BAD_VALUE, BAD_VALUE, null},
-                {new SlotMeasurementRequest(null, "Alpha", "10"), opType, "Alpha", false, "10", null, null, null},
-                {new SlotMeasurementRequest(null, null, null), null, null, false, null, null,
+                {new SlotMeasurementRequest(A1, null, "10", null), opType, null, false, "10", null, "Missing name for measurement.", null},
+                {new SlotMeasurementRequest(A1, "", "10", null), opType, null, false, "10", null, "Missing name for measurement.", null},
+                {new SlotMeasurementRequest(A1, "Alpha", null, null), opType, "Alpha", false, null, null, "Missing value for measurement.", null},
+                {new SlotMeasurementRequest(A1, "Alpha", "", null), opType, "Alpha", false, null, null, "Missing value for measurement.", null},
+                {new SlotMeasurementRequest(A1, "Alpha", "10", null), null, null, false, "10", null, null, null},
+                {new SlotMeasurementRequest(A1, "Alpha!", "10", null), opType, null, true, "10", null, null, null},
+                {new SlotMeasurementRequest(A1, "Alpha", "10!", null), opType, "Alpha", false, null, BAD_VALUE, BAD_VALUE, null},
+                {new SlotMeasurementRequest(null, "Alpha", "10", null), opType, "Alpha", false, "10", null, null, null},
+                {new SlotMeasurementRequest(null, null, null, null), null, null, false, null, null,
                     List.of("Missing name for measurement.", "Missing value for measurement."), null},
-                {new SlotMeasurementRequest(A1, "Alpha!", "10!"), opType, "Alpha", false, "10", null, null,
-                    new SlotMeasurementRequest(A1, "Alpha", "10")},
+                {new SlotMeasurementRequest(A1, "Alpha!", "10!", null), opType, "Alpha", false, "10", null, null,
+                    new SlotMeasurementRequest(A1, "Alpha", "10", null)},
         }).map(arr -> Arguments.of(arr[0], arr[1], arr[2], arr[3], arr[4], arr[5], objToCollection(arr[6]), arr[7]));
     }
 
@@ -391,24 +400,52 @@ public class TestOpWithSlotMeasurementsService {
     @CsvSource({
             OP_CDNA_AMP+",Cq value,Cq value",
             OP_CDNA_AMP+",CQ VALUE,Cq value",
-            OP_CDNA_ANALYSIS+",cDNA concentration,cDNA concentration",
-            OP_CDNA_ANALYSIS+",CDNA CONCENTRATION,cDNA concentration",
+            OP_VISIUM_CONC+",cDNA concentration,cDNA concentration",
+            OP_VISIUM_CONC+",CDNA CONCENTRATION,cDNA concentration",
+            OP_VISIUM_CONC+",library concentration,Library concentration",
+            OP_VISIUM_CONC+",LIBRARY CONCENTRATION,Library concentration",
             OP_CDNA_AMP+",cDNA concentration,",
-            OP_CDNA_ANALYSIS+",Cq value,",
+            OP_VISIUM_CONC+",Cq value,",
             ",Cq value,",
             ",cDNA concentration,",
             "Bananas,Cq value,",
-            OP_CDNA_ANALYSIS+",Custard,",
+            OP_VISIUM_CONC+",Custard,",
     })
     public void testSanitiseMeasurementName(String opTypeName, String name, String expected) {
         OperationType opType = (opTypeName==null ? null : EntityFactory.makeOperationType(opTypeName, null, OperationTypeFlag.IN_PLACE));
         assertEquals(expected, service.sanitiseMeasurementName(opType, name));
     }
 
+    @Test
+    public void testValidateComments() {
+        Address A1 = new Address(1,1);
+        List<SlotMeasurementRequest> sms = List.of(
+                new SlotMeasurementRequest(A1, "Alpha", "Beta", 1),
+                new SlotMeasurementRequest(A1, "Alpha", "Beta", 2),
+                new SlotMeasurementRequest(A1, "Alpha", "Beta", null),
+                new SlotMeasurementRequest(A1, "Alpha", "Beta", -1)
+        );
+        //noinspection unchecked
+        ArgumentCaptor<Stream<Integer>> commentIdStreamCaptor = ArgumentCaptor.forClass(Stream.class);
+        List<Comment> comments = List.of(
+                new Comment(1, "Banana", "custard"),
+                new Comment(2, "Rhubarb", "custard")
+        );
+        final String problem = "No such comment";
+        when(mockCommentValidationService.validateCommentIds(any(), any()))
+                .then(Matchers.addProblem(problem, comments));
+        final List<String> problems = new ArrayList<>(1);
+        assertSame(comments, service.validateComments(problems, sms));
+        verify(mockCommentValidationService).validateCommentIds(any(), commentIdStreamCaptor.capture());
+        assertThat(commentIdStreamCaptor.getValue()).containsExactly(1, 2, -1);
+    }
+
     @ParameterizedTest
     @CsvSource({
             "cDNA concentration,10,10,",
             "cDNA concentration,10,10.0,",
+            "Library concentration,10,10,",
+            "Library concentration,10,10.0,",
             "Cq value,20,20,",
             "Cq value,20,20.0,",
             "Sploop,20,,",
@@ -416,7 +453,7 @@ public class TestOpWithSlotMeasurementsService {
     })
     public void testSanitiseMeasurementValue(String name, String value, String sanValue, String problem) {
         Sanitiser<String> san, otherSan;
-        if (name.equals("cDNA concentration")) {
+        if (name.equals("cDNA concentration") || name.equals("Library concentration")) {
             san = mockConcSan;
             otherSan = mockCqSan;
         } else if (name.equals("Cq value")) {
@@ -469,23 +506,23 @@ public class TestOpWithSlotMeasurementsService {
         final Address A1 = new Address(1,1), A2 = new Address(1,2), A3 = new Address(1,3);
         return Arrays.stream(new Object[][] {
                 {List.of(),null},
-                {List.of(new SlotMeasurementRequest(A1, "Alpha", "10")), null},
+                {List.of(new SlotMeasurementRequest(A1, "Alpha", "10", null)), null},
 
-                {List.of(new SlotMeasurementRequest(A1, "Alpha", "10"),
-                        new SlotMeasurementRequest(A1, "Beta", "10"),
-                        new SlotMeasurementRequest(A2, "Alpha", "10"),
-                        new SlotMeasurementRequest(A2, "Beta", "10")), null},
+                {List.of(new SlotMeasurementRequest(A1, "Alpha", "10", null),
+                        new SlotMeasurementRequest(A1, "Beta", "10", null),
+                        new SlotMeasurementRequest(A2, "Alpha", "10", null),
+                        new SlotMeasurementRequest(A2, "Beta", "10", null)), null},
 
-                {List.of(new SlotMeasurementRequest(A1, "Alpha", "10"),
-                        new SlotMeasurementRequest(A1, "Alpha", "20")),
+                {List.of(new SlotMeasurementRequest(A1, "Alpha", "10", null),
+                        new SlotMeasurementRequest(A1, "Alpha", "20", null)),
                 "Measurements specified multiple times: Alpha in A1"},
 
-                {List.of(new SlotMeasurementRequest(A1, "Alpha", "10"),
-                        new SlotMeasurementRequest(A1, "Beta", "20"),
-                        new SlotMeasurementRequest(A1, "Alpha", "30"),
-                        new SlotMeasurementRequest(A2, "Gamma", "40"),
-                        new SlotMeasurementRequest(A2, "Gamma", "50"),
-                        new SlotMeasurementRequest(A3, "Gamma", "60")),
+                {List.of(new SlotMeasurementRequest(A1, "Alpha", "10", null),
+                        new SlotMeasurementRequest(A1, "Beta", "20", null),
+                        new SlotMeasurementRequest(A1, "Alpha", "30", null),
+                        new SlotMeasurementRequest(A2, "Gamma", "40", null),
+                        new SlotMeasurementRequest(A2, "Gamma", "50", null),
+                        new SlotMeasurementRequest(A3, "Gamma", "60", null)),
                 "Measurements specified multiple times: Alpha in A1; Gamma in A2"},
         }).map(Arguments::of);
     }
@@ -498,12 +535,14 @@ public class TestOpWithSlotMeasurementsService {
         User user = EntityFactory.getUser();
         Operation op = new Operation(2, opType, null, null, user);
         Labware lw = EntityFactory.getTube();
-        List<SlotMeasurementRequest> smrs = List.of(new SlotMeasurementRequest(new Address(1,1), "Alpha", "10"));
+        List<SlotMeasurementRequest> smrs = List.of(new SlotMeasurementRequest(new Address(1,1), "Alpha", "10", null));
 
         when(mockOpService.createOperationInPlace(opType, user, lw, null, null)).thenReturn(op);
         doReturn(List.of()).when(service).createMeasurements(any(), any(), any());
+        List<Comment> comments = List.of(new Comment(50, "Banana", "custard"));
+        doReturn(comments).when(service).validateComments(any(), any());
 
-        OperationResult opres = service.execute(user, lw, opType, work, smrs);
+        OperationResult opres = service.execute(user, lw, opType, work, comments, smrs);
         assertThat(opres.getLabware()).containsExactly(lw);
         assertThat(opres.getOperations()).containsExactly(op);
         verify(service).createMeasurements(op.getId(), lw, smrs);
@@ -512,6 +551,7 @@ public class TestOpWithSlotMeasurementsService {
         } else {
             verifyNoInteractions(mockWorkService);
         }
+        verify(service).recordComments(op.getId(), comments, lw, smrs);
     }
 
     @Test
@@ -531,9 +571,9 @@ public class TestOpWithSlotMeasurementsService {
         lw.getSlot(A1).getSamples().add(sam1);
         lw.getSlot(A2).getSamples().addAll(List.of(sam1, sam2));
         List<SlotMeasurementRequest> smrs = List.of(
-                new SlotMeasurementRequest(A1, "Alpha", "10"),
-                new SlotMeasurementRequest(A1, "Beta", "20"),
-                new SlotMeasurementRequest(A2, "Alpha", "30")
+                new SlotMeasurementRequest(A1, "Alpha", "10", null),
+                new SlotMeasurementRequest(A1, "Beta", "20", null),
+                new SlotMeasurementRequest(A2, "Alpha", "30", null)
         );
 
         when(mockMeasRepo.saveAll(any())).then(invocation -> {
@@ -557,6 +597,36 @@ public class TestOpWithSlotMeasurementsService {
                 new Measurement(13, "Alpha", "30", sam2.getId(), opId, slot2Id)
         );
         verify(mockMeasRepo).saveAll(ms);
+    }
+
+    @Test
+    public void testRecordComments() {
+        Integer opId = 300;
+        List<Comment> comments = List.of(
+                new Comment(1, "Banana", "custard"),
+                new Comment(2, "Rhubarb", "custard")
+        );
+        LabwareType lt = EntityFactory.makeLabwareType(1, 2);
+        Sample sam1 = EntityFactory.getSample();
+        Sample sam2 = new Sample(sam1.getId(), null, sam1.getTissue(), sam1.getBioState());
+        Labware lw = EntityFactory.makeLabware(lt, sam1, sam2);
+        lw.getFirstSlot().addSample(sam2);
+        Address A1 = new Address(1,1);
+        Address A2 = new Address(1,2);
+        List<SlotMeasurementRequest> sms = List.of(
+                new SlotMeasurementRequest(A1, "A", "B", 1),
+                new SlotMeasurementRequest(A2, "A", "B", 2)
+        );
+
+        when(mockOpComRepo.saveAll(any())).then(Matchers.returnArgument());
+
+        service.recordComments(opId, comments, lw, sms);
+
+        verify(mockOpComRepo).saveAll(List.of(
+                new OperationComment(null, comments.get(0), opId, sam1.getId(), lw.getSlot(A1).getId(), null),
+                new OperationComment(null, comments.get(0), opId, sam2.getId(), lw.getSlot(A1).getId(), null),
+                new OperationComment(null, comments.get(1), opId, sam2.getId(), lw.getSlot(A2).getId(), null)
+        ));
     }
 
 }

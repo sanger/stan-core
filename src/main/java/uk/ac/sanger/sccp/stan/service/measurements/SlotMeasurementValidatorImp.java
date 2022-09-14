@@ -136,7 +136,7 @@ class SlotMeasurementValidatorImp implements SlotMeasurementValidator {
         }
 
         if (name != null && value != null && pop != null && pop) {
-            return new SlotMeasurementRequest(sm.getAddress(), name, value);
+            return sm.withNameAndValue(name, value);
         }
         return null;
     }
