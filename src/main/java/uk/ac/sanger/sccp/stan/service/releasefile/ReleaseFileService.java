@@ -475,13 +475,14 @@ public class ReleaseFileService {
         Map<Integer, List<Measurement>> slotIdToThickness = new HashMap<>();
         Map<Integer, List<Measurement>> slotIdToCoverage = new HashMap<>();
         Map<Integer, List<Measurement>> slotIdToCq = new HashMap<>();
-        Map<Integer, List<Measurement>> slotIdToCDNAConc = new HashMap<>();
+        Map<Integer, List<Measurement>> slotIdToVisiumConc = new HashMap<>();
         Map<Integer, List<Measurement>> slotIdToPermTimes = new HashMap<>();
         final String THICKNESS = MeasurementType.Thickness.friendlyName();
         final String COVERAGE = MeasurementType.Tissue_coverage.friendlyName();
         final String CQ = MeasurementType.Cq_value.friendlyName();
         final String CDNA_CONC = MeasurementType.cDNA_concentration.friendlyName();
-        final String CDNA_ANALYSIS = "cDNA analysis";
+        final String LIBRARY_CONC = MeasurementType.Library_concentration.friendlyName();
+        final String VISIUM_CONCENTRATION = "Visium Concentration";
         final String PERM_TIME= MeasurementType.Permeabilisation_time.friendlyName();
         final String VISIUM_TO = "Visium TO", VISIUM_LP = "Visium LP", PLATE_96 = "96 well plate";
         Map<Integer, OperationType> opTypeCache = new HashMap<>();
@@ -499,7 +500,7 @@ public class ReleaseFileService {
             } else if (measurement.getName().equalsIgnoreCase(CQ)) {
                 List<Measurement> slotIdMeasurements = slotIdToCq.computeIfAbsent(measurement.getSlotId(), k -> new ArrayList<>());
                 slotIdMeasurements.add(measurement);
-            } else if (measurement.getName().equalsIgnoreCase(CDNA_CONC)) {
+            } else if (measurement.getName().equalsIgnoreCase(CDNA_CONC) || measurement.getName().equalsIgnoreCase(LIBRARY_CONC)) {
                 final Integer opId = measurement.getOperationId();
                 OperationType opType = opTypeCache.get(opId);
                 if (opType==null) {
@@ -507,8 +508,8 @@ public class ReleaseFileService {
                     opType = op.getOperationType();
                     opTypeCache.put(opId, opType);
                 }
-                if (opType.getName().equalsIgnoreCase(CDNA_ANALYSIS)) {
-                    List<Measurement> slotIdMeasurements = slotIdToCDNAConc.computeIfAbsent(measurement.getSlotId(), k -> new ArrayList<>());
+                if (opType.getName().equalsIgnoreCase(VISIUM_CONCENTRATION)) {
+                    List<Measurement> slotIdMeasurements = slotIdToVisiumConc.computeIfAbsent(measurement.getSlotId(), k -> new ArrayList<>());
                     slotIdMeasurements.add(measurement);
                 }
             } else if (measurement.getName().equalsIgnoreCase(PERM_TIME)) {
@@ -537,9 +538,14 @@ public class ReleaseFileService {
                     log.error("Cq measurement is not an integer: {}", cqMeasurement);
                 }
             }
-            Measurement concMeasurement = selectMeasurement(entry, slotIdToCDNAConc, ancestry);
+            Measurement concMeasurement = selectMeasurement(entry, slotIdToVisiumConc, ancestry);
             if (concMeasurement != null) {
-                entry.setCdnaAnalysisConcentration(concMeasurement.getValue());
+                entry.setVisiumConcentration(concMeasurement.getValue());
+                if (concMeasurement.getName().equalsIgnoreCase(CDNA_CONC)) {
+                    entry.setVisiumConcentrationType("cDNA");
+                } else if (concMeasurement.getName().equalsIgnoreCase(LIBRARY_CONC)) {
+                    entry.setVisiumConcentrationType("Library");
+                }
             }
 
             String labwareTypeName = entry.getLabware().getLabwareType().getName();
