@@ -404,6 +404,8 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
         Labware lw = lwService.create(lwType, preBarcode, preBarcode);
         Slot slot = lw.getFirstSlot();
         slot.addSample(sample);
+        slot.setBlockSampleId(sample.getId());
+        slot.setBlockHighestSection(0);
         slotRepo.save(slot);
         return lw;
     }

@@ -1,0 +1,25 @@
+mutation {
+    confirmSection(request: {
+        labware: [
+            {
+                barcode: "BARCODE0",
+                confirmSections: [
+                    {
+                        destinationAddress: "A1"
+                        newSection: 14
+                        sampleId: 55555
+                    }
+                ]
+            }
+        ]
+        workNumber: "SGP1"
+    }) {
+        labware {
+            barcode
+        }
+        operations {
+            performed
+            operationType { name }
+       }
+    }
+}

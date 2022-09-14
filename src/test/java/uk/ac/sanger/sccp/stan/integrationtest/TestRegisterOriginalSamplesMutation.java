@@ -99,14 +99,16 @@ public class TestRegisterOriginalSamplesMutation {
         assertEquals(Labware.State.active, lw.getState());
 
         Work work = entityCreator.createWork(null, null, null, null);
-        testBlockProcessing(barcode, work);
+        Labware block = testBlockProcessing(barcode, work);
+        testSectioningBlock(block, work);
         lw.setDiscarded(false);
         lwRepo.save(lw);
         testPotProcessing(barcode, work);
         verifyStorelightQueries(mockStorelight, user.getUsername(), List.of(barcode), List.of(barcode));
+
     }
 
-    private void testBlockProcessing(String sourceBarcode, Work work) throws Exception {
+    private Labware testBlockProcessing(String sourceBarcode, Work work) throws Exception {
         OperationType opType = entityCreator.createOpType("Block processing", null);
         String mutation = tester.readGraphQL("tissueblock.graphql")
                 .replace("WORKNUMBER", work.getWorkNumber())
@@ -118,9 +120,26 @@ public class TestRegisterOriginalSamplesMutation {
         assertEquals("5c", dest.getFirstSlot().getSamples().get(0).getTissue().getReplicate());
         Labware src = lwRepo.getByBarcode(sourceBarcode);
         assertTrue(src.isDiscarded());
+        assertTrue(dest.getFirstSlot().isBlock());
 
         Operation op = opRepo.findById(opId).orElseThrow();
         assertEquals(opType, op.getOperationType());
+        return dest;
+    }
+
+    private void testSectioningBlock(Labware block, Work work) throws Exception {
+        final Integer blockSampleId = block.getFirstSlot().getBlockSampleId();
+        String planMutation = tester.readGraphQL("plan_simple.graphql")
+                .replace("BARCODE0", block.getBarcode())
+                .replace("55555", String.valueOf(blockSampleId));
+        Object result = tester.post(planMutation);
+        String slideBarcode = chainGet(result, "data", "plan", "labware", 0, "barcode");
+        String confirmMutation = tester.readGraphQL("confirmsection_simple.graphql")
+                .replace("BARCODE0", slideBarcode)
+                .replace("55555", String.valueOf(blockSampleId))
+                .replace("SGP1", work.getWorkNumber());
+        result = tester.post(confirmMutation);
+        assertNotNull(chainGet(result, "data", "confirmSection", "labware", 0, "barcode"));
     }
 
     private void testPotProcessing(String sourceBarcode, Work work) throws Exception {
