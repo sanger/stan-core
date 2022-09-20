@@ -66,13 +66,14 @@ public class ReagentTransferServiceImp implements ReagentTransferService {
         Labware lw = loadLabware(problems, request.getDestinationBarcode());
         Work work = workService.validateUsableWork(problems, request.getWorkNumber());
         UCMap<ReagentPlate> reagentPlates = loadReagentPlates(request.getTransfers());
+        String plateType = checkPlateType(problems, reagentPlates.values(), request.getPlateType());
         validateTransfers(problems, request.getTransfers(), reagentPlates, lw);
 
         if (!problems.isEmpty()) {
             throw new ValidationException("The request could not be validated.", problems);
         }
 
-        return record(user, opType, work, request.getTransfers(), reagentPlates, lw);
+        return record(user, opType, work, request.getTransfers(), reagentPlates, lw, plateType);
     }
 
     /**
@@ -126,6 +127,30 @@ public class ReagentTransferServiceImp implements ReagentTransferService {
                 .map(String::toUpperCase)
                 .collect(toSet());
         return reagentPlateService.loadPlates(barcodes);
+    }
+
+    /**
+     * Checks the given plate type is suitable.
+     * It must be equal to either {@link ReagentPlate#TYPE_FFPE} or {@link ReagentPlate#TYPE_FRESH_FROZEN}.
+     * It must match existing plates.
+     * @param problems receptacle for problems
+     * @param existingPlates the existing reagent plates (if any) referred to by the request
+     * @param plateTypeArg the plate type as given in the request
+     */
+    public String checkPlateType(Collection<String> problems, Collection<ReagentPlate> existingPlates, String plateTypeArg) {
+        String plateType = ReagentPlate.canonicalPlateType(plateTypeArg);
+        if (plateType==null) {
+            problems.add("Unknown plate type: "+repr(plateTypeArg));
+            return null;
+        }
+        List<String> nonMatching = existingPlates.stream()
+                .filter(rp -> !plateType.equalsIgnoreCase(rp.getPlateType()))
+                .map(ReagentPlate::getBarcode)
+                .collect(toList());
+        if (!nonMatching.isEmpty()) {
+            problems.add("The given plate type "+plateType+" does not match the existing plate "+nonMatching+".");
+        }
+        return plateType;
     }
 
     /**
@@ -242,7 +267,7 @@ public class ReagentTransferServiceImp implements ReagentTransferService {
         } else {
             // Since the reagent plate doesn't exist yet, we assume its size
             // (a safe assumption, since it is the only size we support).
-            if (ReagentPlate.PLATE_TYPE_96.indexOf(rAddress) < 0) {
+            if (ReagentPlate.PLATE_LAYOUT_96.indexOf(rAddress) < 0) {
                 invalidReagentSlots.add(new RSlot(rAddress, barcode));
             }
         }
@@ -259,11 +284,12 @@ public class ReagentTransferServiceImp implements ReagentTransferService {
      * @param transfers the transfers to make
      * @param reagentPlates the reagent plates that already exist
      * @param lw the destination labware
+     * @param plateType the plate type for new plates
      * @return the operations and affected labware
      */
     public OperationResult record(User user, OperationType opType, Work work, Collection<ReagentTransfer> transfers,
-                                  UCMap<ReagentPlate> reagentPlates, Labware lw) {
-        createReagentPlates(transfers, reagentPlates);
+                                  UCMap<ReagentPlate> reagentPlates, Labware lw, String plateType) {
+        createReagentPlates(transfers, reagentPlates, plateType);
         List<Action> actions = bioStateReplacer.updateBioStateInPlace(opType.getNewBioState(), lw);
         Operation op = createOperation(user, opType, work, lw, actions);
         recordTransfers(transfers, reagentPlates, lw, op.getId());
@@ -274,13 +300,14 @@ public class ReagentTransferServiceImp implements ReagentTransferService {
      * Creates reagent plates for the barcodes specified in the transfers if they are not already in the given map.
      * @param transfers the transfers requested
      * @param reagentPlates the cache and receptacle for reagent plates, mapped from their barcodes
+     * @param plateType the plate type for new plates
      */
     public void createReagentPlates(Collection<ReagentTransfer> transfers,
-                                    UCMap<ReagentPlate> reagentPlates) {
+                                    UCMap<ReagentPlate> reagentPlates, String plateType) {
         for (ReagentTransfer transfer : transfers) {
             String barcode = transfer.getReagentPlateBarcode();
             if (reagentPlates.get(barcode)==null) {
-                reagentPlates.put(barcode, reagentPlateService.createReagentPlate(barcode));
+                reagentPlates.put(barcode, reagentPlateService.createReagentPlate(barcode, plateType));
             }
         }
     }

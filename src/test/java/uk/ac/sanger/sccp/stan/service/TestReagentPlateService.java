@@ -37,18 +37,19 @@ public class TestReagentPlateService {
     @Test
     public void testCreateReagentPlate_valid() {
         String barcode = "123";
-        ReagentPlate plate = new ReagentPlate(barcode);
+        String plateType = ReagentPlate.TYPE_FRESH_FROZEN;
+        ReagentPlate plate = new ReagentPlate(barcode, plateType);
         when(mockReagentPlateRepo.findByBarcode(barcode)).thenReturn(Optional.empty());
         when(mockReagentPlateRepo.save(any())).thenReturn(plate);
         List<ReagentSlot> rslots = List.of(new ReagentSlot(null, new Address(1,2)));
         doReturn(rslots).when(service).createSlots(any());
 
-        assertSame(plate, service.createReagentPlate(barcode));
+        assertSame(plate, service.createReagentPlate(barcode, plateType));
 
         verify(mockBarcodeValidator).checkArgument(barcode);
         assertSame(rslots, plate.getSlots());
         verify(service).createSlots(plate);
-        verify(mockReagentPlateRepo).save(new ReagentPlate(barcode));
+        verify(mockReagentPlateRepo).save(new ReagentPlate(barcode, plateType));
     }
 
     @Test
@@ -57,7 +58,7 @@ public class TestReagentPlateService {
         IllegalArgumentException ex = new IllegalArgumentException("Bad barcode");
         doThrow(ex).when(mockBarcodeValidator).checkArgument(barcode);
 
-        assertSame(ex, assertThrows(IllegalArgumentException.class, () -> service.createReagentPlate(barcode)));
+        assertSame(ex, assertThrows(IllegalArgumentException.class, () -> service.createReagentPlate(barcode, "bananas")));
 
         verifyNoInteractions(mockReagentPlateRepo);
         verify(service, never()).createSlots(any());
@@ -65,10 +66,10 @@ public class TestReagentPlateService {
 
     @Test
     public void testCreateSlots() {
-        ReagentPlate plate = new ReagentPlate(500, "123", null);
-        ReagentPlateType plateType = plate.getPlateType();
-        assertEquals(8, plateType.getNumRows());
-        assertEquals(12, plateType.getNumColumns());
+        ReagentPlate plate = new ReagentPlate(500, "123", ReagentPlate.TYPE_FFPE, null);
+        ReagentPlateLayout layout = plate.getPlateLayout();
+        assertEquals(8, layout.getNumRows());
+        assertEquals(12, layout.getNumColumns());
         List<ReagentSlot> savedSlots = List.of(
                 new ReagentSlot(10, 500, new Address(1,1), false),
                 new ReagentSlot(11, 500, new Address(1,2), false)
@@ -83,8 +84,8 @@ public class TestReagentPlateService {
         List<ReagentSlot> rslots = slotsCaptor.getValue();
         assertThat(rslots).hasSize(96);
         Iterator<ReagentSlot> iter = rslots.iterator();
-        for (int row = 1; row <= plateType.getNumRows(); ++row) {
-            for (int col = 1; col <= plateType.getNumColumns(); ++col) {
+        for (int row = 1; row <= layout.getNumRows(); ++row) {
+            for (int col = 1; col <= layout.getNumColumns(); ++col) {
                 ReagentSlot rslot = iter.next();
                 assertAddress(row, col, rslot.getAddress());
                 assertEquals(plate.getId(), rslot.getPlateId());
@@ -115,14 +116,14 @@ public class TestReagentPlateService {
 
         final String barcode = "123";
 
-        ReagentPlate plate = service.createReagentPlate(barcode);
+        ReagentPlate plate = service.createReagentPlate(barcode, ReagentPlate.TYPE_FFPE);
 
         assertEquals(barcode, plate.getBarcode());
         final Integer plateId = plate.getId();
         assertEquals(100, plateId);
         List<ReagentSlot> rslots = plate.getSlots();
-        int numRows = plate.getPlateType().getNumRows();
-        int numCols = plate.getPlateType().getNumColumns();
+        int numRows = plate.getPlateLayout().getNumRows();
+        int numCols = plate.getPlateLayout().getNumColumns();
         assertEquals(8, numRows);
         assertEquals(12, numCols);
         assertThat(rslots).hasSize(numRows * numCols);
@@ -141,8 +142,8 @@ public class TestReagentPlateService {
 
     @Test
     public void testLoadPlates() {
-        ReagentPlate plate1 = new ReagentPlate("001");
-        ReagentPlate plate2 = new ReagentPlate("002");
+        ReagentPlate plate1 = new ReagentPlate("001", ReagentPlate.TYPE_FFPE);
+        ReagentPlate plate2 = new ReagentPlate("002", ReagentPlate.TYPE_FRESH_FROZEN);
         List<String> barcodes = List.of("001", "002", "003");
         when(mockReagentPlateRepo.findAllByBarcodeIn(any())).thenReturn(List.of(plate1, plate2));
         UCMap<ReagentPlate> map = service.loadPlates(barcodes);

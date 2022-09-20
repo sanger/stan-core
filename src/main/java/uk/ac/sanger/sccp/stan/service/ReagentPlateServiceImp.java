@@ -41,13 +41,14 @@ public class ReagentPlateServiceImp implements ReagentPlateService {
     /**
      * Creates a new reagent plate with the given barcode and the appropriate slots.
      * @param barcode the barcode for the new reagent plate
+     * @param plateType the plate type for a new plate
      * @return the new plate
      * @exception IllegalArgumentException if the barcode is invalid
      */
     @Override
-    public ReagentPlate createReagentPlate(String barcode) {
+    public ReagentPlate createReagentPlate(String barcode, String plateType) {
         reagentPlateBarcodeValidator.checkArgument(barcode);
-        ReagentPlate plate = reagentPlateRepo.save(new ReagentPlate(barcode));
+        ReagentPlate plate = reagentPlateRepo.save(new ReagentPlate(barcode, plateType));
         plate.setSlots(createSlots(plate));
         return plate;
     }
@@ -58,9 +59,9 @@ public class ReagentPlateServiceImp implements ReagentPlateService {
      * @return the new slots
      */
     public List<ReagentSlot> createSlots(ReagentPlate plate) {
-        final ReagentPlateType plateType = plate.getPlateType();
+        final ReagentPlateLayout plateLayout = plate.getPlateLayout();
         final Integer plateId = plate.getId();
-        List<ReagentSlot> slots = Address.stream(plateType.getNumRows(), plateType.getNumColumns())
+        List<ReagentSlot> slots = Address.stream(plateLayout.getNumRows(), plateLayout.getNumColumns())
                 .map(address -> new ReagentSlot(plateId, address))
                 .collect(toList());
         return BasicUtils.asList(reagentSlotRepo.saveAll(slots));
