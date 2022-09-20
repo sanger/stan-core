@@ -8,6 +8,7 @@ import uk.ac.sanger.sccp.stan.model.Work.Status;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.WorkProgress;
 import uk.ac.sanger.sccp.stan.request.WorkProgress.WorkProgressTimestamp;
+import uk.ac.sanger.sccp.stan.service.work.WorkEventService;
 import uk.ac.sanger.sccp.utils.EntityNameFilter;
 
 import java.time.LocalDateTime;
@@ -30,6 +31,7 @@ public class WorkProgressServiceImp implements WorkProgressService {
     private final LabwareRepo lwRepo;
     private final ReleaseRepo releaseRepo;
     private final StainTypeRepo stainTypeRepo;
+    private final WorkEventService workEventService;
     // Consider for the future moving these sets to a config class and injecting them
     private final Set<String> includedOpTypes = Set.of("section", "stain", "extract", "visium cdna", "image",
             "rin analysis", "dv200 analysis");
@@ -40,13 +42,14 @@ public class WorkProgressServiceImp implements WorkProgressService {
 
     @Autowired
     public WorkProgressServiceImp(WorkRepo workRepo, WorkTypeRepo workTypeRepo, OperationRepo opRepo,
-                                  LabwareRepo lwRepo, ReleaseRepo releaseRepo, StainTypeRepo stainTypeRepo) {
+                                  LabwareRepo lwRepo, ReleaseRepo releaseRepo, StainTypeRepo stainTypeRepo, WorkEventService workEventService) {
         this.workRepo = workRepo;
         this.workTypeRepo = workTypeRepo;
         this.opRepo = opRepo;
         this.lwRepo = lwRepo;
         this.releaseRepo = releaseRepo;
         this.stainTypeRepo = stainTypeRepo;
+        this.workEventService = workEventService;
     }
 
     @Override
@@ -127,7 +130,8 @@ public class WorkProgressServiceImp implements WorkProgressService {
                 .map(e -> new WorkProgressTimestamp(e.getKey(), e.getValue()))
                 .collect(toList());
         String mostRecentOperation = getMostRecentOperation(workTimes);
-        return new WorkProgress(work, workTimes, mostRecentOperation);
+        String workComment = getWorkComment(work);
+        return new WorkProgress(work, workTimes, mostRecentOperation, workComment);
     }
 
     /**
@@ -270,5 +274,18 @@ public class WorkProgressServiceImp implements WorkProgressService {
         if (savedTime==null || savedTime.isBefore(thisTime)) {
             opTimes.put(key, thisTime);
         }
+    }
+
+    public String getWorkComment(Work work) {
+        if (work.getStatus()==Status.paused || work.getStatus()==Status.failed || work.getStatus()==Status.withdrawn) {
+            Map<Integer, WorkEvent> workEvents = workEventService.loadLatestEvents(List.of(work.getId()));
+            WorkEvent event = workEvents.get(work.getId());
+            if (event != null && event.getComment()!=null &&
+                    (work.getStatus()==Status.paused && event.getType()==WorkEvent.Type.pause
+                            || work.getStatus()==Status.failed && event.getType()==WorkEvent.Type.fail|| work.getStatus()==Status.withdrawn && event.getType()==WorkEvent.Type.withdraw)) {
+                return event.getComment().getText();
+            }
+        }
+        return null;
     }
 }

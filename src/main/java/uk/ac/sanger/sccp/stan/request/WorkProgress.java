@@ -61,6 +61,7 @@ public class WorkProgress {
     private Work work;
     private List<WorkProgressTimestamp> timestamps;
     private String mostRecentOperation;
+    private String workComment;
 
     public WorkProgress() {
         this(null);
@@ -72,10 +73,11 @@ public class WorkProgress {
         this.mostRecentOperation = null;
     }
 
-    public WorkProgress(Work work, List<WorkProgressTimestamp> timestamps, String mostRecentOperation) {
+    public WorkProgress(Work work, List<WorkProgressTimestamp> timestamps, String mostRecentOperation, String workComment) {
         this.work = work;
         this.timestamps = timestamps;
         this.mostRecentOperation = mostRecentOperation;
+        this.workComment = workComment;
     }
 
     public Work getWork() {
@@ -102,6 +104,14 @@ public class WorkProgress {
         this.mostRecentOperation = mostRecentOperation;
     }
 
+    public String getWorkComment() {
+        return this.workComment;
+    }
+
+    public void setWorkComment(String workComment) {
+        this.workComment = workComment;
+    }
+
     public void addTime(String type, LocalDateTime timestamp) {
         this.timestamps.add(new WorkProgressTimestamp(type, timestamp));
     }
@@ -113,16 +123,17 @@ public class WorkProgress {
         WorkProgress that = (WorkProgress) o;
         return (Objects.equals(this.work, that.work)
                 && Objects.equals(this.timestamps, that.timestamps))
-                && Objects.equals(this.mostRecentOperation, that.mostRecentOperation);
+                && Objects.equals(this.mostRecentOperation, that.mostRecentOperation)
+                && Objects.equals(this.workComment, that.workComment);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(work, timestamps, mostRecentOperation);
+        return Objects.hash(work, timestamps, mostRecentOperation, workComment);
     }
 
     @Override
     public String toString() {
-        return String.format("WorkProgress(%s, %s, %s)", work==null ? null : work.getWorkNumber(), timestamps, mostRecentOperation);
+        return String.format("WorkProgress(%s, %s, %s, %s)", work==null ? null : work.getWorkNumber(), timestamps, mostRecentOperation, workComment);
     }
 }

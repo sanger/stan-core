@@ -10,6 +10,7 @@ import uk.ac.sanger.sccp.stan.model.Work.Status;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.WorkProgress;
 import uk.ac.sanger.sccp.stan.request.WorkProgress.WorkProgressTimestamp;
+import uk.ac.sanger.sccp.stan.service.work.WorkEventService;
 
 import javax.persistence.EntityNotFoundException;
 import java.time.LocalDateTime;
@@ -35,7 +36,7 @@ public class TestWorkProgressService {
     private LabwareRepo mockLwRepo;
     private ReleaseRepo mockReleaseRepo;
     private StainTypeRepo mockStainTypeRepo;
-
+    private WorkEventService mockWorkEventService;
     private WorkProgressServiceImp service;
     @BeforeEach
     void setup() {
@@ -45,8 +46,9 @@ public class TestWorkProgressService {
         mockLwRepo = mock(LabwareRepo.class);
         mockReleaseRepo = mock(ReleaseRepo.class);
         mockStainTypeRepo = mock(StainTypeRepo.class);
+        mockWorkEventService = mock(WorkEventService.class);
 
-        service = spy(new WorkProgressServiceImp(mockWorkRepo, mockWorkTypeRepo, mockOpRepo, mockLwRepo, mockReleaseRepo, mockStainTypeRepo));
+        service = spy(new WorkProgressServiceImp(mockWorkRepo, mockWorkTypeRepo, mockOpRepo, mockLwRepo, mockReleaseRepo, mockStainTypeRepo, mockWorkEventService));
     }
 
     @ParameterizedTest
@@ -405,6 +407,34 @@ public class TestWorkProgressService {
         assertEquals(service.getMostRecentOperation(wpts),"Analysis");
         assertEquals(service.getMostRecentOperation(wpt),"Stain");
         assertNull(service.getMostRecentOperation(List.of()));
+    }
+
+    @Test
+    public void testGetWorkComment() {
+        Work workA = new Work(1, "SGP1", null, null, null, null, Status.active);
+        Work workC = new Work(2, "SGP2", null, null, null, null, Status.completed);
+        Work workF = new Work(3, "SGP3", null, null, null, null, Status.failed);
+        Work workP = new Work(4, "SGP4", null, null, null, null, Status.paused);
+        Work workW = new Work(5, "SGP5", null, null, null, null, Status.withdrawn);
+
+        Comment failedComment = new Comment(1, "This work failed", "work status");
+        Comment pausedComment = new Comment(2, "This work is paused", "work status");
+        Comment withdrawnComment = new Comment(3, "This work is withdrawn", "work status");
+
+        WorkEvent eventF = new WorkEvent(workF, WorkEvent.Type.fail, null, failedComment);
+        WorkEvent eventP = new WorkEvent(workP, WorkEvent.Type.pause, null, pausedComment);
+        WorkEvent eventW = new WorkEvent(workW, WorkEvent.Type.withdraw, null, withdrawnComment);
+
+        when(mockWorkEventService.loadLatestEvents(List.of(workF.getId()))).thenReturn(Map.of(workF.getId(), eventF));
+        when(mockWorkEventService.loadLatestEvents(List.of(workP.getId()))).thenReturn(Map.of(workP.getId(), eventP));
+        when(mockWorkEventService.loadLatestEvents(List.of(workW.getId()))).thenReturn(Map.of(workW.getId(), eventW));
+
+        assertEquals(service.getWorkComment(workA),null);
+        assertEquals(service.getWorkComment(workC),null);
+        assertEquals(service.getWorkComment(workF),"This work failed");
+        assertEquals(service.getWorkComment(workP),"This work is paused");
+        assertEquals(service.getWorkComment(workW),"This work is withdrawn");
+
     }
 
     private static Work workWithId(int id) {
