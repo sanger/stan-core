@@ -9,6 +9,7 @@ import org.springframework.test.context.ActiveProfiles;
 import uk.ac.sanger.sccp.stan.*;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.service.work.WorkEventService;
 
 import javax.persistence.EntityManager;
 import javax.transaction.Transactional;
@@ -57,6 +58,10 @@ public class TestWorkProgressQuery {
     private ReleaseRecipientRepo releaseRecipientRepo;
     @Autowired
     private SnapshotRepo snapshotRepo;
+    @Autowired
+    private WorkEventRepo workEventRepo;
+    @Autowired
+    private CommentRepo commentRepo;
 
     private final LocalDateTime timeZero = LocalDateTime.of(2021,12,7,12,0);
 
@@ -106,13 +111,26 @@ public class TestWorkProgressQuery {
 
         Work work = entityCreator.createWork(null, null, null, null);
         work.setOperationIds(Arrays.stream(ops).map(Operation::getId).collect(toList()));
+        work.setStatus(Work.Status.paused);
         work = workRepo.save(work);
-        String query = tester.readGraphQL("workprogress.graphql").replace("SGP500", work.getWorkNumber());
+
+        // Setup for making workComment use the correct workEvent
+        Comment pausedComment = new Comment(100, "This work is paused", "work status");
+        pausedComment = commentRepo.save(pausedComment);
+        WorkEvent we = new WorkEvent(100, work, WorkEvent.Type.pause, user, pausedComment, LocalDateTime.now());
+        we = workEventRepo.save(we);
+
+
+        String query = tester.readGraphQL("workprogress.graphql")
+                .replace("SGP500", work.getWorkNumber())
+                .replace("active", "paused");
+
         Object result = tester.post(query);
         List<?> workProgresses = chainGet(result, "data", "workProgress");
         assertThat(workProgresses).hasSize(1);
         assertEquals(work.getWorkNumber(), chainGet(workProgresses, 0, "work", "workNumber"));
         assertEquals("Release 96 well plate", chainGet(workProgresses, 0, "mostRecentOperation"));
+        assertEquals(pausedComment.getText(), chainGet(workProgresses, 0, "workComment"));
         List<Map<String,String>> timestamps = chainGet(workProgresses,0, "timestamps");
         // time values are strings
         Map<String,String>[] expected = Arrays.stream(new Object[][] {

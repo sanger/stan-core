@@ -3,5 +3,6 @@ query {
         work { workNumber, workType { name }}
         timestamps { type, timestamp }
         mostRecentOperation
+        workComment
     }
 }
