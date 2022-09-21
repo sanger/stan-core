@@ -120,7 +120,6 @@ public class TestWorkProgressQuery {
         WorkEvent we = new WorkEvent(100, work, WorkEvent.Type.pause, user, pausedComment, LocalDateTime.now());
         we = workEventRepo.save(we);
 
-
         String query = tester.readGraphQL("workprogress.graphql")
                 .replace("SGP500", work.getWorkNumber())
                 .replace("active", "paused");

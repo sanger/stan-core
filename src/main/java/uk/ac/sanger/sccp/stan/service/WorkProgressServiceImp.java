@@ -276,6 +276,13 @@ public class WorkProgressServiceImp implements WorkProgressService {
         }
     }
 
+    /**
+     * Retrieves the last comment associated with a work if the comment relates to the work status
+     * If the work is completed, unstarted or active it returns null
+     * If the work is failed, paused or withdrawn it returns the comment text stating the reason for the current status
+     * @param Work the work to retrieve the comment for
+     * @return null or String with the associated comments text
+     */
     public String getWorkComment(Work work) {
         if (work.getStatus()==Status.paused || work.getStatus()==Status.failed || work.getStatus()==Status.withdrawn) {
             Map<Integer, WorkEvent> workEvents = workEventService.loadLatestEvents(List.of(work.getId()));
