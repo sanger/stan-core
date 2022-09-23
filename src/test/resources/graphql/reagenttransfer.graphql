@@ -15,6 +15,7 @@ mutation {
                 destinationAddress: "A2"
             }
         ]
+        plateType: "[PLATETYPE]"
     }) {
         labware {
             barcode

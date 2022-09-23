@@ -1,6 +1,7 @@
 package uk.ac.sanger.sccp.stan.model.reagentplate;
 
-import uk.ac.sanger.sccp.stan.model.*;
+import uk.ac.sanger.sccp.stan.model.Address;
+import uk.ac.sanger.sccp.stan.model.HasIntId;
 
 import javax.persistence.*;
 import java.util.*;
@@ -13,12 +14,15 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
  */
 @Entity
 public class ReagentPlate implements HasIntId {
-    public static final ReagentPlateType PLATE_TYPE_96 = new ReagentPlateType("Dual index plate",8,12);
+    public static final String TYPE_FRESH_FROZEN = "Fresh frozen", TYPE_FFPE = "FFPE";
+
+    public static final ReagentPlateLayout PLATE_LAYOUT_96 = new ReagentPlateLayout("Dual index plate",8,12);
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
     private String barcode;
+    private String plateType;
 
     @OneToMany
     @JoinColumn(name="plate_id")
@@ -26,16 +30,17 @@ public class ReagentPlate implements HasIntId {
     private List<ReagentSlot> slots;
 
     public ReagentPlate() {
-        this(null, null, null);
+        this(null, null, null, null);
     }
 
-    public ReagentPlate(String barcode) {
-        this(null, barcode, null);
+    public ReagentPlate(String barcode, String plateType) {
+        this(null, barcode, plateType, null);
     }
 
-    public ReagentPlate(Integer id, String barcode, List<ReagentSlot> slots) {
+    public ReagentPlate(Integer id, String barcode, String plateType, List<ReagentSlot> slots) {
         this.id = id;
         this.barcode = barcode;
+        this.plateType = plateType;
         setSlots(slots);
     }
 
@@ -56,6 +61,14 @@ public class ReagentPlate implements HasIntId {
         this.barcode = barcode;
     }
 
+    public String getPlateType() {
+        return this.plateType;
+    }
+
+    public void setPlateType(String plateType) {
+        this.plateType = plateType;
+    }
+
     public List<ReagentSlot> getSlots() {
         return this.slots;
     }
@@ -64,12 +77,12 @@ public class ReagentPlate implements HasIntId {
         this.slots = (slots==null ? List.of() : slots);
     }
 
-    public ReagentPlateType getPlateType() {
-        return PLATE_TYPE_96;
+    public ReagentPlateLayout getPlateLayout() {
+        return PLATE_LAYOUT_96;
     }
 
     public Optional<ReagentSlot> optSlot(Address address) {
-        int index = getPlateType().indexOf(address);
+        int index = getPlateLayout().indexOf(address);
         if (index < 0) {
             return Optional.empty();
         }
@@ -83,7 +96,7 @@ public class ReagentPlate implements HasIntId {
 
     public ReagentSlot getSlot(Address address) {
         return optSlot(address)
-                .orElseThrow(() -> new IllegalStateException("Address "+address+" is not valid in "+getPlateType().getName()));
+                .orElseThrow(() -> new IllegalStateException("Address "+address+" is not valid in "+ getPlateLayout().getName()));
     }
 
     @Override
@@ -93,6 +106,7 @@ public class ReagentPlate implements HasIntId {
         ReagentPlate that = (ReagentPlate) o;
         return (Objects.equals(this.id, that.id)
                 && Objects.equals(this.barcode, that.barcode)
+                && Objects.equals(this.plateType, that.plateType)
                 && Objects.equals(this.slots, that.slots));
     }
 
@@ -104,5 +118,22 @@ public class ReagentPlate implements HasIntId {
     @Override
     public String toString() {
         return String.format("ReagentPlate(%s)", repr(barcode));
+    }
+
+    /**
+     * Returns the plate type in its canonical string form (one of the {@code TYPE_} constants in this class).
+     * @param string a string that should be the name of a plate type
+     * @return the matching plate type string in its canonical form; or null if none matches
+     */
+    public static String canonicalPlateType(String string) {
+        if (string!=null) {
+            if (string.equalsIgnoreCase(TYPE_FFPE)) {
+                return TYPE_FFPE;
+            }
+            if (string.equalsIgnoreCase(TYPE_FRESH_FROZEN)) {
+                return TYPE_FRESH_FROZEN;
+            }
+        }
+        return null;
     }
 }

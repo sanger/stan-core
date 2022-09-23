@@ -66,11 +66,12 @@ public class TestReagentTransferService {
     public void testPerform(boolean valid) {
         User user = EntityFactory.getUser();
         Labware lw = valid ? EntityFactory.getTube() : null;
-        ReagentPlate rp = new ReagentPlate("001");
+        String plateType = ReagentPlate.TYPE_FRESH_FROZEN;
+        ReagentPlate rp = new ReagentPlate("001", plateType);
         Work work = new Work(10, "SGP10", null, null, null, null, Work.Status.active);
         OperationType opType = valid ? EntityFactory.makeOperationType("Fry", null) : null;
         ReagentTransferRequest request = new ReagentTransferRequest("fry", work.getWorkNumber(), valid ? lw.getBarcode() : "STAN-404",
-                List.of(new ReagentTransfer(rp.getBarcode(), new Address(1,2), new Address(3,4))));
+                List.of(new ReagentTransfer(rp.getBarcode(), new Address(1,2), new Address(3,4))), plateType);
         UCMap<ReagentPlate> rpMap = UCMap.from(ReagentPlate::getBarcode, rp);
 
         if (valid) {
@@ -93,7 +94,7 @@ public class TestReagentTransferService {
 
         if (valid) {
             OperationResult opRes = new OperationResult(List.of(), List.of(lw));
-            doReturn(opRes).when(service).record(any(), any(), any(), any(), any(), any());
+            doReturn(opRes).when(service).record(any(), any(), any(), any(), any(), any(), any());
 
             assertSame(opRes, service.perform(user, request));
         } else {
@@ -106,9 +107,9 @@ public class TestReagentTransferService {
         verify(service).loadReagentPlates(request.getTransfers());
         verify(service).validateTransfers(anyCollection(), same(request.getTransfers()), same(rpMap), same(lw));
         if (valid) {
-            verify(service).record(user, opType, work, request.getTransfers(), rpMap, lw);
+            verify(service).record(user, opType, work, request.getTransfers(), rpMap, lw, plateType);
         } else {
-            verify(service, never()).record(any(), any(), any(), any(), any(), any());
+            verify(service, never()).record(any(), any(), any(), any(), any(), any(), any());
         }
     }
 
@@ -192,12 +193,43 @@ public class TestReagentTransferService {
                 new ReagentTransfer("ABC", null, null),
                 new ReagentTransfer(null, null, null)
         );
-        UCMap<ReagentPlate> plateUCMap = UCMap.from(ReagentPlate::getBarcode, new ReagentPlate("123"));
+        UCMap<ReagentPlate> plateUCMap = UCMap.from(ReagentPlate::getBarcode, new ReagentPlate("123", ReagentPlate.TYPE_FFPE));
         when(mockReagentPlateService.loadPlates(any())).thenReturn(plateUCMap);
 
         assertSame(plateUCMap, service.loadReagentPlates(transfers));
 
         verify(mockReagentPlateService).loadPlates(Set.of("123", "ABC"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("checkPlateTypeArgs")
+    public void testCheckPlateType(String plateTypeArg, Collection<ReagentPlate> existingPlates, String expectedResult,
+                                   String expectedProblem) {
+        List<String> problems = new ArrayList<>(expectedProblem==null ? 0 : 1);
+        String result = service.checkPlateType(problems, existingPlates, plateTypeArg);
+        assertEquals(expectedResult, result);
+        if (expectedProblem==null) {
+            assertThat(problems).isEmpty();
+        } else {
+            assertThat(problems).containsExactly(expectedProblem);
+        }
+    }
+
+    static Stream<Arguments> checkPlateTypeArgs() {
+        ReagentPlate ffpePlate = new ReagentPlate("RP1", ReagentPlate.TYPE_FFPE);
+        ReagentPlate frozenPlate = new ReagentPlate("RP2", ReagentPlate.TYPE_FRESH_FROZEN);
+        return Arrays.stream(new Object[][]{
+                {"ffpe", List.of(), ReagentPlate.TYPE_FFPE, null},
+                {"ffpe", List.of(ffpePlate), ReagentPlate.TYPE_FFPE, null},
+                {"fresh frozen", List.of(), ReagentPlate.TYPE_FRESH_FROZEN, null},
+                {"fresh frozen", List.of(frozenPlate), ReagentPlate.TYPE_FRESH_FROZEN, null},
+                {null, List.of(), null, "Unknown plate type: null"},
+                {"bananas", List.of(ffpePlate), null, "Unknown plate type: \"bananas\""},
+                {"ffpe", List.of(ffpePlate, frozenPlate), ReagentPlate.TYPE_FFPE, "The given plate type FFPE does " +
+                        "not match the existing plate [RP2]."},
+                {"fresh frozen", List.of(ffpePlate, frozenPlate), ReagentPlate.TYPE_FRESH_FROZEN, "The given plate type Fresh frozen does " +
+                        "not match the existing plate [RP1]."},
+        }).map(Arguments::of);
     }
 
     @ParameterizedTest
@@ -224,7 +256,7 @@ public class TestReagentTransferService {
         final String bc2 = "456";
         ReagentPlate rp1 = EntityFactory.makeReagentPlate(bc1);
         ReagentPlate rp2 = EntityFactory.makeReagentPlate(bc2);
-        for (int c = 1; c <= rp2.getPlateType().getNumColumns(); ++c) {
+        for (int c = 1; c <= rp2.getPlateLayout().getNumColumns(); ++c) {
             rp2.getSlot(new Address(2,c)).setUsed(true);
         }
         UCMap<ReagentPlate> rpMap = UCMap.from(ReagentPlate::getBarcode, rp1, rp2);
@@ -294,19 +326,20 @@ public class TestReagentTransferService {
         OperationType opType = EntityFactory.makeOperationType("Fry", EntityFactory.getBioState());
         Work work = new Work(1, "SGP1", null, null, null, null, Work.Status.active);
         List<ReagentTransfer> transfers = List.of(new ReagentTransfer("123", new Address(1,2), new Address(3,4)));
-        UCMap<ReagentPlate> rpmap = UCMap.from(ReagentPlate::getBarcode, new ReagentPlate("123"));
+        String plateType = ReagentPlate.TYPE_FFPE;
+        UCMap<ReagentPlate> rpmap = UCMap.from(ReagentPlate::getBarcode, new ReagentPlate("123", plateType));
         Labware lw = EntityFactory.getTube();
         Sample sam = lw.getFirstSlot().getSamples().get(0);
         List<Action> actions = List.of(new Action(null, null, lw.getFirstSlot(), lw.getFirstSlot(), sam, sam));
         Operation op = EntityFactory.makeOpForLabware(opType, List.of(lw), List.of(lw));
-        doNothing().when(service).createReagentPlates(any(), any());
+        doNothing().when(service).createReagentPlates(any(), any(), any());
         doReturn(actions).when(mockBioStateReplacer).updateBioStateInPlace(any(), any());
         doReturn(op).when(service).createOperation(any(), any(), any(), any(), any());
         doNothing().when(service).recordTransfers(any(), any(), any(), any());
 
-        assertEquals(new OperationResult(List.of(op), List.of(lw)), service.record(user, opType, work, transfers, rpmap, lw));
+        assertEquals(new OperationResult(List.of(op), List.of(lw)), service.record(user, opType, work, transfers, rpmap, lw, plateType));
 
-        verify(service).createReagentPlates(transfers, rpmap);
+        verify(service).createReagentPlates(transfers, rpmap, plateType);
         verify(mockBioStateReplacer).updateBioStateInPlace(opType.getNewBioState(), lw);
         verify(service).createOperation(user, opType, work, lw, actions);
         verify(service).recordTransfers(transfers, rpmap, lw, op.getId());
@@ -325,17 +358,18 @@ public class TestReagentTransferService {
                 new ReagentTransfer(rps[1].getBarcode(), null, null),
                 new ReagentTransfer(rps[2].getBarcode(), null, null)
         );
+        String plateType = ReagentPlate.TYPE_FFPE;
         for (int i = 1; i < 3; ++i) {
-            when(mockReagentPlateService.createReagentPlate(rps[i].getBarcode())).thenReturn(rps[i]);
+            when(mockReagentPlateService.createReagentPlate(rps[i].getBarcode(), plateType)).thenReturn(rps[i]);
         }
 
-        service.createReagentPlates(transfers, rpMap);
+        service.createReagentPlates(transfers, rpMap, plateType);
 
         assertThat(rpMap).hasSize(rps.length);
         for (ReagentPlate rp : rps) {
             assertEquals(rp, rpMap.get(rp.getBarcode()));
         }
-        verify(mockReagentPlateService, times(2)).createReagentPlate(any());
+        verify(mockReagentPlateService, times(2)).createReagentPlate(any(), any());
     }
 
     @ParameterizedTest

@@ -15,17 +15,19 @@ public class ReagentTransferRequest {
     private String workNumber;
     private String destinationBarcode;
     private List<ReagentTransfer> transfers;
+    private String plateType;
 
     public ReagentTransferRequest() {
-        this(null, null, null, null);
+        this(null, null, null, null, null);
     }
 
     public ReagentTransferRequest(String operationType, String workNumber, String destinationBarcode,
-                                  List<ReagentTransfer> transfers) {
+                                  List<ReagentTransfer> transfers, String plateType) {
         this.operationType = operationType;
         this.workNumber = workNumber;
         this.destinationBarcode = destinationBarcode;
         setTransfers(transfers);
+        this.plateType = plateType;
     }
 
     /**
@@ -72,6 +74,14 @@ public class ReagentTransferRequest {
         this.transfers = (transfers==null ? List.of() : transfers);
     }
 
+    public String getPlateType() {
+        return this.plateType;
+    }
+
+    public void setPlateType(String plateType) {
+        this.plateType = plateType;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -80,12 +90,13 @@ public class ReagentTransferRequest {
         return (Objects.equals(this.operationType, that.operationType)
                 && Objects.equals(this.workNumber, that.workNumber)
                 && Objects.equals(this.destinationBarcode, that.destinationBarcode)
+                && Objects.equals(this.plateType, that.plateType)
                 && Objects.equals(this.transfers, that.transfers));
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(operationType, workNumber, destinationBarcode, transfers);
+        return Objects.hash(operationType, workNumber, destinationBarcode, plateType, transfers);
     }
 
     @Override
@@ -94,6 +105,7 @@ public class ReagentTransferRequest {
                 .add("operationType", operationType)
                 .add("workNumber", workNumber)
                 .add("destinationBarcode", destinationBarcode)
+                .add("plateType", plateType)
                 .add("transfers", transfers)
                 .reprStringValues()
                 .toString();
