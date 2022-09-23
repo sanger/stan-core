@@ -277,19 +277,24 @@ public class WorkProgressServiceImp implements WorkProgressService {
     }
 
     /**
-     * Retrieves the last comment associated with a work if the comment relates to the work status
-     * If the work is completed, unstarted or active it returns null
-     * If the work is failed, paused or withdrawn it returns the comment text stating the reason for the current status
-     * @param Work the work to retrieve the comment for
-     * @return null or String with the associated comments text
+     * Retrieves the last comment associated with a work if the comment relates to the work status.
+     * If the work is completed, unstarted or active, it returns null.
+     * If the work is failed, paused or withdrawn, it returns the comment text stating the reason for the current status.
+     * @param work the work to retrieve the comment for
+     * @return the string with the associated comment's text, if any; otherwise null
      */
     public String getWorkComment(Work work) {
-        if (work.getStatus()==Status.paused || work.getStatus()==Status.failed || work.getStatus()==Status.withdrawn) {
+        WorkEvent.Type neededType;
+        switch (work.getStatus()) {
+            case paused: neededType = WorkEvent.Type.pause; break;
+            case failed: neededType = WorkEvent.Type.fail; break;
+            case withdrawn: neededType = WorkEvent.Type.withdraw; break;
+            default: neededType = null;
+        }
+        if (neededType != null) {
             Map<Integer, WorkEvent> workEvents = workEventService.loadLatestEvents(List.of(work.getId()));
             WorkEvent event = workEvents.get(work.getId());
-            if (event != null && event.getComment()!=null &&
-                    (work.getStatus()==Status.paused && event.getType()==WorkEvent.Type.pause
-                            || work.getStatus()==Status.failed && event.getType()==WorkEvent.Type.fail|| work.getStatus()==Status.withdrawn && event.getType()==WorkEvent.Type.withdraw)) {
+            if (event != null && event.getType() == neededType && event.getComment() != null) {
                 return event.getComment().getText();
             }
         }

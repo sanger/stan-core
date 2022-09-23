@@ -429,8 +429,8 @@ public class TestWorkProgressService {
         when(mockWorkEventService.loadLatestEvents(List.of(workP.getId()))).thenReturn(Map.of(workP.getId(), eventP));
         when(mockWorkEventService.loadLatestEvents(List.of(workW.getId()))).thenReturn(Map.of(workW.getId(), eventW));
 
-        assertEquals(service.getWorkComment(workA),null);
-        assertEquals(service.getWorkComment(workC),null);
+        assertNull(service.getWorkComment(workA));
+        assertNull(service.getWorkComment(workC));
         assertEquals(service.getWorkComment(workF),"This work failed");
         assertEquals(service.getWorkComment(workP),"This work is paused");
         assertEquals(service.getWorkComment(workW),"This work is withdrawn");
@@ -440,6 +440,7 @@ public class TestWorkProgressService {
     private static Work workWithId(int id) {
         Work work = new Work();
         work.setId(id);
+        work.setStatus(Status.active);
         return work;
     }
 
