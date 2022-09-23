@@ -931,6 +931,8 @@ type WorkProgressTimestamp {
 type WorkProgress {
     """The work under consideration."""
     work: Work!
+    """The comment associated with the work status."""
+    workComment: String
     """The things that happened for that work, and when they happened."""
     timestamps: [WorkProgressTimestamp!]!
     """The most recent operation for a given piece of work"""
