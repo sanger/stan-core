@@ -489,6 +489,8 @@ input SlotCopyRequest {
     contents: [SlotCopyContent!]!
     """An optional work number to associate with this operation."""
     workNumber: String
+    """The barcode of the new labware, if it is prebarcoded."""
+    preBarcode: String
 }
 
 """A request to record an operation in place."""

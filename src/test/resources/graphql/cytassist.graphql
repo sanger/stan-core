@@ -1,0 +1,38 @@
+mutation {
+    slotCopy(request: {
+        operationType: "CytAssist"
+        labwareType: "Visium LP CytAssist"
+        preBarcode: "V42A20-3752023-10-20"
+        workNumber: "SGP5000"
+        contents: [
+            {
+                sourceBarcode: "STAN-01"
+                sourceAddress: "A1"
+                destinationAddress: "A1"
+            }
+            {
+                sourceBarcode: "STAN-01"
+                sourceAddress: "B1"
+                destinationAddress: "D1"
+            }
+        ]
+    }) {
+        operations {
+            id
+            operationType { name }
+            actions {
+                source { address labwareId }
+                destination { address labwareId }
+                sample { id bioState { name } }
+            }
+        }
+        labware {
+            id
+            barcode
+            slots {
+                address
+                samples { id }
+            }
+        }
+    }
+}
