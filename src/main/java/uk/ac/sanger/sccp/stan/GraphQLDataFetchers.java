@@ -51,6 +51,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final WorkTypeRepo workTypeRepo;
     final WorkRepo workRepo;
     final ReagentPlateRepo reagentPlateRepo;
+    final OperationRepo operationRepo;
+    final OperationTypeRepo operationTypeRepo;
     final LabelPrintService labelPrintService;
     final FindService findService;
     final CommentAdminService commentAdminService;
@@ -75,7 +77,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                ReleaseDestinationRepo releaseDestinationRepo, ReleaseRecipientRepo releaseRecipientRepo,
                                DestructionReasonRepo destructionReasonRepo, ProjectRepo projectRepo, CostCodeRepo costCodeRepo,
                                SolutionRepo solutionRepo, WorkTypeRepo workTypeRepo, WorkRepo workRepo,
-                               ReagentPlateRepo reagentPlateRepo,
+                               ReagentPlateRepo reagentPlateRepo, OperationRepo operationRepo,
+                               OperationTypeRepo operationTypeRepo,
                                LabelPrintService labelPrintService, FindService findService,
                                CommentAdminService commentAdminService, EquipmentAdminService equipmentAdminService,
                                HistoryService historyService, WorkProgressService workProgressService, PlanService planService,
@@ -94,6 +97,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.labwareRepo = labwareRepo;
         this.solutionRepo = solutionRepo;
         this.reagentPlateRepo = reagentPlateRepo;
+        this.operationRepo = operationRepo;
+        this.operationTypeRepo = operationTypeRepo;
         this.equipmentAdminService = equipmentAdminService;
         this.releaseDestinationRepo = releaseDestinationRepo;
         this.releaseRecipientRepo = releaseRecipientRepo;
@@ -331,6 +336,14 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         return dfe -> {
             List<String> barcodes = dfe.getArgument("barcodes");
             return nextReplicateService.getNextReplicateData(barcodes);
+        };
+    }
+
+    public DataFetcher<List<Operation>> getLabwareOperations() {
+        return dfe ->  {
+            Integer labwareId = labwareRepo.getByBarcode(dfe.getArgument("barcode")).getId();
+            OperationType operationType = operationTypeRepo.getByName(dfe.getArgument("operationType"));
+            return operationRepo.findAllByOperationTypeAndDestinationLabwareIdIn(operationType, List.of(labwareId));
         };
     }
 
