@@ -197,11 +197,11 @@ public class EntityFactory {
 
     public static ReagentPlate makeReagentPlate(String barcode) {
         int plateId = ++idCounter;
-        ReagentPlate rp = new ReagentPlate(barcode);
+        ReagentPlate rp = new ReagentPlate(barcode, ReagentPlate.TYPE_FFPE);
         rp.setId(plateId);
-        ReagentPlateType rpType = rp.getPlateType();
+        ReagentPlateLayout rpLayout = rp.getPlateLayout();
         int[] slotId = {100*plateId};
-        List<ReagentSlot> rslots = Address.stream(rpType.getNumRows(), rpType.getNumColumns())
+        List<ReagentSlot> rslots = Address.stream(rpLayout.getNumRows(), rpLayout.getNumColumns())
                 .map(ad -> new ReagentSlot(++slotId[0], plateId, ad, false))
                 .collect(toList());
         rp.setSlots(rslots);

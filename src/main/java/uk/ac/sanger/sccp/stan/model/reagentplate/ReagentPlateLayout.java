@@ -5,15 +5,15 @@ import uk.ac.sanger.sccp.stan.model.Address;
 import java.util.Objects;
 
 /**
- * A specification for a type of {@link ReagentPlate}
+ * A specification for a layout of {@link ReagentPlate}
  * @author dr6
  */
-public class ReagentPlateType {
+public class ReagentPlateLayout {
     private final String name;
     private final int numRows, numColumns;
 
-    public ReagentPlateType(String name, int numRows, int numColumns) {
-        this.name = "Dual index plate";
+    public ReagentPlateLayout(String name, int numRows, int numColumns) {
+        this.name = name;
         this.numRows = numRows;
         this.numColumns = numColumns;
     }
@@ -48,7 +48,7 @@ public class ReagentPlateType {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        ReagentPlateType that = (ReagentPlateType) o;
+        ReagentPlateLayout that = (ReagentPlateLayout) o;
         return (Objects.equals(this.name, that.name) &&
                 this.numRows == that.numRows && this.numColumns == that.numColumns);
     }

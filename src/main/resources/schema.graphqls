@@ -1228,6 +1228,7 @@ type ReagentSlot {
 type ReagentPlate {
     barcode: String!
     slots: [ReagentSlot!]!
+    plateType: String
 }
 
 """
@@ -1280,6 +1281,8 @@ input ReagentTransferRequest {
     destinationBarcode: String!
     """The transfers from aliquot slots to destination slots."""
     transfers: [ReagentTransfer!]!
+    """The type of reagent plate involved."""
+    plateType: String!
 }
 
 """A request to process original tissue into blocks."""

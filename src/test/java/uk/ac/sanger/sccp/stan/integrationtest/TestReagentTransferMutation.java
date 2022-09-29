@@ -70,6 +70,7 @@ public class TestReagentTransferMutation {
 
         result = tester.post(rpQuery);
         Map<String, ?> rpData = chainGet(result, "data", "reagentPlate");
+        assertEquals("Fresh frozen", rpData.get("plateType"));
         final int NUM_SLOTS = 96;
         Set<String> addressStrings = new HashSet<>(NUM_SLOTS);
         assertEquals(rpBarcode, rpData.get("barcode"));
@@ -110,7 +111,8 @@ public class TestReagentTransferMutation {
                 .replace("[RP_BC]", rpBarcode)
                 .replace("[OPTYPE]", opType.getName())
                 .replace("[DEST_BC]", lw.getBarcode())
-                .replace("[WORKNUM]", work.getWorkNumber());
+                .replace("[WORKNUM]", work.getWorkNumber())
+                .replace("[PLATETYPE]", ReagentPlate.TYPE_FRESH_FROZEN);
 
         User user = entityCreator.createUser("user1");
         tester.setUser(user);
