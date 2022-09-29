@@ -24,15 +24,20 @@ public class LabwareService {
     private final BarcodeSeedRepo barcodeSeedRepo;
     private final EntityManager entityManager;
     private final LabelTypeRepo labelTypeRepo;
+    private final OperationRepo operationRepo;
+    private final OperationTypeRepo operationTypeRepo;
 
     @Autowired
     public LabwareService(EntityManager entityManager, LabwareRepo labwareRepo, SlotRepo slotRepo,
-                          BarcodeSeedRepo barcodeSeedRepo, LabelTypeRepo labelTypeRepo) {
+                          BarcodeSeedRepo barcodeSeedRepo, LabelTypeRepo labelTypeRepo, OperationRepo operationRepo,
+                          OperationTypeRepo operationTypeRepo) {
         this.labwareRepo = labwareRepo;
         this.slotRepo = slotRepo;
         this.barcodeSeedRepo = barcodeSeedRepo;
         this.entityManager = entityManager;
         this.labelTypeRepo = labelTypeRepo;
+        this.operationRepo = operationRepo;
+        this.operationTypeRepo = operationTypeRepo;
     }
 
     /**
@@ -153,5 +158,27 @@ public class LabwareService {
             }
         }
         return lw.getLabwareType().getLabelType();
+    }
+
+    /**
+     * Returns all the operations specified by the opType related to the labware
+     * @param labwareBarcode the barcode of the labware
+     * @param opType
+     * @return A list of operations related to the Labware, if any; otherwise returns an empty list
+     */
+    public List<Operation> getLabwareOperations(String labwareBarcode, String opType) {
+        final Set<String> problems = new LinkedHashSet<>();
+        Labware labware = labwareRepo.getByBarcode(labwareBarcode);
+        if (labware == null) {
+            problems.add(String.format("Could not find labware with barcode %s", labwareBarcode));
+        }
+        OperationType operationType = operationTypeRepo.getByName(opType);
+        if (operationType == null) {
+            problems.add(String.format("%s operation type not found in database.", opType));
+        }
+        if (!problems.isEmpty()) {
+            throw new ValidationException("The request could not be validated.", problems);
+        }
+        return operationRepo.findAllByOperationTypeAndDestinationLabwareIdIn(operationType, List.of(labware.getId()));
     }
 }

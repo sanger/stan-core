@@ -25,6 +25,8 @@ public class LabwareServiceTest {
     private BarcodeSeedRepo mockBarcodeSeedRepo;
     private EntityManager mockEntityManager;
     private LabelTypeRepo mockLabelTypeRepo;
+    private OperationRepo mockOperationRepo;
+    private OperationTypeRepo mockOperationTypeRepo;
     private LabwareService labwareService;
     private int idCounter = 1000;
     private List<Labware> savedLabware;
@@ -37,12 +39,15 @@ public class LabwareServiceTest {
         mockBarcodeSeedRepo = mock(BarcodeSeedRepo.class);
         mockEntityManager = mock(EntityManager.class);
         mockLabelTypeRepo = mock(LabelTypeRepo.class);
+        mockOperationRepo = mock(OperationRepo.class);
+        mockOperationTypeRepo = mock(OperationTypeRepo.class);
 
         mockLabwareSave();
         mockSlotSave();
         mockRefresh();
 
-        labwareService = spy(new LabwareService(mockEntityManager, mockLabwareRepo, mockSlotRepo, mockBarcodeSeedRepo, mockLabelTypeRepo));
+        labwareService = spy(new LabwareService(mockEntityManager, mockLabwareRepo, mockSlotRepo, mockBarcodeSeedRepo, mockLabelTypeRepo,
+                                                mockOperationRepo, mockOperationTypeRepo));
         savedLabware = new ArrayList<>();
         savedSlots = new ArrayList<>();
     }
@@ -201,7 +206,7 @@ public class LabwareServiceTest {
     }
 
     @Test
-    public void calculateLabelType() {
+    public void testCalculateLabelType() {
         Sample sample1 = EntityFactory.getSample();
         Sample sample2 = new Sample(sample1.getId() + 1, 100, sample1.getTissue(), sample1.getBioState());
         Sample sample3 = new Sample(sample1.getId() + 2, 100, sample1.getTissue(), sample1.getBioState());
@@ -223,5 +228,30 @@ public class LabwareServiceTest {
         assertEquals(labwareService.calculateLabelType(threeSampleLabware), slideLabel);
         assertEquals(labwareService.calculateLabelType(twoSampleLabware), slideLabel);
         assertEquals(labwareService.calculateLabelType(oneSampleLabware), slideLabel);
+    }
+
+    @Test
+    public void testGetLabwareOperations() {
+        Sample sample1 = EntityFactory.getSample();
+        LabwareType lt = EntityFactory.getTubeType();
+        Labware lw1 = EntityFactory.makeLabware(lt, sample1);
+
+        OperationType stainOpType = EntityFactory.makeOperationType("Stain", null, OperationTypeFlag.IN_PLACE);
+        OperationType permOpType = EntityFactory.makeOperationType("Perm", null, OperationTypeFlag.IN_PLACE);
+        Operation stainOp = EntityFactory.makeOpForLabware(stainOpType, List.of(lw1), List.of(lw1));
+        when(mockOperationTypeRepo.getByName("Stain")).thenReturn(stainOpType);
+        when(mockOperationTypeRepo.getByName("Perm")).thenReturn(permOpType);
+
+        when(mockLabwareRepo.getByBarcode(lw1.getBarcode())).thenReturn(lw1);
+
+        when(mockOperationRepo.findAllByOperationTypeAndDestinationLabwareIdIn(stainOpType, List.of(lw1.getId()))).thenReturn(List.of(stainOp));
+        when(mockOperationRepo.findAllByOperationTypeAndDestinationLabwareIdIn(permOpType, List.of(lw1.getId()))).thenReturn(List.of());
+
+        assertEquals(labwareService.getLabwareOperations(lw1.getBarcode(), "Stain"), List.of(stainOp));
+        assertEquals(labwareService.getLabwareOperations(lw1.getBarcode(), "Perm"), List.of());
+        ValidationException labwareValidation = assertThrows(ValidationException.class, () -> labwareService.getLabwareOperations("test", "Stain"));
+        assertThat((Collection<Object>) labwareValidation.getProblems()).containsExactlyInAnyOrder("Could not find labware with barcode test");
+        ValidationException opTypeValidation = assertThrows(ValidationException.class, () -> labwareService.getLabwareOperations(lw1.getBarcode(), "Space"));
+        assertThat((Collection<Object>) opTypeValidation.getProblems()).containsExactlyInAnyOrder("Space operation type not found in database.");
     }
 }

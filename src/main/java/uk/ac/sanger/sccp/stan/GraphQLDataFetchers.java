@@ -67,6 +67,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final VisiumPermDataService visiumPermDataService;
     final NextReplicateService nextReplicateService;
     final WorkSummaryService workSummaryService;
+    final LabwareService labwareService;
 
     @Autowired
     public GraphQLDataFetchers(ObjectMapper objectMapper, AuthenticationComponent authComp, UserRepo userRepo,
@@ -85,7 +86,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                StainService stainService, ExtractResultQueryService extractResultQueryService,
                                PassFailQueryService passFailQueryService,
                                WorkService workService, VisiumPermDataService visiumPermDataService,
-                               NextReplicateService nextReplicateService, WorkSummaryService workSummaryService) {
+                               NextReplicateService nextReplicateService, WorkSummaryService workSummaryService,
+                               LabwareService labwareService) {
         super(objectMapper, authComp, userRepo);
         this.sessionConfig = sessionConfig;
         this.tissueTypeRepo = tissueTypeRepo;
@@ -120,6 +122,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.visiumPermDataService = visiumPermDataService;
         this.nextReplicateService = nextReplicateService;
         this.workSummaryService = workSummaryService;
+        this.labwareService = labwareService;
     }
 
     public DataFetcher<User> getUser() {
@@ -340,11 +343,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     }
 
     public DataFetcher<List<Operation>> getLabwareOperations() {
-        return dfe ->  {
-            Integer labwareId = labwareRepo.getByBarcode(dfe.getArgument("barcode")).getId();
-            OperationType operationType = operationTypeRepo.getByName(dfe.getArgument("operationType"));
-            return operationRepo.findAllByOperationTypeAndDestinationLabwareIdIn(operationType, List.of(labwareId));
-        };
+        return dfe -> labwareService.getLabwareOperations(dfe.getArgument("barcode"), dfe.getArgument("operationType"));
     }
 
     private boolean argOrFalse(DataFetchingEnvironment dfe, String argName) {
