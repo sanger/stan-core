@@ -239,11 +239,10 @@ public class LabwareServiceTest {
         OperationType stainOpType = EntityFactory.makeOperationType("Stain", null, OperationTypeFlag.IN_PLACE);
         OperationType permOpType = EntityFactory.makeOperationType("Perm", null, OperationTypeFlag.IN_PLACE);
         Operation stainOp = EntityFactory.makeOpForLabware(stainOpType, List.of(lw1), List.of(lw1));
+        
         when(mockOperationTypeRepo.getByName("Stain")).thenReturn(stainOpType);
         when(mockOperationTypeRepo.getByName("Perm")).thenReturn(permOpType);
-
         when(mockLabwareRepo.getByBarcode(lw1.getBarcode())).thenReturn(lw1);
-
         when(mockOperationRepo.findAllByOperationTypeAndDestinationLabwareIdIn(stainOpType, List.of(lw1.getId()))).thenReturn(List.of(stainOp));
         when(mockOperationRepo.findAllByOperationTypeAndDestinationLabwareIdIn(permOpType, List.of(lw1.getId()))).thenReturn(List.of());
 

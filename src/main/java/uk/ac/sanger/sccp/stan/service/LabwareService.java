@@ -163,7 +163,7 @@ public class LabwareService {
     /**
      * Returns all the operations specified by the opType related to the labware
      * @param labwareBarcode the barcode of the labware
-     * @param opType
+     * @param opType the type of operation to look for
      * @return A list of operations related to the Labware, if any; otherwise returns an empty list
      */
     public List<Operation> getLabwareOperations(String labwareBarcode, String opType) {

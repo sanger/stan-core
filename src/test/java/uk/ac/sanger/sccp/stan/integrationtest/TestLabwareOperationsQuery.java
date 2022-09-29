@@ -27,7 +27,6 @@ import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainG
 @ActiveProfiles("test")
 @Import({GraphQLTester.class, EntityCreator.class})
 public class TestLabwareOperationsQuery {
-
     @Autowired
     private GraphQLTester tester;
     @Autowired
@@ -45,7 +44,6 @@ public class TestLabwareOperationsQuery {
         Sample sample2 = entityCreator.createSample(entityCreator.createTissue(entityCreator.createDonor("DNR2"), "EXT1"), 26);
         Labware lw1 = entityCreator.createLabware("STAN-100", lt, sample1);
         Labware lw2 = entityCreator.createLabware("STAN-101", lt, sample2);
-
 
         User user = entityCreator.createUser("user1");
         List<StainType> sts = List.of(
