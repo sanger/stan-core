@@ -50,6 +50,8 @@ public class TestSlotCopyMutation {
     private LabwareRepo lwRepo;
     @Autowired
     private LabwareTypeRepo lwTypeRepo;
+    @Autowired
+    private LabwareNoteRepo lwNoteRepo;
 
     @MockBean
     StorelightClient mockStorelightClient;
@@ -150,6 +152,14 @@ public class TestSlotCopyMutation {
         assertTrue(newLabware.getSlot(A1).getSamples().stream().allMatch(sam -> sam.getBioState().getName().equals(newBsName)));
         assertThat(newLabware.getSlot(cytAssist ? D1 : A2).getSamples()).hasSize(2);
         assertTrue(newLabware.getSlot(cytAssist ? D1 : A2).getSamples().stream().allMatch(sam -> sam.getBioState().getName().equals(newBsName)));
+        if (cytAssist) {
+            List<LabwareNote> notes = lwNoteRepo.findAllByOperationIdIn(List.of(opId));
+            assertThat(notes).hasSize(1);
+            LabwareNote note = notes.get(0);
+            assertEquals("costing", note.getName());
+            assertEquals("Faculty", note.getValue());
+            assertEquals(destLabwareId, note.getLabwareId());
+        }
 
         verifyNoInteractions(mockStorelightClient);
         //verifyStorelightQuery(mockStorelightClient, List.of("STAN-01"), user.getUsername());

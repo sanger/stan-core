@@ -50,6 +50,11 @@ enum LifeStage {
     fetal
 }
 
+"""Some information about the costing of a slide."""
+enum SlideCosting {
+    Faculty, SGP
+}
+
 """A user, who is associated with performing actions in the application."""
 type User {
     username: String!
@@ -491,6 +496,8 @@ input SlotCopyRequest {
     workNumber: String
     """The barcode of the new labware, if it is prebarcoded."""
     preBarcode: String
+    """The costing of the slide, if specified."""
+    costing: SlideCosting
 }
 
 """A request to record an operation in place."""

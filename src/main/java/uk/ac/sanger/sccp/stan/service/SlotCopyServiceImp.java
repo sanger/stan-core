@@ -35,6 +35,7 @@ public class SlotCopyServiceImp implements SlotCopyService {
     private final LabwareRepo lwRepo;
     private final SampleRepo sampleRepo;
     private final SlotRepo slotRepo;
+    private final LabwareNoteRepo lwNoteRepo;
     private final LabwareService lwService;
     private final OperationService opService;
     private final StoreService storeService;
@@ -46,7 +47,7 @@ public class SlotCopyServiceImp implements SlotCopyService {
 
     @Autowired
     public SlotCopyServiceImp(OperationTypeRepo opTypeRepo, LabwareTypeRepo lwTypeRepo, LabwareRepo lwRepo,
-                              SampleRepo sampleRepo, SlotRepo slotRepo,
+                              SampleRepo sampleRepo, SlotRepo slotRepo, LabwareNoteRepo lwNoteRepo,
                               LabwareService lwService, OperationService opService, StoreService storeService,
                               WorkService workService,
                               LabwareValidatorFactory labwareValidatorFactory, EntityManager entityManager,
@@ -57,6 +58,7 @@ public class SlotCopyServiceImp implements SlotCopyService {
         this.lwRepo = lwRepo;
         this.sampleRepo = sampleRepo;
         this.slotRepo = slotRepo;
+        this.lwNoteRepo = lwNoteRepo;
         this.lwService = lwService;
         this.opService = opService;
         this.storeService = storeService;
@@ -92,7 +94,7 @@ public class SlotCopyServiceImp implements SlotCopyService {
         if (!problems.isEmpty()) {
             throw new ValidationException("The operation could not be validated.", problems);
         }
-        return execute(user, request.getContents(), opType, lwType, preBarcode, labwareMap, work);
+        return execute(user, request.getContents(), opType, lwType, preBarcode, labwareMap, work, request.getCosting());
     }
 
     public void unstoreSources(User user, SlotCopyRequest request) {
@@ -287,7 +289,7 @@ public class SlotCopyServiceImp implements SlotCopyService {
      */
     public OperationResult execute(User user, Collection<SlotCopyContent> contents,
                                    OperationType opType, LabwareType lwType, String preBarcode,
-                                   UCMap<Labware> labwareMap, Work work) {
+                                   UCMap<Labware> labwareMap, Work work, SlideCosting costing) {
         Labware emptyLabware = lwService.create(lwType, preBarcode, preBarcode);
         Map<Integer, Sample> oldSampleIdToNewSample = createSamples(contents, labwareMap, opType.getNewBioState());
         Labware filledLabware = fillLabware(emptyLabware, contents, labwareMap, oldSampleIdToNewSample);
@@ -298,6 +300,9 @@ public class SlotCopyServiceImp implements SlotCopyService {
             markSourcesUsed(labwareMap.values());
         }
         Operation op = createOperation(user, contents, opType, labwareMap, filledLabware, oldSampleIdToNewSample);
+        if (costing != null) {
+            lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), "costing", costing.name()));
+        }
         List<Operation> ops = List.of(op);
         if (work!=null) {
             workService.link(work, ops);

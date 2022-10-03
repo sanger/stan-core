@@ -46,6 +46,8 @@ public class TestSlotCopyService {
     @Mock
     SlotRepo mockSlotRepo;
     @Mock
+    LabwareNoteRepo mockLwNoteRepo;
+    @Mock
     LabwareService mockLwService;
     @Mock
     OperationService mockOpService;
@@ -85,6 +87,7 @@ public class TestSlotCopyService {
         user = EntityFactory.getUser();
 
         service = spy(new SlotCopyServiceImp(mockOpTypeRepo, mockLwTypeRepo, mockLwRepo, mockSampleRepo, mockSlotRepo,
+                mockLwNoteRepo,
                 mockLwService, mockOpService, storeService, mockWorkService, mockLabwareValidatorFactory, mockEntityManager,
                 mockTransactor, mockBarcodeValidator));
     }
@@ -124,7 +127,7 @@ public class TestSlotCopyService {
     @ParameterizedTest
     @ValueSource(booleans={false, true})
     public void testPerform(boolean valid) {
-        SlotCopyRequest request = new SlotCopyRequest("op", "thing", List.of(), null, null);
+        SlotCopyRequest request = new SlotCopyRequest("op", "thing", List.of(), null, null, null);
         ValidationException ex = valid ? null : new ValidationException("Bad", List.of());
         Operation op = new Operation(200, opType, null, null, null);
         OperationResult result = valid ? new OperationResult(List.of(op), List.of()) : null;
@@ -144,7 +147,7 @@ public class TestSlotCopyService {
 
     @Test
     public void testPerformAndDiscard() {
-        SlotCopyRequest request = new SlotCopyRequest("op", "thing", List.of(), null, null);
+        SlotCopyRequest request = new SlotCopyRequest("op", "thing", List.of(), null, null, null);
         OperationType discardingOpType = EntityFactory.makeOperationType("dot", null, OperationTypeFlag.DISCARD_SOURCE);
         Operation op = new Operation(200, discardingOpType, null, null, null);
         OperationResult result = new OperationResult(List.of(op), List.of());
@@ -164,14 +167,14 @@ public class TestSlotCopyService {
         List<SlotCopyContent> contents = List.of(new SlotCopyContent("SOURCE1", new Address(1, 2), new Address(3, 4)));
         Work work = new Work(50, "SGP5000", null, null, null, null, Work.Status.active);
         when(mockWorkService.validateUsableWork(any(), any())).thenReturn(work);
-        SlotCopyRequest request = new SlotCopyRequest(opType.getName(), plateType.getName(), contents, work.getWorkNumber(), "pbc");
+        SlotCopyRequest request = new SlotCopyRequest(opType.getName(), plateType.getName(), contents, work.getWorkNumber(), "pbc", null);
         when(mockOpTypeRepo.findByName(any())).thenReturn(Optional.of(opType));
         when(mockLwTypeRepo.findByName(any())).thenReturn(Optional.of(plateType));
         UCMap<Labware> lwMap = makeLabwareMap();
         doReturn(lwMap).when(service).loadLabware(any(), any());
         doNothing().when(service).validateLabware(any(), any());
         OperationResult opResult = new OperationResult(List.of(), List.of());
-        doReturn(opResult).when(service).execute(any(), any(), any(), any(), any(), any(), any());
+        doReturn(opResult).when(service).execute(any(), any(), any(), any(), any(), any(), any(), any());
         if (valid) {
             doNothing().when(service).validateContents(any(), any(), any(), any());
         } else {
@@ -198,9 +201,9 @@ public class TestSlotCopyService {
         verify(service).validateOp(notNull(), same(contents), same(opType), same(plateType));
 
         if (valid) {
-            verify(service).execute(user, contents, opType, plateType, "PBC", lwMap, work);
+            verify(service).execute(user, contents, opType, plateType, "PBC", lwMap, work, request.getCosting());
         } else {
-            verify(service, never()).execute(any(), any(), any(), any(), any(), any(), any());
+            verify(service, never()).execute(any(), any(), any(), any(), any(), any(), any(), any());
         }
     }
 
@@ -297,7 +300,7 @@ public class TestSlotCopyService {
                 List.of(new SlotCopyContent("Alpha", null, null),
                         new SlotCopyContent("Beta", null, null),
                         new SlotCopyContent("ALPHA", null, null)),
-                null, null);
+                null, null, null);
         service.unstoreSources(user, request);
         verify(storeService).discardStorage(user, Set.of("ALPHA", "BETA"));
     }
@@ -453,10 +456,11 @@ public class TestSlotCopyService {
         final Address A1 = new Address(1,1);
         Work work = new Work(14, "SGP5000", null, null, null, null, Work.Status.active);
         final String preBarcode = "PBC";
+        final SlideCosting costing = SlideCosting.SGP;
 
         List<SlotCopyContent> contents = List.of(new SlotCopyContent("STAN-001", A1, A1));
 
-        OperationResult result = service.execute(user, contents, opType, plateType, preBarcode, lwMap, work);
+        OperationResult result = service.execute(user, contents, opType, plateType, preBarcode, lwMap, work, costing);
 
         verify(mockLwService).create(plateType, preBarcode, preBarcode);
         verify(service).createSamples(contents, lwMap, cdna);
@@ -467,6 +471,7 @@ public class TestSlotCopyService {
         verify(service, times(used ? 1 : 0)).markSourcesUsed(lwMap.values());
         verify(service).createOperation(user, contents, opType, lwMap, filledLabware, sampleMap);
         verify(mockWorkService).link(work, List.of(op));
+        verify(mockLwNoteRepo).save(new LabwareNote(null, filledLabware.getId(), op.getId(), "costing", costing.name()));
 
         assertEquals(result.getLabware(), List.of(filledLabware));
         assertEquals(result.getOperations(), List.of(op));

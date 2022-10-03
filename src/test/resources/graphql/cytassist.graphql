@@ -4,6 +4,7 @@ mutation {
         labwareType: "Visium LP CytAssist"
         preBarcode: "V42A20-3752023-10-20"
         workNumber: "SGP5000"
+        costing: Faculty
         contents: [
             {
                 sourceBarcode: "STAN-01"
