@@ -4,6 +4,7 @@ import com.google.common.collect.Streams;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import uk.ac.sanger.sccp.stan.EntityFactory;
+import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 
@@ -239,18 +240,20 @@ public class LabwareServiceTest {
         OperationType stainOpType = EntityFactory.makeOperationType("Stain", null, OperationTypeFlag.IN_PLACE);
         OperationType permOpType = EntityFactory.makeOperationType("Perm", null, OperationTypeFlag.IN_PLACE);
         Operation stainOp = EntityFactory.makeOpForLabware(stainOpType, List.of(lw1), List.of(lw1));
-        
-        when(mockOperationTypeRepo.getByName("Stain")).thenReturn(stainOpType);
-        when(mockOperationTypeRepo.getByName("Perm")).thenReturn(permOpType);
-        when(mockLabwareRepo.getByBarcode(lw1.getBarcode())).thenReturn(lw1);
+
+        doReturn(Optional.empty()).when(mockOperationTypeRepo).findByName(any());
+        doReturn(Optional.of(stainOpType)).when(mockOperationTypeRepo).findByName("Stain");
+        doReturn(Optional.of(permOpType)).when(mockOperationTypeRepo).findByName("Perm");
+
+        doReturn(Optional.empty()).when(mockLabwareRepo).findByBarcode(any());
+        doReturn(Optional.of(lw1)).when(mockLabwareRepo).findByBarcode(lw1.getBarcode());
+
         when(mockOperationRepo.findAllByOperationTypeAndDestinationLabwareIdIn(stainOpType, List.of(lw1.getId()))).thenReturn(List.of(stainOp));
         when(mockOperationRepo.findAllByOperationTypeAndDestinationLabwareIdIn(permOpType, List.of(lw1.getId()))).thenReturn(List.of());
 
         assertEquals(labwareService.getLabwareOperations(lw1.getBarcode(), "Stain"), List.of(stainOp));
         assertEquals(labwareService.getLabwareOperations(lw1.getBarcode(), "Perm"), List.of());
-        ValidationException labwareValidation = assertThrows(ValidationException.class, () -> labwareService.getLabwareOperations("test", "Stain"));
-        assertThat((Collection<Object>) labwareValidation.getProblems()).containsExactlyInAnyOrder("Could not find labware with barcode test");
-        ValidationException opTypeValidation = assertThrows(ValidationException.class, () -> labwareService.getLabwareOperations(lw1.getBarcode(), "Space"));
-        assertThat((Collection<Object>) opTypeValidation.getProblems()).containsExactlyInAnyOrder("Space operation type not found in database.");
+        Matchers.assertValidationException(() -> labwareService.getLabwareOperations("test", "Stain"), "The request could not be validated.", "Could not find labware with barcode \"test\".");
+        Matchers.assertValidationException(() -> labwareService.getLabwareOperations(lw1.getBarcode(), "Space"), "The request could not be validated.", "\"Space\" operation type not found in database.");
     }
 }

@@ -51,8 +51,6 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final WorkTypeRepo workTypeRepo;
     final WorkRepo workRepo;
     final ReagentPlateRepo reagentPlateRepo;
-    final OperationRepo operationRepo;
-    final OperationTypeRepo operationTypeRepo;
     final LabelPrintService labelPrintService;
     final FindService findService;
     final CommentAdminService commentAdminService;
@@ -78,8 +76,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                ReleaseDestinationRepo releaseDestinationRepo, ReleaseRecipientRepo releaseRecipientRepo,
                                DestructionReasonRepo destructionReasonRepo, ProjectRepo projectRepo, CostCodeRepo costCodeRepo,
                                SolutionRepo solutionRepo, WorkTypeRepo workTypeRepo, WorkRepo workRepo,
-                               ReagentPlateRepo reagentPlateRepo, OperationRepo operationRepo,
-                               OperationTypeRepo operationTypeRepo,
+                               ReagentPlateRepo reagentPlateRepo,
                                LabelPrintService labelPrintService, FindService findService,
                                CommentAdminService commentAdminService, EquipmentAdminService equipmentAdminService,
                                HistoryService historyService, WorkProgressService workProgressService, PlanService planService,
@@ -99,8 +96,6 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.labwareRepo = labwareRepo;
         this.solutionRepo = solutionRepo;
         this.reagentPlateRepo = reagentPlateRepo;
-        this.operationRepo = operationRepo;
-        this.operationTypeRepo = operationTypeRepo;
         this.equipmentAdminService = equipmentAdminService;
         this.releaseDestinationRepo = releaseDestinationRepo;
         this.releaseRecipientRepo = releaseRecipientRepo;
