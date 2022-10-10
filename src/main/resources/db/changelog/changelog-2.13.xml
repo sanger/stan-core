@@ -5,7 +5,7 @@
 
     <changeSet id="2.13.0" author="dr6">
         <addColumn tableName="reagent_plate">
-            <column name="plate_type" type="ENUM('Fresh frozen', 'FFPE')">
+            <column name="plate_type" type="ENUM('Fresh frozen - Dual Index TT Set A', 'FFPE - Dual Index TS Set A')">
                 <constraints nullable="true"/>
             </column>
         </addColumn>

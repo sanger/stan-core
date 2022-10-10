@@ -216,18 +216,20 @@ public class TestReagentTransferService {
     }
 
     static Stream<Arguments> checkPlateTypeArgs() {
+        String ffpe = ReagentPlate.TYPE_FFPE.toLowerCase();
+        String ff = ReagentPlate.TYPE_FRESH_FROZEN.toLowerCase();
         ReagentPlate ffpePlate = new ReagentPlate("RP1", ReagentPlate.TYPE_FFPE);
         ReagentPlate frozenPlate = new ReagentPlate("RP2", ReagentPlate.TYPE_FRESH_FROZEN);
         return Arrays.stream(new Object[][]{
-                {"ffpe", List.of(), ReagentPlate.TYPE_FFPE, null},
-                {"ffpe", List.of(ffpePlate), ReagentPlate.TYPE_FFPE, null},
-                {"fresh frozen", List.of(), ReagentPlate.TYPE_FRESH_FROZEN, null},
-                {"fresh frozen", List.of(frozenPlate), ReagentPlate.TYPE_FRESH_FROZEN, null},
+                {ffpe, List.of(), ReagentPlate.TYPE_FFPE, null},
+                {ffpe, List.of(ffpePlate), ReagentPlate.TYPE_FFPE, null},
+                {ff, List.of(), ReagentPlate.TYPE_FRESH_FROZEN, null},
+                {ff, List.of(frozenPlate), ReagentPlate.TYPE_FRESH_FROZEN, null},
                 {null, List.of(), null, "Unknown plate type: null"},
                 {"bananas", List.of(ffpePlate), null, "Unknown plate type: \"bananas\""},
-                {"ffpe", List.of(ffpePlate, frozenPlate), ReagentPlate.TYPE_FFPE, "The given plate type FFPE does " +
+                {ffpe, List.of(ffpePlate, frozenPlate), ReagentPlate.TYPE_FFPE, "The given plate type "+ReagentPlate.TYPE_FFPE+" does " +
                         "not match the existing plate [RP2]."},
-                {"fresh frozen", List.of(ffpePlate, frozenPlate), ReagentPlate.TYPE_FRESH_FROZEN, "The given plate type Fresh frozen does " +
+                {ff, List.of(ffpePlate, frozenPlate), ReagentPlate.TYPE_FRESH_FROZEN, "The given plate type "+ReagentPlate.TYPE_FRESH_FROZEN+" does " +
                         "not match the existing plate [RP1]."},
         }).map(Arguments::of);
     }
