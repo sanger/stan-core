@@ -14,7 +14,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
  */
 @Entity
 public class ReagentPlate implements HasIntId {
-    public static final String TYPE_FRESH_FROZEN = "Fresh frozen", TYPE_FFPE = "FFPE";
+    public static final String TYPE_FRESH_FROZEN = "Fresh frozen - Dual Index TT Set A", TYPE_FFPE = "FFPE - Dual Index TS Set A";
 
     public static final ReagentPlateLayout PLATE_LAYOUT_96 = new ReagentPlateLayout("Dual index plate",8,12);
 

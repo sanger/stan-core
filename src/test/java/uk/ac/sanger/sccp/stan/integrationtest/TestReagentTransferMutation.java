@@ -70,7 +70,7 @@ public class TestReagentTransferMutation {
 
         result = tester.post(rpQuery);
         Map<String, ?> rpData = chainGet(result, "data", "reagentPlate");
-        assertEquals("Fresh frozen", rpData.get("plateType"));
+        assertEquals(ReagentPlate.TYPE_FRESH_FROZEN, rpData.get("plateType"));
         final int NUM_SLOTS = 96;
         Set<String> addressStrings = new HashSet<>(NUM_SLOTS);
         assertEquals(rpBarcode, rpData.get("barcode"));
