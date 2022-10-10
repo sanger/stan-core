@@ -484,20 +484,38 @@ input SlotCopyContent {
     destinationAddress: Address!
 }
 
-"""A request to copy the contents of slots from source labware to a single destination labware."""
-input SlotCopyRequest {
+"""A destination for slot copy."""
+input SlotCopyDestination {
     """The name of the type of the new destination labware."""
     labwareType: String!
-    """The name of the type of operation being recorded to describe the contents being copied."""
-    operationType: String!
-    """The specifications of which source slots are being copied into what addresses in the destination labware."""
-    contents: [SlotCopyContent!]!
-    """An optional work number to associate with this operation."""
-    workNumber: String
-    """The barcode of the new labware, if it is prebarcoded."""
-    preBarcode: String
+    """The bio state for samples in the destination (if specified)."""
+    bioState: String
     """The costing of the slide, if specified."""
     costing: SlideCosting
+    """The barcode of the new labware, if it is prebarcoded."""
+    preBarcode: String
+    """The specifications of which source slots are being copied into what addresses in the destination labware."""
+    contents: [SlotCopyContent!]!
+}
+
+"""A source for slot copy, if a new labware state is specified."""
+input SlotCopySource {
+    """The barcode of the source."""
+    barcode: String!
+    """The new labware state of the source."""
+    labwareState: LabwareState!
+}
+
+"""A request to copy the contents of slots from source labware to a single destination labware."""
+input SlotCopyRequest {
+    """The destination labware and its contents."""
+    destinations: [SlotCopyDestination!]!
+    """The source labware and their new labware states (if specified)."""
+    sources: [SlotCopySource!]!
+    """The name of the type of operation being recorded to describe the contents being copied."""
+    operationType: String!
+    """An optional work number to associate with this operation."""
+    workNumber: String
 }
 
 """A request to record an operation in place."""

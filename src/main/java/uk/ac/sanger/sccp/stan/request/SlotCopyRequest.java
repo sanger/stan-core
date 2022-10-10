@@ -1,11 +1,12 @@
 package uk.ac.sanger.sccp.stan.request;
 
-import uk.ac.sanger.sccp.stan.model.Address;
-import uk.ac.sanger.sccp.stan.model.SlideCosting;
+import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import java.util.List;
 import java.util.Objects;
+
+import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
  * A request to copy slots from existing labware into a new plate.
@@ -13,46 +14,42 @@ import java.util.Objects;
  */
 public class SlotCopyRequest {
     private String operationType;
-    private String labwareType;
-    private List<SlotCopyContent> contents = List.of();
     private String workNumber;
-    private String preBarcode;
-    private SlideCosting costing;
+    private List<SlotCopySource> sources;
+    private List<SlotCopyDestination> destinations;
 
-    public SlotCopyRequest() {}
+    public SlotCopyRequest() {
+        this(null, null, null, null);
+    }
 
-    public SlotCopyRequest(String operationType, String labwareType, List<SlotCopyContent> contents,
-                           String workNumber, String preBarcode, SlideCosting costing) {
+    public SlotCopyRequest(String operationType, String workNumber, List<SlotCopySource> sources,
+                           List<SlotCopyDestination> destinations) {
         this.operationType = operationType;
-        this.labwareType = labwareType;
-        setContents(contents);
         this.workNumber = workNumber;
-        this.preBarcode = preBarcode;
-        this.costing = costing;
+        setSources(sources);
+        setDestinations(destinations);
+    }
+
+    public SlotCopyRequest(String operationType, String labwareTypeName, List<SlotCopyContent> contents, String workNumber,
+                           String preBarcode, SlideCosting costing) {
+        this(operationType, workNumber, null, List.of(new SlotCopyDestination(labwareTypeName, preBarcode,
+                costing, null, contents)));
     }
 
     public void setOperationType(String operationType) {
         this.operationType = operationType;
     }
 
-    public void setLabwareType(String labwareType) {
-        this.labwareType = labwareType;
-    }
-
-    public void setContents(List<SlotCopyContent> contents) {
-        this.contents = (contents==null ? List.of() : contents);
-    }
-
     public void setWorkNumber(String workNumber) {
         this.workNumber = workNumber;
     }
 
-    public void setPreBarcode(String preBarcode) {
-        this.preBarcode = preBarcode;
+    public void setSources(List<SlotCopySource> sources) {
+        this.sources = (sources==null ? List.of() : sources);
     }
 
-    public void setCosting(SlideCosting costing) {
-        this.costing = costing;
+    public void setDestinations(List<SlotCopyDestination> destinations) {
+        this.destinations = (destinations==null ? List.of() : destinations);
     }
 
     /** The name of the type of operation to record */
@@ -60,28 +57,19 @@ public class SlotCopyRequest {
         return this.operationType;
     }
 
-    /** The name of the type of labware to create for the destination */
-    public String getLabwareType() {
-        return this.labwareType;
-    }
-
-    /** The description of what slots are being transferred into slots in the new labware */
-    public List<SlotCopyContent> getContents() {
-        return this.contents;
-    }
-
+    /** An optional work number to associate with this operation. */
     public String getWorkNumber() {
         return this.workNumber;
     }
 
-    /** The barcode of the new labware, if it is prebarcoded. */
-    public String getPreBarcode() {
-        return this.preBarcode;
+    /** The source labware and their new labware states (if specified). */
+    public List<SlotCopySource> getSources() {
+        return this.sources;
     }
 
-    /** The costing of the slide, if specified. */
-    public SlideCosting getCosting() {
-        return this.costing;
+    /* The destination labware and its contents. */
+    public List<SlotCopyDestination> getDestinations() {
+        return this.destinations;
     }
 
     @Override
@@ -90,29 +78,171 @@ public class SlotCopyRequest {
         if (o == null || getClass() != o.getClass()) return false;
         SlotCopyRequest that = (SlotCopyRequest) o;
         return (Objects.equals(this.operationType, that.operationType)
-                && Objects.equals(this.labwareType, that.labwareType)
-                && Objects.equals(this.contents, that.contents)
                 && Objects.equals(this.workNumber, that.workNumber)
-                && Objects.equals(this.preBarcode, that.preBarcode)
-                && Objects.equals(this.costing, that.costing));
+                && Objects.equals(this.sources, that.sources)
+                && Objects.equals(this.destinations, that.destinations));
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(operationType, labwareType, contents, workNumber);
+        return Objects.hash(operationType, workNumber, sources, destinations);
     }
 
     @Override
     public String toString() {
         return BasicUtils.describe("SlotCopyRequest")
                 .add("operationType", operationType)
-                .add("labwareType", labwareType)
-                .add("contents", contents)
                 .add("workNumber", workNumber)
-                .add("preBarcode", preBarcode)
-                .add("costing", costing)
+                .add("sources", sources)
+                .add("destinations", destinations)
                 .reprStringValues()
                 .toString();
+    }
+
+    /**
+     * A source for slot copy, if a new labware state is specified.
+     * @author dr6
+     */
+    public static class SlotCopySource {
+        private String barcode;
+        private Labware.State labwareState;
+
+        public SlotCopySource() {}
+
+        public SlotCopySource(String barcode, Labware.State labwareState) {
+            this.barcode = barcode;
+            this.labwareState = labwareState;
+        }
+
+        /**
+         * The barcode of the source.
+         */
+        public String getBarcode() {
+            return this.barcode;
+        }
+
+        public void setBarcode(String barcode) {
+            this.barcode = barcode;
+        }
+
+        /**
+         * The new labware state of the source.
+         */
+        public Labware.State getLabwareState() {
+            return this.labwareState;
+        }
+
+        public void setLabwareState(Labware.State labwareState) {
+            this.labwareState = labwareState;
+        }
+
+        @Override
+        public String toString() {
+            return repr(barcode)+": "+labwareState;
+        }
+    }
+
+    /**
+     * A destination for slot copy.
+     * @author dr6
+     */
+    public static class SlotCopyDestination {
+        private String labwareType;
+        private String bioState;
+        private SlideCosting costing;
+        private String preBarcode;
+        private List<SlotCopyContent> contents;
+
+        public SlotCopyDestination() {
+            this(null, null, null, null, null);
+        }
+
+        public SlotCopyDestination(String labwareTypeName, String preBarcode, SlideCosting costing,
+                                   String bioState, List<SlotCopyContent> contents) {
+            this.labwareType = labwareTypeName;
+            this.preBarcode = preBarcode;
+            this.costing = costing;
+            this.bioState = bioState;
+            setContents(contents);
+        }
+
+        /**
+         * The name of the type of the new destination labware.
+         */
+        public String getLabwareType() {
+            return this.labwareType;
+        }
+
+        public void setLabwareType(String labwareType) {
+            this.labwareType = labwareType;
+        }
+
+        /**
+         * The bio state for samples in the destination (if specified).
+         */
+        public String getBioState() {
+            return this.bioState;
+        }
+
+        public void setBioState(String bioState) {
+            this.bioState = bioState;
+        }
+
+        /**
+         * The costing of the slide, if specified.
+         */
+        public SlideCosting getCosting() {
+            return this.costing;
+        }
+
+        public void setCosting(SlideCosting costing) {
+            this.costing = costing;
+        }
+
+        /**
+         * The barcode of the new labware, if it is prebarcoded.
+         */
+        public String getPreBarcode() {
+            return this.preBarcode;
+        }
+
+        public void setPreBarcode(String preBarcode) {
+            this.preBarcode = preBarcode;
+        }
+
+        /**
+         * The specifications of which source slots are being copied into what addresses in the destination labware.
+         */
+        public List<SlotCopyContent> getContents() {
+            return this.contents;
+        }
+
+        public void setContents(List<SlotCopyContent> contents) {
+            this.contents = (contents==null ? List.of() : contents);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            SlotCopyDestination that = (SlotCopyDestination) o;
+            return (Objects.equals(this.labwareType, that.labwareType)
+                    && Objects.equals(this.bioState, that.bioState)
+                    && this.costing == that.costing
+                    && Objects.equals(this.preBarcode, that.preBarcode)
+                    && Objects.equals(this.contents, that.contents));
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(labwareType, bioState, costing, preBarcode, contents);
+        }
+
+        @Override
+        public String toString() {
+            return String.format("{labwareType=%s, bioState=%s, costing=%s, preBarcode=%s, contents=%s}",
+                    labwareType, bioState, costing, preBarcode, contents);
+        }
     }
 
     /**
@@ -175,12 +305,8 @@ public class SlotCopyRequest {
 
         @Override
         public String toString() {
-            return BasicUtils.describe("SlotCopyContent")
-                    .add("sourceBarcode", sourceBarcode)
-                    .add("sourceAddress", sourceAddress)
-                    .add("destinationAddress", destinationAddress)
-                    .reprStringValues()
-                    .toString();
+            return String.format("{sourceBarcode=%s, sourceAddress=%s, destinationAddress=%s}",
+                    sourceBarcode, sourceAddress, destinationAddress);
         }
     }
 }
