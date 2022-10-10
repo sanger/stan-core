@@ -2,6 +2,7 @@ package uk.ac.sanger.sccp.stan.repo;
 
 import org.springframework.data.repository.CrudRepository;
 import uk.ac.sanger.sccp.stan.model.Labware;
+import uk.ac.sanger.sccp.utils.UCMap;
 
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
@@ -39,12 +40,11 @@ public interface LabwareRepo extends CrudRepository<Labware, Integer> {
             return List.of();
         }
         List<Labware> foundLabware = findByBarcodeIn(barcodes);
-        Map<String, Labware> bcToLabware = foundLabware.stream()
-                .collect(toMap(lw -> lw.getBarcode().toUpperCase(), lw -> lw));
+        UCMap<Labware> bcToLabware = UCMap.from(foundLabware, Labware::getBarcode);
         List<String> missing = new ArrayList<>();
         List<Labware> correctLabware = new ArrayList<>(barcodes.size());
         for (String barcode : barcodes) {
-            Labware lw = bcToLabware.get(barcode.toUpperCase());
+            Labware lw = bcToLabware.get(barcode);
             if (lw==null) {
                 missing.add(barcode);
             } else {
