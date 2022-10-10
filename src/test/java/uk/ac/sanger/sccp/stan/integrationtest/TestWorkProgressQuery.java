@@ -70,7 +70,7 @@ public class TestWorkProgressQuery {
     public void testWorkProgressQuery() throws Exception {
 
         OperationType sectionOpType = opTypeRepo.getByName("Section");
-        OperationType cdnaOpType = opTypeRepo.getByName("Visium cDNA");
+        OperationType cdnaOpType = entityCreator.createOpType("Transfer", null);
         OperationType extractOpType = opTypeRepo.getByName("Extract");
         OperationType stainOpType = opTypeRepo.getByName("Stain");
         OperationType image = entityCreator.createOpType("Image", null, OperationTypeFlag.IN_PLACE);
@@ -118,7 +118,7 @@ public class TestWorkProgressQuery {
         Comment pausedComment = new Comment(100, "This work is paused", "work status");
         pausedComment = commentRepo.save(pausedComment);
         WorkEvent we = new WorkEvent(100, work, WorkEvent.Type.pause, user, pausedComment, LocalDateTime.now());
-        we = workEventRepo.save(we);
+        workEventRepo.save(we);
 
         String query = tester.readGraphQL("workprogress.graphql")
                 .replace("SGP500", work.getWorkNumber())
@@ -134,7 +134,7 @@ public class TestWorkProgressQuery {
         // time values are strings
         Map<String,String>[] expected = Arrays.stream(new Object[][] {
                 {"Section", 0},
-                {"Visium cDNA", 1},
+                {"Transfer", 1},
                 {"Extract", 2},
                 {"Stain Visium TO", 3},
                 {"RNAscope/IHC stain", 3},
