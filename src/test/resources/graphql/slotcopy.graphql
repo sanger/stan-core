@@ -1,20 +1,25 @@
 mutation {
     slotCopy(request: {
         operationType: "Visium cDNA"
-        labwareType: "96 well plate"
         workNumber: "SGP5000"
-        contents: [
+        destinations: [
             {
-                sourceBarcode: "STAN-01"
-                sourceAddress: "A1"
-                destinationAddress: "A1"
-            }
-            {
-                sourceBarcode: "STAN-01"
-                sourceAddress: "B1"
-                destinationAddress: "A2"
+                labwareType: "96 well plate"
+                contents: [
+                    {
+                        sourceBarcode: "STAN-01"
+                        sourceAddress: "A1"
+                        destinationAddress: "A1"
+                    }
+                    {
+                        sourceBarcode: "STAN-01"
+                        sourceAddress: "B1"
+                        destinationAddress: "A2"
+                    }
+                ]
             }
         ]
+        sources: [{barcode: "STAN-01", labwareState: used}]
     }) {
         operations {
             id

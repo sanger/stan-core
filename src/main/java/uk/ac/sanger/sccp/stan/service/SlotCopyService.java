@@ -17,5 +17,5 @@ public interface SlotCopyService {
      * @return the result
      * @exception ValidationException if validation fails
      */
-    OperationResult perform(User user, SlotCopyRequest request);
+    OperationResult perform(User user, SlotCopyRequest request) throws ValidationException;
 }

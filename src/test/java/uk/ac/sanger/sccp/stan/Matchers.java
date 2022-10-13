@@ -103,6 +103,14 @@ public class Matchers {
         };
     }
 
+    public static void assertProblem(Collection<String> problems, String expectedProblem) {
+        if (expectedProblem==null) {
+            assertThat(problems).isEmpty();
+        } else {
+            assertThat(problems).containsExactly(expectedProblem);
+        }
+    }
+
     public static Transactor mockTransactor(final Transactor mockTransactor) {
         when(mockTransactor.transact(any(), any())).then(invocation -> {
             Supplier<?> sup = invocation.getArgument(1);
@@ -110,8 +118,6 @@ public class Matchers {
         });
         return mockTransactor;
     }
-
-
 
     private static class CaseInsensitiveStringMatcher implements ArgumentMatcher<String> {
         String string;
