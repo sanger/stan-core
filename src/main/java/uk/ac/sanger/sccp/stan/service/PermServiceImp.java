@@ -127,15 +127,6 @@ public class PermServiceImp implements PermService {
             problems.addAll(valErrors);
             return;
         }
-        var optStainOpType = opTypeRepo.findByName("Stain");
-        if (optStainOpType.isEmpty()) {
-            problems.add("Stain operation type not found in database.");
-            return;
-        }
-        List<Operation> ops = opRepo.findAllByOperationTypeAndDestinationLabwareIdIn(optStainOpType.get(), List.of(lw.getId()));
-        if (ops.isEmpty()) {
-            problems.add("Stain has not been recorded on labware "+lw.getBarcode()+".");
-        }
     }
 
     /**

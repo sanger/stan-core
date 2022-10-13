@@ -12,6 +12,7 @@ import java.util.*;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
+import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
  * Service to help with labware, including creating labware with appropriate slots.
@@ -24,15 +25,20 @@ public class LabwareService {
     private final BarcodeSeedRepo barcodeSeedRepo;
     private final EntityManager entityManager;
     private final LabelTypeRepo labelTypeRepo;
+    private final OperationRepo operationRepo;
+    private final OperationTypeRepo operationTypeRepo;
 
     @Autowired
     public LabwareService(EntityManager entityManager, LabwareRepo labwareRepo, SlotRepo slotRepo,
-                          BarcodeSeedRepo barcodeSeedRepo, LabelTypeRepo labelTypeRepo) {
+                          BarcodeSeedRepo barcodeSeedRepo, LabelTypeRepo labelTypeRepo, OperationRepo operationRepo,
+                          OperationTypeRepo operationTypeRepo) {
         this.labwareRepo = labwareRepo;
         this.slotRepo = slotRepo;
         this.barcodeSeedRepo = barcodeSeedRepo;
         this.entityManager = entityManager;
         this.labelTypeRepo = labelTypeRepo;
+        this.operationRepo = operationRepo;
+        this.operationTypeRepo = operationTypeRepo;
     }
 
     /**
@@ -153,5 +159,27 @@ public class LabwareService {
             }
         }
         return lw.getLabwareType().getLabelType();
+    }
+
+    /**
+     * Returns all the operations of the specified type into the specified labware.
+     * @param labwareBarcode the barcode of the labware
+     * @param opName the name of operation type to look for
+     * @return A list of operations whose type and destination match the type and labware given
+     */
+    public List<Operation> getLabwareOperations(String labwareBarcode, String opName) {
+        final Set<String> problems = new LinkedHashSet<>();
+        Labware labware = labwareRepo.findByBarcode(labwareBarcode).orElse(null);
+        if (labware == null) {
+            problems.add(String.format("Could not find labware with barcode %s.", repr(labwareBarcode)));
+        }
+        OperationType operationType = operationTypeRepo.findByName(opName).orElse(null);
+        if (operationType == null) {
+            problems.add(String.format("%s operation type not found in database.", repr(opName)));
+        }
+        if (!problems.isEmpty()) {
+            throw new ValidationException("The request could not be validated.", problems);
+        }
+        return operationRepo.findAllByOperationTypeAndDestinationLabwareIdIn(operationType, List.of(labware.getId()));
     }
 }

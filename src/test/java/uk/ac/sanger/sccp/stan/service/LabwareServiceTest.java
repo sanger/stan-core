@@ -4,6 +4,7 @@ import com.google.common.collect.Streams;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import uk.ac.sanger.sccp.stan.EntityFactory;
+import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 
@@ -25,6 +26,8 @@ public class LabwareServiceTest {
     private BarcodeSeedRepo mockBarcodeSeedRepo;
     private EntityManager mockEntityManager;
     private LabelTypeRepo mockLabelTypeRepo;
+    private OperationRepo mockOperationRepo;
+    private OperationTypeRepo mockOperationTypeRepo;
     private LabwareService labwareService;
     private int idCounter = 1000;
     private List<Labware> savedLabware;
@@ -37,12 +40,15 @@ public class LabwareServiceTest {
         mockBarcodeSeedRepo = mock(BarcodeSeedRepo.class);
         mockEntityManager = mock(EntityManager.class);
         mockLabelTypeRepo = mock(LabelTypeRepo.class);
+        mockOperationRepo = mock(OperationRepo.class);
+        mockOperationTypeRepo = mock(OperationTypeRepo.class);
 
         mockLabwareSave();
         mockSlotSave();
         mockRefresh();
 
-        labwareService = spy(new LabwareService(mockEntityManager, mockLabwareRepo, mockSlotRepo, mockBarcodeSeedRepo, mockLabelTypeRepo));
+        labwareService = spy(new LabwareService(mockEntityManager, mockLabwareRepo, mockSlotRepo, mockBarcodeSeedRepo, mockLabelTypeRepo,
+                                                mockOperationRepo, mockOperationTypeRepo));
         savedLabware = new ArrayList<>();
         savedSlots = new ArrayList<>();
     }
@@ -201,7 +207,7 @@ public class LabwareServiceTest {
     }
 
     @Test
-    public void calculateLabelType() {
+    public void testCalculateLabelType() {
         Sample sample1 = EntityFactory.getSample();
         Sample sample2 = new Sample(sample1.getId() + 1, 100, sample1.getTissue(), sample1.getBioState());
         Sample sample3 = new Sample(sample1.getId() + 2, 100, sample1.getTissue(), sample1.getBioState());
@@ -223,5 +229,31 @@ public class LabwareServiceTest {
         assertEquals(labwareService.calculateLabelType(threeSampleLabware), slideLabel);
         assertEquals(labwareService.calculateLabelType(twoSampleLabware), slideLabel);
         assertEquals(labwareService.calculateLabelType(oneSampleLabware), slideLabel);
+    }
+
+    @Test
+    public void testGetLabwareOperations() {
+        Sample sample1 = EntityFactory.getSample();
+        LabwareType lt = EntityFactory.getTubeType();
+        Labware lw1 = EntityFactory.makeLabware(lt, sample1);
+
+        OperationType stainOpType = EntityFactory.makeOperationType("Stain", null, OperationTypeFlag.IN_PLACE);
+        OperationType permOpType = EntityFactory.makeOperationType("Perm", null, OperationTypeFlag.IN_PLACE);
+        Operation stainOp = EntityFactory.makeOpForLabware(stainOpType, List.of(lw1), List.of(lw1));
+
+        doReturn(Optional.empty()).when(mockOperationTypeRepo).findByName(any());
+        doReturn(Optional.of(stainOpType)).when(mockOperationTypeRepo).findByName("Stain");
+        doReturn(Optional.of(permOpType)).when(mockOperationTypeRepo).findByName("Perm");
+
+        doReturn(Optional.empty()).when(mockLabwareRepo).findByBarcode(any());
+        doReturn(Optional.of(lw1)).when(mockLabwareRepo).findByBarcode(lw1.getBarcode());
+
+        when(mockOperationRepo.findAllByOperationTypeAndDestinationLabwareIdIn(stainOpType, List.of(lw1.getId()))).thenReturn(List.of(stainOp));
+        when(mockOperationRepo.findAllByOperationTypeAndDestinationLabwareIdIn(permOpType, List.of(lw1.getId()))).thenReturn(List.of());
+
+        assertEquals(labwareService.getLabwareOperations(lw1.getBarcode(), "Stain"), List.of(stainOp));
+        assertEquals(labwareService.getLabwareOperations(lw1.getBarcode(), "Perm"), List.of());
+        Matchers.assertValidationException(() -> labwareService.getLabwareOperations("test", "Stain"), "The request could not be validated.", "Could not find labware with barcode \"test\".");
+        Matchers.assertValidationException(() -> labwareService.getLabwareOperations(lw1.getBarcode(), "Space"), "The request could not be validated.", "\"Space\" operation type not found in database.");
     }
 }

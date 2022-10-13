@@ -161,9 +161,6 @@ public class TestPermService {
     @CsvSource({
             ", false, false, false, false",
             "Bad labware., true, false, false, false",
-            "Stain operation type not found in database., true, true, false, false",
-            "Stain has not been recorded on labware [BARCODE]., true, true, true, false",
-            ", true, true, true, true",
     })
     public void testValidateLabware(String expectedProblem,
                                     boolean lwPresent, boolean validSource, boolean opTypeExists, boolean opExists) {
@@ -214,7 +211,6 @@ public class TestPermService {
         verify(mockLabwareValidatorFactory).getValidator(List.of(lw));
         verify(val).validateSources();
         verify(val).getErrors();
-        verify(mockOpTypeRepo).findByName("Stain");
         if (!opTypeExists) {
             verifyNoInteractions(mockOpRepo);
         } else {

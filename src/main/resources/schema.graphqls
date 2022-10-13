@@ -1459,6 +1459,8 @@ type Query {
     reagentPlate(barcode: String!): ReagentPlate
     """Gets the next replicate data for the given source labware barcodes."""
     nextReplicateNumbers(barcodes: [String!]!): [NextReplicateData!]!
+    """Get operations into a given labware barcode of a given operation type."""
+    labwareOperations(barcode: String!, operationType: String!): [Operation]
 
     """Get the specified storage location."""
     location(locationBarcode: String!): Location!
