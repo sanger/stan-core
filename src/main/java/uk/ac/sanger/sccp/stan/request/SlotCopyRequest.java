@@ -1,6 +1,7 @@
 package uk.ac.sanger.sccp.stan.request;
 
 import uk.ac.sanger.sccp.stan.model.Address;
+import uk.ac.sanger.sccp.stan.model.SlideCosting;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import java.util.List;
@@ -15,14 +16,19 @@ public class SlotCopyRequest {
     private String labwareType;
     private List<SlotCopyContent> contents = List.of();
     private String workNumber;
+    private String preBarcode;
+    private SlideCosting costing;
 
     public SlotCopyRequest() {}
 
-    public SlotCopyRequest(String operationType, String labwareType, List<SlotCopyContent> contents, String workNumber) {
+    public SlotCopyRequest(String operationType, String labwareType, List<SlotCopyContent> contents,
+                           String workNumber, String preBarcode, SlideCosting costing) {
         this.operationType = operationType;
         this.labwareType = labwareType;
         setContents(contents);
         this.workNumber = workNumber;
+        this.preBarcode = preBarcode;
+        this.costing = costing;
     }
 
     public void setOperationType(String operationType) {
@@ -39,6 +45,14 @@ public class SlotCopyRequest {
 
     public void setWorkNumber(String workNumber) {
         this.workNumber = workNumber;
+    }
+
+    public void setPreBarcode(String preBarcode) {
+        this.preBarcode = preBarcode;
+    }
+
+    public void setCosting(SlideCosting costing) {
+        this.costing = costing;
     }
 
     /** The name of the type of operation to record */
@@ -60,6 +74,15 @@ public class SlotCopyRequest {
         return this.workNumber;
     }
 
+    /** The barcode of the new labware, if it is prebarcoded. */
+    public String getPreBarcode() {
+        return this.preBarcode;
+    }
+
+    /** The costing of the slide, if specified. */
+    public SlideCosting getCosting() {
+        return this.costing;
+    }
 
     @Override
     public boolean equals(Object o) {
@@ -69,7 +92,9 @@ public class SlotCopyRequest {
         return (Objects.equals(this.operationType, that.operationType)
                 && Objects.equals(this.labwareType, that.labwareType)
                 && Objects.equals(this.contents, that.contents)
-                && Objects.equals(this.workNumber, that.workNumber));
+                && Objects.equals(this.workNumber, that.workNumber)
+                && Objects.equals(this.preBarcode, that.preBarcode)
+                && Objects.equals(this.costing, that.costing));
     }
 
     @Override
@@ -84,6 +109,8 @@ public class SlotCopyRequest {
                 .add("labwareType", labwareType)
                 .add("contents", contents)
                 .add("workNumber", workNumber)
+                .add("preBarcode", preBarcode)
+                .add("costing", costing)
                 .reprStringValues()
                 .toString();
     }

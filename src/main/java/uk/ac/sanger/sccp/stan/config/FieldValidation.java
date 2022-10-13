@@ -226,4 +226,12 @@ public class FieldValidation {
         Set<CharacterType> charTypes = EnumSet.of(CharacterType.DIGIT);
         return new StringValidator("Reagent plate barcode", 24, 24, charTypes);
     }
+
+    @Bean
+    public Validator<String> cytAssistBarcodeValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(CharacterType.DIGIT, CharacterType.ALPHA, CharacterType.HYPHEN);
+        Pattern pattern = Pattern.compile("[A-Z]\\d{2}[A-Z]\\d{2}-\\d{7}-\\d{2}-\\d{2}", Pattern.CASE_INSENSITIVE);
+        return new StringValidator("Visium LP CytAssist barcode", 20, 20,
+                charTypes, false, pattern);
+    }
 }

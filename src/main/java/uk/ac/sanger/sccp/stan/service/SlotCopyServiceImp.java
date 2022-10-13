@@ -1,6 +1,7 @@
 package uk.ac.sanger.sccp.stan.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.Transactor;
 import uk.ac.sanger.sccp.stan.model.*;
@@ -26,11 +27,15 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.*;
  */
 @Service
 public class SlotCopyServiceImp implements SlotCopyService {
+    static final String CYTASSIST_OP = "CytAssist";
+    static final String CYTASSIST_SLIDE = "Visium LP CytAssist", CYTASSIST_SLIDE_XL = "Visium LP CytAssist XL";
+
     private final OperationTypeRepo opTypeRepo;
     private final LabwareTypeRepo lwTypeRepo;
     private final LabwareRepo lwRepo;
     private final SampleRepo sampleRepo;
     private final SlotRepo slotRepo;
+    private final LabwareNoteRepo lwNoteRepo;
     private final LabwareService lwService;
     private final OperationService opService;
     private final StoreService storeService;
@@ -38,25 +43,29 @@ public class SlotCopyServiceImp implements SlotCopyService {
     private final LabwareValidatorFactory labwareValidatorFactory;
     private final EntityManager entityManager;
     private final Transactor transactor;
+    private final Validator<String> preBarcodeValidator;
 
     @Autowired
     public SlotCopyServiceImp(OperationTypeRepo opTypeRepo, LabwareTypeRepo lwTypeRepo, LabwareRepo lwRepo,
-                              SampleRepo sampleRepo, SlotRepo slotRepo,
+                              SampleRepo sampleRepo, SlotRepo slotRepo, LabwareNoteRepo lwNoteRepo,
                               LabwareService lwService, OperationService opService, StoreService storeService,
                               WorkService workService,
                               LabwareValidatorFactory labwareValidatorFactory, EntityManager entityManager,
-                              Transactor transactor) {
+                              Transactor transactor,
+                              @Qualifier("cytAssistBarcodeValidator") Validator<String> preBarcodeValidator) {
         this.opTypeRepo = opTypeRepo;
         this.lwTypeRepo = lwTypeRepo;
         this.lwRepo = lwRepo;
         this.sampleRepo = sampleRepo;
         this.slotRepo = slotRepo;
+        this.lwNoteRepo = lwNoteRepo;
         this.lwService = lwService;
         this.opService = opService;
         this.storeService = storeService;
         this.workService = workService;
         this.labwareValidatorFactory = labwareValidatorFactory;
         this.entityManager = entityManager;
+        this.preBarcodeValidator = preBarcodeValidator;
         this.transactor = transactor;
     }
 
@@ -73,14 +82,19 @@ public class SlotCopyServiceImp implements SlotCopyService {
         Set<String> problems = new LinkedHashSet<>();
         OperationType opType = loadEntity(problems, request.getOperationType(), "operation type", opTypeRepo::findByName);
         LabwareType lwType = loadEntity(problems, request.getLabwareType(), "labware type", lwTypeRepo::findByName);
+        String preBarcode = checkPreBarcode(problems, request.getPreBarcode(), lwType);
+        if (preBarcode!=null) {
+            checkPreBarcodeInUse(problems, preBarcode);
+        }
         UCMap<Labware> labwareMap = loadLabware(problems, request.getContents());
         validateLabware(problems, labwareMap.values());
         validateContents(problems, lwType, labwareMap, request.getContents());
+        validateOp(problems, request.getContents(), opType, lwType);
         Work work = workService.validateUsableWork(problems, request.getWorkNumber());
         if (!problems.isEmpty()) {
             throw new ValidationException("The operation could not be validated.", problems);
         }
-        return execute(user, request.getContents(), opType, lwType, labwareMap, work);
+        return execute(user, request.getContents(), opType, lwType, preBarcode, labwareMap, work, request.getCosting());
     }
 
     public void unstoreSources(User user, SlotCopyRequest request) {
@@ -116,6 +130,42 @@ public class SlotCopyServiceImp implements SlotCopyService {
     }
 
     /**
+     * Checks the format and presence of the prebarcode, if any
+     * @param problems receptacle for problems found
+     * @param barcode the given prebarcode (if any)
+     * @param lwType the labware type specified in the request (if any)
+     * @return the canonical form of the barcode, or null if no barcode was given
+     */
+    public String checkPreBarcode(Collection<String> problems, String barcode, LabwareType lwType) {
+        if (barcode==null || barcode.isEmpty()) {
+            if (lwType!=null && lwType.isPrebarcoded()) {
+                problems.add("Expected a prebarcode for labware type "+lwType.getName()+".");
+            }
+            return null;
+        }
+        barcode = barcode.toUpperCase();
+        if (lwType!=null && !lwType.isPrebarcoded()) {
+            problems.add("Prebarcode not expected for labware type "+lwType.getName()+".");
+        } else {
+            preBarcodeValidator.validate(barcode, problems::add);
+        }
+        return barcode;
+    }
+
+    /**
+     * Checks if the given prebarcode is already in use.
+     * @param problems receptacle for problems
+     * @param preBarcode the prebarcode to look for
+     */
+    public void checkPreBarcodeInUse(Collection<String> problems, String preBarcode) {
+        if (lwRepo.existsByBarcode(preBarcode)) {
+            problems.add("Labware already exists with barcode "+preBarcode+".");
+        } else if (lwRepo.existsByExternalBarcode(preBarcode)) {
+            problems.add("Labware already exists with external barcode "+preBarcode+".");
+        }
+    }
+
+    /**
      * Loads the specified source labware into a {@code UCMap} from labware barcode.
      * @param problems collection to receive any problems
      * @param contents the description of what is being copied where
@@ -143,6 +193,31 @@ public class SlotCopyServiceImp implements SlotCopyService {
                     + reprCollection(unknownBarcodes));
         }
         return lwMap;
+    }
+
+    /**
+     * Validates some things specific to the operation being requested
+     * @param problems receptacle for problems
+     * @param contents the transfer contents specified in the request
+     * @param opType the operation type loaded
+     */
+    public void validateOp(Collection<String> problems, Collection<SlotCopyContent> contents, OperationType opType, LabwareType lwType) {
+        if (opType!=null && lwType != null && opType.getName().equalsIgnoreCase(CYTASSIST_OP)) {
+            if (!lwType.getName().equalsIgnoreCase(CYTASSIST_SLIDE) && !lwType.getName().equalsIgnoreCase(CYTASSIST_SLIDE_XL)) {
+                problems.add(String.format("Expected labware type %s or %s for operation %s.",
+                        CYTASSIST_SLIDE, CYTASSIST_SLIDE_XL, opType.getName()));
+            }
+            if (lwType.getName().equalsIgnoreCase(CYTASSIST_SLIDE)
+                    && contents !=null && !contents.isEmpty()) {
+                for (SlotCopyContent content : contents) {
+                    Address ad = content.getDestinationAddress();
+                    if (ad != null && ad.getColumn()==1 && ad.getRow() > 1 && ad.getRow() < 4) {
+                        problems.add("Slots B1 and C1 are disallowed for use in this operation.");
+                        break;
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -207,14 +282,15 @@ public class SlotCopyServiceImp implements SlotCopyService {
      * @param contents the description of what locations are copied to where
      * @param opType the type of operation being performed
      * @param lwType the type of labware to create
+     * @param preBarcode the prebarcode of the new labware, if it has one
      * @param labwareMap a map of the source labware from their barcodes
      * @param work the work (optional)
      * @return the result of the operation
      */
     public OperationResult execute(User user, Collection<SlotCopyContent> contents,
-                                   OperationType opType, LabwareType lwType, UCMap<Labware> labwareMap,
-                                   Work work) {
-        Labware emptyLabware = lwService.create(lwType);
+                                   OperationType opType, LabwareType lwType, String preBarcode,
+                                   UCMap<Labware> labwareMap, Work work, SlideCosting costing) {
+        Labware emptyLabware = lwService.create(lwType, preBarcode, preBarcode);
         Map<Integer, Sample> oldSampleIdToNewSample = createSamples(contents, labwareMap, opType.getNewBioState());
         Labware filledLabware = fillLabware(emptyLabware, contents, labwareMap, oldSampleIdToNewSample);
         if (opType.discardSource()) {
@@ -224,6 +300,9 @@ public class SlotCopyServiceImp implements SlotCopyService {
             markSourcesUsed(labwareMap.values());
         }
         Operation op = createOperation(user, contents, opType, labwareMap, filledLabware, oldSampleIdToNewSample);
+        if (costing != null) {
+            lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), "costing", costing.name()));
+        }
         List<Operation> ops = List.of(op);
         if (work!=null) {
             workService.link(work, ops);
