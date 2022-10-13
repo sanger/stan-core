@@ -506,7 +506,7 @@ input SlotCopySource {
     labwareState: LabwareState!
 }
 
-"""A request to copy the contents of slots from source labware to a single destination labware."""
+"""A request to copy the contents of slots from source labware to multiple new or prebarcoded destinations."""
 input SlotCopyRequest {
     """The destination labware and its contents."""
     destinations: [SlotCopyDestination!]!

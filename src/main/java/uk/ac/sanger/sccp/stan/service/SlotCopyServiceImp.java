@@ -303,7 +303,7 @@ public class SlotCopyServiceImp implements SlotCopyService {
                 .filter(bc -> !usedSourceBarcodes.contains(bc))
                 .collect(toSet());
         if (!unexpectedSourceBarcodes.isEmpty()) {
-            problems.add("Unexpected extra sources listed: "+unexpectedSourceBarcodes);
+            problems.add("Source barcodes specified that do not map to any destination slots: "+unexpectedSourceBarcodes);
         }
         return bcStates;
     }

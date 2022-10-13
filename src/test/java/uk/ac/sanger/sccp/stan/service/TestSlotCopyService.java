@@ -441,7 +441,8 @@ public class TestSlotCopyService {
                 {request4, toUCMap("STAN-1", Labware.State.discarded), List.of("Source given without labware state: STAN-2")},
                 {request5, toUCMap("STAN-1", Labware.State.discarded), List.of("Repeated source barcode: STAN-1")},
                 {request6, toUCMap("STAN-1", Labware.State.discarded), List.of("Unsupported new labware state: destroyed")},
-                {request7, toUCMap("STAN-1", Labware.State.used, "STAN-404", Labware.State.active), List.of("Unexpected extra sources listed: [STAN-404]")},
+                {request7, toUCMap("STAN-1", Labware.State.used, "STAN-404", Labware.State.active),
+                        List.of("Source barcodes specified that do not map to any destination slots: [STAN-404]")},
         }).map(Arguments::of);
     }
 

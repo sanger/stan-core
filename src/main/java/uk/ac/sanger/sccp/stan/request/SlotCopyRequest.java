@@ -9,7 +9,7 @@ import java.util.Objects;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
- * A request to copy slots from existing labware into a new plate.
+ * A request to copy slots from existing labware into new or prebarcoded pieces of labware.
  * @author dr6
  */
 public class SlotCopyRequest {
