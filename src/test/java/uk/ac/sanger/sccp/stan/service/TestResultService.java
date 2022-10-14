@@ -35,6 +35,7 @@ public class TestResultService {
     private OperationRepo mockOpRepo;
     private OperationCommentRepo mockOpCommentRepo;
     private ResultOpRepo mockResOpRepo;
+    private LabwareNoteRepo mockLwNoteRepo;
     private LabwareValidatorFactory mockLabwareValidatorFactory;
     private OperationService mockOpService;
     private WorkService mockWorkService;
@@ -53,6 +54,7 @@ public class TestResultService {
         mockOpCommentRepo = mock(OperationCommentRepo.class);
         mockResOpRepo = mock(ResultOpRepo.class);
         mockMeasurementRepo = mock(MeasurementRepo.class);
+        mockLwNoteRepo = mock(LabwareNoteRepo.class);
         //noinspection unchecked
         mockCoverageSanitiser = mock(Sanitiser.class);
         mockLabwareValidatorFactory = mock(LabwareValidatorFactory.class);
@@ -62,7 +64,7 @@ public class TestResultService {
         mockSlotMeasurementValidatorFactory = mock(SlotMeasurementValidatorFactory.class);
 
         service = spy(new ResultServiceImp(mockOpTypeRepo, mockLwRepo, mockOpRepo, mockOpCommentRepo,
-                mockResOpRepo, mockMeasurementRepo, mockCoverageSanitiser, mockLabwareValidatorFactory,
+                mockResOpRepo, mockMeasurementRepo, mockLwNoteRepo, mockCoverageSanitiser, mockLabwareValidatorFactory,
                 mockOpService, mockWorkService, mockCommentValidationService, mockSlotMeasurementValidatorFactory));
     }
 
@@ -136,7 +138,7 @@ public class TestResultService {
         measurementMap.put(lw.getBarcode(), List.of(
                 new SlotMeasurementRequest(new Address(1,1), "Tissue coverage", "5", null)
         ));
-        request.setLabwareResults(List.of(new LabwareResult(lw.getBarcode(), List.of(new SampleResult()), givenSms)));
+        request.setLabwareResults(List.of(new LabwareResult(lw.getBarcode(), List.of(new SampleResult()), givenSms, null)));
         doReturn(measurementMap).when(service).validateMeasurements(any(), any(), any());
         request.setOperationType(resultOpType.getName());
         OperationResult opRes = new OperationResult(List.of(), List.of(lw));
@@ -220,13 +222,13 @@ public class TestResultService {
                 new LabwareResult(lw1.getBarcode(), List.of(
                         new SampleResult(new Address(1,1), PassFail.pass, null),
                         new SampleResult(new Address(1,2), PassFail.fail, 10)),
-                        null
-                ),
+                        null,
+                        null),
                 new LabwareResult(lw2.getBarcode(), List.of(
                         new SampleResult(new Address(2,1), PassFail.pass, null),
                         new SampleResult(B2, PassFail.fail, null)),
-                        null
-                )
+                        null,
+                        null)
         );
         final String slotSampleProblem = "Slot sample problem.";
 
@@ -267,7 +269,7 @@ public class TestResultService {
         UCMap<Labware> lwMap = new UCMap<>();
         LabwareResult lr = new LabwareResult("STAN-123",
                 List.of(new SampleResult(new Address(1,1), PassFail.pass, null)),
-                null);
+                null, null);
         assertThat(service.validateMeasurements(problems, lwMap, List.of(lr))).isEmpty();
         verifyNoInteractions(mockSlotMeasurementValidatorFactory);
         assertThat(problems).isEmpty();
@@ -281,10 +283,10 @@ public class TestResultService {
         List<LabwareResult> lrs = List.of(
                 new LabwareResult(lw1.getBarcode(), List.of(), List.of(
                         new SlotMeasurementRequest(new Address(1,1), "Alpha", "10", null)
-                )),
+                ), null),
                 new LabwareResult(lw2.getBarcode(), List.of(), List.of(
                         new SlotMeasurementRequest(new Address(1,2), "Beta", "20", null)
-                ))
+                ), null)
         );
         SlotMeasurementValidator val = mock(SlotMeasurementValidator.class);
         when(mockSlotMeasurementValidatorFactory.getSlotMeasurementValidator(any())).thenReturn(val);
@@ -318,10 +320,10 @@ public class TestResultService {
         List<LabwareResult> lrs = List.of(
                 new LabwareResult(lw1.getBarcode(), List.of(), List.of(
                         new SlotMeasurementRequest(A1, "TISSUE COVERAGE", "10", null)
-                )),
+                ), null),
                 new LabwareResult(lw2.getBarcode(), List.of(), List.of(
                         new SlotMeasurementRequest(A1, "tissue coverage", "20", null)
-                ))
+                ), null)
         );
         SlotMeasurementValidator val = mock(SlotMeasurementValidator.class);
         when(mockSlotMeasurementValidatorFactory.getSlotMeasurementValidator(any())).thenReturn(val);
@@ -475,8 +477,8 @@ public class TestResultService {
                 }).collect(Collectors.toList());
         List<LabwareResult> lrs = List.of(
                 new LabwareResult("STAN-01"),
-                new LabwareResult("STAN-02", srs.subList(0, 3), null),
-                new LabwareResult("STAN-03", srs.subList(3, 5), null)
+                new LabwareResult("STAN-02", srs.subList(0, 3), null, null),
+                new LabwareResult("STAN-03", srs.subList(3, 5), null, null)
         );
 
         final List<String> problems = new ArrayList<>();
@@ -613,13 +615,13 @@ public class TestResultService {
                 new SampleResult(A2, PassFail.fail, 17)
         );
 
-        LabwareResult lr1 = new LabwareResult(lw1.getBarcode(), srs1,  null);
+        LabwareResult lr1 = new LabwareResult(lw1.getBarcode(), srs1,  null, SlideCosting.SGP);
 
         List<SampleResult> srs2 = List.of(
                 new SampleResult(A1, PassFail.fail, 18)
         );
 
-        LabwareResult lr2 = new LabwareResult(lw2.getBarcode(), srs2,  null);
+        LabwareResult lr2 = new LabwareResult(lw2.getBarcode(), srs2,  null, null);
 
         Comment com1 = new Comment(17, "com1", "cats");
         Comment com2 = new Comment(18, "com2", "cats");
@@ -667,6 +669,8 @@ public class TestResultService {
                 new Measurement(null, measName, "10", sam1id, op1.getId(), lw1.getSlot(A1).getId()),
                 new Measurement(null, measName, "20", sam2id, op1.getId(), lw1.getSlot(A2).getId())
         ));
+        final LabwareNote expectedNote = new LabwareNote(null, lw1.getId(), op1.getId(), "costing", "SGP");
+        verify(mockLwNoteRepo).saveAll(List.of(expectedNote));
 
         assertThat(opResult.getOperations()).containsExactlyInAnyOrder(op1, op2);
         assertThat(opResult.getLabware()).containsExactlyInAnyOrder(lw1, lw2);

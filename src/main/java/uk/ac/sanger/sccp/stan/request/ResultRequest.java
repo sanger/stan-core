@@ -1,7 +1,6 @@
 package uk.ac.sanger.sccp.stan.request;
 
-import uk.ac.sanger.sccp.stan.model.Address;
-import uk.ac.sanger.sccp.stan.model.PassFail;
+import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import java.util.List;
@@ -78,19 +77,22 @@ public class ResultRequest {
         private String barcode;
         private List<SampleResult> sampleResults;
         private List<SlotMeasurementRequest> slotMeasurements;
+        private SlideCosting costing;
 
         public LabwareResult() {
-            this(null, null, null);
+            this(null, null, null, null);
         }
 
         public LabwareResult(String barcode) {
-            this(barcode, null, null);
+            this(barcode, null, null, null);
         }
 
-        public LabwareResult(String barcode, List<SampleResult> sampleResults, List<SlotMeasurementRequest> slotMeasurements) {
+        public LabwareResult(String barcode, List<SampleResult> sampleResults,
+                             List<SlotMeasurementRequest> slotMeasurements, SlideCosting costing) {
             this.barcode = barcode;
             setSampleResults(sampleResults);
             setSlotMeasurements(slotMeasurements);
+            setCosting(costing);
         }
 
         public String getBarcode() {
@@ -115,6 +117,15 @@ public class ResultRequest {
 
         public void setSlotMeasurements(List<SlotMeasurementRequest> slotMeasurements) {
             this.slotMeasurements = slotMeasurements==null ? List.of() : slotMeasurements;
+        }
+
+        /* An optional costing for the labware. */
+        public SlideCosting getCosting() {
+            return this.costing;
+        }
+
+        public void setCosting(SlideCosting costing) {
+            this.costing = costing;
         }
 
         @Override

@@ -23,6 +23,7 @@ public class ResultServiceImp extends BaseResultService implements ResultService
     private final OperationCommentRepo opCommentRepo;
     private final ResultOpRepo resOpRepo;
     private final MeasurementRepo measurementRepo;
+    private final LabwareNoteRepo lwNoteRepo;
 
     private final Sanitiser<String> coverageSanitiser;
 
@@ -34,7 +35,7 @@ public class ResultServiceImp extends BaseResultService implements ResultService
     @Autowired
     public ResultServiceImp(OperationTypeRepo opTypeRepo, LabwareRepo lwRepo, OperationRepo opRepo,
                             OperationCommentRepo opCommentRepo, ResultOpRepo resOpRepo,
-                            MeasurementRepo measurementRepo,
+                            MeasurementRepo measurementRepo, LabwareNoteRepo lwNoteRepo,
                             @Qualifier("tissueCoverageSanitiser") Sanitiser<String> coverageSanitiser,
                             LabwareValidatorFactory labwareValidatorFactory,
                             OperationService opService, WorkService workService,
@@ -44,6 +45,7 @@ public class ResultServiceImp extends BaseResultService implements ResultService
         this.opCommentRepo = opCommentRepo;
         this.resOpRepo = resOpRepo;
         this.measurementRepo = measurementRepo;
+        this.lwNoteRepo = lwNoteRepo;
         this.coverageSanitiser = coverageSanitiser;
         this.opService = opService;
         this.workService = workService;
@@ -267,6 +269,7 @@ public class ResultServiceImp extends BaseResultService implements ResultService
         List<Labware> labwareList = new ArrayList<>(lrs.size());
         List<OperationComment> opComments = new ArrayList<>();
         List<Measurement> measurements = new ArrayList<>();
+        List<LabwareNote> notes = new ArrayList<>();
         for (LabwareResult lr : lrs) {
             Labware lw = labware.get(lr.getBarcode());
 
@@ -289,6 +292,9 @@ public class ResultServiceImp extends BaseResultService implements ResultService
             }
             ops.add(op);
             labwareList.add(lw);
+            if (lr.getCosting()!=null) {
+                notes.add(new LabwareNote(null, lw.getId(), op.getId(), "costing", lr.getCosting().name()));
+            }
         }
 
         opCommentRepo.saveAll(opComments);
@@ -296,6 +302,10 @@ public class ResultServiceImp extends BaseResultService implements ResultService
 
         if (!measurements.isEmpty()) {
             measurementRepo.saveAll(measurements);
+        }
+
+        if (!notes.isEmpty()) {
+            lwNoteRepo.saveAll(notes);
         }
 
         if (work!=null) {
