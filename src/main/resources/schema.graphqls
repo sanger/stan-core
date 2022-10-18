@@ -1286,6 +1286,12 @@ type WorkSummaryGroup {
     totalNumOriginalSamples: Int!
 }
 
+"""All data needed for a Work Summary."""
+type WorkSummaryData {
+    workSummaryGroups: [WorkSummaryGroup!]!
+    workTypes: [WorkType!]!
+}
+
 """A specification that a particular reagent slot should be transferred to an address."""
 input ReagentTransfer {
     """The barcode of a reagent plate."""
@@ -1453,7 +1459,7 @@ type Query {
     """Get all the works with associated comment, or get all the ones in the given statuses."""
     worksWithComments(status: [WorkStatus!]): [WorkWithComment!]!
     """Get summary of works."""
-    worksSummary: [WorkSummaryGroup!]!
+    worksSummary: WorkSummaryData!
     """Get all the users that are enabled, or get all including those that are disabled."""
     users(includeDisabled: Boolean): [User!]!
     """Find where labware is stored, given some criteria."""

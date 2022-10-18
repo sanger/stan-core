@@ -3,9 +3,13 @@ package uk.ac.sanger.sccp.stan.service.work;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.Work;
 import uk.ac.sanger.sccp.stan.model.WorkSummaryGroup;
+import uk.ac.sanger.sccp.stan.model.WorkType;
 import uk.ac.sanger.sccp.stan.repo.WorkRepo;
+import uk.ac.sanger.sccp.stan.repo.WorkTypeRepo;
+import uk.ac.sanger.sccp.stan.request.WorkSummaryData;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * @author dr6
@@ -13,15 +17,22 @@ import java.util.*;
 @Service
 public class WorkSummaryServiceImp implements WorkSummaryService {
     private final WorkRepo workRepo;
+    private final WorkTypeRepo workTypeRepo;
 
-    public WorkSummaryServiceImp(WorkRepo workRepo) {
+    public WorkSummaryServiceImp(WorkRepo workRepo, WorkTypeRepo workTypeRepo) {
         this.workRepo = workRepo;
+        this.workTypeRepo = workTypeRepo;
     }
 
     @Override
-    public Collection<WorkSummaryGroup> loadWorkSummary() {
+    public WorkSummaryData loadWorkSummary() {
+        List<WorkType> workTypesList = new ArrayList<>();
+        Iterable<WorkType> workTypes = workTypeRepo.findAll();
+        workTypes.forEach(workTypesList::add);
         Iterable<Work> works = workRepo.findAll();
-        return createGroups(works);
+        List<WorkSummaryGroup> workSummaryGroups = new ArrayList<>(createGroups(works));
+
+        return new WorkSummaryData(workTypesList, workSummaryGroups);
     }
 
     /**
