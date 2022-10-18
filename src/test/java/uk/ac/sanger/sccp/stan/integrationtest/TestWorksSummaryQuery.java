@@ -63,7 +63,6 @@ public class TestWorksSummaryQuery {
         assertEquals("wt1", chainGet(workTypes.get(2), "name"));
         assertEquals("wt2", chainGet(workTypes.get(3), "name"));
 
-
         List<Map<String,?>> groupsData = chainGet(result, "data", "worksSummary", "workSummaryGroups");
         assertThat(groupsData).hasSize(2);
         Map<String, ?> g1 = groupsData.get(0);

@@ -9,7 +9,6 @@ import uk.ac.sanger.sccp.stan.repo.WorkTypeRepo;
 import uk.ac.sanger.sccp.stan.request.WorkSummaryData;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * @author dr6
