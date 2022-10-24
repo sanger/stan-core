@@ -41,5 +41,6 @@ mutation {
             tissue { externalName }
             labware { barcode }
         }
+        labwareSolutions { barcode solutionName }
     }
 }

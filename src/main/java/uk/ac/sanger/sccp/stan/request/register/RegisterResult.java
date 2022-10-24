@@ -12,11 +12,17 @@ import java.util.Objects;
 public class RegisterResult {
     private List<Labware> labware = List.of();
     private List<RegisterClash> clashes = List.of();
+    private List<LabwareSolutionName> labwareSolutions = List.of();
 
     public RegisterResult() {}
 
     public RegisterResult(List<Labware> labware) {
         this.labware = labware;
+    }
+
+    public RegisterResult(List<Labware> labware, List<LabwareSolutionName> labwareSolutions) {
+        this.labware = labware;
+        this.labwareSolutions = labwareSolutions;
     }
 
     public List<Labware> getLabware() {
@@ -33,6 +39,14 @@ public class RegisterResult {
 
     public void setClashes(List<RegisterClash> clashes) {
         this.clashes = clashes;
+    }
+
+    public List<LabwareSolutionName> getLabwareSolutions() {
+        return this.labwareSolutions;
+    }
+
+    public void setLabwareSolutions(List<LabwareSolutionName> labwareSolutions) {
+        this.labwareSolutions = labwareSolutions;
     }
 
     public static RegisterResult clashes(List<RegisterClash> clashes) {
@@ -60,7 +74,9 @@ public class RegisterResult {
         return MoreObjects.toStringHelper(this)
                 .add("labware", labware)
                 .add("clashes", clashes)
+                .add("labwareSolutions", labwareSolutions)
                 .omitNullValues()
                 .toString();
     }
+
 }

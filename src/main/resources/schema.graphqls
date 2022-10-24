@@ -338,12 +338,22 @@ type RegisterClash {
     labware: [Labware!]!
 }
 
+"""A labware barcode and name of a solution."""
+type LabwareSolutionName {
+    """The barcode of an item of labware."""
+    barcode: String!
+    """The name of a solution."""
+    solutionName: String!
+}
+
 """The result of a register request. It is expected to contain either labware or clashes."""
 type RegisterResult {
     """The labware created."""
     labware: [Labware!]!
     """The clashes that prevented registration."""
     clashes: [RegisterClash!]!
+    """The names of solutions used for labware barcodes, if any."""
+    labwareSolutions: [LabwareSolutionName]!
 }
 
 """A description of a source slot in a plan request."""
