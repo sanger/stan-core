@@ -7,6 +7,7 @@ import uk.ac.sanger.sccp.stan.model.WorkType;
 import uk.ac.sanger.sccp.stan.repo.WorkRepo;
 import uk.ac.sanger.sccp.stan.repo.WorkTypeRepo;
 import uk.ac.sanger.sccp.stan.request.WorkSummaryData;
+import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import java.util.*;
 
@@ -25,13 +26,11 @@ public class WorkSummaryServiceImp implements WorkSummaryService {
 
     @Override
     public WorkSummaryData loadWorkSummary() {
-        List<WorkType> workTypesList = new ArrayList<>();
-        Iterable<WorkType> workTypes = workTypeRepo.findAll();
-        workTypes.forEach(workTypesList::add);
+        List<WorkType> workTypes = BasicUtils.asList(workTypeRepo.findAll());
         Iterable<Work> works = workRepo.findAll();
         List<WorkSummaryGroup> workSummaryGroups = new ArrayList<>(createGroups(works));
 
-        return new WorkSummaryData(workTypesList, workSummaryGroups);
+        return new WorkSummaryData(workTypes, workSummaryGroups);
     }
 
     /**
