@@ -12,6 +12,7 @@ import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.time.LocalDate;
 import java.util.*;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 import static java.util.Objects.requireNonNull;
@@ -105,37 +106,28 @@ public class OriginalSampleRegisterServiceImp implements OriginalSampleRegisterS
         checkHmdmcsForSpecies(problems, request);
         checkCollectionDates(problems, request);
 
-        UCMap<Hmdmc> hmdmcs = checkExistence(problems, request, "HuMFre number", OriginalSampleData::getHmdmc, hmdmcRepo::findByHmdmc);
-        UCMap<Species> species = checkExistence(problems, request, "species", OriginalSampleData::getSpecies, speciesRepo::findByName);
-        UCMap<Fixative> fixatives = checkExistence(problems, request, "fixative", OriginalSampleData::getFixative, fixativeRepo::findByName);
-        UCMap<Solution> solutions = checkExistence(problems, request, "solution", OriginalSampleData::getSolution, solutionRepo::findByName);
-        UCMap<LabwareType> lwTypes = checkExistence(problems, request, "labware type", OriginalSampleData::getLabwareType, ltRepo::findByName);
+        List<DataStruct> datas = request.getSamples().stream().map(DataStruct::new).collect(toList());
+        checkExistence(problems, datas, "HuMFre number", OriginalSampleData::getHmdmc, hmdmcRepo::findByHmdmc, DataStruct::setHmdmc);
+        checkExistence(problems, datas, "species", OriginalSampleData::getSpecies, speciesRepo::findByName, DataStruct::setSpecies);
+        checkExistence(problems, datas, "fixative", OriginalSampleData::getFixative, fixativeRepo::findByName, DataStruct::setFixative);
+        checkExistence(problems, datas, "solution", OriginalSampleData::getSolution, solutionRepo::findByName, DataStruct::setSolution);
+        checkExistence(problems, datas, "labware type", OriginalSampleData::getLabwareType, ltRepo::findByName, DataStruct::setLabwareType);
 
-        UCMap<Donor> donors = loadDonors(request);
+        loadDonors(datas);
         checkExternalNamesUnique(problems, request);
-        checkDonorFieldsAreConsistent(problems, request, donors);
-
-        UCMap<TissueType> tissueTypes = checkTissueTypesAndSpatialLocations(problems, request);
-
-        // NB It is allowed to have the same spatial location and donor multiple times
-        // checkDonorSpatialLocationUnique(problems, request, donors, tissueTypes);
-
-        checkNoneIdentical(problems, request.getSamples());
+        checkDonorFieldsAreConsistent(problems, datas);
+        checkTissueTypesAndSpatialLocations(problems, datas);
 
         if (!problems.isEmpty()) {
             throw new ValidationException("The request validation failed.", problems);
         }
 
-        createNewDonors(request, donors, species);
-        var tissues = createNewTissues(request, donors, tissueTypes, hmdmcs, fixatives);
-
-        Map<OriginalSampleData, Sample> samples = createSamples(request, tissues);
-        Map<OriginalSampleData, Labware> labware = createLabware(request, lwTypes, samples);
-        var ops = recordRegistrations(user, labware);
-        var opSols = recordSolutions(ops, solutions);
-        var lwSolNames = composeLabwareSolutionNames(labware, opSols);
-
-        return new RegisterResult(new ArrayList<>(labware.values()), lwSolNames);
+        createNewDonors(datas);
+        createNewSamples(datas);
+        createNewLabware(datas);
+        recordRegistrations(user, datas);
+        recordSolutions(datas);
+        return makeResult(datas);
     }
 
     /**
@@ -165,39 +157,32 @@ public class OriginalSampleRegisterServiceImp implements OriginalSampleRegisterS
         }
     }
 
-    /**
-     * Checks for the existence of some value specified in the request
-     * @param problems receptacle for found problems
-     * @param request the register request
-     * @param fieldName the name of the field (for problem messages)
-     * @param function the function to get the field value from the register data
-     * @param repoFunction the function to look up the value in a repo
-     * @return a map of strings to the found entities
-     * @param <T> the type of entity
-     */
-    public <T> UCMap<T> checkExistence(Collection<String> problems, OriginalSampleRegisterRequest request,
-                                       String fieldName, Function<OriginalSampleData, String> function,
-                                       Function<String, Optional<T>> repoFunction) {
+    public <T> void checkExistence(Collection<String> problems, List<DataStruct> datas, String fieldName,
+                                   Function<OriginalSampleData, String> function,
+                                   Function<String, Optional<T>> repoFunction,
+                                   BiConsumer<DataStruct, T> setter) {
         UCMap<T> entities = new UCMap<>();
         Set<String> unknownValues = new LinkedHashSet<>();
-        for (OriginalSampleData data : request.getSamples()) {
-            String value = function.apply(data);
+        for (DataStruct data : datas) {
+            String value = function.apply(data.getOriginalSampleData());
             if (!nullOrEmpty(value)) {
                 if (entities.containsKey(value)) {
-                    continue;
-                }
-                Optional<T> opt = repoFunction.apply(value);
-                if (opt.isEmpty()) {
-                    unknownValues.add(value);
+                    T entity = entities.get(value);
+                    setter.accept(data, entity);
                 } else {
-                    entities.put(value, opt.get());
+                    Optional<T> opt = repoFunction.apply(value);
+                    if (opt.isEmpty()) {
+                        unknownValues.add(value);
+                    } else {
+                        setter.accept(data, opt.get());
+                    }
+                    entities.put(value, opt.orElse(null));
                 }
             }
         }
         if (!unknownValues.isEmpty()) {
             problems.add("Unknown "+fieldName+": "+unknownValues);
         }
-        return entities;
     }
 
     /**
@@ -229,32 +214,31 @@ public class OriginalSampleRegisterServiceImp implements OriginalSampleRegisterS
     /**
      * Checks that fields given for donors match existing donor records and are consistent inside the request
      * @param problems receptacle for problems
-     * @param request the register request
-     * @param donors the existing donors
+     * @param datas the registration data under construction
      */
-    public void checkDonorFieldsAreConsistent(Collection<String> problems, OriginalSampleRegisterRequest request,
-                                              UCMap<Donor> donors) {
-        for (OriginalSampleData data : request.getSamples()) {
-            Donor donor = donors.get(data.getDonorIdentifier());
+    public void checkDonorFieldsAreConsistent(Collection<String> problems, List<DataStruct> datas) {
+        for (DataStruct data : datas) {
+            Donor donor = data.donor;
             if (donor==null) {
                 continue;
             }
-            if (data.getLifeStage()!=null && data.getLifeStage()!=donor.getLifeStage()) {
+            if (data.getOriginalSampleData().getLifeStage()!=null && data.getOriginalSampleData().getLifeStage() != donor.getLifeStage()) {
                 problems.add("Donor life stage inconsistent with existing donor "+donor.getDonorName()+".");
             }
-            if (!nullOrEmpty(data.getSpecies()) && !data.getSpecies().equalsIgnoreCase(donor.getSpecies().getName())) {
+            if (!nullOrEmpty(data.getOriginalSampleData().getSpecies())
+                && !data.getOriginalSampleData().getSpecies().equalsIgnoreCase(donor.getSpecies().getName())) {
                 problems.add("Donor species inconsistent with existing donor "+donor.getDonorName()+".");
             }
         }
 
         UCMap<LifeStage> donorNameToLifeStage = new UCMap<>();
         UCMap<String> donorNameToSpecies = new UCMap<>();
-        for (OriginalSampleData data : request.getSamples()) {
-            String donorName = data.getDonorIdentifier();
-            if (nullOrEmpty(donorName) || donors.get(donorName)!=null) {
+        for (DataStruct data : datas) {
+            String donorName = data.getOriginalSampleData().getDonorIdentifier();
+            if (nullOrEmpty(donorName) || data.donor!=null) {
                 continue;
             }
-            LifeStage lifeStage = data.getLifeStage();
+            LifeStage lifeStage = data.getOriginalSampleData().getLifeStage();
             if (lifeStage!=null) {
                 if (donorNameToLifeStage.get(donorName)==null) {
                     donorNameToLifeStage.put(donorName, lifeStage);
@@ -262,7 +246,7 @@ public class OriginalSampleRegisterServiceImp implements OriginalSampleRegisterS
                     problems.add("Multiple life stages specified for donor "+donorName+".");
                 }
             }
-            String speciesName = data.getSpecies();
+            String speciesName = data.getOriginalSampleData().getSpecies();
             if (!nullOrEmpty(speciesName)) {
                 if (donorNameToSpecies.get(donorName)==null) {
                     donorNameToSpecies.put(donorName, speciesName);
@@ -357,211 +341,208 @@ public class OriginalSampleRegisterServiceImp implements OriginalSampleRegisterS
     /**
      * Looks up the tissue types and checks the spatial locations are valid
      * @param problems receptacle for problems
-     * @param request register request
-     * @return a map of tissue types from their names
+     * @param datas data under construction
      */
-    public UCMap<TissueType> checkTissueTypesAndSpatialLocations(Collection<String> problems, OriginalSampleRegisterRequest request) {
-        Set<String> tissueTypeNames = request.getSamples().stream()
-                .map(OriginalSampleData::getTissueType)
+    public void checkTissueTypesAndSpatialLocations(Collection<String> problems, List<DataStruct> datas) {
+        Set<String> tissueTypeNames = datas.stream()
+                .map(data -> data.getOriginalSampleData().getTissueType())
                 .filter(name -> name!=null && !name.isEmpty())
                 .map(String::toUpperCase)
                 .collect(toSet());
         if (tissueTypeNames.isEmpty()) {
-            return new UCMap<>();
+            return;
         }
         UCMap<TissueType> ttMap = UCMap.from(tissueTypeRepo.findAllByNameIn(tissueTypeNames), TissueType::getName);
         Set<String> unknownTissueTypeNames = new LinkedHashSet<>();
-        for (OriginalSampleData data : request.getSamples()) {
-            final String ttName = data.getTissueType();
+        for (DataStruct data : datas) {
+            final String ttName = data.getOriginalSampleData().getTissueType();
             if (nullOrEmpty(ttName)) {
                 continue;
             }
-            final Integer slCode = data.getSpatialLocation();
+            final Integer slCode = data.getOriginalSampleData().getSpatialLocation();
             TissueType tt = ttMap.get(ttName);
+            SpatialLocation sl = getSpatialLocation(tt, slCode);
             if (tt==null) {
                 unknownTissueTypeNames.add(repr(ttName));
-            } else if (slCode != null && getSpatialLocation(tt, slCode)==null) {
+            } else if (slCode != null && sl==null) {
                 problems.add("There is no spatial location "+slCode+" for tissue type "+tt.getName()+".");
             }
+            data.spatialLocation = sl;
         }
         if (!unknownTissueTypeNames.isEmpty()) {
             problems.add("Unknown tissue type: "+unknownTissueTypeNames);
         }
-        return ttMap;
     }
 
     /**
-     * Checks that none of the sample data in the request are identical, because the logic herein will not work if
-     * it is.
-     * @param problems receptacle for problems
-     * @param samples the request data
+     * Loads any existing donors matching given donor names.
+     * The donors are placed in the appropriate field in the DataStructs.
+     * @param datas the data under construction
      */
-    public void checkNoneIdentical(Collection<String> problems, Collection<OriginalSampleData> samples) {
-        if (new HashSet<>(samples).size() < samples.size()) {
-            problems.add("Multiple completely identical samples specified in request.");
-        }
-    }
-
-    /**
-     * Loads existing donors from the database
-     * @param request the register request
-     * @return a map of donors from their names
-     */
-    public UCMap<Donor> loadDonors(OriginalSampleRegisterRequest request) {
-        Set<String> donorNames = request.getSamples().stream()
-                .map(OriginalSampleData::getDonorIdentifier)
+    public void loadDonors(List<DataStruct> datas) {
+        Set<String> donorNames = datas.stream()
+                .map(data -> data.getOriginalSampleData().getDonorIdentifier())
                 .filter(dn -> !nullOrEmpty(dn))
                 .collect(toSet());
         if (donorNames.isEmpty()) {
-            return new UCMap<>();
+            return;
         }
-        var donors = donorRepo.findAllByDonorNameIn(donorNames);
-        return UCMap.from(donors, Donor::getDonorName);
+        UCMap<Donor> donorMap = UCMap.from(donorRepo.findAllByDonorNameIn(donorNames), Donor::getDonorName);
+        for (DataStruct data : datas) {
+            data.donor = donorMap.get(data.getOriginalSampleData().getDonorIdentifier());
+        }
     }
 
     /**
      * Creates donors that do not already exist.
-     * The new donors are added to the given map
-     * @param request register request
-     * @param donors map of donors from their names
-     * @param species map to look up species
+     * @param datas the request data under construction
      */
-    public void createNewDonors(OriginalSampleRegisterRequest request, UCMap<Donor> donors, UCMap<Species> species) {
-        List<Donor> newDonors = request.getSamples().stream()
-                .filter(data -> donors.get(data.getDonorIdentifier())==null)
-                .map(data -> new Donor(null, data.getDonorIdentifier(), data.getLifeStage(), species.get(data.getSpecies())))
-                .filter(BasicUtils.distinctBySerial(d -> d.getDonorName().toUpperCase()))
+    public void createNewDonors(List<DataStruct> datas) {
+        List<Donor> newDonors = datas.stream()
+                .filter(data -> data.donor==null)
+                .filter(BasicUtils.distinctBySerial(data -> data.getOriginalSampleData().getDonorIdentifier().toUpperCase()))
+                .map(data -> new Donor(null, data.getOriginalSampleData().getDonorIdentifier(),
+                        data.getOriginalSampleData().getLifeStage(), data.species))
                 .collect(toList());
-
-        for (Donor donor : donorRepo.saveAll(newDonors)) {
-            donors.put(donor.getDonorName(), donor);
+        if (newDonors.isEmpty()) {
+            return;
+        }
+        final Iterable<Donor> savedDonors = donorRepo.saveAll(newDonors);
+        UCMap<Donor> donorMap = new UCMap<>(newDonors.size());
+        savedDonors.forEach(d -> donorMap.put(d.getDonorName(), d));
+        for (DataStruct data : datas) {
+            if (data.donor==null) {
+                data.donor = donorMap.get(data.getOriginalSampleData().getDonorIdentifier());
+            }
         }
     }
 
     /**
-     * Creates new tissues in the database
-     * @param request the registration request
-     * @param donors the donors (already in the db)
-     * @param tissueTypes map to look up tissue types
-     * @param hmdmcs map to look up hmdmcs
-     * @param fixatives map to look up fixatives
-     * @return a map of tissues from their external name
+     * Creates new tissues and samples in the database
+     * @param datas the data under construction
      */
-    public Map<OriginalSampleData, Tissue> createNewTissues(OriginalSampleRegisterRequest request, UCMap<Donor> donors,
-                                          UCMap<TissueType> tissueTypes, UCMap<Hmdmc> hmdmcs,
-                                          UCMap<Fixative> fixatives) {
-        Medium medium = mediumRepo.getByName("None");
+    public void createNewSamples(List<DataStruct> datas) {
+        final Medium medium = mediumRepo.getByName("None");
+        final BioState bs = bsRepo.getByName("Original sample");
 
-        Map<OriginalSampleData, Tissue> map = new HashMap<>(request.getSamples().size());
-
-        for (OriginalSampleData data : request.getSamples()) {
-            Tissue tissue = new Tissue(null, emptyToNull(data.getExternalIdentifier()),
-                    emptyToNull(data.getReplicateNumber()),
-                    getSpatialLocation(tissueTypes.get(data.getTissueType()), data.getSpatialLocation()),
-                    donors.get(data.getDonorIdentifier()),
-                    medium, fixatives.get(data.getFixative()),
-                    hmdmcs.get(data.getHmdmc()),
-                    data.getSampleCollectionDate(),
-                    null
-            );
-            map.put(data, tissueRepo.save(tissue));
+        for (DataStruct data : datas) {
+            OriginalSampleData req = data.getOriginalSampleData();
+            Tissue createdTissue = tissueRepo.save(new Tissue(
+                    null, emptyToNull(req.getExternalIdentifier()),
+                    emptyToNull(req.getReplicateNumber()),
+                    data.spatialLocation, data.donor, medium, data.fixative, data.hmdmc,
+                    req.getSampleCollectionDate(),null
+            ));
+            data.sample = sampleRepo.save(new Sample(null, null, createdTissue, bs));
         }
-        return map;
     }
 
     /**
-     * Link the operations (and labware and samples) to the solutions used
-     * @param operations the operations, mapped from their parts of the request
-     * @param solutions the solutions, mapped from their names
+     * Records specified solutions against the given operations
+     * @param datas created data
      */
-    public Map<OriginalSampleData, Solution> recordSolutions(Map<OriginalSampleData, Operation> operations, UCMap<Solution> solutions) {
+    public void recordSolutions(List<DataStruct> datas) {
         Collection<OperationSolution> opSols = new LinkedHashSet<>();
-        Map<OriginalSampleData, Solution> opSolMap = new HashMap<>(operations.size());
-        for (var entry : operations.entrySet()) {
-            OriginalSampleData osd = entry.getKey();
-            Operation op = entry.getValue();
-            if (!nullOrEmpty(osd.getSolution())) {
-                Solution solution = solutions.get(osd.getSolution());
-                for (Action ac : op.getActions()) {
-                    opSols.add(new OperationSolution(op.getId(), solution.getId(),
-                            ac.getDestination().getLabwareId(), ac.getSample().getId()));
+        for (DataStruct data : datas) {
+            if (data.solution!=null) {
+                Operation op = data.operation;
+                for (Action a : op.getActions()) {
+                    opSols.add(new OperationSolution(op.getId(), data.solution.getId(),
+                            a.getDestination().getLabwareId(), a.getSample().getId()));
                 }
-                opSolMap.put(osd, solution);
             }
         }
         if (!opSols.isEmpty()) {
             opSolutionRepo.saveAll(opSols);
         }
-        return opSolMap;
     }
 
     /**
-     * Creates new samples
-     * @param request the register request
-     * @param tissues the tissues, already created
-     * @return a map of the new samples from the corresponding part of the request
+     * Creates labware for each data element
+     * @param datas the data under construction
      */
-    public Map<OriginalSampleData, Sample> createSamples(OriginalSampleRegisterRequest request,
-                                                         Map<OriginalSampleData, Tissue> tissues) {
-        BioState bs = bsRepo.getByName("Original sample");
-        Map<OriginalSampleData, Sample> samples = new HashMap<>(request.getSamples().size());
-        for (OriginalSampleData data : request.getSamples()) {
-            Tissue tissue = tissues.get(data);
-            Sample sample = new Sample(null, null, tissue, bs);
-            samples.put(data, sampleRepo.save(sample));
-        }
-        return samples;
-    }
-
-    /**
-     * Creates new labware containing the created samples
-     * @param request the register request
-     * @param labwareTypes map to look up labware types
-     * @param samples the new samples
-     * @return a map of labware from the corresponding parts of the request
-     */
-    public Map<OriginalSampleData, Labware> createLabware(OriginalSampleRegisterRequest request,
-                                                          UCMap<LabwareType> labwareTypes,
-                                                          Map<OriginalSampleData, Sample> samples) {
-        Map<OriginalSampleData, Labware> labware = new HashMap<>(request.getSamples().size());
-        for (OriginalSampleData data : request.getSamples()) {
-            Sample sample = samples.get(data);
-            LabwareType lt = labwareTypes.get(data.getLabwareType());
-            Labware lw = labwareService.create(lt);
+    public void createNewLabware(List<DataStruct> datas) {
+        for (DataStruct data : datas) {
+            final Labware lw = labwareService.create(data.labwareType);
             final Slot slot = lw.getFirstSlot();
-            slot.addSample(sample);
+            slot.addSample(data.sample);
             slotRepo.save(slot);
-            labware.put(data, lw);
+            data.labware = lw;
         }
-        return labware;
     }
 
     /**
-     * Records register operations
-     * @param user the user responsible for the operations
-     * @param labware the map of request to labware
-     * @return the new operations mapped from the original sample data request
+     * Records registration ops using {@link OperationService}.
+     * @param user user responsible for operations
+     * @param datas data under construction
      */
-    public Map<OriginalSampleData, Operation> recordRegistrations(User user, Map<OriginalSampleData, Labware> labware) {
-        Map<OriginalSampleData, Operation> opMap = new HashMap<>(labware.size());
+    public void recordRegistrations(User user, List<DataStruct> datas) {
         OperationType opType = opTypeRepo.getByName("Register");
-        for (var entry : labware.entrySet()) {
-            Labware lw = entry.getValue();
-            opMap.put(entry.getKey(), opService.createOperationInPlace(opType, user, lw, null, null));
+        for (var data : datas) {
+            data.operation = opService.createOperationInPlace(opType, user, data.labware, null, null);
         }
-        return opMap;
     }
 
     /**
-     * Creates a list of labware barcodes and solution names.
-     * @param labware the map of sample data to labware
-     * @param opSols the map of sample data to solution
-     * @return a list of objects containing a labware barcode and a solution name
+     * Creates a registration result from the given created data objects.
+     * @param datas created data objects
+     * @return a result including the labware and solution names
      */
-    public List<LabwareSolutionName> composeLabwareSolutionNames(Map<OriginalSampleData, Labware> labware, Map<OriginalSampleData, Solution> opSols) {
-        return opSols.entrySet().stream()
-                .filter(entry -> entry.getValue()!=null)
-                .map(entry -> new LabwareSolutionName(labware.get(entry.getKey()).getBarcode(), entry.getValue().getName()))
-                .collect(toList());
+    public RegisterResult makeResult(List<DataStruct> datas) {
+        List<Labware> lwList = new ArrayList<>(datas.size());
+        List<LabwareSolutionName> lwSols = new ArrayList<>(datas.size());
+        for (DataStruct data : datas) {
+            lwList.add(data.labware);
+            if (data.solution!=null) {
+                lwSols.add(new LabwareSolutionName(data.labware.getBarcode(), data.solution.getName()));
+            }
+        }
+        return new RegisterResult(lwList, lwSols);
+    }
+
+    /**
+     * A structure wrapping the data requested and the entities found and created to meet the request
+     */
+    static class DataStruct {
+        OriginalSampleData originalSampleData;
+        Hmdmc hmdmc;
+        SpatialLocation spatialLocation;
+        LabwareType labwareType;
+        Solution solution;
+        Fixative fixative;
+        Species species;
+
+        Donor donor;
+        Sample sample;
+        Labware labware;
+        Operation operation;
+
+        DataStruct(OriginalSampleData originalSampleData) {
+            this.originalSampleData = originalSampleData;
+        }
+
+        OriginalSampleData getOriginalSampleData() {
+            return this.originalSampleData;
+        }
+
+        void setHmdmc(Hmdmc hmdmc) {
+            this.hmdmc = hmdmc;
+        }
+
+        void setLabwareType(LabwareType labwareType) {
+            this.labwareType = labwareType;
+        }
+
+        void setSolution(Solution solution) {
+            this.solution = solution;
+        }
+
+        void setFixative(Fixative fixative) {
+            this.fixative = fixative;
+        }
+
+        void setSpecies(Species species) {
+            this.species = species;
+        }
     }
 }

@@ -4,21 +4,25 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
+import org.mockito.ArgumentCaptor;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.register.*;
 import uk.ac.sanger.sccp.stan.service.*;
+import uk.ac.sanger.sccp.stan.service.register.OriginalSampleRegisterServiceImp.DataStruct;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static java.util.stream.Collectors.*;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -113,16 +117,13 @@ public class TestOriginalSampleRegisterService {
 
         doNothing().when(service).checkHmdmcsForSpecies(any(), any());
         doNothing().when(service).checkCollectionDates(any(), any());
-        doReturn(null).when(service).checkExistence(any(), any(), any(), any(), any());
+        doNothing().when(service).checkExistence(any(), any(), any(), any(), any(), any());
 
-        UCMap<Donor> donors = UCMap.from(Donor::getDonorName, new Donor(100, "DONOR1", LifeStage.adult, null));
-        doReturn(donors).when(service).loadDonors(any());
-        UCMap<TissueType> tissueTypes = UCMap.from(TissueType::getName, new TissueType(5, "TISSUE1", "TIS"));
-        doReturn(tissueTypes).when(service).checkTissueTypesAndSpatialLocations(any(), any());
+        doNothing().when(service).loadDonors(any());
+        doNothing().when(service).checkTissueTypesAndSpatialLocations(any(), any());
 
         doNothing().when(service).checkExternalNamesUnique(any(), any());
-        doNothing().when(service).checkDonorFieldsAreConsistent(any(), any(), any());
-        doNothing().when(service).checkNoneIdentical(any(), any());
+        doNothing().when(service).checkDonorFieldsAreConsistent(any(), any());
 
         User user = EntityFactory.getUser();
 
@@ -139,15 +140,14 @@ public class TestOriginalSampleRegisterService {
                 "Solution wrong: SOL1",
                 "Labware type wrong: LT1");
 
-        verifyValidationMethods(request, donors);
+        verifyValidationMethods(request);
 
-        verify(service, never()).createNewDonors(any(), any(), any());
-        verify(service, never()).createNewTissues(any(), any(), any(), any(), any());
-        verify(service, never()).createSamples(any(), any());
-        verify(service, never()).createLabware(any(), any(), any());
+        verify(service, never()).createNewDonors(any());
+        verify(service, never()).createNewSamples(any());
+        verify(service, never()).createNewLabware(any());
         verify(service, never()).recordRegistrations(any(), any());
-        verify(service, never()).recordSolutions(any(), any());
-        verify(service, never()).composeLabwareSolutionNames(any(), any());
+        verify(service, never()).recordSolutions(any());
+        verify(service, never()).makeResult(any());
     }
 
     @Test
@@ -160,86 +160,64 @@ public class TestOriginalSampleRegisterService {
         doNothing().when(service).checkHmdmcsForSpecies(any(), any());
         doNothing().when(service).checkCollectionDates(any(), any());
 
-        UCMap<Hmdmc> hmdmcs = UCMap.from(Hmdmc::getHmdmc, new Hmdmc(10, "HMDMC1"));
-        UCMap<Species> species = UCMap.from(Species::getName, new Species(20, "SPEC1"));
-        UCMap<Fixative> fixatives = UCMap.from(Fixative::getName, new Fixative(30, "FIX1"));
-        final Solution solution = new Solution(40, "SOL1", true);
-        UCMap<Solution> solutions = UCMap.from(Solution::getName, solution);
-        UCMap<LabwareType> lwTypes = UCMap.from(LabwareType::getName, new LabwareType(50, "LT1", 1, 1, null, false));
-        List<LabwareSolutionName> lsns = List.of(new LabwareSolutionName("STAN-1", "SolName"));
+        doNothing().when(service).checkExistence(any(), any(), any(), any(), any(), any());
 
-        UCMap<Donor> donors = UCMap.from(Donor::getDonorName, new Donor(100, "DONOR1", LifeStage.adult, null));
-        Map<OriginalSampleData, Solution> opSolMap = Map.of(data, solution);
-        UCMap<TissueType> ttypes = UCMap.from(TissueType::getName, EntityFactory.getTissueType());
-
-        doReturn(hmdmcs).when(service).checkExistence(any(), any(), eq("HuMFre number"), any(), any());
-        doReturn(species).when(service).checkExistence(any(), any(), eq("species"), any(), any());
-        doReturn(fixatives).when(service).checkExistence(any(), any(), eq("fixative"), any(), any());
-        doReturn(solutions).when(service).checkExistence(any(), any(), eq("solution"), any(), any());
-        doReturn(lwTypes).when(service).checkExistence(any(), any(), eq("labware type"), any(), any());
-
-        doReturn(donors).when(service).loadDonors(any());
+        doNothing().when(service).loadDonors(any());
         doNothing().when(service).checkExternalNamesUnique(any(), any());
-        doNothing().when(service).checkDonorFieldsAreConsistent(any(), any(), any());
-        doReturn(ttypes).when(service).checkTissueTypesAndSpatialLocations(any(), any());
-        doNothing().when(service).checkNoneIdentical(any(), any());
+        doNothing().when(service).checkDonorFieldsAreConsistent(any(), any());
+        doNothing().when(service).checkTissueTypesAndSpatialLocations(any(), any());
 
-        doNothing().when(service).createNewDonors(any(), any(), any());
-        Map<OriginalSampleData, Tissue> tissues = Map.of(data, EntityFactory.getTissue());
-        doReturn(tissues).when(service).createNewTissues(any(), any(), any(), any(), any());
-        Map<OriginalSampleData, Sample> samples = Map.of(data, EntityFactory.getSample());
-        doReturn(samples).when(service).createSamples(any(), any());
-        Map<OriginalSampleData, Labware> labware = Map.of(data, EntityFactory.getTube());
-        doReturn(labware).when(service).createLabware(any(), any(), any());
-        Map<OriginalSampleData, Operation> ops = Map.of(data, new Operation());
-        doReturn(ops).when(service).recordRegistrations(any(), any());
-        doReturn(opSolMap).when(service).recordSolutions(any(), any());
-        doReturn(lsns).when(service).composeLabwareSolutionNames(any(), any());
+        doNothing().when(service).createNewDonors(any());
+        doNothing().when(service).createNewSamples(any());
+        doNothing().when(service).createNewLabware(any());
+        doNothing().when(service).recordRegistrations(any(), any());
+        doNothing().when(service).recordSolutions(any());
+        final RegisterResult expectedResult = new RegisterResult(List.of(EntityFactory.getTube()));
+        doReturn(expectedResult).when(service).makeResult(any());
 
-        RegisterResult result = service.register(user, request);
+        assertSame(expectedResult, service.register(user, request));
+        var datas = verifyValidationMethods(request);
 
-        verifyValidationMethods(request, donors);
-
-        verify(service).createNewDonors(request, donors, species);
-        verify(service).createNewTissues(request, donors, ttypes, hmdmcs, fixatives);
-        verify(service).createSamples(request, tissues);
-        verify(service).createLabware(request, lwTypes, samples);
-        verify(service).recordRegistrations(user, labware);
-        verify(service).recordSolutions(ops, solutions);
-        verify(service).composeLabwareSolutionNames(labware, opSolMap);
-
-        assertThat(result.getClashes()).isEmpty();
-        assertThat(result.getLabware()).containsExactlyElementsOf(labware.values());
-        assertThat(result.getLabwareSolutions()).containsExactlyElementsOf(lsns);
+        verify(service).createNewDonors(same(datas));
+        verify(service).createNewSamples(same(datas));
+        verify(service).createNewLabware(same(datas));
+        verify(service).recordRegistrations(same(user), same(datas));
+        verify(service).recordSolutions(same(datas));
+        verify(service).makeResult(same(datas));
     }
 
-    private void verifyValidationMethods(OriginalSampleRegisterRequest request, UCMap<Donor> donors) {
-        verify(service).checkFormat(any(), same(request), eq("Donor identifier"), any(), eq(true), same(mockDonorNameValidator));
-        verify(service).checkFormat(any(), same(request), eq("External identifier"), any(), eq(false), same(mockExternalNameValidator));
-        verify(service).checkFormat(any(), same(request), eq("Life stage"), any(), eq(true), isNull());
-        verify(service).checkFormat(any(), same(request), eq("HuMFre number"), any(), eq(false), same(mockHmdmcValidator));
-        verify(service).checkFormat(any(), same(request), eq("Replicate number"), any(), eq(false), same(mockReplicateValidator));
-        verify(service).checkFormat(any(), same(request), eq("Species"), any(), eq(true), isNull());
-        verify(service).checkFormat(any(), same(request), eq("Tissue type"), any(), eq(true), isNull());
-        verify(service).checkFormat(any(), same(request), eq("Spatial location"), any(), eq(true), isNull());
-        verify(service).checkFormat(any(), same(request), eq("Fixative"), any(), eq(true), isNull());
-        verify(service).checkFormat(any(), same(request), eq("Solution"), any(), eq(true), isNull());
-        verify(service).checkFormat(any(), same(request), eq("Labware type"), any(), eq(true), isNull());
+    @SuppressWarnings("unchecked")
+    private List<DataStruct> verifyValidationMethods(OriginalSampleRegisterRequest request) {
+        ArgumentCaptor<Collection<String>> problemsArgCaptor = ArgumentCaptor.forClass(Collection.class);
+        verify(service).checkFormat(problemsArgCaptor.capture(), same(request), eq("Donor identifier"), any(), eq(true), same(mockDonorNameValidator));
+        Collection<String> problems = problemsArgCaptor.getValue();
+        verify(service).checkFormat(same(problems), same(request), eq("External identifier"), any(), eq(false), same(mockExternalNameValidator));
+        verify(service).checkFormat(same(problems), same(request), eq("Life stage"), any(), eq(true), isNull());
+        verify(service).checkFormat(same(problems), same(request), eq("HuMFre number"), any(), eq(false), same(mockHmdmcValidator));
+        verify(service).checkFormat(same(problems), same(request), eq("Replicate number"), any(), eq(false), same(mockReplicateValidator));
+        verify(service).checkFormat(same(problems), same(request), eq("Species"), any(), eq(true), isNull());
+        verify(service).checkFormat(same(problems), same(request), eq("Tissue type"), any(), eq(true), isNull());
+        verify(service).checkFormat(same(problems), same(request), eq("Spatial location"), any(), eq(true), isNull());
+        verify(service).checkFormat(same(problems), same(request), eq("Fixative"), any(), eq(true), isNull());
+        verify(service).checkFormat(same(problems), same(request), eq("Solution"), any(), eq(true), isNull());
+        verify(service).checkFormat(same(problems), same(request), eq("Labware type"), any(), eq(true), isNull());
 
-        verify(service).checkHmdmcsForSpecies(any(), same(request));
-        verify(service).checkCollectionDates(any(), same(request));
-        verify(service).checkExistence(any(), same(request), eq("HuMFre number"), any(), any());
-        verify(service).checkExistence(any(), same(request), eq("species"), any(), any());
-        verify(service).checkExistence(any(), same(request), eq("fixative"), any(), any());
-        verify(service).checkExistence(any(), same(request), eq("solution"), any(), any());
-        verify(service).checkExistence(any(), same(request), eq("labware type"), any(), any());
+        ArgumentCaptor<List<DataStruct>> dataStructArgCaptor = ArgumentCaptor.forClass(List.class);
 
-        verify(service).loadDonors(same(request));
-        verify(service).checkExternalNamesUnique(any(), same(request));
-        verify(service).checkDonorFieldsAreConsistent(any(), same(request), same(donors));
+        verify(service).checkHmdmcsForSpecies(same(problems), same(request));
+        verify(service).checkCollectionDates(same(problems), same(request));
+        verify(service).checkExistence(same(problems), dataStructArgCaptor.capture(), eq("HuMFre number"), any(), any(), any());
+        List<DataStruct> datas = dataStructArgCaptor.getValue();
+        verify(service).checkExistence(same(problems), same(datas), eq("species"), any(), any(), any());
+        verify(service).checkExistence(same(problems), same(datas), eq("fixative"), any(), any(), any());
+        verify(service).checkExistence(same(problems), same(datas), eq("solution"), any(), any(), any());
+        verify(service).checkExistence(same(problems), same(datas), eq("labware type"), any(), any(), any());
 
-        verify(service).checkTissueTypesAndSpatialLocations(any(), same(request));
-        verify(service).checkNoneIdentical(any(), same(request.getSamples()));
+        verify(service).loadDonors(same(datas));
+        verify(service).checkDonorFieldsAreConsistent(same(problems), same(datas));
+
+        verify(service).checkTissueTypesAndSpatialLocations(same(problems), same(datas));
+        return datas;
     }
 
     @ParameterizedTest
@@ -292,30 +270,37 @@ public class TestOriginalSampleRegisterService {
     @ParameterizedTest
     @ValueSource(booleans={false,true})
     public void testCheckExistence(boolean anyUnknown) {
-        OriginalSampleRegisterRequest request;
-        OriginalSampleData data1 = osdWithDonor("DONOR1");
-        OriginalSampleData data2 = osdWithDonor("DONOR2");
-        OriginalSampleData data3 = osdWithDonor(null);
+        String[] names = { "FIX1", "FIX2", "fix1", null};
         if (anyUnknown) {
-            OriginalSampleData data4 = osdWithDonor("DONORX");
-            request = new OriginalSampleRegisterRequest(List.of(data1, data2, data3, data4));
-        } else {
-            request = new OriginalSampleRegisterRequest(List.of(data1, data2, data3));
+            names[3] = "FIXX";
         }
-        Function<OriginalSampleData, String> fieldFunc = OriginalSampleData::getDonorIdentifier;
-        List<Donor> donors = List.of(new Donor(1, "DONOR1", null, null), new Donor(2, "DONOR2", null, null));
-        Function<String, Optional<Donor>> repoFunc = string -> donors.stream()
-                .filter(d -> d.getDonorName().equalsIgnoreCase(string))
+        List<DataStruct> datas = Arrays.stream(names)
+                .map(name -> {
+                    OriginalSampleData osd = new OriginalSampleData();
+                    osd.setFixative(name);
+                    return new DataStruct(osd);
+                })
+                .collect(toList());
+        Function<OriginalSampleData, String> fieldFunc = OriginalSampleData::getFixative;
+        BiConsumer<DataStruct, Fixative> setter = DataStruct::setFixative;
+
+        List<Fixative> fixatives = List.of(new Fixative(1, "fix1"), new Fixative(2, "fix2"));
+        Function<String, Optional<Fixative>> repoFunc = string -> fixatives.stream()
+                .filter(f -> f.getName().equalsIgnoreCase(string))
                 .findAny();
         List<String> expectedProblems;
         if (anyUnknown) {
-            expectedProblems = List.of("Unknown FIELD: [DONORX]");
+            expectedProblems = List.of("Unknown FIELD: [FIXX]");
         } else {
             expectedProblems = List.of();
         }
         List<String> problems = new ArrayList<>(expectedProblems.size());
-        service.checkExistence(problems, request, "FIELD", fieldFunc, repoFunc);
+        service.checkExistence(problems, datas, "FIELD", fieldFunc, repoFunc, setter);
         assertThat(problems).containsExactlyInAnyOrderElementsOf(expectedProblems);
+        assertSame(fixatives.get(0), datas.get(0).fixative);
+        assertSame(fixatives.get(1), datas.get(1).fixative);
+        assertSame(fixatives.get(0), datas.get(2).fixative);
+        assertNull(datas.get(3).fixative);
     }
 
     @ParameterizedTest
@@ -359,11 +344,10 @@ public class TestOriginalSampleRegisterService {
 
     @ParameterizedTest
     @MethodSource("checkDonorFieldsArgs")
-    public void testCheckDonorFieldsAreConsistent(OriginalSampleRegisterRequest request,
-                                                  UCMap<Donor> donors,
+    public void testCheckDonorFieldsAreConsistent(List<DataStruct> datas,
                                                   Collection<String> expectedProblems) {
         List<String> problems = new ArrayList<>(expectedProblems.size());
-        service.checkDonorFieldsAreConsistent(problems, request, donors);
+        service.checkDonorFieldsAreConsistent(problems, datas);
         assertThat(problems).containsExactlyInAnyOrderElementsOf(expectedProblems);
     }
 
@@ -397,8 +381,15 @@ public class TestOriginalSampleRegisterService {
                         "Multiple life stages specified for donor DONOR3.",
                         "Multiple species specified for donor DONOR4.",
                 },
-        }).map(arr -> Arguments.of(new OriginalSampleRegisterRequest(typeFilterToList(arr, OriginalSampleData.class)),
-                donors, typeFilterToList(arr, String.class)));
+        }).map(arr -> {
+            List<OriginalSampleData> osds = typeFilterToList(arr, OriginalSampleData.class);
+            List<DataStruct> datas = osds.stream()
+                    .map(DataStruct::new)
+                    .peek(ds -> ds.donor = donors.get(ds.getOriginalSampleData().getDonorIdentifier()))
+                    .collect(toList());
+            List<String> problems = typeFilterToList(arr, String.class);
+            return Arguments.of(datas, problems);
+        });
     }
 
     @ParameterizedTest
@@ -496,17 +487,20 @@ public class TestOriginalSampleRegisterService {
 
     @ParameterizedTest
     @MethodSource("checkTissueTypesAndSpatialLocationsArgs")
-    public void testCheckTissueTypesAndSpatialLocations(OriginalSampleRegisterRequest request,
-                                                        List<TissueType> tissueTypes,
+    public void testCheckTissueTypesAndSpatialLocations(List<DataStruct> datas,
+                                                        List<SpatialLocation> expectedSLs,
+                                                        List<TissueType> allTissueTypes,
                                                         List<String> expectedProblems) {
-        when(mockTissueTypeRepo.findAllByNameIn(any())).thenReturn(tissueTypes);
+        when(mockTissueTypeRepo.findAllByNameIn(any())).thenReturn(allTissueTypes);
         List<String> problems = new ArrayList<>(expectedProblems.size());
-        var result = service.checkTissueTypesAndSpatialLocations(problems, request);
+        service.checkTissueTypesAndSpatialLocations(problems, datas);
         assertThat(problems).containsExactlyInAnyOrderElementsOf(expectedProblems);
-        assertThat(result.values()).containsExactlyInAnyOrderElementsOf(tissueTypes);
+        for (int i = 0; i < datas.size(); ++i) {
+            assertSame(expectedSLs.get(i), datas.get(i).spatialLocation);
+        }
         Set<String> tissueNamesToLookUp = new HashSet<>();
-        for (var data : request.getSamples()) {
-            final String ttName = data.getTissueType();
+        for (var data : datas) {
+            final String ttName = data.getOriginalSampleData().getTissueType();
             if (ttName !=null && !ttName.isEmpty()) {
                 tissueNamesToLookUp.add(ttName.toUpperCase());
             }
@@ -519,71 +513,72 @@ public class TestOriginalSampleRegisterService {
     }
 
     static Stream<Arguments> checkTissueTypesAndSpatialLocationsArgs() {
-        final TissueType tt1 = new TissueType(1, "Arm", "ARM");
-        final TissueType tt2 = new TissueType(2, "Leg", "LEG");
-        for (TissueType tt : List.of(tt1, tt2)) {
+        final TissueType arm = new TissueType(1, "Arm", "ARM");
+        final TissueType leg = new TissueType(2, "Leg", "LEG");
+        for (TissueType tt : List.of(arm, leg)) {
             List<SpatialLocation> sls = List.of(
                     new SpatialLocation(10*tt.getId(), "Unknown", 0, tt),
                     new SpatialLocation(10*tt.getId()+1, "Alpha", 1, tt)
             );
             tt.setSpatialLocations(sls);
         }
+        final SpatialLocation arm0 = arm.getSpatialLocations().get(0);
+        final SpatialLocation arm1 = arm.getSpatialLocations().get(1);
+        final SpatialLocation leg0 = leg.getSpatialLocations().get(0);
+
         return Arrays.stream(new Object[][] {
-                { osdWithSL("Arm", 0), osdWithSL("Arm", 1), osdWithSL("LEG", 0),
-                  tt1, tt2 },
-                { osdWithSL("Arm", 0), osdWithSL("Flarm", 0), osdWithSL("Floop", null),
-                  tt1, "Unknown tissue type: [\"Flarm\", \"Floop\"]" },
-                { osdWithSL("ARM", 3), osdWithSL("Leg", -1), osdWithSL("ARM", 1),
-                  tt1, tt2, "There is no spatial location 3 for tissue type Arm.", "There is no spatial location -1 for tissue type Leg." },
-                { osdWithSL("arm", 0), osdWithSL("arm", 17), osdWithSL("Floop", null),
-                  tt1, "There is no spatial location 17 for tissue type Arm.", "Unknown tissue type: [\"Floop\"]"},
+                { osdWithSL("Arm", 0), arm0,
+                        osdWithSL("Arm", 1), arm1,
+                        osdWithSL("LEG", 0), leg0,
+                  arm, leg },
+                { osdWithSL("Arm", 0), arm0,
+                        osdWithSL("Flarm", 0), null,
+                        osdWithSL("Floop", null), null,
+                  arm, "Unknown tissue type: [\"Flarm\", \"Floop\"]" },
+                { osdWithSL("ARM", 3), null,
+                        osdWithSL("Leg", -1), null,
+                        osdWithSL("ARM", 1), arm1,
+                  arm, leg, "There is no spatial location 3 for tissue type Arm.", "There is no spatial location -1 for tissue type Leg." },
+                { osdWithSL("arm", 0), arm0,
+                        osdWithSL("arm", 17), null,
+                        osdWithSL("Floop", null), null,
+                  arm, "There is no spatial location 17 for tissue type Arm.", "Unknown tissue type: [\"Floop\"]"},
         }).map(arr -> {
-            OriginalSampleRegisterRequest request = new OriginalSampleRegisterRequest(typeFilterToList(arr, OriginalSampleData.class));
+            List<DataStruct> datas = typeFilter(Arrays.stream(arr), OriginalSampleData.class)
+                    .map(DataStruct::new)
+                    .collect(toList());
+            List<SpatialLocation> expectedSLs = Arrays.stream(arr)
+                    .filter(x -> x==null || x instanceof SpatialLocation)
+                    .map(x -> (SpatialLocation) x)
+                    .collect(toList());
             List<TissueType> tissueTypes = typeFilterToList(arr, TissueType.class);
             List<String> expectedProblems = typeFilterToList(arr, String.class);
-            return Arguments.of(request, tissueTypes, expectedProblems);
+            return Arguments.of(datas, expectedSLs, tissueTypes, expectedProblems);
         });
-    }
-
-    @ParameterizedTest
-    @ValueSource(booleans={false,true})
-    public void testCheckNoneIdentical(boolean same) {
-        OriginalSampleData[] osds = {
-                osdWithDonor("DONOR1"),
-                osdWithDonor("DONOR2"),
-                osdWithDonor(same ? "DONOR1" : "DONOR3")
-        };
-        List<String> problems = new ArrayList<>(same ? 1 : 0);
-        service.checkNoneIdentical(problems, Arrays.asList(osds));
-        if (same) {
-            assertThat(problems).containsExactly("Multiple completely identical samples specified in request.");
-        } else {
-            assertThat(problems).isEmpty();
-        }
     }
 
     @Test
     public void testLoadDonors_none() {
-        OriginalSampleRegisterRequest request = new OriginalSampleRegisterRequest(List.of(
-                osdWithDonor(""), osdWithDonor(null)
-        ));
-        assertThat(service.loadDonors(request)).isEmpty();
+        List<DataStruct> datas = Stream.of(osdWithDonor(""), osdWithDonor(null))
+                .map(DataStruct::new).collect(toList());
+        service.loadDonors(datas);
+        datas.forEach(d -> assertNull(d.donor));
         verifyNoInteractions(mockDonorRepo);
     }
 
     @Test
     public void testLoadDonors() {
-        OriginalSampleRegisterRequest request = new OriginalSampleRegisterRequest(List.of(
-                osdWithDonor(null), osdWithDonor("DONOR1"), osdWithDonor("DONOR2")
-        ));
+        List<DataStruct> datas = Stream.of(null, "DONOR1", "DONOR2")
+                .map(dn -> new DataStruct(osdWithDonor(dn)))
+                .collect(toList());
         Donor donor1 = new Donor(1, "DONOR1", null, null);
         Donor donor2 = new Donor(2, "DONOR2", null, null);
         when(mockDonorRepo.findAllByDonorNameIn(any())).thenReturn(List.of(donor1, donor2));
 
-        UCMap<Donor> donors = service.loadDonors(request);
-        assertThat(donors).hasSize(2);
-        assertSame(donors.get("DONOR1"), donor1);
-        assertSame(donors.get("DONOR2"), donor2);
+        service.loadDonors(datas);
+        assertNull(datas.get(0).donor);
+        assertSame(donor1, datas.get(1).donor);
+        assertSame(donor2, datas.get(2).donor);
         verify(mockDonorRepo).findAllByDonorNameIn(Set.of("DONOR1", "DONOR2"));
     }
 
@@ -594,12 +589,12 @@ public class TestOriginalSampleRegisterService {
                 .toArray(Donor[]::new);
         Species human = new Species(1, "Human");
         Species banana = new Species(2, "Banana");
-        UCMap<Species> speciesMap = UCMap.from(Species::getName, human, banana);
-        UCMap<Donor> donorsMap = UCMap.from(Donor::getDonorName, existingDonors);
-        OriginalSampleRegisterRequest request = new OriginalSampleRegisterRequest(List.of(
-                osdWithDonor("DONOR3", LifeStage.fetal, "Human"),
-                osdWithDonor("DONOR4", LifeStage.adult, "Banana")
-        ));
+        List<DataStruct> datas = List.of(
+                dataStructOf("DONOR1", existingDonors[0], human, LifeStage.fetal),
+                dataStructOf("DONOR2", existingDonors[1], banana, LifeStage.adult),
+                dataStructOf("DONOR3", null, human, LifeStage.fetal),
+                dataStructOf("DONOR4", null, banana, LifeStage.adult)
+        );
         List<Donor> createdDonors = new ArrayList<>(2);
         when(mockDonorRepo.saveAll(any())).then(invocation -> {
             Iterable<Donor> unsavedDonors = invocation.getArgument(0);
@@ -613,38 +608,48 @@ public class TestOriginalSampleRegisterService {
             return unsavedDonors;
         });
 
-        service.createNewDonors(request, donorsMap, speciesMap);
-        assertThat(donorsMap).hasSize(4);
-        assertThat(donorsMap.values()).contains(existingDonors);
-        assertThat(donorsMap.values()).containsAll(createdDonors);
+        service.createNewDonors(datas);
         assertThat(createdDonors).hasSize(2);
-        Donor d = createdDonors.get(0);
-        assertEquals(d.getDonorName(), "DONOR3");
-        assertSame(d.getSpecies(), human);
-        assertSame(d.getLifeStage(), LifeStage.fetal);
-        d = createdDonors.get(1);
-        assertEquals(d.getDonorName(), "DONOR4");
-        assertSame(d.getSpecies(), banana);
-        assertSame(d.getLifeStage(), LifeStage.adult);
+        Donor d3 = createdDonors.get(0);
+        assertEquals(d3.getDonorName(), "DONOR3");
+        assertSame(d3.getSpecies(), human);
+        assertSame(d3.getLifeStage(), LifeStage.fetal);
+        Donor d4 = createdDonors.get(1);
+        assertEquals(d4.getDonorName(), "DONOR4");
+        assertSame(d4.getSpecies(), banana);
+        assertSame(d4.getLifeStage(), LifeStage.adult);
+        assertThat(datas.stream().map(d -> d.donor)).containsExactly(existingDonors[0], existingDonors[1], d3, d4);
+    }
+
+    static DataStruct dataStructOf(String donorName, Donor donor, Species species, LifeStage lifeStage) {
+        DataStruct data = new DataStruct(osdWithDonor(donorName));
+        data.donor = donor;
+        data.species = species;
+        data.getOriginalSampleData().setLifeStage(lifeStage);
+        return data;
     }
 
     @Test
-    public void testCreateNewTissues() {
-        Medium noneMedium = new Medium(100, "None");
-        when(mockMediumRepo.getByName("None")).thenReturn(noneMedium);
-        Donor donor = new Donor(1, "DONOR1", null, null);
-        TissueType tt = new TissueType(2, "Arm", "ARM");
-        SpatialLocation sl = new SpatialLocation(3, "Unknown", 0, tt);
-        tt.setSpatialLocations(List.of(sl));
-        Hmdmc hmdmc = new Hmdmc(4, "HMDMC1");
-        Fixative fix = new Fixative(5, "FIX1");
-        LocalDate date1 = LocalDate.of(2022, 1, 5);
-        OriginalSampleRegisterRequest request = new OriginalSampleRegisterRequest(List.of(
-                osd("donor1", "EXT1", "R1", "arm", 0, "fix1", "hmdmc1",
-                        date1, "sol1"),
-                osd("Donor1", "", "", "Arm", 0, "Fix1", "Hmdmc1",
-                        null, "sol1")
-        ));
+    public void testCreateNewSamples() {
+        Species human = EntityFactory.getHuman();
+        Species banana = new Species(human.getId()+1, "Banana");
+        Donor[] donors = IntStream.range(0, 2)
+                .mapToObj(i -> new Donor(i+1, "DONOR"+i, LifeStage.adult, human))
+                .toArray(Donor[]::new);
+        TissueType tt = EntityFactory.getTissueType();
+        SpatialLocation sl0 = new SpatialLocation(1, "SL0", 0, tt);
+        SpatialLocation sl1 = new SpatialLocation(2, "SL1", 1, tt);
+        Fixative fix = EntityFactory.getFixative();
+        Medium medium = new Medium(100, "None");
+        BioState bs = new BioState(101, "Original tissue");
+        Hmdmc hmdmc = EntityFactory.getHmdmc();
+        LocalDate date1 = LocalDate.of(2022, 10, 25);
+        List<DataStruct> datas = List.of(
+                dataOf(donors[0], sl0, "R1", "EXT1", fix, hmdmc, date1, human),
+                dataOf(donors[1], sl1, null, null, fix,null, null, banana)
+        );
+        when(mockMediumRepo.getByName("None")).thenReturn(medium);
+        when(mockBsRepo.getByName("Original sample")).thenReturn(bs);
         final List<Tissue> savedTissues = new ArrayList<>(2);
         when(mockTissueRepo.save(any())).then(invocation -> {
             Tissue unsaved = invocation.getArgument(0);
@@ -654,100 +659,80 @@ public class TestOriginalSampleRegisterService {
             return unsaved;
         });
 
-        var result = service.createNewTissues(
-                request,
-                UCMap.from(Donor::getDonorName, donor),
-                UCMap.from(TissueType::getName, tt),
-                UCMap.from(Hmdmc::getHmdmc, hmdmc),
-                UCMap.from(Fixative::getName, fix)
-        );
-        assertThat(result).hasSize(2);
-        assertThat(savedTissues).hasSize(2);
-        assertThat(result.values()).containsExactlyInAnyOrderElementsOf(savedTissues);
-
-        for (int i = 0; i < savedTissues.size(); i++) {
-            Tissue tissue = savedTissues.get(i);
-            if (i==0) {
-                assertEquals("EXT1", tissue.getExternalName());
-                assertEquals("R1", tissue.getReplicate());
-                assertEquals(date1, tissue.getCollectionDate());
-            } else {
-                assertNull(tissue.getExternalName());
-                assertNull(tissue.getReplicate());
-                assertNull(tissue.getCollectionDate());
-            }
-            assertSame(donor, tissue.getDonor());
-            assertSame(sl, tissue.getSpatialLocation());
-            assertSame(noneMedium, tissue.getMedium());
-            assertSame(hmdmc, tissue.getHmdmc());
-            assertNull(tissue.getParentId());
-        }
-    }
-
-    @Test
-    public void testCreateSamples() {
-        BioState bs = new BioState(1, "Original sample");
-        when(mockBsRepo.getByName(bs.getName())).thenReturn(bs);
-        OriginalSampleData data1 = osdWithDonor("DONOR1");
-        OriginalSampleData data2 = osdWithDonor("DONOR2");
-        Tissue[] tissues = IntStream.range(1,3)
-                .mapToObj(i -> { Tissue t = new Tissue(); t.setId(i); return t; })
-                .toArray(Tissue[]::new);
-        Map<OriginalSampleData, Tissue> tissueMap = Map.of(data1, tissues[0], data2, tissues[1]);
-        List<Sample> savedSamples = new ArrayList<>(2);
+        final List<Sample> savedSamples = new ArrayList<>(2);
         when(mockSampleRepo.save(any())).then(invocation -> {
             Sample unsaved = invocation.getArgument(0);
             assertNull(unsaved.getId());
-            unsaved.setId(10+savedSamples.size());
+            unsaved.setId(20 + savedSamples.size());
             savedSamples.add(unsaved);
             return unsaved;
         });
 
-        var result = service.createSamples(
-                new OriginalSampleRegisterRequest(List.of(data1, data2)), tissueMap
-        );
-        assertThat(result).hasSize(2);
-        assertThat(savedSamples).hasSize(2);
-        assertThat(result.values()).containsExactlyInAnyOrderElementsOf(savedSamples);
-
-        for (int i = 0; i < savedSamples.size(); ++i) {
-            Sample sample = savedSamples.get(i);
-            assertSame(tissues[i], sample.getTissue());
-            assertSame(bs, sample.getBioState());
+        service.createNewSamples(datas);
+        assertThat(savedSamples).hasSameSizeAs(datas);
+        assertThat(savedTissues).hasSameSizeAs(datas);
+        for (int i = 0; i < datas.size(); ++i) {
+            final DataStruct data = datas.get(i);
+            final OriginalSampleData osd = data.getOriginalSampleData();
+            Sample sample = data.sample;
+            Tissue tissue = sample.getTissue();
+            assertSame(savedSamples.get(i), sample);
+            assertSame(savedTissues.get(i), tissue);
+            assertNotNull(sample.getId());
+            assertNotNull(tissue.getId());
             assertNull(sample.getSection());
+            assertSame(bs, sample.getBioState());
+            assertSame(osd.getReplicateNumber(), tissue.getReplicate());
+            assertSame(osd.getExternalIdentifier(), tissue.getExternalName());
+            assertSame(medium, tissue.getMedium());
+            assertSame(fix, tissue.getFixative());
+            assertSame(i==0 ? hmdmc : null, tissue.getHmdmc());
+            assertSame(i==0 ? sl0 : sl1, tissue.getSpatialLocation());
+            assertNull(tissue.getParentId());
+            assertSame(i==0 ? date1 : null, tissue.getCollectionDate());
+            assertSame(donors[i], tissue.getDonor());
         }
     }
 
+    static DataStruct dataOf(Donor donor, SpatialLocation sl, String replicate, String extName, Fixative fix,
+                             Hmdmc hmdmc, LocalDate date, Species species) {
+        final OriginalSampleData osd = new OriginalSampleData();
+        osd.setExternalIdentifier(extName);
+        osd.setSampleCollectionDate(date);
+        osd.setReplicateNumber(replicate);
+        DataStruct ds = new DataStruct(osd);
+        ds.donor = donor;
+        ds.spatialLocation = sl;
+        ds.fixative = fix;
+        ds.hmdmc = hmdmc;
+        ds.species = species;
+        return ds;
+    }
+
     @Test
-    public void testCreateLabware() {
-        OriginalSampleData[] datas = { new OriginalSampleData(), new OriginalSampleData() };
-        LabwareType[] lts = IntStream.range(0,2).mapToObj(i -> {
-            LabwareType lt = EntityFactory.makeLabwareType(1,1);
-            lt.setName("lt"+i);
-            datas[i].setLabwareType(lt.getName());
-            return lt;
-        }).toArray(LabwareType[]::new);
-        Labware[] lws = Arrays.stream(lts).map(EntityFactory::makeEmptyLabware).toArray(Labware[]::new);
-        for (int i = 0; i < lts.length; ++i) {
-            when(mockLabwareService.create(lts[i])).thenReturn(lws[i]);
-        }
+    public void testCreateNewLabware() {
+        DataStruct[] datas = IntStream.range(0,2)
+                .mapToObj(i -> new DataStruct(new OriginalSampleData()))
+                .toArray(DataStruct[]::new);
+        Sample sam = EntityFactory.getSample();
+        datas[0].sample = sam;
+        datas[1].sample = new Sample(sam.getId()+1, null, sam.getTissue(), sam.getBioState());
+        datas[0].labwareType = EntityFactory.getTubeType();
+        datas[1].labwareType = EntityFactory.makeLabwareType(1,1);
 
-        Sample[] samples = new Sample[2];
-        samples[0] = EntityFactory.getSample();
-        samples[1] = new Sample(samples[0].getId(), 10, samples[0].getTissue(), samples[0].getBioState());
-        UCMap<LabwareType> ltMap = UCMap.from(LabwareType::getName, lts);
-        Map<OriginalSampleData, Sample> sampleMap = Map.of(datas[0], samples[0], datas[1], samples[1]);
-
-        var result = service.createLabware(
-                new OriginalSampleRegisterRequest(List.of(datas[0], datas[1])), ltMap, sampleMap
-        );
-
-        assertThat(result.values()).containsExactlyInAnyOrder(lws);
-        for (int i = 0; i < lws.length; ++i) {
-            verify(mockLabwareService).create(lts[i]);
-            assertSame(lws[i], result.get(datas[i]));
-            final Slot slot = lws[i].getFirstSlot();
-            assertThat(slot.getSamples()).containsExactly(samples[i]);
+        Labware[] lws = Arrays.stream(datas)
+                .map(d -> {
+                    Labware lw = EntityFactory.makeEmptyLabware(d.labwareType);
+                    when(mockLabwareService.create(d.labwareType)).thenReturn(lw);
+                    return lw;
+                })
+                .toArray(Labware[]::new);
+        service.createNewLabware(Arrays.asList(datas));
+        verify(mockLabwareService, times(2)).create(any(LabwareType.class));
+        for (int i = 0; i < datas.length; ++i) {
+            assertSame(lws[i], datas[i].labware);
+            Slot slot = lws[i].getFirstSlot();
+            assertThat(slot.getSamples()).containsExactly(datas[i].sample);
             verify(mockSlotRepo).save(slot);
         }
     }
@@ -763,106 +748,79 @@ public class TestOriginalSampleRegisterService {
         OperationType opType = EntityFactory.makeOperationType("Register", null, OperationTypeFlag.IN_PLACE);
         when(mockOpTypeRepo.getByName(opType.getName())).thenReturn(opType);
         User user = EntityFactory.getUser();
-        Sample sample = EntityFactory.getSample();
-        LabwareType lt = EntityFactory.getTubeType();
-        OriginalSampleData[] osds = IntStream.range(0,2)
-                .mapToObj(i -> osdWithDonor(""+i))
-                .toArray(OriginalSampleData[]::new);
-
-        Labware[] labware = IntStream.range(0,2)
-                .mapToObj(i -> EntityFactory.makeLabware(lt, sample))
-                .toArray(Labware[]::new);
-
-        Map<OriginalSampleData, Labware> lwMap = new LinkedHashMap<>(2);
-        for (int i = 0; i < 2; ++i) {
-            lwMap.put(osds[i], labware[i]);
+        List<DataStruct> datas = IntStream.range(0,2)
+                .mapToObj(i -> new DataStruct(new OriginalSampleData()))
+                .collect(toList());
+        for (int i = 0; i < datas.size(); ++i) {
+            DataStruct data = datas.get(i);
+            data.sample = new Sample(10+i, null, EntityFactory.getTissue(), EntityFactory.getBioState());
+            data.labware = EntityFactory.makeLabware(EntityFactory.getTubeType(), data.sample);
         }
-
-        assertEquals(Map.of(osds[0], ops.get(0), osds[1], ops.get(1)), service.recordRegistrations(user, lwMap));
-
-        assertThat(ops).hasSize(lwMap.size());
-        for (Labware lw : labware) {
-            verify(mockOpService).createOperationInPlace(opType, user, lw, null, null);
+        service.recordRegistrations(user, datas);
+        verify(mockOpService, times(datas.size())).createOperationInPlace(any(), any(), any(), any(), any());
+        for (int i = 0; i < datas.size(); ++i) {
+            DataStruct data = datas.get(i);
+            assertSame(ops.get(i), data.operation);
+            verify(mockOpService).createOperationInPlace(same(opType), same(user), same(data.labware), isNull(), isNull());
         }
     }
 
     @Test
     public void testRecordSolutions() {
-        Solution[] solutions = { new Solution(1, "sol1"), new Solution(2, "sol2") };
-        OriginalSampleData[] osds = Arrays.stream(solutions)
-                .map(TestOriginalSampleRegisterService::osdForSolution)
-                .toArray(OriginalSampleData[]::new);
-        Operation[] ops = IntStream.range(0, 2)
-                .mapToObj(i -> new Operation())
-                .toArray(Operation[]::new);
-        Sample sample = EntityFactory.getSample();
-        LabwareType lt = EntityFactory.getTubeType();
-        Labware[] lw = IntStream.range(0, 2)
-                .mapToObj(i -> EntityFactory.makeLabware(lt, sample))
+        Solution[] solutions = { new Solution(1, "sol1"), null };
+        Sample[] samples = IntStream.range(1, 3)
+                .mapToObj(i -> new Sample(10+i, null, EntityFactory.getTissue(), EntityFactory.getBioState()))
+                .toArray(Sample[]::new);
+        Labware[] lws = Arrays.stream(samples)
+                .map(sam -> EntityFactory.makeLabware(EntityFactory.getTubeType(), sam))
                 .toArray(Labware[]::new);
-        for (int i = 0; i < ops.length; ++i) {
-            Operation op = ops[i];
-            op.setId(10+i);
-            Slot slot = lw[i].getFirstSlot();
-            Action action = new Action(100+i, op.getId(), slot, slot, sample, sample);
-            op.setActions(List.of(action));
-        }
-        Map<OriginalSampleData, Operation> opMap = Map.of(osds[0], ops[0], osds[1], ops[1]);
-        UCMap<Solution> solutionMap = UCMap.from(Solution::getName, solutions);
+        Operation[] ops = IntStream.range(1, 3)
+                .mapToObj(i -> {
+                    Operation op = new Operation();
+                    op.setId(100+i);
+                    Slot slot = lws[i-1].getFirstSlot();
+                    Sample sample = samples[i-1];
+                    op.setActions(List.of(new Action(1000+i, op.getId(), slot, slot, sample, sample)));
+                    return op;
+                })
+                .toArray(Operation[]::new);
+        List<DataStruct> datas = IntStream.range(0, solutions.length)
+                .mapToObj(i -> {
+                    DataStruct ds = new DataStruct(new OriginalSampleData());
+                    ds.solution = solutions[i];
+                    ds.sample = samples[i];
+                    ds.labware = lws[i];
+                    ds.operation = ops[i];
+                    return ds;
+                }).collect(toList());
 
-        var result = service.recordSolutions(opMap, solutionMap);
-
-        Set<OperationSolution> expectedSolutions = new LinkedHashSet<>(2);
-        for (int i = 0; i < ops.length; ++i) {
-            expectedSolutions.add(new OperationSolution(ops[i].getId(), solutions[i].getId(), lw[i].getId(), sample.getId()));
-        }
-        verify(mockOpSolRepo).saveAll(expectedSolutions);
-        assertThat(result).hasSize(2);
-        IntStream.range(0, 2).forEach(i -> assertSame(solutions[i], result.get(osds[i])));
+        service.recordSolutions(datas);
+        verify(mockOpSolRepo).saveAll(Set.of(
+                new OperationSolution(ops[0].getId(), solutions[0].getId(), lws[0].getId(), samples[0].getId())
+        ));
     }
 
     @Test
-    public void testComposeLabwareSolutionNames() {
-        OriginalSampleData[] osds = IntStream.range(0, 3)
-                .mapToObj(i -> osdWithDonor("DONOR"+i))
-                .toArray(OriginalSampleData[]::new);
-        LabwareType lt = EntityFactory.getTubeType();
-        Labware[] lws = IntStream.range(0, 3)
-                .mapToObj(i -> EntityFactory.makeEmptyLabware(lt))
+    public void testMakeResult() {
+        Solution sol = new Solution(1, "Sol");
+        Solution[] sols = {sol, sol, null};
+        Labware[] lws = IntStream.range(0, sols.length)
+                .mapToObj(i -> EntityFactory.makeLabware(EntityFactory.getTubeType()))
                 .toArray(Labware[]::new);
-        Solution[] solutions = { new Solution(1, "Alpha"), new Solution(2, "Beta"), null };
-
-        Map<OriginalSampleData, Labware> lwMap = IntStream.range(0, 3).boxed().collect(toMap(i -> osds[i], i -> lws[i]));
-        Map<OriginalSampleData, Solution> solMap = Map.of(osds[0], solutions[0], osds[1], solutions[1]);
-
-        var result = service.composeLabwareSolutionNames(lwMap, solMap);
-        assertThat(result).containsExactlyInAnyOrder(
-                new LabwareSolutionName(lws[0].getBarcode(), solutions[0].getName()),
-                new LabwareSolutionName(lws[1].getBarcode(), solutions[1].getName())
+        List<DataStruct> datas = IntStream.range(0, sols.length)
+                .mapToObj(i -> {
+                    DataStruct d = new DataStruct(new OriginalSampleData());
+                    d.solution = sols[i];
+                    d.labware = lws[i];
+                    return d;
+                }).collect(toList());
+        RegisterResult result = service.makeResult(datas);
+        assertThat(result.getClashes()).isEmpty();
+        assertThat(result.getLabware()).containsExactly(lws);
+        assertThat(result.getLabwareSolutions()).containsExactlyInAnyOrder(
+                new LabwareSolutionName(lws[0].getBarcode(), sol.getName()),
+                new LabwareSolutionName(lws[1].getBarcode(), sol.getName())
         );
-    }
-
-    static OriginalSampleData osd(String donorName, String extName, String rep, String tissueTypeName, Integer slCode,
-                                  String fixative, String hmdmc, LocalDate collectionDate, String solutionName) {
-        OriginalSampleData data = new OriginalSampleData();
-        data.setDonorIdentifier(donorName);
-        data.setExternalIdentifier(extName);
-        data.setReplicateNumber(rep);
-        data.setTissueType(tissueTypeName);
-        data.setSpatialLocation(slCode);
-        data.setFixative(fixative);
-        data.setHmdmc(hmdmc);
-        data.setSampleCollectionDate(collectionDate);
-        data.setSolution(solutionName);
-        return data;
-    }
-
-    static OriginalSampleData osdForSolution(Solution solution) {
-        OriginalSampleData data = new OriginalSampleData();
-        if (solution!=null) {
-            data.setSolution(solution.getName());
-        }
-        return data;
     }
 
     static OriginalSampleData osd(LifeStage lifeStage, String species, LocalDate date) {
