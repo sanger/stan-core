@@ -65,7 +65,10 @@ public class TestRegisterOriginalSamplesMutation {
         Map<String, ?> result = tester.post(mutation);
         assertThat((List<?>) result.get("errors")).isNullOrEmpty();
         assertThat((List<?>) result.get("clashes")).isNullOrEmpty();
-        List<Map<String, ?>> labwareData = chainGet(result, "data", "registerOriginalSamples", "labware");
+        Map<String, ?> regData = chainGet(result, "data", "registerOriginalSamples");
+        assertThat((List<?>) regData.get("clashes")).isNullOrEmpty();
+        List<Map<String, ?>> labwareData = chainGet(regData, "labware");
+        List<Map<String, String>> lwSolData = chainGet(regData, "labwareSolutions");
         assertThat(labwareData).hasSize(1);
         Map<String, ?> lwData = labwareData.get(0);
 
@@ -97,6 +100,11 @@ public class TestRegisterOriginalSamplesMutation {
         assertEquals(externalName, tissue.getExternalName());
         assertNull(tissue.getReplicate());
         assertEquals(Labware.State.active, lw.getState());
+
+        assertThat(lwSolData).hasSize(1);
+        Map<String, String> lwSol = lwSolData.get(0);
+        assertEquals(lw.getBarcode(), lwSol.get("barcode"));
+        assertEquals(solution.getName(), lwSol.get("solutionName"));
 
         Work work = entityCreator.createWork(null, null, null, null);
         Labware block = testBlockProcessing(barcode, work);

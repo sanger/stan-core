@@ -120,6 +120,8 @@ public class OriginalSampleRegisterServiceImp implements OriginalSampleRegisterS
         // NB It is allowed to have the same spatial location and donor multiple times
         // checkDonorSpatialLocationUnique(problems, request, donors, tissueTypes);
 
+        checkNoneIdentical(problems, request.getSamples());
+
         if (!problems.isEmpty()) {
             throw new ValidationException("The request validation failed.", problems);
         }
@@ -130,9 +132,10 @@ public class OriginalSampleRegisterServiceImp implements OriginalSampleRegisterS
         Map<OriginalSampleData, Sample> samples = createSamples(request, tissues);
         Map<OriginalSampleData, Labware> labware = createLabware(request, lwTypes, samples);
         var ops = recordRegistrations(user, labware);
-        recordSolutions(ops, solutions);
+        var opSols = recordSolutions(ops, solutions);
+        var lwSolNames = composeLabwareSolutionNames(labware, opSols);
 
-        return new RegisterResult(new ArrayList<>(labware.values()));
+        return new RegisterResult(new ArrayList<>(labware.values()), lwSolNames);
     }
 
     /**
@@ -388,6 +391,18 @@ public class OriginalSampleRegisterServiceImp implements OriginalSampleRegisterS
     }
 
     /**
+     * Checks that none of the sample data in the request are identical, because the logic herein will not work if
+     * it is.
+     * @param problems receptacle for problems
+     * @param samples the request data
+     */
+    public void checkNoneIdentical(Collection<String> problems, Collection<OriginalSampleData> samples) {
+        if (new HashSet<>(samples).size() < samples.size()) {
+            problems.add("Multiple completely identical samples specified in request.");
+        }
+    }
+
+    /**
      * Loads existing donors from the database
      * @param request the register request
      * @return a map of donors from their names
@@ -459,8 +474,9 @@ public class OriginalSampleRegisterServiceImp implements OriginalSampleRegisterS
      * @param operations the operations, mapped from their parts of the request
      * @param solutions the solutions, mapped from their names
      */
-    public void recordSolutions(Map<OriginalSampleData, Operation> operations, UCMap<Solution> solutions) {
+    public Map<OriginalSampleData, Solution> recordSolutions(Map<OriginalSampleData, Operation> operations, UCMap<Solution> solutions) {
         Collection<OperationSolution> opSols = new LinkedHashSet<>();
+        Map<OriginalSampleData, Solution> opSolMap = new HashMap<>(operations.size());
         for (var entry : operations.entrySet()) {
             OriginalSampleData osd = entry.getKey();
             Operation op = entry.getValue();
@@ -470,11 +486,13 @@ public class OriginalSampleRegisterServiceImp implements OriginalSampleRegisterS
                     opSols.add(new OperationSolution(op.getId(), solution.getId(),
                             ac.getDestination().getLabwareId(), ac.getSample().getId()));
                 }
+                opSolMap.put(osd, solution);
             }
         }
         if (!opSols.isEmpty()) {
             opSolutionRepo.saveAll(opSols);
         }
+        return opSolMap;
     }
 
     /**
@@ -532,5 +550,18 @@ public class OriginalSampleRegisterServiceImp implements OriginalSampleRegisterS
             opMap.put(entry.getKey(), opService.createOperationInPlace(opType, user, lw, null, null));
         }
         return opMap;
+    }
+
+    /**
+     * Creates a list of labware barcodes and solution names.
+     * @param labware the map of sample data to labware
+     * @param opSols the map of sample data to solution
+     * @return a list of objects containing a labware barcode and a solution name
+     */
+    public List<LabwareSolutionName> composeLabwareSolutionNames(Map<OriginalSampleData, Labware> labware, Map<OriginalSampleData, Solution> opSols) {
+        return opSols.entrySet().stream()
+                .filter(entry -> entry.getValue()!=null)
+                .map(entry -> new LabwareSolutionName(labware.get(entry.getKey()).getBarcode(), entry.getValue().getName()))
+                .collect(toList());
     }
 }
