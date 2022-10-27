@@ -295,7 +295,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         };
     }
 
-    public DataFetcher<Collection<WorkSummaryGroup>> worksSummary() {
+    public DataFetcher<WorkSummaryData> worksSummary() {
         return dfe -> workSummaryService.loadWorkSummary();
     }
   

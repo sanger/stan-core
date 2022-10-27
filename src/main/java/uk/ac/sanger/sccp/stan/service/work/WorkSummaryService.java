@@ -1,13 +1,11 @@
 package uk.ac.sanger.sccp.stan.service.work;
 
-import uk.ac.sanger.sccp.stan.model.WorkSummaryGroup;
-
-import java.util.Collection;
+import uk.ac.sanger.sccp.stan.request.WorkSummaryData;
 
 public interface WorkSummaryService {
     /**
      * Gets the summary of all works.
      * @return summary of all works
      */
-    Collection<WorkSummaryGroup> loadWorkSummary();
+    WorkSummaryData loadWorkSummary();
 }

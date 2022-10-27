@@ -7,12 +7,13 @@ import org.junit.jupiter.params.provider.CsvSource;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.Work.Status;
 import uk.ac.sanger.sccp.stan.repo.WorkRepo;
+import uk.ac.sanger.sccp.stan.repo.WorkTypeRepo;
+import uk.ac.sanger.sccp.stan.request.WorkSummaryData;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 /**
@@ -20,13 +21,15 @@ import static org.mockito.Mockito.*;
  */
 public class TestWorkSummaryService {
     private WorkRepo mockWorkRepo;
+    private WorkTypeRepo mockWorkTypeRepo;
     private WorkSummaryServiceImp service;
     private int idCounter;
 
     @BeforeEach
     void setup() {
         mockWorkRepo = mock(WorkRepo.class);
-        service = spy(new WorkSummaryServiceImp(mockWorkRepo));
+        mockWorkTypeRepo = mock(WorkTypeRepo.class);
+        service = spy(new WorkSummaryServiceImp(mockWorkRepo, mockWorkTypeRepo));
         idCounter = 10;
     }
 
@@ -37,7 +40,9 @@ public class TestWorkSummaryService {
         List<Work> works = List.of(work(workType, Status.active, 1, null, 3));
 
         when(mockWorkRepo.findAll()).thenReturn(works);
-        assertThat(service.loadWorkSummary()).containsExactly(new WorkSummaryGroup(workType, Status.active, 1, 1, 0, 3));
+        when(mockWorkTypeRepo.findAll()).thenReturn(List.of(workType));
+        WorkSummaryGroup wsg = new WorkSummaryGroup(workType, Status.active, 1, 1, 0, 3);
+        assertEquals(service.loadWorkSummary(), new WorkSummaryData(List.of(workType), List.of(wsg)));
 
         verify(service).createGroups(works);
     }

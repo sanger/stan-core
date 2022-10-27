@@ -1,10 +1,15 @@
 query {
     worksSummary {
-        workType { name }
-        status
-        numWorks
-        totalNumBlocks
-        totalNumSlides
-        totalNumOriginalSamples
+        workTypes {
+            name
+        }
+        workSummaryGroups {
+            workType { name }
+            status
+            numWorks
+            totalNumBlocks
+            totalNumSlides
+            totalNumOriginalSamples
+        }
     }
 }

@@ -56,7 +56,14 @@ public class TestWorksSummaryQuery {
 
         Object result = tester.post(query);
 
-        List<Map<String,?>> groupsData = chainGet(result, "data", "worksSummary");
+        List<Map<String,?>> workTypes = chainGet(result, "data", "worksSummary", "workTypes");
+        assertThat(workTypes).hasSize(4);
+        assertEquals("RNAscope", chainGet(workTypes.get(0), "name"));
+        assertEquals("Histology", chainGet(workTypes.get(1), "name"));
+        assertEquals("wt1", chainGet(workTypes.get(2), "name"));
+        assertEquals("wt2", chainGet(workTypes.get(3), "name"));
+
+        List<Map<String,?>> groupsData = chainGet(result, "data", "worksSummary", "workSummaryGroups");
         assertThat(groupsData).hasSize(2);
         Map<String, ?> g1 = groupsData.get(0);
         Map<String, ?> g2 = groupsData.get(1);
