@@ -12,6 +12,7 @@ import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.request.RNAAnalysisRequest.RNAAnalysisLabware;
 import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.analysis.AnalysisMeasurementValidator.AnalysisType;
+import uk.ac.sanger.sccp.stan.service.operation.OpSearcher;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
@@ -56,10 +57,11 @@ public class TestRnaAnalysisService {
         mockOpTypeRepo = mock(OperationTypeRepo.class);
         OperationRepo mockOpRepo = mock(OperationRepo.class);
         mockLwRepo = mock(LabwareRepo.class);
+        OpSearcher mockOpSearcher = mock(OpSearcher.class);
 
         service = spy(new RNAAnalysisServiceImp(mockLabwareValidatorFactory, mockMeasurementValidatorFactory,
                 mockWorkService, mockOpService, mockCommentValidationService, mockOpTypeRepo, mockOpRepo,
-                mockLwRepo, mockMeasurementRepo, mockOpComRepo));
+                mockLwRepo, mockMeasurementRepo, mockOpComRepo, mockOpSearcher));
     }
 
     @ParameterizedTest

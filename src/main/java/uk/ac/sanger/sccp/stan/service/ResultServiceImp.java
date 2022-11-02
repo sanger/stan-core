@@ -9,6 +9,7 @@ import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.request.ResultRequest.LabwareResult;
 import uk.ac.sanger.sccp.stan.request.ResultRequest.SampleResult;
 import uk.ac.sanger.sccp.stan.service.measurements.*;
+import uk.ac.sanger.sccp.stan.service.operation.OpSearcher;
 import uk.ac.sanger.sccp.stan.service.sanitiser.Sanitiser;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.BasicUtils;
@@ -40,8 +41,9 @@ public class ResultServiceImp extends BaseResultService implements ResultService
                             LabwareValidatorFactory labwareValidatorFactory,
                             OperationService opService, WorkService workService,
                             CommentValidationService commentValidationService,
-                            SlotMeasurementValidatorFactory slotMeasurementValidatorFactory) {
-        super(labwareValidatorFactory, opTypeRepo, opRepo, lwRepo);
+                            SlotMeasurementValidatorFactory slotMeasurementValidatorFactory,
+                            OpSearcher opSearcher) {
+        super(labwareValidatorFactory, opTypeRepo, opRepo, lwRepo, opSearcher);
         this.opCommentRepo = opCommentRepo;
         this.resOpRepo = resOpRepo;
         this.measurementRepo = measurementRepo;
@@ -58,15 +60,25 @@ public class ResultServiceImp extends BaseResultService implements ResultService
         if (request!=null && request.getOperationType()==null) {
             request.setOperationType("Record result");
         }
-        return recordResultForOperation(user, request, "Stain", true);
+        return recordResultForOperation(user, request, "Stain", true, true);
     }
 
     @Override
     public OperationResult recordVisiumQC(User user, ResultRequest request) {
-        return recordResultForOperation(user, request, "Visium permeabilisation", false);
+        return recordResultForOperation(user, request, "Visium permeabilisation", false, false);
     }
 
-    public OperationResult recordResultForOperation(User user, ResultRequest request, String refersToOpName, boolean refersRequired) {
+    /**
+     * Validates and records the results specified
+     * @param user the user responsible
+     * @param request the request
+     * @param refersToOpName the name of the prior operation that this result refers to
+     * @param refersRequired whether the prior operation is required to exist
+     * @param refersAncestral whether the prior operation should be searched on ancestral labware
+     * @return the labware and operations produced
+     */
+    public OperationResult recordResultForOperation(User user, ResultRequest request, String refersToOpName,
+                                                    boolean refersRequired, boolean refersAncestral) {
         Set<String> problems = new LinkedHashSet<>();
         if (user==null) {
             problems.add("No user specified.");
@@ -87,7 +99,7 @@ public class ResultServiceImp extends BaseResultService implements ResultService
         UCMap<List<SlotMeasurementRequest>> measurementMap = validateMeasurements(problems, labware, request.getLabwareResults());
         Map<Integer, Comment> commentMap = validateComments(problems, request.getLabwareResults());
         Work work = workService.validateUsableWork(problems, request.getWorkNumber());
-        Map<Integer, Integer> referredOpIds = lookUpPrecedingOps(problems, refersToOpType, labware.values(), refersRequired);
+        Map<Integer, Integer> referredOpIds = lookUpPrecedingOps(problems, refersToOpType, labware.values(), refersRequired, refersAncestral);
 
         if (!problems.isEmpty()) {
             throw new ValidationException("The result request could not be validated.", problems);
@@ -238,14 +250,19 @@ public class ResultServiceImp extends BaseResultService implements ResultService
      * @param opType the type of op to look up
      * @param labware the labware to look up ops for
      * @param required whether the preceding op missing constitutes a problem
+     * @param ancestral whether to look up operations on ancestral labware
      * @return a map of labware id to the operation id
      */
     public Map<Integer, Integer> lookUpPrecedingOps(Collection<String> problems, OperationType opType,
-                                                    Collection<Labware> labware, boolean required) {
+                                                    Collection<Labware> labware, boolean required, boolean ancestral) {
         if (opType==null || labware.isEmpty()) {
             return Map.of();
         }
-        return lookUpLatestOpIds(problems, opType, labware, required);
+        if (ancestral) {
+            return lookUpAncestralOpIds(problems, opType, labware, required);
+        } else {
+            return lookUpLatestOpIds(problems, opType, labware, required);
+        }
     }
 
     /**

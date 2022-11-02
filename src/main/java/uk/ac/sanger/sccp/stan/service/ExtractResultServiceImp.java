@@ -7,6 +7,7 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.ExtractResultRequest;
 import uk.ac.sanger.sccp.stan.request.ExtractResultRequest.ExtractResultLabware;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
+import uk.ac.sanger.sccp.stan.service.operation.OpSearcher;
 import uk.ac.sanger.sccp.stan.service.sanitiser.Sanitiser;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.BasicUtils;
@@ -35,8 +36,8 @@ public class ExtractResultServiceImp extends BaseResultService implements Extrac
                                    CommentValidationService commentValidationService, OperationService opService,
                                    LabwareRepo lwRepo, OperationTypeRepo opTypeRepo, OperationRepo opRepo,
                                    OperationCommentRepo opCommentRepo, MeasurementRepo measurementRepo,
-                                   ResultOpRepo resultOpRepo) {
-        super(labwareValidatorFactory, opTypeRepo, opRepo, lwRepo);
+                                   ResultOpRepo resultOpRepo, OpSearcher opSearcher) {
+        super(labwareValidatorFactory, opTypeRepo, opRepo, lwRepo, opSearcher);
         this.concentrationSanitiser = concentrationSanitiser;
         this.workService = workService;
         this.commentValidationService = commentValidationService;

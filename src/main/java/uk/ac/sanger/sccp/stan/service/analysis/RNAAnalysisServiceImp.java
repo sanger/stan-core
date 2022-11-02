@@ -7,6 +7,7 @@ import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.request.RNAAnalysisRequest.RNAAnalysisLabware;
 import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.analysis.AnalysisMeasurementValidator.AnalysisType;
+import uk.ac.sanger.sccp.stan.service.operation.OpSearcher;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.UCMap;
@@ -38,8 +39,9 @@ public class RNAAnalysisServiceImp extends BaseResultService implements RNAAnaly
                                     WorkService workService, OperationService opService,
                                     CommentValidationService commentValidationService,
                                     OperationTypeRepo opTypeRepo, OperationRepo opRepo, LabwareRepo lwRepo,
-                                    MeasurementRepo measurementRepo, OperationCommentRepo opComRepo) {
-        super(labwareValidatorFactory, opTypeRepo, opRepo, lwRepo);
+                                    MeasurementRepo measurementRepo, OperationCommentRepo opComRepo,
+                                    OpSearcher opSearcher) {
+        super(labwareValidatorFactory, opTypeRepo, opRepo, lwRepo, opSearcher);
         this.measurementValidatorFactory = measurementValidatorFactory;
         this.workService = workService;
         this.opService = opService;

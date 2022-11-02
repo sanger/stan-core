@@ -12,6 +12,7 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.ExtractResultRequest;
 import uk.ac.sanger.sccp.stan.request.ExtractResultRequest.ExtractResultLabware;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
+import uk.ac.sanger.sccp.stan.service.operation.OpSearcher;
 import uk.ac.sanger.sccp.stan.service.sanitiser.Sanitiser;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
@@ -55,10 +56,11 @@ public class TestExtractResultService {
         mockOpCommentRepo = mock(OperationCommentRepo.class);
         mockMeasurementRepo = mock(MeasurementRepo.class);
         mockResultOpRepo = mock(ResultOpRepo.class);
+        OpSearcher mockOpSearcher = mock(OpSearcher.class);
 
         service = spy(new ExtractResultServiceImp(mockLabwareValidatorFactory, mockConcentrationSanitiser,
                 mockWorkService, mockCommentValidationService, mockOpService, mockLwRepo, mockOpTypeRepo,
-                mockOpRepo, mockOpCommentRepo, mockMeasurementRepo, mockResultOpRepo));
+                mockOpRepo, mockOpCommentRepo, mockMeasurementRepo, mockResultOpRepo, mockOpSearcher));
     }
 
     @ParameterizedTest
