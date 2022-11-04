@@ -1304,6 +1304,18 @@ type WorkSummaryData {
     workTypes: [WorkType!]!
 }
 
+"""A file uploaded to Stan."""
+type StanFile {
+    """When this stanfile was uploaded."""
+    created: Timestamp!
+    """The work with which this file is associated."""
+    work: Work!
+    """The name of the file."""
+    name: String!
+    """The url to download the file."""
+    url: String!
+}
+
 """A specification that a particular reagent slot should be transferred to an address."""
 input ReagentTransfer {
     """The barcode of a reagent plate."""
@@ -1486,6 +1498,8 @@ type Query {
     extractResult(barcode: String!): ExtractResult!
     """Get an operation and the pass/fail result recorded on it, for a given labware barcode and operation type name."""
     passFails(barcode: String!, operationType: String!): [OpPassFail!]!
+    """List files linked to a work number."""
+    listFiles(workNumber: String!): [StanFile!]!
 
     """Get the history containing a given sample id."""
     historyForSampleId(sampleId: Int!): History!

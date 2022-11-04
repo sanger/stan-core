@@ -66,6 +66,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final NextReplicateService nextReplicateService;
     final WorkSummaryService workSummaryService;
     final LabwareService labwareService;
+    final FileStoreService fileStoreService;
 
     @Autowired
     public GraphQLDataFetchers(ObjectMapper objectMapper, AuthenticationComponent authComp, UserRepo userRepo,
@@ -84,7 +85,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                PassFailQueryService passFailQueryService,
                                WorkService workService, VisiumPermDataService visiumPermDataService,
                                NextReplicateService nextReplicateService, WorkSummaryService workSummaryService,
-                               LabwareService labwareService) {
+                               LabwareService labwareService, FileStoreService fileStoreService) {
         super(objectMapper, authComp, userRepo);
         this.sessionConfig = sessionConfig;
         this.tissueTypeRepo = tissueTypeRepo;
@@ -118,6 +119,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.nextReplicateService = nextReplicateService;
         this.workSummaryService = workSummaryService;
         this.labwareService = labwareService;
+        this.fileStoreService = fileStoreService;
     }
 
     public DataFetcher<User> getUser() {
@@ -228,6 +230,13 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         return dfe -> {
             Collection<Work.Status> statuses = arg(dfe, "status", new TypeReference<List<Work.Status>>() {});
             return workService.getWorksWithComments(statuses);
+        };
+    }
+
+    public DataFetcher<List<StanFile>> listStanFiles() {
+        return dfe -> {
+            String workNumber = dfe.getArgument("workNumber");
+            return fileStoreService.list(workNumber);
         };
     }
 
