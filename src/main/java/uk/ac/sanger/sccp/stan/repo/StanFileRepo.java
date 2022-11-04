@@ -14,7 +14,7 @@ public interface StanFileRepo extends CrudRepository<StanFile, Integer> {
     List<StanFile> findAllActiveByWorkId(Integer workId);
 
     /** Finds all active stan files with the given name, associated with the given work id. */
-    @Query("select f from StanFile f where f.work.id=?1 and f.name=?2")
+    @Query("select f from StanFile f where f.work.id=?1 and f.name=?2 and f.deprecated is null")
     List<StanFile> findAllActiveByWorkIdAndName(Integer workId, String name);
 
     /**

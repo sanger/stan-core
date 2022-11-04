@@ -41,21 +41,15 @@ public class FileStoreServiceImp implements FileStoreService {
     public StanFile save(MultipartFile fileData, String workNumber) {
         Work work = workRepo.getByWorkNumber(workNumber);
 
-        String filename = fileData.getOriginalFilename();
-        String san;
-        if (filename==null || filename.isEmpty()) {
-            filename = "unnamed";
-            san = filename;
-        } else {
-            san = filename.replaceAll("[^a-zA-Z0-9_-]","");
-            if (san.isEmpty()) {
-                san = "unnamed";
-            }
+        String filename = getFilename(fileData);
+        String san = filename.replaceAll("[^a-zA-Z0-9_-]+", "");
+        if (san.isEmpty()) {
+            san = "unnamed";
         }
 
         LocalDateTime now = LocalDateTime.now(clock);
 
-        final String savedFilename = now + ":" + san;
+        final String savedFilename = now + "_" + san;
         Path path = Paths.get(config.getDir(), savedFilename);
 
         try {
@@ -69,10 +63,21 @@ public class FileStoreServiceImp implements FileStoreService {
         return fileRepo.save(new StanFile(work, filename, path.toString()));
     }
 
+    private String getFilename(MultipartFile file) {
+        String name = file.getOriginalFilename();
+        if (name!=null) {
+            int c = name.lastIndexOf('/');
+            if (c >= 0) {
+                name = name.substring(c+1);
+            }
+        }
+        return (name==null || name.isEmpty() ? "unnamed" : name);
+    }
+
     @Override
     public Resource loadResource(StanFile stanFile) {
         if (!stanFile.isActive()) {
-            throw new IllegalArgumentException("File is inactive: "+stanFile.getPath());
+            throw new IllegalStateException("File is inactive: "+stanFile.getPath());
         }
         Path path = Paths.get(config.getRoot(), stanFile.getPath());
         try {
