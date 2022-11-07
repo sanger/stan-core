@@ -26,7 +26,7 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
                 .antMatchers("/graphiql").permitAll()
             .and()
                 .csrf()
-                .ignoringAntMatchers("/files/*")
+                .ignoringRequestMatchers(r -> "/files".equalsIgnoreCase(r.getRequestURI()))
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse());
     }
 

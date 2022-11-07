@@ -43,9 +43,9 @@ public class FileStoreController {
                 "attachment; filename=\"" + sf.getName() + "\"").body(resource);
     }
 
-    @PostMapping("/files/{workNumber}")
+    @PostMapping("/files")
     public ResponseEntity<String> receiveFile(@RequestParam("file") MultipartFile file,
-                              @PathVariable String workNumber) {
+                                              @RequestParam("workNumber") String workNumber) {
         User user = checkUserForUpload();
         StanFile sf = fileService.save(user, file, workNumber);
         log.info("Saved file "+sf);
