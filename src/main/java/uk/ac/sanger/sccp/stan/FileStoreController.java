@@ -1,9 +1,10 @@
 package uk.ac.sanger.sccp.stan;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.authentication.InsufficientAuthenticationException;
 import org.springframework.security.core.Authentication;
@@ -20,6 +21,8 @@ import uk.ac.sanger.sccp.stan.service.FileStoreService;
  */
 @Controller
 public class FileStoreController {
+    private final Logger log = LoggerFactory.getLogger(FileStoreController.class);
+
     private final FileStoreService fileService;
     private final AuthenticationComponent authComp;
 
@@ -35,16 +38,18 @@ public class FileStoreController {
         StanFile sf = fileService.lookUp(id);
 
         Resource resource = fileService.loadResource(sf);
+        log.debug("Serving file "+sf.getPath());
         return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION,
                 "attachment; filename=\"" + sf.getName() + "\"").body(resource);
     }
 
-    @PostMapping("files/{workNumber}")
-    public String receiveFile(@RequestParam("file") MultipartFile file,
+    @PostMapping("/files/{workNumber}")
+    public ResponseEntity<String> receiveFile(@RequestParam("file") MultipartFile file,
                               @PathVariable String workNumber) {
-        checkUserForUpload();
-        StanFile sf = fileService.save(file, workNumber);
-        return sf.getUrl();
+        User user = checkUserForUpload();
+        StanFile sf = fileService.save(user, file, workNumber);
+        log.info("Saved file "+sf);
+        return ResponseEntity.ok("Uploaded.");
     }
 
     protected User getUser() {

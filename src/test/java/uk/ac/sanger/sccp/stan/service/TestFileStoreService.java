@@ -5,9 +5,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.web.multipart.MultipartFile;
+import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.config.StanFileConfig;
-import uk.ac.sanger.sccp.stan.model.StanFile;
-import uk.ac.sanger.sccp.stan.model.Work;
+import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.StanFileRepo;
 import uk.ac.sanger.sccp.stan.repo.WorkRepo;
 
@@ -59,11 +59,13 @@ public class TestFileStoreService {
             return sf;
         });
         when(mockWorkRepo.getByWorkNumber(work.getWorkNumber())).thenReturn(work);
-        StanFile sf = service.save(data, work.getWorkNumber());
+        User user = EntityFactory.getUser();
+        StanFile sf = service.save(user, data, work.getWorkNumber());
         String expectedPath = "DIR/"+time+"_"+expectedPathFragment;
         assertEquals(expectedPath, sf.getPath());
         assertEquals(expectedName, sf.getName());
         assertEquals(300, sf.getId());
+        assertEquals(user, sf.getUser());
 
         verify(data).transferTo(Paths.get("/ROOT/"+expectedPath));
     }
@@ -77,7 +79,8 @@ public class TestFileStoreService {
         Path filePath = Paths.get(root, "stan_files", "test", "testfile.txt");
         List<String> fileLines = List.of("Alpha", "Beta");
         Files.write(filePath, fileLines);
-        StanFile sf = new StanFile(200, null, null, "filename",
+        User user = EntityFactory.getUser();
+        StanFile sf = new StanFile(200, null, null, user,"filename",
                 "stan_files/test/testfile.txt", null);
         var resource = service.loadResource(sf);
         try (var in = new BufferedReader(new InputStreamReader(resource.getInputStream()))) {
@@ -87,7 +90,7 @@ public class TestFileStoreService {
 
     @Test
     public void testLoadResource_inactive() {
-        StanFile sf = new StanFile(200, null, null, "filename",
+        StanFile sf = new StanFile(200, null, null, null, "filename",
                 "stan_files/test/testfile.txt", LocalDateTime.now());
         assertThrows(IllegalStateException.class, () -> service.loadResource(sf));
     }
@@ -101,7 +104,7 @@ public class TestFileStoreService {
 
     @Test
     public void testLookUp() {
-        StanFile sf = new StanFile(200, null, null, "filename", "path", null);
+        StanFile sf = new StanFile(200, null, null, null, "filename", "path", null);
         when(mockFileRepo.getById(sf.getId())).thenReturn(sf);
         assertSame(sf, service.lookUp(sf.getId()));
     }
@@ -118,8 +121,8 @@ public class TestFileStoreService {
     @Test
     public void testDeprecateOldFiles() {
         List<StanFile> sfs = List.of(
-                new StanFile(10, null, null, null, null, null),
-                new StanFile(11, null, null, null, null, null)
+                new StanFile(10, null, null, null, null, null, null),
+                new StanFile(11, null, null, null, null, null, null)
         );
         sfs.forEach(sf -> assertNull(sf.getDeprecated()));
         sfs.forEach(sf -> assertTrue(sf.isActive()));
@@ -135,8 +138,8 @@ public class TestFileStoreService {
     @Test
     public void testList() {
         List<StanFile> sfs = List.of(
-                new StanFile(10, null, null, null, null, null),
-                new StanFile(11, null, null, null, null, null)
+                new StanFile(10, null, null, null, null, null, null),
+                new StanFile(11, null, null, null, null, null, null)
         );
         Work work = new Work(500, "SGP500", null, null, null, null, Work.Status.active);
         when(mockWorkRepo.getByWorkNumber(work.getWorkNumber())).thenReturn(work);

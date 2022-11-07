@@ -6,8 +6,7 @@ import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import uk.ac.sanger.sccp.stan.config.StanFileConfig;
-import uk.ac.sanger.sccp.stan.model.StanFile;
-import uk.ac.sanger.sccp.stan.model.Work;
+import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.StanFileRepo;
 import uk.ac.sanger.sccp.stan.repo.WorkRepo;
 
@@ -38,7 +37,7 @@ public class FileStoreServiceImp implements FileStoreService {
     }
 
     @Override
-    public StanFile save(MultipartFile fileData, String workNumber) {
+    public StanFile save(User user, MultipartFile fileData, String workNumber) {
         Work work = workRepo.getByWorkNumber(workNumber);
 
         String filename = getFilename(fileData);
@@ -60,7 +59,7 @@ public class FileStoreServiceImp implements FileStoreService {
 
         deprecateOldFiles(filename, work.getId(), now);
 
-        return fileRepo.save(new StanFile(work, filename, path.toString()));
+        return fileRepo.save(new StanFile(work, user, filename, path.toString()));
     }
 
     private String getFilename(MultipartFile file) {

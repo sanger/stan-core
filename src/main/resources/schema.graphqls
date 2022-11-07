@@ -1310,6 +1310,8 @@ type StanFile {
     created: Timestamp!
     """The work with which this file is associated."""
     work: Work!
+    """The user who uploaded the file."""
+    user: User!
     """The name of the file."""
     name: String!
     """The url to download the file."""

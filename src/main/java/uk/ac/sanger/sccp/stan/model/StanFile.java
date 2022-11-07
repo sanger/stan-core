@@ -21,6 +21,8 @@ public class StanFile {
     private LocalDateTime created;
     @ManyToOne
     private Work work;
+    @ManyToOne
+    private User user;
 
     private String name;
     private String path;
@@ -29,17 +31,19 @@ public class StanFile {
 
     public StanFile() {}
 
-    public StanFile(Integer id, LocalDateTime created, Work work, String name, String path, LocalDateTime deprecated) {
+    public StanFile(Integer id, LocalDateTime created, Work work, User user,
+                    String name, String path, LocalDateTime deprecated) {
         this.id = id;
         this.created = created;
+        this.user = user;
         this.work = work;
         this.name = name;
         this.path = path;
         this.deprecated = deprecated;
     }
 
-    public StanFile(Work work, String name, String path) {
-        this(null, null, work, name, path, null);
+    public StanFile(Work work, User user, String name, String path) {
+        this(null, null, work, user, name, path, null);
     }
 
     /** The primary key of this entry in the database */
@@ -101,6 +105,15 @@ public class StanFile {
         this.work = work;
     }
 
+    /** The user who uploaded the file */
+    public User getUser() {
+        return this.user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
+    }
+
     /** The url where this file may be downloaded */
     public String getUrl() {
         return "files/"+this.getId();
@@ -116,12 +129,13 @@ public class StanFile {
                 && Objects.equals(this.deprecated, that.deprecated)
                 && Objects.equals(this.name, that.name)
                 && Objects.equals(this.path, that.path)
-                && Objects.equals(this.work, that.work));
+                && Objects.equals(this.work, that.work)
+                && Objects.equals(this.user, that.user));
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, created, deprecated, name, path, work);
+        return Objects.hash(id, created, deprecated, name, path, work, user);
     }
 
     @Override
@@ -130,6 +144,7 @@ public class StanFile {
                 .add("id", id)
                 .add("created", created)
                 .add("work", work)
+                .addRepr("user", user==null ? null: user.getUsername())
                 .addRepr("name", name)
                 .addRepr("path", path)
                 .addIfNotNull("deprecated", deprecated)

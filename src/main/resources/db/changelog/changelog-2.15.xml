@@ -11,6 +11,9 @@
             <column name="work_id" type="INT">
                 <constraints nullable="false" foreignKeyName="fk_stan_file_work" referencedTableName="work" referencedColumnNames="id"/>
             </column>
+            <column name="user_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_stan_file_user" referencedTableName="user" referencedColumnNames="id"/>
+            </column>
             <column name="name" type="VARCHAR(64)">
                 <constraints nullable="false"/>
             </column>
