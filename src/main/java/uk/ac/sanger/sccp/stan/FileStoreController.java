@@ -15,6 +15,9 @@ import uk.ac.sanger.sccp.stan.model.StanFile;
 import uk.ac.sanger.sccp.stan.model.User;
 import uk.ac.sanger.sccp.stan.service.FileStoreService;
 
+import java.net.URI;
+import java.net.URISyntaxException;
+
 /**
  * Controller for handling download/upload of files
  * @author dr6
@@ -44,12 +47,12 @@ public class FileStoreController {
     }
 
     @PostMapping("/files")
-    public ResponseEntity<String> receiveFile(@RequestParam("file") MultipartFile file,
-                                              @RequestParam("workNumber") String workNumber) {
+    public ResponseEntity<?> receiveFile(@RequestParam("file") MultipartFile file,
+                                         @RequestParam("workNumber") String workNumber) throws URISyntaxException {
         User user = checkUserForUpload();
         StanFile sf = fileService.save(user, file, workNumber);
         log.info("Saved file "+sf);
-        return ResponseEntity.ok("Uploaded.");
+        return ResponseEntity.created(new URI(sf.getUrl())).build();
     }
 
     protected User getUser() {
