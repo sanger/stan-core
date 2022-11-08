@@ -1,0 +1,9 @@
+query {
+    listFiles(workNumber: "SGP1") {
+        created
+        name
+        url
+        user { username }
+        work { workNumber }
+    }
+}

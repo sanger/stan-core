@@ -116,7 +116,7 @@ public class StanFile {
 
     /** The url where this file may be downloaded */
     public String getUrl() {
-        return "files/"+this.getId();
+        return "/files/"+this.getId();
     }
 
     @Override
