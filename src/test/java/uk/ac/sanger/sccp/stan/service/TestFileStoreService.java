@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.web.multipart.MultipartFile;
-import uk.ac.sanger.sccp.stan.EntityFactory;
+import uk.ac.sanger.sccp.stan.*;
 import uk.ac.sanger.sccp.stan.config.StanFileConfig;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.StanFileRepo;
@@ -29,6 +29,7 @@ public class TestFileStoreService {
     private Clock clock;
     private StanFileRepo mockFileRepo;
     private WorkRepo mockWorkRepo;
+    private Transactor mockTransactor;
 
     private FileStoreServiceImp service;
 
@@ -40,8 +41,9 @@ public class TestFileStoreService {
         clock = Clock.fixed(LocalDateTime.of(2022,11,4,14,0).toInstant(ZoneOffset.UTC), ZoneId.systemDefault());
         mockFileRepo = mock(StanFileRepo.class);
         mockWorkRepo = mock(WorkRepo.class);
+        mockTransactor = mock(Transactor.class);
 
-        service = spy(new FileStoreServiceImp(mockConfig, clock, mockFileRepo, mockWorkRepo));
+        service = spy(new FileStoreServiceImp(mockConfig, clock, mockTransactor, mockFileRepo, mockWorkRepo));
     }
 
     @ParameterizedTest
@@ -60,6 +62,7 @@ public class TestFileStoreService {
         });
         when(mockWorkRepo.getByWorkNumber(work.getWorkNumber())).thenReturn(work);
         User user = EntityFactory.getUser();
+        Matchers.mockTransactor(mockTransactor);
         StanFile sf = service.save(user, data, work.getWorkNumber());
         String expectedPath = "DIR/"+time+"_"+expectedPathFragment;
         assertEquals(expectedPath, sf.getPath());
@@ -68,6 +71,9 @@ public class TestFileStoreService {
         assertEquals(user, sf.getUser());
 
         verify(data).transferTo(Paths.get("/ROOT/"+expectedPath));
+        verify(service).deprecateOldFiles(expectedName, work.getId(), time);
+        verify(mockFileRepo).save(any());
+        verify(mockTransactor).transact(eq("updateStanFiles"), notNull());
     }
 
     @Test

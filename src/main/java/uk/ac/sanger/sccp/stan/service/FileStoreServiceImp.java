@@ -5,6 +5,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import uk.ac.sanger.sccp.stan.Transactor;
 import uk.ac.sanger.sccp.stan.config.StanFileConfig;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.StanFileRepo;
@@ -25,13 +26,16 @@ import java.util.List;
 public class FileStoreServiceImp implements FileStoreService {
     private final StanFileConfig config;
     private final Clock clock;
+    private final Transactor transactor;
     private final StanFileRepo fileRepo;
     private final WorkRepo workRepo;
 
     @Autowired
-    public FileStoreServiceImp(StanFileConfig config, Clock clock, StanFileRepo fileRepo, WorkRepo workRepo) {
+    public FileStoreServiceImp(StanFileConfig config, Clock clock, Transactor transactor,
+                               StanFileRepo fileRepo, WorkRepo workRepo) {
         this.config = config;
         this.clock = clock;
+        this.transactor = transactor;
         this.fileRepo = fileRepo;
         this.workRepo = workRepo;
     }
@@ -57,9 +61,13 @@ public class FileStoreServiceImp implements FileStoreService {
             throw new UncheckedIOException(e);
         }
 
-        deprecateOldFiles(filename, work.getId(), now);
+        return transactor.transact("updateStanFiles",
+                () -> updateStanFiles(user, filename, work, now, path.toString()));
+    }
 
-        return fileRepo.save(new StanFile(work, user, filename, path.toString()));
+    private StanFile updateStanFiles(User user, String originalName, Work work, LocalDateTime now, String storedPath) {
+        deprecateOldFiles(originalName, work.getId(), now);
+        return fileRepo.save(new StanFile(work, user, originalName, storedPath));
     }
 
     private String getFilename(MultipartFile file) {
