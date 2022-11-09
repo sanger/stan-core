@@ -1,0 +1,45 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <changeSet id="2.15.0" author="dr6">
+        <createTable tableName="stan_file">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="work_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_stan_file_work" referencedTableName="work" referencedColumnNames="id"/>
+            </column>
+            <column name="user_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_stan_file_user" referencedTableName="user" referencedColumnNames="id"/>
+            </column>
+            <column name="name" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="path" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="deprecated" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="stan_file" indexName="ix_stan_file_name" unique="false">
+            <column name="name"/>
+        </createIndex>
+        <createIndex tableName="stan_file" indexName="uk_stan_file_path" unique="true">
+            <column name="path"/>
+        </createIndex>
+        <rollback>
+            <dropAllForeignKeyConstraints baseTableName="stan_file"/>
+            <dropTable tableName="stan_file"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

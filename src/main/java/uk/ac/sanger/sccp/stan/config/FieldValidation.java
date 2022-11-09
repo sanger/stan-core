@@ -8,6 +8,7 @@ import uk.ac.sanger.sccp.stan.service.Validator;
 import uk.ac.sanger.sccp.stan.service.sanitiser.*;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.util.EnumSet;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -233,5 +234,10 @@ public class FieldValidation {
         Pattern pattern = Pattern.compile("[A-Z]\\d{2}[A-Z]\\d{2}-\\d{7}-\\d{2}-\\d{2}", Pattern.CASE_INSENSITIVE);
         return new StringValidator("Visium LP CytAssist barcode", 20, 20,
                 charTypes, false, pattern);
+    }
+
+    @Bean
+    public Clock clock() {
+        return Clock.systemUTC();
     }
 }
