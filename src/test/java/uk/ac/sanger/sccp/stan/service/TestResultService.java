@@ -5,7 +5,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
 import org.mockito.*;
+import org.mockito.stubbing.Stubber;
 import uk.ac.sanger.sccp.stan.EntityFactory;
+import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.*;
@@ -13,14 +15,17 @@ import uk.ac.sanger.sccp.stan.request.ResultRequest.LabwareResult;
 import uk.ac.sanger.sccp.stan.request.ResultRequest.SampleResult;
 import uk.ac.sanger.sccp.stan.service.measurements.SlotMeasurementValidator;
 import uk.ac.sanger.sccp.stan.service.measurements.SlotMeasurementValidatorFactory;
+import uk.ac.sanger.sccp.stan.service.operation.OpSearcher;
 import uk.ac.sanger.sccp.stan.service.sanitiser.Sanitiser;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.*;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
+import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -43,6 +48,7 @@ public class TestResultService {
     private MeasurementRepo mockMeasurementRepo;
     private SlotMeasurementValidatorFactory mockSlotMeasurementValidatorFactory;
     private Sanitiser<String> mockCoverageSanitiser;
+    private OpSearcher mockOpSearcher;
 
     private ResultServiceImp service;
 
@@ -62,10 +68,11 @@ public class TestResultService {
         mockWorkService = mock(WorkService.class);
         mockCommentValidationService = mock(CommentValidationService.class);
         mockSlotMeasurementValidatorFactory = mock(SlotMeasurementValidatorFactory.class);
+        mockOpSearcher = mock(OpSearcher.class);
 
         service = spy(new ResultServiceImp(mockOpTypeRepo, mockLwRepo, mockOpRepo, mockOpCommentRepo,
                 mockResOpRepo, mockMeasurementRepo, mockLwNoteRepo, mockCoverageSanitiser, mockLabwareValidatorFactory,
-                mockOpService, mockWorkService, mockCommentValidationService, mockSlotMeasurementValidatorFactory));
+                mockOpService, mockWorkService, mockCommentValidationService, mockSlotMeasurementValidatorFactory, mockOpSearcher));
     }
 
     @Test
@@ -76,10 +83,10 @@ public class TestResultService {
         request.setLabwareResults(List.of());
 
         OperationResult opRes = new OperationResult();
-        doReturn(opRes).when(service).recordResultForOperation(any(), any(), any(), anyBoolean());
+        doReturn(opRes).when(service).recordResultForOperation(any(), any(), any(), anyBoolean(), anyBoolean());
 
         assertSame(opRes, service.recordStainQC(user, request));
-        verify(service).recordResultForOperation(same(user), same(request), eq("Stain"), eq(true));
+        verify(service).recordResultForOperation(same(user), same(request), eq("Stain"), eq(true), eq(true));
         assertEquals("Record result", request.getOperationType());
     }
 
@@ -94,10 +101,10 @@ public class TestResultService {
         request.setOperationType(resultOpName);
 
         OperationResult opRes = new OperationResult();
-        doReturn(opRes).when(service).recordResultForOperation(any(), any(), any(), anyBoolean());
+        doReturn(opRes).when(service).recordResultForOperation(any(), any(), any(), anyBoolean(), anyBoolean());
 
         assertSame(opRes, service.recordVisiumQC(user, request));
-        verify(service).recordResultForOperation(same(user), same(request), eq("Visium permeabilisation"), eq(false));
+        verify(service).recordResultForOperation(same(user), same(request), eq("Visium permeabilisation"), eq(false), eq(false));
         assertEquals(resultOpName, request.getOperationType());
     }
 
@@ -118,13 +125,13 @@ public class TestResultService {
         Map<Integer, Integer> lwStainMap = Map.of(100,200);
         final String stainMapProblem = "Stain map problem";
         if (valid) {
-            doReturn(lwStainMap).when(service).lookUpPrecedingOps(any(), any(), any(), anyBoolean());
+            doReturn(lwStainMap).when(service).lookUpPrecedingOps(any(), any(), any(), anyBoolean(), anyBoolean());
         } else {
             doAnswer(invocation -> {
                 Collection<String> problems = invocation.getArgument(0);
                 problems.add(stainMapProblem);
                 return lwStainMap;
-            }).when(service).lookUpPrecedingOps(any(), any(), any(), anyBoolean());
+            }).when(service).lookUpPrecedingOps(any(), any(), any(), anyBoolean(), anyBoolean());
         }
         Map<Integer, Comment> commentMap = Map.of(17, new Comment());
         doReturn(commentMap).when(service).validateComments(any(), any());
@@ -146,10 +153,10 @@ public class TestResultService {
         final List<LabwareResult> lrs = request.getLabwareResults();
         if (valid) {
             User user = EntityFactory.getUser();
-            assertSame(opRes, service.recordResultForOperation(user, request, setupOpType.getName(), true));
+            assertSame(opRes, service.recordResultForOperation(user, request, setupOpType.getName(), true, true));
             verify(service).createResults(user, resultOpType, lrs, lwMap, lwStainMap, commentMap, measurementMap, work);
         } else {
-            ValidationException exc = assertThrows(ValidationException.class, () -> service.recordResultForOperation(null, request, setupOpType.getName(), true));
+            ValidationException exc = assertThrows(ValidationException.class, () -> service.recordResultForOperation(null, request, setupOpType.getName(), true, true));
             assertThat(exc).hasMessage("The result request could not be validated.");
             //noinspection unchecked
             assertThat((Collection<Object>) exc.getProblems()).containsExactlyInAnyOrder(stainMapProblem, "No user specified.");
@@ -163,7 +170,7 @@ public class TestResultService {
         verify(service).validateComments(anyCollection(), eq(lrs));
         verify(service).validateMeasurements(anyCollection(), eq(lwMap), same(lrs));
         verify(mockWorkService).validateUsableWork(anyCollection(), eq(request.getWorkNumber()));
-        verify(service).lookUpPrecedingOps(anyCollection(), eq(setupOpType), eq(lwMap.values()), eq(true));
+        verify(service).lookUpPrecedingOps(anyCollection(), eq(setupOpType), eq(lwMap.values()), eq(true), eq(true));
     }
 
     @ParameterizedTest
@@ -466,7 +473,7 @@ public class TestResultService {
         when(mockCommentValidationService.validateCommentIds(any(), any())).then(invocation -> {
             Stream<Integer> commentIds = invocation.getArgument(1);
             Collection<String> problems = invocation.getArgument(0);
-            problems.add("Received comment IDs: " + commentIds.collect(Collectors.toList()));
+            problems.add("Received comment IDs: " + commentIds.collect(toList()));
             return commentList;
         });
         List<SampleResult> srs = Stream.of(10, 11, null, 12, 13)
@@ -474,7 +481,7 @@ public class TestResultService {
                     SampleResult sr = new SampleResult();
                     sr.setCommentId(i);
                     return sr;
-                }).collect(Collectors.toList());
+                }).collect(toList());
         List<LabwareResult> lrs = List.of(
                 new LabwareResult("STAN-01"),
                 new LabwareResult("STAN-02", srs.subList(0, 3), null, null),
@@ -489,8 +496,9 @@ public class TestResultService {
     }
 
     @ParameterizedTest
-    @CsvSource(value={"true,false,true", "true,true,true", "false,true,true", "false,false,true", "false,false,false", "false,true,false"})
-    public void testLookUpPrecedingOps(boolean anyStained, boolean anyUnstained, boolean required) {
+    @CsvSource(value={"true,false,true,true", "true,true,true,true", "false,true,true,true", "false,false,true,true", "false,false,false,false", "false,true,false,false",
+            "true,false,true,false", "true,false,false,true"})
+    public void testLookUpPrecedingOps(boolean anyStained, boolean anyUnstained, boolean required, boolean ancestral) {
         OperationType opType = EntityFactory.makeOperationType("Setup op", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.STAIN);
         final List<String> problems = new ArrayList<>();
         int numLabware = (anyStained ? 1 : 0) + (anyUnstained ? 1 : 0);
@@ -519,7 +527,7 @@ public class TestResultService {
         }
 
         if (numLabware==0) {
-            assertThat(service.lookUpPrecedingOps(problems, opType, labware, required)).isEmpty();
+            assertThat(service.lookUpPrecedingOps(problems, opType, labware, required, ancestral)).isEmpty();
             assertThat(problems).isEmpty();
             verifyNoInteractions(mockOpRepo);
             verify(service, never()).makeLabwareOpIdMap(any());
@@ -532,15 +540,30 @@ public class TestResultService {
         List<Operation> ops = (anyStained ? List.of(op) : List.of());
         when(mockOpRepo.findAllByOperationTypeAndDestinationLabwareIdIn(any(), any())).thenReturn(ops);
         Map<Integer, Integer> opsMap = (slw!=null ? Map.of(slw.getId(), op.getId()) : Map.of());
-        doReturn(opsMap).when(service).makeLabwareOpIdMap(any());
+        if (ancestral) {
+            Stubber stub;
+            if (required && anyUnstained) {
+                stub = doAnswer(Matchers.addProblem("Problem from OpSearcher", opsMap));
+            } else {
+                stub = doReturn(opsMap);
+            }
+            stub.when(service).lookUpAncestralOpIds(any(), any(), any(), anyBoolean());
+        } else {
+            doReturn(opsMap).when(service).makeLabwareOpIdMap(any());
+        }
 
-        assertSame(opsMap, service.lookUpPrecedingOps(problems, opType, labware, required));
+        assertSame(opsMap, service.lookUpPrecedingOps(problems, opType, labware, required, ancestral));
 
-        verify(mockOpRepo).findAllByOperationTypeAndDestinationLabwareIdIn(opType, labwareIds);
-        verify(service).makeLabwareOpIdMap(ops);
+        if (ancestral) {
+            verify(service).lookUpAncestralOpIds(any(), eq(opType), eq(labware), eq(required));
+        } else {
+            verify(mockOpRepo).findAllByOperationTypeAndDestinationLabwareIdIn(opType, labwareIds);
+            verify(service).makeLabwareOpIdMap(ops);
+        }
 
         if (anyUnstained && required) {
-            assertThat(problems).containsExactly("No Setup op operation has been recorded on the following labware: [STAN-U]");
+            String problem = ancestral ? "Problem from OpSearcher" : "No Setup op operation has been recorded on the following labware: [STAN-U]";
+            assertThat(problems).containsExactly(problem);
         } else {
             assertThat(problems).isEmpty();
         }
@@ -700,5 +723,35 @@ public class TestResultService {
                 new Measurement(null, "Alpha", "10", sam2.getId(), opId, slot1id),
                 new Measurement(null, "Beta", "20", sam3.getId(), opId, slot2id)
         );
+    }
+
+    @ParameterizedTest
+    @CsvSource({"false,false", "true,false", "true,true"})
+    public void testLookUpAncestralOpIds(boolean anyMissing, boolean required) {
+        LabwareType lt = EntityFactory.getTubeType();
+
+        List<Labware> labware = IntStream.range(0, anyMissing ? 4 : 2).mapToObj(i -> {
+            Labware lw = EntityFactory.makeEmptyLabware(lt);
+            lw.setBarcode("STAN-A"+i);
+            lw.setId(10+i);
+            return lw;
+        }).collect(toList());
+        Operation[] ops = IntStream.range(0, 2).mapToObj(i -> {
+            Operation op = new Operation();
+            op.setId(100+i);
+            return op;
+        }).toArray(Operation[]::new);
+        Map<Integer, Operation> lwOpMap = Map.of(10, ops[0], 11, ops[1]);
+        when(mockOpSearcher.findLabwareOps(any(), any())).thenReturn(lwOpMap);
+        final OperationType opType = EntityFactory.makeOperationType("Stain", null);
+        final List<String> problems = new ArrayList<>(required && anyMissing ? 1 : 0);
+        assertEquals(Map.of(10, 100, 11, 101), service.lookUpAncestralOpIds(problems, opType, labware, required));
+
+        verify(mockOpSearcher).findLabwareOps(opType, labware);
+        if (anyMissing && required) {
+            assertThat(problems).containsExactly("No Stain operation found on labware: [STAN-A2, STAN-A3]");
+        } else {
+            assertThat(problems).isEmpty();
+        }
     }
 }

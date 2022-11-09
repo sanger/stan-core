@@ -7,6 +7,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.ActionRepo;
 
 import java.util.*;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toSet;
 
@@ -209,6 +210,15 @@ public class Ancestoriser {
                 return n;
             }
             return Integer.compare(this.sample.getId(), that.sample.getId());
+        }
+
+        public static Stream<SlotSample> stream(Stream<Slot> slots) {
+            return slots.flatMap(slot -> slot.getSamples().stream()
+                    .map(sam -> new SlotSample(slot, sam)));
+        }
+
+        public static Stream<SlotSample> stream(Labware lw) {
+            return stream(lw.getSlots().stream());
         }
     }
 }

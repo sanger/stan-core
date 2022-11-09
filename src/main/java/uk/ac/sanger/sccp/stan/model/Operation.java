@@ -1,6 +1,7 @@
 package uk.ac.sanger.sccp.stan.model;
 
 import org.hibernate.annotations.*;
+import org.jetbrains.annotations.NotNull;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import javax.persistence.Entity;
@@ -14,7 +15,7 @@ import java.util.Objects;
  */
 @Entity
 @DynamicInsert
-public class Operation {
+public class Operation implements Comparable<Operation> {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
@@ -139,5 +140,20 @@ public class Operation {
                 .add("operationType", operationType)
                 .addIfNotNull("equipment", equipment)
                 .toString();
+    }
+
+    /**
+     * Compares operations by timestamp and then by id.
+     */
+    @Override
+    public int compareTo(@NotNull Operation other) {
+        if (this==other) {
+            return 0;
+        }
+        int c = this.getPerformed().compareTo(other.getPerformed());
+        if (c==0) {
+            c = this.getId().compareTo(other.getId());
+        }
+        return c;
     }
 }
