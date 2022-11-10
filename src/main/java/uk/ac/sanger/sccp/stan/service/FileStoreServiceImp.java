@@ -27,7 +27,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
  */
 @Service
 public class FileStoreServiceImp implements FileStoreService {
-    static final int MAX_NAME_LENGTH = 64, MAX_PATH_LENGTH = 64;
+    static final int MAX_NAME_LENGTH = 100, MAX_PATH_LENGTH = 128;
 
     private final StanFileConfig config;
     private final Clock clock;
