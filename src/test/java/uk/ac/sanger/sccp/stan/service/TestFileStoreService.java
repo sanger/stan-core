@@ -47,7 +47,13 @@ public class TestFileStoreService {
     }
 
     @ParameterizedTest
-    @CsvSource({"folder/alpha,alpha,alpha", "/Robot/SW/R2D2 *&^%,R2D2 *&^%,R2D2", "Alpha/^%^&*,^%^&*, unnamed", ",unnamed,unnamed"})
+    @CsvSource({"folder/alpha,alpha,alpha", "/Robot/SW/R2D2 *&^%,R2D2 *&^%,R2D2", "Alpha/^%^&*,^%^&*, unnamed", ",unnamed,unnamed",
+
+            "folder/Alabama Alaska Arizona Arkansas California Colorado Connecticut.," +
+            "Alabama Alaska Arizona Arkansas California Colorado Connecticut.," +
+            "AlabamaAlaskaArizonaArkansasCaliforniaColor",
+
+            "folder/Alabama Alaska Arizona Arkansas California Colorado Connecticut D,,"})
     public void testSave(String name, String expectedName, String expectedPathFragment) throws IOException {
         Work work = new Work(500, "SGP500", null, null, null, null, Work.Status.active);
         MultipartFile data = mock(MultipartFile.class);
@@ -63,6 +69,15 @@ public class TestFileStoreService {
         when(mockWorkRepo.getByWorkNumber(work.getWorkNumber())).thenReturn(work);
         User user = EntityFactory.getUser();
         Matchers.mockTransactor(mockTransactor);
+
+        if (expectedName==null) {
+            assertThrows(IllegalArgumentException.class, () -> service.save(user, data, work.getWorkNumber()));
+            verify(data, never()).transferTo(any(Path.class));
+            verifyNoInteractions(mockTransactor);
+            verifyNoInteractions(mockFileRepo);
+            return;
+        }
+
         StanFile sf = service.save(user, data, work.getWorkNumber());
         String expectedPath = "DIR/"+time+"_"+expectedPathFragment;
         assertEquals(expectedPath, sf.getPath());

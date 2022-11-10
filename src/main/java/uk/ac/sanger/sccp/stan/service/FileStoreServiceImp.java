@@ -16,14 +16,19 @@ import java.io.UncheckedIOException;
 import java.net.MalformedURLException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.*;
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.List;
+
+import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
  * @author dr6
  */
 @Service
 public class FileStoreServiceImp implements FileStoreService {
+    static final int MAX_NAME_LENGTH = 64, MAX_PATH_LENGTH = 64;
+
     private final StanFileConfig config;
     private final Clock clock;
     private final Transactor transactor;
@@ -45,6 +50,9 @@ public class FileStoreServiceImp implements FileStoreService {
         Work work = workRepo.getByWorkNumber(workNumber);
 
         String filename = getFilename(fileData);
+        if (filename.length() > MAX_NAME_LENGTH) {
+            throw new IllegalArgumentException("Filename too long: "+repr(filename));
+        }
         String san = filename.replaceAll("[^a-zA-Z0-9_-]+", "");
         if (san.isEmpty()) {
             san = "unnamed";
@@ -52,8 +60,14 @@ public class FileStoreServiceImp implements FileStoreService {
 
         LocalDateTime now = LocalDateTime.now(clock);
 
-        final String savedFilename = now + "_" + san;
+        String savedFilename = now + "_" + san;
         Path path = Paths.get(config.getDir(), savedFilename);
+        int len = path.toString().length();
+        if (len > MAX_PATH_LENGTH) {
+            int excess = len - MAX_PATH_LENGTH;
+            savedFilename = savedFilename.substring(0, savedFilename.length()-excess);
+            path = Paths.get(config.getDir(), savedFilename);
+        }
 
         try {
             fileData.transferTo(Paths.get(config.getRoot(), config.getDir(), savedFilename));
@@ -61,8 +75,10 @@ public class FileStoreServiceImp implements FileStoreService {
             throw new UncheckedIOException(e);
         }
 
+        final String pathString = path.toString();
+
         return transactor.transact("updateStanFiles",
-                () -> updateStanFiles(user, filename, work, now, path.toString()));
+                () -> updateStanFiles(user, filename, work, now, pathString));
     }
 
     private StanFile updateStanFiles(User user, String originalName, Work work, LocalDateTime now, String storedPath) {
