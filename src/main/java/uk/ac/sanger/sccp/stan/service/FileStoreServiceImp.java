@@ -27,8 +27,6 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
  */
 @Service
 public class FileStoreServiceImp implements FileStoreService {
-    static final int MAX_NAME_LENGTH = 100, MAX_PATH_LENGTH = 128;
-
     private final StanFileConfig config;
     private final Clock clock;
     private final Transactor transactor;
@@ -50,7 +48,7 @@ public class FileStoreServiceImp implements FileStoreService {
         Work work = workRepo.getByWorkNumber(workNumber);
 
         String filename = getFilename(fileData);
-        if (filename.length() > MAX_NAME_LENGTH) {
+        if (filename.length() > StanFile.MAX_NAME_LENGTH) {
             throw new IllegalArgumentException("Filename too long: "+repr(filename));
         }
         String san = filename.replaceAll("[^a-zA-Z0-9_-]+", "");
@@ -63,8 +61,8 @@ public class FileStoreServiceImp implements FileStoreService {
         String savedFilename = now + "_" + san;
         Path path = Paths.get(config.getDir(), savedFilename);
         int len = path.toString().length();
-        if (len > MAX_PATH_LENGTH) {
-            int excess = len - MAX_PATH_LENGTH;
+        if (len > StanFile.MAX_PATH_LENGTH) {
+            int excess = len - StanFile.MAX_PATH_LENGTH;
             savedFilename = savedFilename.substring(0, savedFilename.length()-excess);
             path = Paths.get(config.getDir(), savedFilename);
         }

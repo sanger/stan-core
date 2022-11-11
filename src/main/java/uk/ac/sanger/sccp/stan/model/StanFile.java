@@ -14,6 +14,8 @@ import java.util.Objects;
  */
 @Entity
 public class StanFile {
+    /** Max length of field in db */
+    public static final int MAX_NAME_LENGTH = 100, MAX_PATH_LENGTH = 128;
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
