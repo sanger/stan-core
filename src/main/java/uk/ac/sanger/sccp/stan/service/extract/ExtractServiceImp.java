@@ -92,8 +92,8 @@ public class ExtractServiceImp implements ExtractService {
             sources = markSourcesUsed(sources);
         }
         Map<Labware, Labware> labwareMap = createNewLabware(labwareType, sources);
-        createSamples(labwareMap, bioState);
-        List<Operation> ops = createOperations(user, opType, labwareMap);
+        Map<Integer, Sample> sampleMap = createSamples(labwareMap, bioState);
+        List<Operation> ops = createOperations(user, opType, labwareMap, sampleMap);
         if (work!=null) {
             workService.link(work, ops);
         }
@@ -109,7 +109,7 @@ public class ExtractServiceImp implements ExtractService {
     public List<Labware> loadAndValidateLabware(Collection<String> barcodes) {
         LabwareValidator labwareValidator = labwareValidatorFactory.getValidator();
         labwareValidator.setUniqueRequired(true);
-        labwareValidator.setSingleSample(true);
+        labwareValidator.setOneFilledSlotRequired(true);
         List<Labware> sources = labwareValidator.loadLabware(labwareRepo, barcodes);
         labwareValidator.validateSources();
         labwareValidator.throwError(IllegalArgumentException::new);
@@ -166,43 +166,53 @@ public class ExtractServiceImp implements ExtractService {
      * The order samples are created should match the order of the given map.
      * @param labwareMap map of source to destination labware
      * @param bioState the bio state for the new samples
+     * @return a map of source sample id to destination sample
      */
-    public void createSamples(Map<Labware, Labware> labwareMap, BioState bioState) {
+    public Map<Integer, Sample> createSamples(Map<Labware, Labware> labwareMap, BioState bioState) {
+        Map<Integer, Sample> sampleMap = new HashMap<>();
         for (var entry : labwareMap.entrySet()) {
             Slot slot = sourceSlot(entry.getKey());
-            Sample oldSample = slot.getSamples().get(0);
-            Sample newSample;
-            if (bioState==null || oldSample.getBioState().equals(bioState)) {
-                newSample = oldSample;
-            } else {
-                newSample = sampleRepo.save(new Sample(null, oldSample.getSection(), oldSample.getTissue(), bioState));
-            }
             Labware destLw = entry.getValue();
             Slot destSlot = destLw.getFirstSlot();
-            destSlot.getSamples().add(newSample);
-            destSlot = slotRepo.save(destSlot);
-            destLw.getSlots().set(0, destSlot);
+            for (Sample oldSample : slot.getSamples()) {
+                final Integer oldSamId = oldSample.getId();
+                Sample newSample = sampleMap.get(oldSamId);
+                if (newSample==null) {
+                    if (bioState == null || oldSample.getBioState().equals(bioState)) {
+                        newSample = oldSample;
+                    } else {
+                        newSample = sampleRepo.save(new Sample(null, oldSample.getSection(), oldSample.getTissue(), bioState));
+                    }
+                    sampleMap.put(oldSamId, newSample);
+                }
+                destSlot.addSample(newSample);
+            }
+            destLw.getSlots().set(0, slotRepo.save(destSlot));
         }
+        return sampleMap;
     }
 
     /**
      * Creates extract operations.
      * Uses {@link OperationService}.
      * The order of the operations should match the order of the given map.
+     * The actions will link the source samples to the parallel destination samples
      * @param user the user responsible for the operations
      * @param opType the type of operation
      * @param labwareMap the map of source to destination labware
+     * @param sampleMap the map of source sample id to destination sample
      * @return a list of newly created operations.
      */
-    public List<Operation> createOperations(User user, OperationType opType, Map<Labware, Labware> labwareMap) {
+    public List<Operation> createOperations(User user, OperationType opType, Map<Labware, Labware> labwareMap,
+                                            Map<Integer, Sample> sampleMap) {
         List<Operation> ops = new ArrayList<>(labwareMap.size());
         for (var entry : labwareMap.entrySet()) {
             Slot src = sourceSlot(entry.getKey());
             Slot dst = entry.getValue().getFirstSlot();
-            Sample srcSample = src.getSamples().get(0);
-            Sample dstSample = dst.getSamples().get(0);
-            Action action = new Action(null, null, src, dst, dstSample, srcSample);
-            Operation op = opService.createOperation(opType, user, List.of(action), null);
+            List<Action> actions = src.getSamples().stream()
+                    .map(srcSam -> new Action(null, null, src, dst, sampleMap.get(srcSam.getId()), srcSam))
+                    .collect(toList());
+            Operation op = opService.createOperation(opType, user, actions, null);
             ops.add(op);
         }
         return ops;

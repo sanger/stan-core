@@ -16,7 +16,6 @@ import uk.ac.sanger.sccp.stan.service.work.WorkService;
 
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.function.Supplier;
 import java.util.stream.IntStream;
 
 import static java.util.stream.Collectors.toMap;
@@ -136,8 +135,9 @@ public class TestExtractService {
         doReturn(sources).when(service).loadAndValidateLabware(any());
         doReturn(sources).when(service).discardSources(any());
         doReturn(lwMap).when(service).createNewLabware(any(), any());
-        doNothing().when(service).createSamples(any(), any());
-        doReturn(ops).when(service).createOperations(any(), any(), any());
+        Map<Integer, Sample> sampleMap = Map.of(400, src.getFirstSlot().getSamples().get(0));
+        doReturn(sampleMap).when(service).createSamples(any(), any());
+        doReturn(ops).when(service).createOperations(any(), any(), any(), any());
 
         assertThrowsMsg(IllegalArgumentException.class, "No barcodes specified.", () -> service.extract(user, new ExtractRequest(List.of(), ltName, "SGP5000")));
         assertThrowsMsg(IllegalArgumentException.class, "No labware type specified.", () -> service.extract(user, new ExtractRequest(bcs, null, "SGP5000")));
@@ -147,7 +147,7 @@ public class TestExtractService {
         verify(service, never()).markSourcesUsed(any());
         verify(service, never()).createNewLabware(any(), any());
         verify(service, never()).createSamples(any(), any());
-        verify(service, never()).createOperations(any(), any(), any());
+        verify(service, never()).createOperations(any(), any(), any(), any());
 
         assertEquals(new OperationResult(ops, List.of(dst)), service.extract(user, new ExtractRequest(bcs, ltName, work.getWorkNumber())));
 
@@ -155,7 +155,7 @@ public class TestExtractService {
         verify(service).discardSources(sources);
         verify(service).createNewLabware(lwType, sources);
         verify(service).createSamples(lwMap, rnaBioState);
-        verify(service).createOperations(user, opType, lwMap);
+        verify(service).createOperations(user, opType, lwMap, sampleMap);
         verify(mockWorkService).link(work, ops);
     }
 
@@ -172,7 +172,8 @@ public class TestExtractService {
         assertEquals(labware, service.loadAndValidateLabware(bcs));
 
         verify(mockValidator).setUniqueRequired(true);
-        verify(mockValidator).setSingleSample(true);
+        verify(mockValidator, never()).setSingleSample(true);
+        verify(mockValidator).setOneFilledSlotRequired(true);
         verify(mockValidator).loadLabware(mockLwRepo, bcs);
         verify(mockValidator).validateSources();
         verify(mockValidator).throwError(any());
@@ -230,7 +231,7 @@ public class TestExtractService {
             saveSampleArgs.add(sample);
             return new Sample(++sampleIdCounter[0], sample.getSection(), sample.getTissue(), sample.getBioState());
         });
-        when(mockSlotRepo.save(any())).then(invocation -> invocation.getArgument(0));
+        when(mockSlotRepo.save(any())).then(Matchers.returnArgument());
         Tissue tissue = EntityFactory.getTissue();
         BioState tissueBioState = new BioState(1, "Tissue");
         Sample[] sourceSamples = {
@@ -251,6 +252,7 @@ public class TestExtractService {
                 source2,
                 EntityFactory.makeLabware(lwType, sourceSamples[2]),
         };
+        sources[2].getFirstSlot().addSample(sourceSamples[0]);
 
         Labware[] dests = IntStream.range(0, sources.length)
                 .mapToObj(i -> EntityFactory.makeEmptyLabware(lwType))
@@ -267,14 +269,15 @@ public class TestExtractService {
                 new Sample(null, sourceSamples[1].getSection(), tissue, rnaBioState)
         );
 
-        Sample[] newSamples = Arrays.stream(dests).map(lw -> lw.getFirstSlot().getSamples().get(0)).toArray(Sample[]::new);
+        Sample[][] newSamples = Arrays.stream(dests).map(lw -> lw.getFirstSlot().getSamples().toArray(Sample[]::new)).toArray(Sample[][]::new);
         // Each sample has its own non-null sample id
-        assertEquals(3, Arrays.stream(newSamples).map(Sample::getId).filter(Objects::nonNull).distinct().count());
+        assertEquals(3, Arrays.stream(newSamples).flatMap(ss -> Arrays.stream(ss).map(Sample::getId)).filter(Objects::nonNull).distinct().count());
         for (int i = 0; i < 2; ++i) {
             Sample sourceSample = sourceSamples[i];
-            assertEquals(newSamples[i], new Sample(newSamples[i].getId(), sourceSample.getSection(), tissue, rnaBioState));
+            assertEquals(newSamples[i][0], new Sample(newSamples[i][0].getId(), sourceSample.getSection(), tissue, rnaBioState));
         }
-        assertSame(newSamples[2], sourceSamples[2]);
+        assertSame(newSamples[2][0], sourceSamples[2]);
+        assertSame(newSamples[2][1], newSamples[0][0]);
         for (Labware dest : dests) {
             verify(mockSlotRepo).save(dest.getFirstSlot());
         }
@@ -315,8 +318,11 @@ public class TestExtractService {
             return op;
         });
 
+        final Map<Integer, Sample> sampleMap = IntStream.range(0, srcSamples.length).boxed()
+                .collect(toMap(i -> srcSamples[i].getId(), i -> dstSamples[i]));
+
         final User user = EntityFactory.getUser();
-        List<Operation> returnedOps = service.createOperations(user, opType, labwareMap);
+        List<Operation> returnedOps = service.createOperations(user, opType, labwareMap, sampleMap);
         assertEquals(createdOps, returnedOps);
 
         // make sure the ops are in the order corresponding to the labware

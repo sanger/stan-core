@@ -79,23 +79,27 @@ public class TestLabwareValidator {
     }
 
     @ParameterizedTest
-    @ValueSource(ints={0,1,2,3})
+    @ValueSource(ints={0,1,2,3,4})
     public void testValidateSources(int requirements) {
         boolean unique = (requirements&1)!=0;
         boolean single = (requirements&2)!=0;
+        boolean singleSlot = (requirements&4)!=0;
 
         doNothing().when(validator).validateUnique();
         doNothing().when(validator).validateNonEmpty();
         doNothing().when(validator).validateSingleSample();
         doNothing().when(validator).validateStates();
+        doNothing().when(validator).validateOneFilledSlot();
 
         validator.setUniqueRequired(unique);
         validator.setSingleSample(single);
+        validator.setOneFilledSlotRequired(singleSlot);
         validator.validateSources();
 
         verify(validator, times(unique ? 1 : 0)).validateUnique();
         verify(validator).validateNonEmpty();
         verify(validator, times(single ? 1 : 0)).validateSingleSample();
+        verify(validator, times(singleSlot && !single ? 1 : 0)).validateOneFilledSlot();
         verify(validator).validateStates();
     }
 
@@ -254,6 +258,22 @@ public class TestLabwareValidator {
         testValidator(List.of(goodLw, multiSampleLw, multiSlotLw, multiSlotLw), action,
                 errorBarcode("Labware contains multiple samples", multiSampleLw),
                 errorBarcode("Labware contains samples in multiple slots", multiSlotLw));
+    }
+
+    @Test
+    public void testValidateOneFilledSlot() {
+        final Runnable action = validator::validateOneFilledSlot;
+        testValidator(List.of(), action);
+        LabwareType lt = EntityFactory.makeLabwareType(1, 2);
+        Sample sample1 = EntityFactory.getSample();
+        Sample sample2 = new Sample(sample1.getId()+1, 800, sample1.getTissue(), sample1.getBioState());
+        Labware goodLw = EntityFactory.makeLabware(lt, sample1);
+        goodLw.getFirstSlot().addSample(sample2); // Two samples in one slot
+        Labware badLw1 = EntityFactory.makeLabware(lt, sample1, sample1); // One sample in two slots
+        Labware badLw2 = EntityFactory.makeLabware(lt, sample1, sample2); // Two samples across two slots
+        testValidator(List.of(goodLw), action);
+        testValidator(List.of(goodLw, badLw1, badLw2, badLw1), action,
+                errorBarcode("Labware contains samples in multiple slots", badLw1, badLw2));
     }
 
     private void testValidator(Collection<Labware> labware, Runnable action, String... expectedErrors) {
