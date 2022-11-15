@@ -120,7 +120,7 @@ public class TestResultService {
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lw);
         doReturn(lwMap).when(service).validateLabware(any(), any());
         doNothing().when(service).validateLabwareContents(any(), any(), any());
-        Work work = new Work(200, "SGP200", null, null, null, null, Work.Status.active);
+        Work work = new Work(200, "SGP200", null, null, null, null, null, Work.Status.active);
         doReturn(work).when(mockWorkService).validateUsableWork(any(), any());
         Map<Integer, Integer> lwStainMap = Map.of(100,200);
         final String stainMapProblem = "Stain map problem";
@@ -651,7 +651,7 @@ public class TestResultService {
 
         User user = EntityFactory.getUser();
         OperationType resultOpType = new OperationType(2, "Record result");
-        Work work = new Work(50, "SGP500", null, null, null, null, Work.Status.active);
+        Work work = new Work(50, "SGP500", null, null, null, null, null, Work.Status.active);
         int stainId1 = 70, stainId2 = 71;
         Map<Integer, Integer> stainIdMap = Map.of(lw1.getId(), stainId1, lw2.getId(), stainId2);
 

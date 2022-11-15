@@ -9,7 +9,6 @@ import org.springframework.test.context.ActiveProfiles;
 import uk.ac.sanger.sccp.stan.EntityCreator;
 import uk.ac.sanger.sccp.stan.GraphQLTester;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.repo.CommentRepo;
 import uk.ac.sanger.sccp.stan.repo.OperationCommentRepo;
 
 import javax.transaction.Transactional;
@@ -46,7 +45,7 @@ public class TestFFPEProcessingMutation {
         LabwareType lt = entityCreator.getTubeType();
         Labware lw = entityCreator.createLabware("STAN-A1", lt, sample);
         User user = entityCreator.createUser("user1");
-        Work work = entityCreator.createWork(null, null, null, null);
+        Work work = entityCreator.createWork(null, null, null, null, null);
         tester.setUser(user);
         String mutation = tester.readGraphQL("ffpeprocessing.graphql")
                 .replace("WORK", work.getWorkNumber());

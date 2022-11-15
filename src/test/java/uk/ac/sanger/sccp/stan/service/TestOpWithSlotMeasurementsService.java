@@ -66,7 +66,7 @@ public class TestOpWithSlotMeasurementsService {
         User user = EntityFactory.getUser();
         Labware lw = EntityFactory.getTube();
         OperationType opType = EntityFactory.makeOperationType("Amp", null, OperationTypeFlag.IN_PLACE);
-        Work work = new Work(10, "SGP10", null, null, null, null, Work.Status.active);
+        Work work = new Work(10, "SGP10", null, null, null, null, null, Work.Status.active);
         final Address A1 = new Address(1,1);
         OpWithSlotMeasurementsRequest request = new OpWithSlotMeasurementsRequest(lw.getBarcode(), opType.getName(), work.getWorkNumber(),
                 List.of(new SlotMeasurementRequest(A1, "CDNA CONCENTRATION", "10", null)));
@@ -102,7 +102,7 @@ public class TestOpWithSlotMeasurementsService {
         User user = EntityFactory.getUser();
         Labware lw = EntityFactory.getTube();
         OperationType opType = EntityFactory.makeOperationType("Amp", null, OperationTypeFlag.IN_PLACE);
-        Work work = new Work(10, "SGP10", null, null, null, null, Work.Status.active);
+        Work work = new Work(10, "SGP10", null, null, null, null, null, Work.Status.active);
         final Address A1 = new Address(1,1);
         OpWithSlotMeasurementsRequest request = new OpWithSlotMeasurementsRequest(lw.getBarcode(), opType.getName(), work.getWorkNumber(),
                 List.of(new SlotMeasurementRequest(A1, "CDNA CONCENTRATION", "10", null)));
@@ -530,7 +530,7 @@ public class TestOpWithSlotMeasurementsService {
     @ParameterizedTest
     @ValueSource(booleans={false,true})
     public void testExecute(boolean withWork) {
-        Work work = (withWork ? new Work(100, "SGP100", null, null, null, null, Work.Status.active) : null);
+        Work work = (withWork ? new Work(100, "SGP100", null, null, null, null, null, Work.Status.active) : null);
         OperationType opType = EntityFactory.makeOperationType(OP_CDNA_AMP, null, OperationTypeFlag.IN_PLACE);
         User user = EntityFactory.getUser();
         Operation op = new Operation(2, opType, null, null, user);

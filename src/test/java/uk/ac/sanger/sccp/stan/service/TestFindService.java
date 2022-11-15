@@ -2,7 +2,6 @@ package uk.ac.sanger.sccp.stan.service;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -326,7 +325,7 @@ public class TestFindService {
         CostCode cc = new CostCode(1, "cc1");
         WorkType workType = new WorkType(1, "worktype", true);
         ReleaseRecipient workRequester = new ReleaseRecipient(1, "test1");
-        Work work = new Work(1, "SGP404", workType, workRequester, pr, cc, Work.Status.active);
+        Work work = new Work(1, "SGP404", workType, workRequester, pr, null, cc, Work.Status.active);
         work.setSampleSlotIds(List.of(
                 new Work.SampleSlotId(sample.getId(), lw.getSlots().get(0).getId())
         ));
@@ -375,7 +374,7 @@ public class TestFindService {
         CostCode cc = new CostCode(1, "cc1");
         WorkType workType = new WorkType(1, "worktype", true);
         ReleaseRecipient workRequester = new ReleaseRecipient(1, "test1");
-        Work work = new Work(1, "SGP404", workType, workRequester, pr, cc, Work.Status.active);
+        Work work = new Work(1, "SGP404", workType, workRequester, pr, null, cc, Work.Status.active);
 
         List<LabwareSample> lss = List.of(
                 new LabwareSample(lw1, sample1, Set.of(work.getWorkNumber())),

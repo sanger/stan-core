@@ -42,7 +42,7 @@ public class TestSolutionTransferMutation {
     public void testSolutionTransfer() throws Exception {
         Sample sample = entityCreator.createSample(null, null);
         Labware lw = entityCreator.createLabware("STAN-A1", entityCreator.getTubeType(), sample);
-        Work work = entityCreator.createWork(null, null, null, null);
+        Work work = entityCreator.createWork(null, null, null, null, null);
         User user = entityCreator.createUser("user1");
         OperationType opType = entityCreator.createOpType("Solution transfer", null, OperationTypeFlag.IN_PLACE);
         Solution solution = solutionRepo.save(new Solution(null, "Columbo"));

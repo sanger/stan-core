@@ -81,6 +81,9 @@ public class Work {
     private Project project;
 
     @ManyToOne
+    private Program program;
+
+    @ManyToOne
     private CostCode costCode;
 
     @Column(columnDefinition = "enum('unstarted', 'active', 'paused', 'completed', 'failed', 'withdrawn')")
@@ -102,13 +105,14 @@ public class Work {
 
     public Work() {}
 
-    public Work(Integer id, String workNumber, WorkType workType, ReleaseRecipient workRequester, Project project, CostCode costCode, Status status,
+    public Work(Integer id, String workNumber, WorkType workType, ReleaseRecipient workRequester, Project project, Program program, CostCode costCode, Status status,
                 Integer numBlocks, Integer numSlides, Integer numOriginalSamples, String priority) {
         this.id = id;
         this.workNumber = workNumber;
         this.workType = workType;
         this.workRequester = workRequester;
         this.project = project;
+        this.program = program;
         this.costCode = costCode;
         this.status = status;
         this.numBlocks = numBlocks;
@@ -117,8 +121,9 @@ public class Work {
         this.priority = priority;
     }
 
-    public Work(Integer id, String workNumber, WorkType workType, ReleaseRecipient workRequester, Project project, CostCode costCode, Status status) {
-        this(id, workNumber, workType, workRequester, project, costCode, status, null, null, null, null);
+    public Work(Integer id, String workNumber, WorkType workType, ReleaseRecipient workRequester, Project project,
+                Program program, CostCode costCode, Status status) {
+        this(id, workNumber, workType, workRequester, project, program, costCode, status, null, null, null, null);
     }
 
     public Integer getId() {
@@ -159,6 +164,14 @@ public class Work {
 
     public void setProject(Project project) {
         this.project = project;
+    }
+
+    public Program getProgram() {
+        return this.program;
+    }
+
+    public void setProgram(Program program) {
+        this.program = program;
     }
 
     public CostCode getCostCode() {
@@ -250,6 +263,7 @@ public class Work {
                 && Objects.equals(this.workNumber, that.workNumber)
                 && Objects.equals(this.workRequester, that.workRequester)
                 && Objects.equals(this.project, that.project)
+                && Objects.equals(this.program, that.program)
                 && Objects.equals(this.costCode, that.costCode)
                 && Objects.equals(this.numBlocks, that.numBlocks)
                 && Objects.equals(this.numSlides, that.numSlides)

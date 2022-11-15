@@ -55,7 +55,7 @@ public class TestSolutionTransferService {
     @ValueSource(booleans={false,true})
     public void testPerform(boolean valid) {
         User user = EntityFactory.getUser();
-        Work work = new Work(10, "SGP10", null, null, null, null, null);
+        Work work = new Work(10, "SGP10", null, null, null, null, null, null);
         Labware lw = EntityFactory.getTube();
         Solution solution = new Solution(1, "Sol1");
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lw);
@@ -189,7 +189,7 @@ public class TestSolutionTransferService {
     @Test
     public void testRecord() {
         User user = EntityFactory.getUser();
-        Work work = new Work(10, "SGP10", null, null, null, null, null);
+        Work work = new Work(10, "SGP10", null, null, null, null, null, null);
         final Labware lw = EntityFactory.getTube();
         var lwMap = UCMap.from(Labware::getBarcode, lw);
         var solMap = UCMap.from(Solution::getName, new Solution(1, "Sol1"));

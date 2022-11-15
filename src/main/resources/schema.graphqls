@@ -891,6 +891,12 @@ type Project {
     enabled: Boolean!
 }
 
+"""A program that work can be associated with."""
+type Program {
+    name: String!
+    enabled: Boolean!
+}
+
 """A cost code that work can be associated with."""
 type CostCode {
     code: String!
@@ -926,6 +932,8 @@ type Work {
     workType: WorkType!
     """The project for which this work is done."""
     project: Project!
+    """The program associated with this work."""
+    program: Program!
     """The cost code responsible for paying for this work."""
     costCode: CostCode!
     """The unique (generated) string identifying this work."""
@@ -1472,6 +1480,8 @@ type Query {
     destructionReasons(includeDisabled: Boolean): [DestructionReason!]!
     """Get all the projects that are enabled, or get all including those that are disabled."""
     projects(includeDisabled: Boolean): [Project!]!
+    """Get all programs that are enabled, or get all including those that are disabled."""
+    programs(includeDisabled: Boolean): [Program!]!
     """Get all the cost codes that are enabled, or get all including those that are disabled."""
     costCodes(includeDisabled: Boolean): [CostCode!]!
     """Get all the solutions that are enabled, or get all including those that are disabled."""
@@ -1592,6 +1602,10 @@ type Mutation {
     addProject(name: String!): Project!
     """Enable or disable a project."""
     setProjectEnabled(name: String!, enabled: Boolean!): Project!
+    """Create a new program that can be associated with work."""
+    addProgram(name: String!): Program!
+    """Enable or disable a program."""
+    setProgramEnabled(name: String!, enabled: Boolean!): Program!
     """Create a new cost code that can be associated with work."""
     addCostCode(code: String!): CostCode!
     """Enable or disable a cost code."""
@@ -1610,7 +1624,7 @@ type Mutation {
     setSolutionEnabled(name: String!, enabled: Boolean!): Solution!
 
     """Create a new work, which will be allocated a new work number with the given prefix."""
-    createWork(prefix: String!, workType: String!, workRequester: String!, project: String!, costCode: String!, numBlocks: Int, numSlides: Int, numOriginalSamples: Int): Work!
+    createWork(prefix: String!, workType: String!, workRequester: String!, project: String!, program: String!, costCode: String!, numBlocks: Int, numSlides: Int, numOriginalSamples: Int): Work!
     """Update the status of an existing work."""
     updateWorkStatus(workNumber: String!, status: WorkStatus!, commentId: Int): WorkWithComment!
     """Update the number of blocks field in a work."""

@@ -6,7 +6,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
 import org.mockito.ArgumentCaptor;
 import uk.ac.sanger.sccp.stan.EntityFactory;
-import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
@@ -53,7 +52,7 @@ public class TestVisiumAnalysisService {
         User user = EntityFactory.getUser();
         String workNumber = (withWorkNumber ? "SGP500" : null);
         Work work = (withWorkNumber ?
-                new Work(500, workNumber, null, null, null, null, Work.Status.active)
+                new Work(500, workNumber, null, null, null, null, null, Work.Status.active)
                 : null);
         Labware lw = EntityFactory.getTube();
         String barcode = lw.getBarcode();
@@ -201,7 +200,7 @@ public class TestVisiumAnalysisService {
         when(mockOpService.createOperationInPlace(opType, user, lw, null, null)).thenReturn(op);
         doReturn(List.of()).when(service).createMeasurement(slot, "240", op.getId());
         Work work = (withWork ?
-                new Work(20, "SGP20", null, null, null, null, Work.Status.active)
+                new Work(20, "SGP20", null, null, null, null, null, Work.Status.active)
                 : null);
         OperationResult opres = service.recordAnalysis(user, lw, A1, 240, work);
         assertThat(opres.getOperations()).containsExactly(op);

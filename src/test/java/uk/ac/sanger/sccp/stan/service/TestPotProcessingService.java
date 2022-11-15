@@ -129,7 +129,7 @@ public class TestPotProcessingService {
 
     @Test
     public void testPerformInTransaction_valid() {
-        Work work = new Work(5, "SGP1", null, null, null, null, null);
+        Work work = new Work(5, "SGP1", null, null, null, null, null, null);
         Labware source = EntityFactory.getTube();
         List<PotProcessingDestination> dests = List.of(
                 new PotProcessingDestination("Pot", "fix1", 1),
@@ -360,7 +360,7 @@ public class TestPotProcessingService {
         Labware source = EntityFactory.makeLabware(EntityFactory.getTubeType(), ogSample);
         Tissue ogTissue = ogSample.getTissue();
         UCMap<Tissue> fixTissues = new UCMap<>(1);
-        final Work work = new Work(100, "SGP100", null, null, null, null, null);
+        final Work work = new Work(100, "SGP100", null, null, null, null, null, null);
         Fixative fix1 = new Fixative(1, "fix1");
         UCMap<Fixative> fixatives = UCMap.from(Fixative::getName, fix1);
         UCMap<LabwareType> lwTypes = UCMap.from(LabwareType::getName, EntityFactory.getTubeType());

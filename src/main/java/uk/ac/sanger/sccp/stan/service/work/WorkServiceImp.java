@@ -23,6 +23,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 @Service
 public class WorkServiceImp implements WorkService {
     private final ProjectRepo projectRepo;
+    private final ProgramRepo programRepo;
     private final CostCodeRepo costCodeRepo;
     private final WorkTypeRepo workTypeRepo;
     private final WorkRepo workRepo;
@@ -31,10 +32,12 @@ public class WorkServiceImp implements WorkService {
     private final Validator<String> priorityValidator;
 
     @Autowired
-    public WorkServiceImp(ProjectRepo projectRepo, CostCodeRepo costCodeRepo, WorkTypeRepo workTypeRepo, WorkRepo workRepo,
+    public WorkServiceImp(ProjectRepo projectRepo, ProgramRepo programRepo, CostCodeRepo costCodeRepo,
+                          WorkTypeRepo workTypeRepo, WorkRepo workRepo,
                           ReleaseRecipientRepo recipientRepo, WorkEventService workEventService,
                           @Qualifier("workPriorityValidator") Validator<String> priorityValidator) {
         this.projectRepo = projectRepo;
+        this.programRepo = programRepo;
         this.costCodeRepo = costCodeRepo;
         this.workTypeRepo = workTypeRepo;
         this.workRepo = workRepo;
@@ -53,11 +56,13 @@ public class WorkServiceImp implements WorkService {
     }
 
     @Override
-    public Work createWork(User user, String prefix, String workTypeName, String workRequesterName, String projectName, String costCode,
+    public Work createWork(User user, String prefix, String workTypeName, String workRequesterName, String projectName,
+                           String programName, String costCode,
                            Integer numBlocks, Integer numSlides, Integer numOriginalSamples) {
         checkPrefix(prefix);
 
         Project project = projectRepo.getByName(projectName);
+        Program program = programRepo.getByName(programName);
         CostCode cc = costCodeRepo.getByCode(costCode);
         WorkType type = workTypeRepo.getByName(workTypeName);
         ReleaseRecipient workRequester = recipientRepo.getByUsername(workRequesterName);
@@ -72,7 +77,7 @@ public class WorkServiceImp implements WorkService {
         }
 
         String workNumber = workRepo.createNumber(prefix);
-        Work work = workRepo.save(new Work(null, workNumber, type, workRequester, project, cc, Status.unstarted, numBlocks, numSlides, numOriginalSamples, null));
+        Work work = workRepo.save(new Work(null, workNumber, type, workRequester, project, program, cc, Status.unstarted, numBlocks, numSlides, numOriginalSamples, null));
         workEventService.recordEvent(user, work, WorkEvent.Type.create, null);
         return work;
     }

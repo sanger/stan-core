@@ -14,7 +14,6 @@ import uk.ac.sanger.sccp.stan.GraphQLTester;
 import uk.ac.sanger.sccp.stan.config.StanFileConfig;
 import uk.ac.sanger.sccp.stan.model.*;
 
-import javax.persistence.EntityManager;
 import javax.transaction.Transactional;
 import java.io.IOException;
 import java.nio.file.*;
@@ -55,7 +54,7 @@ public class TestFileStore {
         }
         Path local = Files.createTempFile("stanfile", ".txt");
         Files.write(local, List.of("Alpha", "Beta"));
-        Work work = entityCreator.createWork(null, null, null, null);
+        Work work = entityCreator.createWork(null, null, null, null, null);
         String workNumber = work.getWorkNumber();
         assertThat(listFiles(workNumber)).isEmpty();
         String username = "user1";

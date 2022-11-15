@@ -411,11 +411,11 @@ public class TestWorkProgressService {
 
     @Test
     public void testGetWorkComment() {
-        Work workA = new Work(1, "SGP1", null, null, null, null, Status.active);
-        Work workC = new Work(2, "SGP2", null, null, null, null, Status.completed);
-        Work workF = new Work(3, "SGP3", null, null, null, null, Status.failed);
-        Work workP = new Work(4, "SGP4", null, null, null, null, Status.paused);
-        Work workW = new Work(5, "SGP5", null, null, null, null, Status.withdrawn);
+        Work workA = new Work(1, "SGP1", null, null, null, null, null, Status.active);
+        Work workC = new Work(2, "SGP2", null, null, null, null, null, Status.completed);
+        Work workF = new Work(3, "SGP3", null, null, null, null, null, Status.failed);
+        Work workP = new Work(4, "SGP4", null, null, null, null, null, Status.paused);
+        Work workW = new Work(5, "SGP5", null, null, null, null, null, Status.withdrawn);
 
         Comment failedComment = new Comment(1, "This work failed", "work status");
         Comment pausedComment = new Comment(2, "This work is paused", "work status");

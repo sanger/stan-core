@@ -66,6 +66,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final ReleaseRecipientAdminService releaseRecipientAdminService;
     final SpeciesAdminService speciesAdminService;
     final ProjectService projectService;
+    final ProgramService programService;
     final CostCodeService costCodeService;
     final FixativeService fixativeService;
     final SolutionAdminService solutionAdminService;
@@ -103,7 +104,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            DestructionReasonAdminService destructionReasonAdminService,
                            HmdmcAdminService hmdmcAdminService, ReleaseDestinationAdminService releaseDestinationAdminService,
                            ReleaseRecipientAdminService releaseRecipientAdminService, SpeciesAdminService speciesAdminService,
-                           ProjectService projectService, CostCodeService costCodeService, FixativeService fixativeService,
+                           ProjectService projectService, ProgramService programService, CostCodeService costCodeService, FixativeService fixativeService,
                            SolutionAdminService solutionAdminService,
                            WorkTypeService workTypeService, WorkService workService, StainService stainService,
                            UnreleaseService unreleaseService, ResultService resultService, ExtractResultService extractResultService,
@@ -138,6 +139,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.releaseRecipientAdminService = releaseRecipientAdminService;
         this.speciesAdminService = speciesAdminService;
         this.projectService = projectService;
+        this.programService = programService;
         this.costCodeService = costCodeService;
         this.fixativeService = fixativeService;
         this.solutionAdminService = solutionAdminService;
@@ -411,6 +413,14 @@ public class GraphQLMutation extends BaseGraphQLResource {
         return adminSetEnabled(projectService::setEnabled, "SetProjectEnabled", "name");
     }
 
+    public DataFetcher<Program> addProgram() {
+        return adminAdd(programService::addNew, "AddProgram", "name");
+    }
+
+    public DataFetcher<Program> setProgramEnabled() {
+        return adminSetEnabled(programService::setEnabled, "SetProgramEnabled", "name");
+    }
+
     public DataFetcher<CostCode> addCostCode() {
         return adminAdd(costCodeService::addNew, "AddCostCode", "code");
     }
@@ -447,6 +457,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         return dfe -> {
             User user = checkUser(dfe, User.Role.normal);
             String projectName = dfe.getArgument("project");
+            String programName = dfe.getArgument("program");
             String code = dfe.getArgument("costCode");
             String prefix = dfe.getArgument("prefix");
             String workTypeName = dfe.getArgument("workType");
@@ -455,9 +466,9 @@ public class GraphQLMutation extends BaseGraphQLResource {
             Integer numSlides = dfe.getArgument("numSlides");
             Integer numOriginalSamples = dfe.getArgument("numOriginalSamples");
             logRequest("Create work", user,
-                    String.format("project: %s, costCode: %s, prefix: %s, workType: %s, workRequesterName: %s, numBlocks: %s, numSlides: %s, numOriginalSamples: %s",
-                    projectName, code, prefix, workTypeName, workRequesterName, numBlocks, numSlides, numOriginalSamples));
-            return workService.createWork(user, prefix, workTypeName, workRequesterName, projectName, code, numBlocks, numSlides, numOriginalSamples);
+                    String.format("project: %s, program: %s, costCode: %s, prefix: %s, workType: %s, workRequesterName: %s, numBlocks: %s, numSlides: %s, numOriginalSamples: %s",
+                    projectName, programName, code, prefix, workTypeName, workRequesterName, numBlocks, numSlides, numOriginalSamples));
+            return workService.createWork(user, prefix, workTypeName, workRequesterName, projectName, programName, code, numBlocks, numSlides, numOriginalSamples);
         };
     }
 

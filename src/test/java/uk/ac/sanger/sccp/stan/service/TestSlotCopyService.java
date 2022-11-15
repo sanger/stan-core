@@ -160,7 +160,7 @@ public class TestSlotCopyService {
     @ValueSource(booleans={false, true})
     public void testPerformInsideTransaction(boolean valid) {
         List<SlotCopyContent> contents = List.of(new SlotCopyContent("SOURCE1", new Address(1, 2), new Address(3, 4)));
-        Work work = new Work(50, "SGP5000", null, null, null, null, Work.Status.active);
+        Work work = new Work(50, "SGP5000", null, null, null, null, null, Work.Status.active);
         when(mockWorkService.validateUsableWork(any(), any())).thenReturn(work);
         SlotCopyRequest request = new SlotCopyRequest(opType.getName(), plateType.getName(), contents, work.getWorkNumber(), "pbc", null);
         when(mockOpTypeRepo.findByName(any())).thenReturn(Optional.of(opType));
@@ -665,7 +665,7 @@ public class TestSlotCopyService {
         Labware lw2 = EntityFactory.makeEmptyLabware(EntityFactory.getTubeType());
         lw1.setBarcode("STAN-0");
         lw2.setBarcode("STAN-1");
-        Work work = new Work(50, "SGP50", null, null, null, null, null);
+        Work work = new Work(50, "SGP50", null, null, null, null, null, null);
         UCMap<Labware> sources = UCMap.from(Labware::getBarcode, lw1, lw2);
         final BioState bs = new BioState(10, "bs1");
         UCMap<BioState> bsMap = UCMap.from(BioState::getName, bs);

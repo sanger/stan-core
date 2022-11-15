@@ -72,7 +72,7 @@ public class TestFindQuery {
         CostCode cc = new CostCode(1, "cc1");
         WorkType workType = new WorkType(1, "worktype", true);
         ReleaseRecipient workRequester = new ReleaseRecipient(1, "test1");
-        Work work = entityCreator.createWork(workType, pr, cc,workRequester);
+        Work work = entityCreator.createWork(workType, pr, null, cc,workRequester);
         List<String> workNumbers = List.of(work.getWorkNumber());
         work.setSampleSlotIds(List.of(
                 new Work.SampleSlotId(samples[0].getId(), labware[0].getSlots().get(0).getId()),

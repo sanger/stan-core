@@ -53,7 +53,7 @@ public class TestFFPEProcessingService {
     public void testPerform(boolean valid) {
         User user = EntityFactory.getUser();
         FFPEProcessingRequest request = new FFPEProcessingRequest("SGP1", List.of("STAN-A1"), 10);
-        Work work = new Work(1, "SGP1", null, null, null, null, null);
+        Work work = new Work(1, "SGP1", null, null, null, null, null, null);
         Comment comment = new Comment(10, "Bananas", "blue");
         List<Labware> labware = List.of(EntityFactory.getTube());
         OperationResult opRes;
@@ -149,7 +149,7 @@ public class TestFFPEProcessingService {
     public void testRecord() {
         User user = EntityFactory.getUser();
         var labware = List.of(EntityFactory.getTube());
-        Work work = new Work(1, "SGP1", null, null, null, null, null);
+        Work work = new Work(1, "SGP1", null, null, null, null, null, null);
         Comment comment = new Comment(10, "Bananas", "blue");
 
         List<Operation> ops = makeOps(1);

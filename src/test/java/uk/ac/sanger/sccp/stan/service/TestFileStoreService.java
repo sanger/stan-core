@@ -59,7 +59,7 @@ public class TestFileStoreService {
 
             "folder/Alabama Alaska Arizona Arkansas California Colorado Connecticut Delaware Florida Georgia Hawaii Idaho,,"})
     public void testSave(String name, String expectedName, String expectedPathFragment) throws IOException {
-        Work work = new Work(500, "SGP500", null, null, null, null, Work.Status.active);
+        Work work = new Work(500, "SGP500", null, null, null, null, null, Work.Status.active);
         MultipartFile data = mock(MultipartFile.class);
         LocalDateTime time = LocalDateTime.now(clock);
         when(data.getOriginalFilename()).thenReturn(name);
@@ -166,7 +166,7 @@ public class TestFileStoreService {
                 new StanFile(10, null, null, null, null, null, null),
                 new StanFile(11, null, null, null, null, null, null)
         );
-        Work work = new Work(500, "SGP500", null, null, null, null, Work.Status.active);
+        Work work = new Work(500, "SGP500", null, null, null, null, null, Work.Status.active);
         when(mockWorkRepo.getByWorkNumber(work.getWorkNumber())).thenReturn(work);
         when(mockFileRepo.findAllActiveByWorkId(work.getId())).thenReturn(sfs);
         assertEquals(sfs, service.list(work.getWorkNumber()));

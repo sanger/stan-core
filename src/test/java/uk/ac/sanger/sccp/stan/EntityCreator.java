@@ -63,6 +63,8 @@ public class EntityCreator {
     @Autowired
     private ProjectRepo projectRepo;
     @Autowired
+    private ProgramRepo programRepo;
+    @Autowired
     private CostCodeRepo costCodeRepo;
     @Autowired
     private WorkTypeRepo workTypeRepo;
@@ -200,6 +202,10 @@ public class EntityCreator {
         return projectRepo.save(new Project(null, name));
     }
 
+    public Program createProgram(String name) {
+        return programRepo.save(new Program(name));
+    }
+
     public CostCode createCostCode(String code) {
         return costCodeRepo.save(new CostCode(null, code));
     }
@@ -208,9 +214,12 @@ public class EntityCreator {
         return workTypeRepo.save(new WorkType(null, name));
     }
 
-    public Work createWork(WorkType workType, Project project, CostCode cc, ReleaseRecipient workRequester) {
+    public Work createWork(WorkType workType, Project project, Program program, CostCode cc, ReleaseRecipient workRequester) {
         if (project==null) {
             project = createProject("Stargate");
+        }
+        if (program==null) {
+            program = createProgram("Hello");
         }
         if (cc==null) {
             cc = createCostCode("S400");
@@ -219,7 +228,7 @@ public class EntityCreator {
             workType = createWorkType("Drywalling");
         }
         String workNumber = workRepo.createNumber("SGP");
-        return workRepo.save(new Work(null, workNumber, workType, workRequester, project, cc, Work.Status.active));
+        return workRepo.save(new Work(null, workNumber, workType, workRequester, project, program, cc, Work.Status.active));
     }
 
     public Printer createPrinter(String name, LabelType labelType) {

@@ -19,14 +19,15 @@ public interface WorkService {
      * @param prefix the prefix ({@code SGP} or {@code R&D}) for the work
      * @param workTypeName the name of a work type for the work number
      * @param workRequesterName the name of the ReleaseRecipient requesting the work
-     * @param projectName the name of the project for the work number
-     * @param costCode the code of the cost code for the work number
+     * @param projectName the name of the project for the work
+     * @param programName the name of the program for the work
+     * @param costCode the code of the cost code for the work
      * @param numBlocks the value for the "numBlocks" field (may be null)
      * @param numSlides the value for the "numSlides" field (may be null)
      * @param numOriginalSamples the value for the "numOriginalSamples" field (may be null)
      * @return the new work
      */
-    Work createWork(User user, String prefix, String workTypeName, String workRequesterName, String projectName, String costCode,
+    Work createWork(User user, String prefix, String workTypeName, String workRequesterName, String projectName, String programName, String costCode,
                     Integer numBlocks, Integer numSlides, Integer numOriginalSamples);
 
     /**
