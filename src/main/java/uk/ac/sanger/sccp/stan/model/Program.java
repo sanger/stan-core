@@ -21,6 +21,10 @@ public class Program implements HasIntId, HasName, HasEnabled {
         this.enabled = enabled;
     }
 
+    public Program(Integer id, String name) {
+        this(id, name, true);
+    }
+
     public Program(String name) {
         this(null, name, true);
     }

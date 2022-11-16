@@ -3,9 +3,8 @@ package uk.ac.sanger.sccp.stan.repo;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
-import uk.ac.sanger.sccp.stan.model.Work;
+import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.Work.Status;
-import uk.ac.sanger.sccp.stan.model.WorkType;
 
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
@@ -81,6 +80,8 @@ public interface WorkRepo extends CrudRepository<Work, Integer> {
     }
 
     List<Work> findAllByWorkNumberIn(Collection<String> workNumbers);
+
+    List<Work> findAllByProgramIn(Collection<Program> programs);
 
     @Query(value="select distinct labware_id from work_sample ws join slot on (ws.slot_id=slot.id) where ws.work_id IN (?1)", nativeQuery = true)
     List<Integer> findLabwareIdsForWorkIds(Collection<Integer> workIds);

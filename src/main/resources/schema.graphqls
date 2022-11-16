@@ -1524,8 +1524,8 @@ type Query {
     """Get the history containing a given labware barcode."""
     historyForLabwareBarcode(barcode: String!): History!
     """Get the work progress (some particular timestamps) associated with a specified work number, and/or
-    work types, statuses."""
-    workProgress(workNumber: String, workTypes: [String!], statuses: [WorkStatus!]): [WorkProgress!]!
+    work types, programs, statuses."""
+    workProgress(workNumber: String, workTypes: [String!], programs:[String!], statuses: [WorkStatus!]): [WorkProgress!]!
     """Gets a reagent plate, if it exists. May return null."""
     reagentPlate(barcode: String!): ReagentPlate
     """Gets the next replicate data for the given source labware barcodes."""

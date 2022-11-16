@@ -27,6 +27,7 @@ import static java.util.stream.Collectors.toSet;
 public class WorkProgressServiceImp implements WorkProgressService {
     private final WorkRepo workRepo;
     private final WorkTypeRepo workTypeRepo;
+    private final ProgramRepo programRepo;
     private final OperationRepo opRepo;
     private final LabwareRepo lwRepo;
     private final ReleaseRepo releaseRepo;
@@ -41,10 +42,11 @@ public class WorkProgressServiceImp implements WorkProgressService {
     private final Set<String> releaseLabwareTypes = Set.of("96 well plate");
 
     @Autowired
-    public WorkProgressServiceImp(WorkRepo workRepo, WorkTypeRepo workTypeRepo, OperationRepo opRepo,
+    public WorkProgressServiceImp(WorkRepo workRepo, WorkTypeRepo workTypeRepo, ProgramRepo programRepo, OperationRepo opRepo,
                                   LabwareRepo lwRepo, ReleaseRepo releaseRepo, StainTypeRepo stainTypeRepo, WorkEventService workEventService) {
         this.workRepo = workRepo;
         this.workTypeRepo = workTypeRepo;
+        this.programRepo = programRepo;
         this.opRepo = opRepo;
         this.lwRepo = lwRepo;
         this.releaseRepo = releaseRepo;
@@ -53,7 +55,8 @@ public class WorkProgressServiceImp implements WorkProgressService {
     }
 
     @Override
-    public List<WorkProgress> getProgress(String workNumber, List<String> workTypeNames, List<Status> statuses) {
+    public List<WorkProgress> getProgress(String workNumber, List<String> workTypeNames, List<String> programNames,
+                                          List<Status> statuses) {
         Work singleWork = (workNumber==null ? null : workRepo.getByWorkNumber(workNumber));
         List<WorkType> workTypes;
         if (workTypeNames==null) {
@@ -63,7 +66,17 @@ public class WorkProgressServiceImp implements WorkProgressService {
         } else {
             workTypes = workTypeRepo.getAllByNameIn(workTypeNames);
         }
-        if (workTypes!=null && workTypes.isEmpty() || statuses!=null && statuses.isEmpty()) {
+        List<Program> programs;
+        if (programNames==null) {
+            programs = null;
+        } else if (programNames.isEmpty()) {
+            return List.of();
+        } else {
+            programs = programRepo.getAllByNameIn(programNames);
+        }
+        if (workTypes!=null && workTypes.isEmpty()
+                || statuses!=null && statuses.isEmpty()
+                || programs!=null && programs.isEmpty()) {
             return List.of();
         }
         EntityNameFilter<OperationType> opTypeFilter = new EntityNameFilter<>(includedOpTypes);
@@ -80,11 +93,28 @@ public class WorkProgressServiceImp implements WorkProgressService {
             if (statuses!=null && !statuses.contains(singleWork.getStatus())) {
                 return List.of();
             }
+            if (programs!=null && !programs.contains(singleWork.getProgram())) {
+                return List.of();
+            }
             return List.of(getProgressForWork(singleWork, opTypeFilter, stainTypeFilter, labwareTypeFilter,
                     releaseLabwareTypeFilter, labwareIdToLabware, labwareTypeToStainMap));
         }
         if (workTypes!=null) {
             List<Work> works = workRepo.findAllByWorkTypeIn(workTypes);
+            Stream<Work> workStream = works.stream();
+            if (statuses!=null) {
+                workStream = workStream.filter(work -> statuses.contains(work.getStatus()));
+            }
+            if (programs!=null) {
+                workStream = workStream.filter(work -> programs.contains(work.getProgram()));
+            }
+            return workStream
+                    .map(work -> getProgressForWork(work, opTypeFilter, stainTypeFilter, labwareTypeFilter,
+                            releaseLabwareTypeFilter, labwareIdToLabware, labwareTypeToStainMap))
+                    .collect(toList());
+        }
+        if (programs!=null) {
+            List<Work> works = workRepo.findAllByProgramIn(programs);
             Stream<Work> workStream = works.stream();
             if (statuses!=null) {
                 workStream = workStream.filter(work -> statuses.contains(work.getStatus()));
