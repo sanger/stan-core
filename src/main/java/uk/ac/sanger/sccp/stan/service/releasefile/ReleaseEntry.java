@@ -22,6 +22,7 @@ public class ReleaseEntry {
     private String stainType;
     private String bondBarcode;
     private Integer coverage;
+    private String reagentPlateType;
     private String reagentSource;
     private Integer cq;
     private String visiumConcentration;
@@ -116,6 +117,14 @@ public class ReleaseEntry {
 
     public void setCoverage(Integer coverage) {
         this.coverage = coverage;
+    }
+
+    public String getReagentPlateType() {
+        return this.reagentPlateType;
+    }
+
+    public void setReagentPlateType(String reagentPlateType) {
+        this.reagentPlateType = reagentPlateType;
     }
 
     public String getReagentSource() {

@@ -32,6 +32,7 @@ public enum ReleaseColumn implements TsvColumn<ReleaseEntry> {
     Visium_concentration(ReleaseEntry::getVisiumConcentration),
     Visium_concentration_type(ReleaseEntry::getVisiumConcentrationType),
     Permeabilisation_time(ReleaseEntry::getPermTime),
+    Dual_index_plate_type(ReleaseEntry::getReagentPlateType),
     Dual_index_plate_name(ReleaseEntry::getReagentSource),
     RNAscope_plex(ReleaseEntry::getRnascopePlex),
     IHC_plex(ReleaseEntry::getIhcPlex),
