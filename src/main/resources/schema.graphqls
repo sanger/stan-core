@@ -793,7 +793,7 @@ type FindEntry {
     sampleId: Int!
     """The id of the labware where the sample was found."""
     labwareId: Int!
-    """The list of work numbers assoicated with the entry."""
+    """The list of work numbers associated with the entry."""
     workNumbers: [String]!
 }
 

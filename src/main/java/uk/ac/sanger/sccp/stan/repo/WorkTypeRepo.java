@@ -6,8 +6,6 @@ import uk.ac.sanger.sccp.stan.model.WorkType;
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
 
-import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toSet;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
@@ -25,18 +23,7 @@ public interface WorkTypeRepo extends CrudRepository<WorkType, Integer> {
     List<WorkType> findAllByNameIn(Collection<String> names);
 
     default List<WorkType> getAllByNameIn(Collection<String> names) throws EntityNotFoundException {
-        List<WorkType> found = findAllByNameIn(names);
-        if (found.size() == names.size()) {
-            return found;
-        }
-        if (found.isEmpty()) {
-            throw new EntityNotFoundException("Unknown work types: "+names);
-        }
-        Set<String> foundNamesUc = found.stream().map(wt -> wt.getName().toUpperCase()).collect(toSet());
-        List<String> missing = names.stream().filter(name -> !foundNamesUc.contains(name.toUpperCase())).collect(toList());
-        if (!missing.isEmpty()) {
-            throw new EntityNotFoundException("Unknown work types: "+missing);
-        }
-        return found;
+        return RepoUtils.getAllByField(this::findAllByNameIn, names, WorkType::getName,
+                "Unknown work type{s}: ", String::toUpperCase);
     }
 }

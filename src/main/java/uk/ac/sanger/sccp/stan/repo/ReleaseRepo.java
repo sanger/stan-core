@@ -4,9 +4,8 @@ import org.springframework.data.repository.CrudRepository;
 import uk.ac.sanger.sccp.stan.model.Release;
 
 import javax.persistence.EntityNotFoundException;
-import java.util.*;
-
-import static java.util.stream.Collectors.toMap;
+import java.util.Collection;
+import java.util.List;
 
 /**
  * @author dr6
@@ -23,23 +22,7 @@ public interface ReleaseRepo extends CrudRepository<Release, Integer> {
      * @exception EntityNotFoundException any ids were not found
      */
     default List<Release> getAllByIdIn(Collection<Integer> ids) throws EntityNotFoundException {
-        Map<Integer, Release> releaseIdMap = findAllByIdIn(ids).stream()
-                .collect(toMap(Release::getId, r -> r));
-
-        LinkedHashSet<Integer> missing = new LinkedHashSet<>();
-        List<Release> releases = new ArrayList<>(ids.size());
-        for (Integer id : ids) {
-            Release release = releaseIdMap.get(id);
-            if (release==null) {
-                missing.add(id);
-            } else {
-                releases.add(release);
-            }
-        }
-        if (!missing.isEmpty()) {
-            throw new EntityNotFoundException(String.format("Unknown release %s: %s",
-                    missing.size()==1 ? "id" : "ids", missing));
-        }
-        return releases;
+        return RepoUtils.getAllByField(this::findAllByIdIn, ids, Release::getId,
+                "Unknown release ID{s}: ", null);
     }
 }

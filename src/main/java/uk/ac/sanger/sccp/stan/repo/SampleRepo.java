@@ -36,23 +36,7 @@ public interface SampleRepo extends CrudRepository<Sample, Integer> {
      * @exception EntityNotFoundException any ids were not found
      */
     default List<Sample> getAllByIdIn(Collection<Integer> ids) throws EntityNotFoundException {
-        Map<Integer, Sample> sampleIdMap = findAllByIdIn(ids).stream()
-                .collect(toMap(Sample::getId, r -> r));
-
-        LinkedHashSet<Integer> missing = new LinkedHashSet<>();
-        List<Sample> samples = new ArrayList<>(ids.size());
-        for (Integer id : ids) {
-            Sample sample = sampleIdMap.get(id);
-            if (sample==null) {
-                missing.add(id);
-            } else {
-                samples.add(sample);
-            }
-        }
-        if (!missing.isEmpty()) {
-            throw new EntityNotFoundException(String.format("Unknown sample %s: %s",
-                    missing.size() == 1 ? "id" : "ids", missing));
-        }
-        return samples;
+        return RepoUtils.getAllByField(this::findAllByIdIn, ids, Sample::getId,
+                "Unknown sample ID{s}: ", null);
     }
 }
