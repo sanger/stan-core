@@ -383,4 +383,17 @@ public class BasicUtils {
     public static String emptyToNull(String string) {
         return (string==null || string.isEmpty() ? null : string);
     }
+
+    /**
+     * Returns a stream of the given iterable
+     * @param iterable an iterable
+     * @return a stream
+     * @param <E> the type of objects being iterated
+     */
+    public static <E> Stream<E> stream(Iterable<E> iterable) {
+        if (iterable instanceof Collection) {
+            return ((Collection<E>) iterable).stream();
+        }
+        return StreamSupport.stream(iterable.spliterator(), false);
+    }
 }

@@ -63,7 +63,7 @@ public class TestWorkTypeRepo {
         assertThat(fewerWorkTypes.get(0).getName()).isEqualTo("RNAscope");
 
         var ex1 = assertThrows(EntityNotFoundException.class, () -> workTypeRepo.getAllByNameIn(List.of("rnascope", "bananas")));
-        assertThat(ex1).hasMessage("Unknown work types: [bananas]");
+        assertThat(ex1).hasMessage("Unknown work type: [bananas]");
 
         var ex2 = assertThrows(EntityNotFoundException.class, () -> workTypeRepo.getAllByNameIn(List.of("custard", "bananas")));
         assertThat(ex2).hasMessage("Unknown work types: [custard, bananas]");
