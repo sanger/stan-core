@@ -6,8 +6,6 @@ import uk.ac.sanger.sccp.stan.model.Program;
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
 
-import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toSet;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
@@ -31,18 +29,7 @@ public interface ProgramRepo extends CrudRepository<Program, Integer> {
      * @exception EntityNotFoundException any of the named programs was not found
      */
     default List<Program> getAllByNameIn(Collection<String> names) throws EntityNotFoundException {
-        List<Program> found = findAllByNameIn(names);
-        if (found.size()==names.size()) {
-            return found;
-        }
-        if (found.isEmpty()) {
-            throw new EntityNotFoundException("Unknown programs: "+names);
-        }
-        Set<String> foundNamesUc = found.stream().map(p -> p.getName().toUpperCase()).collect(toSet());
-        List<String> missing = names.stream().filter(name -> !foundNamesUc.contains(name.toUpperCase())).collect(toList());
-        if (!missing.isEmpty()) {
-            throw new EntityNotFoundException("Unknown programs: "+missing);
-        }
-        return found;
+        return RepoUtils.getAllByField(this::findAllByNameIn, names, Program::getName,
+                "Unknown program{s}: ", String::toUpperCase);
     }
 }

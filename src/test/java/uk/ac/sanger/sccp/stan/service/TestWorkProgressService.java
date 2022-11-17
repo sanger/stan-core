@@ -132,7 +132,7 @@ public class TestWorkProgressService {
                     () -> service.getProgress(null, workTypeNames, programNames, statuses)))
                     .hasMessage(expectedError);
         } else if (workType!=null) {
-            when(mockWorkRepo.findAllByWorkTypeIn(List.of(workType))).thenReturn(works);
+            when(mockWorkRepo.findAllByWorkTypeIn(Set.of(workType))).thenReturn(works);
             List<WorkProgress> wps = service.getProgress(null, workTypeNames, programNames, statuses);
             verifyProgress(wps, expectedWorks);
         } else {
@@ -185,7 +185,7 @@ public class TestWorkProgressService {
                     .hasMessage(expectedError);
         } else {
             assert prog != null;
-            when(mockWorkRepo.findAllByProgramIn(List.of(prog))).thenReturn(works);
+            when(mockWorkRepo.findAllByProgramIn(Set.of(prog))).thenReturn(works);
             List<WorkProgress> wps = service.getProgress(null, null, programNames, statuses);
             verifyProgress(wps, expectedWorks);
         }
@@ -520,6 +520,7 @@ public class TestWorkProgressService {
 
     private static Work workWithId(int id) {
         Work work = new Work();
+        work.setWorkNumber("work"+id);
         work.setId(id);
         work.setStatus(Status.active);
         return work;

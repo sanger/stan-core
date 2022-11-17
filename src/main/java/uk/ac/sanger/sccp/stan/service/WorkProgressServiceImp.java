@@ -58,21 +58,21 @@ public class WorkProgressServiceImp implements WorkProgressService {
     public List<WorkProgress> getProgress(String workNumber, List<String> workTypeNames, List<String> programNames,
                                           List<Status> statuses) {
         Work singleWork = (workNumber==null ? null : workRepo.getByWorkNumber(workNumber));
-        List<WorkType> workTypes;
+        Set<WorkType> workTypes;
         if (workTypeNames==null) {
             workTypes = null;
         } else if (workTypeNames.isEmpty()) {
             return List.of();
         } else {
-            workTypes = workTypeRepo.getAllByNameIn(workTypeNames);
+            workTypes = new HashSet<>(workTypeRepo.getAllByNameIn(workTypeNames));
         }
-        List<Program> programs;
+        Set<Program> programs;
         if (programNames==null) {
             programs = null;
         } else if (programNames.isEmpty()) {
             return List.of();
         } else {
-            programs = programRepo.getAllByNameIn(programNames);
+            programs = new HashSet<>(programRepo.getAllByNameIn(programNames));
         }
         if (workTypes!=null && workTypes.isEmpty()
                 || statuses!=null && statuses.isEmpty()
@@ -99,6 +99,7 @@ public class WorkProgressServiceImp implements WorkProgressService {
             return List.of(getProgressForWork(singleWork, opTypeFilter, stainTypeFilter, labwareTypeFilter,
                     releaseLabwareTypeFilter, labwareIdToLabware, labwareTypeToStainMap));
         }
+
         if (workTypes!=null) {
             List<Work> works = workRepo.findAllByWorkTypeIn(workTypes);
             Stream<Work> workStream = works.stream();
@@ -113,6 +114,7 @@ public class WorkProgressServiceImp implements WorkProgressService {
                             releaseLabwareTypeFilter, labwareIdToLabware, labwareTypeToStainMap))
                     .collect(toList());
         }
+
         if (programs!=null) {
             List<Work> works = workRepo.findAllByProgramIn(programs);
             Stream<Work> workStream = works.stream();
@@ -124,12 +126,14 @@ public class WorkProgressServiceImp implements WorkProgressService {
                             releaseLabwareTypeFilter, labwareIdToLabware, labwareTypeToStainMap))
                     .collect(toList());
         }
+
         Iterable<Work> works;
         if (statuses!=null) {
             works = workRepo.findAllByStatusIn(statuses);
         } else {
             works = workRepo.findAll();
         }
+
         return StreamSupport.stream(works.spliterator(), false)
                 .map(work -> getProgressForWork(work, opTypeFilter, stainTypeFilter, labwareTypeFilter,
                         releaseLabwareTypeFilter, labwareIdToLabware, labwareTypeToStainMap))
