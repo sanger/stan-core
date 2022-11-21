@@ -2,6 +2,7 @@ package uk.ac.sanger.sccp.stan.repo;
 
 import org.springframework.data.repository.CrudRepository;
 import uk.ac.sanger.sccp.stan.model.Labware;
+import uk.ac.sanger.sccp.utils.UCMap;
 
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
@@ -37,6 +38,17 @@ public interface LabwareRepo extends CrudRepository<Labware, Integer> {
     default List<Labware> getByBarcodeIn(Collection<String> barcodes) throws EntityNotFoundException {
         return RepoUtils.getAllByField(this::findByBarcodeIn, barcodes, Labware::getBarcode,
                 "No labware found with barcode{s}: ", String::toUpperCase);
+    }
+
+    /**
+     * Gets labware by barcodes
+     * @param barcodes the barcodes to find
+     * @return a UCMap of barcodes to labware
+     * @exception EntityNotFoundException any barcodes are not found
+     */
+    default UCMap<Labware> getMapByBarcodeIn(Collection<String> barcodes) throws EntityNotFoundException {
+        return RepoUtils.getUCMapByField(this::findByBarcodeIn, barcodes, Labware::getBarcode,
+                "No labware found with barcode{s}: ");
     }
 
 }

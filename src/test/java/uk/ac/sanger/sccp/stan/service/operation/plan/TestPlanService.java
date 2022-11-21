@@ -225,7 +225,8 @@ public class TestPlanService {
         LabwareType lt = EntityFactory.getTubeType();
         List<Labware> labware = List.of(EntityFactory.makeEmptyLabware(lt),
                 EntityFactory.makeEmptyLabware(lt));
-        when(mockLwRepo.getByBarcodeIn(any())).thenReturn(labware);
+        UCMap<Labware> lwMap = UCMap.from(labware, Labware::getBarcode);
+        when(mockLwRepo.getMapByBarcodeIn(any())).thenReturn(lwMap);
         Address FIRST = new Address(1, 1);
         PlanRequest request = new PlanRequest("Section",
                 List.of(new PlanRequestLabware(lt.getName(), "STAN-99",
@@ -237,10 +238,7 @@ public class TestPlanService {
                 )
         );
 
-        UCMap<Labware> labwareMap = planService.lookUpSources(request);
-        assertThat(labwareMap).hasSize(2);
-        assertEquals(labware.get(0), labwareMap.get(labware.get(0).getBarcode()));
-        assertEquals(labware.get(1), labwareMap.get(labware.get(1).getBarcode()));
+        assertSame(lwMap, planService.lookUpSources(request));
     }
 
     @Test

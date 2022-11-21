@@ -57,7 +57,7 @@ public class LabelPrintService {
         }
         Printer printer = printerRepo.getByName(printerName);
         Set<LabelType> labelTypes = labware.stream()
-                .map(lw -> labwareService.calculateLabelType(lw))
+                .map(labwareService::calculateLabelType)
                 .collect(toSet());
         if (labelTypes.contains(null)) {
             throw new IllegalArgumentException("Cannot print label for labware without a label type.");

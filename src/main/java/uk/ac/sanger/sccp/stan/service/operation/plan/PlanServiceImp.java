@@ -109,8 +109,7 @@ public class PlanServiceImp implements PlanService {
                 .flatMap(rlw -> rlw.getActions().stream())
                 .map(ac -> ac.getSource().getBarcode().toUpperCase())
                 .collect(toSet());
-        List<Labware> labware = lwRepo.getByBarcodeIn(barcodes);
-        return UCMap.from(labware, Labware::getBarcode);
+        return lwRepo.getMapByBarcodeIn(barcodes);
     }
 
     /**
