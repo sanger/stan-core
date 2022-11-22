@@ -59,7 +59,7 @@ public class TestComplexStainService {
         Labware lw = EntityFactory.getTube();
         OperationType opType = EntityFactory.makeOperationType("Stain", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.STAIN);
         List<StainType> stainTypes = List.of(new StainType(3, "RNAscope"));
-        Work work = new Work(50, "SGP50", null, null, null, null, Work.Status.active);
+        Work work = new Work(50, "SGP50", null, null, null, null, null, Work.Status.active);
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lw);
         UCMap<Work> workMap = UCMap.from(Work::getWorkNumber, work);
 
@@ -116,8 +116,8 @@ public class TestComplexStainService {
     @ParameterizedTest
     @ValueSource(booleans={false,true})
     public void testLoadWorks(boolean valid) {
-        Work work1 = new Work(50, "SGP50", null, null, null, null, Work.Status.active);
-        Work work2 = new Work(51, "SGP51", null, null, null, null, Work.Status.active);
+        Work work1 = new Work(50, "SGP50", null, null, null, null, null, Work.Status.active);
+        Work work2 = new Work(51, "SGP51", null, null, null, null, null, Work.Status.active);
         List<ComplexStainLabware> csls = List.of(
                 new ComplexStainLabware("STAN-01", "0000-000", 1, work1.getWorkNumber(), null, null, null),
                 new ComplexStainLabware("STAN-02", "0000-000", 1, work1.getWorkNumber(), null, null, null),
@@ -385,8 +385,8 @@ public class TestComplexStainService {
         User user = EntityFactory.getUser();
         OperationType opType = EntityFactory.makeOperationType("Stain", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.STAIN);
         List<StainType> stainTypes = List.of(new StainType(10, "RNAscope"));
-        Work work1 = new Work(1, "SGP1", null, null, null, null, Work.Status.active);
-        Work work2 = new Work(2, "SGP2", null, null, null, null, Work.Status.active);
+        Work work1 = new Work(1, "SGP1", null, null, null, null, null, Work.Status.active);
+        Work work2 = new Work(2, "SGP2", null, null, null, null, null, Work.Status.active);
         UCMap<Work> workMap = UCMap.from(Work::getWorkNumber, work1, work2);
         LabwareType lt = EntityFactory.getTubeType();
         Labware[] lws = IntStream.range(0,4)

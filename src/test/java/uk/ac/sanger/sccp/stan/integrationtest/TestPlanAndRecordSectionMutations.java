@@ -130,7 +130,7 @@ public class TestPlanAndRecordSectionMutations {
 
     private void testConfirm(Sample[] blockSamples, Labware[] sourceBlocks, String[] barcodes) throws Exception {
         String barcode = barcodes[0];
-        Work work = entityCreator.createWork(null, null, null, null);
+        Work work = entityCreator.createWork(null, null, null, null, null);
 
         StringBuilder sb = new StringBuilder(tester.readGraphQL("confirmsection.graphql"));
         for (int i=0; i < 3; ++i) {

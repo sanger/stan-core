@@ -41,10 +41,11 @@ public class TestWorksSummaryQuery {
         WorkType wt1 = entityCreator.createWorkType("wt1");
         WorkType wt2 = entityCreator.createWorkType("wt2");
         Project project = entityCreator.createProject("Stargate");
+        Program prog = entityCreator.createProgram("Hello");
         CostCode cc = entityCreator.createCostCode("CC1");
-        Work work1 = entityCreator.createWork(wt1, project, cc, null);
-        Work work2 = entityCreator.createWork(wt1, project, cc, null);
-        Work work3 = entityCreator.createWork(wt2, project, cc, null);
+        Work work1 = entityCreator.createWork(wt1, project, prog, cc, null);
+        Work work2 = entityCreator.createWork(wt1, project, prog, cc, null);
+        Work work3 = entityCreator.createWork(wt2, project, prog, cc, null);
 
         work1.setNumBlocks(5);
         work2.setNumSlides(6);

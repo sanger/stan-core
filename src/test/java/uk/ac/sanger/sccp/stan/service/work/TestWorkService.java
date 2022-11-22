@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
 import org.mockito.ArgumentMatcher;
-import org.springframework.boot.autoconfigure.amqp.RabbitProperties;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
@@ -36,6 +35,7 @@ public class TestWorkService {
     private WorkServiceImp workService;
 
     private ProjectRepo mockProjectRepo;
+    private ProgramRepo mockProgramRepo;
     private CostCodeRepo mockCostCodeRepo;
     private WorkRepo mockWorkRepo;
     private WorkTypeRepo mockWorkTypeRepo;
@@ -46,6 +46,7 @@ public class TestWorkService {
     @BeforeEach
     void setup() {
         mockProjectRepo = mock(ProjectRepo.class);
+        mockProgramRepo = mock(ProgramRepo.class);
         mockCostCodeRepo = mock(CostCodeRepo.class);
         mockWorkRepo = mock(WorkRepo.class);
         mockWorkEventService = mock(WorkEventService.class);
@@ -54,8 +55,8 @@ public class TestWorkService {
         //noinspection unchecked
         mockPriorityValidator = mock(Validator.class);
 
-        workService = spy(new WorkServiceImp(mockProjectRepo, mockCostCodeRepo, mockWorkTypeRepo, mockWorkRepo, mockReleaseRecipientRepo,
-                mockWorkEventService, mockPriorityValidator));
+        workService = spy(new WorkServiceImp(mockProjectRepo, mockProgramRepo, mockCostCodeRepo, mockWorkTypeRepo,
+                mockWorkRepo, mockReleaseRecipientRepo, mockWorkEventService, mockPriorityValidator));
     }
 
     @ParameterizedTest
@@ -73,8 +74,11 @@ public class TestWorkService {
         String code = "S1234";
         String workTypeName = "Drywalling";
         String workRequesterName = "test1";
+        String progName = "Hello";
         Project project = new Project(10, projectName);
         when(mockProjectRepo.getByName(projectName)).thenReturn(project);
+        Program prog = new Program(15, progName, true);
+        when(mockProgramRepo.getByName(progName)).thenReturn(prog);
         CostCode cc = new CostCode(20, code);
         when(mockCostCodeRepo.getByCode(code)).thenReturn(cc);
         WorkType workType = new WorkType(30, workTypeName);
@@ -88,15 +92,15 @@ public class TestWorkService {
         when(mockReleaseRecipientRepo.getByUsername(workRequesterName)).thenReturn(workRequester);
 
         if (expectedErrorMessage==null) {
-            Work result = workService.createWork(user, prefix, workTypeName, workRequesterName, projectName, code, numBlocks, numSlides, numOriginalSamples);
+            Work result = workService.createWork(user, prefix, workTypeName, workRequesterName, projectName, progName, code, numBlocks, numSlides, numOriginalSamples);
             verify(workService).checkPrefix(prefix);
             verify(mockWorkRepo).createNumber(prefix);
             verify(mockWorkRepo).save(result);
             verify(mockWorkEventService).recordEvent(user, result, WorkEvent.Type.create, null);
-            assertEquals(new Work(null, workNumber, workType, workRequester, project, cc, Status.unstarted, numBlocks, numSlides, numOriginalSamples, null), result);
+            assertEquals(new Work(null, workNumber, workType, workRequester, project, prog, cc, Status.unstarted, numBlocks, numSlides, numOriginalSamples, null), result);
         } else {
             assertThat(assertThrows(IllegalArgumentException.class, () -> workService.createWork(user, prefix, workTypeName, workRequesterName, projectName,
-                    code, numBlocks, numSlides, numOriginalSamples))).hasMessage(expectedErrorMessage);
+                    progName, code, numBlocks, numSlides, numOriginalSamples))).hasMessage(expectedErrorMessage);
             verifyNoInteractions(mockWorkRepo);
         }
     }
@@ -116,7 +120,7 @@ public class TestWorkService {
                                  String expectedPriority, Integer commentId) {
         User user = new User(1, "user1", User.Role.admin);
         String workNumber = "SGP4000";
-        Work work = new Work(10, workNumber, null, null, null, null, oldStatus);
+        Work work = new Work(10, workNumber, null, null, null, null, null, oldStatus);
         work.setPriority(oldPriority);
         when(mockWorkRepo.getByWorkNumber(workNumber)).thenReturn(work);
         if (!legal) {
@@ -151,7 +155,7 @@ public class TestWorkService {
     })
     public void testUpdateNumBlocks(Integer oldValue, Integer newValue, String expectedErrorMessage) {
         String workNumber = "SGP4000";
-        Work work = new Work(10, workNumber, null, null, null, null, Status.active);
+        Work work = new Work(10, workNumber, null, null, null, null, null, Status.active);
         work.setNumBlocks(oldValue);
         when(mockWorkRepo.getByWorkNumber(workNumber)).thenReturn(work);
         User user = EntityFactory.getUser();
@@ -184,7 +188,7 @@ public class TestWorkService {
     })
     public void testUpdateNumSlides(Integer oldValue, Integer newValue, String expectedErrorMessage) {
         String workNumber = "SGP4000";
-        Work work = new Work(10, workNumber, null, null, null, null, Status.active);
+        Work work = new Work(10, workNumber, null, null, null, null, null, Status.active);
         work.setNumBlocks(oldValue);
         when(mockWorkRepo.getByWorkNumber(workNumber)).thenReturn(work);
         User user = EntityFactory.getUser();
@@ -217,7 +221,7 @@ public class TestWorkService {
     })
     public void testUpdateNumOriginalSamples(Integer oldValue, Integer newValue, String expectedErrorMessage) {
         String workNumber = "SGP4000";
-        Work work = new Work(10, workNumber, null, null, null, null, Status.active);
+        Work work = new Work(10, workNumber, null, null, null, null, null, Status.active);
         work.setNumOriginalSamples(oldValue);
         when(mockWorkRepo.getByWorkNumber(workNumber)).thenReturn(work);
         User user = EntityFactory.getUser();
@@ -258,7 +262,7 @@ public class TestWorkService {
             ",!4,active",
     })
     public void testUpdateWorkPriority(String oldPriority, String newPriority, Status status) {
-        Work work = new Work(10, "SGP4000", null, null, null, null, status);
+        Work work = new Work(10, "SGP4000", null, null, null, null, null, status);
         work.setPriority(oldPriority);
         String exMsg;
         if (newPriority!=null && newPriority.indexOf('!')>=0) {
@@ -335,11 +339,11 @@ public class TestWorkService {
     }
 
     static Stream<Arguments> linkVariousArgs() {
-        Work activeWork = new Work(1, "SGP1001", null, null, null, null, Status.active);
-        Work pausedWork = new Work(2, "R&D1002", null, null, null, null, Status.paused);
-        Work completedWork = new Work(3, "SGP1003", null, null, null, null, Status.completed);
-        Work failedWork = new Work(4, "SGP1004", null, null, null, null, Status.failed);
-        Work withdrawnWork = new Work(4, "SGP1005", null, null, null, null, Status.withdrawn);
+        Work activeWork = new Work(1, "SGP1001", null, null, null, null, null, Status.active);
+        Work pausedWork = new Work(2, "R&D1002", null, null, null, null, null, Status.paused);
+        Work completedWork = new Work(3, "SGP1003", null, null, null, null, null, Status.completed);
+        Work failedWork = new Work(4, "SGP1004", null, null, null, null, null, Status.failed);
+        Work withdrawnWork = new Work(4, "SGP1005", null, null, null, null, null, Status.withdrawn);
         return Arrays.stream(new Object[][] {
                 { activeWork, 0, null },
                 { pausedWork, 1, "R&D1002 cannot be used because it is paused." },
@@ -365,7 +369,7 @@ public class TestWorkService {
         Operation op1 = makeOp(opType, 10, lw0, lw1);
         Operation op2 = makeOp(opType, 11, lw0, lw2);
 
-        Work work = new Work(50, "SGP5000", null, null, null, null, Status.active);
+        Work work = new Work(50, "SGP5000", null, null, null, null, null, Status.active);
 
         when(mockWorkRepo.getByWorkNumber(work.getWorkNumber())).thenReturn(work);
         work.setOperationIds(List.of(1,2,3));
@@ -389,7 +393,7 @@ public class TestWorkService {
     @MethodSource("usableWorkArgs")
     public void testGetUsableWork(String workNumber, Status status, Class<? extends Exception> expectedExceptionType, String expectedErrorMessage) {
         if (expectedExceptionType==null) {
-            Work work = new Work(14, workNumber, null, null, null, null, status);
+            Work work = new Work(14, workNumber, null, null, null, null, null, status);
             when(mockWorkRepo.getByWorkNumber(workNumber)).thenReturn(work);
             assertSame(work, workService.getUsableWork(workNumber));
             return;
@@ -399,7 +403,7 @@ public class TestWorkService {
             when(mockWorkRepo.getByWorkNumber(workNumber))
                     .then(invocation -> {throw new EntityNotFoundException("Work number not recognised: "+repr(workNumber)); });
         } else {
-            Work work = new Work(14, workNumber, null, null, null, null, status);
+            Work work = new Work(14, workNumber, null, null, null, null, null, status);
             when(mockWorkRepo.getByWorkNumber(workNumber)).thenReturn(work);
         }
         assertThat(assertThrows(expectedExceptionType, () -> workService.getUsableWork(workNumber)))
@@ -417,7 +421,7 @@ public class TestWorkService {
             return;
         }
 
-        Optional<Work> optWork = Optional.ofNullable(status).map(st -> new Work(14, workNumber, null, null, null, null, st));
+        Optional<Work> optWork = Optional.ofNullable(status).map(st -> new Work(14, workNumber, null, null, null, null, null, st));
         when(mockWorkRepo.findByWorkNumber(workNumber)).thenReturn(optWork);
         assertSame(optWork.orElse(null), workService.validateUsableWork(problems, workNumber));
 
@@ -446,7 +450,7 @@ public class TestWorkService {
     public void testValidateUsableWorks(Object[] workNumbers, Object[] workData, Object[] expectedErrors) {
         assert workData.length%2==0;
         List<Work> works = IntStream.range(0, workData.length/2)
-                .mapToObj(i -> new Work(i, (String) workData[2*i], null, null, null, null, (Status) workData[2*i+1]))
+                .mapToObj(i -> new Work(i, (String) workData[2*i], null, null, null, null, null, (Status) workData[2*i+1]))
                 .collect(toList());
         List<String> workNumbersList = new LinkedList(Arrays.asList(workNumbers));
         when(mockWorkRepo.findAllByWorkNumberIn(workNumbersList)).thenReturn(works);
@@ -520,11 +524,11 @@ public class TestWorkService {
     }
 
     static Stream<Arguments> getWorksWithCommentsArgs() {
-        Work workA = new Work(1, "SGP1", null, null, null, null, Status.active);
-        Work workC = new Work(2, "SGP2", null, null, null, null, Status.completed);
-        Work workF = new Work(3, "SGP3", null, null, null, null, Status.failed);
-        Work workP = new Work(4, "SGP4", null, null, null, null, Status.paused);
-        Work workW = new Work(5, "SGP5", null, null, null, null, Status.withdrawn);
+        Work workA = new Work(1, "SGP1", null, null, null, null, null, Status.active);
+        Work workC = new Work(2, "SGP2", null, null, null, null, null, Status.completed);
+        Work workF = new Work(3, "SGP3", null, null, null, null, null, Status.failed);
+        Work workP = new Work(4, "SGP4", null, null, null, null, null, Status.paused);
+        Work workW = new Work(5, "SGP5", null, null, null, null, null, Status.withdrawn);
 
         WorkEvent eventF = new WorkEvent(workF, WorkEvent.Type.fail, null, null);
         WorkEvent eventP = new WorkEvent(workP, WorkEvent.Type.pause, null, null);
@@ -540,12 +544,12 @@ public class TestWorkService {
 
     @Test
     public void testFillInComments() {
-        Work workF1 = new Work(1, "SGP1", null, null, null, null, Status.failed);
-        Work workF2 = new Work(2, "SGP2", null, null, null, null, Status.failed);
-        Work workP1 = new Work(3, "SGP3", null, null, null, null, Status.paused);
-        Work workP2 = new Work(4, "SGP4", null, null, null, null, Status.paused);
-        Work workW1 = new Work(5, "SGP5", null, null, null, null, Status.withdrawn);
-        Work workW2 = new Work(6, "SGP6", null, null, null, null, Status.withdrawn);
+        Work workF1 = new Work(1, "SGP1", null, null, null, null, null, Status.failed);
+        Work workF2 = new Work(2, "SGP2", null, null, null, null, null, Status.failed);
+        Work workP1 = new Work(3, "SGP3", null, null, null, null, null, Status.paused);
+        Work workP2 = new Work(4, "SGP4", null, null, null, null, null, Status.paused);
+        Work workW1 = new Work(5, "SGP5", null, null, null, null, null, Status.withdrawn);
+        Work workW2 = new Work(6, "SGP6", null, null, null, null, null, Status.withdrawn);
         Map<Integer, WorkEvent> events = Stream.of(
                 new WorkEvent(workF1, WorkEvent.Type.fail, null, new Comment(1, "Ohio", "")),
                 new WorkEvent(workF2, WorkEvent.Type.create, null, new Comment(2, "Oklahoma", "")),

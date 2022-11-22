@@ -76,7 +76,7 @@ public class TestExtractResultService {
         doReturn(commentMap).when(service).validateComments(anyCollection(), any());
         doNothing().when(service).validateMeasurements(anyCollection(), any());
         final String workNumber = "SGP50";
-        Work work = new Work(4, workNumber, null, null, null, null, Work.Status.active);
+        Work work = new Work(4, workNumber, null, null, null, null, null, Work.Status.active);
         doReturn(work).when(mockWorkService).validateUsableWork(anyCollection(), any());
         Map<Integer, Integer> extractMap = Map.of(44,55);
         doReturn(extractMap).when(service).lookUpExtracts(anyCollection(), any());
@@ -301,7 +301,7 @@ public class TestExtractResultService {
         Map<Integer, Integer> extractMap = Map.of(lw1.getId(), 400, lw2.getId(), 401);
         final Comment comment = new Comment(17, "pi", "greek");
         Map<Integer, Comment> commentMap = Map.of(comment.getId(), comment);
-        Work work = new Work(5, "SGP50", null, null, null, null, Work.Status.active);
+        Work work = new Work(5, "SGP50", null, null, null, null, null, Work.Status.active);
         OperationType resultOpType = new OperationType(5, "Record result");
         User user = EntityFactory.getUser();
         List<ExtractResultLabware> erls = List.of(

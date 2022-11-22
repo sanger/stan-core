@@ -32,6 +32,7 @@ public class TestStanFileRepo {
     private WorkType workType;
     private Project project;
     private CostCode costCode;
+    private Program prog;
 
     private Work makeWork() {
         if (workType==null) {
@@ -43,7 +44,10 @@ public class TestStanFileRepo {
         if (costCode==null) {
             costCode = entityCreator.createCostCode("S400");
         }
-        return entityCreator.createWork(workType, project, costCode, null);
+        if (prog==null) {
+            prog = entityCreator.createProgram("Hello");
+        }
+        return entityCreator.createWork(workType, project, prog, costCode, null);
     }
 
     @Test

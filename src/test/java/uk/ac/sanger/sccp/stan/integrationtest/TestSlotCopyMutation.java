@@ -84,7 +84,7 @@ public class TestSlotCopyMutation {
 
         stubStorelightUnstore(mockStorelightClient);
 
-        Work work = entityCreator.createWork(null, null, null, null);
+        Work work = entityCreator.createWork(null, null, null, null, null);
         User user = entityCreator.createUser("user1");
         tester.setUser(user);
         String mutation = tester.readGraphQL(cytAssist ? "cytassist.graphql":"slotcopy.graphql");

@@ -162,6 +162,15 @@ public class FieldValidation {
     }
 
     @Bean
+    public Validator<String> programNameValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(
+                CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN, CharacterType.SPACE,
+                CharacterType.SLASH, CharacterType.PAREN, CharacterType.FULL_STOP, CharacterType.APOSTROPHE
+        );
+        return new StringValidator("Program name", 2, 64, charTypes);
+    }
+
+    @Bean
     public Validator<String> solutionValidator() {
         Set<CharacterType> charTypes = EnumSet.of(
                 CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN, CharacterType.SPACE,

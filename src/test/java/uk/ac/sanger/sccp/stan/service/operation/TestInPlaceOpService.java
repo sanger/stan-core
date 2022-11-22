@@ -55,7 +55,7 @@ public class TestInPlaceOpService {
         List<Labware> labware = List.of(EntityFactory.getTube());
         OperationType opType = new OperationType(10, "Bananas");
         Equipment equipment = new Equipment("Feniks", "scanner");
-        Work work = new Work(20, "SGP2000", null, null, null, null, Work.Status.active);
+        Work work = new Work(20, "SGP2000", null, null, null, null, null, Work.Status.active);
 
         InPlaceOpRequest request = new InPlaceOpRequest(opType.getName(), List.of(labware.get(0).getBarcode()),
                 equipment.getId(), work.getWorkNumber());
@@ -272,7 +272,7 @@ public class TestInPlaceOpService {
     static Stream<Arguments> createOperationsArgs() {
         OperationType opType = new OperationType(10, "Scan");
         Equipment equipment = new Equipment(20, "Feenicks", "scanner", true);
-        Work work = new Work(30, "SGP3000", null, null, null, null, Work.Status.active);
+        Work work = new Work(30, "SGP3000", null, null, null, null, null, Work.Status.active);
         Labware lw1 = EntityFactory.getTube();
         Labware lw2 = EntityFactory.makeEmptyLabware(lw1.getLabwareType());
         List<Labware> labware = List.of(lw1, lw2);

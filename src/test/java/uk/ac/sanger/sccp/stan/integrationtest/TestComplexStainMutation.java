@@ -48,7 +48,7 @@ public class TestComplexStainMutation {
         Project pr = entityCreator.createProject("Stargate");
         CostCode cc = entityCreator.createCostCode("4");
         ReleaseRecipient wr = entityCreator.createReleaseRecipient("test1");
-        Work work = entityCreator.createWork(wt, pr, cc, wr);
+        Work work = entityCreator.createWork(wt, pr, null, cc, wr);
         work.setWorkNumber("SGP1");
         StainType st1 = stainTypeRepo.save(new StainType(null, "RNAscope"));
         StainType st2 = stainTypeRepo.save(new StainType(null, "IHC"));

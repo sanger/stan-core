@@ -78,7 +78,7 @@ public class TestRnaAnalysisService {
         UCMap<List<StringMeasurement>> measMap = new UCMap<>(1);
         measMap.put(lw.getBarcode(), List.of(new StringMeasurement("RIN", "50")));
         Map<Integer, Comment> commentMap = Map.of(15, new Comment(15, "Wrong colour", "analysis"));
-        Work work = new Work(60, "SGP60", null, null, null, null, Work.Status.active);
+        Work work = new Work(60, "SGP60", null, null, null, null, null, Work.Status.active);
         UCMap<Work> workMap = UCMap.from(Work::getWorkNumber, work);
 
         final String problemMessage = "Bad operation type";
@@ -262,7 +262,7 @@ public class TestRnaAnalysisService {
     @Test
     public void testValidateWork() {
         final String problem = "Some problem.";
-        Work work = new Work(15, "SGP15", null, null, null, null, Work.Status.active);
+        Work work = new Work(15, "SGP15", null, null, null, null, null, Work.Status.active);
         UCMap<Work> workMap = UCMap.from(Work::getWorkNumber, work);
         when(mockWorkService.validateUsableWorks(any(), any())).then(invocation -> {
             Collection<String> problems = invocation.getArgument(0);
@@ -284,7 +284,7 @@ public class TestRnaAnalysisService {
     @Test
     public void testRecordAnalysisSimple() {
         Labware lw = EntityFactory.getTube();
-        Work work1 = new Work(50, "SGP50", null, null, null, null, Work.Status.active);
+        Work work1 = new Work(50, "SGP50", null, null, null, null, null, Work.Status.active);
         RNAAnalysisRequest request = new RNAAnalysisRequest(RIN_OP_NAME,
                 List.of(new RNAAnalysisLabware(lw.getBarcode(), work1.getWorkNumber(), null, null))
         );
@@ -321,8 +321,8 @@ public class TestRnaAnalysisService {
         Labware lw4 = EntityFactory.makeLabware(lw1.getLabwareType(), EntityFactory.getSample());
         OperationType opType = new OperationType(5, DV200_OP_NAME);
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lw1, lw2, lw3, lw4);
-        Work work1 = new Work(1, "SGP1", null, null, null, null, Work.Status.active);
-        Work work2 = new Work(2, "SGP2", null, null, null, null, Work.Status.active);
+        Work work1 = new Work(1, "SGP1", null, null, null, null, null, Work.Status.active);
+        Work work2 = new Work(2, "SGP2", null, null, null, null, null, Work.Status.active);
         UCMap<Work> workMap = UCMap.from(Work::getWorkNumber, work1, work2);
         UCMap<List<StringMeasurement>> smMap = new UCMap<>(2);
         final StringMeasurement sm1 = new StringMeasurement("DV200 lower", "20.0");

@@ -32,28 +32,32 @@ import static org.mockito.Mockito.*;
 public class TestWorkProgressService {
     private WorkRepo mockWorkRepo;
     private WorkTypeRepo mockWorkTypeRepo;
+    private ProgramRepo mockProgramRepo;
     private OperationRepo mockOpRepo;
     private LabwareRepo mockLwRepo;
     private ReleaseRepo mockReleaseRepo;
     private StainTypeRepo mockStainTypeRepo;
     private WorkEventService mockWorkEventService;
     private WorkProgressServiceImp service;
+
     @BeforeEach
     void setup() {
         mockWorkRepo = mock(WorkRepo.class);
         mockWorkTypeRepo = mock(WorkTypeRepo.class);
+        mockProgramRepo = mock(ProgramRepo.class);
         mockOpRepo = mock(OperationRepo.class);
         mockLwRepo = mock(LabwareRepo.class);
         mockReleaseRepo = mock(ReleaseRepo.class);
         mockStainTypeRepo = mock(StainTypeRepo.class);
         mockWorkEventService = mock(WorkEventService.class);
 
-        service = spy(new WorkProgressServiceImp(mockWorkRepo, mockWorkTypeRepo, mockOpRepo, mockLwRepo, mockReleaseRepo, mockStainTypeRepo, mockWorkEventService));
+        service = spy(new WorkProgressServiceImp(mockWorkRepo, mockWorkTypeRepo, mockProgramRepo, mockOpRepo, mockLwRepo, mockReleaseRepo, mockStainTypeRepo, mockWorkEventService));
     }
 
     @ParameterizedTest
     @MethodSource("getProgressWithWorkNumberArgs")
     public void testGetProgressWithWorkNumber(String workNumber, Work work, String workTypeName, WorkType workType,
+                                             String programName, Program program,
                                              Status status, List<Work> works, String expectedError) {
         if (work==null) {
             when(mockWorkRepo.getByWorkNumber(workNumber)).thenThrow(new EntityNotFoundException("Unknown work number: "+workNumber));
@@ -61,14 +65,16 @@ public class TestWorkProgressService {
             when(mockWorkRepo.getByWorkNumber(workNumber)).thenReturn(work);
         }
         List<String> workTypeNames = (workTypeName==null ? null : workTypeName.isEmpty() ? List.of() : List.of(workTypeName));
+        List<String> programNames = (programName==null ? null : programName.isEmpty() ? List.of() : List.of(programName));
         List<Status> statuses = (status==null ? null : List.of(status));
         mockWorkType(workTypeName, workType);
+        mockProgram(programName, program);
         if (expectedError!=null) {
-            assertThat(assertThrows(EntityNotFoundException.class, () -> service.getProgress(workNumber, workTypeNames, statuses)))
+            assertThat(assertThrows(EntityNotFoundException.class, () -> service.getProgress(workNumber, workTypeNames, programNames, statuses)))
                     .hasMessage(expectedError);
             verify(service, never()).getProgressForWork(any(), any(), any(), any(), any(), any(), any());
         } else {
-            List<WorkProgress> wps = service.getProgress(workNumber, workTypeNames, statuses);
+            List<WorkProgress> wps = service.getProgress(workNumber, workTypeNames, programNames, statuses);
             verifyProgress(wps, works);
         }
     }
@@ -80,45 +86,57 @@ public class TestWorkProgressService {
         WorkType wt2 = new WorkType(3, "Colorado");
         work.setWorkType(wt1);
         work.setStatus(Status.active);
+        Program prog = new Program(10, "Hello", true);
+        String progname = prog.getName();
+        Program prog2 = new Program(11, "World", true);
+        String progname2 = prog2.getName();
         String wn = "SGP1";
         work.setWorkNumber(wn);
+        work.setProgram(prog);
         List<Work> works = List.of(work);
 
         return Arrays.stream(new Object[][] {
-                {wn, work, null, null, null, works, null},
-                {wn, work, null, null, Status.active, works, null},
-                {wn, work, "", null, Status.active, List.of(), null},
-                {wn, work, null, null, Status.paused, List.of(), null},
-                {wn, work, wtn, wt1, null, works, null},
-                {wn, work, wtn, wt1, Status.active, works, null},
-                {wn, work, wtn, wt1, Status.paused, List.of(), null},
-                {wn, work, "Colorado", wt2, null, List.of(), null},
-                {wn, work, "Colorado", wt2, Status.active, List.of(), null},
-                {wn, work, "Colorado", wt2, Status.paused, List.of(), null},
+                {wn, work, null, null, null, null, null, works, null},
+                {wn, work, null, null, null, null, Status.active, works, null},
+                {wn, work, "", null, null, null, Status.active, List.of(), null},
+                {wn, work, null, null, null, null, Status.paused, List.of(), null},
+                {wn, work, wtn, wt1, null, null, null, works, null},
+                {wn, work, wtn, wt1, null, null, Status.active, works, null},
+                {wn, work, wtn, wt1, null, null, Status.paused, List.of(), null},
+                {wn, work, "Colorado", wt2, null, null, null, List.of(), null},
+                {wn, work, "Colorado", wt2, null, null, Status.active, List.of(), null},
+                {wn, work, "Colorado", wt2, null, null, Status.paused, List.of(), null},
+                {wn, work, null, null, progname, prog, null, works, null},
+                {wn, work, null, null, "", null, null, List.of(), null},
+                {wn, work, null, null, progname2, prog2, null, List.of(), null},
 
-                {"SGP404", null, null, null, null,  null, "Unknown work number: SGP404"},
-                {wn, work, "France", null, null, null, "Unknown work types: [France]"},
-                {wn, work, "France", null, Status.paused, null, "Unknown work types: [France]"},
+                {"SGP404", null, null, null, null, null, null,  null, "Unknown work number: SGP404"},
+                {wn, work, "France", null, null, null, null, null, "Unknown work types: [France]"},
+                {wn, work, "France", null, null, null, Status.paused, null, "Unknown work types: [France]"},
+                {wn, work, null, null, "Bananas", null, null, null, "Unknown programs: [Bananas]"},
         }).map(Arguments::of);
     }
 
     @ParameterizedTest
     @MethodSource("getProgressWithWorkTypeNamesArgs")
-    public void testGetProgressWithWorkTypeNames(String workTypeName, WorkType workType, Status status,
-                                                List<Work> works, List<Work> expectedWorks, String expectedError) {
+    public void testGetProgressWithWorkTypeNames(String workTypeName, WorkType workType,
+                                                 String programName, Program program, Status status,
+                                                 List<Work> works, List<Work> expectedWorks, String expectedError) {
         mockWorkType(workTypeName, workType);
+        mockProgram(programName, program);
         List<String> workTypeNames = workTypeName==null ? null : workTypeName.isEmpty() ? List.of() : List.of(workTypeName);
+        List<String> programNames = programName==null ? null : programName.isEmpty() ? List.of() : List.of(programName);
         List<Status> statuses = status==null ? null : List.of(status);
         if (expectedError!=null) {
             assertThat(assertThrows(EntityNotFoundException.class,
-                    () -> service.getProgress(null, workTypeNames, statuses)))
+                    () -> service.getProgress(null, workTypeNames, programNames, statuses)))
                     .hasMessage(expectedError);
         } else if (workType!=null) {
-            when(mockWorkRepo.findAllByWorkTypeIn(List.of(workType))).thenReturn(works);
-            List<WorkProgress> wps = service.getProgress(null, workTypeNames, statuses);
+            when(mockWorkRepo.findAllByWorkTypeIn(Set.of(workType))).thenReturn(works);
+            List<WorkProgress> wps = service.getProgress(null, workTypeNames, programNames, statuses);
             verifyProgress(wps, expectedWorks);
         } else {
-            List<WorkProgress> wps = service.getProgress(null, workTypeNames, statuses);
+            List<WorkProgress> wps = service.getProgress(null, workTypeNames, programNames, statuses);
             assertThat(wps).isEmpty();
         }
     }
@@ -128,12 +146,64 @@ public class TestWorkProgressService {
         List<Work> works = List.of(workWithId(1), workWithId(2));
         works.get(0).setStatus(Status.active);
         works.get(1).setStatus(Status.paused);
+        Program prog1 = new Program(5, "Hello");
+        Program prog2 = new Program(6, "World");
+        works.get(0).setProgram(prog1);
+        works.get(1).setProgram(prog1);
 
         return Arrays.stream(new Object[][] {
-                {"California", wt, null, works, works, null},
-                {"", null, null, works, null, null},
-                {"California", wt, Status.active, works, List.of(works.get(0)), null},
-                {"France", null, null, null, null, "Unknown work types: [France]"},
+                {"California", wt, null, null, null, works, works, null},
+                {"", null, null, null, null, works, null, null},
+                {"California", wt, null, null, Status.active, works, List.of(works.get(0)), null},
+                {"France", null, null, null, null, null, null, "Unknown work types: [France]"},
+                {"California", wt, prog1.getName(), prog1, null, works, works, null},
+                {"California", wt, prog2.getName(), prog2, null, works, List.of(), null},
+        }).map(Arguments::of);
+    }
+
+    @ParameterizedTest
+    @MethodSource("getProgressWithProgramsArgs")
+    public void testGetProgressWithPrograms(Object programArg, Status status, List<Work> works,
+                                            List<Work> expectedWorks, String expectedError) {
+        Program prog;
+        List<String> programNames;
+        if (programArg instanceof Program) {
+            prog = (Program) programArg;
+            programNames = List.of(prog.getName());
+            mockProgram(prog.getName(), prog);
+        } else {
+            prog = null;
+            String progName = (String) programArg;
+            programNames = List.of(progName);
+            mockProgram(progName, null);
+        }
+        List<Status> statuses = (status==null ? null : List.of(status));
+
+        if (expectedError!=null) {
+            assertThat(assertThrows(EntityNotFoundException.class,
+                    () -> service.getProgress(null, null, programNames, statuses)))
+                    .hasMessage(expectedError);
+        } else {
+            assert prog != null;
+            when(mockWorkRepo.findAllByProgramIn(Set.of(prog))).thenReturn(works);
+            List<WorkProgress> wps = service.getProgress(null, null, programNames, statuses);
+            verifyProgress(wps, expectedWorks);
+        }
+    }
+
+    static Stream<Arguments> getProgressWithProgramsArgs() {
+        Program prog = new Program(5, "Hello");
+        Work work1 = workWithId(11);
+        Work work2 = workWithId(12);
+        work1.setProgram(prog);
+        work2.setProgram(prog);
+        work1.setStatus(Status.active);
+        work2.setStatus(Status.paused);
+        List<Work> works = List.of(work1, work2);
+        return Arrays.stream(new Object[][] {
+                {prog, null, works, works, null},
+                {prog, Status.active, works, List.of(work1), null},
+                {"Foop", null, works, null, "Unknown programs: [Foop]"},
         }).map(Arguments::of);
     }
 
@@ -141,13 +211,13 @@ public class TestWorkProgressService {
     public void testGetProgressWithStatuses() {
         List<Work> works = List.of(workWithId(1), workWithId(2));
         when(mockWorkRepo.findAllByStatusIn(List.of(Status.active, Status.unstarted))).thenReturn(works);
-        List<WorkProgress> wps = service.getProgress(null, null, List.of(Status.active, Status.unstarted));
+        List<WorkProgress> wps = service.getProgress(null, null, null, List.of(Status.active, Status.unstarted));
         verifyProgress(wps, works);
     }
 
     @Test
     public void testGetProgressWithEmptyListOfStatuses() {
-        List<WorkProgress> wps = service.getProgress(null, null, List.of());
+        List<WorkProgress> wps = service.getProgress(null, null, null, List.of());
         assertThat(wps).isEmpty();
     }
 
@@ -155,7 +225,7 @@ public class TestWorkProgressService {
     public void testGetProgressWithNoFilter() {
         List<Work> works = List.of(workWithId(1), workWithId(2));
         when(mockWorkRepo.findAll()).thenReturn(works);
-        List<WorkProgress> wps = service.getProgress(null, null, null);
+        List<WorkProgress> wps = service.getProgress(null, null, null, null);
         verifyProgress(wps, works);
     }
 
@@ -167,6 +237,17 @@ public class TestWorkProgressService {
             when(mockWorkTypeRepo.getByName(workTypeName)).thenThrow(new EntityNotFoundException("Unknown work type: "+workTypeName));
             final List<String> workTypeNames = List.of(workTypeName);
             when(mockWorkTypeRepo.getAllByNameIn(workTypeNames)).thenThrow(new EntityNotFoundException("Unknown work types: "+workTypeNames));
+        }
+    }
+
+    private void mockProgram(String programName, Program program) {
+        if (program != null) {
+            when(mockProgramRepo.getByName(programName)).thenReturn(program);
+            when(mockProgramRepo.getAllByNameIn(List.of(programName))).thenReturn(List.of(program));
+        } else if (programName!=null) {
+            when(mockProgramRepo.getByName(programName)).thenThrow(new EntityNotFoundException("Unknown program: "+programName));
+            final List<String> programNames = List.of(programName);
+            when(mockProgramRepo.getAllByNameIn(programNames)).thenThrow(new EntityNotFoundException("Unknown programs: "+programNames));
         }
     }
 
@@ -411,11 +492,11 @@ public class TestWorkProgressService {
 
     @Test
     public void testGetWorkComment() {
-        Work workA = new Work(1, "SGP1", null, null, null, null, Status.active);
-        Work workC = new Work(2, "SGP2", null, null, null, null, Status.completed);
-        Work workF = new Work(3, "SGP3", null, null, null, null, Status.failed);
-        Work workP = new Work(4, "SGP4", null, null, null, null, Status.paused);
-        Work workW = new Work(5, "SGP5", null, null, null, null, Status.withdrawn);
+        Work workA = new Work(1, "SGP1", null, null, null, null, null, Status.active);
+        Work workC = new Work(2, "SGP2", null, null, null, null, null, Status.completed);
+        Work workF = new Work(3, "SGP3", null, null, null, null, null, Status.failed);
+        Work workP = new Work(4, "SGP4", null, null, null, null, null, Status.paused);
+        Work workW = new Work(5, "SGP5", null, null, null, null, null, Status.withdrawn);
 
         Comment failedComment = new Comment(1, "This work failed", "work status");
         Comment pausedComment = new Comment(2, "This work is paused", "work status");
@@ -439,6 +520,7 @@ public class TestWorkProgressService {
 
     private static Work workWithId(int id) {
         Work work = new Work();
+        work.setWorkNumber("work"+id);
         work.setId(id);
         work.setStatus(Status.active);
         return work;

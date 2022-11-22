@@ -105,7 +105,7 @@ public class TestHistoryQuery {
     @Transactional
     @Test
     public void testHistoryForWorkNumber() throws Exception {
-        Work work = entityCreator.createWork(null, null, null, null);
+        Work work = entityCreator.createWork(null, null, null, null, null);
         User user = entityCreator.createUser("user1");
 
         Sample sample = entityCreator.createSample(null, null);

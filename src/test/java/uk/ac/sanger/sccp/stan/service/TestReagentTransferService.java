@@ -68,7 +68,7 @@ public class TestReagentTransferService {
         Labware lw = valid ? EntityFactory.getTube() : null;
         String plateType = ReagentPlate.TYPE_FRESH_FROZEN;
         ReagentPlate rp = new ReagentPlate("001", plateType);
-        Work work = new Work(10, "SGP10", null, null, null, null, Work.Status.active);
+        Work work = new Work(10, "SGP10", null, null, null, null, null, Work.Status.active);
         OperationType opType = valid ? EntityFactory.makeOperationType("Fry", null) : null;
         ReagentTransferRequest request = new ReagentTransferRequest("fry", work.getWorkNumber(), valid ? lw.getBarcode() : "STAN-404",
                 List.of(new ReagentTransfer(rp.getBarcode(), new Address(1,2), new Address(3,4))), plateType);
@@ -326,7 +326,7 @@ public class TestReagentTransferService {
     public void testRecord() {
         User user = EntityFactory.getUser();
         OperationType opType = EntityFactory.makeOperationType("Fry", EntityFactory.getBioState());
-        Work work = new Work(1, "SGP1", null, null, null, null, Work.Status.active);
+        Work work = new Work(1, "SGP1", null, null, null, null, null, Work.Status.active);
         List<ReagentTransfer> transfers = List.of(new ReagentTransfer("123", new Address(1,2), new Address(3,4)));
         String plateType = ReagentPlate.TYPE_FFPE;
         UCMap<ReagentPlate> rpmap = UCMap.from(ReagentPlate::getBarcode, new ReagentPlate("123", plateType));
@@ -389,7 +389,7 @@ public class TestReagentTransferService {
         } else {
             actions = null;
         }
-        Work work = (withWork ? new Work(10, "SGP10", null, null, null, null, Work.Status.active) : null);
+        Work work = (withWork ? new Work(10, "SGP10", null, null, null, null, null, Work.Status.active) : null);
 
         Operation op = new Operation(10, opType, null, null, user);
         if (withActions) {

@@ -11,7 +11,6 @@ import uk.ac.sanger.sccp.stan.GraphQLTester;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.EquipmentRepo;
 import uk.ac.sanger.sccp.stan.repo.OperationRepo;
-import uk.ac.sanger.sccp.stan.service.operation.BioStateReplacer;
 
 import javax.transaction.Transactional;
 
@@ -50,7 +49,7 @@ public class TestRecordInPlaceWithEquipmentMutation {
         Project pr = entityCreator.createProject("Stargate");
         CostCode cc = entityCreator.createCostCode("4");
         ReleaseRecipient wr = entityCreator.createReleaseRecipient("test1");
-        Work work = entityCreator.createWork(wt, pr, cc, wr);
+        Work work = entityCreator.createWork(wt, pr, null, cc, wr);
         User user = entityCreator.createUser("user1");
         Sample sam = entityCreator.createSample(entityCreator.createTissue(entityCreator.createDonor("DONOR1"), "TISSUE1"), 5);
         LabwareType lt = entityCreator.createLabwareType("lt1", 1, 1);
@@ -75,7 +74,7 @@ public class TestRecordInPlaceWithEquipmentMutation {
     @Transactional
     @Test
     public void testRecordInPlaceChangeBioState() throws Exception {
-        Work work = entityCreator.createWork(null, null, null, null);
+        Work work = entityCreator.createWork(null, null, null, null, null);
         User user = entityCreator.createUser("user1");
         final Tissue tissue = entityCreator.createTissue(entityCreator.createDonor("DONOR1"), "TISSUE1");
         Sample[] samples = IntStream.range(5,8)

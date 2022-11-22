@@ -46,6 +46,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final ReleaseRecipientRepo releaseRecipientRepo;
     final DestructionReasonRepo destructionReasonRepo;
     final ProjectRepo projectRepo;
+    final ProgramRepo programRepo;
     final CostCodeRepo costCodeRepo;
     final SolutionRepo solutionRepo;
     final WorkTypeRepo workTypeRepo;
@@ -75,7 +76,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                MediumRepo mediumRepo, FixativeRepo fixativeRepo,
                                SpeciesRepo speciesRepo, HmdmcRepo hmdmcRepo, LabwareRepo labwareRepo,
                                ReleaseDestinationRepo releaseDestinationRepo, ReleaseRecipientRepo releaseRecipientRepo,
-                               DestructionReasonRepo destructionReasonRepo, ProjectRepo projectRepo, CostCodeRepo costCodeRepo,
+                               DestructionReasonRepo destructionReasonRepo, ProjectRepo projectRepo,
+                               ProgramRepo programRepo, CostCodeRepo costCodeRepo,
                                SolutionRepo solutionRepo, WorkTypeRepo workTypeRepo, WorkRepo workRepo,
                                ReagentPlateRepo reagentPlateRepo,
                                LabelPrintService labelPrintService, FindService findService,
@@ -102,6 +104,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.releaseRecipientRepo = releaseRecipientRepo;
         this.destructionReasonRepo = destructionReasonRepo;
         this.projectRepo = projectRepo;
+        this.programRepo = programRepo;
         this.costCodeRepo = costCodeRepo;
         this.workTypeRepo = workTypeRepo;
         this.workRepo = workRepo;
@@ -198,6 +201,10 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
 
     public DataFetcher<Iterable<Project>> getProjects() {
         return allOrEnabled(projectRepo::findAll, projectRepo::findAllByEnabled);
+    }
+
+    public DataFetcher<Iterable<Program>> getPrograms() {
+        return allOrEnabled(programRepo::findAll, programRepo::findAllByEnabled);
     }
 
     public DataFetcher<Iterable<CostCode>> getCostCodes() {
@@ -300,7 +307,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
             String workNumber = dfe.getArgument("workNumber");
             List<String> workTypeNames = arg(dfe, "workTypes", new TypeReference<>() {});
             List<Work.Status> statuses = arg(dfe, "statuses", new TypeReference<>() {});
-            return workProgressService.getProgress(workNumber, workTypeNames, statuses);
+            List<String> programNames = arg(dfe, "programs", new TypeReference<>() {});
+            return workProgressService.getProgress(workNumber, workTypeNames, programNames, statuses);
         };
     }
 

@@ -49,9 +49,10 @@ public class TestWorkMutation {
         CostCode cc = costCodeRepo.save(new CostCode(null, "S666"));
         WorkType workType = entityCreator.createWorkType("Drywalling");
         ReleaseRecipient workRequester = releaseRecipientRepo.save(new ReleaseRecipient(null, "test1"));
+        Program prog = entityCreator.createProgram("Hello");
         User user = entityCreator.createUser("user1", User.Role.normal);
 
-        String worksQuery  = "query { works(status: [active]) { workNumber, workType {name}, workRequester {username}, project {name}, costCode {code}, status } }";
+        String worksQuery  = "query { works(status: [active]) { workNumber, workType {name}, workRequester {username}, project {name}, program {name}, costCode {code}, status } }";
         Object data = tester.post(worksQuery);
         List<Map<String,?>> worksData = chainGet(data, "data", "works");
         assertNotNull(worksData);
@@ -64,6 +65,7 @@ public class TestWorkMutation {
         String workNumber = (String) workData.get("workNumber");
         assertNotNull(workNumber);
         assertEquals(project.getName(), chainGet(workData, "project", "name"));
+        assertEquals(prog.getName(), chainGet(workData, "program", "name"));
         assertEquals(cc.getCode(), chainGet(workData, "costCode", "code"));
         assertEquals(workType.getName(), chainGet(workData, "workType", "name"));
         assertEquals(workRequester.getUsername(), chainGet(workData, "workRequester", "username"));

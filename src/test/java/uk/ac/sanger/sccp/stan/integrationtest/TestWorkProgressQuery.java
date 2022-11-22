@@ -9,7 +9,6 @@ import org.springframework.test.context.ActiveProfiles;
 import uk.ac.sanger.sccp.stan.*;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.service.work.WorkEventService;
 
 import javax.persistence.EntityManager;
 import javax.transaction.Transactional;
@@ -109,7 +108,7 @@ public class TestWorkProgressQuery {
         release.setReleased(time(12));
         releaseRepo.save(release);
 
-        Work work = entityCreator.createWork(null, null, null, null);
+        Work work = entityCreator.createWork(null, null, null, null, null);
         work.setOperationIds(Arrays.stream(ops).map(Operation::getId).collect(toList()));
         work.setStatus(Work.Status.paused);
         work = workRepo.save(work);

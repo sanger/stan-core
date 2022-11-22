@@ -78,7 +78,7 @@ public class TestExtractMutation {
         Project pr = entityCreator.createProject("Stargate");
         CostCode cc = entityCreator.createCostCode("4");
         ReleaseRecipient wr = entityCreator.createReleaseRecipient("test1");
-        Work work = entityCreator.createWork(wt, pr, cc, wr);
+        Work work = entityCreator.createWork(wt, pr, null, cc, wr);
 
         String mutation = tester.readGraphQL("extract.graphql")
                 .replace("[]", "[\"STAN-A1\", \"STAN-A2\"]")

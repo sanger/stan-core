@@ -43,7 +43,7 @@ public class TestWorkEventService {
         User user = new User(1, "user1", User.Role.normal);
         Comment comment = new Comment(30, "Hi", "Bananas");
         WorkEvent.Type type = WorkEvent.Type.pause;
-        Work work = new Work(20, "SGP4000", null, null, null, null, null);
+        Work work = new Work(20, "SGP4000", null, null, null, null, null, null);
 
         WorkEvent event = eventService.recordEvent(user, work, type, comment);
         verify(mockWorkEventRepo).save(event);
@@ -79,7 +79,7 @@ public class TestWorkEventService {
     @MethodSource("recordStatusChangeArgs")
     public void testRecordStatusChange(Status oldStatus, Status newStatus, Integer commentId, String expectedErrorMessage) {
         User user = new User(1, "user1", User.Role.normal);
-        Work work = new Work(20, "SGP4000", null, null, null, null, oldStatus);
+        Work work = new Work(20, "SGP4000", null, null, null, null, null, oldStatus);
 
         Comment comment = (commentId==null ? null : new Comment(commentId, "Hello", "Bananas"));
         if (comment!=null) {
@@ -124,9 +124,9 @@ public class TestWorkEventService {
 
     @Test
     public void testLoadLatestEvents() {
-        WorkEvent event1 = new WorkEvent(new Work(7, "SGP57", null, null, null, null, null),
+        WorkEvent event1 = new WorkEvent(new Work(7, "SGP57", null, null, null, null, null, null),
                 WorkEvent.Type.resume, null, null);
-        WorkEvent event2 = new WorkEvent(new Work(8, "SGP58", null, null, null, null, null),
+        WorkEvent event2 = new WorkEvent(new Work(8, "SGP58", null, null, null, null, null, null),
                 WorkEvent.Type.fail, null, null);
         List<Integer> workIds = List.of(7,8,9);
         when(mockWorkEventRepo.getLatestEventForEachWorkId(workIds)).thenReturn(List.of(event1, event2));

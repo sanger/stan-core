@@ -106,7 +106,7 @@ public class TestRegisterOriginalSamplesMutation {
         assertEquals(lw.getBarcode(), lwSol.get("barcode"));
         assertEquals(solution.getName(), lwSol.get("solutionName"));
 
-        Work work = entityCreator.createWork(null, null, null, null);
+        Work work = entityCreator.createWork(null, null, null, null, null);
         Labware block = testBlockProcessing(barcode, work);
         testSectioningBlock(block, work);
         lw.setDiscarded(false);
