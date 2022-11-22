@@ -842,12 +842,12 @@ public class TestReleaseFileService {
         final Address B2 = new Address(2,2);
         Map<Integer, List<ReagentActionDetail>> radMap = Map.of(
                 slot1.getId(), List.of(
-                        new ReagentActionDetail("123", A1, A1, lw1.getId()),
-                        new ReagentActionDetail("123", A1, A1, lw1.getId()),
-                        new ReagentActionDetail("456", B1, A1, lw1.getId())
+                        new ReagentActionDetail("123", "rt1", A1, A1, lw1.getId()),
+                        new ReagentActionDetail("123", "rt1", A1, A1, lw1.getId()),
+                        new ReagentActionDetail("456", "rt2", B1, A1, lw1.getId())
                 ),
                 slot3.getId(), List.of(
-                        new ReagentActionDetail("456", B2, A1, lw2.getId())
+                        new ReagentActionDetail("456", "rt2", B2, A1, lw2.getId())
                 )
         );
         when(mockRadService.loadReagentTransfersForSlotIds(any())).thenReturn(radMap);
@@ -858,6 +858,8 @@ public class TestReleaseFileService {
         assertEquals("123 : A1, 456 : B1", entries.get(0).getReagentSource());
         assertNull(entries.get(1).getReagentSource());
         assertEquals("456 : B2", entries.get(2).getReagentSource());
+        assertEquals("rt1, rt2", entries.get(0).getReagentPlateType());
+        assertEquals("rt2", entries.get(2).getReagentPlateType());
     }
 
     private LocalDateTime time(int day) {

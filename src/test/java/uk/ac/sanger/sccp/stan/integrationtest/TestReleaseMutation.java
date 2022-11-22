@@ -125,7 +125,8 @@ public class TestReleaseMutation {
                 "Life stage", "External identifier", "Tissue type", "Spatial location", "Replicate number", "Section number",
                 "Last section number", "Source barcode", "Section thickness", "Released from box location",
                 "Stain type", "Bond barcode", "Tissue coverage", "Cq value", "Visium concentration (pg/uL)", "Visium concentration type",
-                "Dual index plate name", "RNAscope plex", "IHC plex", "Date sectioned", "Permeabilisation time");
+                "Dual index plate type", "Dual index plate name", "RNAscope plex", "IHC plex",
+                "Date sectioned", "Permeabilisation time");
         var row0 = tsvMaps.get(0);
         assertEquals(block.getBarcode(), row0.get("Barcode"));
         assertEquals(block.getLabwareType().getName(), row0.get("Labware type"));

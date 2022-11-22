@@ -609,6 +609,11 @@ public class ReleaseFileService {
                             .distinct()
                             .collect(Collectors.joining(", "));
                     entry.setReagentSource(radString);
+                    String radTypeString = rads.stream()
+                            .map(rad -> rad.reagentPlateType)
+                            .distinct()
+                            .collect(joining(", "));
+                    entry.setReagentPlateType(radTypeString);
                 }
             }
         }

@@ -52,6 +52,8 @@ public class TestReagentActionDetailService {
         Set<Integer> opIds = Set.of(1,2,3);
         ReagentPlate rp1 = EntityFactory.makeReagentPlate("123");
         ReagentPlate rp2 = EntityFactory.makeReagentPlate("456");
+        rp1.setPlateType(ReagentPlate.TYPE_FRESH_FROZEN);
+        rp2.setPlateType(ReagentPlate.TYPE_FFPE);
         LabwareType lt = EntityFactory.makeLabwareType(2,2);
         Sample sample = EntityFactory.getSample();
         Labware lw1 = EntityFactory.makeLabware(lt, sample, sample, sample, sample);
@@ -76,10 +78,10 @@ public class TestReagentActionDetailService {
 
         assertThat(result).hasSize(2);
         assertThat(result.get(1)).containsExactlyInAnyOrder(
-                new ReagentActionDetail(rp1.getBarcode(), A1, A2, lw1.getId()),
-                new ReagentActionDetail(rp1.getBarcode(), A2, B2, lw1.getId())
+                new ReagentActionDetail(rp1.getBarcode(), rp1.getPlateType(), A1, A2, lw1.getId()),
+                new ReagentActionDetail(rp1.getBarcode(), rp1.getPlateType(), A2, B2, lw1.getId())
         );
-        assertThat(result.get(2)).containsExactly(new ReagentActionDetail(rp2.getBarcode(), B1, B1, lw2.getId()));
+        assertThat(result.get(2)).containsExactly(new ReagentActionDetail(rp2.getBarcode(), rp2.getPlateType(), B1, B1, lw2.getId()));
         assertNotEquals(result.get(1).get(0).hashCode(), result.get(1).get(1).hashCode());
     }
 
@@ -87,6 +89,8 @@ public class TestReagentActionDetailService {
     public void testLoadReagentTransfersForSlots() {
         ReagentPlate rp1 = EntityFactory.makeReagentPlate("123");
         ReagentPlate rp2 = EntityFactory.makeReagentPlate("456");
+        rp1.setPlateType(ReagentPlate.TYPE_FFPE);
+        rp2.setPlateType(ReagentPlate.TYPE_FRESH_FROZEN);
         LabwareType lt = EntityFactory.makeLabwareType(2,2);
         Sample sample = EntityFactory.getSample();
         Labware lw1 = EntityFactory.makeLabware(lt, sample, sample, sample, sample);
@@ -115,10 +119,10 @@ public class TestReagentActionDetailService {
         verify(mockReagentActionRepo).findAllByDestinationIdIn(slotIds);
         verify(mockReagentPlateRepo).findAllById(Set.of(rp1.getId(), rp2.getId()));
         assertThat(result).hasSize(2);
-        assertEquals(List.of(new ReagentActionDetail(rp1.getBarcode(), A1, A2, lw1.getId())), result.get(slot1.getId()));
+        assertEquals(List.of(new ReagentActionDetail(rp1.getBarcode(), rp1.getPlateType(), A1, A2, lw1.getId())), result.get(slot1.getId()));
         assertEquals(List.of(
-                new ReagentActionDetail(rp1.getBarcode(), A2, B2, lw1.getId()),
-                new ReagentActionDetail(rp2.getBarcode(), B1, B2, lw1.getId())
+                new ReagentActionDetail(rp1.getBarcode(), rp1.getPlateType(), A2, B2, lw1.getId()),
+                new ReagentActionDetail(rp2.getBarcode(), rp2.getPlateType(), B1, B2, lw1.getId())
         ), result.get(slot2.getId()));
         assertNull(result.get(slot3.getId()));
     }
