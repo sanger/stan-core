@@ -253,13 +253,13 @@ public class TestReleaseFileService {
         Sample otherSample = new Sample(800, 3, sample.getTissue(), EntityFactory.getBioState());
         Integer otherSampleId = otherSample.getId();
         Set<Integer> otherSampleIds = Set.of(otherSampleId);
-        when(mockSampleRepo.getAllByIdIn(otherSampleIds)).thenReturn(List.of(otherSample));
+        when(mockSampleRepo.getMapByIdIn(otherSampleIds)).thenReturn(Map.of(otherSample.getId(), otherSample));
         var snapshots = snapMap();
         snap1.getElements().add(new SnapshotElement(200, snap1.getId(), 800, otherSampleId));
 
         Map<Integer, Sample> result = service.loadSamples(List.of(release1, release2), snapshots);
 
-        verify(mockSampleRepo).getAllByIdIn(otherSampleIds);
+        verify(mockSampleRepo).getMapByIdIn(otherSampleIds);
 
         assertThat(result).hasSize(3);
         Stream.of(sample, sample1, otherSample).forEach(

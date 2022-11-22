@@ -170,7 +170,7 @@ public class ReleaseFileService {
                 .filter(sid -> !sampleMap.containsKey(sid))
                 .collect(toSet());
         if (!sampleIds.isEmpty()) {
-            sampleRepo.getAllByIdIn(sampleIds).forEach(addSample);
+            sampleMap.putAll(sampleRepo.getMapByIdIn(sampleIds));
         }
         return sampleMap;
     }

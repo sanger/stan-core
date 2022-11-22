@@ -7,8 +7,6 @@ import uk.ac.sanger.sccp.stan.model.Sample;
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
 
-import static java.util.stream.Collectors.toMap;
-
 public interface SampleRepo extends CrudRepository<Sample, Integer> {
     @Query("SELECT MAX(section) FROM Sample WHERE tissue.id=?1")
     Integer _findMaxSectionForTissueId(int tissueId);
@@ -30,13 +28,13 @@ public interface SampleRepo extends CrudRepository<Sample, Integer> {
     }
 
     /**
-     * Gets the samples matching the corresponding ids.
+     * Gets the samples with the given ids
      * @param ids the ids to find
-     * @return the samples in the order of the corresponding ids
+     * @return a map of id to sample
      * @exception EntityNotFoundException any ids were not found
      */
-    default List<Sample> getAllByIdIn(Collection<Integer> ids) throws EntityNotFoundException {
-        return RepoUtils.getAllByField(this::findAllByIdIn, ids, Sample::getId,
-                "Unknown sample ID{s}: ", null);
+    default Map<Integer, Sample> getMapByIdIn(Collection<Integer> ids) throws EntityNotFoundException {
+        return RepoUtils.getMapByField(this::findAllByIdIn, ids, Sample::getId,
+                "Unknown sample ID{s}: ");
     }
 }

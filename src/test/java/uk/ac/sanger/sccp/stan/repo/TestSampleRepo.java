@@ -30,6 +30,7 @@ public class TestSampleRepo {
         this.sampleRepo = sampleRepo;
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     @Transactional
     public void testFindMaxSectionForTissueId() {

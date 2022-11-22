@@ -37,7 +37,7 @@ public class RepoUtils {
         }
         Iterable<E> found = findBy.apply(values);
         final Function<? super V, ? extends V> canon = (canonicalise==null ? Function.identity() : canonicalise);
-        Map<V, E> map = BasicUtils.stream(found) .collect(BasicUtils.toMap(getField.andThen(canon)));
+        Map<V, E> map = BasicUtils.stream(found).collect(BasicUtils.toMap(getField.andThen(canon)));
         LinkedHashSet<V> missing = new LinkedHashSet<>(values.size() - map.size());
         List<E> items = new ArrayList<>(values.size());
         for (V value : values) {
@@ -65,16 +65,13 @@ public class RepoUtils {
      * @param values the values to use to look up the entities
      * @param getField function to get a value from an entity
      * @param errorText the text of the error, which will be followed by the list of missing values
-     * @param canonicalise (optional) function to canonicalise the values
-     *        (e.g. put strings in upper case for deduplication)
      * @param mapSupplier optional supplier to get a new empty map to put items into
      * @param emptyMapSupplier optional supplier to get an empty map to return empty
      * @return a map of the found items from their values
      * @exception EntityNotFoundException any specified items cannot be found
       */
     public static <V,E,C extends Collection<V>, M extends Map<V,E>> M getMapByField(
-            Function<C, ? extends Iterable<E>> findBy, C values, Function<E, V> getField,
-            String errorText, Function<? super V, ? extends V> canonicalise,
+            Function<C, ? extends Iterable<E>> findBy, C values, Function<E, V> getField, String errorText,
             Supplier<M> mapSupplier, Supplier<M> emptyMapSupplier) throws EntityNotFoundException {
         if (values.isEmpty()) {
             if (emptyMapSupplier!=null) {
@@ -82,14 +79,16 @@ public class RepoUtils {
             }
             return mapSupplier.get();
         }
-        Iterable<E> found = findBy.apply(values);
-        final Function<? super V, ? extends V> canon = (canonicalise==null ? Function.identity() : canonicalise);
-        M map = BasicUtils.stream(found).collect(BasicUtils.toMap(getField.andThen(canon), mapSupplier));
-        LinkedHashSet<V> missing = values.stream()
-                .filter(value -> map.get(value)==null)
-                .collect(BasicUtils.toLinkedHashSet());
-        if (!missing.isEmpty()) {
-            throw new EntityNotFoundException(BasicUtils.pluralise(errorText, missing.size()) + missing);
+
+        M map = BasicUtils.stream(findBy.apply(values)).collect(BasicUtils.toMap(getField, mapSupplier));
+
+        if (map.size() < values.size()) {
+            LinkedHashSet<V> missing = values.stream()
+                    .filter(value -> map.get(value) == null)
+                    .collect(BasicUtils.toLinkedHashSet());
+            if (!missing.isEmpty()) {
+                throw new EntityNotFoundException(BasicUtils.pluralise(errorText, missing.size()) + missing);
+            }
         }
         return map;
     }
@@ -110,7 +109,7 @@ public class RepoUtils {
     public static <V,E,C extends Collection<V>> Map<V,E> getMapByField(
             Function<C, ? extends Iterable<E>> findBy, C values, Function<E, V> getField,
             String errorText) throws EntityNotFoundException {
-        return getMapByField(findBy, values, getField, errorText, null, HashMap::new, Map::of);
+        return getMapByField(findBy, values, getField, errorText, HashMap::new, Map::of);
     }
 
     /**
@@ -128,6 +127,6 @@ public class RepoUtils {
     public static <E,C extends Collection<String>> UCMap<E> getUCMapByField(
             Function<C, ? extends Iterable<E>> findBy, C values, Function<E, String> getField,
             String errorText) throws EntityNotFoundException {
-        return getMapByField(findBy, values, getField, errorText, null, UCMap::new, null);
+        return getMapByField(findBy, values, getField, errorText, UCMap::new, null);
     }
 }
