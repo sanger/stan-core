@@ -19,6 +19,7 @@ import java.util.*;
 import java.util.stream.IntStream;
 
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.*;
@@ -50,6 +51,8 @@ public class TestExtractMutation {
     @Autowired
     private LabwareRepo lwRepo;
     @Autowired
+    private SlotRepo slotRepo;
+    @Autowired
     private ResultOpRepo resultOpRepo;
     @Autowired
     private OperationCommentRepo opCommentRepo;
@@ -71,6 +74,8 @@ public class TestExtractMutation {
         Labware[] sources = IntStream.range(0, samples.length)
                 .mapToObj(i -> entityCreator.createLabware(barcodes[i], lwType, samples[i]))
                 .toArray(Labware[]::new);
+        sources[1].getFirstSlot().addSample(samples[0]);
+        sources[1].getSlots().set(0, slotRepo.save(sources[1].getFirstSlot())); // source 1 contains samples 1 and 0
 
         stubStorelightUnstore(mockStorelightClient);
 
@@ -91,13 +96,14 @@ public class TestExtractMutation {
         Object extractData = chainGet(result, "data", "extract");
         List<Map<String,?>> lwData = chainGet(extractData, "labware");
         assertThat(lwData).hasSize(2);
-        for (var lwd : lwData) {
+        for (int i = 0; i < lwData.size(); i++) {
+            Map<String, ?> lwd = lwData.get(i);
             assertEquals(lwType.getName(), chainGet(lwd, "labwareType", "name"));
             assertThat((String) lwd.get("barcode")).startsWith("STAN-");
             List<?> slotData = chainGet(lwd, "slots");
             assertThat(slotData).hasSize(1);
             List<?> sampleData = chainGet(slotData, 0, "samples");
-            assertThat(sampleData).hasSize(1);
+            assertThat(sampleData).hasSize(i+1);
             assertNotNull(chainGet(sampleData, 0, "id"));
         }
 
@@ -113,7 +119,10 @@ public class TestExtractMutation {
             assertEquals("Extract", chainGet(opd, "operationType", "name"));
             assertNotNull(opd.get("performed"));
             List<Map<String,?>> actionData = chainGet(opd, "actions");
-            assertThat(actionData).hasSize(1);
+            assertThat(actionData).hasSize(i+1);
+            Set<Integer> actionSampleIds = actionData.stream()
+                    .<Integer>map(ad -> chainGet(ad, "sample", "id"))
+                    .collect(toSet());
             Map<String, ?> acd = actionData.get(0);
             int sampleId = chainGet(acd, "sample", "id");
             sampleIds[i] = sampleId;
@@ -121,7 +130,7 @@ public class TestExtractMutation {
             destIds[i] = lwId;
             assertEquals(lwId, (int) chainGet(acd, "destination", "labwareId"));
             assertEquals("A1", chainGet(acd, "destination", "address"));
-            assertEquals(sampleId, (int) chainGet(lwd, "slots", 0, "samples", 0, "id"));
+            assertThat(actionSampleIds).contains((Integer) chainGet(lwd, "slots", 0, "samples", 0, "id"));
             assertEquals(sources[i].getId(), (int) chainGet(acd, "source", "labwareId"));
         }
 
@@ -143,17 +152,13 @@ public class TestExtractMutation {
             Labware dest = dests[i];
             Sample sample = newSamples[i];
             assertEquals(lwType, dest.getLabwareType());
-            Slot slot = dest.getFirstSlot();
-            assertThat(slot.getSamples()).containsOnly(sample);
             assertEquals("RNA", sample.getBioState().getName());
             Operation op = ops[i];
             assertEquals("Extract", op.getOperationType().getName());
-            assertThat(op.getActions()).hasSize(1);
+            assertThat(op.getActions()).hasSize(i+1);
             Action action = op.getActions().get(0);
             assertEquals(sources[i].getId(), action.getSource().getLabwareId());
-            assertEquals(samples[i], action.getSourceSample());
             assertEquals(dest.getFirstSlot(), action.getDestination());
-            assertEquals(sample, action.getSample());
             assertNotNull(op.getPerformed());
         }
 
@@ -162,7 +167,7 @@ public class TestExtractMutation {
         entityManager.flush();
         entityManager.refresh(work);
         assertThat(work.getOperationIds()).containsExactlyInAnyOrderElementsOf(Arrays.stream(opIds).boxed().collect(toList()));
-        assertThat(work.getSampleSlotIds()).hasSize(sampleIds.length);
+        assertThat(work.getSampleSlotIds()).hasSize(3);
 
         entityCreator.createOpType("Record result", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.RESULT);
 
@@ -202,11 +207,12 @@ public class TestExtractMutation {
         assertEquals(resultOpIds.get(0), meas.getOperationId());
 
         List<OperationComment> opComs = opCommentRepo.findAllByOperationIdIn(resultOpIds);
-        assertThat(opComs).hasSize(1);
-        OperationComment opCom = opComs.get(0);
-        assertEquals(1, opCom.getComment().getId());
-        assertEquals(resultOpIds.get(1), opCom.getOperationId());
-        assertEquals(dests[1].getFirstSlot().getId(), opCom.getSlotId());
+        assertThat(opComs).hasSize(2);
+        for (OperationComment opCom : opComs) {
+            assertEquals(1, opCom.getComment().getId());
+            assertEquals(resultOpIds.get(1), opCom.getOperationId());
+            assertEquals(dests[1].getFirstSlot().getId(), opCom.getSlotId());
+        }
 
         result = tester.post(tester.readGraphQL("extractresult.graphql").replace("$BARCODE", dests[0].getBarcode()));
         extractData = chainGet(result, "data", "extractResult");

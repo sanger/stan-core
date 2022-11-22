@@ -22,6 +22,7 @@ public class LabwareValidator {
     private boolean uniqueRequired = true;
     private boolean singleSample = false;
     private boolean usedAllowed = false;
+    private boolean oneFilledSlotRequired = false;
 
     /**
      * Creates a new validator with no labware specified
@@ -81,11 +82,20 @@ public class LabwareValidator {
     }
 
     /**
-     * Are used labware allowed? By default they are not allowed.
+     * Are used labware allowed? By default, they are not allowed.
      * @return whether used labware are allowed
      */
     public boolean isUsedAllowed() {
         return this.usedAllowed;
+    }
+
+    /**
+     * Is labware required to have precisely one nonempty slot?
+     * By default, this field is false, indicating that the labware may have multiple filled slots (or none, untypically).
+     * @return true if the labware is required to have precisely one nonempty slot
+     */
+    public boolean isOneFilledSlotRequired() {
+        return this.oneFilledSlotRequired;
     }
 
     /**
@@ -105,6 +115,13 @@ public class LabwareValidator {
         this.singleSample = singleSample;
     }
 
+    /**
+     * Sets whether the labware is required to have precisely one sample-containing slot.
+     * @param oneFilledSlotRequired whether one filled slot is required
+     */
+    public void setOneFilledSlotRequired(boolean oneFilledSlotRequired) {
+        this.oneFilledSlotRequired = oneFilledSlotRequired;
+    }
 
     /**
      * Adds an error message.
@@ -189,6 +206,7 @@ public class LabwareValidator {
      *     <li>{@link #validateUnique}—if {@link #isUniqueRequired}</li>
      *     <li>{@link #validateNonEmpty}</li>
      *     <li>{@link #validateSingleSample}—if {@link #isSingleSample}</li>
+     *     <li>{@link #validateOneFilledSlot}—if {@link #isOneFilledSlotRequired} and not {@code isSingleSample}</li>
      *     <li>{@link #validateStates}</li>
      * </ul>
      */
@@ -199,6 +217,8 @@ public class LabwareValidator {
         validateNonEmpty();
         if (isSingleSample()) {
             validateSingleSample();
+        } else if (isOneFilledSlotRequired()) {
+            validateOneFilledSlot();
         }
         validateStates();
     }
@@ -363,6 +383,31 @@ public class LabwareValidator {
         }
         if (!multiSample.isEmpty()) {
             addError("Labware contains multiple samples: %s.", multiSample);
+        }
+        if (!multiSlot.isEmpty()) {
+            addError("Labware contains samples in multiple slots: %s.", multiSlot);
+        }
+    }
+
+    /**
+     * Checks if any labware contains samples in multiple slots.
+     * Adds errors for any such labware.
+     */
+    public void validateOneFilledSlot() {
+        if (labware.isEmpty()) {
+            return;
+        }
+        Set<String> multiSlot = new LinkedHashSet<>();
+        Set<Integer> done = new HashSet<>(labware.size());
+
+        for (Labware lw : labware) {
+            if (!done.add(lw.getId())) {
+                continue;
+            }
+            int slotCount = (int) lw.getSlots().stream().filter(slot -> !slot.getSamples().isEmpty()).count();
+            if (slotCount > 1) {
+                multiSlot.add(lw.getBarcode());
+            }
         }
         if (!multiSlot.isEmpty()) {
             addError("Labware contains samples in multiple slots: %s.", multiSlot);
