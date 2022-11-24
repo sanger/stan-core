@@ -52,8 +52,6 @@ public class TestFileStore {
         if (!Files.isDirectory(directory)) {
             Files.createDirectories(directory);
         }
-        Path local = Files.createTempFile("stanfile", ".txt");
-        Files.write(local, List.of("Alpha", "Beta"));
         Work work = entityCreator.createWork(null, null, null, null, null);
         String workNumber = work.getWorkNumber();
         assertThat(listFiles(workNumber)).isEmpty();
@@ -61,15 +59,15 @@ public class TestFileStore {
         User user = entityCreator.createUser(username);
         tester.setUser(user);
 
-        final String filename = "stanfile.txt";
-        final String fileContent = "Hello\nworld";
-        String downloadUrl = upload(workNumber, filename, fileContent);
+        final String filename1 = "stanfile.txt";
+        final String fileContent1 = "Hello\nworld";
+        String url1 = upload(workNumber, filename1, fileContent1);
 
-        assertEquals(fileContent, download(downloadUrl, filename));
+        assertEquals(fileContent1, download(url1, filename1));
 
         var filesData = listFiles(workNumber);
         assertThat(filesData).hasSize(1);
-        assertFileData(filesData.get(0), filename, downloadUrl, username, workNumber);
+        assertFileData(filesData.get(0), filename1, url1, username, workNumber);
 
         String fileContent2 = "Alabama\nAlaska";
         final String filename2 = "stanfile2.txt";
@@ -83,21 +81,19 @@ public class TestFileStore {
             filesData = List.of(filesData.get(1), filesData.get(0));
         }
 
-        assertFileData(filesData.get(0), filename, downloadUrl, username, workNumber);
+        assertFileData(filesData.get(0), filename1, url1, username, workNumber);
         assertFileData(filesData.get(1), filename2, url2, username, workNumber);
 
         String fileContentB = "Goodbye\nWorld";
-        downloadUrl = upload(workNumber, filename, fileContentB);
+        url1 = upload(workNumber, filename1, fileContentB);
 
-        assertEquals(fileContentB, download(downloadUrl, filename));
+        assertEquals(fileContentB, download(url1, filename1));
         filesData = listFiles(workNumber);
         assertThat(filesData).hasSize(2);
-        if (filesData.get(0).get("name").equals(filename2)) {
-            filesData = List.of(filesData.get(1), filesData.get(0));
-        }
+        int index0 = filesData.get(0).get("name").equals(filename1) ? 0 : 1;
 
-        assertFileData(filesData.get(0), filename, downloadUrl, username, workNumber);
-        assertFileData(filesData.get(1), filename2, url2, username, workNumber);
+        assertFileData(filesData.get(index0), filename1, url1, username, workNumber);
+        assertFileData(filesData.get(1-index0), filename2, url2, username, workNumber);
 
         deleteTestFiles(directory);
     }
@@ -118,7 +114,8 @@ public class TestFileStore {
     }
 
     private String download(String downloadUrl, String filename) throws Exception {
-        var r = tester.getMockMvc().perform(MockMvcRequestBuilders.get(downloadUrl)).andExpect(status().isOk())
+        var r = tester.getMockMvc().perform(MockMvcRequestBuilders.get(downloadUrl))
+                .andExpect(status().isOk())
                 .andReturn()
                 .getResponse();
         assertThat(r.getHeader("Content-Disposition")).contains(filename);
