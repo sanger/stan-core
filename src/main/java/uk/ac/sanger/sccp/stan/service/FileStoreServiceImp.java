@@ -1,5 +1,7 @@
 package uk.ac.sanger.sccp.stan.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -27,6 +29,8 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
  */
 @Service
 public class FileStoreServiceImp implements FileStoreService {
+    private static final Logger log = LoggerFactory.getLogger(FileStoreServiceImp.class);
+
     private final StanFileConfig config;
     private final Clock clock;
     private final Transactor transactor;
@@ -67,16 +71,19 @@ public class FileStoreServiceImp implements FileStoreService {
             path = Paths.get(config.getDir(), savedFilename);
         }
 
+        final String pathString = path.toString();
+
+        StanFile sf = transactor.transact("updateStanFiles",
+                () -> updateStanFiles(user, filename, work, now, pathString));
+
         try {
             fileData.transferTo(Paths.get(config.getRoot(), config.getDir(), savedFilename));
         } catch (IOException e) {
+            log.error("Saving file failed: {}", sf);
+            fileRepo.delete(sf);
             throw new UncheckedIOException(e);
         }
-
-        final String pathString = path.toString();
-
-        return transactor.transact("updateStanFiles",
-                () -> updateStanFiles(user, filename, work, now, pathString));
+        return sf;
     }
 
     private StanFile updateStanFiles(User user, String originalName, Work work, LocalDateTime now, String storedPath) {
