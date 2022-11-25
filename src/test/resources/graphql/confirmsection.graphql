@@ -67,6 +67,7 @@ mutation {
             }
         }
         operations {
+            id
             performed
             operationType { name }
             actions {

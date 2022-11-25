@@ -18,6 +18,7 @@ public class LabwareNote {
 
     private Integer labwareId;
     private Integer operationId;
+    private Integer planId;
     private String name;
     private String value;
 
@@ -55,6 +56,14 @@ public class LabwareNote {
         this.operationId = operationId;
     }
 
+    public Integer getPlanId() {
+        return this.planId;
+    }
+
+    public void setPlanId(Integer planId) {
+        this.planId = planId;
+    }
+
     public String getName() {
         return this.name;
     }
@@ -79,13 +88,14 @@ public class LabwareNote {
         return (Objects.equals(this.id, that.id)
                 && Objects.equals(this.labwareId, that.labwareId)
                 && Objects.equals(this.operationId, that.operationId)
+                && Objects.equals(this.planId, that.planId)
                 && Objects.equals(this.name, that.name)
                 && Objects.equals(this.value, that.value));
     }
 
     @Override
     public int hashCode() {
-        return (id!=null ? id.hashCode() : Objects.hash(labwareId, operationId, name, value));
+        return (id!=null ? id.hashCode() : Objects.hash(labwareId, operationId, planId, name, value));
     }
 
     @Override
@@ -94,8 +104,15 @@ public class LabwareNote {
                 .add("id", id)
                 .add("labwareId", labwareId)
                 .add("operationId", operationId)
+                .add("planId", planId)
                 .addRepr("name", name)
                 .addRepr("value", value)
                 .toString();
+    }
+
+    public static LabwareNote noteForPlan(Integer labwareId, Integer planId, String name, String value) {
+        LabwareNote note = new LabwareNote(null, labwareId, null, name, value);
+        note.setPlanId(planId);
+        return note;
     }
 }

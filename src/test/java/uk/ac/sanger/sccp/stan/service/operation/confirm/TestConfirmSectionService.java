@@ -42,6 +42,7 @@ public class TestConfirmSectionService {
     private MeasurementRepo mockMeasurementRepo;
     private SampleRepo mockSampleRepo;
     private CommentRepo mockCommentRepo;
+    private LabwareNoteRepo mockLwNoteRepo;
     private OperationCommentRepo mockOpCommentRepo;
     private EntityManager mockEntityManager;
 
@@ -58,10 +59,11 @@ public class TestConfirmSectionService {
         mockSampleRepo = mock(SampleRepo.class);
         mockCommentRepo = mock(CommentRepo.class);
         mockOpCommentRepo = mock(OperationCommentRepo.class);
+        mockLwNoteRepo = mock(LabwareNoteRepo.class);
         mockEntityManager = mock(EntityManager.class);
         service = spy(new ConfirmSectionServiceImp(mockValidationService, mockOpService, mockWorkService,
                 mockLwRepo, mockSlotRepo, mockMeasurementRepo, mockSampleRepo, mockCommentRepo, mockOpCommentRepo,
-                mockEntityManager));
+                mockLwNoteRepo, mockEntityManager));
     }
 
     private static OperationType makeOpType() {
@@ -113,6 +115,12 @@ public class TestConfirmSectionService {
         );
     }
 
+    private static LabwareNote planNote(Integer id, Integer lwId, Integer planId, String name, String value) {
+        LabwareNote note = LabwareNote.noteForPlan(lwId, planId, name, value);
+        note.setId(id);
+        return note;
+    }
+
     @Test
     public void testPerformSuccessful() {
         User user = EntityFactory.getUser();
@@ -133,6 +141,13 @@ public class TestConfirmSectionService {
         PlanOperation plan2 = new PlanOperation();
         plan2.setId(11);
 
+        List<LabwareNote> planNotes = List.of(
+                planNote(61, lw1.getId(), 10, "note1", "value1"),
+                planNote(62, lw1.getId(), 10, "note2", "value2")
+        );
+
+        when(mockLwNoteRepo.findAllByPlanIdIn(any())).thenReturn(planNotes);
+
         Operation op1 = new Operation();
         op1.setId(1);
         ConfirmLabwareResult clr1 = new ConfirmLabwareResult(op1, lw1B);
@@ -146,6 +161,7 @@ public class TestConfirmSectionService {
 
         doNothing().when(service).recordComments(any(), any(), any());
         doNothing().when(service).updateSourceBlocks(any());
+        doNothing().when(service).updateNotes(any(), any());
 
         ConfirmSectionRequest request = new ConfirmSectionRequest(List.of(csl1, csl2), "SGP9000");
         ConfirmSectionValidation validation = new ConfirmSectionValidation(UCMap.from(Labware::getBarcode, lw1, lw2),
@@ -161,6 +177,33 @@ public class TestConfirmSectionService {
         verify(service).recordComments(csl2, null, lw2B);
         verify(mockWorkService).link(request.getWorkNumber(), result.getOperations());
         verify(service).updateSourceBlocks(result.getOperations());
+        verify(service).loadPlanNotes(Set.of(10,11));
+        verify(service).updateNotes(planNotes, op1.getId());
+    }
+
+    @Test
+    public void testLoadNotes() {
+        List<LabwareNote> planNotes = List.of(
+                planNote(61, 27, 10, "note1", "value1"),
+                planNote(62, 28, 10, "note2", "value2"),
+                planNote(63, 29, 11, "note3", "value3")
+        );
+        Set<Integer> planIds = Set.of(10,11);
+        when(mockLwNoteRepo.findAllByPlanIdIn(any())).thenReturn(planNotes);
+        assertEquals(Map.of(10, planNotes.subList(0,2), 11, planNotes.subList(2,3)),
+                service.loadPlanNotes(planIds));
+        verify(mockLwNoteRepo).findAllByPlanIdIn(planIds);
+    }
+
+    @Test
+    public void testUpdateNotes() {
+        List<LabwareNote> planNotes = List.of(
+                planNote(61, 27, 10, "note1", "value1"),
+                planNote(62, 28, 10, "note2", "value2"));
+        final Integer opId = 600;
+        service.updateNotes(planNotes, opId);
+        verify(mockLwNoteRepo).saveAll(planNotes);
+        planNotes.forEach(note -> assertEquals(opId, note.getOperationId()));
     }
 
     @ValueSource(booleans={false, true})

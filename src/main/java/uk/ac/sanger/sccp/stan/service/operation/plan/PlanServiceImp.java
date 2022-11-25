@@ -17,6 +17,7 @@ import java.util.function.Predicate;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 
 /**
  * @author dr6
@@ -30,6 +31,7 @@ public class PlanServiceImp implements PlanService {
     private final OperationTypeRepo opTypeRepo;
     private final LabwareRepo lwRepo;
     private final LabwareTypeRepo ltRepo;
+    private final LabwareNoteRepo lwNoteRepo;
     private final BioStateRepo bsRepo;
 
     @Autowired
@@ -37,7 +39,7 @@ public class PlanServiceImp implements PlanService {
                           LabwareService lwService,
                           PlanOperationRepo planRepo, PlanActionRepo planActionRepo,
                           OperationTypeRepo opTypeRepo, LabwareRepo lwRepo, LabwareTypeRepo ltRepo,
-                          BioStateRepo bsRepo) {
+                          LabwareNoteRepo lwNoteRepo, BioStateRepo bsRepo) {
         this.planValidationFactory = planValidationFactory;
         this.lwService = lwService;
         this.planRepo = planRepo;
@@ -45,6 +47,7 @@ public class PlanServiceImp implements PlanService {
         this.opTypeRepo = opTypeRepo;
         this.lwRepo = lwRepo;
         this.ltRepo = ltRepo;
+        this.lwNoteRepo = lwNoteRepo;
         this.bsRepo = bsRepo;
     }
 
@@ -75,6 +78,7 @@ public class PlanServiceImp implements PlanService {
         }
         Iterator<Labware> destIter = destinations.iterator();
         List<PlanOperation> plans = new ArrayList<>(destinations.size());
+        List<LabwareNote> lwNotes = new ArrayList<>();
         for (PlanRequestLabware pl : request.getLabware()) {
             PlanOperation plan = createPlan(user, opType);
             Labware lw = destIter.next();
@@ -82,6 +86,15 @@ public class PlanServiceImp implements PlanService {
                     lw.getLabwareType().isFetalWaste() ? fetalWasteBs : opTypeBs);
             plan.setPlanActions(planActions);
             plans.add(plan);
+            if (pl.getCosting() != null) {
+                lwNotes.add(LabwareNote.noteForPlan(lw.getId(), plan.getId(), "costing", pl.getCosting().name()));
+            }
+            if (!nullOrEmpty(pl.getLotNumber())) {
+                lwNotes.add(LabwareNote.noteForPlan(lw.getId(), plan.getId(), "lot", pl.getLotNumber()));
+            }
+        }
+        if (!lwNotes.isEmpty()) {
+            lwNoteRepo.saveAll(lwNotes);
         }
         return new PlanResult(plans, destinations);
     }

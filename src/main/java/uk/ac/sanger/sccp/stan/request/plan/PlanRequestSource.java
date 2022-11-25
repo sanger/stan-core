@@ -1,7 +1,7 @@
 package uk.ac.sanger.sccp.stan.request.plan;
 
-import com.google.common.base.MoreObjects;
 import uk.ac.sanger.sccp.stan.model.Address;
+import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import java.util.Objects;
 
@@ -51,9 +51,10 @@ public class PlanRequestSource {
 
     @Override
     public String toString() {
-        return MoreObjects.toStringHelper(this)
+        return BasicUtils.describe(this)
                 .add("barcode", barcode)
                 .add("address", address)
+                .reprStringValues()
                 .toString();
     }
 }

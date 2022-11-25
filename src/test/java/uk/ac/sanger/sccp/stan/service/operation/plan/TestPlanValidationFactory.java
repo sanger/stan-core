@@ -15,14 +15,16 @@ import static org.mockito.Mockito.mock;
  * @author dr6
  */
 public class TestPlanValidationFactory {
+    @SuppressWarnings("unchecked")
     @Test
     public void testCreatePlanValidation() {
         LabwareRepo lwRepo = mock(LabwareRepo.class);
         LabwareTypeRepo ltRepo = mock(LabwareTypeRepo.class);
         OperationTypeRepo opTypeRepo = mock(OperationTypeRepo.class);
-        //noinspection unchecked
-        Validator<String> mockStringValidator = mock(Validator.class);
-        PlanValidationFactory factory = new PlanValidationFactory(lwRepo, ltRepo, opTypeRepo, mockStringValidator);
+        Validator<String> mockBarcodeValidator = mock(Validator.class);
+        Validator<String> mockLotValidator = mock(Validator.class);
+        PlanValidationFactory factory = new PlanValidationFactory(lwRepo, ltRepo, opTypeRepo,
+                mockBarcodeValidator, mockLotValidator);
         PlanRequest request = new PlanRequest();
         PlanValidation validation = factory.createPlanValidation(request);
         assertThat(validation).isInstanceOf(PlanValidationImp.class);
@@ -32,6 +34,7 @@ public class TestPlanValidationFactory {
         assertSame(validationImp.opTypeRepo, opTypeRepo);
         assertSame(validationImp.request, request);
         assertNotNull(validationImp.problems);
-        assertNotNull(validationImp.prebarcodeValidator);
+        assertSame(validationImp.prebarcodeValidator, mockBarcodeValidator);
+        assertSame(validationImp.lotValidator, mockLotValidator);
     }
 }

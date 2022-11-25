@@ -34,19 +34,21 @@ public class TestPlanValidation {
     private LabwareTypeRepo mockLabwareTypeRepo;
     private OperationTypeRepo mockOpTypeRepo;
     private Validator<String> mockPrebarcodeValidator;
+    private Validator<String> mockLotValidator;
 
+    @SuppressWarnings("unchecked")
     @BeforeEach
     void setup() {
         mockLabwareRepo = mock(LabwareRepo.class);
         mockLabwareTypeRepo = mock(LabwareTypeRepo.class);
         mockOpTypeRepo = mock(OperationTypeRepo.class);
-        //noinspection unchecked
         mockPrebarcodeValidator = mock(Validator.class);
+        mockLotValidator = mock(Validator.class);
     }
 
     private PlanValidationImp makeValidation(PlanRequest request) {
         return spy(new PlanValidationImp(request, mockLabwareRepo, mockLabwareTypeRepo,
-                mockOpTypeRepo, mockPrebarcodeValidator));
+                mockOpTypeRepo, mockPrebarcodeValidator, mockLotValidator));
     }
 
     @Test
@@ -162,6 +164,7 @@ public class TestPlanValidation {
 
         PlanValidationImp validation = makeValidation(request);
         doNothing().when(validation).checkActions(any(), any());
+        doNothing().when(validation).validateLotAndCostings(any());
 
         when(mockLabwareTypeRepo.findByName(anyString())).thenReturn(Optional.empty());
         if (labwareTypes!=null && !labwareTypes.isEmpty()) {
@@ -169,6 +172,11 @@ public class TestPlanValidation {
                     doReturn(Optional.of(lt)).when(mockLabwareTypeRepo).findByName(eqCi(lt.getName()))
             );
         }
+
+        UCMap<LabwareType> ltMap = request.getLabware().stream()
+                .flatMap(rl -> mockLabwareTypeRepo.findByName(rl.getLabwareType()).stream())
+                .distinct()
+                .collect(UCMap.toUCMap(LabwareType::getName));
 
         when(mockPrebarcodeValidator.validate(anyString(), any())).then(invocation -> {
             String string = invocation.getArgument(0);
@@ -189,6 +197,9 @@ public class TestPlanValidation {
             doReturn(dividedLayout).when(validation).hasDividedLayout(any(), any(), any(), anyInt());
         }
         validation.validateDestinations(sourceLwMap);
+        if (!request.getLabware().isEmpty()) {
+            verify(validation).validateLotAndCostings(ltMap);
+        }
         if (dividedLayout==null) {
             verify(validation, never()).hasDividedLayout(any(), any(), any(), anyInt());
         } else {
@@ -216,6 +227,66 @@ public class TestPlanValidation {
                 }
             }
         }
+    }
+
+    @ParameterizedTest
+    @MethodSource("validateLotAndCostingsArgs")
+    public void testValidateLotAndCostings(List<String> expectedProblems, List<PlanRequestLabware> prs,
+                                           UCMap<LabwareType> ltMap) {
+        when(mockLotValidator.validate(any(), any())).then(invocation -> {
+            String string = invocation.getArgument(0);
+            if (string.indexOf('!') < 0) {
+                return true;
+            }
+            Consumer<String> pc = invocation.getArgument(1);
+            pc.accept("Bad lot: "+string);
+            return false;
+        });
+        var val = makeValidation(new PlanRequest("Hello", prs));
+        val.validateLotAndCostings(ltMap);
+        assertProblems(expectedProblems, val.problems);
+    }
+
+    static Stream<Arguments> validateLotAndCostingsArgs() {
+        final String vis1 = "Visium LP", vis2 = "Visium TO", nonvis1 = "Can", nonvis2 = "Bowl";
+        UCMap<LabwareType> ltMap = Stream.of(vis1, vis2, nonvis1, nonvis2)
+                .map(name -> EntityFactory.makeLabwareType(1, 1, name))
+                .collect(UCMap.toUCMap(LabwareType::getName));
+        return Arrays.stream(new Object[][]{
+                {prl(vis1, "lot1", SlideCosting.SGP), prl(vis2, "lot2", SlideCosting.Faculty),
+                        prl(nonvis1, null, null), prl(nonvis2, "", null),
+                        prl("Bananas", null, null),
+                        prl("Bananas", "Alpha!", SlideCosting.SGP)},
+                {prl("Bananas", null, null)},
+                {prl(vis1, null, SlideCosting.SGP), prl(vis2, "", SlideCosting.Faculty),
+                        "Lot number required for labware types: [Visium LP, Visium TO]"},
+                {prl(vis1, "lot1", null), prl(vis2, "lot2", null),
+                        "Costing required for labware types: [Visium LP, Visium TO]"},
+                {prl(vis1, "Hi!", SlideCosting.SGP), "Bad lot: Hi!"},
+                {prl(nonvis1, "lot1", null), prl(nonvis2, "lot2", null),
+                        "Lot number not expected for labware types: [Can, Bowl]"},
+                {prl(nonvis1, null, SlideCosting.SGP), prl(nonvis2, null, SlideCosting.Faculty),
+                        "Costing not expected for labware types: [Can, Bowl]"},
+                {prl(vis1, null, null),  prl(nonvis1, "mylot", SlideCosting.SGP),
+                        "Lot number required for labware type: [Visium LP]",
+                        "Costing required for labware type: [Visium LP]",
+                        "Lot number not expected for labware type: [Can]",
+                        "Costing not expected for labware type: [Can]"},
+        }).map(arr -> Arguments.of(typeFilterToList(arr, String.class),
+                typeFilterToList(arr, PlanRequestLabware.class), ltMap));
+    }
+
+
+    static <G, S extends G> List<S> typeFilterToList(G[] items, Class<S> subtype) {
+        return Arrays.stream(items).filter(subtype::isInstance).map(subtype::cast).collect(toList());
+    }
+
+    static PlanRequestLabware prl(String ltName, String lot, SlideCosting costing) {
+        PlanRequestLabware prl = new PlanRequestLabware();
+        prl.setLabwareType(ltName);
+        prl.setLotNumber(lot);
+        prl.setCosting(costing);
+        return prl;
     }
 
     @ParameterizedTest
@@ -369,12 +440,12 @@ public class TestPlanValidation {
                 Arguments.of(new PlanRequestLabware(ltName, "SPECIAL1", noActions),
                         lts, "Unexpected barcode supplied for new labware of type "+ltName+".", null),
                 Arguments.of(new PlanRequestLabware("Mist", null, noActions),
-                        lts, "Unknown labware type: [MIST]", null),
+                        lts, "Unknown labware type: [Mist]", null),
                 Arguments.of(List.of(
                         new PlanRequestLabware("Mist", null, noActions),
                         new PlanRequestLabware("MIST", null, noActions),
                         new PlanRequestLabware("Fog", null, noActions)
-                ), lts, "Unknown labware types: [MIST, FOG]", null),
+                ), lts, "Unknown labware types: [Mist, MIST, Fog]", null),
                 Arguments.of(new PlanRequestLabware(preName, "SPECIAL*", noActions),
                         lts, "Invalid barcode: SPECIAL*", null)
 
