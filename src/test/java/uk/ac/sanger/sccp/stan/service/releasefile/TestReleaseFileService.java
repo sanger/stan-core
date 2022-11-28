@@ -15,8 +15,7 @@ import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
 import javax.persistence.EntityNotFoundException;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
+import java.util.stream.*;
 
 import static java.util.stream.Collectors.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -756,11 +755,7 @@ public class TestReleaseFileService {
     }
 
     private Map<Integer, List<Measurement>> measurementMap(Measurement... measurements) {
-        Map<Integer, List<Measurement>> map = new HashMap<>(measurements.length);
-        for (Measurement meas : measurements) {
-            map.computeIfAbsent(meas.getSlotId(), ArrayList::new).add(meas);
-        }
-        return map;
+        return Arrays.stream(measurements).collect(Collectors.groupingBy(Measurement::getSlotId));
     }
 
     @Test

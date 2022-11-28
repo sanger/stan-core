@@ -218,11 +218,7 @@ public class HistoryServiceImp implements HistoryService {
         if (opComments.isEmpty()) {
             return Map.of();
         }
-        Map<Integer, List<OperationComment>> map = new HashMap<>();
-        for (OperationComment oc : opComments) {
-            map.computeIfAbsent(oc.getOperationId(), k -> new ArrayList<>()).add(oc);
-        }
-        return map;
+        return opComments.stream().collect(Collectors.groupingBy(OperationComment::getOperationId));
     }
 
     /**
@@ -298,11 +294,7 @@ public class HistoryServiceImp implements HistoryService {
         if (measurements.isEmpty()) {
             return Map.of();
         }
-        Map<Integer, List<Measurement>> map = new HashMap<>(opIds.size());
-        for (Measurement measurement : measurements) {
-            map.computeIfAbsent(measurement.getOperationId(), k -> new ArrayList<>()).add(measurement);
-        }
-        return map;
+        return measurements.stream().collect(Collectors.groupingBy(Measurement::getOperationId));
     }
 
     /**
@@ -315,11 +307,7 @@ public class HistoryServiceImp implements HistoryService {
         if (notes.isEmpty()) {
             return Map.of();
         }
-        Map<Integer, List<LabwareNote>> map = new HashMap<>();
-        for (LabwareNote note : notes) {
-            map.computeIfAbsent(note.getOperationId(), k -> new ArrayList<>()).add(note);
-        }
-        return map;
+        return notes.stream().collect(Collectors.groupingBy(LabwareNote::getOperationId));
     }
 
     public String describeSeconds(String value) {
@@ -404,11 +392,7 @@ public class HistoryServiceImp implements HistoryService {
             return Map.of();
         }
         Iterable<ResultOp> results = resultOpRepo.findAllByOperationIdIn(resultOpIds);
-        Map<Integer, List<ResultOp>> map = new HashMap<>(ops.size());
-        for (ResultOp result : results) {
-            map.computeIfAbsent(result.getOperationId(), k -> new ArrayList<>()).add(result);
-        }
-        return map;
+        return BasicUtils.stream(results).collect(Collectors.groupingBy(ResultOp::getOperationId));
     }
 
     /**
