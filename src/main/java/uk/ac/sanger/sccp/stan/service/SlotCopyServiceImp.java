@@ -50,6 +50,7 @@ public class SlotCopyServiceImp implements SlotCopyService {
     private final EntityManager entityManager;
     private final Transactor transactor;
     private final Validator<String> preBarcodeValidator;
+    private final Validator<String> lotNumberValidator;
 
     @Autowired
     public SlotCopyServiceImp(OperationTypeRepo opTypeRepo, LabwareTypeRepo lwTypeRepo, LabwareRepo lwRepo,
@@ -58,7 +59,8 @@ public class SlotCopyServiceImp implements SlotCopyService {
                               WorkService workService,
                               LabwareValidatorFactory labwareValidatorFactory, EntityManager entityManager,
                               Transactor transactor,
-                              @Qualifier("cytAssistBarcodeValidator") Validator<String> preBarcodeValidator) {
+                              @Qualifier("cytAssistBarcodeValidator") Validator<String> preBarcodeValidator,
+                              @Qualifier("lotNumberValidator") Validator<String> lotNumberValidator) {
         this.opTypeRepo = opTypeRepo;
         this.lwTypeRepo = lwTypeRepo;
         this.lwRepo = lwRepo;
@@ -72,8 +74,9 @@ public class SlotCopyServiceImp implements SlotCopyService {
         this.workService = workService;
         this.labwareValidatorFactory = labwareValidatorFactory;
         this.entityManager = entityManager;
-        this.preBarcodeValidator = preBarcodeValidator;
         this.transactor = transactor;
+        this.preBarcodeValidator = preBarcodeValidator;
+        this.lotNumberValidator = lotNumberValidator;
     }
 
     @Override
@@ -104,6 +107,7 @@ public class SlotCopyServiceImp implements SlotCopyService {
         UCMap<Labware> sourceMap = loadSources(problems, request);
         validateSources(problems, sourceMap.values());
         UCMap<Labware.State> sourceStateMap = checkListedSources(problems, request);
+        validateLotNumbers(problems, request.getDestinations());
         validateContents(problems, lwTypes, sourceMap, request);
         validateOps(problems, request.getDestinations(), opType, lwTypes);
         UCMap<BioState> bs = validateBioStates(problems, request.getDestinations());
@@ -115,6 +119,20 @@ public class SlotCopyServiceImp implements SlotCopyService {
         final Labware.State newSourceState = opType.discardSource() ? Labware.State.discarded : opType.markSourceUsed() ? Labware.State.used : null;
         updateSources(sourceStateMap, sourceMap.values(), newSourceState, barcodesToUnstore);
         return opres;
+    }
+
+    /**
+     * Checks for problems with lot numbers.
+     * Lot numbers are optional, but their format is prescribed.
+     * @param problems receptacle for problems
+     * @param destinations the request destinations
+     */
+    public void validateLotNumbers(Collection<String> problems, Collection<SlotCopyDestination> destinations) {
+        for (SlotCopyDestination destination : destinations) {
+            if (!nullOrEmpty(destination.getLotNumber())) {
+                lotNumberValidator.validate(destination.getLotNumber(), problems::add);
+            }
+        }
     }
 
     /**
@@ -444,7 +462,7 @@ public class SlotCopyServiceImp implements SlotCopyService {
         List<Labware> destLabware = new ArrayList<>(dests.size());
         for (SlotCopyDestination dest : dests) {
             OperationResult opres = executeOp(user, dest.getContents(), opType, lwTypes.get(dest.getLabwareType()),
-                    dest.getPreBarcode(), sources, dest.getCosting(), bioStates.get(dest.getBioState()));
+                    dest.getPreBarcode(), sources, dest.getCosting(), dest.getLotNumber(), bioStates.get(dest.getBioState()));
             ops.addAll(opres.getOperations());
             destLabware.addAll(opres.getLabware());
         }
@@ -464,11 +482,14 @@ public class SlotCopyServiceImp implements SlotCopyService {
      * @param lwType the type of labware to create
      * @param preBarcode the prebarcode of the new labware, if it has one
      * @param labwareMap a map of the source labware from their barcodes
+     * @param costing the costing of new labware, if specified
+     * @param lotNumber the lot number of the new labware, if specified
+     * @param bioState the new bio state of the labware, if given
      * @return the result of the operation
      */
     public OperationResult executeOp(User user, Collection<SlotCopyContent> contents,
                                    OperationType opType, LabwareType lwType, String preBarcode,
-                                   UCMap<Labware> labwareMap, SlideCosting costing, BioState bioState) {
+                                   UCMap<Labware> labwareMap, SlideCosting costing, String lotNumber, BioState bioState) {
         Labware emptyLabware = lwService.create(lwType, preBarcode, preBarcode);
         Map<Integer, Sample> oldSampleIdToNewSample = createSamples(contents, labwareMap,
                 coalesce(bioState, opType.getNewBioState()));
@@ -476,6 +497,9 @@ public class SlotCopyServiceImp implements SlotCopyService {
         Operation op = createOperation(user, contents, opType, labwareMap, filledLabware, oldSampleIdToNewSample);
         if (costing != null) {
             lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), "costing", costing.name()));
+        }
+        if (!nullOrEmpty(lotNumber)) {
+            lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), "lot", lotNumber));
         }
         return new OperationResult(List.of(op), List.of(filledLabware));
     }

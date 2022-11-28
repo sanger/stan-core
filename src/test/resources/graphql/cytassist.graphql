@@ -6,6 +6,7 @@ mutation {
             preBarcode: "V42A20-3752023-10-20"
             labwareType: "Visium LP CytAssist"
             costing: Faculty
+            lotNumber: "1234567"
             contents: [
                 {
                     sourceBarcode: "STAN-01"

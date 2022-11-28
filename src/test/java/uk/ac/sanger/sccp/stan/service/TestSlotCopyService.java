@@ -64,6 +64,8 @@ public class TestSlotCopyService {
     Transactor mockTransactor;
     @Mock
     Validator<String> mockBarcodeValidator;
+    @Mock
+    Validator<String> mockLotNumberValidator;
 
     private SlotCopyServiceImp service;
     private OperationType opType;
@@ -90,7 +92,7 @@ public class TestSlotCopyService {
         service = spy(new SlotCopyServiceImp(mockOpTypeRepo, mockLwTypeRepo, mockLwRepo, mockSampleRepo, mockSlotRepo,
                 mockBsRepo, mockLwNoteRepo,
                 mockLwService, mockOpService, mockStoreService, mockWorkService, mockLabwareValidatorFactory, mockEntityManager,
-                mockTransactor, mockBarcodeValidator));
+                mockTransactor, mockBarcodeValidator, mockLotNumberValidator));
     }
 
     @AfterEach
@@ -128,7 +130,7 @@ public class TestSlotCopyService {
     @ParameterizedTest
     @ValueSource(booleans={false, true})
     public void testPerform(boolean valid) {
-        SlotCopyRequest request = new SlotCopyRequest("op", "thing", List.of(), null, null, null);
+        SlotCopyRequest request = new SlotCopyRequest("op", "thing", List.of(), null, null);
         ValidationException ex = valid ? null : new ValidationException("Bad", List.of());
         Operation op = new Operation(200, opType, null, null, null);
         OperationResult result = valid ? new OperationResult(List.of(op), List.of()) : null;
@@ -162,7 +164,7 @@ public class TestSlotCopyService {
         List<SlotCopyContent> contents = List.of(new SlotCopyContent("SOURCE1", new Address(1, 2), new Address(3, 4)));
         Work work = new Work(50, "SGP5000", null, null, null, null, null, Work.Status.active);
         when(mockWorkService.validateUsableWork(any(), any())).thenReturn(work);
-        SlotCopyRequest request = new SlotCopyRequest(opType.getName(), plateType.getName(), contents, work.getWorkNumber(), "pbc", null);
+        SlotCopyRequest request = new SlotCopyRequest(opType.getName(), plateType.getName(), contents, work.getWorkNumber(), "pbc");
         when(mockOpTypeRepo.findByName(any())).thenReturn(Optional.of(opType));
         when(mockLwTypeRepo.findByName(any())).thenReturn(Optional.of(plateType));
         UCMap<LabwareType> lwTypes = UCMap.from(LabwareType::getName, plateType);
@@ -171,6 +173,7 @@ public class TestSlotCopyService {
         UCMap<Labware> lwMap = makeLabwareMap();
         doReturn(lwMap).when(service).loadSources(any(), any());
         doNothing().when(service).validateSources(any(), any());
+        doNothing().when(service).validateLotNumbers(any(), any());
         UCMap<Labware.State> bcStates = new UCMap<>();
         bcStates.put("Alpha", Labware.State.used);
         bcStates.put("Beta", Labware.State.discarded);
@@ -201,6 +204,7 @@ public class TestSlotCopyService {
         verify(service).checkPreBarcodesInUse(notNull(), same(request.getDestinations()));
         verify(service).loadSources(notNull(), same(request));
         verify(service).validateSources(notNull(), eq(lwMap.values()));
+        verify(service).validateLotNumbers(notNull(), same(request.getDestinations()));
         verify(service).checkListedSources(notNull(), same(request));
         verify(service).validateContents(notNull(), same(lwTypes), same(lwMap), same(request));
         verify(service).validateOps(notNull(), same(request.getDestinations()), same(opType), same(lwTypes));
@@ -219,7 +223,7 @@ public class TestSlotCopyService {
     public void testLoadLabwareTypes(List<LabwareType> lwTypes, List<String> strings, String expectedProblem) {
         when(mockLwTypeRepo.findAllByNameIn(any())).thenReturn(lwTypes);
         List<SlotCopyDestination> dests = strings.stream()
-                .map(string -> new SlotCopyDestination(string, null, null, null, null))
+                .map(string -> new SlotCopyDestination(string, null, null, null, null, null))
                 .collect(toList());
         final List<String> problems = new ArrayList<>(expectedProblem==null ? 0 : 1);
         assertThat(service.loadLabwareTypes(problems, dests).values()).containsExactlyInAnyOrderElementsOf(lwTypes);
@@ -313,7 +317,7 @@ public class TestSlotCopyService {
     }
 
     static SlotCopyDestination toSCD(String lwTypeName, String prebarcode) {
-        return new SlotCopyDestination(lwTypeName, prebarcode, null, null, null);
+        return new SlotCopyDestination(lwTypeName, prebarcode, null, null, null, null);
     }
 
     @ParameterizedTest
@@ -466,10 +470,8 @@ public class TestSlotCopyService {
                 null);
         String problem = cytAssist ? "Bad thing." : null;
         List<String> problems = new ArrayList<>(cytAssist ? 1 : 0);
-        SlotCopyDestination scd1 = new SlotCopyDestination("lt1", null, null, null,
-                List.of(new SlotCopyContent("STAN-1", A1, A1)));
-        SlotCopyDestination scd2 = new SlotCopyDestination("lt2", null, null, null,
-                List.of(new SlotCopyContent("STAN-2", A1, A1)));
+        SlotCopyDestination scd1 = new SlotCopyDestination("lt1", null, null, null, List.of(new SlotCopyContent("STAN-1", A1, A1)), null);
+        SlotCopyDestination scd2 = new SlotCopyDestination("lt2", null, null, null, List.of(new SlotCopyContent("STAN-2", A1, A1)), null);
         final LabwareType lt1 = EntityFactory.makeLabwareType(1, 1, "lt1");
         final LabwareType lt2 = EntityFactory.makeLabwareType(1, 1, "lt2");
         UCMap<LabwareType> lwTypes = UCMap.from(LabwareType::getName, lt1, lt2);
@@ -509,6 +511,38 @@ public class TestSlotCopyService {
                 {cytLt, List.of(sccs[0], sccs[1]), "Slots B1 and C1 are disallowed for use in this operation."},
                 {cytLt, List.of(sccs[0], sccs[2]), "Slots B1 and C1 are disallowed for use in this operation."},
         }).map(Arguments::of);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testValidateLotNumbers(boolean anyBad) {
+        when(mockLotNumberValidator.validate(any(), any())).then(invocation -> {
+            String string = invocation.getArgument(0);
+            if (string.indexOf('!') < 0) {
+                return true;
+            }
+            Consumer<String> addProblem = invocation.getArgument(1);
+            addProblem.accept("Bad: "+string);
+            return false;
+        });
+        String[] lots = {"1234", "", null, "5678", "7890"};
+        if (anyBad) {
+            lots[3] = "Hi!";
+            lots[4] = "Bye!";
+        }
+        List<SlotCopyDestination> scds = Arrays.stream(lots).map(lot -> {
+            SlotCopyDestination scd = new SlotCopyDestination();
+            scd.setLotNumber(lot);
+            return scd;
+        }).collect(toList());
+        List<String> problems = new ArrayList<>(anyBad ? 2 : 0);
+        service.validateLotNumbers(problems, scds);
+        verify(mockLotNumberValidator, times(3)).validate(any(), any());
+        if (anyBad) {
+            assertThat(problems).containsExactlyInAnyOrder("Bad: Hi!", "Bad: Bye!");
+        } else {
+            assertThat(problems).isEmpty();
+        }
     }
 
     @ParameterizedTest
@@ -611,7 +645,7 @@ public class TestSlotCopyService {
                                       Set<String> expectedBsNames,
                                       String expectedProblem) {
         List<SlotCopyDestination> dests = givenBsNames.stream()
-                .map(string -> new SlotCopyDestination(null, null, null, string, null))
+                .map(string -> new SlotCopyDestination(null, null, null, null, null, string))
                 .collect(toList());
         when(mockBsRepo.findAllByNameIn(any())).thenReturn(knownBioStates);
         final List<String> problems = new ArrayList<>(expectedProblem==null ? 0 : 1);
@@ -654,8 +688,8 @@ public class TestSlotCopyService {
         final Address A1 = new Address(1,1);
         User user = EntityFactory.getUser();
         List<SlotCopyDestination> dests = List.of(
-                new SlotCopyDestination("lt1", "pb1", SlideCosting.SGP, "bs1", List.of(new SlotCopyContent("STAN-0", A1, A1))),
-                new SlotCopyDestination("lt2", null, SlideCosting.Faculty, null, List.of(new SlotCopyContent("STAN-1", A1, A1)))
+                new SlotCopyDestination("lt1", "pb1", SlideCosting.SGP, "1234567", List.of(new SlotCopyContent("STAN-0", A1, A1)), "bs1"),
+                new SlotCopyDestination("lt2", null, SlideCosting.Faculty, null, List.of(new SlotCopyContent("STAN-1", A1, A1)), null)
         );
         OperationType opType = EntityFactory.makeOperationType("optype", null);
         final LabwareType lt1 = EntityFactory.makeLabwareType(1, 1, "lt1");
@@ -678,14 +712,14 @@ public class TestSlotCopyService {
         Labware newLw2 = EntityFactory.makeEmptyLabware(lt2);
 
         doReturn(new OperationResult(List.of(op1), List.of(newLw1)), new OperationResult(List.of(op2), List.of(newLw2)))
-                .when(service).executeOp(any(), any(), any(), any(), any(), any(), any(), any());
+                .when(service).executeOp(any(), any(), any(), any(), any(), any(), any(), any(), any());
 
         OperationResult result = service.executeOps(user, dests, opType, lwTypes, bsMap, sources, work);
         assertThat(result.getOperations()).containsExactly(op1, op2);
         assertThat(result.getLabware()).containsExactly(newLw1, newLw2);
 
-        verify(service).executeOp(user, dests.get(0).getContents(), opType, lt1, "pb1", sources, SlideCosting.SGP, bs);
-        verify(service).executeOp(user, dests.get(1).getContents(), opType, lt2, null, sources, SlideCosting.Faculty, null);
+        verify(service).executeOp(user, dests.get(0).getContents(), opType, lt1, "pb1", sources, SlideCosting.SGP, "1234567", bs);
+        verify(service).executeOp(user, dests.get(1).getContents(), opType, lt2, null, sources, SlideCosting.Faculty, null, null);
 
         verify(mockWorkService).link(work, result.getOperations());
     }
@@ -698,6 +732,7 @@ public class TestSlotCopyService {
         final BioState obs = bsInOpType ? new BioState(6, "opbs") : null;
         List<SlotCopyContent> contents = List.of(new SlotCopyContent());
         final SlideCosting costing = SlideCosting.SGP;
+        final String lotNumber = "1234567";
         LabwareType lt = EntityFactory.getTubeType();
         UCMap<Labware> sourceMap = UCMap.from(Labware::getBarcode, EntityFactory.getTube());
         Labware emptyLw = EntityFactory.makeEmptyLabware(lt);
@@ -712,7 +747,7 @@ public class TestSlotCopyService {
         op.setId(50);
         doReturn(op).when(service).createOperation(any(), any(), any(), any(), any(), any());
 
-        OperationResult opres = service.executeOp(user, contents, opType, lt, preBarcode, sourceMap, costing, rbs);
+        OperationResult opres = service.executeOp(user, contents, opType, lt, preBarcode, sourceMap, costing, lotNumber, rbs);
         assertThat(opres.getLabware()).containsExactly(filledLw);
         assertThat(opres.getOperations()).containsExactly(op);
 
@@ -721,6 +756,7 @@ public class TestSlotCopyService {
         verify(service).fillLabware(emptyLw, contents, sourceMap, oldSampleIdToNewSample);
         verify(service).createOperation(user, contents, opType, sourceMap, filledLw, oldSampleIdToNewSample);
         verify(mockLwNoteRepo).save(new LabwareNote(null, filledLw.getId(), op.getId(), "costing", costing.name()));
+        verify(mockLwNoteRepo).save(new LabwareNote(null, filledLw.getId(), op.getId(), "lot", lotNumber));
     }
 
     @ParameterizedTest
