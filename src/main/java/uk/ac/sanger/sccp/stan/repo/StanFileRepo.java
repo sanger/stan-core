@@ -17,6 +17,9 @@ public interface StanFileRepo extends CrudRepository<StanFile, Integer> {
     @Query("select f from StanFile f where f.work.id=?1 and f.name=?2 and f.deprecated is null")
     List<StanFile> findAllActiveByWorkIdAndName(Integer workId, String name);
 
+    /** Does a file exist with the given path? */
+    boolean existsByPath(String path);
+
     /**
      * Gets the stan file with the given id
      * @param id the id of the stan file

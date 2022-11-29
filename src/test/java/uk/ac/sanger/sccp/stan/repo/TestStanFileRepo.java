@@ -13,8 +13,7 @@ import javax.transaction.Transactional;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Test {@link StanFileRepo}
@@ -89,5 +88,17 @@ public class TestStanFileRepo {
         assertEquals(sf1, fileRepo.getById(sf1.getId()));
         assertEquals(sf2, fileRepo.getById(sf2.getId()));
         assertThrows(EntityNotFoundException.class, () -> fileRepo.getById(sf2.getId()+1));
+    }
+
+    @Test
+    @Transactional
+    public void testExistsByPath() {
+        Work work = makeWork();
+        User user = entityCreator.createUser("user1");
+        final String path = "my/path";
+        assertFalse(fileRepo.existsByPath(path));
+        fileRepo.save(new StanFile(work, user, "Alpha", path));
+        assertTrue(fileRepo.existsByPath(path));
+        assertFalse(fileRepo.existsByPath("my/other"));
     }
 }

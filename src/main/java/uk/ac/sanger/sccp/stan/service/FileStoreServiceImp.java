@@ -73,17 +73,23 @@ public class FileStoreServiceImp implements FileStoreService {
 
         final String pathString = path.toString();
 
-        StanFile sf = transactor.transact("updateStanFiles",
-                () -> updateStanFiles(user, filename, work, now, pathString));
+        synchronized (FileStoreServiceImp.class) {
+            if (fileRepo.existsByPath(pathString)) {
+                throw new IllegalArgumentException("The database already contains a file with path " + pathString);
+            }
 
-        try {
-            fileData.transferTo(Paths.get(config.getRoot(), config.getDir(), savedFilename));
-        } catch (IOException e) {
-            log.error("Saving file failed: {}", sf);
-            fileRepo.delete(sf);
-            throw new UncheckedIOException(e);
+            final Path fullDestPath = Paths.get(config.getRoot(), config.getDir(), savedFilename);
+
+            try {
+                fileData.transferTo(fullDestPath);
+            } catch (IOException e) {
+                log.error("Saving file failed: {}", fullDestPath);
+                throw new UncheckedIOException(e);
+            }
+
+            return transactor.transact("updateStanFiles",
+                    () -> updateStanFiles(user, filename, work, now, pathString));
         }
-        return sf;
     }
 
     private StanFile updateStanFiles(User user, String originalName, Work work, LocalDateTime now, String storedPath) {

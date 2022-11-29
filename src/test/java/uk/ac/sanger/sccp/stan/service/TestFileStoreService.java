@@ -4,7 +4,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.web.multipart.MultipartFile;
 import uk.ac.sanger.sccp.stan.*;
 import uk.ac.sanger.sccp.stan.config.StanFileConfig;
@@ -15,7 +14,6 @@ import uk.ac.sanger.sccp.stan.repo.WorkRepo;
 import java.io.*;
 import java.nio.file.*;
 import java.time.*;
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -98,19 +96,22 @@ public class TestFileStoreService {
     }
 
     @Test
-    public void testStanFileTransactionError() throws IOException {
+    public void testFileTransferPathExists() throws IOException {
         Matchers.mockTransactor(mockTransactor);
-        doThrow(DuplicateKeyException.class).when(mockFileRepo).save(any());
+        MultipartFile data = mock(MultipartFile.class);
         final String name = "FILENAME.txt";
         Work work = new Work(500, "SGP500", null, null, null, null, null, Work.Status.active);
-        MultipartFile data = mock(MultipartFile.class);
+
         when(data.getOriginalFilename()).thenReturn(name);
         when(mockWorkRepo.getByWorkNumber(work.getWorkNumber())).thenReturn(work);
         User user = EntityFactory.getUser();
+        final LocalDateTime time = LocalDateTime.now(clock);
+        when(mockFileRepo.existsByPath("path-to-folder/"+time+"_FILENAMEtxt")).thenReturn(true);
 
-        assertThrows(DuplicateKeyException.class, () -> service.save(user, data, work.getWorkNumber()));
-        verify(mockTransactor).transact(eq("updateStanFiles"), notNull());
+        assertThrows(IllegalArgumentException.class, () -> service.save(user, data, work.getWorkNumber()));
         verify(data, never()).transferTo(any(Path.class));
+        verify(mockWorkRepo, never()).save(any());
+        verify(mockTransactor, never()).transact(any(), any());
     }
 
     @Test
@@ -126,22 +127,11 @@ public class TestFileStoreService {
         User user = EntityFactory.getUser();
 
         final LocalDateTime time = LocalDateTime.now(clock);
-        final List<StanFile> savedFiles = new ArrayList<>(1);
-
-        when(mockFileRepo.save(any())).then(invocation -> {
-            StanFile sf = invocation.getArgument(0);
-            sf.setId(300);
-            sf.setCreated(time);
-            savedFiles.add(sf);
-            return sf;
-        });
 
         assertThrows(UncheckedIOException.class, () -> service.save(user, data, work.getWorkNumber()));
         final String expectedPath = "path-to-folder/"+time+"_FILENAMEtxt";
         verify(data).transferTo(Paths.get("/ROOT/"+expectedPath));
-        assertThat(savedFiles).hasSize(1);
-        StanFile sf = savedFiles.get(0);
-        verify(mockFileRepo).delete(sf);
+        verify(mockFileRepo, never()).save(any());
     }
 
     @Test
