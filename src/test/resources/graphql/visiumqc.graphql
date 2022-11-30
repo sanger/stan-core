@@ -10,6 +10,8 @@ mutation {
                     result: pass
                     commentId: 1
                 }]
+                reagentLot: "234567"
+                costing: Faculty
             }
         ]
     }) {

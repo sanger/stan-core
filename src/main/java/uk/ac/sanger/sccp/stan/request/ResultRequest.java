@@ -1,10 +1,11 @@
 package uk.ac.sanger.sccp.stan.request;
 
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import java.util.List;
 import java.util.Objects;
+
+import static uk.ac.sanger.sccp.utils.BasicUtils.describe;
 
 /**
  * A request to record results
@@ -65,7 +66,7 @@ public class ResultRequest {
 
         @Override
         public String toString() {
-            return BasicUtils.describe("SampleResult")
+            return describe("SampleResult")
                     .add("address", address)
                     .add("result", result)
                     .add("commentId", commentId)
@@ -78,21 +79,23 @@ public class ResultRequest {
         private List<SampleResult> sampleResults;
         private List<SlotMeasurementRequest> slotMeasurements;
         private SlideCosting costing;
+        private String reagentLot;
 
         public LabwareResult() {
-            this(null, null, null, null);
+            this(null, null, null, null, null);
         }
 
         public LabwareResult(String barcode) {
-            this(barcode, null, null, null);
+            this(barcode, null, null, null, null);
         }
 
         public LabwareResult(String barcode, List<SampleResult> sampleResults,
-                             List<SlotMeasurementRequest> slotMeasurements, SlideCosting costing) {
+                             List<SlotMeasurementRequest> slotMeasurements, SlideCosting costing, String reagentLot) {
             this.barcode = barcode;
             setSampleResults(sampleResults);
             setSlotMeasurements(slotMeasurements);
             setCosting(costing);
+            setReagentLot(reagentLot);
         }
 
         public String getBarcode() {
@@ -128,6 +131,15 @@ public class ResultRequest {
             this.costing = costing;
         }
 
+        /** An optional reagent lot number for the labware. */
+        public String getReagentLot() {
+            return this.reagentLot;
+        }
+
+        public void setReagentLot(String reagentLot) {
+            this.reagentLot = reagentLot;
+        }
+
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
@@ -135,20 +147,24 @@ public class ResultRequest {
             LabwareResult that = (LabwareResult) o;
             return (Objects.equals(this.barcode, that.barcode)
                     && Objects.equals(this.sampleResults, that.sampleResults)
-                    && Objects.equals(this.slotMeasurements, that.slotMeasurements));
+                    && Objects.equals(this.slotMeasurements, that.slotMeasurements)
+                    && this.costing == that.costing
+                    && Objects.equals(this.reagentLot, that.reagentLot));
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(barcode, sampleResults);
+            return Objects.hash(barcode, sampleResults, slotMeasurements, costing, reagentLot);
         }
 
         @Override
         public String toString() {
-            return BasicUtils.describe("LabwareResult")
+            return describe("LabwareResult")
                     .addRepr("barcode", barcode)
                     .add("sampleResults", sampleResults)
                     .add("slotMeasurements", slotMeasurements)
+                    .add("costing", costing)
+                    .addRepr("reagentLot", reagentLot)
                     .toString();
         }
     }
@@ -198,7 +214,7 @@ public class ResultRequest {
 
     @Override
     public String toString() {
-        return BasicUtils.describe("ResultRequest")
+        return describe("ResultRequest")
                 .add("labwareResults", labwareResults)
                 .addRepr("workNumber", workNumber)
                 .addRepr("operationType", operationType)

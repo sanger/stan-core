@@ -15,6 +15,7 @@ import javax.transaction.Transactional;
 import java.util.List;
 import java.util.Map;
 
+import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGet;
@@ -46,6 +47,8 @@ public class TestStainAndSubsequentMutations {
     private OperationCommentRepo opCommentRepo;
     @Autowired
     private StainTypeRepo stainTypeRepo;
+    @Autowired
+    private LabwareNoteRepo lwNoteRepo;
 
     @Transactional
     @Test
@@ -209,6 +212,12 @@ public class TestStainAndSubsequentMutations {
         assertThat(opComs).hasSize(1);
         OperationComment opCom = opComs.get(0);
         assertEquals(opCom.getComment().getId(), 1);
+        List<LabwareNote> notes = lwNoteRepo.findAllByOperationIdIn(List.of(opId));
+        assertThat(notes).hasSize(2);
+        Map<String, String> noteMap = notes.stream()
+                        .collect(toMap(LabwareNote::getName, LabwareNote::getValue));
+        assertEquals("Faculty", noteMap.get("costing"));
+        assertEquals("234567", noteMap.get("reagent lot"));
 
         return opId;
     }
