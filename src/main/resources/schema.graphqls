@@ -249,6 +249,7 @@ input BlockRegisterRequest {
 """A request to register one or more blocks of tissue."""
 input RegisterRequest {
     blocks: [BlockRegisterRequest!]!
+    workNumbers: [String!]!
 }
 
 """Information about a section of tissue (already taken from some a block tracked elsewhere) to register."""

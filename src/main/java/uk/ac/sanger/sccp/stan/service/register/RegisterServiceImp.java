@@ -6,6 +6,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.register.*;
 import uk.ac.sanger.sccp.stan.service.*;
+import uk.ac.sanger.sccp.stan.service.work.WorkService;
 
 import javax.persistence.EntityManager;
 import java.util.*;
@@ -24,14 +25,15 @@ public class RegisterServiceImp implements RegisterService {
     private final OperationTypeRepo opTypeRepo;
     private final LabwareService labwareService;
     private final OperationService operationService;
+    private final WorkService workService;
     private final RegisterClashChecker clashChecker;
 
     @Autowired
     public RegisterServiceImp(EntityManager entityManager, RegisterValidationFactory validationFactory,
-                              DonorRepo donorRepo, TissueRepo tissueRepo,
-                              SampleRepo sampleRepo, SlotRepo slotRepo,
+                              DonorRepo donorRepo, TissueRepo tissueRepo, SampleRepo sampleRepo, SlotRepo slotRepo,
                               OperationTypeRepo opTypeRepo,
-                              LabwareService labwareService, OperationService operationService, RegisterClashChecker clashChecker) {
+                              LabwareService labwareService, OperationService operationService, WorkService workService,
+                              RegisterClashChecker clashChecker) {
         this.entityManager = entityManager;
         this.validationFactory = validationFactory;
         this.donorRepo = donorRepo;
@@ -41,6 +43,7 @@ public class RegisterServiceImp implements RegisterService {
         this.opTypeRepo = opTypeRepo;
         this.labwareService = labwareService;
         this.operationService = operationService;
+        this.workService = workService;
         this.clashChecker = clashChecker;
     }
 
@@ -145,6 +148,8 @@ public class RegisterServiceImp implements RegisterService {
         OperationType opType = opTypeRepo.getByName("Register");
         BioState bioState = opType.getNewBioState();
 
+        List<Operation> ops = new ArrayList<>(request.getBlocks().size());
+
         for (BlockRegisterRequest block : request.getBlocks()) {
             Tissue tissue = tissues.get(block.getExternalIdentifier().toUpperCase());
             Sample sample = sampleRepo.save(new Sample(null, null, tissue, bioState));
@@ -157,7 +162,11 @@ public class RegisterServiceImp implements RegisterService {
             slot = slotRepo.save(slot);
             entityManager.refresh(labware);
             labwareList.add(labware);
-            operationService.createOperationInPlace(opType, user, slot, sample);
+            ops.add(operationService.createOperationInPlace(opType, user, slot, sample));
+        }
+
+        if (!ops.isEmpty() && validation.getWorks()!=null && !validation.getWorks().isEmpty()) {
+            workService.link(validation.getWorks(), ops);
         }
 
         return new RegisterResult(labwareList);

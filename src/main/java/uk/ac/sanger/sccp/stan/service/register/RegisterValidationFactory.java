@@ -7,6 +7,7 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.register.RegisterRequest;
 import uk.ac.sanger.sccp.stan.request.register.SectionRegisterRequest;
 import uk.ac.sanger.sccp.stan.service.Validator;
+import uk.ac.sanger.sccp.stan.service.work.WorkService;
 
 /**
  * Factory for {@link RegisterValidation}
@@ -30,6 +31,7 @@ public class RegisterValidationFactory {
     private final Validator<String> visiumLpSlideBarcodeValidation;
     private final Validator<String> replicateValidator;
     private final TissueFieldChecker tissueFieldChecker;
+    private final WorkService workService;
 
     @Autowired
     public RegisterValidationFactory(DonorRepo donorRepo, HmdmcRepo hmdmcRepo, TissueTypeRepo ttRepo,
@@ -41,7 +43,7 @@ public class RegisterValidationFactory {
                                      @Qualifier("externalBarcodeValidator") Validator<String> externalBarcodeValidation,
                                      @Qualifier("visiumLPBarcodeValidator") Validator<String> visiumLpSlideBarcodeValidation,
                                      @Qualifier("replicateValidator") Validator<String> replicateValidator,
-                                     TissueFieldChecker tissueFieldChecker) {
+                                     TissueFieldChecker tissueFieldChecker, WorkService workService) {
         this.donorRepo = donorRepo;
         this.hmdmcRepo = hmdmcRepo;
         this.ttRepo = ttRepo;
@@ -58,12 +60,13 @@ public class RegisterValidationFactory {
         this.visiumLpSlideBarcodeValidation = visiumLpSlideBarcodeValidation;
         this.replicateValidator = replicateValidator;
         this.tissueFieldChecker = tissueFieldChecker;
+        this.workService = workService;
     }
 
     public RegisterValidation createRegisterValidation(RegisterRequest request) {
         return new RegisterValidationImp(request, donorRepo, hmdmcRepo, ttRepo, ltRepo, mediumRepo,
                 fixativeRepo, tissueRepo, speciesRepo, donorNameValidation, externalNameValidation, replicateValidator,
-                tissueFieldChecker);
+                tissueFieldChecker, workService);
     }
 
     public SectionRegisterValidation createSectionRegisterValidation(SectionRegisterRequest request) {

@@ -1,11 +1,8 @@
 package uk.ac.sanger.sccp.stan.request.register;
 
-import com.google.common.base.MoreObjects;
-
 import java.util.List;
-import java.util.Objects;
 
-import static java.util.Collections.emptyList;
+import static uk.ac.sanger.sccp.utils.BasicUtils.describe;
 
 /**
  * The information required to register some blocks.
@@ -13,13 +10,19 @@ import static java.util.Collections.emptyList;
  */
 public class RegisterRequest {
     private List<BlockRegisterRequest> blocks;
+    private List<String> workNumbers;
 
     public RegisterRequest() {
-        this(emptyList());
+        this(null, null);
     }
 
     public RegisterRequest(List<BlockRegisterRequest> blocks) {
-        this.blocks = blocks;
+        this(blocks, null);
+    }
+
+    public RegisterRequest(List<BlockRegisterRequest> blocks, List<String> workNumbers) {
+        setBlocks(blocks);
+        setWorkNumbers(workNumbers);
     }
 
     public List<BlockRegisterRequest> getBlocks() {
@@ -27,7 +30,15 @@ public class RegisterRequest {
     }
 
     public void setBlocks(List<BlockRegisterRequest> blocks) {
-        this.blocks = blocks;
+        this.blocks = (blocks==null ? List.of() : blocks);
+    }
+
+    public List<String> getWorkNumbers() {
+        return this.workNumbers;
+    }
+
+    public void setWorkNumbers(List<String> workNumbers) {
+        this.workNumbers = (workNumbers==null ? List.of() : workNumbers);
     }
 
     @Override
@@ -35,18 +46,19 @@ public class RegisterRequest {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         RegisterRequest that = (RegisterRequest) o;
-        return (Objects.equals(this.blocks, that.blocks));
+        return (this.blocks.equals(that.blocks) && this.workNumbers.equals(that.workNumbers));
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(blocks);
+        return 31*this.blocks.hashCode() + this.workNumbers.hashCode();
     }
 
     @Override
     public String toString() {
-        return MoreObjects.toStringHelper(this)
+        return describe(this)
                 .add("blocks", blocks)
+                .add("workNumbers", workNumbers)
                 .toString();
     }
 }

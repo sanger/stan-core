@@ -17,8 +17,7 @@ import java.util.*;
 
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
-import static uk.ac.sanger.sccp.utils.BasicUtils.newArrayList;
-import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
+import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 @Service
 public class WorkServiceImp implements WorkService {
@@ -191,6 +190,41 @@ public class WorkServiceImp implements WorkService {
         work.setOperationIds(opIds);
         work.setSampleSlotIds(ssIds);
         return workRepo.save(work);
+    }
+
+    @Override
+    public void link(Collection<Work> works, Collection<Operation> operations) {
+        if (operations.isEmpty() || works.isEmpty()) {
+            return;
+        }
+        if (works.size()==1) {
+            link(works.iterator().next(), operations);
+            return;
+        }
+        List<String> inactiveWorkNumbers = works.stream()
+                .filter(work -> !work.isUsable())
+                .map(Work::getWorkNumber)
+                .collect(toList());
+        if (!inactiveWorkNumbers.isEmpty()) {
+            throw new IllegalArgumentException("Specified work cannot be used because it is not active: "+inactiveWorkNumbers);
+        }
+        Set<Integer> opIds = operations.stream().map(Operation::getId).collect(toLinkedHashSet());
+        Set<SampleSlotId> ssIds = operations.stream()
+                .flatMap(op -> op.getActions().stream()
+                        .map(a -> new SampleSlotId(a.getSample().getId(), a.getDestination().getId())))
+                .collect(toLinkedHashSet());
+
+        for (Work work : works) {
+            Set<Integer> workOpIds = new LinkedHashSet<>(work.getOperationIds());
+            workOpIds.addAll(opIds);
+            work.setOperationIds(new ArrayList<>(workOpIds));
+
+            Set<SampleSlotId> workSsIds = new LinkedHashSet<>(work.getSampleSlotIds());
+            workSsIds.addAll(ssIds);
+            work.setSampleSlotIds(new ArrayList<>(workSsIds));
+        }
+
+        workRepo.saveAll(works);
     }
 
     @Override
