@@ -96,7 +96,7 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
             ConfirmLabwareResult clr = confirmLabware(user, csl, lw, plan);
             var notes = plansNotes.get(plan.getId());
             if (notes!=null && !notes.isEmpty()) {
-                updateNotes(notes, clr.operation.getId());
+                updateNotes(notes, clr.operation.getId(), lw.getId());
             }
             // Assumption:
             // when we create a new sample, that sample is not simultaneously created in several bits of labware
@@ -128,10 +128,16 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
      * Updates the labware notes to have the given operation id
      * @param notes the notes to update
      * @param opId the operation id
+     * @param labwareId the labware id for notes being updated
      */
-    public void updateNotes(Collection<LabwareNote> notes, Integer opId) {
-        notes.forEach(note -> note.setOperationId(opId));
-        lwNoteRepo.saveAll(notes);
+    public void updateNotes(Collection<LabwareNote> notes, Integer opId, Integer labwareId) {
+        List<LabwareNote> newNotes = notes.stream()
+                .filter(note -> labwareId.equals(note.getLabwareId()))
+                .peek(note -> note.setOperationId(opId))
+                .collect(toList());
+        if (!newNotes.isEmpty()) {
+            lwNoteRepo.saveAll(newNotes);
+        }
     }
 
     /**

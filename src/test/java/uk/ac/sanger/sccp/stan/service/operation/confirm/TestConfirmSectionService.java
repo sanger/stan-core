@@ -161,7 +161,7 @@ public class TestConfirmSectionService {
 
         doNothing().when(service).recordComments(any(), any(), any());
         doNothing().when(service).updateSourceBlocks(any());
-        doNothing().when(service).updateNotes(any(), any());
+        doNothing().when(service).updateNotes(any(), any(), any());
 
         ConfirmSectionRequest request = new ConfirmSectionRequest(List.of(csl1, csl2), "SGP9000");
         ConfirmSectionValidation validation = new ConfirmSectionValidation(UCMap.from(Labware::getBarcode, lw1, lw2),
@@ -178,7 +178,7 @@ public class TestConfirmSectionService {
         verify(mockWorkService).link(request.getWorkNumber(), result.getOperations());
         verify(service).updateSourceBlocks(result.getOperations());
         verify(service).loadPlanNotes(Set.of(10,11));
-        verify(service).updateNotes(planNotes, op1.getId());
+        verify(service).updateNotes(planNotes, op1.getId(), lw1.getId());
     }
 
     @Test
@@ -201,9 +201,10 @@ public class TestConfirmSectionService {
                 planNote(61, 27, 10, "note1", "value1"),
                 planNote(62, 28, 10, "note2", "value2"));
         final Integer opId = 600;
-        service.updateNotes(planNotes, opId);
-        verify(mockLwNoteRepo).saveAll(planNotes);
-        planNotes.forEach(note -> assertEquals(opId, note.getOperationId()));
+        service.updateNotes(planNotes, opId, 28);
+        verify(mockLwNoteRepo).saveAll(planNotes.subList(1,2));
+        assertEquals(opId, planNotes.get(1).getOperationId());
+        assertNull(planNotes.get(0).getOperationId());
     }
 
     @ValueSource(booleans={false, true})
