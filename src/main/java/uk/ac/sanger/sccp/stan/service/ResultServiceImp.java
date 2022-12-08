@@ -8,7 +8,8 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.request.ResultRequest.LabwareResult;
 import uk.ac.sanger.sccp.stan.request.ResultRequest.SampleResult;
-import uk.ac.sanger.sccp.stan.service.measurements.*;
+import uk.ac.sanger.sccp.stan.service.measurements.SlotMeasurementValidator;
+import uk.ac.sanger.sccp.stan.service.measurements.SlotMeasurementValidatorFactory;
 import uk.ac.sanger.sccp.stan.service.operation.OpSearcher;
 import uk.ac.sanger.sccp.stan.service.sanitiser.Sanitiser;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
@@ -16,8 +17,10 @@ import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
+import java.util.function.Consumer;
 
 import static java.util.stream.Collectors.toList;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 
 @Service
 public class ResultServiceImp extends BaseResultService implements ResultService {
@@ -32,6 +35,7 @@ public class ResultServiceImp extends BaseResultService implements ResultService
     private final WorkService workService;
     private final CommentValidationService commentValidationService;
     private final SlotMeasurementValidatorFactory slotMeasurementValidatorFactory;
+    private final Validator<String> lotValidator;
 
     @Autowired
     public ResultServiceImp(OperationTypeRepo opTypeRepo, LabwareRepo lwRepo, OperationRepo opRepo,
@@ -42,7 +46,8 @@ public class ResultServiceImp extends BaseResultService implements ResultService
                             OperationService opService, WorkService workService,
                             CommentValidationService commentValidationService,
                             SlotMeasurementValidatorFactory slotMeasurementValidatorFactory,
-                            OpSearcher opSearcher) {
+                            OpSearcher opSearcher,
+                            @Qualifier("lotNumberValidator") Validator<String> lotValidator) {
         super(labwareValidatorFactory, opTypeRepo, opRepo, lwRepo, opSearcher);
         this.opCommentRepo = opCommentRepo;
         this.resOpRepo = resOpRepo;
@@ -53,6 +58,7 @@ public class ResultServiceImp extends BaseResultService implements ResultService
         this.workService = workService;
         this.commentValidationService = commentValidationService;
         this.slotMeasurementValidatorFactory = slotMeasurementValidatorFactory;
+        this.lotValidator = lotValidator;
     }
 
     @Override
@@ -96,6 +102,7 @@ public class ResultServiceImp extends BaseResultService implements ResultService
         }
         UCMap<Labware> labware = validateLabware(problems, request.getLabwareResults());
         validateLabwareContents(problems, labware, request.getLabwareResults());
+        validateLotNumbers(problems, request.getLabwareResults());
         UCMap<List<SlotMeasurementRequest>> measurementMap = validateMeasurements(problems, labware, request.getLabwareResults());
         Map<Integer, Comment> commentMap = validateComments(problems, request.getLabwareResults());
         Work work = workService.validateUsableWork(problems, request.getWorkNumber());
@@ -144,6 +151,20 @@ public class ResultServiceImp extends BaseResultService implements ResultService
                 validateSampleResult(problems, lw, slotIds, sr);
             }
         }
+    }
+
+    /**
+     * Checks the lot numbers, where present
+     * @param problems receptacle for problems
+     * @param lrs labware results
+     */
+    public void validateLotNumbers(Collection<String> problems, Collection<LabwareResult> lrs) {
+        final Consumer<String> addProblem = problems::add;
+        lrs.stream()
+                .map(LabwareResult::getReagentLot)
+                .filter(lot -> lot!=null && !lot.isEmpty())
+                .distinct()
+                .forEach(lot -> lotValidator.validate(lot, addProblem));
     }
 
     /**
@@ -311,6 +332,9 @@ public class ResultServiceImp extends BaseResultService implements ResultService
             labwareList.add(lw);
             if (lr.getCosting()!=null) {
                 notes.add(new LabwareNote(null, lw.getId(), op.getId(), "costing", lr.getCosting().name()));
+            }
+            if (!nullOrEmpty(lr.getReagentLot())) {
+                notes.add(new LabwareNote(null, lw.getId(), op.getId(), "reagent lot", lr.getReagentLot()));
             }
         }
 

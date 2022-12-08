@@ -1082,6 +1082,8 @@ input LabwareResult {
     slotMeasurements: [SlotMeasurementRequest!]
     """An optional costing for the labware."""
     costing: SlideCosting
+    """A reagent lot number to associate with the labware."""
+    reagentLot: String
 }
 
 """A request to record results."""
