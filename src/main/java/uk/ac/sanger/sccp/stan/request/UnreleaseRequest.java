@@ -4,8 +4,6 @@ import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import java.util.*;
 
-import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
-
 /**
  * Request to unrelease some labware.
  * @author dr6
@@ -14,16 +12,18 @@ public class UnreleaseRequest {
     public static class UnreleaseLabware {
         private String barcode;
         private Integer highestSection;
+        private String workNumber;
 
         public UnreleaseLabware() {}
 
-        public UnreleaseLabware(String barcode, Integer highestSection) {
+        public UnreleaseLabware(String barcode, Integer highestSection, String workNumber) {
             this.barcode = barcode;
             this.highestSection = highestSection;
+            this.workNumber = workNumber;
         }
 
         public UnreleaseLabware(String barcode) {
-            this(barcode, null);
+            this(barcode, null, null);
         }
 
         public String getBarcode() {
@@ -42,25 +42,37 @@ public class UnreleaseRequest {
             this.highestSection = highestSection;
         }
 
+        public String getWorkNumber() {
+            return this.workNumber;
+        }
+
+        public void setWorkNumber(String workNumber) {
+            this.workNumber = workNumber;
+        }
+
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             UnreleaseLabware that = (UnreleaseLabware) o;
             return (Objects.equals(this.barcode, that.barcode)
-                    && Objects.equals(this.highestSection, that.highestSection));
+                    && Objects.equals(this.highestSection, that.highestSection)
+                    && Objects.equals(this.workNumber, that.workNumber));
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(barcode, highestSection);
+            return Objects.hash(barcode, highestSection, workNumber);
         }
 
         @Override
         public String toString() {
-            return highestSection == null ?
-                    String.format("(barcode=%s)", repr(barcode)) :
-                    String.format("(barcode=%s, highestSection=%s)", repr(barcode), highestSection);
+            return BasicUtils.describe("")
+                    .add("barcode", barcode)
+                    .addIfNotNull("highestSection", highestSection)
+                    .addIfNotNull("workNumber", workNumber)
+                    .reprStringValues()
+                    .toString();
         }
     }
 
