@@ -9,25 +9,35 @@ import uk.ac.sanger.sccp.utils.UCMap;
 import java.util.*;
 import java.util.stream.Stream;
 
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
+import static uk.ac.sanger.sccp.utils.BasicUtils.pluralise;
+
 /**
  * @author dr6
  */
 public class PlanValidationImp implements PlanValidation {
+    static final Set<String> LOT_AND_COSTING_LW_TYPES_UC = Set.of(
+            "VISIUM TO", "VISIUM LP", "VISIUM ADH"
+    );
+
     final LabwareRepo labwareRepo;
     final LabwareTypeRepo ltRepo;
     final OperationTypeRepo opTypeRepo;
     final Validator<String> prebarcodeValidator;
+    final Validator<String> lotValidator;
 
     final PlanRequest request;
     final Set<String> problems = new LinkedHashSet<>();
 
     public PlanValidationImp(PlanRequest request, LabwareRepo labwareRepo, LabwareTypeRepo ltRepo,
-                             OperationTypeRepo opTypeRepo, Validator<String> prebarcodeValidator) {
+                             OperationTypeRepo opTypeRepo, Validator<String> prebarcodeValidator,
+                             Validator<String> lotValidator) {
         this.labwareRepo = labwareRepo;
         this.ltRepo = ltRepo;
         this.opTypeRepo = opTypeRepo;
         this.request = request;
         this.prebarcodeValidator = prebarcodeValidator;
+        this.lotValidator = lotValidator;
     }
 
     @Override
@@ -123,7 +133,7 @@ public class PlanValidationImp implements PlanValidation {
             addProblem("No labware are specified in the plan request.");
             return;
         }
-        Map<String, LabwareType> labwareTypeMap = new HashMap<>();
+        UCMap<LabwareType> labwareTypeMap = new UCMap<>();
         Set<String> unknownTypes = new LinkedHashSet<>();
         Set<String> seenBarcodes = new HashSet<>();
         for (PlanRequestLabware lw : request.getLabware()) {
@@ -142,10 +152,10 @@ public class PlanValidationImp implements PlanValidation {
                 addProblem("Missing labware type.");
                 continue;
             }
-            String ltn = lw.getLabwareType().toUpperCase();
+            String ltn = lw.getLabwareType();
             LabwareType lt = labwareTypeMap.get(ltn);
             if (lt==null) {
-                if (unknownTypes.contains(ltn)) {
+                if (unknownTypes.contains(ltn.toUpperCase())) {
                     continue;
                 }
                 Optional<LabwareType> optLt = ltRepo.findByName(ltn);
@@ -175,6 +185,63 @@ public class PlanValidationImp implements PlanValidation {
         if (!unknownTypes.isEmpty()) {
             addProblem("Unknown labware type%s: %s", unknownTypes.size()==1 ? "" : "s", unknownTypes);
         }
+        validateLotAndCostings(labwareTypeMap);
+    }
+
+    private enum LotAndCostingProblem {
+        Lot_number_not_expected,
+        Costing_not_expected,
+        Lot_number_required,
+        Costing_required,
+        ;
+
+        void add(Map<LotAndCostingProblem, Set<String>> errors, LabwareType lt) {
+            errors.computeIfAbsent(this, k -> new LinkedHashSet<>()).add(lt.getName());
+        }
+
+        @Override
+        public String toString() {
+            return this.name().replace('_',' ');
+        }
+    }
+
+    public void validateLotAndCostings(UCMap<LabwareType> labwareTypeMap) {
+        Map<LotAndCostingProblem, Set<String>> errors = new EnumMap<>(LotAndCostingProblem.class);
+        for (var pl : request.getLabware()) {
+            LabwareType lt = labwareTypeMap.get(pl.getLabwareType());
+            if (lt==null) {
+                continue;
+            }
+            if (expectLotAndCosting(lt)) {
+                if (nullOrEmpty(pl.getLotNumber())) {
+                    LotAndCostingProblem.Lot_number_required.add(errors, lt);
+                } else {
+                    lotValidator.validate(pl.getLotNumber(), this::addProblem);
+                }
+                if (pl.getCosting()==null) {
+                    LotAndCostingProblem.Costing_required.add(errors, lt);
+                }
+            } else {
+                if (!nullOrEmpty(pl.getLotNumber())) {
+                    LotAndCostingProblem.Lot_number_not_expected.add(errors, lt);
+                }
+                if (pl.getCosting()!=null) {
+                    LotAndCostingProblem.Costing_not_expected.add(errors, lt);
+                }
+            }
+        }
+        for (var entry : errors.entrySet()) {
+            var names = entry.getValue();
+            if (names!=null && !names.isEmpty()) {
+                var problem = entry.getKey();
+                addProblem(problem + pluralise(" for labware type{s}: ", names.size()) + names);
+            }
+        }
+
+    }
+
+    public boolean expectLotAndCosting(LabwareType lt) {
+        return LOT_AND_COSTING_LW_TYPES_UC.contains(lt.getName().toUpperCase());
     }
 
     public OperationType validateOperation() {

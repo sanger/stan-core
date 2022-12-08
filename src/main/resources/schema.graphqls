@@ -407,11 +407,16 @@ input PlanRequestLabware {
     labwareType: String!
     """The barcode of the new labware, if the user needs to specify it."""
     barcode: String
+    """The lot number of the new labware, if any."""
+    lotNumber: String
+    """The costing of the labware, if any."""
+    costing: SlideCosting
     """The actions, specifying which samples are transferred between which slots."""
     actions: [PlanRequestAction!]!
 }
 
 """A request to create a plan operation."""
+
 input PlanRequest {
     """The name of the type of operation we are planning."""
     operationType: String!

@@ -9,11 +9,11 @@ import org.springframework.test.context.ActiveProfiles;
 import uk.ac.sanger.sccp.stan.EntityCreator;
 import uk.ac.sanger.sccp.stan.GraphQLTester;
 import uk.ac.sanger.sccp.stan.model.*;
+import uk.ac.sanger.sccp.stan.repo.LabwareNoteRepo;
 
 import javax.persistence.EntityManager;
 import javax.transaction.Transactional;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.IntStream;
 
 import static java.util.stream.Collectors.toList;
@@ -37,6 +37,8 @@ public class TestPlanAndRecordSectionMutations {
     private EntityCreator entityCreator;
     @Autowired
     private EntityManager entityManager;
+    @Autowired
+    private LabwareNoteRepo lwNoteRepo;
 
     @Test
     @Transactional
@@ -70,7 +72,7 @@ public class TestPlanAndRecordSectionMutations {
         for (String barcode : barcodes) {
             assertNotNull(barcode);
         }
-        assertEquals("Slide", chainGet(planResultLabware, 0, "labwareType", "name"));
+        assertEquals("Visium TO", chainGet(planResultLabware, 0, "labwareType", "name"));
         for (int i = 1; i < 3; ++i) {
             assertEquals(LabwareType.FETAL_WASTE_NAME, chainGet(planResultLabware, i, "labwareType", "name"));
         }
@@ -147,7 +149,7 @@ public class TestPlanAndRecordSectionMutations {
         assertEquals(3, resultLabware.size());
         assertEquals(barcode, chainGet(resultLabware, 0, "barcode"));
         List<?> slots = chainGet(resultLabware, 0, "slots");
-        assertEquals(6, slots.size()); // Slide has 6 slots
+        assertEquals(8, slots.size());
 
         List<Map<String, ?>> a1Samples = chainGetList(slots.stream()
                 .filter(sd -> chainGet(sd, "address").equals("A1"))
@@ -188,6 +190,9 @@ public class TestPlanAndRecordSectionMutations {
 
         assertEquals(expectedSourceLabwareIds.length, actions.size());
         int destLabwareId = -1;
+        List<Integer> opIds = resultOps.stream()
+                .map(ro -> (Integer) ro.get("id"))
+                .collect(toList());
         for (int i = 0; i < expectedSourceLabwareIds.length; ++i) {
             Map<String, ?> action = actions.get(i);
             assertEquals("A1", chainGet(action, "source", "address"));
@@ -244,6 +249,17 @@ public class TestPlanAndRecordSectionMutations {
         entityManager.refresh(work);
         assertThat(work.getOperationIds()).hasSize(3);
         assertThat(work.getSampleSlotIds()).hasSize(6);
+
+        List<LabwareNote> notes = lwNoteRepo.findAllByOperationIdIn(opIds);
+        assertThat(notes).hasSize(2);
+        Map<String, String> noteMap = new HashMap<>(2);
+        for (int ni = 0; ni < 2; ++ni) {
+            LabwareNote note = notes.get(ni);
+            assertEquals(opIds.get(0), note.getOperationId());
+            assertEquals(destLabwareId, note.getLabwareId());
+            noteMap.put(note.getName(), note.getValue());
+        }
+        assertEquals(Map.of("costing", "SGP", "lot", "1234567"), noteMap);
     }
 
     private static StringBuilder sbReplace(StringBuilder sb, String original, String replacement) {

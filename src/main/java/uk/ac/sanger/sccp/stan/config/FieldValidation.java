@@ -246,6 +246,11 @@ public class FieldValidation {
     }
 
     @Bean
+    public Validator<String> lotNumberValidator() {
+        return new StringValidator("Lot number", 6, 7, CharacterType.DIGIT);
+    }
+
+    @Bean
     public Clock clock() {
         return Clock.systemUTC();
     }

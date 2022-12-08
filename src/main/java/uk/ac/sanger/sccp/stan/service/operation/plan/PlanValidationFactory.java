@@ -16,17 +16,20 @@ public class PlanValidationFactory {
     private final LabwareTypeRepo ltRepo;
     private final OperationTypeRepo opTypeRepo;
     private final Validator<String> prebarcodeValidator;
+    private final Validator<String> lotNumberValidator;
 
     @Autowired
     public PlanValidationFactory(LabwareRepo lwRepo, LabwareTypeRepo ltRepo, OperationTypeRepo opTypeRepo,
-                                 @Qualifier("visiumLPBarcodeValidator") Validator<String> prebarcodeValidator) {
+                                 @Qualifier("visiumLPBarcodeValidator") Validator<String> prebarcodeValidator,
+                                 @Qualifier("lotNumberValidator") Validator<String> lotNumberValidator) {
         this.lwRepo = lwRepo;
         this.ltRepo = ltRepo;
         this.opTypeRepo = opTypeRepo;
         this.prebarcodeValidator = prebarcodeValidator;
+        this.lotNumberValidator = lotNumberValidator;
     }
 
     public PlanValidation createPlanValidation(PlanRequest request) {
-        return new PlanValidationImp(request, lwRepo, ltRepo, opTypeRepo, prebarcodeValidator);
+        return new PlanValidationImp(request, lwRepo, ltRepo, opTypeRepo, prebarcodeValidator, lotNumberValidator);
     }
 }

@@ -12,4 +12,5 @@ import java.util.List;
  */
 public interface LabwareNoteRepo extends CrudRepository<LabwareNote, Integer> {
     List<LabwareNote> findAllByOperationIdIn(Collection<Integer> opIds);
+    List<LabwareNote> findAllByPlanIdIn(Collection<Integer> planIds);
 }

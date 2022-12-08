@@ -39,6 +39,7 @@ public class TestPlanService {
     private OperationTypeRepo mockOpTypeRepo;
     private LabwareRepo mockLwRepo;
     private LabwareTypeRepo mockLtRepo;
+    private LabwareNoteRepo mockLwNoteRepo;
     private BioStateRepo mockBsRepo;
 
     private User user;
@@ -53,6 +54,7 @@ public class TestPlanService {
         mockOpTypeRepo = mock(OperationTypeRepo.class);
         mockLwRepo = mock(LabwareRepo.class);
         mockLtRepo = mock(LabwareTypeRepo.class);
+        mockLwNoteRepo = mock(LabwareNoteRepo.class);
         mockBsRepo = mock(BioStateRepo.class);
 
         user = EntityFactory.getUser();
@@ -60,7 +62,7 @@ public class TestPlanService {
         when(mockPlanValidationFactory.createPlanValidation(any())).thenReturn(mockPlanValidation);
 
         planService = spy(new PlanServiceImp(mockPlanValidationFactory, mockLwService, mockPlanRepo,
-                mockPlanActionRepo, mockOpTypeRepo, mockLwRepo, mockLtRepo, mockBsRepo));
+                mockPlanActionRepo, mockOpTypeRepo, mockLwRepo, mockLtRepo, mockLwNoteRepo, mockBsRepo));
     }
 
     @Test
@@ -132,6 +134,9 @@ public class TestPlanService {
         final List<PlanRequestLabware> prlws = destinations.stream()
                 .map(unused -> new PlanRequestLabware())
                 .collect(toList());
+        prlws.get(0).setCosting(SlideCosting.SGP);
+        prlws.get(0).setLotNumber("lot1");
+        prlws.get(1).setCosting(SlideCosting.Faculty);
         final PlanRequest request = new PlanRequest("Section", prlws);
         PlanResult result = planService.executePlanRequest(user, request);
 
@@ -147,6 +152,11 @@ public class TestPlanService {
         verify(planService, times(request.getLabware().size())).createActions(any(), anyInt(), same(sources), any(), any());
         verify(planService).createActions(request.getLabware().get(0), plans[0].getId(), sources, destinations.get(0), opBs);
         verify(planService).createActions(request.getLabware().get(1), plans[1].getId(), sources, destinations.get(1), opBs);
+        verify(mockLwNoteRepo).saveAll(List.of(
+                LabwareNote.noteForPlan(destinations.get(0).getId(), plans[0].getId(), "costing", "SGP"),
+                LabwareNote.noteForPlan(destinations.get(0).getId(), plans[0].getId(), "lot", "lot1"),
+                LabwareNote.noteForPlan(destinations.get(1).getId(), plans[1].getId(), "costing", "Faculty")
+        ));
     }
 
     @ParameterizedTest
@@ -206,6 +216,7 @@ public class TestPlanService {
         verify(planService).createActions(request.getLabware().get(0), plans[0].getId(), sources, destinations.get(0), opBs);
         verify(planService).createActions(request.getLabware().get(1), plans[1].getId(), sources, destinations.get(1), opBs);
         verify(planService).createActions(request.getLabware().get(2), plans[2].getId(), sources, destinations.get(2), fwBs);
+        verify(mockLwNoteRepo, never()).saveAll(any());
     }
 
     @Test

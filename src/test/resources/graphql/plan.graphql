@@ -1,8 +1,10 @@
 mutation {
     plan(request:{
-        operationType: "Section",
+        operationType: "Section"
         labware:[{
-            labwareType:"Slide",
+            labwareType:"Visium TO"
+            costing: SGP
+            lotNumber: "1234567"
             actions:[
                 {
                     source:{ barcode:"STAN-B70C" }

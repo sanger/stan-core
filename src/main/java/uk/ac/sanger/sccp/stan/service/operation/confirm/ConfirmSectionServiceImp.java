@@ -34,6 +34,7 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
     private final SampleRepo sampleRepo;
     private final CommentRepo commentRepo;
     private final OperationCommentRepo opCommentRepo;
+    private final LabwareNoteRepo lwNoteRepo;
 
     private final EntityManager entityManager;
 
@@ -42,7 +43,7 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
                                     WorkService workService,
                                     LabwareRepo lwRepo, SlotRepo slotRepo, MeasurementRepo measurementRepo,
                                     SampleRepo sampleRepo, CommentRepo commentRepo, OperationCommentRepo opCommentRepo,
-                                    EntityManager entityManager) {
+                                    LabwareNoteRepo lwNoteRepo, EntityManager entityManager) {
         this.validationService = validationService;
         this.opService = opService;
         this.workService = workService;
@@ -52,6 +53,7 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
         this.sampleRepo = sampleRepo;
         this.commentRepo = commentRepo;
         this.opCommentRepo = opCommentRepo;
+        this.lwNoteRepo = lwNoteRepo;
         this.entityManager = entityManager;
     }
 
@@ -78,6 +80,10 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
         final int nlw = request.getLabware().size();
         List<Operation> operations = new ArrayList<>(nlw);
         List<Labware> resultLabware = new ArrayList<>(nlw);
+        Set<Integer> planIds = lwPlans.values().stream()
+                .map(PlanOperation::getId)
+                .collect(toSet());
+        var plansNotes = loadPlanNotes(planIds);
         for (ConfirmSectionLabware csl : request.getLabware()) {
             Labware lw = labwareMap.get(csl.getBarcode());
             if (lw==null) {
@@ -88,6 +94,10 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
                 throw new IllegalArgumentException("No plan found for labware " + lw.getBarcode());
             }
             ConfirmLabwareResult clr = confirmLabware(user, csl, lw, plan);
+            var notes = plansNotes.get(plan.getId());
+            if (notes!=null && !notes.isEmpty()) {
+                updateNotes(notes, clr.operation.getId(), lw.getId());
+            }
             // Assumption:
             // when we create a new sample, that sample is not simultaneously created in several bits of labware
             //  (which might be confirmed in several operations)
@@ -102,6 +112,32 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
         }
         updateSourceBlocks(operations);
         return new OperationResult(operations, resultLabware);
+    }
+
+    /**
+     * Loads the labware notes for the given plan ids.
+     * @param planIds the labware notes to look up
+     * @return a map from plan id to list of applicable labware notes
+     */
+    public Map<Integer, List<LabwareNote>> loadPlanNotes(Collection<Integer> planIds) {
+        List<LabwareNote> notes = lwNoteRepo.findAllByPlanIdIn(planIds);
+        return (notes.isEmpty() ? Map.of() : notes.stream().collect(groupingBy(LabwareNote::getPlanId)));
+    }
+
+    /**
+     * Updates the labware notes to have the given operation id
+     * @param notes the notes to update
+     * @param opId the operation id
+     * @param labwareId the labware id for notes being updated
+     */
+    public void updateNotes(Collection<LabwareNote> notes, Integer opId, Integer labwareId) {
+        List<LabwareNote> newNotes = notes.stream()
+                .filter(note -> labwareId.equals(note.getLabwareId()))
+                .peek(note -> note.setOperationId(opId))
+                .collect(toList());
+        if (!newNotes.isEmpty()) {
+            lwNoteRepo.saveAll(newNotes);
+        }
     }
 
     /**
