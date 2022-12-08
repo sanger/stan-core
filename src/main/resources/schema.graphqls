@@ -507,6 +507,8 @@ input SlotCopyDestination {
     bioState: String
     """The costing of the slide, if specified."""
     costing: SlideCosting
+    """The lot number of the slide, if specified."""
+    lotNumber: String
     """The barcode of the new labware, if it is prebarcoded."""
     preBarcode: String
     """The specifications of which source slots are being copied into what addresses in the destination labware."""

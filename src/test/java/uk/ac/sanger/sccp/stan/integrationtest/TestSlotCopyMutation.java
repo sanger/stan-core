@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.stream.IntStream;
 
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -154,11 +155,11 @@ public class TestSlotCopyMutation {
         assertTrue(newLabware.getSlot(cytAssist ? D1 : A2).getSamples().stream().allMatch(sam -> sam.getBioState().getName().equals(newBsName)));
         if (cytAssist) {
             List<LabwareNote> notes = lwNoteRepo.findAllByOperationIdIn(List.of(opId));
-            assertThat(notes).hasSize(1);
-            LabwareNote note = notes.get(0);
-            assertEquals("costing", note.getName());
-            assertEquals("Faculty", note.getValue());
-            assertEquals(destLabwareId, note.getLabwareId());
+            assertThat(notes).hasSize(2);
+            Map<String, String> noteMap = notes.stream().collect(toMap(LabwareNote::getName, LabwareNote::getValue));
+            notes.forEach(note -> assertEquals(destLabwareId, note.getLabwareId()));
+            assertEquals("Faculty", noteMap.get("costing"));
+            assertEquals("1234567", noteMap.get("lot"));
         }
 
         verifyNoInteractions(mockStorelightClient);
