@@ -51,10 +51,8 @@ public class OpSearcherImp implements OpSearcher {
         if (ops.isEmpty()) {
             return Map.of();
         }
-        Map<Integer, Operation> destSlotOp = ops.stream()
-                .flatMap(op -> op.getActions().stream()
-                        .map(ac -> Map.entry(ac.getDestination().getId(), op))
-                ).collect(toMap(Map.Entry::getKey, Map.Entry::getValue));
+        Map<Integer, Operation> destSlotOp = new HashMap<>(slotIds.size());
+        ops.forEach(op -> op.getActions().forEach(ac -> destSlotOp.put(ac.getDestination().getId(), op)));
         Map<Integer, Operation> lwOp = new HashMap<>(labware.size());
         for (Labware lw : labware) {
             Operation op = selectOp(lw, ancestry, destSlotOp);
