@@ -52,6 +52,7 @@ mutation {
                 ]
             }
         ]
+        workNumber: "SGP-X"
     }) {
         labware {
             barcode

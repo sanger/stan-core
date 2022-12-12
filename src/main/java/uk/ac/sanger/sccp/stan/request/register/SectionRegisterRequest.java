@@ -10,11 +10,13 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.newArrayList;
  */
 public class SectionRegisterRequest {
     private List<SectionRegisterLabware> labware;
+    private String workNumber;
 
     public SectionRegisterRequest() {}
 
-    public SectionRegisterRequest(Collection<SectionRegisterLabware> labware) {
+    public SectionRegisterRequest(Collection<SectionRegisterLabware> labware, String workNumber) {
         setLabware(labware);
+        setWorkNumber(workNumber);
     }
 
     public List<SectionRegisterLabware> getLabware() {
@@ -25,21 +27,29 @@ public class SectionRegisterRequest {
         this.labware = newArrayList(labware);
     }
 
+    public String getWorkNumber() {
+        return this.workNumber;
+    }
+
+    public void setWorkNumber(String workNumber) {
+        this.workNumber = workNumber;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         SectionRegisterRequest that = (SectionRegisterRequest) o;
-        return Objects.equals(this.labware, that.labware);
+        return Objects.equals(this.labware, that.labware) && Objects.equals(this.workNumber, that.workNumber);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(labware);
+        return Objects.hash(labware, workNumber);
     }
 
     @Override
     public String toString() {
-        return "SectionRegisterRequest(" + labware + ")";
+        return "SectionRegisterRequest(" + labware + ", workNumber="+workNumber+")";
     }
 }

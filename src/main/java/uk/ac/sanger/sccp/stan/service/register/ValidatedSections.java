@@ -11,12 +11,14 @@ class ValidatedSections {
     private final UCMap<LabwareType> labwareTypes;
     private final UCMap<Donor> donorMap;
     private final UCMap<Sample> sampleMap;
+    private final Work work;
 
     public ValidatedSections(UCMap<LabwareType> labwareTypes, UCMap<Donor> donorMap,
-                             UCMap<Sample> sampleMap) {
+                             UCMap<Sample> sampleMap, Work work) {
         this.labwareTypes = labwareTypes;
         this.donorMap = donorMap;
         this.sampleMap = sampleMap;
+        this.work = work;
     }
 
     /** The labware types, mapped from their name. */
@@ -32,5 +34,10 @@ class ValidatedSections {
     /** The samples to be created, mapped from the external identifier. */
     public UCMap<Sample> getSampleMap() {
         return this.sampleMap;
+    }
+
+    /** The work specified in the request */
+    public Work getWork() {
+        return this.work;
     }
 }

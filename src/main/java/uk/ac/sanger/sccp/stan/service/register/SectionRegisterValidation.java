@@ -5,6 +5,7 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.register.*;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
 import uk.ac.sanger.sccp.stan.service.Validator;
+import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
@@ -35,6 +36,7 @@ public class SectionRegisterValidation {
     private final MediumRepo mediumRepo;
     private final TissueRepo tissueRepo;
     private final BioStateRepo bioStateRepo;
+    private final WorkService workService;
     private final Validator<String> externalBarcodeValidation;
     private final Validator<String> donorNameValidation;
     private final Validator<String> externalNameValidation;
@@ -46,6 +48,7 @@ public class SectionRegisterValidation {
                                      LabwareRepo lwRepo, HmdmcRepo hmdmcRepo,
                                      TissueTypeRepo tissueTypeRepo, FixativeRepo fixativeRepo, MediumRepo mediumRepo,
                                      TissueRepo tissueRepo, BioStateRepo bioStateRepo,
+                                     WorkService workService,
                                      Validator<String> externalBarcodeValidation, Validator<String> donorNameValidation,
                                      Validator<String> externalNameValidation, Validator<String> replicateValidator,
                                      Validator<String> visiumLpBarcodeValidation) {
@@ -60,6 +63,7 @@ public class SectionRegisterValidation {
         this.mediumRepo = mediumRepo;
         this.tissueRepo = tissueRepo;
         this.bioStateRepo = bioStateRepo;
+        this.workService = workService;
         this.externalBarcodeValidation = externalBarcodeValidation;
         this.donorNameValidation = donorNameValidation;
         this.externalNameValidation = externalNameValidation;
@@ -74,10 +78,12 @@ public class SectionRegisterValidation {
         validateBarcodes();
         UCMap<Tissue> tissues = validateTissues(donors);
         UCMap<Sample> samples = validateSamples(tissues);
+        final String workNumber = request.getWorkNumber();
+        Work work = workNumber==null ? null : workService.validateUsableWork(this.problems, workNumber);
         if (!problems.isEmpty()) {
             return null;
         }
-        return new ValidatedSections(lwTypes, donors, samples);
+        return new ValidatedSections(lwTypes, donors, samples, work);
     }
 
     public void checkEmpty() {
