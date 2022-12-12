@@ -1056,7 +1056,7 @@ input UnreleaseLabware {
     """The highest section number taken from the block, if it is a block."""
     highestSection: Int
     """The work number associated with the unrelease of this labware."""
-    workNumber: String
+    workNumber: String!
 }
 
 """A request to receive back some previously released labware."""
