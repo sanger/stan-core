@@ -17,6 +17,7 @@ mutation {
                 sampleCollectionDate: "2021-02-03",
             }
         ]
+        workNumbers: ["SGP1"]
     }) {
         labware {
             barcode

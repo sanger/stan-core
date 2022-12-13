@@ -1,7 +1,6 @@
 package uk.ac.sanger.sccp.stan.service.register;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -13,12 +12,15 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.register.*;
 import uk.ac.sanger.sccp.stan.service.*;
+import uk.ac.sanger.sccp.stan.service.work.WorkService;
 
 import javax.persistence.EntityManager;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
@@ -52,6 +54,8 @@ public class TestRegisterService {
     private RegisterValidation mockValidation;
     @Mock
     private RegisterClashChecker mockClashChecker;
+    @Mock
+    private WorkService mockWorkService;
 
     private User user;
     private OperationType opType;
@@ -59,9 +63,11 @@ public class TestRegisterService {
 
     private RegisterServiceImp registerService;
 
+    private AutoCloseable mocking;
+
     @BeforeEach
     void setup() {
-        MockitoAnnotations.initMocks(this);
+        mocking = MockitoAnnotations.openMocks(this);
         user = EntityFactory.getUser();
         when(mockValidationFactory.createRegisterValidation(any())).thenReturn(mockValidation);
         BioState bs = EntityFactory.getBioState();
@@ -69,7 +75,12 @@ public class TestRegisterService {
         when(mockOpTypeRepo.getByName(opType.getName())).thenReturn(opType);
 
         registerService = spy(new RegisterServiceImp(mockEntityManager, mockValidationFactory, mockDonorRepo, mockTissueRepo,
-                mockSampleRepo, mockSlotRepo, mockOpTypeRepo, mockLabwareService, mockOpService, mockClashChecker));
+                mockSampleRepo, mockSlotRepo, mockOpTypeRepo, mockLabwareService, mockOpService, mockWorkService, mockClashChecker));
+    }
+
+    @AfterEach
+    void tearDown() throws Exception {
+        mocking.close();
     }
 
     @Test
@@ -339,6 +350,15 @@ public class TestRegisterService {
         SpatialLocation[] sls = {new SpatialLocation(1, "SL0", 1, tissueType),
                 new SpatialLocation(2, "SL1", 0, tissueType)};
 
+        List<Work> works = IntStream.rangeClosed(1,2)
+                        .mapToObj(i -> {
+                            Work work = new Work();
+                            work.setId(i);
+                            work.setWorkNumber("SGP"+i);
+                            return work;
+                        }).collect(toList());
+        when(mockValidation.getWorks()).thenReturn(works);
+
         when(mockValidation.getSpatialLocation(eqCi(tissueType.getName()), eq(1)))
                 .thenReturn(sls[0]);
         when(mockValidation.getSpatialLocation(eqCi(tissueType.getName()), eq(0)))
@@ -369,6 +389,15 @@ public class TestRegisterService {
 
         when(mockSlotRepo.save(any())).then(invocation -> invocation.getArgument(0));
 
+        List<Operation> ops = IntStream.rangeClosed(1,request.getBlocks().size())
+                .mapToObj(i -> {
+                    Operation op = new Operation();
+                    op.setId(i);
+                    return op;
+                }).collect(toList());
+
+        when(mockOpService.createOperationInPlace(any(), any(), any(), any())).thenReturn(ops.get(0), ops.get(1));
+
         RegisterResult result = registerService.create(request, user, mockValidation);
 
         assertEquals(result, new RegisterResult(Arrays.asList(lws)));
@@ -398,6 +427,7 @@ public class TestRegisterService {
             verify(mockSlotRepo).save(slot);
             verify(mockOpService).createOperationInPlace(opType, user, slot, samples[i]);
         }
+        verify(mockWorkService).link(works, ops);
     }
 
     @ParameterizedTest

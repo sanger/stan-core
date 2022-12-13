@@ -20,4 +20,6 @@ public interface RegisterValidation {
     Fixative getFixative(String name);
 
     Tissue getTissue(String externalName);
+
+    Collection<Work> getWorks();
 }

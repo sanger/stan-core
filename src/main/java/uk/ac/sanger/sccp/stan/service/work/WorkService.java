@@ -99,6 +99,14 @@ public interface WorkService {
     Work link(Work work, Collection<Operation> operations);
 
     /**
+     * Updates the given works linking them to the given operations and samples in slots in the ops' actions
+     * @param works the works
+     * @param operations the operations to link
+     * @exception IllegalArgumentException if any of the works are not active
+     */
+    void link(Collection<Work> works, Collection<Operation> operations);
+
+    /**
      * Gets the specified work.
      * Errors if the work number cannot be used.
      * @param workNumber the string representing an existing work

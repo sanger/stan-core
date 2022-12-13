@@ -5,20 +5,23 @@ import com.google.common.collect.Streams;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.*;
 import org.mockito.verification.VerificationMode;
 import uk.ac.sanger.sccp.stan.EntityFactory;
+import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.register.BlockRegisterRequest;
 import uk.ac.sanger.sccp.stan.request.register.RegisterRequest;
 import uk.ac.sanger.sccp.stan.service.Validator;
 import uk.ac.sanger.sccp.stan.service.register.RegisterValidationImp.StringIntKey;
+import uk.ac.sanger.sccp.stan.service.work.WorkService;
+import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.time.LocalDate;
 import java.util.*;
 import java.util.function.*;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -45,6 +48,7 @@ public class TestRegisterValidation {
     private Validator<String> mockExternalNameValidation;
     private Validator<String> mockReplicateValidator;
     private TissueFieldChecker mockFieldChecker;
+    private WorkService mockWorkService;
 
     @SuppressWarnings("unchecked")
     @BeforeEach
@@ -61,6 +65,7 @@ public class TestRegisterValidation {
         mockExternalNameValidation = mock(Validator.class);
         mockReplicateValidator = mock(Validator.class);
         mockFieldChecker = mock(TissueFieldChecker.class);
+        mockWorkService = mock(WorkService.class);
     }
 
     private void loadSpecies(final Collection<Species> specieses) {
@@ -73,7 +78,7 @@ public class TestRegisterValidation {
     private RegisterValidationImp create(RegisterRequest request) {
         return spy(new RegisterValidationImp(request, mockDonorRepo, mockHmdmcRepo, mockTtRepo, mockLtRepo,
                 mockMediumRepo, mockFixativeRepo, mockTissueRepo, mockSpeciesRepo,
-                mockDonorNameValidation, mockExternalNameValidation, mockReplicateValidator, mockFieldChecker));
+                mockDonorNameValidation, mockExternalNameValidation, mockReplicateValidator, mockFieldChecker, mockWorkService));
     }
 
     private void stubValidationMethods(RegisterValidationImp validation) {
@@ -86,6 +91,7 @@ public class TestRegisterValidation {
         doNothing().when(validation).validateNewTissues();
         doNothing().when(validation).validateFixatives();
         doNothing().when(validation).validateCollectionDates();
+        doNothing().when(validation).validateWorks();
     }
 
     private void verifyValidateMethods(RegisterValidationImp validation, VerificationMode verificationMode) {
@@ -98,6 +104,7 @@ public class TestRegisterValidation {
         verify(validation, verificationMode).validateNewTissues();
         verify(validation, verificationMode).validateFixatives();
         verify(validation, verificationMode).validateCollectionDates();
+        verify(validation, verificationMode).validateWorks();
     }
 
     @Test
@@ -450,6 +457,51 @@ public class TestRegisterValidation {
                 .collect(toList()),
                 Arrays.stream(arr).filter(obj -> obj instanceof String)
                 .collect(toList())));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"false,false", "true,false", "true,true"})
+    public void testValidateWorks(boolean anyWorks, boolean anyProblem) {
+        List<BlockRegisterRequest> brrs = List.of(
+                toBrr("Human", LifeStage.adult, null)
+        );
+        List<String> workNumbers;
+        List<Work> works;
+        if (!anyWorks) {
+            workNumbers = List.of();
+            works = List.of();
+        } else {
+            workNumbers = List.of("SGP1", "SGP2");
+            works = IntStream.rangeClosed(1,2).mapToObj(i -> {
+                Work w = new Work();
+                w.setId(i);
+                w.setWorkNumber("SGP"+i);
+                return w;
+            }).collect(toList());
+        }
+
+        RegisterRequest request = new RegisterRequest(brrs, workNumbers);
+        var validation = create(request);
+        if (anyProblem) {
+            when(mockWorkService.validateUsableWorks(any(), any())).then(
+                    Matchers.addProblem("Bad work", UCMap.from(works, Work::getWorkNumber))
+            );
+        } else if (anyWorks) {
+            when(mockWorkService.validateUsableWorks(any(), any())).thenReturn(UCMap.from(works, Work::getWorkNumber));
+        }
+        validation.validateWorks();
+        if (!anyWorks) {
+            verifyNoInteractions(mockWorkService);
+        } else {
+            if (anyProblem) {
+                assertThat(validation.getProblems()).containsExactly("Bad work");
+            } else {
+                assertThat(validation.getProblems()).isEmpty();
+            }
+            verify(mockWorkService).validateUsableWorks(any(), eq(workNumbers));
+        }
+        assertThat(validation.getWorks()).containsExactlyInAnyOrderElementsOf(works);
+
     }
 
     static BlockRegisterRequest toBrr(String species, LifeStage lifeStage, LocalDate collectionDate, String ext) {

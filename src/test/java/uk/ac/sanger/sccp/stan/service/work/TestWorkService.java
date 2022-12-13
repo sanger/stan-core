@@ -390,6 +390,97 @@ public class TestWorkService {
     }
 
     @ParameterizedTest
+    @ValueSource(booleans={true,false})
+    public void testLinkMultiple_nothing(boolean anyOps) {
+        List<Work> works;
+        List<Operation> ops;
+        if (anyOps) {
+            works = List.of();
+            ops = List.of(new Operation());
+        } else {
+            works = List.of(new Work());
+            ops = List.of();
+        }
+        workService.link(works, ops);
+        verifyNoInteractions(mockWorkRepo);
+        verify(workService, never()).link(any(Work.class), any());
+    }
+
+    @Test
+    public void testLinkMultiple_one() {
+        Work work = new Work();
+        work.setId(10);
+        List<Operation> ops = List.of(new Operation(), new Operation());
+        doReturn(work).when(workService).link(same(work), any());
+        workService.link(List.of(work), ops);
+        verify(workService).link(work, ops);
+        verifyNoInteractions(mockWorkRepo);
+    }
+
+    @Test
+    public void testLinkMultiple_unusable() {
+        Status[] statuses = { Status.failed, Status.withdrawn, Status.active };
+        List<Work> works = IntStream.range(0, statuses.length)
+                .mapToObj(i -> {
+                    Work work = new Work();
+                    int id = i+1;
+                    work.setId(id);
+                    work.setWorkNumber("SGP"+id);
+                    work.setStatus(statuses[i]);
+                    return work;
+                }).collect(toList());
+        assertThat(
+                assertThrows(IllegalArgumentException.class, () -> workService.link(works, List.of(new Operation())))
+        ).hasMessage("Specified work cannot be used because it is not active: [SGP1, SGP2]");
+    }
+
+    @Test
+    public void testLinkMultiple() {
+        Sample sam1 = EntityFactory.getSample();
+        Sample sam2 = new Sample(sam1.getId()+1, sam1.getSection()+1, sam1.getTissue(), sam1.getBioState());
+        LabwareType lt = EntityFactory.makeLabwareType(1,2);
+        Labware lw1 = EntityFactory.makeLabware(lt, sam1, sam2);
+        Labware lw2 = EntityFactory.makeEmptyLabware(lt);
+        lw2.getFirstSlot().getSamples().add(sam1);
+        lw2.getFirstSlot().getSamples().add(sam2);
+        Labware lw0 = EntityFactory.makeLabware(EntityFactory.getTubeType(), sam1);
+
+        OperationType opType = EntityFactory.makeOperationType("Section", null);
+        Operation op1 = makeOp(opType, 10, lw0, lw1);
+        Operation op2 = makeOp(opType, 11, lw0, lw2);
+        final Integer existingOpId = 1;
+        final SampleSlotId existingSsid = new SampleSlotId(3, 4);
+
+        List<Work> works = IntStream.rangeClosed(51,52).mapToObj(i -> {
+            Work w = new Work();
+            w.setId(i);
+            w.setWorkNumber("SGP"+i);
+            w.setStatus(Status.active);
+            w.setOperationIds(i==51 ? List.of(existingOpId) : List.of());
+            w.setSampleSlotIds(i==51 ? List.of(existingSsid) : List.of());
+            return w;
+        }).collect(toList());
+        workService.link(works, List.of(op1, op2));
+        assertThat(works.get(0).getOperationIds()).containsExactly(existingOpId, 10, 11);
+        assertThat(works.get(1).getOperationIds()).containsExactly(10, 11);
+        assertThat(works.get(0).getSampleSlotIds()).containsExactly(
+                Stream.concat(Stream.of(existingSsid),
+                        Stream.concat(opSsids(op1), opSsids(op2)))
+                        .toArray(SampleSlotId[]::new)
+        );
+        assertThat(works.get(1).getSampleSlotIds()).containsExactly(
+                Stream.concat(opSsids(op1), opSsids(op2)).toArray(SampleSlotId[]::new)
+        );
+
+        verify(mockWorkRepo).saveAll(works);
+    }
+
+    static Stream<SampleSlotId> opSsids(Operation op) {
+        return op.getActions().stream()
+                .map(a -> new SampleSlotId(a.getSample().getId(), a.getDestination().getId()));
+    }
+
+    @ParameterizedTest
     @MethodSource("usableWorkArgs")
     public void testGetUsableWork(String workNumber, Status status, Class<? extends Exception> expectedExceptionType, String expectedErrorMessage) {
         if (expectedExceptionType==null) {

@@ -47,7 +47,7 @@ public class TestHistoryQuery {
     @Transactional
     @Test
     public void testHistory() throws Exception {
-        String mutation = tester.readGraphQL("register.graphql");
+        String mutation = tester.readGraphQL("register.graphql").replace("\"SGP1\"", "");
         User user = entityCreator.createUser("user1");
         tester.setUser(user);
 

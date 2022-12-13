@@ -46,8 +46,9 @@ public class TestRegisterMutation {
     @Test
     @Transactional
     public void testRegister() throws Exception {
+        Work work = entityCreator.createWork(null, null, null, null, null);
         tester.setUser(entityCreator.createUser("dr6"));
-        String mutation = tester.readGraphQL("register.graphql");
+        String mutation = tester.readGraphQL("register.graphql").replace("SGP1", work.getWorkNumber());
         Object result = tester.post(mutation);
         Object data = chainGet(result, "data", "register");
         assertThat(chainGetList(data, "clashes")).isEmpty();
@@ -65,8 +66,20 @@ public class TestRegisterMutation {
         assertThat(clashes).hasSize(1);
         assertEquals("TISSUE1", chainGet(clashes, 0, "tissue", "externalName"));
         assertEquals(barcode, chainGet(clashes, 0, "labware", 0, "barcode"));
-    }
 
+        // Check the work is linked to the created op
+        entityManager.flush();
+        entityManager.refresh(work);
+        assertThat(work.getOperationIds()).hasSize(1);
+        Integer opId = work.getOperationIds().get(0);
+        Operation op = opRepo.findById(opId).orElseThrow();
+        assertEquals("Register", op.getOperationType().getName());
+        Slot slot = lwRepo.getByBarcode(barcode).getFirstSlot();
+        assertThat(work.getSampleSlotIds()).hasSize(1);
+        Work.SampleSlotId ss = work.getSampleSlotIds().get(0);
+        assertEquals(slot.getId(), ss.getSlotId());
+        assertEquals(slot.getSamples().get(0).getId(), ss.getSampleId());
+    }
 
     @Test
     @Transactional
