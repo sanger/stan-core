@@ -8,12 +8,15 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.request.UnreleaseRequest;
 import uk.ac.sanger.sccp.stan.request.UnreleaseRequest.UnreleaseLabware;
+import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 
 /**
  * @author dr6
@@ -25,16 +28,18 @@ public class UnreleaseServiceImp implements UnreleaseService {
     private final SlotRepo slotRepo;
     private final OperationTypeRepo opTypeRepo;
     private final OperationService opService;
+    private final WorkService workService;
 
     @Autowired
     public UnreleaseServiceImp(LabwareValidatorFactory labwareValidatorFactory,
                                LabwareRepo lwRepo, SlotRepo slotRepo, OperationTypeRepo opTypeRepo,
-                               OperationService opService) {
+                               OperationService opService, WorkService workService) {
         this.labwareValidatorFactory = labwareValidatorFactory;
         this.lwRepo = lwRepo;
         this.slotRepo = slotRepo;
         this.opTypeRepo = opTypeRepo;
         this.opService = opService;
+        this.workService = workService;
     }
 
     @Override
@@ -43,6 +48,7 @@ public class UnreleaseServiceImp implements UnreleaseService {
         requireNonNull(request, "Request is null.");
         Set<String> problems = new LinkedHashSet<>();
         UCMap<Labware> labware = loadLabware(problems, request.getLabware());
+        UCMap<Work> labwareWork = loadLabwareWork(problems, request.getLabware());
         validateRequest(problems, labware, request.getLabware());
 
         OperationType opType = opTypeRepo.findByName("Unrelease").orElse(null);
@@ -54,7 +60,7 @@ public class UnreleaseServiceImp implements UnreleaseService {
             throw new ValidationException("The unrelease request could not be validated.", problems);
         }
 
-        return perform(user, request, opType, labware);
+        return perform(user, request, opType, labware, labwareWork);
     }
 
     /**
@@ -92,6 +98,28 @@ public class UnreleaseServiceImp implements UnreleaseService {
         val.validateState(Labware::isDiscarded, "discarded");
         problems.addAll(val.getErrors());
         return UCMap.from(val.getLabware(), Labware::getBarcode);
+    }
+
+    /**
+     * Loads and validates the works for any work numbers specified.
+     * @param problems receptacle for problems
+     * @param requestLabware the relevant parts of the request
+     * @return a map of work from the labware barcode
+     */
+    public UCMap<Work> loadLabwareWork(Collection<String> problems, Collection<UnreleaseLabware> requestLabware) {
+        Set<String> workNumbers = requestLabware.stream()
+                .map(UnreleaseLabware::getWorkNumber)
+                .filter(Objects::nonNull)
+                .collect(toSet());
+        UCMap<Work> workMap = workService.validateUsableWorks(problems, workNumbers);
+        UCMap<Work> lwWorkMap = new UCMap<>();
+        for (UnreleaseLabware r : requestLabware) {
+            Work work = workMap.get(r.getWorkNumber());
+            if (work!=null) {
+                lwWorkMap.put(r.getBarcode(), work);
+            }
+        }
+        return lwWorkMap;
     }
 
     /**
@@ -144,11 +172,14 @@ public class UnreleaseServiceImp implements UnreleaseService {
      * @param request the request to unrelease some labware
      * @param opType the unrelease operation type
      * @param labwareMap a map to look up the labware from its barcode
+     * @param labwareWork a map to look up work for each labware barcode
      * @return the operations and labware affected
      */
-    public OperationResult perform(User user, UnreleaseRequest request, OperationType opType, UCMap<Labware> labwareMap) {
+    public OperationResult perform(User user, UnreleaseRequest request, OperationType opType,
+                                   UCMap<Labware> labwareMap, UCMap<Work> labwareWork) {
         List<Labware> labwareList = updateLabware(request.getLabware(), labwareMap);
-        List<Operation> ops = recordOps(user, opType, labwareList);
+        List<Operation> ops = recordOps(user, opType, labwareList, labwareWork);
+
         return new OperationResult(ops, labwareList);
     }
 
@@ -185,15 +216,24 @@ public class UnreleaseServiceImp implements UnreleaseService {
     }
 
     /**
-     * Records unrelease operations
+     * Records unrelease operations. Links them to works as specified.
      * @param user the user responsible for the operations
      * @param opType the type of operation
      * @param labware the labware
+     * @param labwareWorkMap work for each labware barcode
      * @return the new operations
      */
-    List<Operation> recordOps(User user, OperationType opType, Collection<Labware> labware) {
-        return labware.stream()
-                .map(lw -> opService.createOperationInPlace(opType, user, lw, null, null))
-                .collect(toList());
+    List<Operation> recordOps(User user, OperationType opType, Collection<Labware> labware,
+                              UCMap<Work> labwareWorkMap) {
+        List<Operation> ops = new ArrayList<>(labware.size());
+        for (Labware lw : labware) {
+            Operation op = opService.createOperationInPlace(opType, user, lw, null, null);
+            Work work = labwareWorkMap.get(lw.getBarcode());
+            if (work != null) {
+                workService.link(work, List.of(op));
+            }
+            ops.add(op);
+        }
+        return ops;
     }
 }

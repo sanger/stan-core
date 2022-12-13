@@ -2,6 +2,7 @@ mutation {
     unrelease(request: {
         labware: [{
             barcode: "BARCODE"
+            workNumber: "WORK"
         }]
     }) {
         labware {

@@ -5,11 +5,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
 import uk.ac.sanger.sccp.stan.EntityFactory;
+import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.request.UnreleaseRequest;
 import uk.ac.sanger.sccp.stan.request.UnreleaseRequest.UnreleaseLabware;
+import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
@@ -35,6 +37,7 @@ public class TestUnreleaseService {
     private OperationService mockOpService;
 
     private UnreleaseServiceImp service;
+    private WorkService mockWorkService;
 
     @BeforeEach
     void setup() {
@@ -43,9 +46,10 @@ public class TestUnreleaseService {
         mockSlotRepo = mock(SlotRepo.class);
         mockOpTypeRepo = mock(OperationTypeRepo.class);
         mockOpService = mock(OperationService.class);
+        mockWorkService = mock(WorkService.class);
 
         service = spy(new UnreleaseServiceImp(mockLabwareValidatorFactory, mockLwRepo, mockSlotRepo,
-                mockOpTypeRepo, mockOpService));
+                mockOpTypeRepo, mockOpService, mockWorkService));
     }
 
     @ParameterizedTest
@@ -55,6 +59,9 @@ public class TestUnreleaseService {
         Labware lw = EntityFactory.getTube();
         UnreleaseRequest request = new UnreleaseRequest(List.of(new UnreleaseLabware(lw.getBarcode())));
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lw);
+        Work work = new Work(50, "SGP50", null, null, null, null, null, null);
+        UCMap<Work> lwWorkMap = ucMapOf(lw.getBarcode(), work);
+        doReturn(lwWorkMap).when(service).loadLabwareWork(any(), any());
         OperationType opType = (success ? EntityFactory.makeOperationType("Unrelease", null, OperationTypeFlag.IN_PLACE) : null);
         when(mockOpTypeRepo.findByName("Unrelease")).thenReturn(Optional.ofNullable(opType));
         doReturn(lwMap).when(service).loadLabware(any(), any());
@@ -62,7 +69,7 @@ public class TestUnreleaseService {
 
         if (success) {
             OperationResult opRes = new OperationResult(List.of(), List.of(lw));
-            doReturn(opRes).when(service).perform(any(), any(), any(), any());
+            doReturn(opRes).when(service).perform(any(), any(), any(), any(), any());
             assertSame(opRes, service.unrelease(user, request));
         } else {
             ValidationException ex = assertThrows(ValidationException.class, () -> service.unrelease(user, request));
@@ -74,9 +81,9 @@ public class TestUnreleaseService {
         verify(service).loadLabware(anyCollection(), same(request.getLabware()));
         verify(service).validateRequest(anyCollection(), same(lwMap), same(request.getLabware()));
         if (success) {
-            verify(service).perform(user, request, opType, lwMap);
+            verify(service).perform(user, request, opType, lwMap, lwWorkMap);
         } else {
-            verify(service, never()).perform(any(), any(), any(), any());
+            verify(service, never()).perform(any(), any(), any(), any(), any());
         }
     }
 
@@ -176,10 +183,10 @@ public class TestUnreleaseService {
         final List<String> problems = new ArrayList<>();
         List<UnreleaseLabware> requestLabware = List.of(
                 new UnreleaseLabware("STAN-0"),
-                new UnreleaseLabware("STAN-1", 10),
-                new UnreleaseLabware("STAN-2", 20),
-                new UnreleaseLabware(null, 30),
-                new UnreleaseLabware("STAN-404", 40)
+                new UnreleaseLabware("STAN-1", 10, null),
+                new UnreleaseLabware("STAN-2", 20, null),
+                new UnreleaseLabware(null, 30, null),
+                new UnreleaseLabware("STAN-404", 40, null)
         );
 
         service.validateRequest(problems, lwMap, requestLabware);
@@ -221,13 +228,14 @@ public class TestUnreleaseService {
         List<Labware> labwareList = List.of(lw);
         List<Operation> ops = List.of(op);
         doReturn(labwareList).when(service).updateLabware(any(), any());
-        doReturn(ops).when(service).recordOps(any(), any(), any());
+        doReturn(ops).when(service).recordOps(any(), any(), any(), any());
+        UCMap<Work> lwWorkMap = ucMapOf(lw.getBarcode(), new Work());
 
-        OperationResult opRes = service.perform(user, request, opType, lwMap);
+        OperationResult opRes = service.perform(user, request, opType, lwMap, lwWorkMap);
         assertEquals(new OperationResult(ops, labwareList), opRes);
 
         verify(service).updateLabware(request.getLabware(), lwMap);
-        verify(service).recordOps(user, opType, labwareList);
+        verify(service).recordOps(user, opType, labwareList, lwWorkMap);
     }
 
     @Test
@@ -263,10 +271,10 @@ public class TestUnreleaseService {
 
         List<UnreleaseLabware> uls = List.of(
                 new UnreleaseLabware("STAN-0"),
-                new UnreleaseLabware("STAN-1", 5),
-                new UnreleaseLabware("STAN-2", 10),
-                new UnreleaseLabware("STAN-3", 3),
-                new UnreleaseLabware("STAN-4", 12)
+                new UnreleaseLabware("STAN-1", 5, null),
+                new UnreleaseLabware("STAN-2", 10, null),
+                new UnreleaseLabware("STAN-3", 3, null),
+                new UnreleaseLabware("STAN-4", 12, null)
         );
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, labware);
 
@@ -291,6 +299,8 @@ public class TestUnreleaseService {
         Sample sample = EntityFactory.getSample();
         LabwareType lt = EntityFactory.getTubeType();
         List<Labware> labware = List.of(EntityFactory.makeLabware(lt, sample), EntityFactory.makeLabware(lt, sample));
+        Work work1 = new Work();
+        UCMap<Work> lwWorkmap = ucMapOf(labware.get(0).getBarcode(), work1);
         OperationType opType = EntityFactory.makeOperationType("Unrelease", null, OperationTypeFlag.IN_PLACE);
         User user = EntityFactory.getUser();
 
@@ -299,7 +309,43 @@ public class TestUnreleaseService {
         when(mockOpService.createOperationInPlace(opType, user, labware.get(0), null, null)).thenReturn(op1);
         when(mockOpService.createOperationInPlace(opType, user, labware.get(1), null, null)).thenReturn(op2);
 
-        assertThat(service.recordOps(user, opType, labware)).containsExactly(op1, op2);
+        assertThat(service.recordOps(user, opType, labware, lwWorkmap)).containsExactly(op1, op2);
         verify(mockOpService, times(labware.size())).createOperationInPlace(any(), any(), any(), any(), any());
+        verify(mockWorkService).link(work1, List.of(op1));
+        verifyNoMoreInteractions(mockWorkService);
+    }
+
+    @Test
+    public void testLoadLabwareWork() {
+        Work[] works = IntStream.rangeClosed(1,2).mapToObj(i -> {
+            Work work = new Work();
+            work.setId(i);
+            work.setWorkNumber("SGP"+i);
+            return work;
+        }).toArray(Work[]::new);
+        List<UnreleaseLabware> uls = List.of(
+                new UnreleaseLabware("BC1", 1, "SGP1"),
+                new UnreleaseLabware("BC2", 2, "SGP1"),
+                new UnreleaseLabware("BC3", null, "SGP2"),
+                new UnreleaseLabware("BC4"),
+                new UnreleaseLabware("BC5", null, "SG-1")
+        );
+        final String problem = "No such work as SG-1.";
+        UCMap<Work> workMap = UCMap.from(Work::getWorkNumber, works);
+        when(mockWorkService.validateUsableWorks(any(), any())).then(Matchers.addProblem(problem, workMap));
+        List<String> problems = new ArrayList<>(1);
+        UCMap<Work> lwWorkMap = service.loadLabwareWork(problems, uls);
+        verify(mockWorkService).validateUsableWorks(any(), eq(Set.of("SGP1", "SGP2", "SG-1")));
+        assertThat(lwWorkMap).hasSize(3);
+        assertSame(works[0], lwWorkMap.get("BC1"));
+        assertSame(works[0], lwWorkMap.get("BC2"));
+        assertSame(works[1], lwWorkMap.get("BC3"));
+        assertThat(problems).containsExactly(problem);
+    }
+
+    private static <X> UCMap<X> ucMapOf(String key, X value) {
+        UCMap<X> map = new UCMap<>(1);
+        map.put(key, value);
+        return map;
     }
 }
