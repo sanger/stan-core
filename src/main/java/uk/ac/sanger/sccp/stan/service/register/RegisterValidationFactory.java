@@ -67,7 +67,7 @@ public class RegisterValidationFactory {
     public RegisterValidation createRegisterValidation(RegisterRequest request) {
         return new RegisterValidationImp(request, donorRepo, hmdmcRepo, ttRepo, ltRepo, mediumRepo,
                 fixativeRepo, tissueRepo, speciesRepo, donorNameValidation, externalNameValidation, replicateValidator,
-                tissueFieldChecker);
+                tissueFieldChecker, workService);
     }
 
     public SectionRegisterValidation createSectionRegisterValidation(SectionRegisterRequest request) {

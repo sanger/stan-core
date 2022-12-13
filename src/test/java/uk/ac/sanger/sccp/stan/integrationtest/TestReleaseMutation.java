@@ -145,15 +145,22 @@ public class TestReleaseMutation {
 
         entityCreator.createOpType("Unrelease", null, OperationTypeFlag.IN_PLACE);
 
+        Work work = entityCreator.createWork(null, null, null, null, null);
+
         String unreleaseMutation = tester.readGraphQL("unrelease.graphql")
-                .replace("BARCODE", lw.getBarcode());
+                .replace("BARCODE", lw.getBarcode())
+                .replace("WORK", work.getWorkNumber());
         result = tester.post(unreleaseMutation);
         Object unreleaseResult = chainGet(result, "data", "unrelease");
         assertEquals("active", chainGet(unreleaseResult, "labware", 0, "state"));
         assertEquals("Unrelease", chainGet(unreleaseResult, "operations", 0, "operationType", "name"));
-        assertNotNull(chainGet(unreleaseResult, "operations", 0, "id"));
+        final Integer opId = chainGet(unreleaseResult, "operations", 0, "id");
+        assertNotNull(opId);
         entityManager.refresh(lw);
         assertTrue(lw.isReleased());
+        entityManager.flush();
+        entityManager.refresh(work);
+        assertThat(work.getOperationIds()).containsExactly(opId);
     }
 
     private void recordStain(Labware lw, StainType st, String bondBarcode, Integer rnaPlex, Integer ihcPlex, User user) {
