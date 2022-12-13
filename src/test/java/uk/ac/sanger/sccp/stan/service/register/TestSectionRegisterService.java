@@ -9,6 +9,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.register.*;
 import uk.ac.sanger.sccp.stan.service.*;
+import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
@@ -35,6 +36,7 @@ public class TestSectionRegisterService {
 
     private OperationService mockOpService;
     private LabwareService mockLwService;
+    private WorkService mockWorkService;
 
     private User user;
 
@@ -51,20 +53,22 @@ public class TestSectionRegisterService {
         mockSlotRepo = mock(SlotRepo.class);
         mockOpService = mock(OperationService.class);
         mockLwService = mock(LabwareService.class);
+        mockWorkService = mock(WorkService.class);
 
         user = EntityFactory.getUser();
 
         regService = spy(new SectionRegisterServiceImp(mockValidationFactory, mockDonorRepo, mockTissueRepo, mockSampleRepo,
-                mockMeasurementRepo, mockOpTypeRepo, mockSlotRepo, mockOpService, mockLwService));
+                mockMeasurementRepo, mockOpTypeRepo, mockSlotRepo, mockOpService, mockLwService, mockWorkService));
     }
 
 
     @ParameterizedTest
     @ValueSource(booleans={false, true})
     public void testRegister(boolean valid) {
+        final String workNumber = "SGP1";
         SectionRegisterValidation mockValidation = mock(SectionRegisterValidation.class);
         when(mockValidationFactory.createSectionRegisterValidation(any())).thenReturn(mockValidation);
-        SectionRegisterRequest request = new SectionRegisterRequest(List.of(new SectionRegisterLabware()));
+        SectionRegisterRequest request = new SectionRegisterRequest(List.of(new SectionRegisterLabware()), workNumber);
 
         if (!valid) {
             doThrow(ValidationException.class).when(mockValidation).throwError();
@@ -74,7 +78,7 @@ public class TestSectionRegisterService {
             verify(regService, never()).execute(any(), any(), any());
             return;
         }
-        ValidatedSections valSec = new ValidatedSections(new UCMap<>(), new UCMap<>(), new UCMap<>());
+        ValidatedSections valSec = new ValidatedSections(new UCMap<>(), new UCMap<>(), new UCMap<>(), new Work());
         when(mockValidation.validate()).thenReturn(valSec);
 
         RegisterResult result = new RegisterResult(List.of());
@@ -90,8 +94,11 @@ public class TestSectionRegisterService {
 
     @Test
     public void testExecute() {
-        SectionRegisterRequest request = new SectionRegisterRequest(List.of());
-        ValidatedSections valSec = new ValidatedSections(new UCMap<>(), new UCMap<>(), new UCMap<>());
+        final String workNumber = "SGP1";
+        SectionRegisterRequest request = new SectionRegisterRequest(List.of(), workNumber);
+        Work work = new Work();
+        work.setId(15);
+        ValidatedSections valSec = new ValidatedSections(new UCMap<>(), new UCMap<>(), new UCMap<>(), work);
         UCMap<Donor> donorMap = UCMap.from(Donor::getDonorName, EntityFactory.getDonor());
         UCMap<Tissue> tissueMap = UCMap.from(Tissue::getExternalName, EntityFactory.getTissue());
         UCMap<Sample> sampleMap = UCMap.from(sam -> sam.getTissue().getExternalName(), EntityFactory.getSample());
@@ -102,12 +109,12 @@ public class TestSectionRegisterService {
         doReturn(tissueMap).when(regService).createTissues(valSec.getSampleMap().values(), donorMap);
         doReturn(sampleMap).when(regService).createSamples(valSec.getSampleMap().values(), tissueMap);
         doReturn(lwMap).when(regService).createAllLabware(request, valSec.getLabwareTypes(), sampleMap);
-        doReturn(List.of()).when(regService).recordOperations(user, request, lwMap, sampleMap);
+        doReturn(List.of()).when(regService).recordOperations(user, request, lwMap, sampleMap, work);
         doReturn(regResult).when(regService).assembleResult(request, lwMap, tissueMap);
 
         assertSame(regResult, regService.execute(user, request, valSec));
 
-        verify(regService).recordOperations(user, request, lwMap, sampleMap);
+        verify(regService).recordOperations(user, request, lwMap, sampleMap, work);
     }
 
     @Test
@@ -140,7 +147,7 @@ public class TestSectionRegisterService {
                                             return content;
                                         })
                         ).collect(toList()))).collect(toList());
-        SectionRegisterRequest request = new SectionRegisterRequest(srls);
+        SectionRegisterRequest request = new SectionRegisterRequest(srls, "SGP1");
 
         RegisterResult result = regService.assembleResult(request, lwMap, tissueMap);
         assertThat(result.getLabware()).containsExactly(lw1, lw2);
@@ -247,7 +254,7 @@ public class TestSectionRegisterService {
         UCMap<Sample> sampleMap = UCMap.from(sam -> sam.getTissue().getExternalName(), EntityFactory.getSample());
         IntStream.range(0,2).forEach(i -> doReturn(labware.get(i)).when(regService).createLabware(srls.get(i), lwTypes, sampleMap));
 
-        UCMap<Labware> lwMap = regService.createAllLabware(new SectionRegisterRequest(srls), lwTypes, sampleMap);
+        UCMap<Labware> lwMap = regService.createAllLabware(new SectionRegisterRequest(srls, "SGP1"), lwTypes, sampleMap);
 
         srls.forEach(srl -> verify(regService).createLabware(srl, lwTypes, sampleMap));
         assertEquals(UCMap.from(labware, Labware::getExternalBarcode), lwMap);
@@ -322,17 +329,20 @@ public class TestSectionRegisterService {
                 .map(lw -> new SectionRegisterLabware(lw.getExternalBarcode(), lt.getName(), null))
                 .toArray(SectionRegisterLabware[]::new);
         UCMap<Sample> sampleMap = UCMap.from(sam -> sam.getTissue().getExternalName(), EntityFactory.getSample());
-        SectionRegisterRequest request = new SectionRegisterRequest(Arrays.asList(srls));
+        SectionRegisterRequest request = new SectionRegisterRequest(Arrays.asList(srls), "SGP1");
         UCMap<Labware> lwMap = UCMap.from(Labware::getExternalBarcode, labware);
         for (int i = 0; i < labware.length; ++i) {
             doReturn(ops[i]).when(regService).createOp(user, opType, labware[i]);
         }
         doReturn(List.of()).when(regService).createMeasurements(any(), any(), any(), any());
+        Work work = new Work();
+        work.setId(15);
 
-        List<Operation> operations = regService.recordOperations(user, request, lwMap, sampleMap);
+        List<Operation> operations = regService.recordOperations(user, request, lwMap, sampleMap, work);
 
         Arrays.stream(labware).forEach(lw -> verify(regService).createOp(user, opType, lw));
-        assertEquals(Arrays.asList(ops), operations);
+        verify(mockWorkService).link(work, operations);
+        assertThat(operations).containsExactly(ops);
     }
 
     @Test

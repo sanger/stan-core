@@ -43,7 +43,8 @@ public class RegisterValidationFactory {
                                      @Qualifier("externalBarcodeValidator") Validator<String> externalBarcodeValidation,
                                      @Qualifier("visiumLPBarcodeValidator") Validator<String> visiumLpSlideBarcodeValidation,
                                      @Qualifier("replicateValidator") Validator<String> replicateValidator,
-                                     TissueFieldChecker tissueFieldChecker, WorkService workService) {
+                                     TissueFieldChecker tissueFieldChecker,
+                                     WorkService workService) {
         this.donorRepo = donorRepo;
         this.hmdmcRepo = hmdmcRepo;
         this.ttRepo = ttRepo;
@@ -72,7 +73,7 @@ public class RegisterValidationFactory {
     public SectionRegisterValidation createSectionRegisterValidation(SectionRegisterRequest request) {
         return new SectionRegisterValidation(request, donorRepo, speciesRepo, ltRepo, labwareRepo,
                 hmdmcRepo, ttRepo, fixativeRepo, mediumRepo, tissueRepo, bioStateRepo,
-                externalBarcodeValidation, donorNameValidation, externalNameValidation, replicateValidator,
+                workService, externalBarcodeValidation, donorNameValidation, externalNameValidation, replicateValidator,
                 visiumLpSlideBarcodeValidation);
     }
 }

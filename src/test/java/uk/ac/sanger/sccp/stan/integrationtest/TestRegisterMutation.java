@@ -84,7 +84,8 @@ public class TestRegisterMutation {
     @Test
     @Transactional
     public void testSectionRegister() throws Exception {
-        String mutation = tester.readGraphQL("registersections.graphql");
+        Work work = entityCreator.createWork(null, null, null, null,  null);
+        String mutation = tester.readGraphQL("registersections.graphql").replace("SGP-X", work.getWorkNumber());
         User user = entityCreator.createUser("user1");
         tester.setUser(user);
 
@@ -161,6 +162,9 @@ public class TestRegisterMutation {
         assertEquals("Register", op.getOperationType().getName());
         assertThat(op.getActions()).hasSize(3);
         assertEquals(user, op.getUser());
+
+        entityManager.refresh(work);
+        assertThat(work.getOperationIds()).containsExactly(op.getId());
     }
 
 }

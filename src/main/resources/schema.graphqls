@@ -294,7 +294,10 @@ input SectionRegisterLabware {
 
 """A request to register one or more labware containing new sections."""
 input SectionRegisterRequest {
+    """The details of the labware being registered."""
     labware: [SectionRegisterLabware!]!
+    """The work number to associate with the registration."""
+    workNumber: String!
 }
 
 """Data about registering a new original sample."""

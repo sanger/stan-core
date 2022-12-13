@@ -10,6 +10,7 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.register.*;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
 import uk.ac.sanger.sccp.stan.service.Validator;
+import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
@@ -45,6 +46,7 @@ public class TestSectionRegisterValidation {
     private Validator<String> mockExternalNameValidation;
     private Validator<String> mockReplicateValidator;
     private Validator<String> mockVisiumLpBarcodeValidation;
+    private WorkService mockWorkService;
 
     @SuppressWarnings("unchecked")
     @BeforeEach
@@ -64,23 +66,25 @@ public class TestSectionRegisterValidation {
         mockExternalNameValidation = mock(Validator.class);
         mockReplicateValidator = mock(Validator.class);
         mockVisiumLpBarcodeValidation = mock(Validator.class);
+        mockWorkService = mock(WorkService.class);
     }
 
     private SectionRegisterValidation makeValidation(Object requestObj) {
+        final String workNumber = "SGP1";
         SectionRegisterRequest request;
         if (requestObj instanceof SectionRegisterRequest) {
             request = (SectionRegisterRequest) requestObj;
         } else {
             Collection<?> col = objToCollection(requestObj);
             if (col.isEmpty()) {
-                request = new SectionRegisterRequest(List.of());
+                request = new SectionRegisterRequest(List.of(), workNumber);
             } else {
                 Object element = col.iterator().next();
                 if (element instanceof SectionRegisterLabware) {
-                    request = new SectionRegisterRequest(objToCollection(requestObj));
+                    request = new SectionRegisterRequest(objToCollection(requestObj), workNumber);
                 } else if (element instanceof SectionRegisterContent) {
                     SectionRegisterLabware srl = new SectionRegisterLabware("X1", "lwtype", objToCollection(requestObj));
-                    request = new SectionRegisterRequest(List.of(srl));
+                    request = new SectionRegisterRequest(List.of(srl), workNumber);
                 } else {
                     throw new IllegalArgumentException("Couldn't make "+requestObj+" into a request.");
                 }
@@ -89,7 +93,7 @@ public class TestSectionRegisterValidation {
         return spy(new SectionRegisterValidation(request, mockDonorRepo, mockSpeciesRepo, mockLwTypeRepo, mockLwRepo,
                 mockHmdmcRepo, mockTissueTypeRepo, mockFixativeRepo, mockMediumRepo,
                 mockTissueRepo, mockBioStateRepo,
-                mockExternalBarcodeValidation, mockDonorNameValidation, mockExternalNameValidation,
+                mockWorkService, mockExternalBarcodeValidation, mockDonorNameValidation, mockExternalNameValidation,
                 mockReplicateValidator, mockVisiumLpBarcodeValidation));
     }
 
@@ -126,8 +130,12 @@ public class TestSectionRegisterValidation {
         UCMap<LabwareType> lwTypes = UCMap.from(LabwareType::getName, EntityFactory.getTubeType());
         UCMap<Tissue> tissues = UCMap.from(Tissue::getExternalName, EntityFactory.getTissue());
         UCMap<Sample> samples = UCMap.from(sam -> sam.getTissue().getExternalName(), EntityFactory.getSample());
+        Work work = new Work();
+        work.setId(16);
+        when(mockWorkService.validateUsableWork(anyCollection(), anyString())).thenReturn(work);
 
-        var validation = makeValidation(new SectionRegisterRequest());
+        final String workNumber = "SGP1";
+        var validation = makeValidation(new SectionRegisterRequest(null, workNumber));
         final String problem = "Things are bad.";
         if (valid) {
             doNothing().when(validation).checkEmpty();
@@ -143,12 +151,15 @@ public class TestSectionRegisterValidation {
 
         ValidatedSections vs = validation.validate();
 
+        verify(mockWorkService).validateUsableWork(validation.getProblems(), workNumber);
+
         if (valid) {
             assertNotNull(vs);
             assertSame(vs.getDonorMap(), donors);
             assertSame(vs.getLabwareTypes(), lwTypes);
             assertSame(vs.getSampleMap(), samples);
             assertThat(validation.getProblems()).isEmpty();
+            assertSame(work, vs.getWork());
             validation.throwError();
         } else {
             assertNull(vs);
@@ -174,13 +185,14 @@ public class TestSectionRegisterValidation {
     }
 
     static Stream<Arguments> checkEmptyArgs() {
+        final String workNumber = "SGP1";
         return Stream.of(
-                Arguments.of(new SectionRegisterRequest(List.of()), "No labware specified in request."),
-                Arguments.of(new SectionRegisterRequest(List.of(new SectionRegisterLabware())),
+                Arguments.of(new SectionRegisterRequest(List.of(), workNumber), "No labware specified in request."),
+                Arguments.of(new SectionRegisterRequest(List.of(new SectionRegisterLabware()), workNumber),
                         "Labware requested without contents."),
                 Arguments.of(new SectionRegisterRequest(List.of(new SectionRegisterLabware(
                         "X1", "Thing", List.of(new SectionRegisterContent())
-                ))), null)
+                )), workNumber), null)
         );
     }
 
@@ -368,7 +380,7 @@ public class TestSectionRegisterValidation {
         Collection<String> expectedProblems = objToCollection(expectedProblemsObj);
         SectionRegisterRequest request = new SectionRegisterRequest(barcodes.stream()
                 .map(bc -> new SectionRegisterLabware(bc, labwareType, null))
-                .collect(toList()));
+                .collect(toList()), "SGP1");
 
         if (existingExternalBarcodesObj!=null) {
             Collection<String> xbcs = objToCollection(existingExternalBarcodesObj);
@@ -684,7 +696,7 @@ public class TestSectionRegisterValidation {
                 return new SectionRegisterRequest();
             }
             SectionRegisterLabware srl = new SectionRegisterLabware("X11", "lt", contents);
-            return new SectionRegisterRequest(List.of(srl));
+            return new SectionRegisterRequest(List.of(srl), "SGP1");
         }
 
         @Override
@@ -723,7 +735,7 @@ public class TestSectionRegisterValidation {
         if (current!=null) {
             srls.add(current);
         }
-        return new SectionRegisterRequest(srls);
+        return new SectionRegisterRequest(srls, "SGP1");
     }
 
     @SuppressWarnings("unchecked")

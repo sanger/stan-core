@@ -6,6 +6,7 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.register.*;
 import uk.ac.sanger.sccp.stan.service.LabwareService;
 import uk.ac.sanger.sccp.stan.service.OperationService;
+import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
@@ -29,11 +30,12 @@ public class SectionRegisterServiceImp implements SectionRegisterService {
 
     private final OperationService opService;
     private final LabwareService lwService;
+    private final WorkService workService;
 
     public SectionRegisterServiceImp(RegisterValidationFactory validationFactory, DonorRepo donorRepo,
                                      TissueRepo tissueRepo, SampleRepo sampleRepo, MeasurementRepo measurementRepo,
                                      OperationTypeRepo opTypeRepo, SlotRepo slotRepo,
-                                     OperationService opService, LabwareService lwService) {
+                                     OperationService opService, LabwareService lwService, WorkService workService) {
         this.validationFactory = validationFactory;
         this.donorRepo = donorRepo;
         this.tissueRepo = tissueRepo;
@@ -43,6 +45,7 @@ public class SectionRegisterServiceImp implements SectionRegisterService {
         this.slotRepo = slotRepo;
         this.opService = opService;
         this.lwService = lwService;
+        this.workService = workService;
     }
 
     @Override
@@ -66,7 +69,7 @@ public class SectionRegisterServiceImp implements SectionRegisterService {
         UCMap<Tissue> tissueMap = createTissues(sections.getSampleMap().values(), donorMap);
         UCMap<Sample> sampleMap = createSamples(sections.getSampleMap().values(), tissueMap);
         UCMap<Labware> labwareMap = createAllLabware(request, sections.getLabwareTypes(), sampleMap);
-        recordOperations(user, request, labwareMap, sampleMap);
+        recordOperations(user, request, labwareMap, sampleMap, sections.getWork());
         return assembleResult(request, labwareMap, tissueMap);
     }
 
@@ -192,10 +195,11 @@ public class SectionRegisterServiceImp implements SectionRegisterService {
      * @param request the request of what to register
      * @param labwareMap the new labware, mapped from external barcode (upper case)
      * @param sampleMap a map of external identifier (upper case) to sample
+     * @param work the work to link the operations to
      * @return a list of operations
      */
     public List<Operation> recordOperations(User user, SectionRegisterRequest request, UCMap<Labware> labwareMap,
-                                            UCMap<Sample> sampleMap) {
+                                            UCMap<Sample> sampleMap, Work work) {
         OperationType opType = opTypeRepo.getByName("Register");
         List<Operation> ops = new ArrayList<>(request.getLabware().size());
         for (SectionRegisterLabware srl : request.getLabware()) {
@@ -203,6 +207,9 @@ public class SectionRegisterServiceImp implements SectionRegisterService {
             Operation op = createOp(user, opType, lw);
             ops.add(op);
             createMeasurements(srl, lw, op, sampleMap);
+        }
+        if (work != null) {
+            workService.link(work, ops);
         }
         return ops;
     }
