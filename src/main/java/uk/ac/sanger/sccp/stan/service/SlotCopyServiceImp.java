@@ -132,6 +132,9 @@ public class SlotCopyServiceImp implements SlotCopyService {
             if (!nullOrEmpty(destination.getLotNumber())) {
                 lotNumberValidator.validate(destination.getLotNumber(), problems::add);
             }
+            if (!nullOrEmpty(destination.getProbeLotNumber())) {
+                lotNumberValidator.validate(destination.getProbeLotNumber(), problems::add);
+            }
         }
     }
 
@@ -462,7 +465,8 @@ public class SlotCopyServiceImp implements SlotCopyService {
         List<Labware> destLabware = new ArrayList<>(dests.size());
         for (SlotCopyDestination dest : dests) {
             OperationResult opres = executeOp(user, dest.getContents(), opType, lwTypes.get(dest.getLabwareType()),
-                    dest.getPreBarcode(), sources, dest.getCosting(), dest.getLotNumber(), bioStates.get(dest.getBioState()));
+                    dest.getPreBarcode(), sources, dest.getCosting(), dest.getLotNumber(), dest.getProbeLotNumber(),
+                    bioStates.get(dest.getBioState()));
             ops.addAll(opres.getOperations());
             destLabware.addAll(opres.getLabware());
         }
@@ -484,12 +488,13 @@ public class SlotCopyServiceImp implements SlotCopyService {
      * @param labwareMap a map of the source labware from their barcodes
      * @param costing the costing of new labware, if specified
      * @param lotNumber the lot number of the new labware, if specified
+     * @param probeLotNumber the transcriptome probe lot number, if specified
      * @param bioState the new bio state of the labware, if given
      * @return the result of the operation
      */
     public OperationResult executeOp(User user, Collection<SlotCopyContent> contents,
-                                   OperationType opType, LabwareType lwType, String preBarcode,
-                                   UCMap<Labware> labwareMap, SlideCosting costing, String lotNumber, BioState bioState) {
+                                     OperationType opType, LabwareType lwType, String preBarcode,
+                                     UCMap<Labware> labwareMap, SlideCosting costing, String lotNumber, String probeLotNumber, BioState bioState) {
         Labware emptyLabware = lwService.create(lwType, preBarcode, preBarcode);
         Map<Integer, Sample> oldSampleIdToNewSample = createSamples(contents, labwareMap,
                 coalesce(bioState, opType.getNewBioState()));
@@ -500,6 +505,9 @@ public class SlotCopyServiceImp implements SlotCopyService {
         }
         if (!nullOrEmpty(lotNumber)) {
             lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), "lot", lotNumber));
+        }
+        if (!nullOrEmpty(probeLotNumber)) {
+            lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), "probe lot", probeLotNumber));
         }
         return new OperationResult(List.of(op), List.of(filledLabware));
     }
@@ -606,7 +614,7 @@ public class SlotCopyServiceImp implements SlotCopyService {
                 lw.setDiscarded(true);
                 barcodesToUnstore.add(lw.getBarcode());
                 toUpdate.add(lw);
-            } else if (newState== Labware.State.used && !lw.isUsed()) {
+            } else if (newState==Labware.State.used && !lw.isUsed()) {
                 lw.setUsed(true);
                 toUpdate.add(lw);
             }

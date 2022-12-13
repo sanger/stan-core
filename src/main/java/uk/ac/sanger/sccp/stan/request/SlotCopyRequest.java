@@ -33,7 +33,7 @@ public class SlotCopyRequest {
     public SlotCopyRequest(String operationType, String labwareTypeName, List<SlotCopyContent> contents, String workNumber,
                            String preBarcode) {
         this(operationType, workNumber, null, List.of(new SlotCopyDestination(labwareTypeName, preBarcode,
-                null, null, contents, null)));
+                null, null, null, contents, null)));
     }
 
     public void setOperationType(String operationType) {
@@ -151,20 +151,22 @@ public class SlotCopyRequest {
         private String bioState;
         private SlideCosting costing;
         private String lotNumber;
+        private String probeLotNumber;
         private String preBarcode;
         private List<SlotCopyContent> contents;
 
         public SlotCopyDestination() {
-            this(null, null, null, null, null, null);
+            this(null, null, null, null, null, null, null);
         }
 
         public SlotCopyDestination(String labwareTypeName, String preBarcode, SlideCosting costing,
-                                   String lotNumber, List<SlotCopyContent> contents, String bioState) {
+                                   String lotNumber, String probeLotNumber, List<SlotCopyContent> contents, String bioState) {
             this.labwareType = labwareTypeName;
             this.preBarcode = preBarcode;
             this.costing = costing;
             this.lotNumber = lotNumber;
             this.bioState = bioState;
+            this.probeLotNumber = probeLotNumber;
             setContents(contents);
         }
 
@@ -213,6 +215,17 @@ public class SlotCopyRequest {
         }
 
         /**
+         * The probe lot number, if specified.
+         */
+        public String getProbeLotNumber() {
+            return this.probeLotNumber;
+        }
+
+        public void setProbeLotNumber(String probeLotNumber) {
+            this.probeLotNumber = probeLotNumber;
+        }
+
+        /**
          * The barcode of the new labware, if it is prebarcoded.
          */
         public String getPreBarcode() {
@@ -243,19 +256,20 @@ public class SlotCopyRequest {
                     && Objects.equals(this.bioState, that.bioState)
                     && this.costing == that.costing
                     && Objects.equals(this.lotNumber, that.lotNumber)
+                    && Objects.equals(this.probeLotNumber, that.probeLotNumber)
                     && Objects.equals(this.preBarcode, that.preBarcode)
                     && Objects.equals(this.contents, that.contents));
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(labwareType, bioState, costing, lotNumber, preBarcode, contents);
+            return Objects.hash(labwareType, bioState, costing, lotNumber, probeLotNumber, preBarcode, contents);
         }
 
         @Override
         public String toString() {
-            return String.format("{labwareType=%s, bioState=%s, costing=%s, lotNumber=%s, preBarcode=%s, contents=%s}",
-                    labwareType, bioState, costing, lotNumber, preBarcode, contents);
+            return String.format("{labwareType=%s, bioState=%s, costing=%s, lotNumber=%s, probeLotNumber=%s, preBarcode=%s, contents=%s}",
+                    labwareType, bioState, costing, lotNumber, probeLotNumber, preBarcode, contents);
         }
     }
 

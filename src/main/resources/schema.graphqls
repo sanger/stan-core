@@ -416,7 +416,6 @@ input PlanRequestLabware {
 }
 
 """A request to create a plan operation."""
-
 input PlanRequest {
     """The name of the type of operation we are planning."""
     operationType: String!
@@ -509,6 +508,8 @@ input SlotCopyDestination {
     costing: SlideCosting
     """The lot number of the slide, if specified."""
     lotNumber: String
+    """The probe lot number of the slide, if specified."""
+    probeLotNumber: String
     """The barcode of the new labware, if it is prebarcoded."""
     preBarcode: String
     """The specifications of which source slots are being copied into what addresses in the destination labware."""
