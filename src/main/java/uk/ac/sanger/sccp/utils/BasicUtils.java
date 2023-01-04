@@ -122,7 +122,7 @@ public class BasicUtils {
 
     /**
      * Using {@link MessageVar} pluralise a message with a template.<br/>
-     * E.g. <code>pluralise("There {is|are} {n} light{s}.", numLights)</code>
+     * E.g. <code>pluralise("There {is|are} {#} light{s}.", numLights)</code>
      * @param template a template with substitutions baked in
      * @param number the number indicating whether the message should be pluralised or singularised
      * @return the processed string
