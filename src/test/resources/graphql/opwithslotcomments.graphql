@@ -1,0 +1,18 @@
+mutation {
+    recordOpWithSlotComments(request: {
+        operationType: "Cleanup"
+        workNumber: "SGP1"
+        labware: [{
+            barcode: "STAN-1"
+            addressComments: [{
+                address: "A1"
+                commentId: 1
+            }]
+        }]
+    }) {
+        operations {
+            id
+            operationType { name }
+        }
+    }
+}

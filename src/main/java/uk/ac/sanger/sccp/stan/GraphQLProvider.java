@@ -179,6 +179,7 @@ public class GraphQLProvider {
                         .dataFetcher("addExternalID", transact(graphQLMutation.addExternalID()))
                         .dataFetcher("performFFPEProcessing", transact(graphQLMutation.performFFPEProcessing()))
                         .dataFetcher("performSolutionTransfer", transact(graphQLMutation.performSolutionTransfer()))
+                        .dataFetcher("recordOpWithSlotComments", transact(graphQLMutation.performOpWithSlotComments()))
 
                         .dataFetcher("addUser", transact(graphQLMutation.addUser()))
                         .dataFetcher("setUserRole", transact(graphQLMutation.setUserRole()))

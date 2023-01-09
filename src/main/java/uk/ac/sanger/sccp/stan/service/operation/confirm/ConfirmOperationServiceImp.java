@@ -5,7 +5,7 @@ import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.confirm.*;
-import uk.ac.sanger.sccp.stan.request.confirm.ConfirmOperationLabware.AddressCommentId;
+import uk.ac.sanger.sccp.stan.request.AddressCommentId;
 import uk.ac.sanger.sccp.stan.service.OperationService;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
 

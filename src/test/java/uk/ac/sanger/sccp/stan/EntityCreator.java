@@ -142,6 +142,9 @@ public class EntityCreator {
     }
 
     public Labware createLabware(String barcode, LabwareType lt, Sample... samples) {
+        if (samples.length > 1 && lt.getNumRows()==1 && lt.getNumColumns()==1) {
+            return createLabware(barcode, lt, new Sample[][] { samples });
+        }
         Labware lw = labwareRepo.save(new Labware(null, barcode, lt, null));
         Iterator<Sample> sampleIter = Arrays.asList(samples).iterator();
         List<Slot> slots = Address.stream(lt.getNumRows(), lt.getNumColumns())
@@ -149,6 +152,21 @@ public class EntityCreator {
                     Sample sample = sampleIter.hasNext() ? sampleIter.next() : null;
                     return new Slot(null, lw.getId(), ad, (sample==null ? List.of() : List.of(sample)),
                             null, null);
+                })
+                .collect(Collectors.toList());
+        slotRepo.saveAll(slots);
+        entityManager.refresh(lw);
+        return lw;
+    }
+
+    public Labware createLabware(String barcode, LabwareType lt, Sample[][] samples) {
+        Labware lw = labwareRepo.save(new Labware(null, barcode, lt, null));
+        Iterator<Sample[]> sampleArrayIter = Arrays.asList(samples).iterator();
+        List<Slot> slots = Address.stream(lt.getNumRows(), lt.getNumColumns())
+                .map(ad -> {
+                    Sample[] sams = sampleArrayIter.hasNext() ? sampleArrayIter.next() : null;
+                    List<Sample> samList = (sams==null ? List.of() : Arrays.asList(sams));
+                    return new Slot(null, lw.getId(), ad, samList, null, null);
                 })
                 .collect(Collectors.toList());
         slotRepo.saveAll(slots);
