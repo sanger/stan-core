@@ -3,13 +3,18 @@ package uk.ac.sanger.sccp.stan.service;
 import com.google.common.collect.Streams;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 
 import javax.persistence.EntityManager;
+import javax.persistence.EntityNotFoundException;
 import java.util.*;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -28,6 +33,7 @@ public class LabwareServiceTest {
     private LabelTypeRepo mockLabelTypeRepo;
     private OperationRepo mockOperationRepo;
     private OperationTypeRepo mockOperationTypeRepo;
+    private LabwareNoteRepo mockNoteRepo;
     private LabwareService labwareService;
     private int idCounter = 1000;
     private List<Labware> savedLabware;
@@ -42,13 +48,14 @@ public class LabwareServiceTest {
         mockLabelTypeRepo = mock(LabelTypeRepo.class);
         mockOperationRepo = mock(OperationRepo.class);
         mockOperationTypeRepo = mock(OperationTypeRepo.class);
+        mockNoteRepo = mock(LabwareNoteRepo.class);
 
         mockLabwareSave();
         mockSlotSave();
         mockRefresh();
 
         labwareService = spy(new LabwareService(mockEntityManager, mockLabwareRepo, mockSlotRepo, mockBarcodeSeedRepo, mockLabelTypeRepo,
-                                                mockOperationRepo, mockOperationTypeRepo));
+                                                mockOperationRepo, mockOperationTypeRepo, mockNoteRepo));
         savedLabware = new ArrayList<>();
         savedSlots = new ArrayList<>();
     }
@@ -255,5 +262,37 @@ public class LabwareServiceTest {
         assertEquals(labwareService.getLabwareOperations(lw1.getBarcode(), "Perm"), List.of());
         Matchers.assertValidationException(() -> labwareService.getLabwareOperations("test", "Stain"), "The request could not be validated.", "Could not find labware with barcode \"test\".");
         Matchers.assertValidationException(() -> labwareService.getLabwareOperations(lw1.getBarcode(), "Space"), "The request could not be validated.", "\"Space\" operation type not found in database.");
+    }
+
+    @ParameterizedTest
+    @MethodSource("labwareCostingArgs")
+    public void testGetLabwareCosting(List<LabwareNote> notes, SlideCosting expected, Labware lw) {
+        if (lw==null) {
+            when(mockLabwareRepo.getByBarcode(any())).thenThrow(EntityNotFoundException.class);
+            assertThrows(EntityNotFoundException.class, () -> labwareService.getLabwareCosting("STAN-404"));
+            return;
+        }
+        when(mockLabwareRepo.getByBarcode(lw.getBarcode())).thenReturn(lw);
+        when(mockNoteRepo.findAllByLabwareIdInAndName(List.of(lw.getId()), "costing")).thenReturn(notes);
+        assertSame(expected, labwareService.getLabwareCosting(lw.getBarcode()));
+    }
+
+    static Stream<Arguments> labwareCostingArgs() {
+        Labware lw = EntityFactory.getTube();
+        final String name = "costing";
+        final String sgp = SlideCosting.SGP.name();
+        final String faculty = SlideCosting.Faculty.name();
+        LabwareNote note1sgp = new LabwareNote(1, lw.getId(), 11, name, sgp);
+        LabwareNote note2fac = new LabwareNote(2, lw.getId(), 13, name, faculty);
+        LabwareNote note3sgp = new LabwareNote(3, lw.getId(), 12, name, sgp);
+
+        return Arrays.stream(new Object[][] {
+                {null, null, null},
+                {List.of(), null, lw},
+                {List.of(note1sgp, note2fac, note3sgp), SlideCosting.SGP, lw},
+                {List.of(note1sgp, note2fac), SlideCosting.Faculty, lw},
+                {List.of(note2fac, note1sgp), SlideCosting.Faculty, lw},
+                {List.of(note1sgp), SlideCosting.SGP, lw},
+        }).map(Arguments::of);
     }
 }

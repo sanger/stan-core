@@ -9,6 +9,7 @@ import org.springframework.test.context.ActiveProfiles;
 import uk.ac.sanger.sccp.stan.EntityCreator;
 import uk.ac.sanger.sccp.stan.GraphQLTester;
 import uk.ac.sanger.sccp.stan.model.*;
+import uk.ac.sanger.sccp.stan.repo.LabwareNoteRepo;
 
 import javax.transaction.Transactional;
 import java.time.format.DateTimeFormatter;
@@ -31,6 +32,8 @@ public class TestLabwareQuery {
     @Autowired
     private GraphQLTester tester;
     @Autowired
+    private LabwareNoteRepo noteRepo;
+    @Autowired
     private EntityCreator entityCreator;
 
     @Test
@@ -52,6 +55,26 @@ public class TestLabwareQuery {
         Map<String, ?> firstSlotData = slotsData.get(0);
         assertEquals("A1", firstSlotData.get("address"));
         assertEquals(1, chainGetList(firstSlotData, "samples").size());
+    }
+
+    @Test
+    @Transactional
+    public void testGetLabwareCosting() throws Exception {
+        LabwareType lt = entityCreator.getTubeType();
+        Sample sample = entityCreator.createSample(null, null);
+        Labware lw = entityCreator.createLabware("STAN-100", lt, sample);
+
+        OperationType opType = entityCreator.createOpType("opname", null, OperationTypeFlag.IN_PLACE);
+        User user = entityCreator.createUser("user1");
+        PlanOperation plan = entityCreator.createPlan(opType, user, lw.getFirstSlot(), lw.getFirstSlot());
+
+        final String sgp = SlideCosting.SGP.name();
+        noteRepo.save(LabwareNote.noteForPlan(lw.getId(), plan.getId(), "costing", sgp));
+
+        String query = "query { labwareCosting(barcode: \"STAN-100\") }";
+        Object result = tester.post(query);
+
+        assertEquals(sgp, chainGet(result, "data", "labwareCosting"));
     }
 
 }

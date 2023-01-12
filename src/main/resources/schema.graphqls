@@ -1546,6 +1546,8 @@ type Query {
     passFails(barcode: String!, operationType: String!): [OpPassFail!]!
     """List files linked to a work number."""
     listFiles(workNumber: String!): [StanFile!]!
+    """Get the existing costing (if any) for an item of labware."""
+    labwareCosting(barcode: String!): SlideCosting
 
     """Get the history containing a given sample id."""
     historyForSampleId(sampleId: Int!): History!
