@@ -1461,6 +1461,24 @@ input FFPEProcessingRequest {
     commentId: Int!
 }
 
+"""Request to record an operation on multiple labware in-place with comments on some slots."""
+input OpWithSlotCommentsRequest {
+    """The name of the operation type to record."""
+    operationType: String!
+    """The work number."""
+    workNumber: String
+    """The details of the labware."""
+    labware: [LabwareWithSlotCommentsRequest!]!
+}
+
+"""Specification of comments in slots of a piece of labware."""
+input LabwareWithSlotCommentsRequest {
+    """The barcode of the labware."""
+    barcode: String!
+    """The comments in slots of this labware."""
+    addressComments: [AddressCommentInput!]!
+}
+
 """
 Get information from the application.
 These typically require no user privilege.
@@ -1692,6 +1710,8 @@ type Mutation {
     performFFPEProcessing(request: FFPEProcessingRequest!): OperationResult!
     """Record an operation adding a external ID to a sample."""
     addExternalID(request: AddExternalIDRequest!): OperationResult!
+    """Record an operation in-place with comments on slots."""
+    recordOpWithSlotComments(request: OpWithSlotCommentsRequest): OperationResult!
 
     """Create a new user for the application."""
     addUser(username: String!): User!

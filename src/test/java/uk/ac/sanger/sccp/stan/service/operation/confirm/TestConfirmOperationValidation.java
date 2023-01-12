@@ -11,7 +11,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
 import uk.ac.sanger.sccp.stan.repo.PlanOperationRepo;
 import uk.ac.sanger.sccp.stan.request.confirm.*;
-import uk.ac.sanger.sccp.stan.request.confirm.ConfirmOperationLabware.AddressCommentId;
+import uk.ac.sanger.sccp.stan.request.AddressCommentId;
 import uk.ac.sanger.sccp.stan.service.CommentValidationService;
 
 import java.util.*;

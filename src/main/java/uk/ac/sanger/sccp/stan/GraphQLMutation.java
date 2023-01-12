@@ -90,6 +90,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final SampleProcessingService sampleProcessingService;
     final SolutionTransferService solutionTransferService;
     final FFPEProcessingService ffpeProcessingService;
+    final OpWithSlotCommentsService opWithSlotCommentsService;
     final UserAdminService userAdminService;
 
     @Autowired
@@ -115,7 +116,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            BlockProcessingService blockProcessingService, PotProcessingService potProcessingService,
                            InPlaceOpCommentService inPlaceOpCommentService,
                            SampleProcessingService sampleProcessingService, SolutionTransferService solutionTransferService,
-                           FFPEProcessingService ffpeProcessingService,
+                           FFPEProcessingService ffpeProcessingService, OpWithSlotCommentsService opWithSlotCommentsService,
                            UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
@@ -163,6 +164,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.sampleProcessingService = sampleProcessingService;
         this.solutionTransferService = solutionTransferService;
         this.ffpeProcessingService = ffpeProcessingService;
+        this.opWithSlotCommentsService = opWithSlotCommentsService;
         this.userAdminService = userAdminService;
     }
 
@@ -698,6 +700,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             FFPEProcessingRequest request = arg(dfe, "request", FFPEProcessingRequest.class);
             logRequest("Perform FFPE processing", user, request);
             return ffpeProcessingService.perform(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> performOpWithSlotComments() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            OpWithSlotCommentsRequest request = arg(dfe, "request", OpWithSlotCommentsRequest.class);
+            logRequest("Perform op with slot comments", user, request);
+            return opWithSlotCommentsService.perform(user, request);
         };
     }
 

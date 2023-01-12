@@ -4,7 +4,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
 import uk.ac.sanger.sccp.stan.repo.PlanOperationRepo;
 import uk.ac.sanger.sccp.stan.request.confirm.*;
-import uk.ac.sanger.sccp.stan.request.confirm.ConfirmOperationLabware.AddressCommentId;
+import uk.ac.sanger.sccp.stan.request.AddressCommentId;
 import uk.ac.sanger.sccp.stan.service.CommentValidationService;
 
 import java.util.*;
@@ -55,7 +55,7 @@ public class ConfirmOperationValidationImp implements ConfirmOperationValidation
      */
     public Map<String, Labware> validateLabware() {
         Map<String, Labware> labware = new HashMap<>(request.getLabware().size());
-        Set<String> seenBarcodes = new HashSet<>(labware.size());
+        Set<String> seenBarcodes = new HashSet<>(request.getLabware().size());
         for (ConfirmOperationLabware col : request.getLabware()) {
             if (col.getBarcode()==null || col.getBarcode().isEmpty()) {
                 addProblem("Missing labware barcode.");
