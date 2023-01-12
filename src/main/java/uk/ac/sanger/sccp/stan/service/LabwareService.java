@@ -27,11 +27,12 @@ public class LabwareService {
     private final LabelTypeRepo labelTypeRepo;
     private final OperationRepo operationRepo;
     private final OperationTypeRepo operationTypeRepo;
+    private final LabwareNoteRepo lwNoteRepo;
 
     @Autowired
     public LabwareService(EntityManager entityManager, LabwareRepo labwareRepo, SlotRepo slotRepo,
                           BarcodeSeedRepo barcodeSeedRepo, LabelTypeRepo labelTypeRepo, OperationRepo operationRepo,
-                          OperationTypeRepo operationTypeRepo) {
+                          OperationTypeRepo operationTypeRepo, LabwareNoteRepo lwNoteRepo) {
         this.labwareRepo = labwareRepo;
         this.slotRepo = slotRepo;
         this.barcodeSeedRepo = barcodeSeedRepo;
@@ -39,6 +40,7 @@ public class LabwareService {
         this.labelTypeRepo = labelTypeRepo;
         this.operationRepo = operationRepo;
         this.operationTypeRepo = operationTypeRepo;
+        this.lwNoteRepo = lwNoteRepo;
     }
 
     /**
@@ -181,5 +183,14 @@ public class LabwareService {
             throw new ValidationException("The request could not be validated.", problems);
         }
         return operationRepo.findAllByOperationTypeAndDestinationLabwareIdIn(operationType, List.of(labware.getId()));
+    }
+
+    public SlideCosting getLabwareCosting(String barcode) {
+        Labware lw = labwareRepo.getByBarcode(barcode);
+        final List<LabwareNote> notes = lwNoteRepo.findAllByLabwareIdInAndName(List.of(lw.getId()), "costing");
+        return notes.stream()
+                .max(Comparator.comparing(LabwareNote::getId))
+                .map(note -> SlideCosting.valueOf(note.getValue()))
+                .orElse(null);
     }
 }

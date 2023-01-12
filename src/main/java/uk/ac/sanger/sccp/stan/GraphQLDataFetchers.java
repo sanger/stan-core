@@ -358,6 +358,11 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         return dfe -> labwareService.getLabwareOperations(dfe.getArgument("barcode"), dfe.getArgument("operationType"));
     }
 
+    /** Gets the slide costing (if any) recorded for the specified labware. */
+    public DataFetcher<SlideCosting> getLabwareCosting() {
+        return dfe -> labwareService.getLabwareCosting(dfe.getArgument("barcode"));
+    }
+
     private boolean argOrFalse(DataFetchingEnvironment dfe, String argName) {
         Boolean arg = dfe.getArgument(argName);
         return Boolean.TRUE.equals(arg);
