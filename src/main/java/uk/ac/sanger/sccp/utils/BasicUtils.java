@@ -369,6 +369,18 @@ public class BasicUtils {
     }
 
     /**
+     * Escape the sql-LIKE symbols in a string
+     * (percent, which is any sequence of characters, underscore, which is any single character,
+     * and backslash, which is the escape character).
+     * They are escaped by inserting a backslash before them.
+     * @param string the string to escape
+     * @return the escaped string
+     */
+    public static String escapeLikeSql(String string) {
+        return StringUtils.escapeLikeSql(string);
+    }
+
+    /**
      * Is the given string null or empty?
      */
     public static boolean nullOrEmpty(String string) {

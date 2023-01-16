@@ -48,4 +48,6 @@ public interface TissueRepo extends CrudRepository<Tissue, Integer> {
 
     @Query(value="select max(cast(replicate as unsigned)) from tissue where donor_id=?1 and spatial_location_id=?2", nativeQuery=true)
     Integer findMaxReplicateForDonorIdAndSpatialLocationId(int donorId, int spatialLocationId);
+
+    List<Tissue> findAllByExternalNameLike(String string);
 }

@@ -11,10 +11,12 @@ import uk.ac.sanger.sccp.stan.request.FindResult;
 import uk.ac.sanger.sccp.stan.request.FindResult.FindEntry;
 import uk.ac.sanger.sccp.stan.request.FindResult.LabwareLocation;
 import uk.ac.sanger.sccp.stan.service.store.StoreService;
+import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import java.time.LocalDate;
 import java.util.*;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.*;
@@ -61,7 +63,11 @@ public class FindService {
         if (request.getLabwareBarcode()!=null) {
             labwareSamples = findByLabwareBarcode(request.getLabwareBarcode());
         } else if (request.getTissueExternalName()!=null) {
-            labwareSamples = findByTissueExternalName(request.getTissueExternalName());
+            if (request.getTissueExternalName().indexOf('*') >= 0) {
+                labwareSamples = findByTissueExternalNameLike(request.getTissueExternalName());
+            } else {
+                labwareSamples = findByTissueExternalName(request.getTissueExternalName());
+            }
         } else if (request.getDonorName()!=null) {
             labwareSamples = findByDonorName(request.getDonorName());
         } else if (request.getTissueTypeName()!=null) {
@@ -103,6 +109,12 @@ public class FindService {
                     return new LabwareSample(lw, sample, workNumbers);
                 })
                 .collect(toList());
+    }
+
+    public List<LabwareSample> findByTissueExternalNameLike(String string) {
+        String likeString = BasicUtils.escapeLikeSql(string).replaceAll("\\*+", "%");
+        List<Tissue> tissues = tissueRepo.findAllByExternalNameLike(likeString);
+        return findByTissueIds(tissues.stream().map(Tissue::getId).collect(toList()));
     }
 
     /**
@@ -235,9 +247,15 @@ public class FindService {
         }
         final String externalName = request.getTissueExternalName();
         if (externalName!=null) {
-            predicate = andPredicate(predicate,
-                    ls -> externalName.equalsIgnoreCase(ls.getSample().getTissue().getExternalName())
-            );
+            if (externalName.indexOf('*') >= 0) {
+                final Pattern pattern = makeWildcardPattern(externalName);
+                predicate = andPredicate(predicate,
+                        ls -> pattern.matcher(ls.getSample().getTissue().getExternalName()).matches());
+            } else {
+                predicate = andPredicate(predicate,
+                        ls -> externalName.equalsIgnoreCase(ls.getSample().getTissue().getExternalName())
+                );
+            }
         }
         final String tissueTypeName = request.getTissueTypeName();
         if (tissueTypeName!=null) {
@@ -253,6 +271,19 @@ public class FindService {
         }
         predicate = andPredicate(predicate, datePredicate(request.getCreatedMin(), request.getCreatedMax()));
         return predicate;
+    }
+
+    /**
+     * Makes a case-insensitive regular expression pattern to match the given string reading <tt>*</tt> as a wildcard.
+     * @param wildcardString a string containing `*` as wildcards
+     * @return the regular expression pattern object
+     */
+    public static Pattern makeWildcardPattern(String wildcardString) {
+        String[] parts = wildcardString.split("\\*+", -1);
+        String regex = Arrays.stream(parts)
+                .map(part -> part.isEmpty() ? part : Pattern.quote(part))
+                .collect(joining(".*"));
+        return Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
     }
 
     private static Predicate<LabwareSample> datePredicate(LocalDate min, LocalDate max) {
