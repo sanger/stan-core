@@ -73,7 +73,12 @@ public class HistoryServiceImp implements HistoryService {
 
     @Override
     public History getHistoryForExternalName(String externalName) {
-        List<Tissue> tissues = tissueRepo.getAllByExternalName(externalName);
+        List<Tissue> tissues;
+        if (externalName!=null && externalName.indexOf('*') >= 0) {
+            tissues = tissueRepo.findAllByExternalNameLike(BasicUtils.wildcardToLikeSql(externalName));
+        } else {
+            tissues = tissueRepo.getAllByExternalName(externalName);
+        }
         List<Integer> tissueIds = tissues.stream().map(Tissue::getId).collect(toList());
         List<Sample> samples = sampleRepo.findAllByTissueIdIn(tissueIds);
         return getHistoryForSamples(samples);

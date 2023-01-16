@@ -381,6 +381,16 @@ public class BasicUtils {
     }
 
     /**
+     * Convert a string with <tt>*</tt> as a wildcard to a string with <tt>%</tt> suitable to be
+     * used in an SQL LIKE comparison.
+     * @param string the string to convert
+     * @return the converted string
+     */
+    public static String wildcardToLikeSql(String string) {
+        return escapeLikeSql(string).replaceAll("\\*+", "%");
+    }
+
+    /**
      * Is the given string null or empty?
      */
     public static boolean nullOrEmpty(String string) {

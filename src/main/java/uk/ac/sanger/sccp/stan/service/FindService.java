@@ -112,7 +112,7 @@ public class FindService {
     }
 
     public List<LabwareSample> findByTissueExternalNameLike(String string) {
-        String likeString = BasicUtils.escapeLikeSql(string).replaceAll("\\*+", "%");
+        String likeString = BasicUtils.wildcardToLikeSql(string);
         List<Tissue> tissues = tissueRepo.findAllByExternalNameLike(likeString);
         return findByTissueIds(tissues.stream().map(Tissue::getId).collect(toList()));
     }
