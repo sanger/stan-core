@@ -303,7 +303,7 @@ class StringUtils {
 
     /**
      * Escape the sql-LIKE symbols in a string
-     * (percent, which is any sequence of characters, underscore, which any single character,
+     * (percent, which is any sequence of characters, underscore, which is any single character,
      * and backslash, which is the escape character).
      * They are escaped by inserting a backslash before them.
      * @param string the string to escape

@@ -88,18 +88,25 @@ public class TestHistoryService {
         assertThrows(EntityNotFoundException.class, () -> service.getHistoryForSampleId(-1));
     }
 
-    @Test
-    public void testGetHistoryForExternalName() {
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testGetHistoryForExternalName(boolean wildcard) {
         History history = new History();
         Sample sample = EntityFactory.getSample();
         Tissue tissue = sample.getTissue();
-        when(mockTissueRepo.getAllByExternalName(tissue.getExternalName())).thenReturn(List.of(tissue));
+        String string = tissue.getExternalName();
+        if (wildcard) {
+            string = "TIS*";
+            when(mockTissueRepo.findAllByExternalNameLike("TIS%")).thenReturn(List.of(tissue));
+        } else {
+            when(mockTissueRepo.getAllByExternalName(tissue.getExternalName())).thenReturn(List.of(tissue));
+        }
         Sample sample2 = new Sample(sample.getId()+1, 10, sample.getTissue(), sample.getBioState());
         List<Sample> samples = List.of(sample, sample2);
         when(mockSampleRepo.findAllByTissueIdIn(List.of(tissue.getId()))).thenReturn(samples);
         doReturn(history).when(service).getHistoryForSamples(samples);
 
-        assertSame(history, service.getHistoryForExternalName(tissue.getExternalName()));
+        assertSame(history, service.getHistoryForExternalName(string));
     }
 
     @Test

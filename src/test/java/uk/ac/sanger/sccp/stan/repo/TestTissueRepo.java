@@ -113,6 +113,19 @@ public class TestTissueRepo {
 
     @Test
     @Transactional
+    public void testFindAllByExternalNameLike() {
+        Donor donor = entityCreator.createDonor("DONOR1");
+        Tissue tissue1 = entityCreator.createTissue(donor, "TISSUE1", "1");
+        Tissue tissue2 = entityCreator.createTissue(donor, "TISSUE2", "1");
+        Tissue tissue3 = entityCreator.createTissue(donor, "XTIS2", "1");
+        assertThat(tissueRepo.findAllByExternalNameLike("%TIS%")).containsExactlyInAnyOrder(tissue1, tissue2, tissue3);
+        assertThat(tissueRepo.findAllByExternalNameLike("TIS%")).containsExactlyInAnyOrder(tissue1, tissue2);
+        assertThat(tissueRepo.findAllByExternalNameLike("%tis%2")).containsExactlyInAnyOrder(tissue2, tissue3);
+        assertThat(tissueRepo.findAllByExternalNameLike("TIS2%")).isEmpty();
+    }
+
+    @Test
+    @Transactional
     public void testFindByTissueTypeId() {
         Donor donor = entityCreator.createDonor("DONOR1");
         TissueType tt1 = tissueTypeRepo.findByName("Heart").orElseThrow();

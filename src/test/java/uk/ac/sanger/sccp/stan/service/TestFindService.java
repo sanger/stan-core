@@ -3,8 +3,7 @@ package uk.ac.sanger.sccp.stan.service;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.*;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.store.Location;
@@ -21,6 +20,7 @@ import javax.persistence.EntityNotFoundException;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.*;
 
 import static java.util.stream.Collectors.toList;
@@ -82,7 +82,7 @@ public class TestFindService {
         if (request.getLabwareBarcode()!=null) {
             mode = 0;
         } else if (request.getTissueExternalName()!=null) {
-            mode = 1;
+            mode = (request.getTissueExternalName().indexOf('*') >= 0) ? 5 : 1;
         } else if (request.getDonorName()!=null) {
             mode = 2;
         } else if (request.getTissueTypeName()!=null){
@@ -107,7 +107,9 @@ public class TestFindService {
             case 4:
                 doReturn(ls1).when(findService).findByWorkNumber(request.getWorkNumber());
                 break;
-
+            case 5:
+                doReturn(ls1).when(findService).findByTissueExternalNameLike(request.getTissueExternalName());
+                break;
         }
 
         assertSame(result, findService.find(request));
@@ -130,6 +132,9 @@ public class TestFindService {
             case 4:
                 verify(findService).findByWorkNumber(request.getWorkNumber());
                 break;
+            case 5:
+                verify(findService).findByTissueExternalNameLike(request.getTissueExternalName());
+                break;
         }
         verify(findService).filter(ls1, request);
         verify(findService).getStoredItems(ls2);
@@ -142,7 +147,8 @@ public class TestFindService {
                 new FindRequest(null, null, "TISSUE1", null, -1, null, null, null),
                 new FindRequest(null, "DONOR1", null, null, -1, null,  null, null),
                 new FindRequest(null, null, null, "Heart", -1, null, null, null),
-                new FindRequest(null, null, null, "Heart", -1, "SGP-1", null, null)
+                new FindRequest(null, null, null, "Heart", -1, "SGP-1", null, null),
+                new FindRequest(null, null, "TIS*", null, -1, null, null, null)
         );
     }
 
@@ -289,6 +295,21 @@ public class TestFindService {
     }
 
     @Test
+    public void testFindByExternalNameLike() {
+        String string = "T%_IS*";
+        Tissue tissue = EntityFactory.getTissue();
+        Tissue tissue2 = EntityFactory.makeTissue(tissue.getDonor(), tissue.getSpatialLocation());
+        when(mockTissueRepo.findAllByExternalNameLike(any())).thenReturn(List.of(tissue, tissue2));
+        Labware lw = EntityFactory.getTube();
+        Sample sample = EntityFactory.getSample();
+        List<LabwareSample> lss = List.of(new LabwareSample(lw, sample, Set.of()));
+        doReturn(lss).when(findService).findByTissueIds(any());
+        assertEquals(lss, findService.findByTissueExternalNameLike(string));
+        verify(mockTissueRepo).findAllByExternalNameLike("T\\%\\_IS%");
+        verify(findService).findByTissueIds(List.of(tissue.getId(), tissue2.getId()));
+    }
+
+    @Test
     public void testFindByDonorName() {
         Sample sample = EntityFactory.getSample();
         Tissue tissue = sample.getTissue();
@@ -396,6 +417,10 @@ public class TestFindService {
                         List.of(lss.get(0), lss.get(2))),
                 Arguments.of(lss, new FindRequest(null, null, null, null, 0, work.getWorkNumber(), null, null),
                         List.of(lss.get(0))),
+                Arguments.of(lss, new FindRequest(null, null, "*UE2", null, 0, null, null, null),
+                        List.of(lss.get(1), lss.get(3))),
+                Arguments.of(lss, new FindRequest(null, null, "tiss*", null, 0, null, null, null),
+                        lss),
                 Arguments.of(lss, new FindRequest(lw1.getBarcode(), donor1.getDonorName(), tissue1.getExternalName(), tt2.getName(), 0, null, null, null), List.of()),
                 // Date filtering:
                 Arguments.of(lss, new FindRequest(null, null, null, tt1.getName(), 0, null, wednesday, null), List.of(lss.get(2))),
@@ -504,6 +529,18 @@ public class TestFindService {
                         result(6, labware[0], labware[1], samples[0], samples[1],
                                 lss.get(0), lss.get(1), lss.get(2), storedItems.get(0), storedItems.get(1), loc1))
         );
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "TIS*, \\QTIS\\E.*",
+            "*TI%?\\*, .*\\QTI%?\\\\E.*",
+    })
+    public void testMakeWildcardPattern(String input, String expected) {
+        Pattern p = FindService.makeWildcardPattern(input);
+        assertEquals(expected, p.pattern());
+        assertThat(input).matches(p);
+        assertThat(p.flags() & Pattern.CASE_INSENSITIVE).isNotZero();
     }
 
     private static FindResult result(int numResults, Object... data) {

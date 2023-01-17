@@ -110,7 +110,7 @@ public class TestFindQuery {
         GraphQLClient.GraphQLResponse storelightResponse = new GraphQLClient.GraphQLResponse(storelightDataNode, null);
         when(mockStorelightClient.postQuery(anyString(), any())).thenReturn(storelightResponse);
 
-        String query = tester.readGraphQL("find_tissue.graphql").replace("TISSUE_NAME", tissue1.getExternalName());
+        String query = tester.readGraphQL("find_tissue.graphql").replace("TISSUE_NAME", "TIS*1");
 
         Object response = tester.post(query);
         final Object findData = chainGet(response, "data", "find");

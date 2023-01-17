@@ -369,6 +369,28 @@ public class BasicUtils {
     }
 
     /**
+     * Escape the sql-LIKE symbols in a string
+     * (percent, which is any sequence of characters, underscore, which is any single character,
+     * and backslash, which is the escape character).
+     * They are escaped by inserting a backslash before them.
+     * @param string the string to escape
+     * @return the escaped string
+     */
+    public static String escapeLikeSql(String string) {
+        return StringUtils.escapeLikeSql(string);
+    }
+
+    /**
+     * Convert a string with <tt>*</tt> as a wildcard to a string with <tt>%</tt> suitable to be
+     * used in an SQL LIKE comparison.
+     * @param string the string to convert
+     * @return the converted string
+     */
+    public static String wildcardToLikeSql(String string) {
+        return escapeLikeSql(string).replaceAll("\\*+", "%");
+    }
+
+    /**
      * Is the given string null or empty?
      */
     public static boolean nullOrEmpty(String string) {
