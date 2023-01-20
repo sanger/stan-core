@@ -1,11 +1,12 @@
 mutation {
-    createWork(prefix: "SGP", workType: "Drywalling", workRequester: "test1", project: "Stargate", program: "Hello", costCode: "S666") {
+    createWork(prefix: "SGP", workType: "Drywalling", workRequester: "test1", project: "Stargate", program: "Hello", costCode: "S666", omeroProject: "OM_PROJ") {
         workNumber
         workType {name}
         workRequester {username}
         project {name}
         program {name}
         costCode {code}
+        omeroProject {name}
         status
     }
 }
