@@ -5,11 +5,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import uk.ac.sanger.sccp.stan.model.Equipment;
+import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import javax.transaction.Transactional;
 import java.util.Comparator;
 import java.util.List;
-import java.util.stream.StreamSupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -33,7 +33,7 @@ public class TestEquipmentRepo {
                 new Equipment(null, "Delaware", "scanner", false),
                 new Equipment(null, "Florida", "spatula", false)
         );
-        Equipment[] eq = StreamSupport.stream(equipmentRepo.saveAll(newEquipments).spliterator(), false)
+        Equipment[] eq = BasicUtils.stream(equipmentRepo.saveAll(newEquipments))
                 .sorted(Comparator.comparing(Equipment::getName))
                 .toArray(Equipment[]::new);
 

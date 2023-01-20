@@ -19,12 +19,12 @@ import uk.ac.sanger.sccp.stan.service.label.print.LabelPrintService;
 import uk.ac.sanger.sccp.stan.service.operation.plan.PlanService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.stan.service.work.WorkSummaryService;
+import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import javax.persistence.EntityNotFoundException;
 import java.util.Collection;
 import java.util.List;
 import java.util.function.Supplier;
-import java.util.stream.StreamSupport;
 
 import static java.util.stream.Collectors.toList;
 
@@ -254,9 +254,9 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
             if (includeDisabled) {
                 return users;
             }
-            return StreamSupport.stream(users.spliterator(), false)
-                        .filter(user -> user.getRole()!= User.Role.disabled)
-                        .collect(toList());
+            return BasicUtils.stream(users)
+                    .filter(user -> user.getRole() != User.Role.disabled)
+                    .collect(toList());
         };
     }
 

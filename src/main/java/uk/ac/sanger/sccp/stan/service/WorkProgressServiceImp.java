@@ -9,13 +9,13 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.WorkProgress;
 import uk.ac.sanger.sccp.stan.request.WorkProgress.WorkProgressTimestamp;
 import uk.ac.sanger.sccp.stan.service.work.WorkEventService;
+import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.EntityNameFilter;
 
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
@@ -134,7 +134,7 @@ public class WorkProgressServiceImp implements WorkProgressService {
             works = workRepo.findAll();
         }
 
-        return StreamSupport.stream(works.spliterator(), false)
+        return BasicUtils.stream(works)
                 .map(work -> getProgressForWork(work, opTypeFilter, stainTypeFilter, labwareTypeFilter,
                         releaseLabwareTypeFilter, labwareIdToLabware, labwareTypeToStainMap))
                 .collect(toList());
@@ -254,7 +254,7 @@ public class WorkProgressServiceImp implements WorkProgressService {
     public void loadReleases(Map<String, LocalDateTime> opTimes, Iterable<Operation> ops,
                              Predicate<LabwareType> releaseLabwareFilter,
                              Map<Integer, Labware> labwareIdCache) {
-        Set<Integer> lwIdsToCheckForReleases = StreamSupport.stream(ops.spliterator(), false)
+        Set<Integer> lwIdsToCheckForReleases = BasicUtils.stream(ops)
                 .flatMap(op -> op.getActions().stream()
                         .map(ac -> ac.getDestination().getLabwareId()))
                 .filter(lwid -> releaseLabwareFilter.test(getLabware(lwid, labwareIdCache).getLabwareType()))

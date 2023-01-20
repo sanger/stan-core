@@ -11,10 +11,10 @@ import uk.ac.sanger.sccp.stan.GraphQLTester;
 import uk.ac.sanger.sccp.stan.model.Comment;
 import uk.ac.sanger.sccp.stan.model.User;
 import uk.ac.sanger.sccp.stan.repo.CommentRepo;
+import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import javax.transaction.Transactional;
 import java.util.Map;
-import java.util.stream.StreamSupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
@@ -67,7 +67,7 @@ public class TestCommentMutations {
     @Test
     @Transactional
     public void testSetCommentEnabled() throws Exception {
-        Comment comment = StreamSupport.stream(commentRepo.findAll().spliterator(), false)
+        Comment comment = BasicUtils.stream(commentRepo.findAll())
                 .filter(Comment::isEnabled)
                 .findAny()
                 .orElseThrow();

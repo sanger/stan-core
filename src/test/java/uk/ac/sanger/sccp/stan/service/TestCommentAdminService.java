@@ -7,12 +7,12 @@ import org.junit.jupiter.params.provider.MethodSource;
 import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.Comment;
 import uk.ac.sanger.sccp.stan.repo.CommentRepo;
+import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import javax.persistence.EntityExistsException;
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
@@ -62,7 +62,7 @@ public class TestCommentAdminService {
                                 Set<Comment> expectedComments) {
         setupCommentLists(comments);
         Iterable<Comment> results = service.getComments(category, includeDisabled);
-        Set<Comment> commentSet = StreamSupport.stream(results.spliterator(), false).collect(toSet());
+        Set<Comment> commentSet = BasicUtils.stream(results).collect(toSet());
         assertEquals(expectedComments, commentSet);
     }
 

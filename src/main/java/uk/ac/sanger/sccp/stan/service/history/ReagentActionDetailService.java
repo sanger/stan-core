@@ -10,7 +10,6 @@ import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import java.util.*;
 import java.util.function.Function;
-import java.util.stream.StreamSupport;
 
 import static java.util.stream.Collectors.toSet;
 
@@ -65,7 +64,7 @@ public class ReagentActionDetailService {
                 .map(ra -> ra.getReagentSlot().getPlateId())
                 .collect(toSet());
         var reagentPlates = reagentPlateRepo.findAllById(reagentPlateIds);
-        Map<Integer, ReagentPlate> reagentPlateMap = StreamSupport.stream(reagentPlates.spliterator(), false)
+        Map<Integer, ReagentPlate> reagentPlateMap = BasicUtils.stream(reagentPlates)
                 .collect(BasicUtils.toMap(ReagentPlate::getId));
         final Map<K, List<ReagentActionDetail>> map = new HashMap<>();
         for (var ra : reagentActions) {
