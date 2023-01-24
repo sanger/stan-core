@@ -1728,6 +1728,8 @@ type Mutation {
     unstoreBarcode(barcode: String!): UnstoredItem
     """Empty a specified location of its stored items."""
     empty(locationBarcode: String!): UnstoreResult!
+    """Transfer labware from one storage location to another."""
+    transfer(sourceBarcode: String!, destinationBarcode: String!): Location!
     """Set the custom name of a specified location."""
     setLocationCustomName(locationBarcode: String!, customName: String): Location!
 }

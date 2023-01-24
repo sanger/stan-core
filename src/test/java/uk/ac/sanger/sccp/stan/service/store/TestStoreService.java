@@ -27,6 +27,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -573,6 +574,64 @@ public class TestStoreService {
                 .put("message", errorMessage)));
         assertThat(assertThrows(StoreException.class, () -> service.checkErrors(errors)))
                 .hasMessage(errorMessage);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "STO-0, true, STO-1, STAN-A1 STAN-A2 BLARG,",
+            "STO-0, true, sto-0,, Source and destination cannot be the same location.",
+            "STO-0, false, STO-1,, No such location: STO-0",
+            "STO-0, true, STO-1,, Location STO-0 is empty.",
+            "STO-0, true, STO-1, BLARG1 BLARG2, None of the labware stored in that location belongs to Stan.",
+    })
+    public void testTransfer(String sourceBarcode, boolean sourceExists, String destinationBarcode,
+                             String joinedItemBarcodes, String expectedError) {
+        Location source;
+        if (sourceExists) {
+            source = new Location();
+            source.setBarcode(sourceBarcode.toUpperCase());
+            doReturn(source).when(service).getLocation(sourceBarcode);
+        } else {
+            source = null;
+            doThrow(new RuntimeException("No such location: "+sourceBarcode)).when(service).getLocation(sourceBarcode);
+        }
+        List<StoredItem> stored;
+        Set<String> stanBarcodes;
+        if (joinedItemBarcodes!=null) {
+            final String[] itemBarcodes = joinedItemBarcodes.split("\\s+");
+            stored = IntStream.range(0, itemBarcodes.length)
+                    .mapToObj(i -> new StoredItem(itemBarcodes[i], source, i==0 ? new Address(1,1) : null))
+                    .collect(toList());
+            stanBarcodes = Arrays.stream(itemBarcodes)
+                    .map(String::toUpperCase)
+                    .filter(bc -> bc.startsWith("STAN-"))
+                    .collect(toSet());
+            when(mockLabwareRepo.findBarcodesByBarcodeIn(any())).thenReturn(stanBarcodes);
+        } else {
+            stored = List.of();
+            stanBarcodes = Set.of();
+        }
+        if (sourceExists) {
+            source.setStored(stored);
+        }
+        User user = new User(100, "user1", User.Role.normal);
+        if (expectedError!=null) {
+            assertThat(assertThrows(RuntimeException.class, () -> service.transfer(user, sourceBarcode, destinationBarcode)))
+                    .hasMessage(expectedError);
+            verify(service, never()).store(any(), any(), any());
+            return;
+        }
+        Location result = new Location();
+        doReturn(result).when(service).store(any(), any(), any());
+
+        assertSame(result, service.transfer(user, sourceBarcode, destinationBarcode));
+
+        List<StoreInput> expectedStoreInputs = stored.stream()
+                .filter(item -> stanBarcodes.contains(item.getBarcode().toUpperCase()))
+                .map(item -> new StoreInput(item.getBarcode(), item.getAddress()))
+                .collect(toList());
+
+        verify(service).store(user, expectedStoreInputs, destinationBarcode);
     }
 
     private String json(String string) throws JsonProcessingException {

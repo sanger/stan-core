@@ -59,7 +59,7 @@ public class GraphQLStore extends BaseGraphQLResource {
         return dfe -> {
             User user = checkUser(dfe, User.Role.normal);
             String locationBarcode = dfe.getArgument("locationBarcode");
-            List<StoreInput> storeInputs = arg(dfe, "store", new TypeReference<List<StoreInput>>() {});
+            List<StoreInput> storeInputs = arg(dfe, "store", new TypeReference<>() {});
             if (log.isInfoEnabled()) {
                 log.info("Store request from {}: store: {}, locationBarcode: {}",
                         user.getUsername(), storeInputs, repr(locationBarcode));
@@ -86,6 +86,15 @@ public class GraphQLStore extends BaseGraphQLResource {
         };
     }
 
+    public DataFetcher<Location> transfer() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            String sourceBarcode = dfe.getArgument("sourceBarcode");
+            String destinationBarcode = dfe.getArgument("destinationBarcode");
+            return storeService.transfer(user, sourceBarcode, destinationBarcode);
+        };
+    }
+
     public DataFetcher<Location> setLocationCustomName() {
         return dfe -> {
             User user = checkUser(dfe, User.Role.normal);
@@ -108,7 +117,7 @@ public class GraphQLStore extends BaseGraphQLResource {
 
     public DataFetcher<List<StoredItem>> getStored() {
         return dfe -> {
-            List<String> barcodes = arg(dfe, "barcodes", new TypeReference<List<String>>() {});
+            List<String> barcodes = arg(dfe, "barcodes", new TypeReference<>() {});
             return storeService.getStored(barcodes);
         };
     }
