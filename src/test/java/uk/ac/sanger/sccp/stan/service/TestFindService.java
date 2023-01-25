@@ -108,7 +108,7 @@ public class TestFindService {
                 doReturn(ls1).when(findService).findByWorkNumber(request.getWorkNumber());
                 break;
             case 5:
-                doReturn(ls1).when(findService).findByTissueExternalNameLike(request.getTissueExternalName());
+                doReturn(ls1).when(findService).findByTissueExternalNameWildcard(request.getTissueExternalName());
                 break;
         }
 
@@ -133,7 +133,7 @@ public class TestFindService {
                 verify(findService).findByWorkNumber(request.getWorkNumber());
                 break;
             case 5:
-                verify(findService).findByTissueExternalNameLike(request.getTissueExternalName());
+                verify(findService).findByTissueExternalNameWildcard(request.getTissueExternalName());
                 break;
         }
         verify(findService).filter(ls1, request);
@@ -304,7 +304,7 @@ public class TestFindService {
         Sample sample = EntityFactory.getSample();
         List<LabwareSample> lss = List.of(new LabwareSample(lw, sample, Set.of()));
         doReturn(lss).when(findService).findByTissueIds(any());
-        assertEquals(lss, findService.findByTissueExternalNameLike(string));
+        assertEquals(lss, findService.findByTissueExternalNameWildcard(string));
         verify(mockTissueRepo).findAllByExternalNameLike("T\\%\\_IS%");
         verify(findService).findByTissueIds(List.of(tissue.getId(), tissue2.getId()));
     }

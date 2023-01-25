@@ -64,7 +64,7 @@ public class FindService {
             labwareSamples = findByLabwareBarcode(request.getLabwareBarcode());
         } else if (request.getTissueExternalName()!=null) {
             if (request.getTissueExternalName().indexOf('*') >= 0) {
-                labwareSamples = findByTissueExternalNameLike(request.getTissueExternalName());
+                labwareSamples = findByTissueExternalNameWildcard(request.getTissueExternalName());
             } else {
                 labwareSamples = findByTissueExternalName(request.getTissueExternalName());
             }
@@ -111,7 +111,12 @@ public class FindService {
                 .collect(toList());
     }
 
-    public List<LabwareSample> findByTissueExternalNameLike(String string) {
+    /**
+     * Finds LabwareSamples whose tissue external name matches the given wildcard string.
+     * @param string a string containing {@code *} wildcards
+     * @return the LabwareSamples for tissues with matching external names
+     */
+    public List<LabwareSample> findByTissueExternalNameWildcard(String string) {
         String likeString = BasicUtils.wildcardToLikeSql(string);
         List<Tissue> tissues = tissueRepo.findAllByExternalNameLike(likeString);
         return findByTissueIds(tissues.stream().map(Tissue::getId).collect(toList()));
@@ -286,6 +291,13 @@ public class FindService {
         return Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
     }
 
+    /**
+     * Creates a predicate for LabwareSamples matching a specified date range.
+     * If either date argument is null, the date range is open-ended.
+     * @param min the minimum date range (inclusive) or null
+     * @param max the maximum date range (inclusive) or null
+     * @return a predicate, or null if both date arguments are null
+     */
     private static Predicate<LabwareSample> datePredicate(LocalDate min, LocalDate max) {
         if (min==null && max==null) {
             return null;

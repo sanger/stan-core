@@ -7,7 +7,6 @@ import uk.ac.sanger.sccp.utils.UCMap;
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
 
-import static java.util.stream.Collectors.toMap;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 public interface LabwareRepo extends CrudRepository<Labware, Integer> {
