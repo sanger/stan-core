@@ -3,6 +3,7 @@ package uk.ac.sanger.sccp.stan.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.Transactor;
+import uk.ac.sanger.sccp.stan.config.StanConfig;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.store.BasicLocation;
 import uk.ac.sanger.sccp.stan.repo.*;
@@ -16,8 +17,7 @@ import java.util.*;
 import java.util.function.Predicate;
 
 import static java.util.Objects.requireNonNull;
-import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toSet;
+import static java.util.stream.Collectors.*;
 import static uk.ac.sanger.sccp.utils.BasicUtils.newArrayList;
 
 /**
@@ -25,6 +25,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.newArrayList;
  */
 @Service
 public class ReleaseServiceImp implements ReleaseService {
+    private final StanConfig stanConfig;
     private final Transactor transactor;
     private final EntityManager entityManager;
     private final ReleaseDestinationRepo destinationRepo;
@@ -33,12 +34,14 @@ public class ReleaseServiceImp implements ReleaseService {
     private final StoreService storeService;
     private final ReleaseRepo releaseRepo;
     private final SnapshotService snapshotService;
+    private final EmailService emailService;
 
     @Autowired
-    public ReleaseServiceImp(Transactor transactor, EntityManager entityManager,
+    public ReleaseServiceImp(StanConfig stanConfig, Transactor transactor, EntityManager entityManager,
                              ReleaseDestinationRepo destinationRepo, ReleaseRecipientRepo recipientRepo,
                              LabwareRepo labwareRepo, StoreService storeService, ReleaseRepo releaseRepo,
-                             SnapshotService snapshotService) {
+                             SnapshotService snapshotService, EmailService emailService) {
+        this.stanConfig = stanConfig;
         this.transactor = transactor;
         this.entityManager = entityManager;
         this.destinationRepo = destinationRepo;
@@ -47,6 +50,7 @@ public class ReleaseServiceImp implements ReleaseService {
         this.storeService = storeService;
         this.releaseRepo = releaseRepo;
         this.snapshotService = snapshotService;
+        this.emailService = emailService;
     }
 
     @Override
@@ -77,7 +81,25 @@ public class ReleaseServiceImp implements ReleaseService {
 
         // Unstore the labware after the transaction
         storeService.discardStorage(user, request.getBarcodes());
+
+        String recipientEmail = recipient.getUsername();
+        if (recipientEmail.indexOf('@') < 0) {
+            recipientEmail += "@sanger.ac.uk";
+        }
+
+        emailService.tryReleaseEmail(recipientEmail, releaseFileLink(releases));
+
         return new ReleaseResult(releases);
+    }
+
+    /**
+     * Path to the release file for the given releases
+     * @param releases the releases
+     * @return the path to the release file, as a string
+     */
+    public String releaseFileLink(Collection<Release> releases) {
+        String joinedIds = releases.stream().map(r -> r.getId().toString()).collect(joining(","));
+        return stanConfig.getRoot() + "release?id=" + joinedIds;
     }
 
     /**
