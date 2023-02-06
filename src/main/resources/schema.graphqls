@@ -1688,7 +1688,7 @@ type Mutation {
     """Update the priority of a work."""
     updateWorkPriority(workNumber: String!, priority: String): Work!
     """Update the omero project of a work."""
-    updateWorkOmeroProject(workNumber: String!, omeroProject: String): OmeroProject!
+    updateWorkOmeroProject(workNumber: String!, omeroProject: String): Work!
 
     """Record a new stain with time measurements."""
     stain(request: StainRequest!): OperationResult!
