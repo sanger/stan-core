@@ -12,6 +12,7 @@ public class StanConfig {
     @Value("${stan.root}")
     String root;
 
+    /** Gets the root url, used as the basis for links to particular resources in the app. */
     public String getRoot() {
         return this.root;
     }
