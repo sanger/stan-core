@@ -18,6 +18,9 @@ public class MailConfig {
     @Value("${stan.mail.service_description}")
     String serviceDescription;
 
+    @Value("${stan.mail.release_cc}")
+    String releaseCC;
+
     /** The value to put in the "from" field of emails */
     public String getSender() {
         return this.sender;
@@ -31,5 +34,10 @@ public class MailConfig {
     /** A description of this service (e.g. <tt>"Stan UAT"</tt>) to include in emails. */
     public String getServiceDescription() {
         return this.serviceDescription;
+    }
+
+    /** The address to CC in release emails. */
+    public String getReleaseCC() {
+        return this.releaseCC;
     }
 }

@@ -1,11 +1,14 @@
 package uk.ac.sanger.sccp.stan.integrationtest;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.util.LinkedMultiValueMap;
@@ -23,9 +26,11 @@ import javax.transaction.Transactional;
 import java.util.List;
 import java.util.Map;
 
+import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.*;
 
@@ -61,6 +66,9 @@ public class TestReleaseMutation {
     @MockBean
     StorelightClient mockStorelightClient;
 
+    @MockBean
+    JavaMailSender mockMailSender;
+
     @Test
     @Transactional
     public void testRelease() throws Exception {
@@ -85,7 +93,7 @@ public class TestReleaseMutation {
         recordStain(lw, st, bondBarcode, rnaPlex, ihcPlex, user);
 
         ReleaseDestination destination = entityCreator.createReleaseDestination("Venus");
-        ReleaseRecipient recipient = entityCreator.createReleaseRecipient("Mekon");
+        ReleaseRecipient recipient = entityCreator.createReleaseRecipient("dr6");
         tester.setUser(user);
         String mutation = tester.readGraphQL("release.graphql")
                 .replace("[]", "[\"STAN-001\", \"STAN-002\"]")
@@ -117,6 +125,15 @@ public class TestReleaseMutation {
         List<Integer> releaseIds = releaseData.stream()
                 .map(rd -> (Integer) rd.get("id"))
                 .collect(toList());
+
+        ArgumentCaptor<SimpleMailMessage> messageCaptor = ArgumentCaptor.forClass(SimpleMailMessage.class);
+        verify(mockMailSender).send(messageCaptor.capture());
+        SimpleMailMessage message = messageCaptor.getValue();
+        assertEquals("Stan test<no-reply@sanger.ac.uk>", message.getFrom());
+        assertThat(message.getTo()).containsExactly(recipient.getUsername()+"@sanger.ac.uk");
+        assertThat(message.getCc()).containsExactly("beagledev@sanger.ac.uk");
+        String releaseUrl = "stantestroot/release?id=" + releaseIds.stream().map(Object::toString).collect(joining(","));
+        assertEquals("The details of the release are available at "+releaseUrl, message.getText());
 
         String tsvString = getReleaseFile(releaseIds);
         var tsvMaps = tsvToMap(tsvString);

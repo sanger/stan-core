@@ -6,6 +6,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.Transactor;
+import uk.ac.sanger.sccp.stan.config.StanConfig;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.store.BasicLocation;
 import uk.ac.sanger.sccp.stan.repo.*;
@@ -32,7 +33,10 @@ import static org.mockito.Mockito.*;
  * @author dr6
  */
 public class TestReleaseService {
+    private StanConfig mockStanConfig;
     private EntityManager mockEntityManager;
+    private ReleaseDestinationRepo mockDestinationRepo;
+    private ReleaseRecipientRepo mockRecipientRepo;
     private LabwareRepo mockLabwareRepo;
     private StoreService mockStoreService;
     private ReleaseRepo mockReleaseRepo;
@@ -44,13 +48,13 @@ public class TestReleaseService {
     private User user;
     private Sample sample, sample1;
     private LabwareType labwareType;
+    private EmailService mockEmailService;
 
     private ReleaseServiceImp service;
-    private ReleaseDestinationRepo mockDestinationRepo;
-    private ReleaseRecipientRepo mockRecipientRepo;
 
     @BeforeEach
     void setup() {
+        mockStanConfig = mock(StanConfig.class);
         mockEntityManager = mock(EntityManager.class);
         mockDestinationRepo = mock(ReleaseDestinationRepo.class);
         mockRecipientRepo = mock(ReleaseRecipientRepo.class);
@@ -64,13 +68,15 @@ public class TestReleaseService {
         recipient = new ReleaseRecipient(30, "Mekon");
         when(mockDestinationRepo.getByName(destination.getName())).thenReturn(destination);
         when(mockRecipientRepo.getByUsername(recipient.getUsername())).thenReturn(recipient);
+        mockEmailService = mock(EmailService.class);
 
         sample = EntityFactory.getSample();
         sample1 = new Sample(sample.getId()+1, 7, sample.getTissue(), EntityFactory.getBioState());
         labwareType = EntityFactory.makeLabwareType(1,4);
 
-        service = spy(new ReleaseServiceImp(mockTransactor, mockEntityManager, mockDestinationRepo, mockRecipientRepo, mockLabwareRepo, mockStoreService,
-                mockReleaseRepo, mockSnapshotService));
+        service = spy(new ReleaseServiceImp(mockStanConfig, mockTransactor, mockEntityManager,
+                mockDestinationRepo, mockRecipientRepo, mockLabwareRepo, mockStoreService,
+                mockReleaseRepo, mockSnapshotService, mockEmailService));
 
         when(mockTransactor.transact(any(), any())).then(invocation -> {
             Supplier<List<Release>> supplier = invocation.getArgument(1);
@@ -129,13 +135,24 @@ public class TestReleaseService {
         List<Release> releases = List.of(
                 new Release(labware.get(0), user, destination, recipient, 100)
         );
+        for (int i = 0; i < releases.size(); ++i) {
+            releases.get(i).setId(100+i);
+        }
         doReturn(releases).when(service).transactRelease(user, recipient, destination, labware, locations);
+        String releaseFilePath = "root/release?id=1,2,3";
+        assert recipient != null;
+        String recEmail = recipient.getUsername();
+        if (recEmail.indexOf('@')<0) {
+            recEmail += "@sanger.ac.uk";
+        }
+        doReturn(releaseFilePath).when(service).releaseFileLink(any());
 
         ReleaseResult result = service.releaseAndUnstore(user, request);
 
         verify(service).loadLabware(request.getBarcodes());
         verify(service).validateLabware(labware);
         verify(service).validateContents(labware);
+        verify(mockEmailService).tryReleaseEmail(recEmail, releaseFilePath);
         verify(mockStoreService).loadBasicLocationsOfItems(labware.stream().map(Labware::getBarcode).collect(toList()));
         verify(service).transactRelease(user, recipient, destination, labware, locations);
         verify(mockStoreService).discardStorage(user, request.getBarcodes());
@@ -163,6 +180,16 @@ public class TestReleaseService {
                 {request, rec, dest, lws, null, "Bad labware.", null, "Bad labware."},
                 {request, rec, dest, lws, null, null, "Bad contents.", "Bad contents."},
         }).map(Arguments::of);
+    }
+
+    @Test
+    public void testReleaseFileLink() {
+        when(mockStanConfig.getRoot()).thenReturn("stanroot/");
+        List<Release> releases = List.of(new Release(), new Release(), new Release());
+        for (int i = 0; i < 3; ++i) {
+            releases.get(i).setId(10+i);
+        }
+        assertEquals("stanroot/release?id=10,11,12", service.releaseFileLink(releases));
     }
 
     @ParameterizedTest
