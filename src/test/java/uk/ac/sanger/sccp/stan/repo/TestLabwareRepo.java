@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.IntStream;
 
+import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static org.junit.jupiter.api.Assertions.*;
@@ -82,5 +83,17 @@ public class TestLabwareRepo {
         assertTrue(labwareRepo.existsByExternalBarcode(xb));
         assertTrue(labwareRepo.existsByExternalBarcode(xb.toLowerCase()));
         assertFalse(labwareRepo.existsByExternalBarcode("STAN-001A"));
+    }
+
+    @Test
+    @Transactional
+    public void testFindBarcodesByBarcodeIn() {
+        LabwareType lt = labwareTypeRepo.getByName("Proviasette");
+        labwareRepo.saveAll(IntStream.range(0,4)
+                .mapToObj(i -> new Labware(null, "STAN-A"+i, lt, null))
+                .collect(toList()));
+
+        assertThat(labwareRepo.findBarcodesByBarcodeIn(List.of("STAN-A1", "stan-A2", "STAN-a0", "STAN-A1", "STAN-A5")))
+                .containsExactlyInAnyOrder("STAN-A0", "STAN-A1", "STAN-A2");
     }
 }

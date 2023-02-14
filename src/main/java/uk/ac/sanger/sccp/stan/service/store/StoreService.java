@@ -28,6 +28,7 @@ import java.util.*;
 
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
@@ -235,7 +236,7 @@ public class StoreService {
             GraphQLResponse response = storelightClient.postQuery(query, null);
             checkErrors(response);
             List<StoredItem> items = objectMapper.convertValue(response.getData().get("stored"),
-                    new TypeReference<List<StoredItem>>() {});
+                    new TypeReference<>() {});
             items.forEach(StoredItem::fixInternalLinks);
             return items;
         } catch (IOException e) {
@@ -444,5 +445,35 @@ public class StoreService {
         }
         List<String> labwareBarcodes = storedItems.stream().map(StoredItem::getBarcode).collect(toList());
         return labwareRepo.findByBarcodeIn(labwareBarcodes);
+    }
+
+    /**
+     * Transfer stored labware between specified locations.
+     * @param user the user responsible for the request
+     * @param sourceBarcode the barcode of the source location
+     * @param destinationBarcode the barcode of the destination location
+     * @return the updated destination location
+     */
+    public Location transfer(User user, String sourceBarcode, String destinationBarcode) {
+        if (sourceBarcode.equalsIgnoreCase(destinationBarcode)) {
+            throw new IllegalArgumentException("Source and destination cannot be the same location.");
+        }
+        Location source = getLocation(sourceBarcode);
+        if (source.getStored().isEmpty()) {
+            throw new IllegalArgumentException("Location "+source.getBarcode()+" is empty.");
+        }
+        List<String> listedBarcodes = source.getStored().stream().map(StoredItem::getBarcode).collect(toList());
+        Set<String> stanBarcodes = labwareRepo.findBarcodesByBarcodeIn(listedBarcodes).stream()
+                .map(String::toUpperCase)
+                .collect(toSet());
+        if (stanBarcodes.isEmpty()) {
+            throw new IllegalArgumentException("None of the labware stored in that location belongs to Stan.");
+        }
+
+        List<StoreInput> storeInputs = source.getStored().stream()
+                .filter(item -> stanBarcodes.contains(item.getBarcode().toUpperCase()))
+                .map(item -> new StoreInput(item.getBarcode(), item.getAddress()))
+                .collect(toList());
+        return store(user, storeInputs, destinationBarcode);
     }
 }

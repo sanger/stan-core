@@ -1,5 +1,6 @@
 package uk.ac.sanger.sccp.stan.repo;
 
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
 import uk.ac.sanger.sccp.stan.model.Labware;
 import uk.ac.sanger.sccp.utils.UCMap;
@@ -11,12 +12,17 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 public interface LabwareRepo extends CrudRepository<Labware, Integer> {
     Optional<Labware> findByBarcode(String barcode);
+
     default Labware getByBarcode(final String barcode) throws EntityNotFoundException {
         return findByBarcode(barcode).orElseThrow(() -> new EntityNotFoundException("No labware found with barcode "+repr(barcode)));
     }
+
     boolean existsByBarcode(String barcode);
 
     boolean existsByExternalBarcode(String externalBarcode);
+
+    @Query("select barcode from Labware where barcode in (?1)")
+    Set<String> findBarcodesByBarcodeIn(Collection<String> barcodes);
 
     default Labware getById(final Integer id) throws EntityNotFoundException {
         return findById(id).orElseThrow(() -> new EntityNotFoundException("No labware found with id "+id));

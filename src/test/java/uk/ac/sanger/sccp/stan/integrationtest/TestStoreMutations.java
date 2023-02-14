@@ -139,4 +139,69 @@ public class TestStoreMutations {
 
         verifyStorelightQuery(mockStorelightClient, List.of("STAN-100", "STAN-101", "STO-4"), user.getUsername());
     }
+
+    @Transactional
+    @Test
+    public void testTransfer() throws Exception {
+        User user = entityCreator.createUser("user1");
+        tester.setUser(user);
+        Sample sample = entityCreator.createSample(entityCreator.createTissue(
+                entityCreator.createDonor("DONOR1"), "EXT1"), 10);
+        LabwareType lt = entityCreator.createLabwareType("lt", 1, 1);
+        entityCreator.createLabware("STAN-100", lt, sample);
+        entityCreator.createLabware("STAN-101", lt, sample);
+        ObjectMapper objectMapper = new ObjectMapper();
+        ObjectNode sourceNode = objectMapper.createObjectNode()
+                .put("id", 4)
+                .put("barcode", "STO-4")
+                .put("name", "Location 4")
+                .set("stored", objectMapper.createArrayNode()
+                        .add(objectMapper.createObjectNode()
+                                .put("barcode", "STAN-100")
+                                .put("address", "A1"))
+                        .add(objectMapper.createObjectNode()
+                                .put("barcode", "STAN-101"))
+                );
+
+        GraphQLResponse sourceResponse = new GraphQLResponse(
+                objectMapper.createObjectNode().set("location", sourceNode),
+                null
+        );
+
+        when(mockStorelightClient.postQuery(ArgumentMatchers.contains("location(location: {barcode:\"STO-4\""), any()))
+                .thenReturn(sourceResponse);
+
+        ObjectNode destinationNode = objectMapper.createObjectNode()
+                .put("id", 5)
+                .put("barcode", "STO-5")
+                .put("name", "Location 5")
+                .set("stored", objectMapper.createArrayNode()
+                        .add(objectMapper.createObjectNode()
+                                .put("barcode", "STAN-100")
+                                .put("address", "A1"))
+                        .add(objectMapper.createObjectNode()
+                                .put("barcode", "STAN-101"))
+                );
+
+        GraphQLResponse destinationResponse = new GraphQLResponse(
+                objectMapper.createObjectNode().set("location", destinationNode),
+                null
+        );
+
+        when(mockStorelightClient.postQuery(ArgumentMatchers.contains("location(location: {barcode:\"STO-5\""), any()))
+                .thenReturn(destinationResponse);
+
+        GraphQLResponse storeResponse = new GraphQLResponse(
+                objectMapper.createObjectNode().set("store", objectMapper.createObjectNode().put("numStored", 2)),
+                null
+        );
+        when(mockStorelightClient.postQuery(ArgumentMatchers.contains("store("), any())).thenReturn(storeResponse);
+
+        Object response = tester.post("mutation { transfer(sourceBarcode: \"STO-4\", destinationBarcode: \"STO-5\")" +
+                " { barcode, stored { barcode, address}}}");
+
+        assertEquals("STO-5", chainGet(response, "data", "transfer", "barcode"));
+
+        verifyStorelightQuery(mockStorelightClient, List.of("store", "STAN-100", "STAN-101", "STO-5"), user.getUsername());
+    }
 }
