@@ -10,6 +10,7 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.History;
 import uk.ac.sanger.sccp.stan.request.HistoryEntry;
 import uk.ac.sanger.sccp.stan.service.history.ReagentActionDetailService.ReagentActionDetail;
+import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import javax.persistence.EntityNotFoundException;
 import java.time.LocalDateTime;
@@ -21,6 +22,7 @@ import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.stan.Matchers.sameElements;
 
 /**
  * Tests {@link HistoryServiceImp}
@@ -153,9 +155,18 @@ public class TestHistoryService {
         );
         final List<Integer> opIds = List.of(20, 21);
         work.setOperationIds(opIds);
+        final List<Integer> releaseIds = List.of(30,31);
+        Labware rlw1 = EntityFactory.makeEmptyLabware(EntityFactory.getTubeType());
+        Labware rlw2 = EntityFactory.makeEmptyLabware(EntityFactory.getTubeType());
+        List<Release> releases = List.of(
+                new Release(30, rlw1, null, null, null, null, null),
+                new Release(31, rlw2, null, null, null, null, null)
+        );
+        work.setReleaseIds(releaseIds);
         String workNumber = "sgp10";
         when(mockWorkRepo.getByWorkNumber(workNumber)).thenReturn(work);
         when(mockOpRepo.findAllById(opIds)).thenReturn(ops);
+        when(mockReleaseRepo.findAllByIdIn(releaseIds)).thenReturn(releases);
         Sample sam1 = EntityFactory.getSample();
         Sample sam2 = new Sample(sam1.getId()+1, sam1.getSection()+1, sam1.getTissue(), sam1.getBioState());
         Labware lw1 = EntityFactory.getTube();
@@ -165,17 +176,23 @@ public class TestHistoryService {
         doReturn(labwareIds).when(service).labwareIdsFromOps(ops);
         when(mockLwRepo.findAllByIdIn(labwareIds)).thenReturn(lws);
         // use a mutable list for this because it will be sorted
-        List<HistoryEntry> entries = new ArrayList<>(1);
-        entries.add(new HistoryEntry(20, "Bananas", null, lw1.getId(), lw2.getId(),
+        List<HistoryEntry> entries = new ArrayList<>(2);
+        entries.add(new HistoryEntry(200, "Release", makeTime(1), lw1.getId(), lw2.getId(),
                 sam1.getId(), "", workNumber));
-        doReturn(entries).when(service).createEntriesForOps(ops, null, lws, null, work.getWorkNumber());
+        entries.add(new HistoryEntry(20, "Bananas", makeTime(2), lw1.getId(), lw2.getId(),
+                sam1.getId(), "", workNumber));
+        doReturn(entries.subList(1,2)).when(service).createEntriesForOps(ops, null, lws, null, work.getWorkNumber());
+
+        doReturn(entries.subList(0,1)).when(service).createEntriesForReleases(releases, null, null, work.getWorkNumber());
+
         List<Sample> samples = List.of(sam1, sam2);
-        doReturn(samples).when(service).referencedSamples(entries, lws);
+        List<Labware> allLabware = BasicUtils.concat(lws, List.of(rlw1, rlw2));
+        doReturn(samples).when(service).referencedSamples(sameElements(entries), sameElements(allLabware));
 
         History history = service.getHistoryForWorkNumber(workNumber);
-        assertSame(entries, history.getEntries());
+        assertEquals(entries, history.getEntries());
         assertSame(samples, history.getSamples());
-        assertSame(lws, history.getLabware());
+        assertEquals(allLabware, history.getLabware());
     }
 
     @Test
@@ -234,9 +251,13 @@ public class TestHistoryService {
         List<Labware> labware = IntStream.range(0,2).mapToObj(i -> EntityFactory.makeLabware(lt, samples.get(i))).collect(toList());
         Set<Integer> labwareIds = Set.of(labware.get(0).getId(), labware.get(1).getId());
         List<Destruction> destructions = List.of(new Destruction());
-        List<Release> releases = List.of(new Release());
+        Release rel = new Release();
+        rel.setId(50);
+        List<Release> releases = List.of(rel);
         Map<Integer, Set<String>> opWork = Map.of(1, Set.of("R&D50"), 2, Set.of());
         when(mockWorkRepo.findWorkNumbersForOpIds(Set.of(100))).thenReturn(opWork);
+        Map<Integer, String> releaseWork = Map.of(1, "SGP1");
+        when(mockWorkRepo.findWorkNumbersForReleaseIds(List.of(rel.getId()))).thenReturn(releaseWork);
 
         List<HistoryEntry> opEntries = List.of(new HistoryEntry(1, "op", null, 1, 1, null, "user1", "R&D50"));
         List<HistoryEntry> releaseEntries = List.of(new HistoryEntry(2, "release", null, 1, 1, null, "user2", null));
@@ -252,7 +273,7 @@ public class TestHistoryService {
         doReturn(labwareIds).when(service).loadLabwareIdsForOpsAndSampleIds(ops, sampleIds);
 
         doReturn(opEntries).when(service).createEntriesForOps(ops, sampleIds, labware, opWork, null);
-        doReturn(releaseEntries).when(service).createEntriesForReleases(releases, sampleIds);
+        doReturn(releaseEntries).when(service).createEntriesForReleases(releases, sampleIds, releaseWork, null);
         doReturn(destructionEntries).when(service).createEntriesForDestructions(destructions, sampleIds);
 
         doReturn(entries).when(service).assembleEntries(List.of(opEntries, releaseEntries, destructionEntries));
@@ -644,9 +665,19 @@ public class TestHistoryService {
         return LocalDateTime.of(2021,7,1+n, 2+n, 0);
     }
 
-    @Test
-    public void testCreateEntriesForReleases() {
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testCreateEntriesForReleases(boolean withSingleWork) {
         createSamples();
+        Map<Integer, String> releaseWorkMap;
+        String singleWorkNumber;
+        if (withSingleWork) {
+            releaseWorkMap = null;
+            singleWorkNumber = "SGP11";
+        } else {
+            releaseWorkMap = Map.of(1, "SGP12");
+            singleWorkNumber = null;
+        }
         LabwareType lt = EntityFactory.makeLabwareType(2,2);
         Labware lw1 = EntityFactory.makeLabware(lt, samples[0], samples[0], samples[1], samples[2]);
         Labware lw2 = EntityFactory.makeLabware(lt, samples[0], samples[1]);
@@ -670,7 +701,13 @@ public class TestHistoryService {
                 new HistoryEntry(2, "Release", rel2.getReleased(), lw2.getId(), lw2.getId(), null,
                         username, null, List.of("Destination: Venus", "Recipient: dirk"))
         );
-        assertThat(service.createEntriesForReleases(List.of(rel1, rel2), Set.of(samples[0].getId(), samples[2].getId())))
+        if (withSingleWork) {
+            expectedEntries.forEach(e -> e.setWorkNumber(singleWorkNumber));
+        } else {
+            expectedEntries.forEach(e -> e.setWorkNumber(releaseWorkMap.get(e.getEventId())));
+        }
+        assertThat(service.createEntriesForReleases(List.of(rel1, rel2), Set.of(samples[0].getId(), samples[2].getId()),
+                releaseWorkMap, singleWorkNumber))
                 .containsExactlyElementsOf(expectedEntries);
     }
 

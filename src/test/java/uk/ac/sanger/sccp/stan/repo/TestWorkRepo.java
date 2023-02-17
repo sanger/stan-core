@@ -43,7 +43,10 @@ public class TestWorkRepo {
     private final OperationTypeRepo opTypeRepo;
 
     private final UserRepo userRepo;
+    private final ReleaseRepo releaseRepo;
 
+    private ReleaseDestination dest;
+    private ReleaseRecipient rec;
     private OperationType opType;
     private User user;
 
@@ -51,7 +54,7 @@ public class TestWorkRepo {
     public TestWorkRepo(EntityManager entityManager, EntityCreator entityCreator,
                         PlatformTransactionManager transactionManager,
                         WorkRepo workRepo, OperationRepo opRepo, OperationTypeRepo opTypeRepo,
-                        UserRepo userRepo) {
+                        UserRepo userRepo, ReleaseRepo releaseRepo) {
         this.entityManager = entityManager;
         this.entityCreator = entityCreator;
         this.transactionManager = transactionManager;
@@ -59,6 +62,7 @@ public class TestWorkRepo {
         this.opRepo = opRepo;
         this.opTypeRepo = opTypeRepo;
         this.userRepo = userRepo;
+        this.releaseRepo = releaseRepo;
     }
 
     private User getUser() {
@@ -74,6 +78,18 @@ public class TestWorkRepo {
         }
         Operation op = new Operation(null, opType, null, List.of(), getUser());
         return opRepo.save(op).getId();
+    }
+
+    private int createReleaseId(Labware lw) {
+        if (dest==null) {
+            dest = entityCreator.createReleaseDestination("Moon");
+        }
+        if (rec==null) {
+            rec = entityCreator.createReleaseRecipient("uatu");
+        }
+        Snapshot snap = entityCreator.createSnapshot(lw);
+        Release rel = new Release(lw, getUser(), dest, rec, snap.getId());
+        return releaseRepo.save(rel).getId();
     }
 
     private List<Integer> createSampleIds(int number) {
@@ -290,6 +306,27 @@ public class TestWorkRepo {
 
         works = workRepo.findWorkForSampleIdAndSlotId(samples[2].getId(), labware[2].getSlots().get(0).getId());
         assertThat(works).isEmpty();
+    }
+
+    @Transactional
+    @Test
+    public void testFindWorkNumbersForReleaseids() {
+        Work work1 = entityCreator.createWork(null, null, null, null, null);
+        Work work2 = entityCreator.createWork(work1.getWorkType(), work1.getProject(), work1.getProgram(), work1.getCostCode(), work1.getWorkRequester());
+        String wn1 = work1.getWorkNumber();
+        int[] rids = IntStream.range(0,3)
+                .map(i -> createReleaseId(entityCreator.createTube("STAN-"+i)))
+                .toArray();
+        List<Integer> ridList = Arrays.stream(rids).boxed().collect(toList());
+        Map<Integer, String> workMap = workRepo.findWorkNumbersForReleaseIds(ridList);
+        assertNull(workMap.get(rids[0]));
+        assertNull(workMap.get(rids[1]));
+        work1.setReleaseIds(ridList.subList(0,2));
+        workRepo.saveAll(List.of(work1, work2));
+        workMap = workRepo.findWorkNumbersForReleaseIds(ridList);
+        assertEquals(wn1, workMap.get(rids[0]));
+        assertEquals(wn1, workMap.get(rids[1]));
+        assertNull(workMap.get(rids[2]));
     }
 
     @Transactional

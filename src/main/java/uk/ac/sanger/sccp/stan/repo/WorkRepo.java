@@ -79,6 +79,20 @@ public interface WorkRepo extends CrudRepository<Work, Integer> {
         return opWork;
     }
 
+    @Query(value="select release_id as releaseId, work_number as workNumber from work_release join work on (work_id=work.id) where release_id IN (?1)", nativeQuery=true)
+    List<Object[]> _releaseIdWorkNumbersForReleaseIds(Collection<Integer> releaseIds);
+
+    default Map<Integer, String> findWorkNumbersForReleaseIds(Collection<Integer> releaseIds) {
+        if (releaseIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Integer, String> map = new HashMap<>();
+        for (Object[] ridWorkNum: _releaseIdWorkNumbersForReleaseIds(releaseIds)) {
+            map.put((Integer) ridWorkNum[0], (String) ridWorkNum[1]);
+        }
+        return map;
+    }
+
     List<Work> findAllByWorkNumberIn(Collection<String> workNumbers);
 
     List<Work> findAllByProgramIn(Collection<Program> programs);

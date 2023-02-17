@@ -358,6 +358,17 @@ public class BasicUtils {
         return newArrayList(iterable);
     }
 
+    public static <E> List<E> concat(List<E> a, List<E> b) {
+        if (a==null) return b;
+        if (b==null) return a;
+        if (a.isEmpty()) return b;
+        if (b.isEmpty()) return a;
+        List<E> combined = new ArrayList<>(a.size() + b.size());
+        combined.addAll(a);
+        combined.addAll(b);
+        return combined;
+    }
+
     /**
      * Does the given string start with the given substring, ignoring its case?
      * @param string the containing string

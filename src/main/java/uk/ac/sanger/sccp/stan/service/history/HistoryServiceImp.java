@@ -107,16 +107,30 @@ public class HistoryServiceImp implements HistoryService {
     public History getHistoryForWorkNumber(String workNumber) {
         Work work = workRepo.getByWorkNumber(workNumber);
         List<Integer> opIds = work.getOperationIds();
-        if (opIds.isEmpty()) {
+        List<Integer> releaseIds = work.getReleaseIds();
+        if (opIds.isEmpty() && releaseIds.isEmpty()) {
             return new History(List.of(), List.of(), List.of());
         }
-        Collection<Operation> ops = BasicUtils.asCollection(opRepo.findAllById(opIds));
+        Collection<Operation> ops = opIds.isEmpty() ? List.of() : BasicUtils.asCollection(opRepo.findAllById(opIds));
+        List<Release> releases = releaseIds.isEmpty() ? List.of() : releaseRepo.findAllByIdIn(releaseIds);
         Set<Integer> labwareIds = labwareIdsFromOps(ops);
-        List<Labware> labware = lwRepo.findAllByIdIn(labwareIds);
-        List<HistoryEntry> entries = createEntriesForOps(ops, null, labware, null, work.getWorkNumber());
-        List<Sample> samples = referencedSamples(entries, labware);
+        List<Labware> opLabware = lwRepo.findAllByIdIn(labwareIds);
+        List<HistoryEntry> opEntries = createEntriesForOps(ops, null, opLabware, null, work.getWorkNumber());
+        final List<HistoryEntry> releaseEntries = createEntriesForReleases(releases, null, null, work.getWorkNumber());
+        final List<HistoryEntry> entries = BasicUtils.concat(opEntries, releaseEntries);
+        List<Labware> allLabware = new ArrayList<>(opLabware);
+        if (!releases.isEmpty()) {
+            labwareIds = new HashSet<>(labwareIds);
+            for (Release rel : releases) {
+                Labware lw = rel.getLabware();
+                if (labwareIds.add(lw.getId())) {
+                    allLabware.add(lw);
+                }
+            }
+        }
+        List<Sample> samples = referencedSamples(entries, allLabware);
         entries.sort(Comparator.comparing(HistoryEntry::getTime));
-        return new History(entries, samples, labware);
+        return new History(entries, samples, allLabware);
     }
 
     /**
@@ -183,9 +197,11 @@ public class HistoryServiceImp implements HistoryService {
 
         Set<Integer> opIds = ops.stream().map(Operation::getId).collect(toSet());
         Map<Integer, Set<String>> opWork = workRepo.findWorkNumbersForOpIds(opIds);
+        List<Integer> releaseIds = releases.stream().map(Release::getId).collect(toList());
+        Map<Integer, String> releaseWork = workRepo.findWorkNumbersForReleaseIds(releaseIds);
 
         List<HistoryEntry> opEntries = createEntriesForOps(ops, sampleIds, labware, opWork, null);
-        List<HistoryEntry> releaseEntries = createEntriesForReleases(releases, sampleIds);
+        List<HistoryEntry> releaseEntries = createEntriesForReleases(releases, sampleIds, releaseWork, null);
         List<HistoryEntry> destructionEntries = createEntriesForDestructions(destructions, sampleIds);
 
         List<HistoryEntry> entries = assembleEntries(List.of(opEntries, releaseEntries, destructionEntries));
@@ -541,21 +557,31 @@ public class HistoryServiceImp implements HistoryService {
      * Creates history entries representing releases, where they are applicable to the specified sample
      * @param releases the releases to represent
      * @param sampleIds the ids of relevant samples
+     * @param releaseWorkNumbers optional map of release id to work number
+     * @param singleWorkNumber optional single work number for all releases
      * @return a list of history entries for the given releases
      */
-    public List<HistoryEntry> createEntriesForReleases(List<Release> releases, Set<Integer> sampleIds) {
+    public List<HistoryEntry> createEntriesForReleases(List<Release> releases, Set<Integer> sampleIds,
+                                                       Map<Integer, String> releaseWorkNumbers, String singleWorkNumber) {
         Set<Integer> snapshotIds = releases.stream().map(Release::getSnapshotId).filter(Objects::nonNull).collect(toSet());
         Map<Integer, Snapshot> snapshotMap = snapshotRepo.findAllByIdIn(snapshotIds).stream()
                 .collect(BasicUtils.toMap(Snapshot::getId, HashMap::new));
         List<HistoryEntry> entries = new ArrayList<>();
         for (Release release : releases) {
+            String workNum;
+            if (releaseWorkNumbers!=null) {
+                workNum = releaseWorkNumbers.get(release.getId());
+            } else {
+                workNum = singleWorkNumber;
+            }
+
             int labwareId = release.getLabware().getId();
             List<String> details = List.of("Destination: "+release.getDestination().getName(),
                     "Recipient: "+release.getRecipient().getUsername());
             String username = release.getUser().getUsername();
             if (release.getSnapshotId()==null) {
                 entries.add(new HistoryEntry(release.getId(), "Release", release.getReleased(),
-                        labwareId, labwareId,null, username, null, details));
+                        labwareId, labwareId,null, username, workNum, details));
             } else {
                 Snapshot snap = snapshotMap.get(release.getSnapshotId());
                 Set<Integer> releaseSampleIds = snap.getElements().stream()
@@ -564,7 +590,7 @@ public class HistoryServiceImp implements HistoryService {
                         .collect(BasicUtils.toLinkedHashSet());
                 for (Integer sampleId : releaseSampleIds) {
                     entries.add(new HistoryEntry(release.getId(), "Release", release.getReleased(),
-                            labwareId, labwareId, sampleId, username, null, details));
+                            labwareId, labwareId, sampleId, username, workNum, details));
                 }
             }
         }
