@@ -652,10 +652,18 @@ type ReleaseResult {
     releases: [Release!]!
 }
 
+"""Details of a particular labware being released."""
+input ReleaseLabware {
+    """The barcode of the labware to release."""
+    barcode: String!
+    """The work number (optional) to associate with the release."""
+    workNumber: String
+}
+
 """A request to record releases for one or more labware."""
 input ReleaseRequest {
-    """The barcodes of the labware being released."""
-    barcodes: [String!]!
+    """The details of the labware being released."""
+    releaseLabware: [ReleaseLabware!]!
     """The name of the release destination."""
     destination: String!
     """The name of the release recipient."""

@@ -13,6 +13,7 @@ import uk.ac.sanger.sccp.stan.service.Validator;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.UCMap;
 
+import javax.persistence.EntityNotFoundException;
 import java.util.*;
 
 import static java.util.Objects.requireNonNull;
@@ -165,7 +166,7 @@ public class WorkServiceImp implements WorkService {
         if (operations.isEmpty()) {
             return work;
         }
-        if (work.getStatus()!=Status.active) {
+        if (!work.isUsable()) {
             throw new IllegalArgumentException(work.getWorkNumber()+" cannot be used because it is "+ work.getStatus()+".");
         }
         List<Integer> opIds = work.getOperationIds();
@@ -189,6 +190,29 @@ public class WorkServiceImp implements WorkService {
 
         work.setOperationIds(opIds);
         work.setSampleSlotIds(ssIds);
+        return workRepo.save(work);
+    }
+
+    @Override
+    public Work linkReleases(Work work, List<Release> releases) {
+        if (releases.isEmpty()) {
+            return work;
+        }
+        if (!work.isUsable()) {
+            throw new IllegalArgumentException("Work "+work.getWorkNumber()+" is not usable because it is "+work.getStatus().name()+".");
+        }
+        Set<Integer> releaseIds = new LinkedHashSet<>(work.getReleaseIds());
+        Set<SampleSlotId> ssids = new LinkedHashSet<>(work.getSampleSlotIds());
+        for (Release release : releases) {
+            releaseIds.add(release.getId());
+            for (Slot slot : release.getLabware().getSlots()) {
+                for (Sample sample : slot.getSamples()) {
+                    ssids.add(new SampleSlotId(sample.getId(), slot.getId()));
+                }
+            }
+        }
+        work.setReleaseIds(new ArrayList<>(releaseIds));
+        work.setSampleSlotIds(new ArrayList<>(ssids));
         return workRepo.save(work);
     }
 
@@ -235,6 +259,34 @@ public class WorkServiceImp implements WorkService {
             throw new IllegalArgumentException(work.getWorkNumber()+" cannot be used because it is "+work.getStatus()+".");
         }
         return work;
+    }
+
+    @Override
+    public UCMap<Work> getUsableWorkMap(Collection<String> workNumbers) {
+        if (workNumbers.isEmpty()) {
+            return new UCMap<>(0);
+        }
+        if (workNumbers.stream().anyMatch(Objects::isNull)) {
+            throw new NullPointerException("null given as work number.");
+        }
+        UCMap<Work> workMap = UCMap.from(workRepo.findAllByWorkNumberIn(workNumbers), Work::getWorkNumber);
+        Set<String> unknown = new LinkedHashSet<>();
+        Set<String> unusable = new LinkedHashSet<>();
+        for (String workNumber: workNumbers) {
+            Work work = workMap.get(workNumber);
+            if (work==null) {
+                unknown.add(workNumber.toUpperCase());
+            } else if (!work.isUsable()) {
+                unusable.add(work.getWorkNumber());
+            }
+        }
+        if (!unknown.isEmpty()) {
+            throw new EntityNotFoundException(pluralise("Unknown work number{s}: ", unknown.size()) + unknown);
+        }
+        if (!unusable.isEmpty()) {
+            throw new IllegalArgumentException(pluralise("Inactive work number{s}: ", unusable.size()) + unusable);
+        }
+        return workMap;
     }
 
     @Override

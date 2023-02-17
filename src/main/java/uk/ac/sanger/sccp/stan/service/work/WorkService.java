@@ -102,9 +102,18 @@ public interface WorkService {
      * Updates the given works linking them to the given operations and samples in slots in the ops' actions
      * @param works the works
      * @param operations the operations to link
-     * @exception IllegalArgumentException if any of the works are not active
+     * @exception IllegalArgumentException if any of the works is not active
      */
     void link(Collection<Work> works, Collection<Operation> operations);
+
+    /**
+     * Updates the given work linking it to the given releases and samples in the released labware
+     * @param work the work to link the release to
+     * @param releases the releases to link to the work
+     * @return the updated work
+     * @exception IllegalArgumentException if the work is not usable
+     */
+    Work linkReleases(Work work, List<Release> releases);
 
     /**
      * Gets the specified work.
@@ -117,6 +126,17 @@ public interface WorkService {
      * @exception NullPointerException if the given string is null
      */
     Work getUsableWork(String workNumber);
+
+    /**
+     * Gets the specified works and checks they are usable.
+     * Errors if any of the given work numbers is null, or invalid, or indicates an unusable work
+     * @param workNumbers the work numbers
+     * @return a map of works from their work numbers
+     * @exception javax.persistence.EntityNotFoundException if any work number is unrecognised
+     * @exception IllegalArgumentException if any work is unusable
+     * @exception NullPointerException if any given work number is null
+     */
+    UCMap<Work> getUsableWorkMap(Collection<String> workNumbers);
 
     /**
      * Validates the specified work as usable.

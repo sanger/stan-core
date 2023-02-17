@@ -1,6 +1,9 @@
 mutation {
     release(request: {
-        barcodes: []
+        releaseLabware: [
+            {barcode: "BC1", workNumber: "WN1"}
+            {barcode: "BC2"}
+        ]
         destination: "DESTINATION"
         recipient: "RECIPIENT"
     }) {
