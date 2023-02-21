@@ -1,0 +1,8 @@
+{
+  "keyFields": [
+    { "key": "barcode", "value": "#barcode#" },
+    { "key": "donor", "value": "#donor[0]#" },
+    { "key": "tissue", "value": "#tissue[0]#" },
+    { "key": "replicate", "value": "#replicate[0]#" }
+  ]
+}
