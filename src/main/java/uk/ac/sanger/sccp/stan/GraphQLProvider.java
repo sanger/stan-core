@@ -99,6 +99,7 @@ public class GraphQLProvider {
                         .dataFetcher("nextReplicateNumbers", graphQLDataFetchers.nextReplicateNumbers())
                         .dataFetcher("labwareOperations", graphQLDataFetchers.getLabwareOperations())
                         .dataFetcher("labwareCosting", graphQLDataFetchers.getLabwareCosting())
+                        .dataFetcher("suggestedWorkForLabware", graphQLDataFetchers.getSuggestedWorkForLabwareBarcode())
 
                         .dataFetcher("users", graphQLDataFetchers.getUsers())
                         .dataFetcher("planData", graphQLDataFetchers.getPlanData())

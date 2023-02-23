@@ -1,0 +1,5 @@
+query {
+    suggestedWorkForLabware(barcode: "BARCODE") {
+        workNumber
+    }
+}

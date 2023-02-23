@@ -27,13 +27,14 @@ public class WorkServiceImp implements WorkService {
     private final CostCodeRepo costCodeRepo;
     private final WorkTypeRepo workTypeRepo;
     private final WorkRepo workRepo;
+    private final LabwareRepo lwRepo;
     private final ReleaseRecipientRepo recipientRepo;
     private final WorkEventService workEventService;
     private final Validator<String> priorityValidator;
 
     @Autowired
     public WorkServiceImp(ProjectRepo projectRepo, ProgramRepo programRepo, CostCodeRepo costCodeRepo,
-                          WorkTypeRepo workTypeRepo, WorkRepo workRepo,
+                          WorkTypeRepo workTypeRepo, WorkRepo workRepo, LabwareRepo lwRepo,
                           ReleaseRecipientRepo recipientRepo, WorkEventService workEventService,
                           @Qualifier("workPriorityValidator") Validator<String> priorityValidator) {
         this.projectRepo = projectRepo;
@@ -41,6 +42,7 @@ public class WorkServiceImp implements WorkService {
         this.costCodeRepo = costCodeRepo;
         this.workTypeRepo = workTypeRepo;
         this.workRepo = workRepo;
+        this.lwRepo = lwRepo;
         this.recipientRepo = recipientRepo;
         this.workEventService = workEventService;
         this.priorityValidator = priorityValidator;
@@ -368,6 +370,13 @@ public class WorkServiceImp implements WorkService {
             fillInComments(wcs, workEvents);
         }
         return wcs;
+    }
+
+    @Override
+    public Optional<Work> suggestCurrentWorkForLabwareBarcode(String barcode) {
+        Labware lw = lwRepo.getByBarcode(barcode);
+        Integer workId = workRepo.findLatestActiveWorkIdForLabwareId(lw.getId());
+        return Optional.ofNullable(workId).flatMap(workRepo::findById);
     }
 
     public void fillInComments(Collection<WorkWithComment> wcs, Map<Integer, WorkEvent> workEvents) {

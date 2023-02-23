@@ -38,6 +38,7 @@ public class TestWorkService {
     private ProgramRepo mockProgramRepo;
     private CostCodeRepo mockCostCodeRepo;
     private WorkRepo mockWorkRepo;
+    private LabwareRepo mockLwRepo;
     private WorkTypeRepo mockWorkTypeRepo;
     private ReleaseRecipientRepo mockReleaseRecipientRepo;
     private WorkEventService mockWorkEventService;
@@ -49,6 +50,7 @@ public class TestWorkService {
         mockProgramRepo = mock(ProgramRepo.class);
         mockCostCodeRepo = mock(CostCodeRepo.class);
         mockWorkRepo = mock(WorkRepo.class);
+        mockLwRepo = mock(LabwareRepo.class);
         mockWorkEventService = mock(WorkEventService.class);
         mockWorkTypeRepo = mock(WorkTypeRepo.class);
         mockReleaseRecipientRepo = mock(ReleaseRecipientRepo.class);
@@ -56,7 +58,7 @@ public class TestWorkService {
         mockPriorityValidator = mock(Validator.class);
 
         workService = spy(new WorkServiceImp(mockProjectRepo, mockProgramRepo, mockCostCodeRepo, mockWorkTypeRepo,
-                mockWorkRepo, mockReleaseRecipientRepo, mockWorkEventService, mockPriorityValidator));
+                mockWorkRepo, mockLwRepo, mockReleaseRecipientRepo, mockWorkEventService, mockPriorityValidator));
     }
 
     @ParameterizedTest
@@ -598,7 +600,7 @@ public class TestWorkService {
 
     @ParameterizedTest
     @MethodSource("usableWorkArgs")
-    public void testValidateUsableWork(String workNumber, Status status, Class<? extends Exception> unused, String expectedErrorMessage) {
+    public void testValidateUsableWork(String workNumber, Status status, Class<? extends Exception> ignored, String expectedErrorMessage) {
         List<String> problems = new ArrayList<>(1);
         if (workNumber==null) {
             assertNull(workService.validateUsableWork(problems, null));
@@ -753,6 +755,31 @@ public class TestWorkService {
                         new WorkWithComment(workP1, "Oregon"), new WorkWithComment(workP2),
                         new WorkWithComment(workW1, "Withdrawn"),new WorkWithComment(workW2)),
                      wcs);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"false,false", "true,false", "true,true"})
+    public void testSuggestCurrentWorkForLabwareBarcode(boolean barcodeValid, boolean hasWork) {
+        if (!barcodeValid) {
+            String barcode = "STAN-404";
+            when(mockLwRepo.getByBarcode(barcode)).thenThrow(EntityNotFoundException.class);
+            assertThrows(EntityNotFoundException.class, () -> workService.suggestCurrentWorkForLabwareBarcode(barcode));
+            return;
+        }
+        Labware lw = EntityFactory.getTube();
+        String barcode = lw.getBarcode();
+        when(mockLwRepo.getByBarcode(barcode)).thenReturn(lw);
+        if (!hasWork) {
+            when(mockWorkRepo.findLatestActiveWorkIdForLabwareId(lw.getId())).thenReturn(null);
+            assertThat(workService.suggestCurrentWorkForLabwareBarcode(barcode)).isEmpty();
+            verify(mockWorkRepo).findLatestActiveWorkIdForLabwareId(lw.getId());
+            verify(mockWorkRepo, never()).findById(any());
+            return;
+        }
+        Work work = quickWork(150, Status.active);
+        when(mockWorkRepo.findLatestActiveWorkIdForLabwareId(lw.getId())).thenReturn(work.getId());
+        when(mockWorkRepo.findById(work.getId())).thenReturn(Optional.of(work));
+        assertThat(workService.suggestCurrentWorkForLabwareBarcode(barcode)).contains(work);
     }
 
     private Operation makeOp(OperationType opType, int opId, Labware srcLw, Labware dstLw) {

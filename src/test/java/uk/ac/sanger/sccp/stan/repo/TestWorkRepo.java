@@ -16,6 +16,7 @@ import uk.ac.sanger.sccp.stan.model.Work.Status;
 
 import javax.persistence.*;
 import javax.transaction.Transactional;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
@@ -40,6 +41,7 @@ public class TestWorkRepo {
     private final WorkRepo workRepo;
 
     private final OperationRepo opRepo;
+    private final ActionRepo actionRepo;
     private final OperationTypeRepo opTypeRepo;
 
     private final UserRepo userRepo;
@@ -53,13 +55,14 @@ public class TestWorkRepo {
     @Autowired
     public TestWorkRepo(EntityManager entityManager, EntityCreator entityCreator,
                         PlatformTransactionManager transactionManager,
-                        WorkRepo workRepo, OperationRepo opRepo, OperationTypeRepo opTypeRepo,
+                        WorkRepo workRepo, OperationRepo opRepo, ActionRepo actionRepo, OperationTypeRepo opTypeRepo,
                         UserRepo userRepo, ReleaseRepo releaseRepo) {
         this.entityManager = entityManager;
         this.entityCreator = entityCreator;
         this.transactionManager = transactionManager;
         this.workRepo = workRepo;
         this.opRepo = opRepo;
+        this.actionRepo = actionRepo;
         this.opTypeRepo = opTypeRepo;
         this.userRepo = userRepo;
         this.releaseRepo = releaseRepo;
@@ -72,11 +75,15 @@ public class TestWorkRepo {
         return user;
     }
 
-    private int createOpId() {
+    private OperationType getOpType() {
         if (opType==null) {
             opType = entityCreator.getAny(opTypeRepo);
         }
-        Operation op = new Operation(null, opType, null, List.of(), getUser());
+        return opType;
+    }
+
+    private int createOpId() {
+        Operation op = new Operation(null, getOpType(), null, List.of(), getUser());
         return opRepo.save(op).getId();
     }
 
@@ -358,6 +365,45 @@ public class TestWorkRepo {
         assertThat(workMap.get(opIds[1])).containsExactlyInAnyOrder(workNum1, workNum2);
         assertThat(workMap.get(opIds[2])).containsExactly(workNum2);
         assertThat(workMap.get(opIds[3])).isEmpty();
+    }
+
+    @Transactional
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testFindLatestActiveWorkIdForLabwareId(boolean exists) {
+        Sample sample = entityCreator.createSample(null, null);
+        Labware lw = entityCreator.createLabware("STAN-A1", entityCreator.getTubeType(), sample);
+        Work work1 = entityCreator.createWork(null, null, null, null, null);
+        Work work2 = entityCreator.createWorkLike(work1);
+        Work work3 = entityCreator.createWorkLike(work1);
+
+        Operation[] ops = IntStream.rangeClosed(1,3).mapToObj(d -> saveOp(lw, day(d))).toArray(Operation[]::new);
+        work1.setOperationIds(List.of(ops[0].getId()));
+        work2.setOperationIds(List.of(ops[1].getId()));
+        work3.setOperationIds(List.of(ops[2].getId()));
+        if (!exists) {
+            work1.setStatus(Status.completed);
+            work2.setStatus(Status.failed);
+        }
+        work3.setStatus(Status.paused);
+        workRepo.saveAll(List.of(work1, work2, work3));
+
+        assertEquals(exists ? work2.getId() : null, workRepo.findLatestActiveWorkIdForLabwareId(lw.getId()));
+    }
+
+    private Operation saveOp(Labware lw, LocalDateTime performed) {
+        Slot slot = lw.getFirstSlot();
+        Sample sample = slot.getSamples().get(0);
+        Operation op = opRepo.save(new Operation(null, getOpType(), null, null, getUser()));
+        Action a = actionRepo.save(new Action(null, op.getId(), slot, slot, sample, sample));
+        op.setActions(new ArrayList<>(List.of(a)));
+        op.setPerformed(performed);
+        entityManager.flush();
+        return opRepo.save(op);
+    }
+
+    private static LocalDateTime day(int n) {
+        return LocalDateTime.of(2023,1, n, 12, 0);
     }
 
     @SuppressWarnings("BusyWait")

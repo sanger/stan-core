@@ -240,6 +240,13 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         };
     }
 
+    public DataFetcher<Work> getSuggestedWorkForLabwareBarcode() {
+        return dfe -> {
+            String barcode = dfe.getArgument("barcode");
+            return workService.suggestCurrentWorkForLabwareBarcode(barcode).orElse(null);
+        };
+    }
+
     public DataFetcher<List<StanFile>> listStanFiles() {
         return dfe -> {
             String workNumber = dfe.getArgument("workNumber");

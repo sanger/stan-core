@@ -5,8 +5,7 @@ import uk.ac.sanger.sccp.stan.model.Work.Status;
 import uk.ac.sanger.sccp.stan.request.WorkWithComment;
 import uk.ac.sanger.sccp.utils.UCMap;
 
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 
 /**
  * Service for managing {@link Work work}.
@@ -166,4 +165,12 @@ public interface WorkService {
      * @return a list of WorkWithComment objects each of which may or may not include a comment
      */
     List<WorkWithComment> getWorksWithComments(Collection<Work.Status> workStatuses);
+
+    /**
+     * Gets suggested current work for indicated labware.
+     * Gives the latest (if any) active work that the labware was used in.
+     * @param barcode barcode of labware
+     * @return the suggested current work, if any
+     */
+    Optional<Work> suggestCurrentWorkForLabwareBarcode(String barcode);
 }
