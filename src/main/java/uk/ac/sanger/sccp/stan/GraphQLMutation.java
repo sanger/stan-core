@@ -70,6 +70,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final CostCodeService costCodeService;
     final FixativeService fixativeService;
     final SolutionAdminService solutionAdminService;
+    final OmeroProjectAdminService omeroProjectAdminService;
     final WorkTypeService workTypeService;
     final WorkService workService;
     final StainService stainService;
@@ -107,7 +108,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            ReleaseRecipientAdminService releaseRecipientAdminService, SpeciesAdminService speciesAdminService,
                            ProjectService projectService, ProgramService programService, CostCodeService costCodeService, FixativeService fixativeService,
                            SolutionAdminService solutionAdminService,
-                           WorkTypeService workTypeService, WorkService workService, StainService stainService,
+                           OmeroProjectAdminService omeroProjectAdminService, WorkTypeService workTypeService, WorkService workService, StainService stainService,
                            UnreleaseService unreleaseService, ResultService resultService, ExtractResultService extractResultService,
                            PermService permService, RNAAnalysisService rnaAnalysisService,
                            VisiumAnalysisService visiumAnalysisService, OpWithSlotMeasurementsService opWithSlotMeasurementsService,
@@ -144,6 +145,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.costCodeService = costCodeService;
         this.fixativeService = fixativeService;
         this.solutionAdminService = solutionAdminService;
+        this.omeroProjectAdminService = omeroProjectAdminService;
         this.workTypeService = workTypeService;
         this.workService = workService;
         this.stainService = stainService;
@@ -447,6 +449,14 @@ public class GraphQLMutation extends BaseGraphQLResource {
         return adminSetEnabled(solutionAdminService::setEnabled, "SetSolutionEnabled", "name");
     }
 
+    public DataFetcher<OmeroProject> addOmeroProject() {
+        return adminAdd(omeroProjectAdminService::addNew, "AddOmeroProject", "name");
+    }
+
+    public DataFetcher<OmeroProject> setOmeroProjectEnabled() {
+        return adminSetEnabled(omeroProjectAdminService::setEnabled, "SetOmeroProjectEnabled", "name");
+    }
+
     public DataFetcher<WorkType> addWorkType() {
         return adminAdd(workTypeService::addNew, "AddWorkType", "name");
     }
@@ -467,10 +477,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             Integer numBlocks = dfe.getArgument("numBlocks");
             Integer numSlides = dfe.getArgument("numSlides");
             Integer numOriginalSamples = dfe.getArgument("numOriginalSamples");
+            String omeroProjectName = dfe.getArgument("omeroProject");
             logRequest("Create work", user,
-                    String.format("project: %s, program: %s, costCode: %s, prefix: %s, workType: %s, workRequesterName: %s, numBlocks: %s, numSlides: %s, numOriginalSamples: %s",
-                    projectName, programName, code, prefix, workTypeName, workRequesterName, numBlocks, numSlides, numOriginalSamples));
-            return workService.createWork(user, prefix, workTypeName, workRequesterName, projectName, programName, code, numBlocks, numSlides, numOriginalSamples);
+                    String.format("project: %s, program: %s, costCode: %s, prefix: %s, workType: %s, " +
+                                    "workRequesterName: %s, numBlocks: %s, numSlides: %s, numOriginalSamples: %s, " +
+                                    "omeroProjectName: %s",
+                    projectName, programName, code, prefix, workTypeName, workRequesterName, numBlocks, numSlides,
+                            numOriginalSamples, omeroProjectName));
+            return workService.createWork(user, prefix, workTypeName, workRequesterName, projectName, programName, code,
+                    numBlocks, numSlides, numOriginalSamples, omeroProjectName);
         };
     }
 
@@ -527,6 +542,17 @@ public class GraphQLMutation extends BaseGraphQLResource {
             logRequest("Update work priority", user,
                     String.format("Work number: %s, priority: %s", workNumber, priority));
             return workService.updateWorkPriority(user, workNumber, priority);
+        };
+    }
+
+    public DataFetcher<Work> updateWorkOmeroProject() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            String workNumber = dfe.getArgument("workNumber");
+            String omeroProjectName = dfe.getArgument("omeroProject");
+            logRequest("Update work omero project name", user,
+                    String.format("Work number: %s, omero project: %s", workNumber, omeroProjectName));
+            return workService.updateWorkOmeroProject(user, workNumber, omeroProjectName);
         };
     }
 

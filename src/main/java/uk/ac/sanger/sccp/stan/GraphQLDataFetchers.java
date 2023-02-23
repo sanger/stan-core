@@ -49,6 +49,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final ProgramRepo programRepo;
     final CostCodeRepo costCodeRepo;
     final SolutionRepo solutionRepo;
+    final OmeroProjectRepo omeroProjectRepo;
     final WorkTypeRepo workTypeRepo;
     final WorkRepo workRepo;
     final ReagentPlateRepo reagentPlateRepo;
@@ -78,7 +79,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                ReleaseDestinationRepo releaseDestinationRepo, ReleaseRecipientRepo releaseRecipientRepo,
                                DestructionReasonRepo destructionReasonRepo, ProjectRepo projectRepo,
                                ProgramRepo programRepo, CostCodeRepo costCodeRepo,
-                               SolutionRepo solutionRepo, WorkTypeRepo workTypeRepo, WorkRepo workRepo,
+                               SolutionRepo solutionRepo, OmeroProjectRepo omeroProjectRepo,
+                               WorkTypeRepo workTypeRepo, WorkRepo workRepo,
                                ReagentPlateRepo reagentPlateRepo,
                                LabelPrintService labelPrintService, FindService findService,
                                CommentAdminService commentAdminService, EquipmentAdminService equipmentAdminService,
@@ -98,6 +100,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.hmdmcRepo = hmdmcRepo;
         this.labwareRepo = labwareRepo;
         this.solutionRepo = solutionRepo;
+        this.omeroProjectRepo = omeroProjectRepo;
         this.reagentPlateRepo = reagentPlateRepo;
         this.equipmentAdminService = equipmentAdminService;
         this.releaseDestinationRepo = releaseDestinationRepo;
@@ -213,6 +216,10 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
 
     public DataFetcher<Iterable<Solution>> getSolutions() {
         return allOrEnabled(solutionRepo::findAll, solutionRepo::findAllByEnabled);
+    }
+
+    public DataFetcher<Iterable<OmeroProject>> getOmeroProjects() {
+        return allOrEnabled(omeroProjectRepo::findAll, omeroProjectRepo::findAllByEnabled);
     }
 
     public DataFetcher<Iterable<WorkType>> getWorkTypes() {

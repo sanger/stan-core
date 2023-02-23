@@ -26,13 +26,14 @@ public class WorkServiceImp implements WorkService {
     private final CostCodeRepo costCodeRepo;
     private final WorkTypeRepo workTypeRepo;
     private final WorkRepo workRepo;
+    private final OmeroProjectRepo omeroProjectRepo;
     private final ReleaseRecipientRepo recipientRepo;
     private final WorkEventService workEventService;
     private final Validator<String> priorityValidator;
 
     @Autowired
     public WorkServiceImp(ProjectRepo projectRepo, ProgramRepo programRepo, CostCodeRepo costCodeRepo,
-                          WorkTypeRepo workTypeRepo, WorkRepo workRepo,
+                          WorkTypeRepo workTypeRepo, WorkRepo workRepo, OmeroProjectRepo omeroProjectRepo,
                           ReleaseRecipientRepo recipientRepo, WorkEventService workEventService,
                           @Qualifier("workPriorityValidator") Validator<String> priorityValidator) {
         this.projectRepo = projectRepo;
@@ -40,6 +41,7 @@ public class WorkServiceImp implements WorkService {
         this.costCodeRepo = costCodeRepo;
         this.workTypeRepo = workTypeRepo;
         this.workRepo = workRepo;
+        this.omeroProjectRepo = omeroProjectRepo;
         this.recipientRepo = recipientRepo;
         this.workEventService = workEventService;
         this.priorityValidator = priorityValidator;
@@ -57,13 +59,23 @@ public class WorkServiceImp implements WorkService {
     @Override
     public Work createWork(User user, String prefix, String workTypeName, String workRequesterName, String projectName,
                            String programName, String costCode,
-                           Integer numBlocks, Integer numSlides, Integer numOriginalSamples) {
+                           Integer numBlocks, Integer numSlides, Integer numOriginalSamples,
+                           String omeroProjectName) {
         checkPrefix(prefix);
 
         Project project = projectRepo.getByName(projectName);
         Program program = programRepo.getByName(programName);
         CostCode cc = costCodeRepo.getByCode(costCode);
         WorkType type = workTypeRepo.getByName(workTypeName);
+        OmeroProject omeroProject;
+        if (omeroProjectName==null) {
+            omeroProject = null;
+        } else {
+            omeroProject = omeroProjectRepo.getByName(omeroProjectName);
+            if (!omeroProject.isEnabled()) {
+                throw new IllegalArgumentException("Omero project "+omeroProject.getName()+" is disabled.");
+            }
+        }
         ReleaseRecipient workRequester = recipientRepo.getByUsername(workRequesterName);
         if (numBlocks!=null && numBlocks < 0) {
             throw new IllegalArgumentException("Number of blocks cannot be a negative number.");
@@ -76,7 +88,7 @@ public class WorkServiceImp implements WorkService {
         }
 
         String workNumber = workRepo.createNumber(prefix);
-        Work work = workRepo.save(new Work(null, workNumber, type, workRequester, project, program, cc, Status.unstarted, numBlocks, numSlides, numOriginalSamples, null));
+        Work work = workRepo.save(new Work(null, workNumber, type, workRequester, project, program, cc, Status.unstarted, numBlocks, numSlides, numOriginalSamples, null, omeroProject));
         workEventService.recordEvent(user, work, WorkEvent.Type.create, null);
         return work;
     }
@@ -148,6 +160,27 @@ public class WorkServiceImp implements WorkService {
                     throw new IllegalArgumentException("Cannot set a new priority on "+work.getStatus()+" work.");
                 }
                 work.setPriority(priority);
+                work = workRepo.save(work);
+            }
+        }
+        return work;
+    }
+
+    @Override
+    public Work updateWorkOmeroProject(User user, String workNumber, String omeroProjectName) {
+        Work work = workRepo.getByWorkNumber(workNumber);
+        if (omeroProjectName==null) {
+            if (work.getOmeroProject()!=null) {
+                work.setOmeroProject(null);
+                work = workRepo.save(work);
+            }
+        } else {
+            OmeroProject omeroProject = omeroProjectRepo.getByName(omeroProjectName);
+            if (work.getOmeroProject()==null || !work.getOmeroProject().equals(omeroProject)) {
+                if (!omeroProject.isEnabled()) {
+                    throw new IllegalArgumentException("Omero project "+omeroProject.getName()+" is disabled.");
+                }
+                work.setOmeroProject(omeroProject);
                 work = workRepo.save(work);
             }
         }

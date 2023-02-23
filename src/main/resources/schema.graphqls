@@ -214,6 +214,14 @@ type Solution {
     enabled: Boolean!
 }
 
+"""A project in Omero."""
+type OmeroProject {
+    """The name of the Omero project."""
+    name: String!
+    """Whether the Omero project is available for use in Stan."""
+    enabled: Boolean!
+}
+
 """A request to register a new block of tissue."""
 input BlockRegisterRequest {
     """The string to use as the donor name."""
@@ -966,6 +974,8 @@ type Work {
     """A string describing the priority of this work.
     This is set and updated by users during the course of the work."""
     priority: String
+    """The omero project associated with this work, if any."""
+    omeroProject: OmeroProject
 }
 
 """A work along with a comment that was recorded to explain its current status."""
@@ -1520,6 +1530,8 @@ type Query {
     costCodes(includeDisabled: Boolean): [CostCode!]!
     """Get all the solutions that are enabled, or get all including those that are disabled."""
     solutions(includeDisabled: Boolean): [Solution!]!
+    """Get all the omero projects that are enabled, or including those that are disabled."""
+    omeroProjects(includeDisabled: Boolean): [OmeroProject!]!
     """Get all the work types that are enabled, or get all including those that are disabled."""
     workTypes(includeDisabled: Boolean): [WorkType!]!
     """Get all the works, or get all the works in the given specified statuses."""
@@ -1658,9 +1670,13 @@ type Mutation {
     addSolution(name: String!): Solution!
     """Enable or disable a solution."""
     setSolutionEnabled(name: String!, enabled: Boolean!): Solution!
+    """Add a new omero project."""
+    addOmeroProject(name: String!): OmeroProject!
+    """Enable or disable an omero project."""
+    setOmeroProjectEnabled(name: String!, enabled: Boolean!): OmeroProject!
 
     """Create a new work, which will be allocated a new work number with the given prefix."""
-    createWork(prefix: String!, workType: String!, workRequester: String!, project: String!, program: String!, costCode: String!, numBlocks: Int, numSlides: Int, numOriginalSamples: Int): Work!
+    createWork(prefix: String!, workType: String!, workRequester: String!, project: String!, program: String!, costCode: String!, numBlocks: Int, numSlides: Int, numOriginalSamples: Int, omeroProject: String): Work!
     """Update the status of an existing work."""
     updateWorkStatus(workNumber: String!, status: WorkStatus!, commentId: Int): WorkWithComment!
     """Update the number of blocks field in a work."""
@@ -1671,6 +1687,8 @@ type Mutation {
     updateWorkNumOriginalSamples(workNumber: String!, numOriginalSamples: Int): Work!
     """Update the priority of a work."""
     updateWorkPriority(workNumber: String!, priority: String): Work!
+    """Update the omero project of a work."""
+    updateWorkOmeroProject(workNumber: String!, omeroProject: String): Work!
 
     """Record a new stain with time measurements."""
     stain(request: StainRequest!): OperationResult!

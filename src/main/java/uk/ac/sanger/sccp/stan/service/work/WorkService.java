@@ -25,10 +25,11 @@ public interface WorkService {
      * @param numBlocks the value for the "numBlocks" field (may be null)
      * @param numSlides the value for the "numSlides" field (may be null)
      * @param numOriginalSamples the value for the "numOriginalSamples" field (may be null)
+     * @param omeroProjectName the name of the omero project for this work (may be null)
      * @return the new work
      */
     Work createWork(User user, String prefix, String workTypeName, String workRequesterName, String projectName, String programName, String costCode,
-                    Integer numBlocks, Integer numSlides, Integer numOriginalSamples);
+                    Integer numBlocks, Integer numSlides, Integer numOriginalSamples, String omeroProjectName);
 
     /**
      * Updates the status of the work. Records a work event for the change.
@@ -78,6 +79,15 @@ public interface WorkService {
      * @return the updated work
      */
     Work updateWorkPriority(User user, String workNumber, String priority);
+
+    /**
+     * Updates the omero project of an existing work.
+     * @param user the user responsible
+     * @param workNumber the work number of the work
+     * @param omeroProjectName the name of an existing omero project; or null to clear the project
+     * @return the updated work
+     */
+    Work updateWorkOmeroProject(User user, String workNumber, String omeroProjectName);
 
     /**
      * Updates the existing work linking it to the given operations and samples in slots in the ops' actions

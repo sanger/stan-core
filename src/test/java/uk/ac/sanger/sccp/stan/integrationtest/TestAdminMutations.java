@@ -56,7 +56,8 @@ public class TestAdminMutations {
     private SolutionRepo solutionRepo;
     @Autowired
     private ProgramRepo programRepo;
-
+    @Autowired
+    private OmeroProjectRepo omeroProjectRepo;
 
     @Test
     @Transactional
@@ -157,6 +158,12 @@ public class TestAdminMutations {
     @Transactional
     public void testAddNewProgramAndSetEnabled() throws Exception {
         testGenericAddNewAndSetEnabled("Program", "name", "Hello", programRepo::findByName, Program::getName, "programs");
+    }
+
+    @Test
+    @Transactional
+    public void testAddNewOmeroProjectAndSetEnabled() throws Exception {
+        testGenericAddNewAndSetEnabled("OmeroProject", "name", "Hello", omeroProjectRepo::findByName, OmeroProject::getName, "omeroProjects");
     }
 
 }
