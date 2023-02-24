@@ -9,9 +9,7 @@ import org.springframework.test.context.ActiveProfiles;
 import uk.ac.sanger.sccp.stan.EntityCreator;
 import uk.ac.sanger.sccp.stan.GraphQLTester;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.repo.CostCodeRepo;
-import uk.ac.sanger.sccp.stan.repo.ProjectRepo;
-import uk.ac.sanger.sccp.stan.repo.ReleaseRecipientRepo;
+import uk.ac.sanger.sccp.stan.repo.*;
 
 import javax.transaction.Transactional;
 import java.util.List;
@@ -41,6 +39,8 @@ public class TestWorkMutation {
     private CostCodeRepo costCodeRepo;
     @Autowired
     private ReleaseRecipientRepo releaseRecipientRepo;
+    @Autowired
+    private OmeroProjectRepo omeroProjectRepo;
 
     @Transactional
     @Test
@@ -51,8 +51,9 @@ public class TestWorkMutation {
         ReleaseRecipient workRequester = releaseRecipientRepo.save(new ReleaseRecipient(null, "test1"));
         Program prog = entityCreator.createProgram("Hello");
         User user = entityCreator.createUser("user1", User.Role.normal);
+        OmeroProject omero = omeroProjectRepo.save(new OmeroProject("om_proj"));
 
-        String worksQuery  = "query { works(status: [active]) { workNumber, workType {name}, workRequester {username}, project {name}, program {name}, costCode {code}, status } }";
+        String worksQuery  = "query { works(status: [active]) { workNumber, workType {name}, workRequester {username}, project {name}, program {name}, costCode {code}, status, omeroProject {name} } }";
         Object data = tester.post(worksQuery);
         List<Map<String,?>> worksData = chainGet(data, "data", "works");
         assertNotNull(worksData);
@@ -69,6 +70,7 @@ public class TestWorkMutation {
         assertEquals(cc.getCode(), chainGet(workData, "costCode", "code"));
         assertEquals(workType.getName(), chainGet(workData, "workType", "name"));
         assertEquals(workRequester.getUsername(), chainGet(workData, "workRequester", "username"));
+        assertEquals(omero.getName(), chainGet(workData, "omeroProject", "name"));
         assertEquals("unstarted", workData.get("status"));
 
         data = tester.post(worksQuery);

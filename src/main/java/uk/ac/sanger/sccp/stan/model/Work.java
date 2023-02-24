@@ -88,6 +88,9 @@ public class Work {
     @ManyToOne
     private CostCode costCode;
 
+    @ManyToOne
+    private OmeroProject omeroProject;
+
     @Column(columnDefinition = "enum('unstarted', 'active', 'paused', 'completed', 'failed', 'withdrawn')")
     @Enumerated(EnumType.STRING)
     private Status status;
@@ -113,7 +116,7 @@ public class Work {
     public Work() {}
 
     public Work(Integer id, String workNumber, WorkType workType, ReleaseRecipient workRequester, Project project, Program program, CostCode costCode, Status status,
-                Integer numBlocks, Integer numSlides, Integer numOriginalSamples, String priority) {
+                Integer numBlocks, Integer numSlides, Integer numOriginalSamples, String priority, OmeroProject omeroProject) {
         this.id = id;
         this.workNumber = workNumber;
         this.workType = workType;
@@ -126,13 +129,17 @@ public class Work {
         this.numSlides = numSlides;
         this.numOriginalSamples = numOriginalSamples;
         this.priority = priority;
+<<<<<<< HEAD
         setOperationIds(null);
         setReleaseIds(null);
+=======
+        this.omeroProject = omeroProject;
+>>>>>>> devel
     }
 
     public Work(Integer id, String workNumber, WorkType workType, ReleaseRecipient workRequester, Project project,
                 Program program, CostCode costCode, Status status) {
-        this(id, workNumber, workType, workRequester, project, program, costCode, status, null, null, null, null);
+        this(id, workNumber, workType, workRequester, project, program, costCode, status, null, null, null, null, null);
     }
 
     public Integer getId() {
@@ -255,6 +262,14 @@ public class Work {
         this.priority = priority;
     }
 
+    public OmeroProject getOmeroProject() {
+        return this.omeroProject;
+    }
+
+    public void setOmeroProject(OmeroProject omeroProject) {
+        this.omeroProject = omeroProject;
+    }
+
     @JsonIgnore
     public boolean isClosed() {
         return (status==Status.completed || status==Status.failed || status==Status.withdrawn);
@@ -286,6 +301,7 @@ public class Work {
                 && Objects.equals(this.numSlides, that.numSlides)
                 && Objects.equals(this.numOriginalSamples, that.numOriginalSamples)
                 && Objects.equals(this.priority, that.priority)
+                && Objects.equals(this.omeroProject, that.omeroProject)
                 && this.status == that.status);
     }
 

@@ -39,6 +39,7 @@ public class TestWorkService {
     private CostCodeRepo mockCostCodeRepo;
     private WorkRepo mockWorkRepo;
     private LabwareRepo mockLwRepo;
+    private OmeroProjectRepo mockOmeroProjectRepo;
     private WorkTypeRepo mockWorkTypeRepo;
     private ReleaseRecipientRepo mockReleaseRecipientRepo;
     private WorkEventService mockWorkEventService;
@@ -51,6 +52,7 @@ public class TestWorkService {
         mockCostCodeRepo = mock(CostCodeRepo.class);
         mockWorkRepo = mock(WorkRepo.class);
         mockLwRepo = mock(LabwareRepo.class);
+        mockOmeroProjectRepo = mock(OmeroProjectRepo.class);
         mockWorkEventService = mock(WorkEventService.class);
         mockWorkTypeRepo = mock(WorkTypeRepo.class);
         mockReleaseRecipientRepo = mock(ReleaseRecipientRepo.class);
@@ -58,7 +60,7 @@ public class TestWorkService {
         mockPriorityValidator = mock(Validator.class);
 
         workService = spy(new WorkServiceImp(mockProjectRepo, mockProgramRepo, mockCostCodeRepo, mockWorkTypeRepo,
-                mockWorkRepo, mockLwRepo, mockReleaseRecipientRepo, mockWorkEventService, mockPriorityValidator));
+                mockWorkRepo, mockLwRepo, mockOmeroProjectRepo, mockReleaseRecipientRepo, mockWorkEventService, mockPriorityValidator));
     }
 
     @ParameterizedTest
@@ -71,7 +73,7 @@ public class TestWorkService {
             ",-2,,Number of slides cannot be a negative number.",
             ",,-3,Number of original samples cannot be a negative number.",
     })
-    public void testCreateWork(Integer numBlocks, Integer numSlides, Integer numOriginalSamples, String expectedErrorMessage) {
+    public void testCreateWork_numLabware(Integer numBlocks, Integer numSlides, Integer numOriginalSamples, String expectedErrorMessage) {
         String projectName = "Stargate";
         String code = "S1234";
         String workTypeName = "Drywalling";
@@ -94,16 +96,61 @@ public class TestWorkService {
         when(mockReleaseRecipientRepo.getByUsername(workRequesterName)).thenReturn(workRequester);
 
         if (expectedErrorMessage==null) {
-            Work result = workService.createWork(user, prefix, workTypeName, workRequesterName, projectName, progName, code, numBlocks, numSlides, numOriginalSamples);
+            Work result = workService.createWork(user, prefix, workTypeName, workRequesterName, projectName, progName, code, numBlocks, numSlides, numOriginalSamples, null);
             verify(workService).checkPrefix(prefix);
             verify(mockWorkRepo).createNumber(prefix);
             verify(mockWorkRepo).save(result);
             verify(mockWorkEventService).recordEvent(user, result, WorkEvent.Type.create, null);
-            assertEquals(new Work(null, workNumber, workType, workRequester, project, prog, cc, Status.unstarted, numBlocks, numSlides, numOriginalSamples, null), result);
+            assertEquals(new Work(null, workNumber, workType, workRequester, project, prog, cc, Status.unstarted, numBlocks, numSlides, numOriginalSamples, null, null), result);
         } else {
             assertThat(assertThrows(IllegalArgumentException.class, () -> workService.createWork(user, prefix, workTypeName, workRequesterName, projectName,
-                    progName, code, numBlocks, numSlides, numOriginalSamples))).hasMessage(expectedErrorMessage);
+                    progName, code, numBlocks, numSlides, numOriginalSamples, null))).hasMessage(expectedErrorMessage);
             verifyNoInteractions(mockWorkRepo);
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            ", Omero project not found.",
+            "true,",
+            "false,Omero project OM_PROJ is disabled.",
+    })
+    public void testCreateWork_omeroProject(Boolean enabled, String expectedErrorMessage) {
+        final String omeroName = "OM_PROJ";
+        OmeroProject omero;
+        if (enabled==null) {
+            omero = null;
+            when(mockOmeroProjectRepo.getByName(omeroName)).thenThrow(new EntityNotFoundException(expectedErrorMessage));
+        } else {
+            omero = new OmeroProject(100, omeroName, enabled);
+            when(mockOmeroProjectRepo.getByName(omeroName)).thenReturn(omero);
+        }
+        String projectName = "Stargate";
+        String code = "S1234";
+        String workTypeName = "Drywalling";
+        String workRequesterName = "test1";
+        String progName = "Hello";
+        Project project = new Project(10, projectName);
+        when(mockProjectRepo.getByName(projectName)).thenReturn(project);
+        Program prog = new Program(15, progName, true);
+        when(mockProgramRepo.getByName(progName)).thenReturn(prog);
+        CostCode cc = new CostCode(20, code);
+        when(mockCostCodeRepo.getByCode(code)).thenReturn(cc);
+        WorkType workType = new WorkType(30, workTypeName);
+        when(mockWorkTypeRepo.getByName(workTypeName)).thenReturn(workType);
+        String prefix = "SGP";
+        String workNumber = "SGP4000";
+        when(mockWorkRepo.createNumber(prefix)).thenReturn(workNumber);
+        User user = new User(1, "user1", User.Role.admin);
+
+        when(mockWorkRepo.save(any())).then(Matchers.returnArgument());
+        if (expectedErrorMessage!=null) {
+            assertThat(assertThrows(RuntimeException.class, () -> workService.createWork(user, prefix, workTypeName, workRequesterName, projectName, progName, code, null, null, null, omeroName)))
+                    .hasMessage(expectedErrorMessage);
+        } else {
+            Work result = workService.createWork(user, prefix, workTypeName, workRequesterName, projectName, progName, code, null, null, null, omeroName);
+            verify(mockWorkRepo).save(result);
+            assertSame(omero, result.getOmeroProject());
         }
     }
 
@@ -289,6 +336,70 @@ public class TestWorkService {
                 verify(mockWorkRepo, never()).save(any());
             }
             assertEquals(newPrioritySan, work.getPriority());
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "true,true,Alpha,Beta,",
+            "true,true,Alpha,Alpha,",
+            "false,,,,No such work.",
+            "true,,Alpha,Beta,No such omero.",
+            "true,false,Alpha,Beta,Omero project Beta is disabled.",
+            "true,true,Alpha,,",
+    })
+    public void testUpdateWorkOmeroProject(boolean workExists, Boolean omeroEnabled,
+                                           String oldOmero, String newOmero, String expectedError) {
+        boolean change = !(oldOmero==null ? newOmero==null : oldOmero.equalsIgnoreCase(newOmero));
+        String workNumber = "SGP100";
+        Work work;
+        if (!workExists) {
+            work = null;
+            EntityNotFoundException ex = new EntityNotFoundException(expectedError);
+            when(mockWorkRepo.getByWorkNumber(workNumber)).thenThrow(ex);
+        } else {
+            work = new Work(100, workNumber, null, null, null, null, null, Status.active);
+            when(mockWorkRepo.getByWorkNumber(workNumber)).thenReturn(work);
+            OmeroProject omero;
+            if (newOmero!=null) {
+                if (omeroEnabled==null) {
+                    omero = null;
+                    EntityNotFoundException ex = new EntityNotFoundException(expectedError);
+                    when(mockOmeroProjectRepo.getByName(newOmero)).thenThrow(ex);
+                } else {
+                    omero = new OmeroProject(50, newOmero, omeroEnabled);
+                    when(mockOmeroProjectRepo.getByName(newOmero)).thenReturn(omero);
+                }
+
+            } else {
+                omero = null;
+            }
+            if (oldOmero!=null) {
+                work.setOmeroProject(change ? new OmeroProject(10, oldOmero, true) : omero);
+            }
+        }
+
+        User user = EntityFactory.getUser();
+
+        if (expectedError!=null) {
+            assertThat(assertThrows(RuntimeException.class, () -> workService.updateWorkOmeroProject(user, workNumber, newOmero)))
+                    .hasMessage(expectedError);
+            verify(mockWorkRepo, never()).save(any());
+        } else {
+            assert work != null;
+            when(mockWorkRepo.save(any())).thenReturn(work);
+            assertSame(work, workService.updateWorkOmeroProject(user, workNumber, newOmero));
+            if (newOmero==null) {
+                assertNull(work.getOmeroProject());
+            } else {
+                assertNotNull(work.getOmeroProject());
+                assertEquals(newOmero, work.getOmeroProject().getName());
+            }
+            if (change) {
+                verify(mockWorkRepo).save(work);
+            } else {
+                verify(mockWorkRepo, never()).save(any());
+            }
         }
     }
 

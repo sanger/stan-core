@@ -247,7 +247,15 @@ public class FieldValidation {
 
     @Bean
     public Validator<String> lotNumberValidator() {
-        return new StringValidator("Lot number", 6, 7, CharacterType.DIGIT);
+        return new StringValidator("Lot number", 6, 7, EnumSet.of(CharacterType.DIGIT));
+    }
+
+    @Bean
+    public Validator<String> omeroProjectNameValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(
+                CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.UNDERSCORE
+        );
+        return new StringValidator("Omero project name", 1, 16, charTypes);
     }
 
     @Bean
