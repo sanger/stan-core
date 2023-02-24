@@ -129,12 +129,9 @@ public class Work {
         this.numSlides = numSlides;
         this.numOriginalSamples = numOriginalSamples;
         this.priority = priority;
-<<<<<<< HEAD
+        this.omeroProject = omeroProject;
         setOperationIds(null);
         setReleaseIds(null);
-=======
-        this.omeroProject = omeroProject;
->>>>>>> devel
     }
 
     public Work(Integer id, String workNumber, WorkType workType, ReleaseRecipient workRequester, Project project,
