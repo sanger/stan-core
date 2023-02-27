@@ -1364,8 +1364,8 @@ type StanFile {
 type SuggestedWork {
     """The barcode of the labware."""
     barcode: String!
-    """The work number of the suggested work."""
-    workNumber: String!
+    """The work number of the suggested work, or null."""
+    workNumber: String
 }
 
 """The response to a suggested work query."""

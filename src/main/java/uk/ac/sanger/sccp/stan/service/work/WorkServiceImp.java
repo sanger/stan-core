@@ -412,15 +412,15 @@ public class WorkServiceImp implements WorkService {
         Set<Integer> workIds = new HashSet<>();
         for (Labware lw : labware) {
             Integer workId = workRepo.findLatestActiveWorkIdForLabwareId(lw.getId());
+            barcodeWorkIds.put(lw.getBarcode(), workId);
             if (workId!=null) {
-                barcodeWorkIds.put(lw.getBarcode(), workId);
                 workIds.add(workId);
             }
         }
         Map<Integer, Work> workIdMap = BasicUtils.stream(workRepo.findAllById(workIds))
                 .collect(BasicUtils.toMap(Work::getId));
         List<SuggestedWork> suggestedWorks = barcodeWorkIds.entrySet().stream()
-                .map(e -> new SuggestedWork(e.getKey(), workIdMap.get(e.getValue()).getWorkNumber()))
+                .map(e -> new SuggestedWork(e.getKey(), e.getValue()==null ? null : workIdMap.get(e.getValue()).getWorkNumber()))
                 .collect(toList());
         List<Work> works = new ArrayList<>(workIdMap.values());
         return new SuggestedWorkResponse(suggestedWorks, works);

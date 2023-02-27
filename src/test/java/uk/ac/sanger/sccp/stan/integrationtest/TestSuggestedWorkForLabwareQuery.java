@@ -16,6 +16,7 @@ import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGet;
+import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.nullableMapOf;
 
 /**
  * Tests the query for suggested work for labware
@@ -54,7 +55,10 @@ public class TestSuggestedWorkForLabwareQuery {
         String query = tester.readGraphQL("suggestedwork.graphql");
         Object response = tester.post(query);
         Map<String, List<Map<String, String>>> swfl = chainGet(response, "data", "suggestedWorkForLabware");
-        assertThat(swfl.get("suggestedWorks")).containsExactly(Map.of("barcode", "STAN-A1", "workNumber", work.getWorkNumber()));
+        assertThat(swfl.get("suggestedWorks")).containsExactlyInAnyOrder(
+                Map.of("barcode", "STAN-A1", "workNumber", work.getWorkNumber()),
+                nullableMapOf("barcode", "STAN-A2", "workNumber", null)
+        );
         assertThat(swfl.get("works")).containsExactly(Map.of("workNumber", work.getWorkNumber()));
     }
 }

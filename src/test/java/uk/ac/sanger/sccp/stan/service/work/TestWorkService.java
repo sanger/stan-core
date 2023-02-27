@@ -909,6 +909,7 @@ public class TestWorkService {
         SuggestedWorkResponse response = workService.suggestWorkForLabwareBarcodes(barcodes);
         assertThat(response.getSuggestedWorks()).containsExactlyInAnyOrder(
                 new SuggestedWork("STAN-1", "SGP1"),
+                new SuggestedWork("STAN-2", null),
                 new SuggestedWork("STAN-3", "SGP1"),
                 new SuggestedWork("STAN-4", "SGP2")
         );
