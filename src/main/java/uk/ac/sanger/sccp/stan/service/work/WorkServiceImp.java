@@ -8,7 +8,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.Work.SampleSlotId;
 import uk.ac.sanger.sccp.stan.model.Work.Status;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.WorkWithComment;
+import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.service.Validator;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.UCMap;
@@ -406,10 +406,24 @@ public class WorkServiceImp implements WorkService {
     }
 
     @Override
-    public Optional<Work> suggestCurrentWorkForLabwareBarcode(String barcode) {
-        Labware lw = lwRepo.getByBarcode(barcode);
-        Integer workId = workRepo.findLatestActiveWorkIdForLabwareId(lw.getId());
-        return Optional.ofNullable(workId).flatMap(workRepo::findById);
+    public SuggestedWorkResponse suggestWorkForLabwareBarcodes(Collection<String> barcodes) {
+        Set<Labware> labware = new HashSet<>(lwRepo.getByBarcodeIn(barcodes));
+        Map<String, Integer> barcodeWorkIds = new HashMap<>(labware.size());
+        Set<Integer> workIds = new HashSet<>();
+        for (Labware lw : labware) {
+            Integer workId = workRepo.findLatestActiveWorkIdForLabwareId(lw.getId());
+            if (workId!=null) {
+                barcodeWorkIds.put(lw.getBarcode(), workId);
+                workIds.add(workId);
+            }
+        }
+        Map<Integer, Work> workIdMap = BasicUtils.stream(workRepo.findAllById(workIds))
+                .collect(BasicUtils.toMap(Work::getId));
+        List<SuggestedWork> suggestedWorks = barcodeWorkIds.entrySet().stream()
+                .map(e -> new SuggestedWork(e.getKey(), workIdMap.get(e.getValue()).getWorkNumber()))
+                .collect(toList());
+        List<Work> works = new ArrayList<>(workIdMap.values());
+        return new SuggestedWorkResponse(suggestedWorks, works);
     }
 
     public void fillInComments(Collection<WorkWithComment> wcs, Map<Integer, WorkEvent> workEvents) {

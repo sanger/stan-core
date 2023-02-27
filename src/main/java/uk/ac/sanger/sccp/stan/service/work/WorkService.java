@@ -2,6 +2,7 @@ package uk.ac.sanger.sccp.stan.service.work;
 
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.Work.Status;
+import uk.ac.sanger.sccp.stan.request.SuggestedWorkResponse;
 import uk.ac.sanger.sccp.stan.request.WorkWithComment;
 import uk.ac.sanger.sccp.utils.UCMap;
 
@@ -177,10 +178,10 @@ public interface WorkService {
     List<WorkWithComment> getWorksWithComments(Collection<Work.Status> workStatuses);
 
     /**
-     * Gets suggested current work for indicated labware.
-     * Gives the latest (if any) active work that the labware was used in.
-     * @param barcode barcode of labware
-     * @return the suggested current work, if any
+     * Gets the suggested works for the indicated labware.
+     * For each barcode, gives the latest (if any) active work that the labware was used in.
+     * @param barcodes barcodes of labware
+     * @return the suggested works
      */
-    Optional<Work> suggestCurrentWorkForLabwareBarcode(String barcode);
+    SuggestedWorkResponse suggestWorkForLabwareBarcodes(Collection<String> barcodes);
 }

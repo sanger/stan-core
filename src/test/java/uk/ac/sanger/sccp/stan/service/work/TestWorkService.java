@@ -11,7 +11,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.Work.SampleSlotId;
 import uk.ac.sanger.sccp.stan.model.Work.Status;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.WorkWithComment;
+import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.service.Validator;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.UCMap;
@@ -868,29 +868,51 @@ public class TestWorkService {
                      wcs);
     }
 
-    @ParameterizedTest
-    @CsvSource({"false,false", "true,false", "true,true"})
-    public void testSuggestCurrentWorkForLabwareBarcode(boolean barcodeValid, boolean hasWork) {
-        if (!barcodeValid) {
-            String barcode = "STAN-404";
-            when(mockLwRepo.getByBarcode(barcode)).thenThrow(EntityNotFoundException.class);
-            assertThrows(EntityNotFoundException.class, () -> workService.suggestCurrentWorkForLabwareBarcode(barcode));
-            return;
-        }
-        Labware lw = EntityFactory.getTube();
-        String barcode = lw.getBarcode();
-        when(mockLwRepo.getByBarcode(barcode)).thenReturn(lw);
-        if (!hasWork) {
-            when(mockWorkRepo.findLatestActiveWorkIdForLabwareId(lw.getId())).thenReturn(null);
-            assertThat(workService.suggestCurrentWorkForLabwareBarcode(barcode)).isEmpty();
-            verify(mockWorkRepo).findLatestActiveWorkIdForLabwareId(lw.getId());
-            verify(mockWorkRepo, never()).findById(any());
-            return;
-        }
-        Work work = quickWork(150, Status.active);
-        when(mockWorkRepo.findLatestActiveWorkIdForLabwareId(lw.getId())).thenReturn(work.getId());
-        when(mockWorkRepo.findById(work.getId())).thenReturn(Optional.of(work));
-        assertThat(workService.suggestCurrentWorkForLabwareBarcode(barcode)).contains(work);
+    @Test
+    public void testSuggestWorkForLabwareBarcodes_unknown() {
+        List<String> barcodes = List.of("STAN-404");
+        when(mockLwRepo.getByBarcodeIn(barcodes)).thenThrow(EntityNotFoundException.class);
+        assertThrows(EntityNotFoundException.class, () -> workService.suggestWorkForLabwareBarcodes(barcodes));
+        verifyNoInteractions(mockWorkRepo);
+    }
+
+    @Test
+    public void testSuggestWorkForLabwareBarcodes() {
+        Sample sample = EntityFactory.getSample();
+        LabwareType lt = EntityFactory.getTubeType();
+        Labware[] labwares = IntStream.rangeClosed(1,4)
+                .mapToObj(i -> {
+                    Labware lw = EntityFactory.makeLabware(lt, sample);
+                    lw.setBarcode("STAN-"+i);
+                    return lw;
+                })
+                .toArray(Labware[]::new);
+        List<Labware> returnedLabware = new ArrayList<>(labwares.length+1);
+        returnedLabware.addAll(Arrays.asList(labwares));
+        returnedLabware.add(labwares[0]);
+        List<String> barcodes = returnedLabware.stream().map(Labware::getBarcode).collect(toList());
+        when(mockLwRepo.getByBarcodeIn(barcodes)).thenReturn(returnedLabware);
+        List<Work> works = IntStream.rangeClosed(1,2)
+                .mapToObj(i -> {
+                    Work work = new Work();
+                    work.setId(i);
+                    work.setWorkNumber("SGP"+i);
+                    return work;
+                }).collect(toList());
+
+        when(mockWorkRepo.findLatestActiveWorkIdForLabwareId(labwares[0].getId())).thenReturn(1);
+        when(mockWorkRepo.findLatestActiveWorkIdForLabwareId(labwares[1].getId())).thenReturn(null);
+        when(mockWorkRepo.findLatestActiveWorkIdForLabwareId(labwares[2].getId())).thenReturn(1);
+        when(mockWorkRepo.findLatestActiveWorkIdForLabwareId(labwares[3].getId())).thenReturn(2);
+        when(mockWorkRepo.findAllById(Set.of(1,2))).thenReturn(works);
+
+        SuggestedWorkResponse response = workService.suggestWorkForLabwareBarcodes(barcodes);
+        assertThat(response.getSuggestedWorks()).containsExactlyInAnyOrder(
+                new SuggestedWork("STAN-1", "SGP1"),
+                new SuggestedWork("STAN-3", "SGP1"),
+                new SuggestedWork("STAN-4", "SGP2")
+        );
+        assertThat(response.getWorks()).containsExactlyInAnyOrderElementsOf(works);
     }
 
     private Operation makeOp(OperationType opType, int opId, Labware srcLw, Labware dstLw) {

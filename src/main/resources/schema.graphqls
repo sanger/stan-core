@@ -1360,6 +1360,22 @@ type StanFile {
     url: String!
 }
 
+"""A link between a labware barcode and a work number."""
+type SuggestedWork {
+    """The barcode of the labware."""
+    barcode: String!
+    """The work number of the suggested work."""
+    workNumber: String!
+}
+
+"""The response to a suggested work query."""
+type SuggestedWorkResponse {
+    """The work numbers for each barcode. Barcodes without suggested work will be omitted."""
+    suggestedWorks: [SuggestedWork!]!
+    """The works indicated."""
+    works: [Work!]!
+}
+
 """A specification that a particular reagent slot should be transferred to an address."""
 input ReagentTransfer {
     """The barcode of a reagent plate."""
@@ -1589,7 +1605,7 @@ type Query {
     """Get operations into a given labware barcode of a given operation type."""
     labwareOperations(barcode: String!, operationType: String!): [Operation]
     """Get suggested work (if any) for labware."""
-    suggestedWorkForLabware(barcode: String!): Work
+    suggestedWorkForLabware(barcodes: [String!]!): SuggestedWorkResponse!
 
     """Get the specified storage location."""
     location(locationBarcode: String!): Location!

@@ -1,5 +1,8 @@
 package uk.ac.sanger.sccp.utils;
 
+import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
+
 import java.util.*;
 import java.util.function.*;
 import java.util.regex.Pattern;
@@ -415,6 +418,16 @@ public class BasicUtils {
      */
     public static String emptyToNull(String string) {
         return (string==null || string.isEmpty() ? null : string);
+    }
+
+    /**
+     * If the given list is non-null, it is returned. Otherwise, returns the immutable empty list.
+     * @param list list or null
+     * @return a non-null list
+     * @param <E> the type of element in the list
+     */
+    @NonNull public static <E> List<E> nullToEmpty(@Nullable List<E> list) {
+        return (list==null ? List.of() : list);
     }
 
     /**

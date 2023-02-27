@@ -11,13 +11,10 @@ import uk.ac.sanger.sccp.stan.GraphQLTester;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 
-import javax.persistence.EntityManager;
 import javax.transaction.Transactional;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.assertj.core.api.Assertions.assertThat;
 import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGet;
 
 /**
@@ -39,27 +36,25 @@ public class TestSuggestedWorkForLabwareQuery {
     private GraphQLTester tester;
     @Autowired
     private EntityCreator entityCreator;
-    @Autowired
-    private EntityManager entityManager;
 
     @Transactional
     @Test
     public void testSuggestedWork() throws Exception {
         Sample sample = entityCreator.createSample(null, null);
         Labware lw = entityCreator.createLabware("STAN-A1", entityCreator.getTubeType(), sample);
+        entityCreator.createLabware("STAN-A2", entityCreator.getTubeType(), sample);
         final Slot slot = lw.getFirstSlot();
         OperationType opType = entityCreator.createOpType("Scrape", null);
         Operation op = opRepo.save(new Operation(null, opType, null, null, entityCreator.createUser("user1")));
         Action ac = new Action(null, op.getId(), slot, slot, sample, sample);
-        actionRepo.save(ac);
         Work work = entityCreator.createWork(null, null, null, null, null);
-        String query = tester.readGraphQL("suggestedwork.graphql").replace("BARCODE", lw.getBarcode());
-        Object response1 = tester.post(query);
-        entityManager.flush();
-        assertNull(chainGet(response1, "data", "suggestedWorkForLabware"));
         work.setOperationIds(new ArrayList<>(List.of(op.getId())));
         workRepo.save(work);
-        Object response2 = tester.post(query);
-        assertEquals(work.getWorkNumber(), chainGet(response2, "data", "suggestedWorkForLabware", "workNumber"));
+        actionRepo.save(ac);
+        String query = tester.readGraphQL("suggestedwork.graphql");
+        Object response = tester.post(query);
+        Map<String, List<Map<String, String>>> swfl = chainGet(response, "data", "suggestedWorkForLabware");
+        assertThat(swfl.get("suggestedWorks")).containsExactly(Map.of("barcode", "STAN-A1", "workNumber", work.getWorkNumber()));
+        assertThat(swfl.get("works")).containsExactly(Map.of("workNumber", work.getWorkNumber()));
     }
 }
