@@ -2,11 +2,11 @@ package uk.ac.sanger.sccp.stan.service.work;
 
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.Work.Status;
+import uk.ac.sanger.sccp.stan.request.SuggestedWorkResponse;
 import uk.ac.sanger.sccp.stan.request.WorkWithComment;
 import uk.ac.sanger.sccp.utils.UCMap;
 
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 
 /**
  * Service for managing {@link Work work}.
@@ -112,9 +112,18 @@ public interface WorkService {
      * Updates the given works linking them to the given operations and samples in slots in the ops' actions
      * @param works the works
      * @param operations the operations to link
-     * @exception IllegalArgumentException if any of the works are not active
+     * @exception IllegalArgumentException if any of the works is not active
      */
     void link(Collection<Work> works, Collection<Operation> operations);
+
+    /**
+     * Updates the given work linking it to the given releases and samples in the released labware
+     * @param work the work to link the release to
+     * @param releases the releases to link to the work
+     * @return the updated work
+     * @exception IllegalArgumentException if the work is not usable
+     */
+    Work linkReleases(Work work, List<Release> releases);
 
     /**
      * Gets the specified work.
@@ -127,6 +136,17 @@ public interface WorkService {
      * @exception NullPointerException if the given string is null
      */
     Work getUsableWork(String workNumber);
+
+    /**
+     * Gets the specified works and checks they are usable.
+     * Errors if any of the given work numbers is null, or invalid, or indicates an unusable work
+     * @param workNumbers the work numbers
+     * @return a map of works from their work numbers
+     * @exception javax.persistence.EntityNotFoundException if any work number is unrecognised
+     * @exception IllegalArgumentException if any work is unusable
+     * @exception NullPointerException if any given work number is null
+     */
+    UCMap<Work> getUsableWorkMap(Collection<String> workNumbers);
 
     /**
      * Validates the specified work as usable.
@@ -156,4 +176,12 @@ public interface WorkService {
      * @return a list of WorkWithComment objects each of which may or may not include a comment
      */
     List<WorkWithComment> getWorksWithComments(Collection<Work.Status> workStatuses);
+
+    /**
+     * Gets the suggested works for the indicated labware.
+     * For each barcode, gives the latest (if any) active work that the labware was used in.
+     * @param barcodes barcodes of labware
+     * @return the suggested works
+     */
+    SuggestedWorkResponse suggestWorkForLabwareBarcodes(Collection<String> barcodes);
 }

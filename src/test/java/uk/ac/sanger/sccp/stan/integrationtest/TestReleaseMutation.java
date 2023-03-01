@@ -72,6 +72,7 @@ public class TestReleaseMutation {
     @Test
     @Transactional
     public void testRelease() throws Exception {
+        Work work1 = entityCreator.createWork(null, null, null, null, null);
         Donor donor = entityCreator.createDonor("DONOR1");
         Tissue tissue = entityCreator.createTissue(donor, "TISSUE1");
         Sample sample = entityCreator.createSample(tissue, null);
@@ -96,7 +97,9 @@ public class TestReleaseMutation {
         ReleaseRecipient recipient = entityCreator.createReleaseRecipient("dr6");
         tester.setUser(user);
         String mutation = tester.readGraphQL("release.graphql")
-                .replace("[]", "[\"STAN-001\", \"STAN-002\"]")
+                .replace("BC1", "STAN-001")
+                .replace("BC2", "STAN-002")
+                .replace("WN1", work1.getWorkNumber())
                 .replace("DESTINATION", destination.getName())
                 .replace("RECIPIENT", recipient.getUsername());
 
@@ -160,13 +163,17 @@ public class TestReleaseMutation {
             assertEquals(String.valueOf(rnaPlex), row.get("RNAscope plex"));
         }
 
+        entityManager.refresh(work1);
+        assertThat(work1.getReleaseIds()).contains(releaseIds.get(0));
+
         entityCreator.createOpType("Unrelease", null, OperationTypeFlag.IN_PLACE);
 
-        Work work = entityCreator.createWork(null, null, null, null, null);
+        Work work2 = entityCreator.createWork(work1.getWorkType(), work1.getProject(), work1.getProgram(),
+                work1.getCostCode(), work1.getWorkRequester());
 
         String unreleaseMutation = tester.readGraphQL("unrelease.graphql")
                 .replace("BARCODE", lw.getBarcode())
-                .replace("WORK", work.getWorkNumber());
+                .replace("WORK", work2.getWorkNumber());
         result = tester.post(unreleaseMutation);
         Object unreleaseResult = chainGet(result, "data", "unrelease");
         assertEquals("active", chainGet(unreleaseResult, "labware", 0, "state"));
@@ -176,8 +183,8 @@ public class TestReleaseMutation {
         entityManager.refresh(lw);
         assertTrue(lw.isReleased());
         entityManager.flush();
-        entityManager.refresh(work);
-        assertThat(work.getOperationIds()).containsExactly(opId);
+        entityManager.refresh(work2);
+        assertThat(work2.getOperationIds()).containsExactly(opId);
     }
 
     private void recordStain(Labware lw, StainType st, String bondBarcode, Integer rnaPlex, Integer ihcPlex, User user) {

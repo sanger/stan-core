@@ -31,4 +31,23 @@
         </addColumn>
     </changeSet>
 
+    <changeSet id="2.19.2" author="dr6">
+        <createTable tableName="work_release">
+            <column name="work_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_work_release_work" referencedTableName="work" referencedColumnNames="id"/>
+            </column>
+            <column name="release_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_work_release_release" referencedTableName="labware_release" referencedColumnNames="id"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addPrimaryKey tableName="work_release" columnNames="work_id,release_id"/>
+        <rollback>
+            <dropAllForeignKeyConstraints baseTableName="work_release"/>
+            <dropTable tableName="work_release"/>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>

@@ -249,6 +249,10 @@ public class EntityCreator {
         return workRepo.save(new Work(null, workNumber, workType, workRequester, project, program, cc, Work.Status.active));
     }
 
+    public Work createWorkLike(Work otherWork) {
+        return createWork(otherWork.getWorkType(), otherWork.getProject(), otherWork.getProgram(), otherWork.getCostCode(), otherWork.getWorkRequester());
+    }
+
     public Printer createPrinter(String name, LabelType labelType) {
         Printer printer = new Printer(null, name, List.of(labelType), Printer.Service.sprint);
         return printerRepo.save(printer);

@@ -11,7 +11,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.Work.SampleSlotId;
 import uk.ac.sanger.sccp.stan.model.Work.Status;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.WorkWithComment;
+import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.service.Validator;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.UCMap;
@@ -38,6 +38,7 @@ public class TestWorkService {
     private ProgramRepo mockProgramRepo;
     private CostCodeRepo mockCostCodeRepo;
     private WorkRepo mockWorkRepo;
+    private LabwareRepo mockLwRepo;
     private OmeroProjectRepo mockOmeroProjectRepo;
     private WorkTypeRepo mockWorkTypeRepo;
     private ReleaseRecipientRepo mockReleaseRecipientRepo;
@@ -50,6 +51,7 @@ public class TestWorkService {
         mockProgramRepo = mock(ProgramRepo.class);
         mockCostCodeRepo = mock(CostCodeRepo.class);
         mockWorkRepo = mock(WorkRepo.class);
+        mockLwRepo = mock(LabwareRepo.class);
         mockOmeroProjectRepo = mock(OmeroProjectRepo.class);
         mockWorkEventService = mock(WorkEventService.class);
         mockWorkTypeRepo = mock(WorkTypeRepo.class);
@@ -58,7 +60,7 @@ public class TestWorkService {
         mockPriorityValidator = mock(Validator.class);
 
         workService = spy(new WorkServiceImp(mockProjectRepo, mockProgramRepo, mockCostCodeRepo, mockWorkTypeRepo,
-                mockWorkRepo, mockOmeroProjectRepo, mockReleaseRecipientRepo, mockWorkEventService, mockPriorityValidator));
+                mockWorkRepo, mockLwRepo, mockOmeroProjectRepo, mockReleaseRecipientRepo, mockWorkEventService, mockPriorityValidator));
     }
 
     @ParameterizedTest
@@ -591,6 +593,67 @@ public class TestWorkService {
                 .map(a -> new SampleSlotId(a.getSample().getId(), a.getDestination().getId()));
     }
 
+    @Test
+    public void testLinkReleases_inactive() {
+        Work work = quickWork(Status.paused);
+        Labware lw = EntityFactory.getTube();
+        List<Release> releases = List.of(quickRelease(100, lw));
+        assertThat(assertThrows(IllegalArgumentException.class, () -> workService.linkReleases(work, releases)))
+                .hasMessage("Work SGP1 is not usable because it is paused.");
+    }
+
+    @Test
+    public void testLinkReleases_none() {
+        Work work = quickWork(Status.active);
+        assertSame(work, workService.linkReleases(work, List.of()));
+        verifyNoInteractions(mockWorkRepo);
+    }
+
+    @Test
+    public void testLinkReleases() {
+        Sample sam1 = EntityFactory.getSample();
+        Sample sam2 = new Sample(sam1.getId()+1, null, sam1.getTissue(), sam1.getBioState());
+        Labware lw1 = EntityFactory.makeLabware(EntityFactory.getTubeType(), sam1);
+        LabwareType lt = EntityFactory.makeLabwareType(1,3);
+        Labware lw2 = EntityFactory.makeLabware(lt, sam1, sam2);
+        lw2.getFirstSlot().addSample(sam2);
+        Release rel1 = quickRelease(100, lw1);
+        Release rel2 = quickRelease(101, lw2);
+        when(mockWorkRepo.save(any())).then(Matchers.returnArgument());
+        Work work = quickWork(Status.active);
+        work.setReleaseIds(List.of(1));
+        work.setSampleSlotIds(List.of(new SampleSlotId(2,3)));
+        assertSame(work, workService.linkReleases(work, List.of(rel1, rel2)));
+        verify(mockWorkRepo).save(work);
+        assertThat(work.getReleaseIds()).containsExactlyInAnyOrder(1, 100, 101);
+        assertThat(work.getSampleSlotIds()).containsExactlyInAnyOrder(
+                new SampleSlotId(2,3),
+                new SampleSlotId(sam1.getId(), lw1.getFirstSlot().getId()),
+                new SampleSlotId(sam1.getId(), lw2.getFirstSlot().getId()),
+                new SampleSlotId(sam2.getId(), lw2.getFirstSlot().getId()),
+                new SampleSlotId(sam2.getId(), lw2.getSlot(new Address(1,2)).getId())
+        );
+    }
+
+    static Work quickWork(Status status) {
+        return quickWork(1, status);
+    }
+
+    static Work quickWork(Integer id, Status status) {
+        Work work = new Work();
+        work.setId(id);
+        work.setWorkNumber("SGP"+id);
+        work.setStatus(status);
+        return work;
+    }
+
+    static Release quickRelease(Integer id, Labware lw) {
+        Release rel = new Release();
+        rel.setId(id);
+        rel.setLabware(lw);
+        return rel;
+    }
+
     @ParameterizedTest
     @MethodSource("usableWorkArgs")
     public void testGetUsableWork(String workNumber, Status status, Class<? extends Exception> expectedExceptionType, String expectedErrorMessage) {
@@ -613,8 +676,42 @@ public class TestWorkService {
     }
 
     @ParameterizedTest
+    @MethodSource("getUsableWorkMapArgs")
+    public void testGetUsableWorkMap(Collection<String> workNumbers, Collection<Work> works, String expectedError) {
+        UCMap<Work> workMap = UCMap.from(works, Work::getWorkNumber);
+        when(mockWorkRepo.findAllByWorkNumberIn(any())).then(invocation -> {
+            Collection<String> wns = invocation.getArgument(0);
+            return wns.stream()
+                    .map(workMap::get)
+                    .filter(Objects::nonNull)
+                    .collect(toList());
+        });
+        if (expectedError!=null) {
+            assertThat(assertThrows(RuntimeException.class, () -> workService.getUsableWorkMap(workNumbers)))
+                    .hasMessage(expectedError);
+            return;
+        }
+        assertEquals(workMap, workService.getUsableWorkMap(workNumbers));
+    }
+
+    static Stream<Arguments> getUsableWorkMapArgs() {
+        Work work1 = quickWork(1, Status.paused);
+        Work work2 = quickWork(2, Status.failed);
+        Work work3 = quickWork(3, Status.active);
+        Work work4 = quickWork(4, Status.active);
+        return Arrays.stream(new Object[][] {
+                { List.of("SGP3", "sgp4", "SGP3"), List.of(work3, work4), null },
+                { List.of("SGP1", "SGP404", "SGP2"), List.of(work1, work2), "Unknown work number: [SGP404]"},
+                { List.of("SGP1", "SGP404", "SGP405"), List.of(work1, work2), "Unknown work numbers: [SGP404, SGP405]"},
+                { Arrays.asList("SGP1", "SGP2", null), List.of(work1, work2), "null given as work number."},
+                { List.of("SGP3", "SGP1", "SGP2", "SGP4"), List.of(work1, work2, work3, work4), "Inactive work numbers: [SGP1, SGP2]"},
+                { List.of(), List.of(), null},
+        }).map(Arguments::of);
+    }
+
+    @ParameterizedTest
     @MethodSource("usableWorkArgs")
-    public void testValidateUsableWork(String workNumber, Status status, Class<? extends Exception> unused, String expectedErrorMessage) {
+    public void testValidateUsableWork(String workNumber, Status status, Class<? extends Exception> ignored, String expectedErrorMessage) {
         List<String> problems = new ArrayList<>(1);
         if (workNumber==null) {
             assertNull(workService.validateUsableWork(problems, null));
@@ -769,6 +866,54 @@ public class TestWorkService {
                         new WorkWithComment(workP1, "Oregon"), new WorkWithComment(workP2),
                         new WorkWithComment(workW1, "Withdrawn"),new WorkWithComment(workW2)),
                      wcs);
+    }
+
+    @Test
+    public void testSuggestWorkForLabwareBarcodes_unknown() {
+        List<String> barcodes = List.of("STAN-404");
+        when(mockLwRepo.getByBarcodeIn(barcodes)).thenThrow(EntityNotFoundException.class);
+        assertThrows(EntityNotFoundException.class, () -> workService.suggestWorkForLabwareBarcodes(barcodes));
+        verifyNoInteractions(mockWorkRepo);
+    }
+
+    @Test
+    public void testSuggestWorkForLabwareBarcodes() {
+        Sample sample = EntityFactory.getSample();
+        LabwareType lt = EntityFactory.getTubeType();
+        Labware[] labwares = IntStream.rangeClosed(1,4)
+                .mapToObj(i -> {
+                    Labware lw = EntityFactory.makeLabware(lt, sample);
+                    lw.setBarcode("STAN-"+i);
+                    return lw;
+                })
+                .toArray(Labware[]::new);
+        List<Labware> returnedLabware = new ArrayList<>(labwares.length+1);
+        returnedLabware.addAll(Arrays.asList(labwares));
+        returnedLabware.add(labwares[0]);
+        List<String> barcodes = returnedLabware.stream().map(Labware::getBarcode).collect(toList());
+        when(mockLwRepo.getByBarcodeIn(barcodes)).thenReturn(returnedLabware);
+        List<Work> works = IntStream.rangeClosed(1,2)
+                .mapToObj(i -> {
+                    Work work = new Work();
+                    work.setId(i);
+                    work.setWorkNumber("SGP"+i);
+                    return work;
+                }).collect(toList());
+
+        when(mockWorkRepo.findLatestActiveWorkIdForLabwareId(labwares[0].getId())).thenReturn(1);
+        when(mockWorkRepo.findLatestActiveWorkIdForLabwareId(labwares[1].getId())).thenReturn(null);
+        when(mockWorkRepo.findLatestActiveWorkIdForLabwareId(labwares[2].getId())).thenReturn(1);
+        when(mockWorkRepo.findLatestActiveWorkIdForLabwareId(labwares[3].getId())).thenReturn(2);
+        when(mockWorkRepo.findAllById(Set.of(1,2))).thenReturn(works);
+
+        SuggestedWorkResponse response = workService.suggestWorkForLabwareBarcodes(barcodes);
+        assertThat(response.getSuggestedWorks()).containsExactlyInAnyOrder(
+                new SuggestedWork("STAN-1", "SGP1"),
+                new SuggestedWork("STAN-2", null),
+                new SuggestedWork("STAN-3", "SGP1"),
+                new SuggestedWork("STAN-4", "SGP2")
+        );
+        assertThat(response.getWorks()).containsExactlyInAnyOrderElementsOf(works);
     }
 
     private Operation makeOp(OperationType opType, int opId, Labware srcLw, Labware dstLw) {

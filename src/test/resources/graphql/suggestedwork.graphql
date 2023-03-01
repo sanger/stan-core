@@ -1,0 +1,6 @@
+query {
+    suggestedWorkForLabware(barcodes: ["STAN-A1", "STAN-A2"]) {
+        suggestedWorks { barcode workNumber }
+        works { workNumber }
+    }
+}

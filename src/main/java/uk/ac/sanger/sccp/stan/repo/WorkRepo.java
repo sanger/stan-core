@@ -79,12 +79,44 @@ public interface WorkRepo extends CrudRepository<Work, Integer> {
         return opWork;
     }
 
+    @Query(value="select release_id as releaseId, work_number as workNumber from work_release join work on (work_id=work.id) where release_id IN (?1)", nativeQuery=true)
+    List<Object[]> _releaseIdWorkNumbersForReleaseIds(Collection<Integer> releaseIds);
+
+    default Map<Integer, String> findWorkNumbersForReleaseIds(Collection<Integer> releaseIds) {
+        if (releaseIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Integer, String> map = new HashMap<>();
+        for (Object[] ridWorkNum: _releaseIdWorkNumbersForReleaseIds(releaseIds)) {
+            map.put((Integer) ridWorkNum[0], (String) ridWorkNum[1]);
+        }
+        return map;
+    }
+
     List<Work> findAllByWorkNumberIn(Collection<String> workNumbers);
 
     List<Work> findAllByProgramIn(Collection<Program> programs);
 
     @Query(value="select distinct labware_id from work_sample ws join slot on (ws.slot_id=slot.id) where ws.work_id IN (?1)", nativeQuery = true)
     List<Integer> findLabwareIdsForWorkIds(Collection<Integer> workIds);
+
+    @Query(value = "SELECT MAX(work.id)" +
+            " FROM (" +
+            "   SELECT op.id" +
+            "   FROM operation op" +
+            "     JOIN action a ON (a.operation_id=op.id)" +
+            "     JOIN slot ON (a.dest_slot_id=slot.id)" +
+            "     JOIN work_op wo ON (wo.operation_id=op.id)" +
+            "     JOIN work ON (wo.work_id=work.id)  " +
+            "   WHERE slot.labware_id=?1" +
+            "     AND work.status='active'" +
+            "   ORDER BY op.performed DESC, op.id DESC" +
+            "   LIMIT 1" +
+            " ) AS latest_op" +
+            "   JOIN work_op wo ON (wo.operation_id=latest_op.id)" +
+            "   JOIN work ON (wo.work_id=work.id)" +
+            " WHERE work.status='active'", nativeQuery = true)
+    Integer findLatestActiveWorkIdForLabwareId(Integer labwareId);
 
     /**
      * Gets set of work numbers based on sample and slot id

@@ -6,6 +6,8 @@ import uk.ac.sanger.sccp.utils.BasicUtils;
 import javax.persistence.*;
 import java.util.*;
 
+import static uk.ac.sanger.sccp.utils.BasicUtils.coalesce;
+
 /**
  * A work (identified by a work number) indicates a piece of requested work to be performed for some particular project and cost code
  * @author dr6
@@ -96,11 +98,16 @@ public class Work {
     @ElementCollection
     @CollectionTable(name="work_op", joinColumns=@JoinColumn(name="work_id"))
     @Column(name="operation_id")
-    private List<Integer> operationIds;
+    private List<Integer> operationIds = List.of();
+
+    @ElementCollection
+    @CollectionTable(name="work_release", joinColumns=@JoinColumn(name="work_id"))
+    @Column(name="release_id")
+    private List<Integer> releaseIds = List.of();
 
     @ElementCollection
     @CollectionTable(name="work_sample", joinColumns=@JoinColumn(name="work_id"))
-    private List<SampleSlotId> sampleSlotIds;
+    private List<SampleSlotId> sampleSlotIds = List.of();
 
     private Integer numBlocks, numSlides, numOriginalSamples;
 
@@ -123,6 +130,8 @@ public class Work {
         this.numOriginalSamples = numOriginalSamples;
         this.priority = priority;
         this.omeroProject = omeroProject;
+        setOperationIds(null);
+        setReleaseIds(null);
     }
 
     public Work(Integer id, String workNumber, WorkType workType, ReleaseRecipient workRequester, Project project,
@@ -202,6 +211,14 @@ public class Work {
         this.operationIds = (operationIds instanceof ArrayList ? operationIds : BasicUtils.newArrayList(operationIds));
     }
 
+    public List<Integer> getReleaseIds() {
+        return this.releaseIds;
+    }
+
+    public void setReleaseIds(List<Integer> releaseIds) {
+        this.releaseIds = coalesce(releaseIds, List.of());
+    }
+
     public List<SampleSlotId> getSampleSlotIds() {
         return this.sampleSlotIds;
     }
@@ -252,7 +269,7 @@ public class Work {
 
     @JsonIgnore
     public boolean isClosed() {
-        return (status==Status.completed || status==Status.failed || status== Status.withdrawn);
+        return (status==Status.completed || status==Status.failed || status==Status.withdrawn);
     }
 
     @JsonIgnore

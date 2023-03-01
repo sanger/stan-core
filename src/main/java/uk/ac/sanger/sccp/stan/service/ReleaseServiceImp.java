@@ -8,8 +8,11 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.store.BasicLocation;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.ReleaseRequest;
+import uk.ac.sanger.sccp.stan.request.ReleaseRequest.ReleaseLabware;
 import uk.ac.sanger.sccp.stan.request.ReleaseResult;
 import uk.ac.sanger.sccp.stan.service.store.StoreService;
+import uk.ac.sanger.sccp.stan.service.work.WorkService;
+import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import javax.persistence.EntityManager;
@@ -35,12 +38,13 @@ public class ReleaseServiceImp implements ReleaseService {
     private final ReleaseRepo releaseRepo;
     private final SnapshotService snapshotService;
     private final EmailService emailService;
+    private final WorkService workService;
 
     @Autowired
     public ReleaseServiceImp(StanConfig stanConfig, Transactor transactor, EntityManager entityManager,
                              ReleaseDestinationRepo destinationRepo, ReleaseRecipientRepo recipientRepo,
                              LabwareRepo labwareRepo, StoreService storeService, ReleaseRepo releaseRepo,
-                             SnapshotService snapshotService, EmailService emailService) {
+                             SnapshotService snapshotService, EmailService emailService, WorkService workService) {
         this.stanConfig = stanConfig;
         this.transactor = transactor;
         this.entityManager = entityManager;
@@ -51,6 +55,7 @@ public class ReleaseServiceImp implements ReleaseService {
         this.releaseRepo = releaseRepo;
         this.snapshotService = snapshotService;
         this.emailService = emailService;
+        this.workService = workService;
     }
 
     @Override
@@ -60,8 +65,8 @@ public class ReleaseServiceImp implements ReleaseService {
         // Load info and do basic validation before the transaction
         ReleaseRecipient recipient = recipientRepo.getByUsername(request.getRecipient());
         ReleaseDestination destination = destinationRepo.getByName(request.getDestination());
-        if (request.getBarcodes()==null || request.getBarcodes().isEmpty()) {
-            throw new IllegalArgumentException("No barcodes supplied to release.");
+        if (request.getReleaseLabware()==null || request.getReleaseLabware().isEmpty()) {
+            throw new IllegalArgumentException("No labware specified to release.");
         }
         if (!recipient.isEnabled()) {
             throw new IllegalArgumentException("Release recipient "+recipient.getUsername()+" is not enabled.");
@@ -69,7 +74,11 @@ public class ReleaseServiceImp implements ReleaseService {
         if (!destination.isEnabled()) {
             throw new IllegalArgumentException("Release destination "+destination.getName()+" is not enabled.");
         }
-        List<Labware> labware = loadLabware(request.getBarcodes());
+        List<String> barcodes = request.getReleaseLabware().stream()
+                .map(ReleaseLabware::getBarcode)
+                .collect(toList());
+        List<Labware> labware = loadLabware(barcodes);
+        UCMap<Work> workMap = loadWork(request.getReleaseLabware());
         validateLabware(labware);
         validateContents(labware);
 
@@ -77,10 +86,10 @@ public class ReleaseServiceImp implements ReleaseService {
         UCMap<BasicLocation> locations = storeService.loadBasicLocationsOfItems(labware.stream().map(Labware::getBarcode).collect(toList()));
 
         // Perform the discard inside a transaction
-        List<Release> releases = transactRelease(user, recipient, destination, labware, locations);
+        List<Release> releases = transactRelease(user, recipient, destination, labware, locations, workMap);
 
         // Unstore the labware after the transaction
-        storeService.discardStorage(user, request.getBarcodes());
+        storeService.discardStorage(user, barcodes);
 
         String recipientEmail = recipient.getUsername();
         if (recipientEmail.indexOf('@') < 0) {
@@ -110,10 +119,11 @@ public class ReleaseServiceImp implements ReleaseService {
      * @param destination the destination of the release
      * @param labware the labware that will be released
      * @param locations the locations (if any) of the labware, mapped from the labware barcode
+     * @param workMap map of labware barcode to work
      * @return the created releases
      */
     public List<Release> release(User user, ReleaseRecipient recipient, ReleaseDestination destination,
-                                 Collection<Labware> labware, UCMap<BasicLocation> locations) {
+                                 Collection<Labware> labware, UCMap<BasicLocation> locations, UCMap<Work> workMap) {
         // Reload the labware inside the transaction
         labware.forEach(entityManager::refresh);
         // Revalidate inside the transaction, in case anything has happened
@@ -122,15 +132,40 @@ public class ReleaseServiceImp implements ReleaseService {
 
         // execution
         labware = updateReleasedLabware(labware);
-        return recordReleases(user, destination, recipient, labware, locations);
+        final List<Release> releases = recordReleases(user, destination, recipient, labware, locations);
+        link(releases, workMap);
+        return releases;
     }
 
     // NB @Transactional annotation does not work for method calls within the same instance
     public List<Release> transactRelease(User user, ReleaseRecipient recipient,
                                          ReleaseDestination destination, List<Labware> labware,
-                                         UCMap<BasicLocation> locations) {
+                                         UCMap<BasicLocation> locations, UCMap<Work> workMap) {
         return transactor.transact("Release transaction",
-                () -> release(user, recipient, destination, labware, locations));
+                () -> release(user, recipient, destination, labware, locations, workMap));
+    }
+
+    /**
+     * Links the given releases to the indicates works.
+     * @param releases the new releases
+     * @param workMap map of labware barcode to work
+     */
+    public void link(Collection<Release> releases, UCMap<Work> workMap) {
+        Map<Integer, List<Release>> workIdReleases = new HashMap<>();
+        for (Release release : releases) {
+            Work work = workMap.get(release.getLabware().getBarcode());
+            if (work!=null) {
+                workIdReleases.computeIfAbsent(work.getId(), x -> new ArrayList<>()).add(release);
+            }
+        }
+        Map<Integer, Work> workIdMap = new HashMap<>();
+        workMap.values().forEach(work -> workIdMap.put(work.getId(), work));
+        for (Map.Entry<Integer, Work> entry : workIdMap.entrySet()) {
+            List<Release> workReleases = workIdReleases.get(entry.getKey());
+            if (workReleases!=null) {
+                workService.linkReleases(entry.getValue(), workReleases);
+            }
+        }
     }
 
     /**
@@ -160,6 +195,31 @@ public class ReleaseServiceImp implements ReleaseService {
         }
         labware.forEach(lw -> wantedBarcodes.remove(lw.getBarcode().toUpperCase()));
         throw new IllegalArgumentException("Unknown labware barcodes: " + wantedBarcodes);
+    }
+
+    /**
+     * Loads the works indicated (if any). Errors if the work numbers are unknown or unusable.
+     * @param rls barcodes and work numbers
+     * @return a map of labware barcode to work
+     */
+    public UCMap<Work> loadWork(Collection<ReleaseLabware> rls) {
+        UCMap<Work> bcMap = new UCMap<>(rls.size());
+        Set<String> workNumbers = rls.stream()
+                .map(ReleaseLabware::getWorkNumber)
+                .filter(Objects::nonNull)
+                .collect(toSet());
+        if (workNumbers.isEmpty()) {
+            return bcMap;
+        }
+        UCMap<Work> workNumberMap = workService.getUsableWorkMap(workNumbers);
+        for (ReleaseLabware rl : rls) {
+            String bc = rl.getBarcode();
+            String workNumber = rl.getWorkNumber();
+            if (workNumber!=null) {
+                bcMap.put(bc, workNumberMap.get(workNumber));
+            }
+        }
+        return bcMap;
     }
 
     /**

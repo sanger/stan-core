@@ -8,11 +8,12 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.Work.SampleSlotId;
 import uk.ac.sanger.sccp.stan.model.Work.Status;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.WorkWithComment;
+import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.service.Validator;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.UCMap;
 
+import javax.persistence.EntityNotFoundException;
 import java.util.*;
 
 import static java.util.Objects.requireNonNull;
@@ -26,6 +27,7 @@ public class WorkServiceImp implements WorkService {
     private final CostCodeRepo costCodeRepo;
     private final WorkTypeRepo workTypeRepo;
     private final WorkRepo workRepo;
+    private final LabwareRepo lwRepo;
     private final OmeroProjectRepo omeroProjectRepo;
     private final ReleaseRecipientRepo recipientRepo;
     private final WorkEventService workEventService;
@@ -33,7 +35,7 @@ public class WorkServiceImp implements WorkService {
 
     @Autowired
     public WorkServiceImp(ProjectRepo projectRepo, ProgramRepo programRepo, CostCodeRepo costCodeRepo,
-                          WorkTypeRepo workTypeRepo, WorkRepo workRepo, OmeroProjectRepo omeroProjectRepo,
+                          WorkTypeRepo workTypeRepo, WorkRepo workRepo, LabwareRepo lwRepo, OmeroProjectRepo omeroProjectRepo,
                           ReleaseRecipientRepo recipientRepo, WorkEventService workEventService,
                           @Qualifier("workPriorityValidator") Validator<String> priorityValidator) {
         this.projectRepo = projectRepo;
@@ -41,6 +43,7 @@ public class WorkServiceImp implements WorkService {
         this.costCodeRepo = costCodeRepo;
         this.workTypeRepo = workTypeRepo;
         this.workRepo = workRepo;
+        this.lwRepo = lwRepo;
         this.omeroProjectRepo = omeroProjectRepo;
         this.recipientRepo = recipientRepo;
         this.workEventService = workEventService;
@@ -198,7 +201,7 @@ public class WorkServiceImp implements WorkService {
         if (operations.isEmpty()) {
             return work;
         }
-        if (work.getStatus()!=Status.active) {
+        if (!work.isUsable()) {
             throw new IllegalArgumentException(work.getWorkNumber()+" cannot be used because it is "+ work.getStatus()+".");
         }
         List<Integer> opIds = work.getOperationIds();
@@ -222,6 +225,29 @@ public class WorkServiceImp implements WorkService {
 
         work.setOperationIds(opIds);
         work.setSampleSlotIds(ssIds);
+        return workRepo.save(work);
+    }
+
+    @Override
+    public Work linkReleases(Work work, List<Release> releases) {
+        if (releases.isEmpty()) {
+            return work;
+        }
+        if (!work.isUsable()) {
+            throw new IllegalArgumentException("Work "+work.getWorkNumber()+" is not usable because it is "+work.getStatus().name()+".");
+        }
+        Set<Integer> releaseIds = new LinkedHashSet<>(work.getReleaseIds());
+        Set<SampleSlotId> ssids = new LinkedHashSet<>(work.getSampleSlotIds());
+        for (Release release : releases) {
+            releaseIds.add(release.getId());
+            for (Slot slot : release.getLabware().getSlots()) {
+                for (Sample sample : slot.getSamples()) {
+                    ssids.add(new SampleSlotId(sample.getId(), slot.getId()));
+                }
+            }
+        }
+        work.setReleaseIds(new ArrayList<>(releaseIds));
+        work.setSampleSlotIds(new ArrayList<>(ssids));
         return workRepo.save(work);
     }
 
@@ -268,6 +294,34 @@ public class WorkServiceImp implements WorkService {
             throw new IllegalArgumentException(work.getWorkNumber()+" cannot be used because it is "+work.getStatus()+".");
         }
         return work;
+    }
+
+    @Override
+    public UCMap<Work> getUsableWorkMap(Collection<String> workNumbers) {
+        if (workNumbers.isEmpty()) {
+            return new UCMap<>(0);
+        }
+        if (workNumbers.stream().anyMatch(Objects::isNull)) {
+            throw new NullPointerException("null given as work number.");
+        }
+        UCMap<Work> workMap = UCMap.from(workRepo.findAllByWorkNumberIn(workNumbers), Work::getWorkNumber);
+        Set<String> unknown = new LinkedHashSet<>();
+        Set<String> unusable = new LinkedHashSet<>();
+        for (String workNumber: workNumbers) {
+            Work work = workMap.get(workNumber);
+            if (work==null) {
+                unknown.add(workNumber.toUpperCase());
+            } else if (!work.isUsable()) {
+                unusable.add(work.getWorkNumber());
+            }
+        }
+        if (!unknown.isEmpty()) {
+            throw new EntityNotFoundException(pluralise("Unknown work number{s}: ", unknown.size()) + unknown);
+        }
+        if (!unusable.isEmpty()) {
+            throw new IllegalArgumentException(pluralise("Inactive work number{s}: ", unusable.size()) + unusable);
+        }
+        return workMap;
     }
 
     @Override
@@ -349,6 +403,27 @@ public class WorkServiceImp implements WorkService {
             fillInComments(wcs, workEvents);
         }
         return wcs;
+    }
+
+    @Override
+    public SuggestedWorkResponse suggestWorkForLabwareBarcodes(Collection<String> barcodes) {
+        Set<Labware> labware = new HashSet<>(lwRepo.getByBarcodeIn(barcodes));
+        Map<String, Integer> barcodeWorkIds = new HashMap<>(labware.size());
+        Set<Integer> workIds = new HashSet<>();
+        for (Labware lw : labware) {
+            Integer workId = workRepo.findLatestActiveWorkIdForLabwareId(lw.getId());
+            barcodeWorkIds.put(lw.getBarcode(), workId);
+            if (workId!=null) {
+                workIds.add(workId);
+            }
+        }
+        Map<Integer, Work> workIdMap = BasicUtils.stream(workRepo.findAllById(workIds))
+                .collect(BasicUtils.toMap(Work::getId));
+        List<SuggestedWork> suggestedWorks = barcodeWorkIds.entrySet().stream()
+                .map(e -> new SuggestedWork(e.getKey(), e.getValue()==null ? null : workIdMap.get(e.getValue()).getWorkNumber()))
+                .collect(toList());
+        List<Work> works = new ArrayList<>(workIdMap.values());
+        return new SuggestedWorkResponse(suggestedWorks, works);
     }
 
     public void fillInComments(Collection<WorkWithComment> wcs, Map<Integer, WorkEvent> workEvents) {

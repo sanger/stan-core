@@ -53,6 +53,13 @@ public class IntegrationTestUtils {
         return chainGet(container, accessors);
     }
 
+    public static <K, V> Map<K, V> nullableMapOf(K key1, V value1, K key2, V value2) {
+        Map<K, V> map = new HashMap<>(2);
+        map.put(key1, value1);
+        map.put(key2, value2);
+        return map;
+    }
+
     public static <K, V> Map<K, V> nullableMapOf(K key1, V value1, K key2, V value2, K key3, V value3) {
         Map<K, V> map = new HashMap<>(3);
         map.put(key1, value1);

@@ -660,10 +660,18 @@ type ReleaseResult {
     releases: [Release!]!
 }
 
+"""Details of a particular labware being released."""
+input ReleaseLabware {
+    """The barcode of the labware to release."""
+    barcode: String!
+    """The work number (optional) to associate with the release."""
+    workNumber: String
+}
+
 """A request to record releases for one or more labware."""
 input ReleaseRequest {
-    """The barcodes of the labware being released."""
-    barcodes: [String!]!
+    """The details of the labware being released."""
+    releaseLabware: [ReleaseLabware!]!
     """The name of the release destination."""
     destination: String!
     """The name of the release recipient."""
@@ -1352,6 +1360,22 @@ type StanFile {
     url: String!
 }
 
+"""A link between a labware barcode and a work number."""
+type SuggestedWork {
+    """The barcode of the labware."""
+    barcode: String!
+    """The work number of the suggested work, or null."""
+    workNumber: String
+}
+
+"""The response to a suggested work query."""
+type SuggestedWorkResponse {
+    """The work numbers for each barcode. Barcodes without suggested work will be omitted."""
+    suggestedWorks: [SuggestedWork!]!
+    """The works indicated."""
+    works: [Work!]!
+}
+
 """A specification that a particular reagent slot should be transferred to an address."""
 input ReagentTransfer {
     """The barcode of a reagent plate."""
@@ -1574,12 +1598,14 @@ type Query {
     """Get the work progress (some particular timestamps) associated with a specified work number, and/or
     work types, programs, statuses."""
     workProgress(workNumber: String, workTypes: [String!], programs:[String!], statuses: [WorkStatus!]): [WorkProgress!]!
-    """Gets a reagent plate, if it exists. May return null."""
+    """Get a reagent plate, if it exists. May return null."""
     reagentPlate(barcode: String!): ReagentPlate
-    """Gets the next replicate data for the given source labware barcodes."""
+    """Get the next replicate data for the given source labware barcodes."""
     nextReplicateNumbers(barcodes: [String!]!): [NextReplicateData!]!
     """Get operations into a given labware barcode of a given operation type."""
     labwareOperations(barcode: String!, operationType: String!): [Operation]
+    """Get suggested work (if any) for labware."""
+    suggestedWorkForLabware(barcodes: [String!]!): SuggestedWorkResponse!
 
     """Get the specified storage location."""
     location(locationBarcode: String!): Location!
