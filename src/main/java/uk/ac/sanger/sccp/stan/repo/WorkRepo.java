@@ -107,9 +107,7 @@ public interface WorkRepo extends CrudRepository<Work, Integer> {
             "     JOIN action a ON (a.operation_id=op.id)" +
             "     JOIN slot ON (a.dest_slot_id=slot.id)" +
             "     JOIN work_op wo ON (wo.operation_id=op.id)" +
-            "     JOIN work ON (wo.work_id=work.id)  " +
             "   WHERE slot.labware_id=?1" +
-            "     AND work.status='active'" +
             "   ORDER BY op.performed DESC, op.id DESC" +
             "   LIMIT 1" +
             " ) AS latest_op" +

@@ -2,6 +2,7 @@ package uk.ac.sanger.sccp.stan.repo;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -369,8 +370,8 @@ public class TestWorkRepo {
 
     @Transactional
     @ParameterizedTest
-    @ValueSource(booleans={false,true})
-    public void testFindLatestActiveWorkIdForLabwareId(boolean exists) {
+    @CsvSource({"false,false", "true,false", "true,true"})
+    public void testFindLatestActiveWorkIdForLabwareId(boolean exists, boolean latestIsActive) {
         Sample sample = entityCreator.createSample(null, null);
         Labware lw = entityCreator.createLabware("STAN-A1", entityCreator.getTubeType(), sample);
         Work work1 = entityCreator.createWork(null, null, null, null, null);
@@ -385,10 +386,12 @@ public class TestWorkRepo {
             work1.setStatus(Status.completed);
             work2.setStatus(Status.failed);
         }
-        work3.setStatus(Status.paused);
+        if (!latestIsActive) {
+            work3.setStatus(Status.paused);
+        }
         workRepo.saveAll(List.of(work1, work2, work3));
 
-        assertEquals(exists ? work2.getId() : null, workRepo.findLatestActiveWorkIdForLabwareId(lw.getId()));
+        assertEquals(exists && latestIsActive ? work3.getId() : null, workRepo.findLatestActiveWorkIdForLabwareId(lw.getId()));
     }
 
     private Operation saveOp(Labware lw, LocalDateTime performed) {
