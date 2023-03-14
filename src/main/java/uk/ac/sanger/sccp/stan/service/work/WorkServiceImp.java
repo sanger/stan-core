@@ -426,6 +426,18 @@ public class WorkServiceImp implements WorkService {
         return new SuggestedWorkResponse(suggestedWorks, works);
     }
 
+    @Override
+    public List<Labware> suggestLabwareForWorkNumber(String workNumber) {
+        Work work = workRepo.getByWorkNumber(workNumber);
+        List<Integer> possibleLabwareIds = workRepo.findLabwareIdsForWorkIds(List.of(work.getId()));
+        if (possibleLabwareIds.isEmpty()) {
+            return List.of();
+        }
+        return lwRepo.findAllByIdIn(possibleLabwareIds).stream()
+                .filter(Labware::isUsable)
+                .collect(toList());
+    }
+
     public void fillInComments(Collection<WorkWithComment> wcs, Map<Integer, WorkEvent> workEvents) {
         for (WorkWithComment wc : wcs) {
             Work work = wc.getWork();

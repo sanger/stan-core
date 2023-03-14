@@ -201,6 +201,11 @@ public class Labware {
     }
 
     @JsonIgnore
+    public boolean isUsable() {
+        return !(isDestroyed() || isReleased() || isDiscarded() || isUsed() || isEmpty());
+    }
+
+    @JsonIgnore
     public boolean isEmpty() {
         return this.slots.stream().allMatch(slot -> slot.getSamples().isEmpty());
     }
