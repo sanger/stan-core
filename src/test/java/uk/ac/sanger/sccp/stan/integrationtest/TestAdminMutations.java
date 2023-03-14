@@ -58,6 +58,8 @@ public class TestAdminMutations {
     private ProgramRepo programRepo;
     @Autowired
     private OmeroProjectRepo omeroProjectRepo;
+    @Autowired
+    private SlotRegionRepo slotRegionRepo;
 
     @Test
     @Transactional
@@ -166,4 +168,9 @@ public class TestAdminMutations {
         testGenericAddNewAndSetEnabled("OmeroProject", "name", "Hello", omeroProjectRepo::findByName, OmeroProject::getName, "omeroProjects");
     }
 
+    @Test
+    @Transactional
+    public void testAddNewSlotRegionAndSetEnabled() throws Exception {
+        testGenericAddNewAndSetEnabled("SlotRegion", "name", "North", slotRegionRepo::findByName, SlotRegion::getName, "slotRegions");
+    }
 }

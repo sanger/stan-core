@@ -8,11 +8,13 @@ mutation {
                         destinationAddress: "A1"
                         newSection: 14
                         sampleId: 55555
+                        commentIds: [2]
                     }
                     {
                         destinationAddress: "A1"
                         newSection: 15
                         sampleId: 55555
+                        region: "Top"
                     }
                     {
                         destinationAddress: "A1"

@@ -3,7 +3,10 @@ package uk.ac.sanger.sccp.stan.request.confirm;
 import uk.ac.sanger.sccp.stan.model.Address;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
+import java.util.List;
 import java.util.Objects;
+
+import static uk.ac.sanger.sccp.utils.BasicUtils.coalesce;
 
 /**
  * The information about a particular section in a confirmed operation
@@ -13,13 +16,22 @@ public class ConfirmSection {
     private Address destinationAddress;
     private Integer sampleId;
     private Integer newSection;
+    private List<Integer> commentIds = List.of();
+    private String region;
 
     public ConfirmSection() {}
 
-    public ConfirmSection(Address destinationAddress, Integer sampleId, Integer newSection) {
+    public ConfirmSection(Address destinationAddress, Integer sampleId, Integer newSection,
+                          List<Integer> commentIds, String region) {
         this.destinationAddress = destinationAddress;
         this.sampleId = sampleId;
         this.newSection = newSection;
+        setCommentIds(commentIds);
+        this.region = region;
+    }
+
+    public ConfirmSection(Address destinationAddress, Integer sampleId, Integer newSection) {
+        this(destinationAddress, sampleId, newSection, null, null);
     }
 
     public Address getDestinationAddress() {
@@ -46,6 +58,22 @@ public class ConfirmSection {
         this.newSection = newSection;
     }
 
+    public List<Integer> getCommentIds() {
+        return this.commentIds;
+    }
+
+    public void setCommentIds(List<Integer> commentIds) {
+        this.commentIds = coalesce(commentIds, List.of());
+    }
+
+    public String getRegion() {
+        return this.region;
+    }
+
+    public void setRegion(String region) {
+        this.region = region;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -53,7 +81,9 @@ public class ConfirmSection {
         ConfirmSection that = (ConfirmSection) o;
         return (Objects.equals(this.destinationAddress, that.destinationAddress)
                 && Objects.equals(this.sampleId, that.sampleId)
-                && Objects.equals(this.newSection, that.newSection));
+                && Objects.equals(this.newSection, that.newSection)
+                && Objects.equals(this.commentIds, that.commentIds)
+                && Objects.equals(this.region, that.region));
     }
 
     @Override
@@ -67,6 +97,8 @@ public class ConfirmSection {
                 .add("destinationAddress", destinationAddress)
                 .add("sampleId", sampleId)
                 .add("newSection", newSection)
+                .add("commentIds", commentIds)
+                .addRepr("region", region)
                 .toString();
     }
 }

@@ -1,7 +1,6 @@
 package uk.ac.sanger.sccp.stan.service.operation.confirm;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
 import org.mockito.Mock;
@@ -12,6 +11,8 @@ import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
 import uk.ac.sanger.sccp.stan.repo.PlanOperationRepo;
 import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSectionLabware.AddressCommentId;
+import uk.ac.sanger.sccp.stan.service.CommentValidationService;
+import uk.ac.sanger.sccp.stan.service.SlotRegionService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
@@ -25,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.EntityFactory.objToList;
+import static uk.ac.sanger.sccp.stan.Matchers.mayAddProblem;
 
 /**
  * Tests {@link ConfirmSectionValidationServiceImp}
@@ -39,14 +41,26 @@ public class TestConfirmSectionValidationService {
     PlanOperationRepo mockPlanRepo;
     @Mock
     WorkService mockWorkService;
+    @Mock
+    SlotRegionService mockSlotRegionService;
+    @Mock
+    CommentValidationService mockCommentValidationService;
 
     OperationType opType;
+    AutoCloseable mocking;
 
     @BeforeEach
     void setup() {
-        MockitoAnnotations.initMocks(this);
-        service = spy(new ConfirmSectionValidationServiceImp(mockLwRepo, mockPlanRepo, mockWorkService));
-        opType = new OperationType(2, "Section", OperationTypeFlag.SOURCE_IS_BLOCK.bit(), EntityFactory.getBioState());
+        mocking = MockitoAnnotations.openMocks(this);
+        service = spy(new ConfirmSectionValidationServiceImp(mockLwRepo, mockPlanRepo, mockWorkService,
+                mockSlotRegionService, mockCommentValidationService));
+        opType = new OperationType(2, "Section", OperationTypeFlag.SOURCE_IS_BLOCK.bit(),
+                EntityFactory.getBioState());
+    }
+
+    @AfterEach
+    void closeMocks() throws Exception {
+        mocking.close();
     }
 
     @Test
@@ -69,42 +83,104 @@ public class TestConfirmSectionValidationService {
 
         PlanOperation plan = EntityFactory.makePlanForLabware(opType, List.of(), List.of());
         Map<Integer, PlanOperation> planMap = Map.of(lw.getId(), plan);
+        UCMap<SlotRegion> regionMap = UCMap.from(SlotRegion::getName, new SlotRegion(1, "Top"));
+        Map<Integer, Comment> commentMap = Map.of(1, new Comment(1, "com", "cat"));
 
-        doAnswer(invocation -> {
-            Collection<String> problems = invocation.getArgument(0);
-            if (!valid) {
-                problems.add("lw problem");
-            }
-            return lwMap;
-        }).when(service).validateLabware(any(), any());
-        doAnswer(invocation -> {
-            Collection<String> problems = invocation.getArgument(0);
-            if (!valid) {
-                problems.add("plan problem");
-            }
-            return planMap;
-        }).when(service).lookUpPlans(any(), any());
-        doAnswer(invocation -> {
-            Collection<String> problems = invocation.getArgument(0);
-            if (!valid) {
-                problems.add("op problem");
-            }
-            return null;
-        }).when(service).validateOperations(any(), any(), any(), any());
+        mayAddProblem(valid ? null : "lw problem", lwMap).when(service).validateLabware(any(), any());
+        mayAddProblem(valid ? null : "plan problem", planMap).when(service).lookUpPlans(any(), any());
+        mayAddProblem(valid ? null : "op problem").when(service).validateOperations(any(), any(), any(), any());
+        mayAddProblem(valid ? null : "region problem", regionMap).when(service).validateSlotRegions(any(), any());
+        mayAddProblem(valid ? null : "comment problem", commentMap).when(service).validateCommentIds(any(), any());
 
         var validation = service.validate(request);
         if (valid) {
             assertThat(validation.getProblems()).isNullOrEmpty();
-            assertThat(validation.getLwPlans()).isEqualTo(planMap);
-            assertThat(validation.getLabware()).isEqualTo(lwMap);
+            assertEquals(validation.getLwPlans(), planMap);
+            assertEquals(validation.getLabware(), lwMap);
+            assertEquals(validation.getComments(), commentMap);
+            assertEquals(validation.getSlotRegions(), regionMap);
         } else {
-            assertThat(validation.getProblems()).containsExactly("lw problem", "plan problem", "op problem");
+            assertThat(validation.getProblems()).containsExactlyInAnyOrder(
+                    "lw problem", "plan problem", "op problem", "region problem", "comment problem"
+            );
         }
 
+        verify(service).validateCommentIds(any(), eq(request.getLabware()));
+        verify(service).validateSlotRegions(any(), eq(request.getLabware()));
         verify(mockWorkService).validateUsableWork(any(), eq(request.getWorkNumber()));
         verify(service).validateLabware(any(), eq(request.getLabware()));
         verify(service).lookUpPlans(any(), eq(lwMap.values()));
         verify(service).validateOperations(any(), eq(request.getLabware()), eq(lwMap), eq(planMap));
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testValidateCommentIds(boolean valid) {
+        List<String> expectedProblems = (valid ? List.of() : List.of("Bad sec com", "Bad slot com"));
+        Set<String> problems = new HashSet<>(expectedProblems.size());
+        ConfirmSection cs = new ConfirmSection(new Address(1,3), 50, 4);
+        cs.setCommentIds(List.of(10,11));
+        List<ConfirmSectionLabware> csls = List.of(
+                new ConfirmSectionLabware("STAN-1"),
+                new ConfirmSectionLabware("STAN-2", false, List.of(cs), List.of()),
+                new ConfirmSectionLabware("STAN-3", false,
+                        List.of(), List.of(new AddressCommentId(new Address(1,2), 11),
+                        new AddressCommentId(new Address(1,4), 12)))
+        );
+        Map<Integer, Comment> commentMap = Map.of(10, new Comment(10, "com", "cat"),
+                11, new Comment(11, "com1", "cat"),
+                12, new Comment(12, "com2", "cat"));
+        var vc = when(mockCommentValidationService.validateCommentIds(any(), any()));
+        if (valid) {
+            vc.thenReturn(new ArrayList<>(commentMap.values()));
+        } else {
+            vc.thenAnswer(invocation -> {
+                Collection<String> prob = invocation.getArgument(0);
+                prob.addAll(expectedProblems);
+                return new ArrayList<>(commentMap.values());
+            });
+        }
+        assertEquals(commentMap, service.validateCommentIds(problems, csls));
+        assertThat(problems).containsExactlyInAnyOrderElementsOf(expectedProblems);
+    }
+
+    @ParameterizedTest
+    @MethodSource("validateRegionsArgs")
+    public void testValidateRegions(List<SlotRegion> allRegions, List<SlotRegion> expectedRegions,
+                                    List<ConfirmSectionLabware> csls, List<String> expectedProblems) {
+        List<String> problems = new ArrayList<>(expectedProblems.size());
+        when(mockSlotRegionService.loadSlotRegions(true)).thenReturn(allRegions);
+        assertEquals(UCMap.from(expectedRegions, SlotRegion::getName), service.validateSlotRegions(problems, csls));
+        assertThat(problems).containsExactlyInAnyOrderElementsOf(expectedProblems);
+    }
+
+    static Stream<Arguments> validateRegionsArgs() {
+        final Address A1 = new Address(1,1);
+        final Address A2 = new Address(1,2);
+        List<SlotRegion> allRegions = List.of(new SlotRegion(1, "Top"),
+                new SlotRegion(2, "Bottom"), new SlotRegion(3, "Middle"));
+        ConfirmSectionLabware cslNoRegion = new ConfirmSectionLabware("STAN-1", false,
+                List.of(confirmSection(A1, null), confirmSection(A1, "")), List.of());
+        ConfirmSectionLabware cslNoBarcode = new ConfirmSectionLabware("", false, List.of(), List.of());
+        ConfirmSectionLabware cslRegions = new ConfirmSectionLabware("STAN-2", false,
+                List.of(confirmSection(A1, "Top"), confirmSection(A1, "Bottom"),
+                        confirmSection(A2, "Top")), List.of());
+        ConfirmSectionLabware cslUnknownRegion = new ConfirmSectionLabware("STAN-3", false,
+                List.of(confirmSection(A1, "Spoon")), List.of());
+        ConfirmSectionLabware cslRepeatedRegions = new ConfirmSectionLabware("STAN-4", false,
+                List.of(confirmSection(A1, "Top"), confirmSection(A1, "top")), List.of());
+        return Arrays.stream(new Object[][] {
+                {allRegions, List.of(), List.of(cslNoRegion, cslNoBarcode), List.of()},
+                {allRegions, allRegions, List.of(cslNoRegion, cslRegions), List.of()},
+                {allRegions, allRegions, List.of(cslRegions, cslUnknownRegion), List.of("Unknown region: \"Spoon\"")},
+                {allRegions, allRegions, List.of(cslRepeatedRegions), List.of("Region Top specified twice for A1 in STAN-4.")},
+        }).map(Arguments::of);
+    }
+
+    private static ConfirmSection confirmSection(Address address, String regionName) {
+        ConfirmSection cs = new ConfirmSection(address, 1, 1);
+        cs.setRegion(regionName);
+        return cs;
     }
 
     @MethodSource("validateLabwareArgs")
