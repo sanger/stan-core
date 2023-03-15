@@ -584,9 +584,13 @@ public class HistoryServiceImp implements HistoryService {
                         labwareId, labwareId,null, username, workNum, details));
             } else {
                 Snapshot snap = snapshotMap.get(release.getSnapshotId());
-                Set<Integer> releaseSampleIds = snap.getElements().stream()
-                        .map(SnapshotElement::getSampleId)
-                        .filter(sampleIds::contains)
+
+                Stream<Integer> sampleIdStream = snap.getElements().stream()
+                        .map(SnapshotElement::getSampleId);
+                if (sampleIds!=null) {
+                    sampleIdStream = sampleIdStream.filter(sampleIds::contains);
+                }
+                Set<Integer> releaseSampleIds = sampleIdStream
                         .collect(BasicUtils.toLinkedHashSet());
                 for (Integer sampleId : releaseSampleIds) {
                     entries.add(new HistoryEntry(release.getId(), "Release", release.getReleased(),
