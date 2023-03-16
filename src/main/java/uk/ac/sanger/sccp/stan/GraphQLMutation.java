@@ -30,7 +30,6 @@ import uk.ac.sanger.sccp.stan.service.operation.plan.PlanService;
 import uk.ac.sanger.sccp.stan.service.register.*;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.stan.service.work.WorkTypeService;
-import uk.ac.sanger.sccp.stan.service.SampleProcessingService;
 
 import java.util.*;
 import java.util.function.BiFunction;
@@ -71,6 +70,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final FixativeService fixativeService;
     final SolutionAdminService solutionAdminService;
     final OmeroProjectAdminService omeroProjectAdminService;
+    final SlotRegionAdminService slotRegionAdminService;
     final WorkTypeService workTypeService;
     final WorkService workService;
     final StainService stainService;
@@ -107,8 +107,8 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            HmdmcAdminService hmdmcAdminService, ReleaseDestinationAdminService releaseDestinationAdminService,
                            ReleaseRecipientAdminService releaseRecipientAdminService, SpeciesAdminService speciesAdminService,
                            ProjectService projectService, ProgramService programService, CostCodeService costCodeService, FixativeService fixativeService,
-                           SolutionAdminService solutionAdminService,
-                           OmeroProjectAdminService omeroProjectAdminService, WorkTypeService workTypeService, WorkService workService, StainService stainService,
+                           SolutionAdminService solutionAdminService, OmeroProjectAdminService omeroProjectAdminService,
+                           SlotRegionAdminService slotRegionAdminService, WorkTypeService workTypeService, WorkService workService, StainService stainService,
                            UnreleaseService unreleaseService, ResultService resultService, ExtractResultService extractResultService,
                            PermService permService, RNAAnalysisService rnaAnalysisService,
                            VisiumAnalysisService visiumAnalysisService, OpWithSlotMeasurementsService opWithSlotMeasurementsService,
@@ -146,6 +146,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.fixativeService = fixativeService;
         this.solutionAdminService = solutionAdminService;
         this.omeroProjectAdminService = omeroProjectAdminService;
+        this.slotRegionAdminService = slotRegionAdminService;
         this.workTypeService = workTypeService;
         this.workService = workService;
         this.stainService = stainService;
@@ -455,6 +456,14 @@ public class GraphQLMutation extends BaseGraphQLResource {
 
     public DataFetcher<OmeroProject> setOmeroProjectEnabled() {
         return adminSetEnabled(omeroProjectAdminService::setEnabled, "SetOmeroProjectEnabled", "name");
+    }
+
+    public DataFetcher<SlotRegion> addSlotRegion() {
+        return adminAdd(slotRegionAdminService::addNew, "AddSlotRegion", "name");
+    }
+
+    public DataFetcher<SlotRegion> setSlotRegionEnabled() {
+        return adminSetEnabled(slotRegionAdminService::setEnabled, "SetSlotRegionEnabled", "name");
     }
 
     public DataFetcher<WorkType> addWorkType() {

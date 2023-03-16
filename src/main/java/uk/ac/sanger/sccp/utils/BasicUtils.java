@@ -411,6 +411,11 @@ public class BasicUtils {
         return (string==null || string.isEmpty());
     }
 
+    /** Is the given collection null or empty? */
+    public static boolean nullOrEmpty(Collection<?> c) {
+        return (c==null || c.isEmpty());
+    }
+
     /**
      * If the string is empty, return null. Otherwise, return the string.
      * @param string the string that may be empty

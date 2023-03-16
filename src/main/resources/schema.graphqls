@@ -478,6 +478,10 @@ input ConfirmSection {
     sampleId: Int!
     """The section number of the new section."""
     newSection: Int
+    """The comment ids to record against this sample in this slot."""
+    commentIds: [Int!]
+    """The region of this sample in this slot, if any."""
+    region: String
 }
 
 """A specification of a particular piece of labware to confirm or cancel planned sectioning into."""
@@ -618,6 +622,26 @@ type Comment {
     """The category of the comment: Where is it applicable?"""
     category: String!
     enabled: Boolean!
+}
+
+"""A description of a region in a slot."""
+type SlotRegion {
+    """The name of this region."""
+    name: String!
+    """Whether this region is enabled."""
+    enabled: Boolean!
+}
+
+"""The region of a sample in a particular slot."""
+type SamplePosition {
+    """The ID of the slot."""
+    slotId: Int!
+    """The address of the slot."""
+    address: Address!
+    """The ID of the sample."""
+    sampleId: Int!
+    """The name of the region of the sample in the slot."""
+    region: String!
 }
 
 """A piece of equipment that may be associated with certain operations."""
@@ -1556,6 +1580,10 @@ type Query {
     solutions(includeDisabled: Boolean): [Solution!]!
     """Get all the omero projects that are enabled, or including those that are disabled."""
     omeroProjects(includeDisabled: Boolean): [OmeroProject!]!
+    """Get all the slot regions, optionally including those that are disabled."""
+    slotRegions(includeDisabled: Boolean): [SlotRegion!]!
+    """Gets the sample positions (if any) specified in a particular item of labware."""
+    samplePositions(labwareBarcode: String!): [SamplePosition!]!
     """Get all the work types that are enabled, or get all including those that are disabled."""
     workTypes(includeDisabled: Boolean): [WorkType!]!
     """Get all the works, or get all the works in the given specified statuses."""
@@ -1702,6 +1730,10 @@ type Mutation {
     addOmeroProject(name: String!): OmeroProject!
     """Enable or disable an omero project."""
     setOmeroProjectEnabled(name: String!, enabled: Boolean!): OmeroProject!
+    """Add a new slot region."""
+    addSlotRegion(name: String!): SlotRegion!
+    """Enable or disable a slot region."""
+    setSlotRegionEnabled(name: String!, enabled: Boolean!): SlotRegion!
 
     """Create a new work, which will be allocated a new work number with the given prefix."""
     createWork(prefix: String!, workType: String!, workRequester: String!, project: String!, program: String!, costCode: String!, numBlocks: Int, numSlides: Int, numOriginalSamples: Int, omeroProject: String): Work!

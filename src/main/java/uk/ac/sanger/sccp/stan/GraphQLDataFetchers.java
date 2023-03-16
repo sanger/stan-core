@@ -69,6 +69,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final WorkSummaryService workSummaryService;
     final LabwareService labwareService;
     final FileStoreService fileStoreService;
+    final SlotRegionService slotRegionService;
 
     @Autowired
     public GraphQLDataFetchers(ObjectMapper objectMapper, AuthenticationComponent authComp, UserRepo userRepo,
@@ -89,7 +90,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                PassFailQueryService passFailQueryService,
                                WorkService workService, VisiumPermDataService visiumPermDataService,
                                NextReplicateService nextReplicateService, WorkSummaryService workSummaryService,
-                               LabwareService labwareService, FileStoreService fileStoreService) {
+                               LabwareService labwareService, FileStoreService fileStoreService,
+                               SlotRegionService slotRegionService) {
         super(objectMapper, authComp, userRepo);
         this.sessionConfig = sessionConfig;
         this.tissueTypeRepo = tissueTypeRepo;
@@ -126,6 +128,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.workSummaryService = workSummaryService;
         this.labwareService = labwareService;
         this.fileStoreService = fileStoreService;
+        this.slotRegionService = slotRegionService;
     }
 
     public DataFetcher<User> getUser() {
@@ -220,6 +223,14 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
 
     public DataFetcher<Iterable<OmeroProject>> getOmeroProjects() {
         return allOrEnabled(omeroProjectRepo::findAll, omeroProjectRepo::findAllByEnabled);
+    }
+
+    public DataFetcher<Iterable<SlotRegion>> getSlotRegions() {
+        return dfe -> slotRegionService.loadSlotRegions(argOrFalse(dfe, "includeDisabled"));
+    }
+
+    public DataFetcher<Iterable<SamplePositionResult>> getSamplePositions() {
+        return dfe -> slotRegionService.loadSamplePositionResultsForLabware(dfe.getArgument("labwareBarcode"));
     }
 
     public DataFetcher<Iterable<WorkType>> getWorkTypes() {

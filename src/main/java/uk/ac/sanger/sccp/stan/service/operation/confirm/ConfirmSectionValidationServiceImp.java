@@ -7,14 +7,18 @@ import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
 import uk.ac.sanger.sccp.stan.repo.PlanOperationRepo;
 import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSectionLabware.AddressCommentId;
+import uk.ac.sanger.sccp.stan.service.CommentValidationService;
+import uk.ac.sanger.sccp.stan.service.SlotRegionService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
+import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
+import java.util.stream.Stream;
 
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toSet;
-import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
+import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 /**
  * @author dr6
@@ -24,12 +28,18 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
     private final LabwareRepo labwareRepo;
     private final PlanOperationRepo planOpRepo;
     private final WorkService workService;
+    private final SlotRegionService slotRegionService;
+    private final CommentValidationService commentValidationService;
 
     @Autowired
-    public ConfirmSectionValidationServiceImp(LabwareRepo labwareRepo, PlanOperationRepo planOpRepo, WorkService workService) {
+    public ConfirmSectionValidationServiceImp(LabwareRepo labwareRepo, PlanOperationRepo planOpRepo,
+                                              WorkService workService, SlotRegionService slotRegionService,
+                                              CommentValidationService commentValidationService) {
         this.labwareRepo = labwareRepo;
         this.planOpRepo = planOpRepo;
         this.workService = workService;
+        this.slotRegionService = slotRegionService;
+        this.commentValidationService = commentValidationService;
     }
 
     @Override
@@ -41,13 +51,56 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
             return new ConfirmSectionValidation(problems);
         }
         UCMap<Labware> labware = validateLabware(problems, request.getLabware());
+        UCMap<SlotRegion> slotRegions = validateSlotRegions(problems, request.getLabware());
+        requireRegionsForMultiSampleSlots(problems, request.getLabware());
         Map<Integer, PlanOperation> plans = lookUpPlans(problems, labware.values());
         validateOperations(problems, request.getLabware(), labware, plans);
+        Map<Integer, Comment> commentIdMap = validateCommentIds(problems, request.getLabware());
         workService.validateUsableWork(problems, request.getWorkNumber());
         if (!problems.isEmpty()) {
             return new ConfirmSectionValidation(problems);
         }
-        return new ConfirmSectionValidation(labware, plans);
+        return new ConfirmSectionValidation(labware, plans, slotRegions, commentIdMap);
+    }
+
+    /**
+     * Checks that each section specified in a slot with multiple sections also specifies a region.
+     * @param problems receptacle for problems found
+     * @param csls the specification of each labware
+     */
+    public void requireRegionsForMultiSampleSlots(Collection<String> problems, Collection<ConfirmSectionLabware> csls) {
+        for (ConfirmSectionLabware csl : csls) {
+            if (nullOrEmpty(csl.getBarcode())) {
+                continue; // Request is already broken, and we can't give meaningful problem messages
+            }
+            Map<Address, Integer> sectionCount = new HashMap<>();
+            Set<Address> addressesWithoutRegions = new HashSet<>();
+
+            for (ConfirmSection cs : csl.getConfirmSections()) {
+                final Address address = cs.getDestinationAddress();
+                if (address != null) {
+                    sectionCount.merge(address, 1, Integer::sum);
+                    if (nullOrEmpty(cs.getRegion())) {
+                        addressesWithoutRegions.add(address);
+                    }
+                }
+            }
+            for (Address address : addressesWithoutRegions) {
+                if (sectionCount.get(address) > 1) {
+                    problems.add("A region must be specified for each section in slot "+address+" of "+csl.getBarcode()+".");
+                }
+            }
+        }
+    }
+
+    public Map<Integer, Comment> validateCommentIds(Set<String> problems, List<ConfirmSectionLabware> csls) {
+        Stream<Integer> slotCommentIds = csls.stream().flatMap(csl -> csl.getAddressComments().stream())
+                .map(AddressCommentId::getCommentId);
+        Stream<Integer> sampleCommentIds = csls.stream().flatMap(csl -> csl.getConfirmSections().stream())
+                .flatMap(cs -> cs.getCommentIds().stream());
+        Stream<Integer> commentIds = Stream.concat(slotCommentIds, sampleCommentIds).filter(Objects::nonNull);
+        return commentValidationService.validateCommentIds(problems, commentIds).stream()
+                .collect(BasicUtils.toMap(Comment::getId));
     }
 
     /**
@@ -90,6 +143,44 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
         }
         return lwMap;
     }
+
+    public UCMap<SlotRegion> validateSlotRegions(Collection<String> problems, List<ConfirmSectionLabware> csls) {
+        if (csls.stream().flatMap(csl -> csl.getConfirmSections().stream().map(ConfirmSection::getRegion))
+                .allMatch(BasicUtils::nullOrEmpty)) {
+            return new UCMap<>(0);
+        }
+        UCMap<SlotRegion> slotRegions = UCMap.from(asList(slotRegionService.loadSlotRegions(true)),
+                SlotRegion::getName);
+
+        for (ConfirmSectionLabware csl : csls) {
+            if (nullOrEmpty(csl.getBarcode())) {
+                continue;
+            }
+            Map<Address, Set<SlotRegion>> used = new HashMap<>();
+            for (ConfirmSection cs : csl.getConfirmSections()) {
+                final String regionName = cs.getRegion();
+                if (nullOrEmpty(regionName)) {
+                    continue;
+                }
+                SlotRegion sr = slotRegions.get(regionName);
+                if (sr == null) {
+                    problems.add("Unknown region: "+repr(regionName));
+                    continue;
+                }
+                final Address address = cs.getDestinationAddress();
+                if (address == null) {
+                    continue;
+                }
+                Set<SlotRegion> usedRegions = used.computeIfAbsent(address, k -> new HashSet<>());
+                if (!usedRegions.add(sr)) {
+                    problems.add(String.format("Region %s specified twice for %s in %s.",
+                            sr.getName(), address, csl.getBarcode()));
+                }
+            }
+        }
+        return slotRegions;
+    }
+
 
     /**
      * Looks up the plans for the given labware.

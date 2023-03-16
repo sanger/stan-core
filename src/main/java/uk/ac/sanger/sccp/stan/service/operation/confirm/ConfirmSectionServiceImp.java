@@ -19,6 +19,7 @@ import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.*;
 import static org.hibernate.internal.util.NullnessHelper.coalesce;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 
 /**
  * @author dr6
@@ -35,6 +36,7 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
     private final CommentRepo commentRepo;
     private final OperationCommentRepo opCommentRepo;
     private final LabwareNoteRepo lwNoteRepo;
+    private final SamplePositionRepo samplePositionRepo;
 
     private final EntityManager entityManager;
 
@@ -43,7 +45,8 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
                                     WorkService workService,
                                     LabwareRepo lwRepo, SlotRepo slotRepo, MeasurementRepo measurementRepo,
                                     SampleRepo sampleRepo, CommentRepo commentRepo, OperationCommentRepo opCommentRepo,
-                                    LabwareNoteRepo lwNoteRepo, EntityManager entityManager) {
+                                    LabwareNoteRepo lwNoteRepo, SamplePositionRepo samplePositionRepo,
+                                    EntityManager entityManager) {
         this.validationService = validationService;
         this.opService = opService;
         this.workService = workService;
@@ -54,6 +57,7 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
         this.commentRepo = commentRepo;
         this.opCommentRepo = opCommentRepo;
         this.lwNoteRepo = lwNoteRepo;
+        this.samplePositionRepo = samplePositionRepo;
         this.entityManager = entityManager;
     }
 
@@ -93,7 +97,7 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
             if (plan==null) {
                 throw new IllegalArgumentException("No plan found for labware " + lw.getBarcode());
             }
-            ConfirmLabwareResult clr = confirmLabware(user, csl, lw, plan);
+            ConfirmLabwareResult clr = confirmLabware(user, csl, lw, plan, validation.getSlotRegions(), validation.getComments());
             var notes = plansNotes.get(plan.getId());
             if (notes!=null && !notes.isEmpty()) {
                 updateNotes(notes, clr.operation.getId(), lw.getId());
@@ -101,7 +105,7 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
             // Assumption:
             // when we create a new sample, that sample is not simultaneously created in several bits of labware
             //  (which might be confirmed in several operations)
-            recordComments(csl, clr.operation==null ? null : clr.operation.getId(), clr.labware);
+            recordAddressComments(csl, clr.operation==null ? null : clr.operation.getId(), clr.labware);
             if (clr.operation!=null) {
                 operations.add(clr.operation);
             }
@@ -148,7 +152,8 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
      * @param plan the plan for that item of labware
      * @return an operation (if one was created) and the labware (updated if necessary)
      */
-    public ConfirmLabwareResult confirmLabware(User user, ConfirmSectionLabware csl, Labware lw, PlanOperation plan) {
+    public ConfirmLabwareResult confirmLabware(User user, ConfirmSectionLabware csl, Labware lw, PlanOperation plan,
+                                               UCMap<SlotRegion> slotRegions, Map<Integer, Comment> commentIdMap) {
         var secs = csl.getConfirmSections();
         if (csl.isCancelled() || secs==null || secs.isEmpty()) {
             lw.setDiscarded(true);
@@ -160,6 +165,8 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
 
         Set<Slot> slotsToSave = new HashSet<>();
         List<Measurement> measurements = new ArrayList<>();
+        List<SamplePosition> samplePositions = new ArrayList<>();
+        List<OperationComment> opComs = new ArrayList<>();
 
         var planActionMap = getPlanActionMap(plan.getPlanActions(), lwId);
         List<Action> actions = new ArrayList<>(secs.size());
@@ -179,6 +186,14 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
                 measurements.add(new Measurement(null, "Thickness", String.valueOf(pa.getSampleThickness()),
                         sample.getId(), null, slot.getId()));
             }
+            if (!nullOrEmpty(sec.getRegion())) {
+                samplePositions.add(new SamplePosition(slot.getId(), sample.getId(), slotRegions.get(sec.getRegion()), null));
+            }
+            if (!nullOrEmpty(sec.getCommentIds())) {
+                for (Integer commentId : sec.getCommentIds()) {
+                    opComs.add(new OperationComment(null, commentIdMap.get(commentId), null, sample.getId(), slot.getId(), null));
+                }
+            }
             actions.add(action);
         }
         slotRepo.saveAll(slotsToSave);
@@ -187,6 +202,14 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
         if (!measurements.isEmpty()) {
             measurements.forEach(m -> m.setOperationId(op.getId()));
             measurementRepo.saveAll(measurements);
+        }
+        if (!samplePositions.isEmpty()) {
+            samplePositions.forEach(sp -> sp.setOperationId(op.getId()));
+            samplePositionRepo.saveAll(samplePositions);
+        }
+        if (!opComs.isEmpty()) {
+            opComs.forEach(oc -> oc.setOperationId(op.getId()));
+            opCommentRepo.saveAll(opComs);
         }
         return new ConfirmLabwareResult(op, lw);
     }
@@ -240,8 +263,8 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
      * @param opId the id of the operation we just recorded on the labware (if any)
      * @param labware the relevant item of labware
      */
-    public void recordComments(ConfirmSectionLabware csl, Integer opId, Labware labware) {
-        if (csl.getAddressComments()==null || csl.getAddressComments().isEmpty()) {
+    public void recordAddressComments(ConfirmSectionLabware csl, Integer opId, Labware labware) {
+        if (nullOrEmpty(csl.getAddressComments())) {
             return;
         }
         Set<Integer> commentIdSet = csl.getAddressComments().stream()
@@ -278,7 +301,7 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
         final Integer slotId = slot.getId();
         List<Sample> samples = slot.getSamples();
         Stream<Integer> sampleIdStream;
-        if (samples==null || samples.isEmpty()) {
+        if (nullOrEmpty(samples)) {
             sampleIdStream = Stream.of((Integer) null);
         } else {
             sampleIdStream = samples.stream().map(Sample::getId);
