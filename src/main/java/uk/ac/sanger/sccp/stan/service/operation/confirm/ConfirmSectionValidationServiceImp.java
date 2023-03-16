@@ -52,6 +52,7 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
         }
         UCMap<Labware> labware = validateLabware(problems, request.getLabware());
         UCMap<SlotRegion> slotRegions = validateSlotRegions(problems, request.getLabware());
+        requireRegionsForMultiSampleSlots(problems, request.getLabware());
         Map<Integer, PlanOperation> plans = lookUpPlans(problems, labware.values());
         validateOperations(problems, request.getLabware(), labware, plans);
         Map<Integer, Comment> commentIdMap = validateCommentIds(problems, request.getLabware());
@@ -60,6 +61,36 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
             return new ConfirmSectionValidation(problems);
         }
         return new ConfirmSectionValidation(labware, plans, slotRegions, commentIdMap);
+    }
+
+    /**
+     * Checks that each section specified in a slot with multiple sections also specifies a region.
+     * @param problems receptacle for problems found
+     * @param csls the specification of each labware
+     */
+    public void requireRegionsForMultiSampleSlots(Collection<String> problems, Collection<ConfirmSectionLabware> csls) {
+        for (ConfirmSectionLabware csl : csls) {
+            if (nullOrEmpty(csl.getBarcode())) {
+                continue; // Request is already broken, and we can't give meaningful problem messages
+            }
+            Map<Address, Integer> sectionCount = new HashMap<>();
+            Set<Address> addressesWithoutRegions = new HashSet<>();
+
+            for (ConfirmSection cs : csl.getConfirmSections()) {
+                final Address address = cs.getDestinationAddress();
+                if (address != null) {
+                    sectionCount.merge(address, 1, Integer::sum);
+                    if (nullOrEmpty(cs.getRegion())) {
+                        addressesWithoutRegions.add(address);
+                    }
+                }
+            }
+            for (Address address : addressesWithoutRegions) {
+                if (sectionCount.get(address) > 1) {
+                    problems.add("A region must be specified for each section in slot "+address+" of "+csl.getBarcode()+".");
+                }
+            }
+        }
     }
 
     public Map<Integer, Comment> validateCommentIds(Set<String> problems, List<ConfirmSectionLabware> csls) {

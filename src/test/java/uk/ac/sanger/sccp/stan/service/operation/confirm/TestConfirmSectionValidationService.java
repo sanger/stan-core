@@ -18,6 +18,7 @@ import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
 import java.util.function.Function;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -90,6 +91,7 @@ public class TestConfirmSectionValidationService {
         mayAddProblem(valid ? null : "plan problem", planMap).when(service).lookUpPlans(any(), any());
         mayAddProblem(valid ? null : "op problem").when(service).validateOperations(any(), any(), any(), any());
         mayAddProblem(valid ? null : "region problem", regionMap).when(service).validateSlotRegions(any(), any());
+        mayAddProblem(valid ? null : "missing region").when(service).requireRegionsForMultiSampleSlots(any(), any());
         mayAddProblem(valid ? null : "comment problem", commentMap).when(service).validateCommentIds(any(), any());
 
         var validation = service.validate(request);
@@ -101,12 +103,13 @@ public class TestConfirmSectionValidationService {
             assertEquals(validation.getSlotRegions(), regionMap);
         } else {
             assertThat(validation.getProblems()).containsExactlyInAnyOrder(
-                    "lw problem", "plan problem", "op problem", "region problem", "comment problem"
+                    "lw problem", "plan problem", "op problem", "region problem", "missing region", "comment problem"
             );
         }
 
         verify(service).validateCommentIds(any(), eq(request.getLabware()));
         verify(service).validateSlotRegions(any(), eq(request.getLabware()));
+        verify(service).requireRegionsForMultiSampleSlots(any(), eq(request.getLabware()));
         verify(mockWorkService).validateUsableWork(any(), eq(request.getWorkNumber()));
         verify(service).validateLabware(any(), eq(request.getLabware()));
         verify(service).lookUpPlans(any(), eq(lwMap.values()));
@@ -175,6 +178,44 @@ public class TestConfirmSectionValidationService {
                 {allRegions, allRegions, List.of(cslRegions, cslUnknownRegion), List.of("Unknown region: \"Spoon\"")},
                 {allRegions, allRegions, List.of(cslRepeatedRegions), List.of("Region Top specified twice for A1 in STAN-4.")},
         }).map(Arguments::of);
+    }
+
+    @Test
+    public void testRequireRegionsForMultiSampleSlots() {
+        List<String> problems = new ArrayList<>();
+        final Address A1 = new Address(1,1);
+        final Address A2 = new Address(1,2);
+        final Address A3 = new Address(1,3);
+        final Address A4 = new Address(1,4);
+        ConfirmSectionLabware[] csls = IntStream.range(0, 3)
+                .mapToObj(i -> new ConfirmSectionLabware("STAN-"+i))
+                .toArray(ConfirmSectionLabware[]::new);
+        csls[0].setBarcode(""); // empty barcode csl is skipped
+        csls[1].setConfirmSections(
+                List.of(makeConfirmSection(A1, null),
+                        makeConfirmSection(A2, "Top"),
+                        makeConfirmSection(A3, "Top"),
+                        makeConfirmSection(A4, "Bottom")
+                )
+        );
+        csls[2].setConfirmSections(
+                List.of(makeConfirmSection(A1, null),
+                        makeConfirmSection(A1, "Top"),
+                        makeConfirmSection(A2, ""),
+                        makeConfirmSection(A3, "Top"),
+                        makeConfirmSection(A3, "Bottom"),
+                        makeConfirmSection(A4, null),
+                        makeConfirmSection(A4, null))
+        );
+        service.requireRegionsForMultiSampleSlots(problems, Arrays.asList(csls));
+        assertThat(problems).containsExactlyInAnyOrder(
+                "A region must be specified for each section in slot A1 of STAN-2.",
+                "A region must be specified for each section in slot A4 of STAN-2."
+        );
+    }
+
+    private static ConfirmSection makeConfirmSection(Address address, String regionName) {
+        return new ConfirmSection(address, 1, 2, null, regionName);
     }
 
     private static ConfirmSection confirmSection(Address address, String regionName) {

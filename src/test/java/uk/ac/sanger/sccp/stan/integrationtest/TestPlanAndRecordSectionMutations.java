@@ -19,7 +19,6 @@ import java.util.stream.IntStream;
 
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.entry;
 import static org.junit.jupiter.api.Assertions.*;
 import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGet;
 import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGetList;
@@ -270,8 +269,11 @@ public class TestPlanAndRecordSectionMutations {
         String samplePositionsQuery = String.format("query { samplePositions(labwareBarcode: \"%s\") { address, region, sampleId } }",  barcodes[0]);
         Object response = tester.post(samplePositionsQuery);
         List<Map<String,Object>> samplePositions = chainGet(response, "data", "samplePositions");
-        assertThat(samplePositions).hasSize(1);
-        assertThat(samplePositions.get(0)).containsExactly(entry("address", "A1"), entry("region", "Top"), entry("sampleId", sampleIds.get(1)));
+        assertThat(samplePositions).containsExactly(
+                Map.of("address", "A1", "region", "Bottom", "sampleId", sampleIds.get(0)),
+                Map.of("address", "A1", "region", "Top", "sampleId", sampleIds.get(1)),
+                Map.of("address", "A1", "region", "Middle", "sampleId", sampleIds.get(2))
+        );
 
         Integer opId = opIds.get(0);
         final List<OperationComment> opcoms = opComRepo.findAllByOperationIdIn(opIds);

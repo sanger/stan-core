@@ -53,6 +53,9 @@
             <column name="name" value="Top"/>
         </insert>
         <insert tableName="slot_region">
+            <column name="name" value="Middle"/>
+        </insert>
+        <insert tableName="slot_region">
             <column name="name" value="Bottom"/>
         </insert>
     </changeSet>
