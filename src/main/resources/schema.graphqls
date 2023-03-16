@@ -1606,6 +1606,8 @@ type Query {
     labwareOperations(barcode: String!, operationType: String!): [Operation]
     """Get suggested work (if any) for labware."""
     suggestedWorkForLabware(barcodes: [String!]!): SuggestedWorkResponse!
+    """Get suggested labware for work."""
+    suggestedLabwareForWork(workNumber: String!): [Labware!]!
 
     """Get the specified storage location."""
     location(locationBarcode: String!): Location!
