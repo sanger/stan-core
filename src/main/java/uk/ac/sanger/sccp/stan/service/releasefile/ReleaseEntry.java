@@ -31,6 +31,7 @@ public class ReleaseEntry {
     private Integer ihcPlex;
     private LocalDate sectionDate;
     private String permTime;
+    private String samplePosition;
 
     public ReleaseEntry(Labware labware, Slot slot, Sample sample) {
         this(labware, slot, sample, null);
@@ -191,6 +192,15 @@ public class ReleaseEntry {
         this.permTime = permTime;
     }
 
+    /** The region of the sample inside the slot, if specified */
+    public String getSamplePosition() {
+        return this.samplePosition;
+    }
+
+    public void setSamplePosition(String samplePosition) {
+        this.samplePosition = samplePosition;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -215,6 +225,7 @@ public class ReleaseEntry {
                 && Objects.equals(this.rnascopePlex, that.rnascopePlex)
                 && Objects.equals(this.ihcPlex, that.ihcPlex)
                 && Objects.equals(this.sectionDate, that.sectionDate)
+                && Objects.equals(this.samplePosition, that.samplePosition)
         );
     }
 
@@ -244,6 +255,7 @@ public class ReleaseEntry {
                 .add("ihcPlex", ihcPlex)
                 .add("sectionDate", sectionDate)
                 .add("permTime", permTime)
+                .add("samplePosition", samplePosition)
                 .toString();
     }
 }

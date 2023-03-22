@@ -38,6 +38,7 @@ public class TestReleaseFileService {
     OperationRepo mockOpRepo;
     LabwareNoteRepo mockLwNoteRepo;
     StainTypeRepo mockStainTypeRepo;
+    SamplePositionRepo mockSamplePositionRepo;
 
     ReagentActionDetailService mockRadService;
 
@@ -65,9 +66,11 @@ public class TestReleaseFileService {
         mockLwNoteRepo = mock(LabwareNoteRepo.class);
         mockRadService = mock(ReagentActionDetailService.class);
         mockStainTypeRepo = mock(StainTypeRepo.class);
+        mockSamplePositionRepo = mock(SamplePositionRepo.class);
 
         service = spy(new ReleaseFileService(mockAncestoriser, mockSampleRepo, mockLabwareRepo, mockMeasurementRepo,
-                mockSnapshotRepo, mockReleaseRepo, mockOpTypeRepo, mockOpRepo, mockLwNoteRepo, mockStainTypeRepo, mockRadService));
+                mockSnapshotRepo, mockReleaseRepo, mockOpTypeRepo, mockOpRepo, mockLwNoteRepo, mockStainTypeRepo,
+                mockSamplePositionRepo, mockRadService));
 
         user = EntityFactory.getUser();
         destination = new ReleaseDestination(50, "Venus");
@@ -83,20 +86,20 @@ public class TestReleaseFileService {
         sample1 = new Sample(11, 1, tissue, bioState);
         lw1 = EntityFactory.makeLabware(lt);
         lw1.getFirstSlot().getSamples().addAll(List.of(sample, sample1));
-        lw1.getSlots().get(1).getSamples().add(sample);
+        lw1.getSlots().get(1).addSample(sample);
 
         lw2 = EntityFactory.makeLabware(lt, sample);
 
         LabwareType ltTOSlide = new LabwareType(1, "Visium TO", 4, 2, null, false);
         sample2 = new Sample(12, 1, tissue, bioState);
         lwTOSlide = EntityFactory.makeLabware(ltTOSlide);
-        lwTOSlide.getFirstSlot().getSamples().add(sample2);
+        lwTOSlide.getFirstSlot().addSample(sample2);
 
         LabwareType lt96WellPlate = new LabwareType(2, "96 well plate", 12, 8, null, false);
         lt96WellPlate.setName("96 Well Plate");
         sample3 = new Sample(13, 1, tissue, bioState);
         lw96WellPlate = EntityFactory.makeLabware(lt96WellPlate);
-        lw96WellPlate.getFirstSlot().getSamples().add(sample3);
+        lw96WellPlate.getFirstSlot().addSample(sample3);
     }
 
     private void setupReleases() {
@@ -156,6 +159,7 @@ public class TestReleaseFileService {
         doNothing().when(service).loadSources(any(), any(), any());
         doNothing().when(service).loadMeasurements(any(), any());
         doNothing().when(service).loadStains(any(), any());
+        doNothing().when(service).loadSamplePositions(any());
 
         List<Integer> releaseIds = List.of(this.release1.getId(), release2.getId());
         ReleaseFileContent rfc = service.getReleaseFileContent(releaseIds);
@@ -172,6 +176,7 @@ public class TestReleaseFileService {
         verify(service).loadMeasurements(entries, ancestry);
         verify(service).loadStains(entries, ancestry);
         verify(service).loadReagentSources(entries);
+        verify(service).loadSamplePositions(entries);
     }
 
     @ParameterizedTest
@@ -855,6 +860,32 @@ public class TestReleaseFileService {
         assertEquals("456 : B2", entries.get(2).getReagentSource());
         assertEquals("rt1, rt2", entries.get(0).getReagentPlateType());
         assertEquals("rt2", entries.get(2).getReagentPlateType());
+    }
+
+    @Test
+    public void testLoadSamplePositions() {
+        setupLabware();
+        Slot slot1 = lw1.getFirstSlot();
+        Sample sam1 = sample;
+        Sample sam2 = sample1;
+        SlotRegion top = new SlotRegion(1, "Top");
+        SlotRegion bottom = new SlotRegion(2, "Bottom");
+        List<SamplePosition> sps = List.of(
+                new SamplePosition(slot1.getId(), sam1.getId(), top, 1),
+                new SamplePosition(slot1.getId(), sam2.getId(), bottom, 1)
+        );
+        when(mockSamplePositionRepo.findAllBySlotIdIn(any())).thenReturn(sps);
+        final Slot slot2 = lw2.getFirstSlot();
+        List<ReleaseEntry> entries = List.of(
+                new ReleaseEntry(lw1, slot1, sam1),
+                new ReleaseEntry(lw1, slot1, sam2),
+                new ReleaseEntry(lw2, slot2, sam1)
+        );
+        service.loadSamplePositions(entries);
+        verify(mockSamplePositionRepo).findAllBySlotIdIn(Set.of(slot1.getId(), slot2.getId()));
+        assertEquals(top.getName(), entries.get(0).getSamplePosition());
+        assertEquals(bottom.getName(), entries.get(1).getSamplePosition());
+        assertNull(entries.get(2).getSamplePosition());
     }
 
     private LocalDateTime time(int day) {
