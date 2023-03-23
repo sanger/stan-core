@@ -31,6 +31,8 @@ public class ReleaseEntry {
     private Integer ihcPlex;
     private LocalDate sectionDate;
     private String permTime;
+    private String samplePosition;
+    private String sectionComment;
 
     public ReleaseEntry(Labware labware, Slot slot, Sample sample) {
         this(labware, slot, sample, null);
@@ -191,6 +193,24 @@ public class ReleaseEntry {
         this.permTime = permTime;
     }
 
+    /** The region of the sample inside the slot, if specified */
+    public String getSamplePosition() {
+        return this.samplePosition;
+    }
+
+    public void setSamplePosition(String samplePosition) {
+        this.samplePosition = samplePosition;
+    }
+
+    /** The comment (if any) from sectioning this slot/sample */
+    public String getSectionComment() {
+        return this.sectionComment;
+    }
+
+    public void setSectionComment(String sectionComment) {
+        this.sectionComment = sectionComment;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -215,6 +235,8 @@ public class ReleaseEntry {
                 && Objects.equals(this.rnascopePlex, that.rnascopePlex)
                 && Objects.equals(this.ihcPlex, that.ihcPlex)
                 && Objects.equals(this.sectionDate, that.sectionDate)
+                && Objects.equals(this.samplePosition, that.samplePosition)
+                && Objects.equals(this.sectionComment, that.sectionComment)
         );
     }
 
@@ -244,6 +266,10 @@ public class ReleaseEntry {
                 .add("ihcPlex", ihcPlex)
                 .add("sectionDate", sectionDate)
                 .add("permTime", permTime)
+                .add("samplePosition", samplePosition)
+                .add("sectionComment", sectionComment)
+                .omitNullValues()
+                .reprStringValues()
                 .toString();
     }
 }

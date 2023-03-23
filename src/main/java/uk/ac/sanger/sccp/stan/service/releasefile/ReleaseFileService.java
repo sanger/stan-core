@@ -37,6 +37,8 @@ public class ReleaseFileService {
     private final OperationRepo opRepo;
     private final LabwareNoteRepo lwNoteRepo;
     private final StainTypeRepo stainTypeRepo;
+    private final SamplePositionRepo samplePositionRepo;
+    private final OperationCommentRepo opComRepo;
     private final ReagentActionDetailService reagentActionDetailService;
 
     @Autowired
@@ -44,7 +46,8 @@ public class ReleaseFileService {
                               SampleRepo sampleRepo, LabwareRepo labwareRepo, MeasurementRepo measurementRepo,
                               SnapshotRepo snapshotRepo, ReleaseRepo releaseRepo, OperationTypeRepo opTypeRepo,
                               OperationRepo opRepo, LabwareNoteRepo lwNoteRepo,
-                              StainTypeRepo stainTypeRepo,
+                              StainTypeRepo stainTypeRepo, SamplePositionRepo samplePositionRepo,
+                              OperationCommentRepo opComRepo,
                               ReagentActionDetailService reagentActionDetailService) {
         this.releaseRepo = releaseRepo;
         this.sampleRepo = sampleRepo;
@@ -56,6 +59,8 @@ public class ReleaseFileService {
         this.opRepo = opRepo;
         this.lwNoteRepo = lwNoteRepo;
         this.stainTypeRepo = stainTypeRepo;
+        this.samplePositionRepo = samplePositionRepo;
+        this.opComRepo = opComRepo;
         this.reagentActionDetailService = reagentActionDetailService;
     }
 
@@ -88,6 +93,8 @@ public class ReleaseFileService {
         loadSectionDate(entries, ancestry);
         loadStains(entries, ancestry);
         loadReagentSources(entries);
+        loadSamplePositions(entries);
+        loadSectionComments(entries);
         return new ReleaseFileContent(mode, entries);
     }
 
@@ -616,6 +623,42 @@ public class ReleaseFileService {
                     entry.setReagentPlateType(radTypeString);
                 }
             }
+        }
+    }
+
+    /**
+     * Loads sample positions for the given entries
+     */
+    public void loadSamplePositions(Collection<ReleaseEntry> entries) {
+        Set<Integer> slotIds = entries.stream()
+                .map(e -> e.getSlot().getId())
+                .collect(toSet());
+        Map<SlotIdSampleId, String> positionMap = samplePositionRepo.findAllBySlotIdIn(slotIds).stream()
+                .collect(toMap(sp -> new SlotIdSampleId(sp.getSlotId(), sp.getSampleId()), sp -> sp.getSlotRegion().getName()));
+        for (ReleaseEntry entry : entries) {
+            entry.setSamplePosition(positionMap.get(new SlotIdSampleId(entry.getSlot().getId(), entry.getSample().getId())));
+        }
+    }
+
+    /** Loads comments from sectioning operations */
+    public void loadSectionComments(Collection<ReleaseEntry> entries) {
+        Set<Integer> slotIds = entries.stream().map(e -> e.getSlot().getId()).collect(toSet());
+        OperationType sectionOpType = opTypeRepo.getByName("Section");
+        Map<SlotIdSampleId, List<OperationComment>> commentMap = opComRepo.findAllBySlotAndOpType(slotIds, sectionOpType).stream()
+                .collect(groupingBy(oc -> new SlotIdSampleId(oc.getSlotId(), oc.getSampleId())));
+        if (commentMap.isEmpty()) {
+            return;
+        }
+        for (ReleaseEntry entry : entries) {
+            var ocs = commentMap.get(new SlotIdSampleId(entry.getSlot().getId(), entry.getSample().getId()));
+            if (ocs==null || ocs.isEmpty()) {
+                continue;
+            }
+            String sectionComment = ocs.stream()
+                    .map(oc -> oc.getComment().getText())
+                    .distinct()
+                    .collect(joining("; "));
+            entry.setSectionComment(sectionComment);
         }
     }
 
