@@ -39,6 +39,7 @@ public class TestReleaseFileService {
     LabwareNoteRepo mockLwNoteRepo;
     StainTypeRepo mockStainTypeRepo;
     SamplePositionRepo mockSamplePositionRepo;
+    OperationCommentRepo mockOpComRepo;
 
     ReagentActionDetailService mockRadService;
 
@@ -67,10 +68,11 @@ public class TestReleaseFileService {
         mockRadService = mock(ReagentActionDetailService.class);
         mockStainTypeRepo = mock(StainTypeRepo.class);
         mockSamplePositionRepo = mock(SamplePositionRepo.class);
+        mockOpComRepo = mock(OperationCommentRepo.class);
 
         service = spy(new ReleaseFileService(mockAncestoriser, mockSampleRepo, mockLabwareRepo, mockMeasurementRepo,
                 mockSnapshotRepo, mockReleaseRepo, mockOpTypeRepo, mockOpRepo, mockLwNoteRepo, mockStainTypeRepo,
-                mockSamplePositionRepo, mockRadService));
+                mockSamplePositionRepo, mockOpComRepo, mockRadService));
 
         user = EntityFactory.getUser();
         destination = new ReleaseDestination(50, "Venus");
@@ -160,6 +162,7 @@ public class TestReleaseFileService {
         doNothing().when(service).loadMeasurements(any(), any());
         doNothing().when(service).loadStains(any(), any());
         doNothing().when(service).loadSamplePositions(any());
+        doNothing().when(service).loadSectionComments(any());
 
         List<Integer> releaseIds = List.of(this.release1.getId(), release2.getId());
         ReleaseFileContent rfc = service.getReleaseFileContent(releaseIds);
@@ -177,6 +180,7 @@ public class TestReleaseFileService {
         verify(service).loadStains(entries, ancestry);
         verify(service).loadReagentSources(entries);
         verify(service).loadSamplePositions(entries);
+        verify(service).loadSectionComments(entries);
     }
 
     @ParameterizedTest
@@ -886,6 +890,38 @@ public class TestReleaseFileService {
         assertEquals(top.getName(), entries.get(0).getSamplePosition());
         assertEquals(bottom.getName(), entries.get(1).getSamplePosition());
         assertNull(entries.get(2).getSamplePosition());
+    }
+
+    @Test
+    public void testLoadSectionComments() {
+        setupLabware();
+        int[] slotIds = { lw1.getFirstSlot().getId(), lw2.getFirstSlot().getId() };
+        int[] sampleIds = { sample.getId(), sample1.getId() };
+        OperationType opType = EntityFactory.makeOperationType("Section", null);
+        List<ReleaseEntry> entries = List.of(
+                new ReleaseEntry(lw1, lw1.getFirstSlot(), sample),
+                new ReleaseEntry(lw1, lw1.getFirstSlot(), sample1),
+                new ReleaseEntry(lw2, lw2.getFirstSlot(), sample)
+        );
+        Comment[] coms = IntStream.rangeClosed(1, 2)
+                .mapToObj(i -> new Comment(i, "com"+i, "cat"))
+                .toArray(Comment[]::new);
+        List<OperationComment> opcoms = List.of(
+                new OperationComment(1, coms[0], 1, sampleIds[0], slotIds[0], null),
+                new OperationComment(2, coms[1], 1, sampleIds[0], slotIds[0], null),
+                new OperationComment(3, coms[0], 1, sampleIds[1], slotIds[0], null),
+                new OperationComment(4, coms[1], 1, sampleIds[1], slotIds[1], null)
+        );
+        when(mockOpTypeRepo.getByName("Section")).thenReturn(opType);
+        when(mockOpComRepo.findAllBySlotAndOpType(any(), any())).thenReturn(opcoms);
+
+        service.loadSectionComments(entries);
+        verify(mockOpTypeRepo).getByName("Section");
+        verify(mockOpComRepo).findAllBySlotAndOpType(Set.of(slotIds[0], slotIds[1]), opType);
+
+        assertEquals("com1; com2", entries.get(0).getSectionComment());
+        assertEquals("com1", entries.get(1).getSectionComment());
+        assertNull(entries.get(2).getSectionComment());
     }
 
     private LocalDateTime time(int day) {

@@ -143,7 +143,7 @@ public class TestReleaseMutation {
         assertEquals(tsvMaps.size(), 4);
         assertThat(tsvMaps.get(0).keySet()).containsOnly("Barcode", "Labware type", "Address", "Donor name",
                 "Life stage", "External identifier", "Tissue type", "Spatial location", "Replicate number", "Section number",
-                "Sample position", "Last section number", "Source barcode", "Section thickness", "Released from box location",
+                "Sample position", "Section comment", "Last section number", "Source barcode", "Section thickness", "Released from box location",
                 "Stain type", "Bond barcode", "Tissue coverage", "Cq value", "Visium concentration (pg/uL)", "Visium concentration type",
                 "Dual index plate type", "Dual index plate name", "RNAscope plex", "IHC plex",
                 "Date sectioned", "Permeabilisation time");
