@@ -3,7 +3,7 @@
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
 
-    <changeSet id="2.21.0" author="dr6">
+    <changeSet id="2.20.0" author="dr6">
         <createTable tableName="slot_region">
             <column name="id" type="INT" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
@@ -23,7 +23,7 @@
         </createTable>
     </changeSet>
 
-    <changeSet id="2.21.1" author="dr6">
+    <changeSet id="2.20.1" author="dr6">
         <createTable tableName="sample_position">
             <column name="sample_id" type="INT">
                 <constraints nullable="false" foreignKeyName="fk_sample_position_sample" referencedTableName="sample" referencedColumnNames="id"/>
@@ -48,7 +48,7 @@
         </rollback>
     </changeSet>
 
-    <changeSet id="2.21.2" author="dr6">
+    <changeSet id="2.20.2" author="dr6">
         <insert tableName="slot_region">
             <column name="name" value="Top"/>
         </insert>
