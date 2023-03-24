@@ -6,7 +6,8 @@ import uk.ac.sanger.sccp.stan.request.SuggestedWorkResponse;
 import uk.ac.sanger.sccp.stan.request.WorkWithComment;
 import uk.ac.sanger.sccp.utils.UCMap;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
 
 /**
  * Service for managing {@link Work work}.
@@ -184,4 +185,12 @@ public interface WorkService {
      * @return the suggested works
      */
     SuggestedWorkResponse suggestWorkForLabwareBarcodes(Collection<String> barcodes);
+
+    /**
+     * Gets the labware last associated with the specified work.
+     * @param workNumber an existing work number
+     * @return the list of labware whose last work is the given work
+     * @exception javax.persistence.EntityNotFoundException if the work number is not found
+     */
+    List<Labware> suggestLabwareForWorkNumber(String workNumber);
 }

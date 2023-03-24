@@ -10,6 +10,7 @@ import uk.ac.sanger.sccp.stan.EntityCreator;
 import uk.ac.sanger.sccp.stan.GraphQLTester;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.LabwareNoteRepo;
+import uk.ac.sanger.sccp.stan.repo.OperationCommentRepo;
 
 import javax.persistence.EntityManager;
 import javax.transaction.Transactional;
@@ -33,6 +34,8 @@ import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainG
 public class TestPlanAndRecordSectionMutations {
     @Autowired
     private GraphQLTester tester;
+    @Autowired
+    private OperationCommentRepo opComRepo;
     @Autowired
     private EntityCreator entityCreator;
     @Autowired
@@ -193,6 +196,7 @@ public class TestPlanAndRecordSectionMutations {
         List<Integer> opIds = resultOps.stream()
                 .map(ro -> (Integer) ro.get("id"))
                 .collect(toList());
+        List<Integer> sampleIds = new ArrayList<>(expectedSourceLabwareIds.length);
         for (int i = 0; i < expectedSourceLabwareIds.length; ++i) {
             Map<String, ?> action = actions.get(i);
             assertEquals("A1", chainGet(action, "source", "address"));
@@ -205,6 +209,7 @@ public class TestPlanAndRecordSectionMutations {
             }
             assertEquals(expectedActionTissues[i], chainGet(action, "sample", "tissue", "externalName"));
             assertEquals(expectedActionSecNum[i], (int) chainGet(action, "sample", "section"));
+            sampleIds.add(chainGet(action, "sample", "id"));
         }
 
         // Check the fetal waste tubes:
@@ -260,6 +265,31 @@ public class TestPlanAndRecordSectionMutations {
             noteMap.put(note.getName(), note.getValue());
         }
         assertEquals(Map.of("costing", "SGP", "lot", "1234567"), noteMap);
+
+        String samplePositionsQuery = String.format("query { samplePositions(labwareBarcode: \"%s\") { address, region, sampleId } }",  barcodes[0]);
+        Object response = tester.post(samplePositionsQuery);
+        List<Map<String,Object>> samplePositions = chainGet(response, "data", "samplePositions");
+        assertThat(samplePositions).containsExactly(
+                Map.of("address", "A1", "region", "Bottom", "sampleId", sampleIds.get(0)),
+                Map.of("address", "A1", "region", "Top", "sampleId", sampleIds.get(1)),
+                Map.of("address", "A1", "region", "Middle", "sampleId", sampleIds.get(2))
+        );
+
+        Integer opId = opIds.get(0);
+        final List<OperationComment> opcoms = opComRepo.findAllByOperationIdIn(opIds);
+        Integer slotId = opcoms.get(0).getSlotId();
+        assertThat(opcoms).hasSize(4);
+        assertOpCom(opcoms.get(0), 2, opId, sampleIds.get(0), slotId);
+        assertOpCom(opcoms.get(1), 1, opId, sampleIds.get(0), slotId);
+        assertOpCom(opcoms.get(2), 1, opId, sampleIds.get(1), slotId);
+        assertOpCom(opcoms.get(3), 1, opId, sampleIds.get(2), slotId);
+    }
+
+    private static void assertOpCom(OperationComment opcom, Integer commentId, Integer opId, Integer sampleId, Integer slotId) {
+        assertEquals(commentId, opcom.getComment().getId());
+        assertEquals(opId, opcom.getOperationId());
+        assertEquals(sampleId, opcom.getSampleId());
+        assertEquals(slotId, opcom.getSlotId());
     }
 
     private static StringBuilder sbReplace(StringBuilder sb, String original, String replacement) {

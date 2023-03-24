@@ -20,4 +20,5 @@
     <include relativeToChangelogFile="true" file="changelog-2.16.xml"/>
     <include relativeToChangelogFile="true" file="changelog-2.17.xml"/>
     <include relativeToChangelogFile="true" file="changelog-2.19.xml"/>
+    <include relativeToChangelogFile="true" file="changelog-2.20.xml"/>
 </databaseChangeLog>

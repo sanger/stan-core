@@ -259,6 +259,14 @@ public class FieldValidation {
     }
 
     @Bean
+    public Validator<String> slotRegionNameValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(
+                CharacterType.ALPHA, CharacterType.HYPHEN, CharacterType.SPACE
+        );
+        return new StringValidator("Slot region name", 1, 16, charTypes);
+    }
+
+    @Bean
     public Clock clock() {
         return Clock.systemUTC();
     }

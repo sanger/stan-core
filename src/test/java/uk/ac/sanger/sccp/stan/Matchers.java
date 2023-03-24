@@ -3,6 +3,7 @@ package uk.ac.sanger.sccp.stan;
 import org.junit.jupiter.api.function.Executable;
 import org.mockito.ArgumentMatcher;
 import org.mockito.stubbing.Answer;
+import org.mockito.stubbing.Stubber;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
 
 import java.util.*;
@@ -17,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.utils.BasicUtils.sameContents;
 
 /**
@@ -101,6 +102,14 @@ public class Matchers {
             problems.add(problem);
             return returnValue;
         };
+    }
+
+    public static <X> Stubber mayAddProblem(final String problem, X returnValue) {
+        return (problem == null ? doReturn(returnValue) : doAnswer(addProblem(problem, returnValue)));
+    }
+
+    public static <X> Stubber mayAddProblem(final String problem) {
+        return (problem==null ? doNothing() : doAnswer(addProblem(problem)));
     }
 
     public static void assertProblem(Collection<String> problems, String expectedProblem) {

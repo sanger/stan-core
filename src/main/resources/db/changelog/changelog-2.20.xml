@@ -1,0 +1,62 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <changeSet id="2.20.0" author="dr6">
+        <createTable tableName="slot_region">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="name" type="VARCHAR(16)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValue="TRUE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="2.20.1" author="dr6">
+        <createTable tableName="sample_position">
+            <column name="sample_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_sample_position_sample" referencedTableName="sample" referencedColumnNames="id"/>
+            </column>
+            <column name="slot_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_sample_position_slot" referencedTableName="slot" referencedColumnNames="id"/>
+            </column>
+            <column name="slot_region_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_sample_position_slot_region" referencedTableName="slot_region" referencedColumnNames="id"/>
+            </column>
+            <column name="operation_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_sample_position_operation" referencedTableName="operation" referencedColumnNames="id"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addPrimaryKey tableName="sample_position" columnNames="sample_id,slot_id"/>
+        <rollback>
+            <dropAllForeignKeyConstraints baseTableName="sample_position"/>
+            <dropTable tableName="sample_position"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="2.20.2" author="dr6">
+        <insert tableName="slot_region">
+            <column name="name" value="Top"/>
+        </insert>
+        <insert tableName="slot_region">
+            <column name="name" value="Middle"/>
+        </insert>
+        <insert tableName="slot_region">
+            <column name="name" value="Bottom"/>
+        </insert>
+    </changeSet>
+</databaseChangeLog>

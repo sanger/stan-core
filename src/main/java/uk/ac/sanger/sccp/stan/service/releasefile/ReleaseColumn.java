@@ -20,6 +20,8 @@ public enum ReleaseColumn implements TsvColumn<ReleaseEntry> {
     Spatial_location(Compose.tissue, Tissue::getSpatialLocation, SpatialLocation::getCode),
     Replicate_number(Compose.tissue, Tissue::getReplicate),
     Section_number(Compose.sample, Sample::getSection),
+    Sample_position(ReleaseEntry::getSamplePosition),
+    Section_comment(ReleaseEntry::getSectionComment),
     Last_section_number(ReleaseEntry::getLastSection, ReleaseFileMode.NORMAL),
     Source_barcode(ReleaseEntry::getSourceBarcode),
     Source_address(ReleaseEntry::getSourceAddress, ReleaseFileMode.CDNA),

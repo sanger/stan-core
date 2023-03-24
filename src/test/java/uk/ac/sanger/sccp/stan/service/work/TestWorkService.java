@@ -916,6 +916,32 @@ public class TestWorkService {
         assertThat(response.getWorks()).containsExactlyInAnyOrderElementsOf(works);
     }
 
+    @Test
+    public void testSuggestLabwareForWork() {
+        Work work = new Work();
+        work.setId(100);
+        work.setWorkNumber("SGP100");
+        when(mockWorkRepo.getByWorkNumber(work.getWorkNumber())).thenReturn(work);
+        Sample sample = EntityFactory.getSample();
+        LabwareType lt = EntityFactory.getTubeType();
+        List<Labware> labware = IntStream.range(0,4)
+                .mapToObj(i -> {
+                    Labware lw = EntityFactory.makeLabware(lt, sample);
+                    lw.setId(100+i);
+                    lw.setBarcode("STAN-"+lw.getId());
+                    return lw;
+                })
+                .collect(toList());
+        labware.get(2).setReleased(true);
+        labware.get(3).setDiscarded(true);
+        final List<Integer> lwIds = List.of(100, 101, 102, 103);
+        when(mockWorkRepo.findLabwareIdsForWorkIds(List.of(work.getId())))
+                .thenReturn(lwIds);
+        when(mockLwRepo.findAllByIdIn(lwIds)).thenReturn(labware);
+
+        assertEquals(labware.subList(0,2), workService.suggestLabwareForWorkNumber(work.getWorkNumber()));
+    }
+
     private Operation makeOp(OperationType opType, int opId, Labware srcLw, Labware dstLw) {
         List<Action> actions = new ArrayList<>();
         int acId = 100*opId;

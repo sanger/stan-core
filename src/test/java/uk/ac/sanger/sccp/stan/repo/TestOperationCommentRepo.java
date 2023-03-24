@@ -9,7 +9,9 @@ import uk.ac.sanger.sccp.stan.EntityCreator;
 import uk.ac.sanger.sccp.stan.model.*;
 
 import javax.transaction.Transactional;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -50,6 +52,33 @@ public class TestOperationCommentRepo {
         assertThat(opCommentRepo.findAllByOperationIdIn(List.of(op1id, op2id))).containsExactlyInAnyOrder(oc1, oc2, oc3, oc4);
         assertThat(opCommentRepo.findAllByOperationIdIn(List.of(op1id))).containsExactlyInAnyOrder(oc1, oc2);
         assertThat(opCommentRepo.findAllByOperationIdIn(List.of(op1id+op2id))).isEmpty();
+    }
+
+    @Test
+    @Transactional
+    public void testFindAllBySlotIdAndOperationType() {
+        Sample sample = entityCreator.createSample(null, 1);
+        OperationType frying = entityCreator.createOpType("Frying", null);
+        OperationType baking = entityCreator.createOpType("Baking", null);
+        User user = entityCreator.createUser("dr6");
+        int fryOp = opRepo.save(new Operation(null, frying, null, List.of(), user)).getId();
+        int bakeOp = opRepo.save(new Operation(null, baking, null, List.of(), user)).getId();
+        Comment com1 = commentRepo.save(new Comment(null, "fried", "Frying"));
+        Comment com2 = commentRepo.save(new Comment(null, "dropped", "Frying"));
+        LabwareType lt = entityCreator.getTubeType();
+        Slot[] slots = IntStream.range(0,2)
+                .mapToObj(i -> entityCreator.createLabware("STAN-"+i, lt, sample).getFirstSlot())
+                .toArray(Slot[]::new);
+        int[] slotIds = Arrays.stream(slots).mapToInt(Slot::getId).toArray();
+        int sampleId = sample.getId();
+        OperationComment oc1 = opCommentRepo.save(new OperationComment(null, com1, fryOp, sampleId, slotIds[0], null));
+        OperationComment oc2 = opCommentRepo.save(new OperationComment(null, com2, fryOp, sampleId, slotIds[0], null));
+        OperationComment oc3 = opCommentRepo.save(new OperationComment(null, com1, fryOp, sampleId, slotIds[1], null));
+        OperationComment oc4 = opCommentRepo.save(new OperationComment(null, com1, bakeOp, sampleId, slotIds[0], null));
+
+        assertThat(opCommentRepo.findAllBySlotAndOpType(List.of(slotIds[0]), frying)).containsExactlyInAnyOrder(oc1, oc2);
+        assertThat(opCommentRepo.findAllBySlotAndOpType(List.of(slotIds[0], slotIds[1]), frying)).containsExactlyInAnyOrder(oc1, oc2, oc3);
+        assertThat(opCommentRepo.findAllBySlotAndOpType(List.of(slotIds[0]), baking)).containsExactly(oc4);
     }
 
 }
