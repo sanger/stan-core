@@ -20,8 +20,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Clock;
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.*;
 
+import static java.util.stream.Collectors.toList;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
@@ -48,8 +50,11 @@ public class FileStoreServiceImp implements FileStoreService {
     }
 
     @Override
-    public StanFile save(User user, MultipartFile fileData, String workNumber) {
-        Work work = workRepo.getByWorkNumber(workNumber);
+    public Iterable<StanFile> save(User user, MultipartFile fileData, List<String> workNumbers) {
+        if (nullOrEmpty(workNumbers)) {
+            throw new IllegalArgumentException("No work numbers specified.");
+        }
+        Set<Work> works = workRepo.getSetByWorkNumberIn(workNumbers);
 
         String filename = getFilename(fileData);
         if (filename.length() > StanFile.MAX_NAME_LENGTH) {
@@ -88,13 +93,18 @@ public class FileStoreServiceImp implements FileStoreService {
             }
 
             return transactor.transact("updateStanFiles",
-                    () -> updateStanFiles(user, filename, work, now, pathString));
+                    () -> updateStanFiles(user, filename, works, now, pathString));
         }
     }
 
-    private StanFile updateStanFiles(User user, String originalName, Work work, LocalDateTime now, String storedPath) {
-        deprecateOldFiles(originalName, work.getId(), now);
-        return fileRepo.save(new StanFile(work, user, originalName, storedPath));
+    private Iterable<StanFile> updateStanFiles(User user, String originalName, Collection<Work> works,
+                                               LocalDateTime now, String storedPath) {
+        List<Integer> workIds = works.stream().map(Work::getId).collect(toList());
+        deprecateOldFiles(originalName, workIds, now);
+        List<StanFile> newStanFiles = works.stream()
+                .map(work -> new StanFile(work, user, originalName, storedPath))
+                .collect(toList());
+        return fileRepo.saveAll(newStanFiles);
     }
 
     private String getFilename(MultipartFile file) {
@@ -126,8 +136,8 @@ public class FileStoreServiceImp implements FileStoreService {
         return fileRepo.getById(id);
     }
 
-    public void deprecateOldFiles(String name, Integer workId, LocalDateTime timestamp) {
-        List<StanFile> oldFiles = fileRepo.findAllActiveByWorkIdAndName(workId, name);
+    public void deprecateOldFiles(String name, Collection<Integer> workIds, LocalDateTime timestamp) {
+        List<StanFile> oldFiles = fileRepo.findAllActiveByWorkIdAndName(workIds, name);
         if (oldFiles.isEmpty()) {
             return;
         }

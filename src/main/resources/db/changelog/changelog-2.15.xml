@@ -33,7 +33,7 @@
         <createIndex tableName="stan_file" indexName="ix_stan_file_name" unique="false">
             <column name="name"/>
         </createIndex>
-        <createIndex tableName="stan_file" indexName="uk_stan_file_path" unique="true">
+        <createIndex tableName="stan_file" indexName="ix_stan_file_path" unique="false">
             <column name="path"/>
         </createIndex>
         <rollback>

@@ -10,15 +10,15 @@ import java.util.List;
 /** Service for helping to deal with stored files. */
 public interface FileStoreService {
     /**
-     * Saves a file, creating a new entry in the files table (with an internal transaction).
+     * Saves a file, creating one or more new entries in the files table (with an internal transaction).
      * @param user user uploading the file
      * @param multipartFile the file data
-     * @param workNumber the work number to save the file in association with
-     * @return a new stanfile from the database
+     * @param workNumbers the work numbers to save the file in association with
+     * @return one or more new stanfiles from the database
      * @exception java.io.UncheckedIOException if saving the file causes an IOException
      * @exception javax.persistence.EntityNotFoundException if referenced entities do not exist
      */
-    StanFile save(User user, MultipartFile multipartFile, String workNumber);
+    Iterable<StanFile> save(User user, MultipartFile multipartFile, List<String> workNumbers);
 
     /**
      * Loads the data for the given stan file

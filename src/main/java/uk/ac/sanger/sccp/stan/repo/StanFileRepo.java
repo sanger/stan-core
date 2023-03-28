@@ -5,6 +5,7 @@ import org.springframework.data.repository.CrudRepository;
 import uk.ac.sanger.sccp.stan.model.StanFile;
 
 import javax.persistence.EntityNotFoundException;
+import java.util.Collection;
 import java.util.List;
 
 /** Repo for {@link StanFile} */
@@ -14,8 +15,8 @@ public interface StanFileRepo extends CrudRepository<StanFile, Integer> {
     List<StanFile> findAllActiveByWorkId(Integer workId);
 
     /** Finds all active stan files with the given name, associated with the given work id. */
-    @Query("select f from StanFile f where f.work.id=?1 and f.name=?2 and f.deprecated is null")
-    List<StanFile> findAllActiveByWorkIdAndName(Integer workId, String name);
+    @Query("select f from StanFile f where f.work.id in (?1) and f.name=?2 and f.deprecated is null")
+    List<StanFile> findAllActiveByWorkIdAndName(Collection<Integer> workIds, String name);
 
     /** Does a file exist with the given path? */
     boolean existsByPath(String path);

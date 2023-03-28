@@ -14,11 +14,15 @@ import uk.ac.sanger.sccp.stan.repo.WorkRepo;
 import java.io.*;
 import java.nio.file.*;
 import java.time.*;
-import java.util.List;
+import java.util.*;
+import java.util.stream.IntStream;
 
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.utils.BasicUtils.asCollection;
 
 /**
  * Test {@link FileStoreServiceImp}
@@ -64,25 +68,31 @@ public class TestFileStoreService {
         LocalDateTime time = LocalDateTime.now(clock);
         when(data.getOriginalFilename()).thenReturn(name);
 
-        when(mockFileRepo.save(any())).then(invocation -> {
-            StanFile sf = invocation.getArgument(0);
-            sf.setId(300);
-            sf.setCreated(time);
-            return sf;
+        when(mockFileRepo.saveAll(any())).then(invocation -> {
+            Collection<StanFile> sfs = invocation.getArgument(0);
+            int id = 300;
+            for (StanFile sf : sfs) {
+                sf.setId(id);
+                sf.setCreated(time);
+                ++id;
+            }
+            return sfs;
         });
-        when(mockWorkRepo.getByWorkNumber(work.getWorkNumber())).thenReturn(work);
+        when(mockWorkRepo.getSetByWorkNumberIn(List.of(work.getWorkNumber()))).thenReturn(Set.of(work));
         User user = EntityFactory.getUser();
         Matchers.mockTransactor(mockTransactor);
 
         if (expectedName==null) {
-            assertThrows(IllegalArgumentException.class, () -> service.save(user, data, work.getWorkNumber()));
+            assertThrows(IllegalArgumentException.class, () -> service.save(user, data, List.of(work.getWorkNumber())));
             verify(data, never()).transferTo(any(Path.class));
             verifyNoInteractions(mockTransactor);
             verifyNoInteractions(mockFileRepo);
             return;
         }
 
-        StanFile sf = service.save(user, data, work.getWorkNumber());
+        var sfs = asCollection(service.save(user, data, List.of(work.getWorkNumber())));
+        assertThat(sfs).hasSize(1);
+        var sf = sfs.iterator().next();
         String expectedPath = "path-to-folder/"+time+"_"+expectedPathFragment;
         assertEquals(expectedPath, sf.getPath());
         assertEquals(expectedName, sf.getName());
@@ -90,8 +100,56 @@ public class TestFileStoreService {
         assertEquals(user, sf.getUser());
 
         verify(data).transferTo(Paths.get("/ROOT/"+expectedPath));
-        verify(service).deprecateOldFiles(expectedName, work.getId(), time);
-        verify(mockFileRepo).save(any());
+        verify(service).deprecateOldFiles(expectedName, List.of(work.getId()), time);
+        verify(mockFileRepo).saveAll(any());
+        verify(mockTransactor).transact(eq("updateStanFiles"), notNull());
+    }
+
+    @Test
+    public void testSaveToMultipleWorks() throws IOException {
+        String originalFilename = "Alpha/ABC @-%.txt";
+        String originalBasename = "ABC @-%.txt";
+        String expectedPathFragment = "ABC-txt";
+        List<Integer> workIds = IntStream.range(500, 503).boxed().collect(toList());
+        Set<Work> works = workIds.stream()
+                .map(i -> new Work(i, "SGP"+i, null, null, null, null, null, Work.Status.active))
+                .collect(toSet());
+        MultipartFile data = mock(MultipartFile.class);
+        LocalDateTime time = LocalDateTime.now(clock);
+        when(data.getOriginalFilename()).thenReturn(originalFilename);
+        final int[] newFileId = {300};
+
+        when(mockFileRepo.saveAll(any())).then(invocation -> {
+            Collection<StanFile> sfs = invocation.getArgument(0);
+            for (StanFile sf : sfs) {
+                sf.setId(newFileId[0]);
+                sf.setCreated(time);
+                ++newFileId[0];
+            }
+            return sfs;
+        });
+        List<String> workNumbers = works.stream().map(Work::getWorkNumber).collect(toList());
+        when(mockWorkRepo.getSetByWorkNumberIn(Matchers.sameElements(workNumbers))).thenReturn(works);
+        User user = EntityFactory.getUser();
+        Matchers.mockTransactor(mockTransactor);
+
+        var sfs = asCollection(service.save(user, data, workNumbers));
+        assertThat(sfs).hasSize(works.size());
+        String expectedPath = "path-to-folder/" + time + "_" + expectedPathFragment;
+        int index = 0;
+        for (var sf : sfs) {
+            assertEquals(expectedPath, sf.getPath());
+            assertEquals(originalBasename, sf.getName());
+            assertEquals(300+index, sf.getId());
+            assertEquals(user, sf.getUser());
+            assertThat(works).contains(sf.getWork());
+            assertEquals(sf.getWork().getId(), 500+index);
+            ++index;
+        }
+
+        verify(data).transferTo(Paths.get("/ROOT/"+expectedPath));
+        verify(service).deprecateOldFiles(eq(originalBasename), Matchers.sameElements(workIds), eq(time));
+        verify(mockFileRepo).saveAll(any());
         verify(mockTransactor).transact(eq("updateStanFiles"), notNull());
     }
 
@@ -103,12 +161,12 @@ public class TestFileStoreService {
         Work work = new Work(500, "SGP500", null, null, null, null, null, Work.Status.active);
 
         when(data.getOriginalFilename()).thenReturn(name);
-        when(mockWorkRepo.getByWorkNumber(work.getWorkNumber())).thenReturn(work);
+        when(mockWorkRepo.getSetByWorkNumberIn(List.of(work.getWorkNumber()))).thenReturn(Set.of(work));
         User user = EntityFactory.getUser();
         final LocalDateTime time = LocalDateTime.now(clock);
         when(mockFileRepo.existsByPath("path-to-folder/"+time+"_FILENAMEtxt")).thenReturn(true);
 
-        assertThrows(IllegalArgumentException.class, () -> service.save(user, data, work.getWorkNumber()));
+        assertThrows(IllegalArgumentException.class, () -> service.save(user, data, List.of(work.getWorkNumber())));
         verify(data, never()).transferTo(any(Path.class));
         verify(mockWorkRepo, never()).save(any());
         verify(mockTransactor, never()).transact(any(), any());
@@ -128,7 +186,7 @@ public class TestFileStoreService {
 
         final LocalDateTime time = LocalDateTime.now(clock);
 
-        assertThrows(UncheckedIOException.class, () -> service.save(user, data, work.getWorkNumber()));
+        assertThrows(UncheckedIOException.class, () -> service.save(user, data, List.of(work.getWorkNumber())));
         final String expectedPath = "path-to-folder/"+time+"_FILENAMEtxt";
         verify(data).transferTo(Paths.get("/ROOT/"+expectedPath));
         verify(mockFileRepo, never()).save(any());
@@ -176,7 +234,7 @@ public class TestFileStoreService {
     @Test
     public void testDeprecateOldFiles_none() {
         when(mockFileRepo.findAllActiveByWorkIdAndName(any(), any())).thenReturn(List.of());
-        service.deprecateOldFiles("name", 24, LocalDateTime.now());
+        service.deprecateOldFiles("name", List.of(24), LocalDateTime.now());
         verify(mockFileRepo, never()).save(any());
         verify(mockFileRepo, never()).saveAll(any());
     }
@@ -190,10 +248,10 @@ public class TestFileStoreService {
         );
         sfs.forEach(sf -> assertNull(sf.getDeprecated()));
         sfs.forEach(sf -> assertTrue(sf.isActive()));
-
-        when(mockFileRepo.findAllActiveByWorkIdAndName(24, "name")).thenReturn(sfs);
+        List<Integer> workIds = List.of(24,25);
+        when(mockFileRepo.findAllActiveByWorkIdAndName(workIds, "name")).thenReturn(sfs);
         final LocalDateTime time = LocalDateTime.now();
-        service.deprecateOldFiles("name", 24, time);
+        service.deprecateOldFiles("name", workIds, time);
         verify(mockFileRepo).saveAll(sfs);
         sfs.forEach(sf -> assertEquals(time, sf.getDeprecated()));
         sfs.forEach(sf -> assertFalse(sf.isActive()));
