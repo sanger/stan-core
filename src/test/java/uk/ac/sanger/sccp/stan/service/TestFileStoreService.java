@@ -263,9 +263,12 @@ public class TestFileStoreService {
                 new StanFile(10, null, null, null, null, null, null),
                 new StanFile(11, null, null, null, null, null, null)
         );
-        Work work = new Work(500, "SGP500", null, null, null, null, null, Work.Status.active);
-        when(mockWorkRepo.getByWorkNumber(work.getWorkNumber())).thenReturn(work);
-        when(mockFileRepo.findAllActiveByWorkId(work.getId())).thenReturn(sfs);
-        assertEquals(sfs, service.list(work.getWorkNumber()));
+        Work work1 = new Work(501, "SGP501", null, null, null, null, null, Work.Status.active);
+        Work work2 = new Work(502, "SGP502", null, null, null, null, null, Work.Status.active);
+        List<Integer> workIds = List.of(501, 502);
+        List<String> workNumbers = List.of("SGP501", "SGP502");
+        when(mockWorkRepo.getSetByWorkNumberIn(workNumbers)).thenReturn(Set.of(work1, work2));
+        when(mockFileRepo.findAllActiveByWorkIdIn(Matchers.sameElements(workIds))).thenReturn(sfs);
+        assertEquals(sfs, service.list(workNumbers));
     }
 }

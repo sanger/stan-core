@@ -11,8 +11,8 @@ import java.util.List;
 /** Repo for {@link StanFile} */
 public interface StanFileRepo extends CrudRepository<StanFile, Integer> {
     /** Finds all active stan files associated with the given work id. */
-    @Query("select f from StanFile f where f.work.id=?1 and f.deprecated is null")
-    List<StanFile> findAllActiveByWorkId(Integer workId);
+    @Query("select f from StanFile f where f.work.id in (?1) and f.deprecated is null")
+    List<StanFile> findAllActiveByWorkIdIn(Collection<Integer> workIds);
 
     /** Finds all active stan files with the given name, associated with the given work id. */
     @Query("select f from StanFile f where f.work.id in (?1) and f.name=?2 and f.deprecated is null")

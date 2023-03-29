@@ -148,8 +148,12 @@ public class FileStoreServiceImp implements FileStoreService {
     }
 
     @Override
-    public List<StanFile> list(String workNumber) {
-        Work work = workRepo.getByWorkNumber(workNumber);
-        return fileRepo.findAllActiveByWorkId(work.getId());
+    public List<StanFile> list(Collection<String> workNumbers) {
+        if (workNumbers.isEmpty()) {
+            return List.of();
+        }
+        Set<Work> works = workRepo.getSetByWorkNumberIn(workNumbers);
+        List<Integer> workIds = works.stream().map(Work::getId).collect(toList());
+        return fileRepo.findAllActiveByWorkIdIn(workIds);
     }
 }

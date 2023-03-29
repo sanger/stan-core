@@ -112,7 +112,7 @@ public class TestFileStore {
     }
 
     private List<Map<String, ?>> listFiles(String workNumber) throws Exception {
-        String query = tester.readGraphQL("listfiles.graphql").replace("SGP1", workNumber);
+        String query = tester.readGraphQL("listfiles.graphql").replace("[]", "[\""+workNumber+"\"]");
         Object result = tester.post(query);
         return chainGet(result, "data", "listFiles");
     }

@@ -5,6 +5,7 @@ import org.springframework.web.multipart.MultipartFile;
 import uk.ac.sanger.sccp.stan.model.StanFile;
 import uk.ac.sanger.sccp.stan.model.User;
 
+import java.util.Collection;
 import java.util.List;
 
 /** Service for helping to deal with stored files. */
@@ -38,10 +39,10 @@ public interface FileStoreService {
     StanFile lookUp(Integer id);
 
     /**
-     * Lists the active files linked to a particular work.
-     * @param workNumber the work number of an existing work
-     * @return the stan file objects associated with the given work number
-     * @exception javax.persistence.EntityNotFoundException if the indicated work cannot be found
+     * Lists the active files linked to particular works.
+     * @param workNumbers the work numbers of existing works
+     * @return the stan file objects associated with the given work numbers
+     * @exception javax.persistence.EntityNotFoundException if any of the indicated work cannot be found
      */
-    List<StanFile> list(String workNumber);
+    List<StanFile> list(Collection<String> workNumbers);
 }
