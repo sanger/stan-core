@@ -1111,6 +1111,14 @@ input UnreleaseRequest {
     labware: [UnreleaseLabware!]!
 }
 
+"""A request to record a comment against a particular sample."""
+input SampleIdCommentId {
+    """The id of the sample to comment upon."""
+    sampleId: Int!
+    """The id of the comment to record."""
+    commentId: Int!
+}
+
 """Specification of a result being recording."""
 input SampleResult {
     """The slot address that the result refers to."""
@@ -1119,6 +1127,8 @@ input SampleResult {
     result: PassFail!
     """The id of a comment, if any, linked to the result."""
     commentId: Int
+    """List of comments to be recorded against particular samples."""
+    sampleComments: [SampleIdCommentId!]
 }
 
 """Specification of results being recorded in an item of labware."""

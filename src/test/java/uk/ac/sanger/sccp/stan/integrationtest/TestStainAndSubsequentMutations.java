@@ -90,7 +90,8 @@ public class TestStainAndSubsequentMutations {
         assertEquals("Stain", timeEntry.get("type"));
         Assertions.assertEquals(GraphQLCustomTypes.TIMESTAMP.getCoercing().serialize(op.getPerformed()), timeEntry.get("timestamp"));
         String resultGraphql = tester.readGraphQL("stainresult.graphql")
-                .replace("SGP500", work.getWorkNumber());
+                .replace("SGP500", work.getWorkNumber())
+                .replace("999", sam.getId().toString());
         data = tester.post(resultGraphql);
 
         opData = chainGet(data, "data", "recordStainResult", "operations", 0);
@@ -101,10 +102,14 @@ public class TestStainAndSubsequentMutations {
         assertThat(results).hasSize(1);
         ResultOp result = results.get(0);
         var opComs = opCommentRepo.findAllByOperationIdIn(List.of(resultOpId));
-        assertThat(opComs).hasSize(1);
+        assertThat(opComs).hasSize(2);
         OperationComment opCom = opComs.get(0);
         assertEquals(opCom.getComment().getId(), 1);
-        assertEquals(opCom.getSlotId(), lw.getSlots().get(0).getId());
+        assertEquals(opCom.getSlotId(), lw.getFirstSlot().getId());
+        opCom = opComs.get(1);
+        assertEquals(opCom.getComment().getId(), 2);
+        assertEquals(opCom.getSampleId(), sam.getId());
+        assertEquals(opCom.getSlotId(), lw.getFirstSlot().getId());
         assertEquals(PassFail.pass, result.getResult());
         assertEquals(resultOpId, result.getOperationId());
         assertEquals(sam.getId(), result.getSampleId());

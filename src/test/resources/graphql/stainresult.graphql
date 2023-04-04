@@ -9,6 +9,7 @@ mutation {
                         address: "A1"
                         result: pass
                         commentId: 1
+                        sampleComments: [{ sampleId: 999, commentId: 2 }]
                     }
                 ]
                 slotMeasurements: [

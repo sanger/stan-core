@@ -361,6 +361,16 @@ public class BasicUtils {
         return newArrayList(iterable);
     }
 
+    /**
+     * Returns a list containing the concatenated contents of two given lists.
+     * If one argument is null, the other is returned.
+     * Otherwise, if either list is empty, the other is returned. Otherwise, the lists are
+     * concatenated into a new list, which is returned.
+     * @param a a list or null
+     * @param b a list or null
+     * @return a list containing the elements of the two lists, or null if both are null
+     * @param <E> the type of element in the lists
+     */
     public static <E> List<E> concat(List<E> a, List<E> b) {
         if (a==null) return b;
         if (b==null) return a;

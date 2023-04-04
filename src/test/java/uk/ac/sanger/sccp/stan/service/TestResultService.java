@@ -140,6 +140,7 @@ public class TestResultService {
         }
         Map<Integer, Comment> commentMap = Map.of(17, new Comment());
         doReturn(commentMap).when(service).validateComments(any(), any());
+        doNothing().when(service).validateSampleIdsInSampleComments(any(), any(), any());
 
         final ResultRequest request = new ResultRequest();
         request.setWorkNumber(work.getWorkNumber());
@@ -174,9 +175,36 @@ public class TestResultService {
         verify(service).validateLabwareContents(anyCollection(), eq(lwMap), eq(lrs));
         verify(service).validateLotNumbers(anyCollection(), same(lrs));
         verify(service).validateComments(anyCollection(), eq(lrs));
+        verify(service).validateSampleIdsInSampleComments(anyCollection(), same(lwMap), same(lrs));
         verify(service).validateMeasurements(anyCollection(), eq(lwMap), same(lrs));
         verify(mockWorkService).validateUsableWork(anyCollection(), eq(request.getWorkNumber()));
         verify(service).lookUpPrecedingOps(anyCollection(), eq(setupOpType), eq(lwMap.values()), eq(true), eq(true));
+    }
+
+    @Test
+    public void testValidateSampleIdsInSampleComments() {
+        LabwareType lt = EntityFactory.makeLabwareType(1,3);
+        Sample sam1 = EntityFactory.getSample();
+        Sample sam2 = new Sample(sam1.getId()+1, null, sam1.getTissue(), sam1.getBioState());
+        Integer sam3id = sam2.getId()+1;
+        Labware lw1 = EntityFactory.makeEmptyLabware(lt);
+        final Address A1 = new Address(1,1);
+        final Address A2 = new Address(1,2);
+        lw1.getFirstSlot().setSamples(List.of(sam1, sam2));
+        lw1.getSlot(A2).addSample(sam1);
+        UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lw1);
+        final List<String> problems = new ArrayList<>(1);
+        service.validateSampleIdsInSampleComments(problems, lwMap, List.of(
+                new LabwareResult(lw1.getBarcode(), List.of(
+                        new SampleResult(A1, null, null, List.of(
+                                new SampleIdCommentId(sam1.getId(), 1),
+                                new SampleIdCommentId(sam2.getId(), 2))),
+                        new SampleResult(A2, null, null, List.of(
+                                new SampleIdCommentId(sam2.getId(), 3),
+                                new SampleIdCommentId(sam3id, 4)))),
+                        null, null, null)));
+        assertThat(problems).containsExactly(String.format("Comments specified for samples [%s, %s] " +
+                "that are not present in slot A2 of labware %s.", sam2.getId(), sam3id, lw1.getBarcode()));
     }
 
     @ParameterizedTest
@@ -503,23 +531,26 @@ public class TestResultService {
             problems.add("Received comment IDs: " + commentIds.collect(toList()));
             return commentList;
         });
-        List<SampleResult> srs = Stream.of(10, 11, null, 12, 13)
+        List<SampleResult> srs = Stream.of(10, 11, null, 12, 13, null)
                 .map(i -> {
                     SampleResult sr = new SampleResult();
                     sr.setCommentId(i);
                     return sr;
                 }).collect(toList());
+        srs.get(5).setSampleComments(List.of(
+                    new SampleIdCommentId(1, 14), new SampleIdCommentId(1, 15)
+        ));
         List<LabwareResult> lrs = List.of(
                 new LabwareResult("STAN-01"),
                 new LabwareResult("STAN-02", srs.subList(0, 3), null, null, null),
-                new LabwareResult("STAN-03", srs.subList(3, 5), null, null, null)
+                new LabwareResult("STAN-03", srs.subList(3, 6), null, null, null)
         );
 
         final List<String> problems = new ArrayList<>();
 
         assertThat(service.validateComments(problems, lrs)).containsExactlyInAnyOrderEntriesOf(Map.of(17, commentList.get(0), 18, commentList.get(1)));
         verify(mockCommentValidationService).validateCommentIds(eq(problems), any());
-        assertThat(problems).containsExactly("Received comment IDs: [10, 11, 12, 13]");
+        assertThat(problems).containsExactly("Received comment IDs: [10, 11, 12, 13, 14, 15]");
     }
 
     @ParameterizedTest
@@ -664,6 +695,10 @@ public class TestResultService {
                 new SampleResult(A1, PassFail.pass, null),
                 new SampleResult(A2, PassFail.fail, 17)
         );
+        srs1.get(0).setSampleComments(List.of(
+                new SampleIdCommentId(sam1id, 17),
+                new SampleIdCommentId(sam1id, 18)
+        ));
 
         LabwareResult lr1 = new LabwareResult(lw1.getBarcode(), srs1,  null, SlideCosting.SGP, null);
 
@@ -703,11 +738,13 @@ public class TestResultService {
         verify(mockOpService).createOperationInPlace(resultOpType, user, lw1, null, null);
         verify(mockOpService).createOperationInPlace(resultOpType, user, lw2, null, null);
 
-        verify(mockOpCommentRepo).saveAll(List.of(
+        verify(mockOpCommentRepo).saveAll(Matchers.sameElements(List.of(
+                new OperationComment(null, com1, op1.getId(), sam1id, lw1.getSlot(A1).getId(), null),
+                new OperationComment(null, com2, op1.getId(), sam1id, lw1.getSlot(A1).getId(), null),
                 new OperationComment(null, com1, op1.getId(), sam2id, lw1.getSlot(A2).getId(), null),
                 new OperationComment(null, com2, op2.getId(), sam1id, lw2.getSlot(A1).getId(), null),
                 new OperationComment(null, com2, op2.getId(), sam2id, lw2.getSlot(A1).getId(), null)
-        ));
+        )));
         verify(mockResOpRepo).saveAll(List.of(
                 new ResultOp(null, PassFail.pass, op1.getId(), sam1id, lw1.getSlot(A1).getId(), stainId1),
                 new ResultOp(null, PassFail.fail, op1.getId(), sam2id, lw1.getSlot(A2).getId(), stainId1),
