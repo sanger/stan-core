@@ -182,9 +182,10 @@ public interface WorkService {
      * Gets the suggested works for the indicated labware.
      * For each barcode, gives the latest (if any) active work that the labware was used in.
      * @param barcodes barcodes of labware
+     * @param includeInactive true to include inactive work numbers in the results
      * @return the suggested works
      */
-    SuggestedWorkResponse suggestWorkForLabwareBarcodes(Collection<String> barcodes);
+    SuggestedWorkResponse suggestWorkForLabwareBarcodes(Collection<String> barcodes, boolean includeInactive);
 
     /**
      * Gets the labware last associated with the specified work.

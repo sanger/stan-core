@@ -261,7 +261,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     public DataFetcher<SuggestedWorkResponse> getSuggestedWorkForLabwareBarcodes() {
         return dfe -> {
             List<String> barcodes = dfe.getArgument("barcodes");
-            return workService.suggestWorkForLabwareBarcodes(barcodes);
+            boolean includeInactive = argOrFalse(dfe, "includeInactive");
+            return workService.suggestWorkForLabwareBarcodes(barcodes, includeInactive);
         };
     }
 

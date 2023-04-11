@@ -370,8 +370,8 @@ public class TestWorkRepo {
 
     @Transactional
     @ParameterizedTest
-    @CsvSource({"false,false", "true,false", "true,true"})
-    public void testFindLatestActiveWorkIdForLabwareId(boolean exists, boolean latestIsActive) {
+    @CsvSource({"false,false,false", "true,false,false", "true,true,false", "true,false,true", "true,true,true"})
+    public void testFindLatestActiveWorkIdForLabwareId(boolean exists, boolean latestIsActive, boolean includeInactive) {
         Sample sample = entityCreator.createSample(null, null);
         Labware lw = entityCreator.createLabware("STAN-A1", entityCreator.getTubeType(), sample);
         Work work1 = entityCreator.createWork(null, null, null, null, null);
@@ -391,7 +391,9 @@ public class TestWorkRepo {
         }
         workRepo.saveAll(List.of(work1, work2, work3));
 
-        assertEquals(exists && latestIsActive ? work3.getId() : null, workRepo.findLatestActiveWorkIdForLabwareId(lw.getId()));
+        final Integer workId = includeInactive ? workRepo.findLatestWorkIdForLabwareId(lw.getId())
+                : workRepo.findLatestActiveWorkIdForLabwareId(lw.getId());
+        assertEquals(exists && (latestIsActive || includeInactive) ? work3.getId() : null, workId);
     }
 
     private Operation saveOp(Labware lw, LocalDateTime performed) {

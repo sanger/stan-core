@@ -15,6 +15,7 @@ import uk.ac.sanger.sccp.utils.UCMap;
 
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
+import java.util.function.Function;
 
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
@@ -406,12 +407,14 @@ public class WorkServiceImp implements WorkService {
     }
 
     @Override
-    public SuggestedWorkResponse suggestWorkForLabwareBarcodes(Collection<String> barcodes) {
+    public SuggestedWorkResponse suggestWorkForLabwareBarcodes(Collection<String> barcodes, boolean includeInactive) {
         Set<Labware> labware = new HashSet<>(lwRepo.getByBarcodeIn(barcodes));
         Map<String, Integer> barcodeWorkIds = new HashMap<>(labware.size());
         Set<Integer> workIds = new HashSet<>();
+        Function<Integer, Integer> workIdFn = (includeInactive ? workRepo::findLatestWorkIdForLabwareId
+                : workRepo::findLatestActiveWorkIdForLabwareId);
         for (Labware lw : labware) {
-            Integer workId = workRepo.findLatestActiveWorkIdForLabwareId(lw.getId());
+            Integer workId = workIdFn.apply(lw.getId());
             barcodeWorkIds.put(lw.getBarcode(), workId);
             if (workId!=null) {
                 workIds.add(workId);

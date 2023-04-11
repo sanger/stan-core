@@ -18,6 +18,7 @@ import uk.ac.sanger.sccp.utils.UCMap;
 
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -872,12 +873,13 @@ public class TestWorkService {
     public void testSuggestWorkForLabwareBarcodes_unknown() {
         List<String> barcodes = List.of("STAN-404");
         when(mockLwRepo.getByBarcodeIn(barcodes)).thenThrow(EntityNotFoundException.class);
-        assertThrows(EntityNotFoundException.class, () -> workService.suggestWorkForLabwareBarcodes(barcodes));
+        assertThrows(EntityNotFoundException.class, () -> workService.suggestWorkForLabwareBarcodes(barcodes, false));
         verifyNoInteractions(mockWorkRepo);
     }
 
-    @Test
-    public void testSuggestWorkForLabwareBarcodes() {
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testSuggestWorkForLabwareBarcodes(boolean includeInactive) {
         Sample sample = EntityFactory.getSample();
         LabwareType lt = EntityFactory.getTubeType();
         Labware[] labwares = IntStream.rangeClosed(1,4)
@@ -900,13 +902,16 @@ public class TestWorkService {
                     return work;
                 }).collect(toList());
 
-        when(mockWorkRepo.findLatestActiveWorkIdForLabwareId(labwares[0].getId())).thenReturn(1);
-        when(mockWorkRepo.findLatestActiveWorkIdForLabwareId(labwares[1].getId())).thenReturn(null);
-        when(mockWorkRepo.findLatestActiveWorkIdForLabwareId(labwares[2].getId())).thenReturn(1);
-        when(mockWorkRepo.findLatestActiveWorkIdForLabwareId(labwares[3].getId())).thenReturn(2);
+        Function<Integer, Integer> workRepoFn = (includeInactive ? mockWorkRepo::findLatestWorkIdForLabwareId
+                : mockWorkRepo::findLatestActiveWorkIdForLabwareId);
+
+        when(workRepoFn.apply(labwares[0].getId())).thenReturn(1);
+        when(workRepoFn.apply(labwares[1].getId())).thenReturn(null);
+        when(workRepoFn.apply(labwares[2].getId())).thenReturn(1);
+        when(workRepoFn.apply(labwares[3].getId())).thenReturn(2);
         when(mockWorkRepo.findAllById(Set.of(1,2))).thenReturn(works);
 
-        SuggestedWorkResponse response = workService.suggestWorkForLabwareBarcodes(barcodes);
+        SuggestedWorkResponse response = workService.suggestWorkForLabwareBarcodes(barcodes, includeInactive);
         assertThat(response.getSuggestedWorks()).containsExactlyInAnyOrder(
                 new SuggestedWork("STAN-1", "SGP1"),
                 new SuggestedWork("STAN-2", null),

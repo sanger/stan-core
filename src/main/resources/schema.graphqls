@@ -1632,8 +1632,8 @@ type Query {
     nextReplicateNumbers(barcodes: [String!]!): [NextReplicateData!]!
     """Get operations into a given labware barcode of a given operation type."""
     labwareOperations(barcode: String!, operationType: String!): [Operation]
-    """Get suggested work (if any) for labware."""
-    suggestedWorkForLabware(barcodes: [String!]!): SuggestedWorkResponse!
+    """Get suggested work (if any) for labware. By default, only returns active work."""
+    suggestedWorkForLabware(barcodes: [String!]!, includeInactive: Boolean): SuggestedWorkResponse!
     """Get suggested labware for work."""
     suggestedLabwareForWork(workNumber: String!): [Labware!]!
 

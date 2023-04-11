@@ -1,6 +1,7 @@
 package uk.ac.sanger.sccp.stan.integrationtest;
 
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -39,8 +40,9 @@ public class TestSuggestedWorkForLabwareQuery {
     private EntityCreator entityCreator;
 
     @Transactional
-    @Test
-    public void testSuggestedWork() throws Exception {
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testSuggestedWork(boolean includeInactive) throws Exception {
         Sample sample = entityCreator.createSample(null, null);
         Labware lw = entityCreator.createLabware("STAN-A1", entityCreator.getTubeType(), sample);
         entityCreator.createLabware("STAN-A2", entityCreator.getTubeType(), sample);
@@ -53,6 +55,9 @@ public class TestSuggestedWorkForLabwareQuery {
         workRepo.save(work);
         actionRepo.save(ac);
         String query = tester.readGraphQL("suggestedwork.graphql");
+        if (!includeInactive) {
+            query = query.replace(", includeInactive: true", "");
+        }
         Object response = tester.post(query);
         Map<String, List<Map<String, String>>> swfl = chainGet(response, "data", "suggestedWorkForLabware");
         assertThat(swfl.get("suggestedWorks")).containsExactlyInAnyOrder(

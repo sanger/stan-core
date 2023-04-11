@@ -116,6 +116,21 @@ public interface WorkRepo extends CrudRepository<Work, Integer> {
             " WHERE work.status='active'", nativeQuery = true)
     Integer findLatestActiveWorkIdForLabwareId(Integer labwareId);
 
+    @Query(value = "SELECT MAX(work.id)" +
+            " FROM (" +
+            "   SELECT op.id" +
+            "   FROM operation op" +
+            "     JOIN action a ON (a.operation_id=op.id)" +
+            "     JOIN slot ON (a.dest_slot_id=slot.id)" +
+            "     JOIN work_op wo ON (wo.operation_id=op.id)" +
+            "   WHERE slot.labware_id=?1" +
+            "   ORDER BY op.performed DESC, op.id DESC" +
+            "   LIMIT 1" +
+            " ) AS latest_op" +
+            "   JOIN work_op wo ON (wo.operation_id=latest_op.id)" +
+            "   JOIN work ON (wo.work_id=work.id)", nativeQuery = true)
+    Integer findLatestWorkIdForLabwareId(Integer labwareId);
+
     /**
      * Gets set of work numbers based on sample and slot id
      * @param sampleId id of sample to search
