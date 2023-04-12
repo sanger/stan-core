@@ -453,7 +453,7 @@ public class TestResultService {
                 {new SampleResult(A2, PassFail.pass, null), emptySlot, null,
                         "Slot is empty."},
                 {new SampleResult(A1, PassFail.fail, null), slot, null,
-                        "Missing comment ID for a fail result."},
+                        null}, // no longer a problem
                 {new SampleResult(), null, null,
                         List.of("Sample result is missing a result.", "Sample result is missing a slot address.")},
 

@@ -200,7 +200,6 @@ public class ResultServiceImp extends BaseResultService implements ResultService
      * Validates the specified sample result.
      * Possible problems include<ul>
      *     <li>Missing fields in the sample result</li>
-     *     <li>Comment id missing for fail result</li>
      *     <li>Slot already seen in this request</li>
      *     <li>Invalid or empty slot</li>
      * </ul>
@@ -212,8 +211,6 @@ public class ResultServiceImp extends BaseResultService implements ResultService
     public void validateSampleResult(Collection<String> problems, Labware lw, Set<Integer> slotIds, SampleResult sr) {
         if (sr.getResult()==null) {
             problems.add("Sample result is missing a result.");
-        } else if (sr.getResult()==PassFail.fail && sr.getCommentId()==null) {
-            problems.add("Missing comment ID for a fail result.");
         }
         if (sr.getAddress()==null) {
             problems.add("Sample result is missing a slot address.");
