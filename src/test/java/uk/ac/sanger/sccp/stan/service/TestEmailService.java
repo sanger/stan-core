@@ -1,7 +1,6 @@
 package uk.ac.sanger.sccp.stan.service;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -12,6 +11,10 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import uk.ac.sanger.sccp.stan.config.MailConfig;
 
+import java.util.Arrays;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
 
@@ -27,10 +30,17 @@ public class TestEmailService {
 
     EmailService service;
 
+    AutoCloseable mocking;
+
     @BeforeEach
     void setup() {
-        MockitoAnnotations.initMocks(this);
+        mocking = MockitoAnnotations.openMocks(this);
         service = spy(new EmailService(mockMailSender, mockMailConfig));
+    }
+
+    @AfterEach
+    void tearDown() throws Exception {
+        mocking.close();
     }
 
     @ParameterizedTest
@@ -93,18 +103,47 @@ public class TestEmailService {
     }
 
     @ParameterizedTest
+    @CsvSource({
+            ",,",
+            "rcc,,rcc@sanger.ac.uk",
+            "r@x,,r@x",
+            ",a@x b@x,a@x b@x",
+            "rcc,a@x b@x,a@x b@x rcc@sanger.ac.uk",
+            "r@x,a@x b@x,a@x b@x r@x",
+    })
+    public void testReleaseEmailCCs(String releaseCc, String otherCc, String expected) {
+        when(mockMailConfig.getReleaseCC()).thenReturn(releaseCc);
+        List<String> ccList;
+        if (otherCc==null) {
+            ccList = null;
+        } else {
+            ccList = Arrays.asList(otherCc.split("\\s+"));
+        }
+        String[] expectedResult;
+        if (expected==null) {
+            expectedResult = null;
+        } else {
+            expectedResult = expected.split("\\s+");
+        }
+
+        assertArrayEquals(expectedResult, service.releaseEmailCCs(ccList));
+    }
+
+    @ParameterizedTest
     @ValueSource(booleans={false,true})
-    public void tryReleaseEmail(boolean success) {
+    public void testTryReleaseEmail(boolean success) {
         String recipient = "rec@sanger.ac.uk";
-        String cc = "cc@sanger.ac.uk";
         String desc = "Stan test";
+        String[] ccArray = { "a", "b", "c" };
+        List<String> ccList = List.of("a", "b");
         when(mockMailConfig.getServiceDescription()).thenReturn(desc);
-        when(mockMailConfig.getReleaseCC()).thenReturn(cc);
+        doReturn(ccArray).when(service).releaseEmailCCs(any());
         String path = "path_to_file";
         (success ? doNothing() : doThrow(RuntimeException.class)).when(service).send(any(), any(), any(), any());
-        assertEquals(success, service.tryReleaseEmail(recipient, path));
+        assertEquals(success, service.tryReleaseEmail(recipient, ccList, path));
+        verify(service).releaseEmailCCs(ccList);
         verify(service).send(desc+" release",
-                "The details of the release are available at "+path,
-                new String[] { recipient }, new String[] { cc });
+                "Release to rec@sanger.ac.uk.\nThe details of the release are available at "+path,
+                new String[] { recipient }, ccArray);
     }
 }

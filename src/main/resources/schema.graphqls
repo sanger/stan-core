@@ -700,6 +700,8 @@ input ReleaseRequest {
     destination: String!
     """The name of the release recipient."""
     recipient: String!
+    """Additional recipients."""
+    otherRecipients: [String!]
 }
 
 """A request to record an extract operation."""

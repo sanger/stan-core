@@ -11,7 +11,9 @@ import uk.ac.sanger.sccp.stan.model.*;
 import javax.persistence.EntityManager;
 import javax.transaction.Transactional;
 import java.util.List;
+import java.util.stream.IntStream;
 
+import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -50,13 +52,18 @@ public class TestReleaseRepo {
         User user = entityCreator.createUser("user1");
         ReleaseDestination destination = entityCreator.createReleaseDestination("Venus");
         ReleaseRecipient recipient = entityCreator.createReleaseRecipient("Mekon");
+        List<ReleaseRecipient> otherRecs = IntStream.range(0,3)
+                .mapToObj(i -> entityCreator.createReleaseRecipient("rec"+i))
+                .collect(toList());
         LabwareType lwtype = entityCreator.createLabwareType("plate4", 1, 4);
         Labware labware = entityCreator.createLabware("STAN-123", lwtype, sample, sample, sample1);
         Snapshot snap = entityCreator.createSnapshot(labware);
         Release release = new Release(labware, user, destination, recipient, snap.getId());
+        release.setOtherRecipients(otherRecs);
         Release saved = releaseRepo.save(release);
         Integer releaseId = saved.getId();
         assertNotNull(releaseId);
+        entityManager.flush();
 
         entityManager.refresh(saved);
         for (int i = 0; i < 2; ++i) {
@@ -64,7 +71,6 @@ public class TestReleaseRepo {
             if (i==0) {
                 rel = saved;
             } else {
-                entityManager.flush();
                 rel = releaseRepo.findById(saved.getId()).orElseThrow();
             }
             assertNotNull(rel.getId());
@@ -73,6 +79,7 @@ public class TestReleaseRepo {
             assertEquals(destination, rel.getDestination());
             assertEquals(recipient, rel.getRecipient());
             assertEquals(snap.getId(), rel.getSnapshotId());
+            assertThat(rel.getOtherRecipients()).containsExactlyInAnyOrderElementsOf(otherRecs);
         }
     }
 

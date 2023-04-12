@@ -12,7 +12,6 @@ import uk.ac.sanger.sccp.stan.request.ReleaseRequest.ReleaseLabware;
 import uk.ac.sanger.sccp.stan.request.ReleaseResult;
 import uk.ac.sanger.sccp.stan.service.store.StoreService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
-import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import javax.persistence.EntityManager;
@@ -22,6 +21,7 @@ import java.util.function.Predicate;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.*;
 import static uk.ac.sanger.sccp.utils.BasicUtils.newArrayList;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 
 /**
  * @author dr6
@@ -81,24 +81,53 @@ public class ReleaseServiceImp implements ReleaseService {
         UCMap<Work> workMap = loadWork(request.getReleaseLabware());
         validateLabware(labware);
         validateContents(labware);
+        List<ReleaseRecipient> otherRecs = loadOtherRecipients(request.getOtherRecipients());
 
         // Looks valid, so load storage locations before the transaction
         UCMap<BasicLocation> locations = storeService.loadBasicLocationsOfItems(labware.stream().map(Labware::getBarcode).collect(toList()));
 
-        // Perform the discard inside a transaction
-        List<Release> releases = transactRelease(user, recipient, destination, labware, locations, workMap);
+        // Perform the release inside a transaction
+        List<Release> releases = transactRelease(user, recipient, otherRecs, destination, labware, locations, workMap);
 
         // Unstore the labware after the transaction
         storeService.discardStorage(user, barcodes);
 
-        String recipientEmail = recipient.getUsername();
-        if (recipientEmail.indexOf('@') < 0) {
-            recipientEmail += "@sanger.ac.uk";
-        }
+        String recipientEmail = canonicaliseEmail(recipient.getUsername());
 
-        emailService.tryReleaseEmail(recipientEmail, releaseFileLink(releases));
+        List<String> otherEmails = otherRecs.stream()
+                .map(rec -> canonicaliseEmail(rec.getUsername()))
+                .collect(toList());
+
+        emailService.tryReleaseEmail(recipientEmail, otherEmails, releaseFileLink(releases));
 
         return new ReleaseResult(releases);
+    }
+
+    public List<ReleaseRecipient> loadOtherRecipients(Collection<String> usernames) {
+        if (nullOrEmpty(usernames)) {
+            return List.of();
+        }
+        final List<ReleaseRecipient> foundRecs = recipientRepo.getAllByUsernameIn(usernames);
+        Set<ReleaseRecipient> seen = new HashSet<>(foundRecs.size());
+        List<String> disabledRecs = new ArrayList<>();
+        List<ReleaseRecipient> recs = new ArrayList<>(foundRecs.size());
+        for (ReleaseRecipient rec : foundRecs) {
+            if (seen.add(rec)) {
+                if (rec.isEnabled()) {
+                    recs.add(rec);
+                } else {
+                    disabledRecs.add(rec.getUsername());
+                }
+            }
+        }
+        if (!disabledRecs.isEmpty()) {
+            throw new IllegalArgumentException("Other recipients disabled: "+disabledRecs);
+        }
+        return recs;
+    }
+
+    public String canonicaliseEmail(String email) {
+        return (email.indexOf('@') < 0 ? (email + "@sanger.ac.uk") : email);
     }
 
     /**
@@ -116,14 +145,16 @@ public class ReleaseServiceImp implements ReleaseService {
      * This should be called inside a transaction.
      * @param user the user responsible for the release
      * @param recipient the recipient of the release
+     * @param otherRecs other recipients
      * @param destination the destination of the release
      * @param labware the labware that will be released
      * @param locations the locations (if any) of the labware, mapped from the labware barcode
      * @param workMap map of labware barcode to work
      * @return the created releases
      */
-    public List<Release> release(User user, ReleaseRecipient recipient, ReleaseDestination destination,
-                                 Collection<Labware> labware, UCMap<BasicLocation> locations, UCMap<Work> workMap) {
+    public List<Release> release(User user, ReleaseRecipient recipient, List<ReleaseRecipient> otherRecs,
+                                 ReleaseDestination destination, Collection<Labware> labware,
+                                 UCMap<BasicLocation> locations, UCMap<Work> workMap) {
         // Reload the labware inside the transaction
         labware.forEach(entityManager::refresh);
         // Revalidate inside the transaction, in case anything has happened
@@ -132,17 +163,17 @@ public class ReleaseServiceImp implements ReleaseService {
 
         // execution
         labware = updateReleasedLabware(labware);
-        final List<Release> releases = recordReleases(user, destination, recipient, labware, locations);
+        final List<Release> releases = recordReleases(user, destination, recipient, otherRecs, labware, locations);
         link(releases, workMap);
         return releases;
     }
 
     // NB @Transactional annotation does not work for method calls within the same instance
-    public List<Release> transactRelease(User user, ReleaseRecipient recipient,
+    public List<Release> transactRelease(User user, ReleaseRecipient recipient, List<ReleaseRecipient> otherRecs,
                                          ReleaseDestination destination, List<Labware> labware,
                                          UCMap<BasicLocation> locations, UCMap<Work> workMap) {
         return transactor.transact("Release transaction",
-                () -> release(user, recipient, destination, labware, locations, workMap));
+                () -> release(user, recipient, otherRecs, destination, labware, locations, workMap));
     }
 
     /**
@@ -287,13 +318,15 @@ public class ReleaseServiceImp implements ReleaseService {
      * @param user the user responsible for the release
      * @param destination the release destination
      * @param recipient the release recipient
+     * @param otherRecs other recipients
      * @param labware the collection of labware being released
      * @return a list of newly recorded releases for the indicated labware
      */
-    public List<Release> recordReleases(User user, ReleaseDestination destination, ReleaseRecipient recipient,
-                                            Collection<Labware> labware, UCMap<BasicLocation> locations) {
+    public List<Release> recordReleases(User user, ReleaseDestination destination,
+                                        ReleaseRecipient recipient, List<ReleaseRecipient> otherRecs,
+                                        Collection<Labware> labware, UCMap<BasicLocation> locations) {
         return labware.stream()
-                .map(lw -> recordRelease(user, destination, recipient, lw, locations.get(lw.getBarcode())))
+                .map(lw -> recordRelease(user, destination, recipient, otherRecs, lw, locations.get(lw.getBarcode())))
                 .collect(toList());
     }
 
@@ -302,11 +335,13 @@ public class ReleaseServiceImp implements ReleaseService {
      * @param user the user responsible for the release
      * @param destination the release destination
      * @param recipient the release recipient
+     * @param otherRecs other recipients
      * @param labware the item of labware being released
      * @param location the location barcode and item address where the labware was stored, if any
      * @return the newly recorded release
      */
-    public Release recordRelease(User user, ReleaseDestination destination, ReleaseRecipient recipient,
+    public Release recordRelease(User user, ReleaseDestination destination,
+                                 ReleaseRecipient recipient, List<ReleaseRecipient> otherRecs,
                                  Labware labware, BasicLocation location) {
         Snapshot snapshot = snapshotService.createSnapshot(labware);
 
@@ -315,6 +350,7 @@ public class ReleaseServiceImp implements ReleaseService {
             newRelease.setLocationBarcode(location.getBarcode());
             newRelease.setStorageAddress(location.getAddress());
         }
+        newRelease.setOtherRecipients(otherRecs);
         return releaseRepo.save(newRelease);
     }
 

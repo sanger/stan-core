@@ -189,7 +189,7 @@ public class TestReleaseFileService {
         Iterator<Address> addressIter = addresses.iterator();
         Labware lw = EntityFactory.getTube();
         List<Release> releases = locationBarcodes.stream()
-                .map(bc -> new Release(100, lw, user, destination, recipient, 120, null, bc, addressIter.next()))
+                .map(bc -> new Release(100, lw, user, destination, recipient, 120, null, bc, addressIter.next(), null))
                 .collect(toList());
         assertEquals(expected, service.shouldIncludeStorageAddress(releases));
     }
