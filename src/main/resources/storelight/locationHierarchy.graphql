@@ -1,0 +1,7 @@
+{
+    locationHierarchy(location: {barcode:"LOCATIONBARCODE"}) {
+        barcode
+        name
+        address
+    }
+}

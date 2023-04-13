@@ -128,4 +128,11 @@ public class GraphQLStore extends BaseGraphQLResource {
             return storeService.getLabwareInLocation(locationBarcode);
         };
     }
+
+    public DataFetcher<List<LinkedLocation>> getLocationHierarchy() {
+        return dfe -> {
+            String locationBarcode = dfe.getArgument("locationBarcode");
+            return storeService.getHierarchy(locationBarcode);
+        };
+    }
 }

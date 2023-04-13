@@ -421,6 +421,29 @@ public class TestStoreService {
     }
 
     @Test
+    public void testLocationHierarchy() throws IOException {
+        LinkedLocation parent = new LinkedLocation();
+        parent.setBarcode("STO-001F");
+        parent.setNameAndCustomName("Alpha", "Beta");
+        LinkedLocation child = new LinkedLocation();
+        child.setBarcode("STO-002E");
+        child.setNameAndCustomName("Gamma", null);
+        child.setAddress(new Address(1,2));
+        List<LinkedLocation> hierarchy = List.of(parent, child);
+        var returnedNode = objectMapper.valueToTree(hierarchy);
+        GraphQLResponse response = setupResponse("locationHierarchy", returnedNode);
+        List<LinkedLocation> result = service.getHierarchy(child.getBarcode());
+        verify(service).checkErrors(response);
+        assertEquals(hierarchy, result);
+        verifyQueryMatches("{" +
+                "    locationHierarchy(location: {barcode:\""+child.getBarcode()+"\"}) {" +
+                "        barcode" +
+                "        name" +
+                "        address" +
+                "    }}", null);
+    }
+
+    @Test
     public void testGetStored() throws IOException {
         ArrayNode foundItems = objectMapper.createArrayNode();
         ObjectNode locationNode = objectMapper.createObjectNode()

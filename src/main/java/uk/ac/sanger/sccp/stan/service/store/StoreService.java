@@ -216,6 +216,12 @@ public class StoreService {
                 new Object[] { locationBarcode }, Location.class).fixInternalLinks();
     }
 
+    public List<LinkedLocation> getHierarchy(String locationBarcode) {
+        requireNonNull(locationBarcode, "Location barcode is null.");
+        return send(null, "locationHierarchy", new String[]{"\"LOCATIONBARCODE\""},
+                new Object[]{locationBarcode}, new TypeReference<>() {});
+    }
+
     /**
      * Gets storage information about the given item barcodes
      * @param barcodes barcodes of stored items
@@ -383,6 +389,28 @@ public class StoreService {
      */
     private <T> T send(User user, String operationName, String[] replaceFrom, Object[] replaceToObj,
                        Class<T> resultType) throws UncheckedIOException {
+        return objectMapper.convertValue(send(user, operationName, replaceFrom, replaceToObj), resultType);
+    }
+
+    /**
+     * Sends a query through the storelight client.
+     * The query is loaded from a graphql file using the given operation name.
+     * @param user the user responsible (if any)
+     * @param operationName the name of the operation
+     * @param replaceFrom an array of strings in the query that must be replaced
+     * @param replaceToObj an array of replacements
+     * @param resultType the expected type of object to be returned
+     * @param <T> the type of object to be returned
+     * @return the object from the graphql response
+     * @exception UncheckedIOException if there was an IO problem
+     */
+    private <T> T send(User user, String operationName, String[] replaceFrom, Object[] replaceToObj,
+                       TypeReference<T> resultType) throws UncheckedIOException {
+        return objectMapper.convertValue(send(user, operationName, replaceFrom, replaceToObj), resultType);
+    }
+
+    private JsonNode send(User user, String operationName, String[] replaceFrom, Object[] replaceToObj)
+            throws UncheckedIOException {
         try {
             String query = readResource(operationName);
             String[] replaceTo = new String[replaceToObj.length];
@@ -401,7 +429,7 @@ public class StoreService {
             }
             GraphQLResponse response = storelightClient.postQuery(query, (user == null ? null : user.getUsername()));
             checkErrors(response);
-            return objectMapper.convertValue(response.getData().get(operationName), resultType);
+            return response.getData().get(operationName);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
