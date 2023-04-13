@@ -1,0 +1,22 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <changeSet id="2.21.0" author="dr6">
+        <createTable tableName="release_other_recipient">
+            <column name="release_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_release_other_recipient_release" referencedTableName="labware_release" referencedColumnNames="id"/>
+            </column>
+            <column name="recipient_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_release_other_recipient_recipient" referencedTableName="release_recipient" referencedColumnNames="id"/>
+            </column>
+        </createTable>
+        <addPrimaryKey tableName="release_other_recipient" columnNames="release_id,recipient_id"/>
+        <rollback>
+            <dropAllForeignKeyConstraints baseTableName="release_other_recipient"/>
+            <dropTable tableName="release_other_recipient"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

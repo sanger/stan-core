@@ -6,8 +6,10 @@ import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Objects;
 
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullToEmpty;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
@@ -33,6 +35,12 @@ public class Release {
     @ManyToOne
     private ReleaseRecipient recipient;
 
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name="release_other_recipient",
+            joinColumns = @JoinColumn(name="release_id"),
+            inverseJoinColumns = @JoinColumn(name="recipient_id"))
+    private List<ReleaseRecipient> otherRecipients = List.of();
+
     @Generated(GenerationTime.INSERT)
     private LocalDateTime released;
 
@@ -50,13 +58,14 @@ public class Release {
     public Release() {}
 
     public Release(Labware labware, User user, ReleaseDestination destination, ReleaseRecipient recipient, Integer snapshotId) {
-        this(null, labware, user, destination, recipient, snapshotId, null, null, null);
+        this(null, labware, user, destination, recipient, snapshotId, null, null, null, null);
     }
     public Release(Integer id, Labware labware, User user, ReleaseDestination destination, ReleaseRecipient recipient, Integer snapshotId, LocalDateTime released) {
-        this(id, labware, user, destination, recipient, snapshotId, released, null, null);
+        this(id, labware, user, destination, recipient, snapshotId, released, null, null, null);
     }
     public Release(Integer id, Labware labware, User user, ReleaseDestination destination, ReleaseRecipient recipient,
-                   Integer snapshotId, LocalDateTime released, String locationBarcode, Address storageAddress) {
+                   Integer snapshotId, LocalDateTime released, String locationBarcode, Address storageAddress,
+                   List<ReleaseRecipient> otherRecipients) {
         this.id = id;
         this.labware = labware;
         this.user = user;
@@ -66,6 +75,7 @@ public class Release {
         this.snapshotId = snapshotId;
         this.locationBarcode = locationBarcode;
         this.storageAddress = storageAddress;
+        setOtherRecipients(otherRecipients);
     }
 
     public Integer getId() {
@@ -140,6 +150,15 @@ public class Release {
         this.storageAddress = storageAddress;
     }
 
+    /** Other recipients who should be cc'd in the email for this release */
+    public List<ReleaseRecipient> getOtherRecipients() {
+        return this.otherRecipients;
+    }
+
+    public void setOtherRecipients(List<ReleaseRecipient> otherRecipients) {
+        this.otherRecipients = nullToEmpty(otherRecipients);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -154,6 +173,7 @@ public class Release {
                 && Objects.equals(this.snapshotId, that.snapshotId)
                 && Objects.equals(this.locationBarcode, that.locationBarcode)
                 && Objects.equals(this.storageAddress, that.storageAddress)
+                && Objects.equals(this.otherRecipients, that.otherRecipients)
         );
     }
 
@@ -170,6 +190,7 @@ public class Release {
                 .add("user", user==null ? null : repr(user.getUsername()))
                 .add("destination", destination)
                 .add("recipient", recipient)
+                .addIfNotEmpty("otherRecipients", otherRecipients)
                 .add("released", released)
                 .add("snapshotId", snapshotId)
                 .addReprIfNotNull("locationBarcode", locationBarcode)

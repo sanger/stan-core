@@ -1,12 +1,9 @@
 package uk.ac.sanger.sccp.stan.request;
 
-import com.google.common.base.MoreObjects;
-import uk.ac.sanger.sccp.utils.BasicUtils;
+import java.util.List;
+import java.util.Objects;
 
-import java.util.*;
-
-import static uk.ac.sanger.sccp.utils.BasicUtils.coalesce;
-import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
+import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 /**
  * @author dr6
@@ -77,18 +74,23 @@ public class ReleaseRequest {
         }
     }
 
-    private List<ReleaseLabware> releaseLabware;
+    private List<ReleaseLabware> releaseLabware = List.of();
     private String destination;
     private String recipient;
+    private List<String> otherRecipients = List.of();
 
-    public ReleaseRequest() {
-        setReleaseLabware(null);
-    }
+    public ReleaseRequest() {}
 
-    public ReleaseRequest(List<ReleaseLabware> releaseLabware, String destination, String recipient) {
+    public ReleaseRequest(List<ReleaseLabware> releaseLabware, String destination, String recipient,
+                          List<String> otherRecipients) {
         setReleaseLabware(releaseLabware);
         setDestination(destination);
         setRecipient(recipient);
+        setOtherRecipients(otherRecipients);
+    }
+
+    public ReleaseRequest(List<ReleaseLabware> releaseLabware, String destination, String recipient) {
+        this(releaseLabware, destination, recipient, null);
     }
 
     public List<ReleaseLabware> getReleaseLabware() {
@@ -96,7 +98,7 @@ public class ReleaseRequest {
     }
 
     public void setReleaseLabware(List<ReleaseLabware> releaseLabware) {
-        this.releaseLabware = coalesce(releaseLabware, List.of());
+        this.releaseLabware = nullToEmpty(releaseLabware);
     }
 
     public String getDestination() {
@@ -115,6 +117,14 @@ public class ReleaseRequest {
         this.recipient = recipient;
     }
 
+    public List<String> getOtherRecipients() {
+        return this.otherRecipients;
+    }
+
+    public void setOtherRecipients(List<String> otherRecipients) {
+        this.otherRecipients = nullToEmpty(otherRecipients);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -122,7 +132,8 @@ public class ReleaseRequest {
         ReleaseRequest that = (ReleaseRequest) o;
         return (Objects.equals(this.releaseLabware, that.releaseLabware)
                 && Objects.equals(this.destination, that.destination)
-                && Objects.equals(this.recipient, that.recipient));
+                && Objects.equals(this.recipient, that.recipient)
+                && this.otherRecipients.equals(that.otherRecipients));
     }
 
     @Override
@@ -132,10 +143,11 @@ public class ReleaseRequest {
 
     @Override
     public String toString() {
-        return MoreObjects.toStringHelper(this)
+        return describe(this)
                 .add("releaseLabware", releaseLabware)
                 .add("destination", repr(destination))
                 .add("recipient", repr(recipient))
+                .addIfNotEmpty("otherRecipients", otherRecipients)
                 .toString();
     }
 }

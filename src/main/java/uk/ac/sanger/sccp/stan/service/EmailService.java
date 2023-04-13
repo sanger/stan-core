@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.config.MailConfig;
 import uk.ac.sanger.sccp.stan.service.store.StoreService;
 
+import java.util.List;
+
 import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 
 /**
@@ -79,25 +81,41 @@ public class EmailService {
     }
 
     /**
+     * Compiles the given list of cc and the cc from config into an array of strings.
+     * If there is no one to cc, null is returned.
+     * If the {@code releaseCC} is a username, it may be converted to an email address.
+     * @param ccList list of people to cc
+     * @return an array of cc recipients, or null
+     */
+    public String[] releaseEmailCCs(List<String> ccList) {
+        String releaseCc = mailConfig.getReleaseCC();
+        if (nullOrEmpty(releaseCc)) {
+            return nullOrEmpty(ccList) ? null : ccList.toArray(String[]::new);
+        }
+        if (releaseCc.indexOf('@') < 0) {
+            releaseCc += "@sanger.ac.uk";
+        }
+        if (nullOrEmpty(ccList)) {
+            return new String[] { releaseCc };
+        }
+        String[] cc = ccList.toArray(new String[ccList.size()+1]);
+        cc[cc.length-1] = releaseCc;
+        return cc;
+    }
+
+    /**
      * Tries to send a release email.
      * @param recipient the recipient of the release email
+     * @param ccList optional list of other emails to cc
      * @param releaseFilePath the path to download the release file
      * @return true if the email was sent successfully; false if it was not
      */
-    public boolean tryReleaseEmail(String recipient, String releaseFilePath) {
+    public boolean tryReleaseEmail(String recipient, List<String> ccList, String releaseFilePath) {
         String[] recipients = new String[] {recipient};
-        String releaseCc = mailConfig.getReleaseCC();
-        String[] cc;
-        if (nullOrEmpty(releaseCc)) {
-            cc = null;
-        } else {
-            if (releaseCc.indexOf('@') < 0) {
-                releaseCc += "@sanger.ac.uk";
-            }
-            cc = new String[] { releaseCc };
-        }
+        String[] cc = releaseEmailCCs(ccList);
         String subject = mailConfig.getServiceDescription()+" release";
-        String text = "The details of the release are available at "+releaseFilePath;
+        String text = "Release to "+recipient
+                +".\nThe details of the release are available at "+releaseFilePath;
         try {
             send(subject, text, recipients, cc);
             return true;

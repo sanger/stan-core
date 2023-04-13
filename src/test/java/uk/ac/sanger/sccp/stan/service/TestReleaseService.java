@@ -30,6 +30,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.Matchers.sameElements;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullToEmpty;
 
 /**
  * Tests {@link ReleaseService} {@link ReleaseServiceImp implementation}
@@ -48,6 +50,7 @@ public class TestReleaseService {
 
     private ReleaseDestination destination;
     private ReleaseRecipient recipient;
+    private List<ReleaseRecipient> otherRecs;
     private User user;
     private Sample sample, sample1;
     private LabwareType labwareType;
@@ -78,6 +81,7 @@ public class TestReleaseService {
         sample = EntityFactory.getSample();
         sample1 = new Sample(sample.getId()+1, 7, sample.getTissue(), EntityFactory.getBioState());
         labwareType = EntityFactory.makeLabwareType(1,4);
+        otherRecs = List.of(new ReleaseRecipient(7, "ford"));
 
         service = spy(new ReleaseServiceImp(mockStanConfig, mockTransactor, mockEntityManager,
                 mockDestinationRepo, mockRecipientRepo, mockLabwareRepo, mockStoreService,
@@ -128,7 +132,7 @@ public class TestReleaseService {
             var ex = assertThrows(Exception.class, () -> service.releaseAndUnstore(user, request));
             assertThat(ex).hasMessage(expectedExceptionMessage);
             verifyNoInteractions(mockStoreService);
-            verify(service, never()).transactRelease(any(), any(), any(), any(), any(), any());
+            verify(service, never()).transactRelease(any(), any(), any(), any(), any(), any(), any());
             return;
         }
         assert labware != null;
@@ -146,7 +150,8 @@ public class TestReleaseService {
         for (int i = 0; i < releases.size(); ++i) {
             releases.get(i).setId(100+i);
         }
-        doReturn(releases).when(service).transactRelease(user, recipient, destination, labware, locations, workMap);
+        doReturn(otherRecs).when(service).loadOtherRecipients(any());
+        doReturn(releases).when(service).transactRelease(any(), any(), any(), any(), any(), any(), any());
         String releaseFilePath = "root/release?id=1,2,3";
         assert recipient != null;
         String recEmail = recipient.getUsername();
@@ -164,9 +169,10 @@ public class TestReleaseService {
         verify(service).validateLabware(labware);
         verify(service).validateContents(labware);
         verify(service).loadWork(request.getReleaseLabware());
-        verify(mockEmailService).tryReleaseEmail(recEmail, releaseFilePath);
+        verify(service).loadOtherRecipients(request.getOtherRecipients());
+        verify(mockEmailService).tryReleaseEmail(recEmail, List.of("ford@sanger.ac.uk"), releaseFilePath);
         verify(mockStoreService).loadBasicLocationsOfItems(labware.stream().map(Labware::getBarcode).collect(toList()));
-        verify(service).transactRelease(user, recipient, destination, labware, locations, workMap);
+        verify(service).transactRelease(user, recipient, otherRecs, destination, labware, locations, workMap);
         verify(mockStoreService).discardStorage(same(user), sameElements(expectedBarcodes));
         assertEquals(result, new ReleaseResult(releases));
     }
@@ -180,6 +186,7 @@ public class TestReleaseService {
         disDest.setEnabled(false);
         List<Labware> lws = List.of(EntityFactory.getTube());
         ReleaseRequest request = new ReleaseRequest(List.of(new ReleaseLabware(lws.get(0).getBarcode())), dest.getName(), rec.getUsername());
+        request.setOtherRecipients(List.of("ford"));
         return Arrays.stream(new Object[][] {
                 {request, rec, dest, lws, null, null, null, null},
                 {request, null, dest, null, null, null, null, "Recipient not found."},
@@ -192,6 +199,67 @@ public class TestReleaseService {
                 {request, rec, dest, lws, null, "Bad labware.", null, "Bad labware."},
                 {request, rec, dest, lws, null, null, "Bad contents.", "Bad contents."},
         }).map(Arguments::of);
+    }
+
+    @ParameterizedTest
+    @MethodSource("loadOtherRecipientsArgs")
+    public void testLoadOtherRecipients(Collection<String> usernames,
+                                        Object repoResult,
+                                        boolean anyRepeats,
+                                        String expectedError) {
+        if (repoResult instanceof Exception) {
+            Exception dbException = (Exception) repoResult;
+            when(mockRecipientRepo.getAllByUsernameIn(any())).thenThrow(dbException);
+            assertSame(dbException, assertThrows(Exception.class, () -> service.loadOtherRecipients(usernames)));
+            verify(mockRecipientRepo).getAllByUsernameIn(usernames);
+            return;
+        }
+        if (nullOrEmpty(usernames)) {
+            assertThat(service.loadOtherRecipients(usernames)).isEmpty();
+            verifyNoInteractions(mockRecipientRepo);
+            return;
+        }
+        //noinspection unchecked
+        List<ReleaseRecipient> dbRecs = nullToEmpty((List<ReleaseRecipient>) repoResult);
+        when(mockRecipientRepo.getAllByUsernameIn(any())).thenReturn(dbRecs);
+
+        if (expectedError!=null) {
+            assertThat(assertThrows(IllegalArgumentException.class, () -> service.loadOtherRecipients(usernames)))
+                    .hasMessage(expectedError);
+        } else if (anyRepeats) {
+            List<ReleaseRecipient> result = service.loadOtherRecipients(usernames);
+            assertThat(result).containsOnlyOnceElementsOf(dbRecs);
+            assertThat(result).containsAll(dbRecs);
+        } else {
+            assertThat(service.loadOtherRecipients(usernames)).containsExactlyInAnyOrderElementsOf(dbRecs);
+        }
+        verify(mockRecipientRepo).getAllByUsernameIn(usernames);
+    }
+
+    static Stream<Arguments> loadOtherRecipientsArgs() {
+        ReleaseRecipient rec1 = new ReleaseRecipient(1, "rec1");
+        ReleaseRecipient rec2 = new ReleaseRecipient(2, "rec2");
+        ReleaseRecipient rec3 = new ReleaseRecipient(3, "rec3");
+        ReleaseRecipient rec4 = new ReleaseRecipient(4, "rec4");
+        rec3.setEnabled(false);
+        rec4.setEnabled(false);
+        return Arrays.stream(new Object[][] {
+                {null,null,false,null},
+                {List.of(),null,false,null},
+                {List.of("rec1", "rec2"), List.of(rec1, rec2), false, null},
+                {List.of("rec1", "rec404"), new EntityNotFoundException("No such recipient"), false, null},
+                {List.of("rec1", "rec1", "rec2"), List.of(rec1, rec1, rec2), true, null},
+                {List.of("rec1", "rec3", "rec4"), List.of(rec1, rec3, rec4), false, "Other recipients disabled: [rec3, rec4]"},
+        }).map(Arguments::of);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "alpha, alpha@sanger.ac.uk",
+            "x@y.com, x@y.com"
+    })
+    public void testCanonicaliseEmail(String input, String expected) {
+        assertEquals(expected, service.canonicaliseEmail(input));
     }
 
     @Test
@@ -218,23 +286,23 @@ public class TestReleaseService {
         if (successful) {
             exception = null;
             releases = List.of();
-            doReturn(releases).when(service).release(any(), any(), any(), any(), any(), any());
+            doReturn(releases).when(service).release(any(), any(), any(), any(), any(), any(), any());
         } else {
             exception = new IllegalArgumentException("Bad.");
             releases = List.of();
-            doThrow(exception).when(service).release(any(), any(), any(), any(), any(), any());
+            doThrow(exception).when(service).release(any(), any(), any(), any(), any(), any(), any());
         }
 
         if (successful) {
-            assertEquals(releases, service.transactRelease(user, recipient, destination, lws, locations, workMap));
+            assertEquals(releases, service.transactRelease(user, recipient, otherRecs, destination, lws, locations, workMap));
         } else {
             assertThat(assertThrows(IllegalArgumentException.class,
-                    () -> service.transactRelease(user, recipient, destination, lws, locations, workMap)))
+                    () -> service.transactRelease(user, recipient, otherRecs, destination, lws, locations, workMap)))
                     .hasMessage(exception.getMessage());
         }
 
         verify(mockTransactor).transact(anyString(), any());
-        verify(service).release(user, recipient, destination, lws, locations, workMap);
+        verify(service).release(user, recipient, otherRecs, destination, lws, locations, workMap);
     }
 
     @Test
@@ -249,14 +317,14 @@ public class TestReleaseService {
         UCMap<Work> workMap = new UCMap<>(1);
         workMap.put("STAN-1", new Work());
         List<Release> releases = List.of(new Release(100, lws.get(0), user, destination, recipient, 200, null));
-        doReturn(releases).when(service).recordReleases(user, destination, recipient, lws, locations);
-        assertSame(releases, service.release(user, recipient, destination, lws, locations, workMap));
+        doReturn(releases).when(service).recordReleases(user, destination, recipient, otherRecs, lws, locations);
+        assertSame(releases, service.release(user, recipient, otherRecs, destination, lws, locations, workMap));
         lws.forEach(lw -> verify(mockEntityManager).refresh(lw));
         verify(service).validateLabware(lws);
         verify(service).validateContents(lws);
         verify(service).updateReleasedLabware(lws);
         verify(service).link(releases, workMap);
-        verify(service).recordReleases(user, destination, recipient, lws, locations);
+        verify(service).recordReleases(user, destination, recipient, otherRecs, lws, locations);
     }
 
     @Test
@@ -439,11 +507,11 @@ public class TestReleaseService {
             locations.put(labware.get(i).getBarcode(), locs[i]);
         }
 
-        doReturn(releases.get(0)).when(service).recordRelease(user, destination, recipient, labware.get(0), locs[0]);
-        doReturn(releases.get(1)).when(service).recordRelease(user, destination, recipient, labware.get(1), locs[1]);
-        doReturn(releases.get(2)).when(service).recordRelease(user, destination, recipient, labware.get(2), null);
+        doReturn(releases.get(0)).when(service).recordRelease(user, destination, recipient, otherRecs, labware.get(0), locs[0]);
+        doReturn(releases.get(1)).when(service).recordRelease(user, destination, recipient, otherRecs, labware.get(1), locs[1]);
+        doReturn(releases.get(2)).when(service).recordRelease(user, destination, recipient, otherRecs, labware.get(2), null);
 
-        assertEquals(releases, service.recordReleases(user, destination, recipient, labware, locations));
+        assertEquals(releases, service.recordReleases(user, destination, recipient, otherRecs, labware, locations));
     }
 
     @ParameterizedTest
@@ -457,14 +525,14 @@ public class TestReleaseService {
 
         final int releaseId = 10;
         Release release = new Release(releaseId, lw, user, destination, recipient, 1, LocalDateTime.now(),
-                withLocation ? loc.getBarcode() : null, withLocation ? loc.getAddress() : null);
+                withLocation ? loc.getBarcode() : null, withLocation ? loc.getAddress() : null, otherRecs);
 
         when(mockReleaseRepo.save(any())).thenReturn(release);
 
         Snapshot snap = EntityFactory.makeSnapshot(lw);
         when(mockSnapshotService.createSnapshot(any())).thenReturn(snap);
 
-        assertSame(release, service.recordRelease(user, destination, recipient, lw, loc));
+        assertSame(release, service.recordRelease(user, destination, recipient,otherRecs, lw, loc));
 
         verify(mockSnapshotService).createSnapshot(lw);
         final Release expectedNewRelease = new Release(lw, user, destination, recipient, snap.getId());
@@ -472,6 +540,7 @@ public class TestReleaseService {
             expectedNewRelease.setLocationBarcode(loc.getBarcode());
             expectedNewRelease.setStorageAddress(loc.getAddress());
         }
+        expectedNewRelease.setOtherRecipients(otherRecs);
         verify(mockReleaseRepo).save(expectedNewRelease);
     }
 

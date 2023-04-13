@@ -436,6 +436,15 @@ public class BasicUtils {
     }
 
     /**
+     * If the collection is empty, return null. Otherwise, return the collection.
+     * @param items the collection that may be empty
+     * @return the nonempty collection, or null
+     */
+    public static <C extends Collection<?>> C emptyToNull(C items) {
+        return (items==null || items.isEmpty() ? null : items);
+    }
+
+    /**
      * If the given list is non-null, it is returned. Otherwise, returns the immutable empty list.
      * @param list list or null
      * @return a non-null list
