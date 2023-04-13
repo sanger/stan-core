@@ -1,6 +1,7 @@
 package uk.ac.sanger.sccp.stan.integrationtest;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
@@ -24,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGet;
 import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.verifyStorelightQuery;
@@ -203,5 +205,43 @@ public class TestStoreMutations {
         assertEquals("STO-5", chainGet(response, "data", "transfer", "barcode"));
 
         verifyStorelightQuery(mockStorelightClient, List.of("store", "STAN-100", "STAN-101", "STO-5"), user.getUsername());
+    }
+
+    @Transactional
+    @Test
+    public void testStoragePath() throws Exception {
+        ObjectMapper objectMapper = new ObjectMapper();
+        ObjectNode parent = objectMapper.createObjectNode()
+                .put("barcode", "STO-P")
+                .put("name", "Alpha: Beta")
+                .putNull("address");
+        ObjectNode child = objectMapper.createObjectNode()
+                .put("barcode", "STO-C")
+                .put("name", "Gamma: Delta")
+                .put("address", "C1");
+        ArrayNode arrayNode = objectMapper.createArrayNode()
+                .add(parent)
+                .add(child);
+        GraphQLResponse graphQLResponse = new GraphQLResponse(
+                objectMapper.createObjectNode().set("locationHierarchy", arrayNode), null
+        );
+        when(mockStorelightClient.postQuery(anyString(), any())).thenReturn(graphQLResponse);
+
+        Object response = tester.post("query { storagePath(locationBarcode: \"STO-C\") {" +
+                " barcode fixedName customName address } }");
+        List<Map<String, String>> locs = chainGet(response, "data", "storagePath");
+        assertThat(locs).hasSize(2);
+        assertMap(locs.get(0), "barcode", "STO-P", "fixedName", "Alpha", "customName", "Beta", "address", null);
+        assertMap(locs.get(1), "barcode", "STO-C", "fixedName", "Gamma", "customName", "Delta", "address", "C1");
+
+        verifyStorelightQuery(mockStorelightClient, List.of("locationHierarchy", "STO-C"), null);
+    }
+
+    private static void assertMap(Map<String, String> map, String... kvs) {
+        final int len = kvs.length;
+        for (int i = 0; i < len; i += 2) {
+            assertEquals(kvs[i+1], map.get(kvs[i]), kvs[i]);
+        }
+        assertThat(map).hasSize(kvs.length/2);
     }
 }

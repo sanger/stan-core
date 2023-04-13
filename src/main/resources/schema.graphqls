@@ -1643,6 +1643,8 @@ type Query {
     stored(barcodes: [String!]!): [StoredItem!]!
     """Get the labware contained in a particular location."""
     labwareInLocation(locationBarcode: String!): [Labware!]!
+    """Gets the parent hierarchy, from the root to the specified location."""
+    storagePath(locationBarcode:String!): [LinkedLocation!]!
 }
 
 """
