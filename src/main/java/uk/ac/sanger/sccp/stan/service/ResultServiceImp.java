@@ -18,9 +18,11 @@ import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
-import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.*;
 import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
+import static uk.ac.sanger.sccp.utils.BasicUtils.pluralise;
 
 @Service
 public class ResultServiceImp extends BaseResultService implements ResultService {
@@ -105,6 +107,7 @@ public class ResultServiceImp extends BaseResultService implements ResultService
         validateLotNumbers(problems, request.getLabwareResults());
         UCMap<List<SlotMeasurementRequest>> measurementMap = validateMeasurements(problems, labware, request.getLabwareResults());
         Map<Integer, Comment> commentMap = validateComments(problems, request.getLabwareResults());
+        validateSampleIdsInSampleComments(problems, labware, request.getLabwareResults());
         Work work = workService.validateUsableWork(problems, request.getWorkNumber());
         Map<Integer, Integer> referredOpIds = lookUpPrecedingOps(problems, refersToOpType, labware.values(), refersRequired, refersAncestral);
 
@@ -254,12 +257,51 @@ public class ResultServiceImp extends BaseResultService implements ResultService
      */
     public Map<Integer, Comment> validateComments(Collection<String> problems, Collection<LabwareResult> lrs) {
         var commentIdStream = lrs.stream()
-                        .flatMap(lr -> lr.getSampleResults().stream()
-                                .map(SampleResult::getCommentId)
-                                .filter(Objects::nonNull)
-                        );
+                        .flatMap(lr -> lr.getSampleResults().stream().flatMap(ResultServiceImp::streamCommentIds));
         List<Comment> comments = commentValidationService.validateCommentIds(problems, commentIdStream);
         return comments.stream().collect(BasicUtils.toMap(Comment::getId));
+    }
+
+    private static Stream<Integer> streamCommentIds(SampleResult sr) {
+        Stream<Integer> stream = sr.getSampleComments().stream().map(SampleIdCommentId::getCommentId);
+        if (sr.getCommentId()==null) {
+            return stream;
+        }
+        return Stream.concat(stream, Stream.of(sr.getCommentId()));
+    }
+
+    /**
+     * Checks that sample ids referenced in {@link SampleResult#getSampleComments() getSampleComments}
+     * are appropriate to the labware
+     * @param problems receptacle for problems
+     * @param lwMap map to look up labware
+     * @param lrs the labware results we are validating
+     */
+    public void validateSampleIdsInSampleComments(Collection<String> problems, UCMap<Labware> lwMap,
+                                                  Collection<LabwareResult> lrs) {
+        for (LabwareResult lr : lrs) {
+            Labware lw = lwMap.get(lr.getBarcode());
+            if (lw==null) {
+                continue;
+            }
+            for (SampleResult sr : lr.getSampleResults()) {
+                if (sr.getSampleComments().isEmpty()) {
+                    continue;
+                }
+                Slot slot = lw.optSlot(sr.getAddress()).orElse(null);
+                if (slot==null) {
+                    continue;
+                }
+                Set<Integer> sampleIds = sr.getSampleComments().stream()
+                        .map(SampleIdCommentId::getSampleId)
+                        .collect(toCollection(HashSet::new));
+                slot.getSamples().forEach(sam -> sampleIds.remove(sam.getId()));
+                if (!sampleIds.isEmpty()) {
+                    problems.add(String.format(pluralise("Comment{s} specified for sample{s} %s that {is|are} not present in slot %s of labware %s.",
+                            sampleIds.size()), sampleIds, slot.getAddress(), lw.getBarcode()));
+                }
+            }
+        }
     }
 
     /**
@@ -310,19 +352,30 @@ public class ResultServiceImp extends BaseResultService implements ResultService
 
             Operation op = opService.createOperationInPlace(opType, user, lw, null, null);
             for (SampleResult sr : lr.getSampleResults()) {
+                Map<Integer, Set<Comment>> sampleIdComments = sr.getSampleComments().stream()
+                        .collect(groupingBy(SampleIdCommentId::getSampleId,
+                                mapping((SampleIdCommentId sc) -> commentMap.get(sc.getCommentId()), toSet())));
                 Slot slot = lw.getSlot(sr.getAddress());
                 Integer refersToOpId = referredToOpIds.get(lw.getId());
-                Comment comment = (sr.getCommentId()!=null ? commentMap.get(sr.getCommentId()) : null);
+                Comment singleComment = (sr.getCommentId()!=null ? commentMap.get(sr.getCommentId()) : null);
                 for (Sample sample : slot.getSamples()) {
                     ResultOp resOp = new ResultOp(null, sr.getResult(), op.getId(), sample.getId(), slot.getId(), refersToOpId);
                     resultOps.add(resOp);
-                    if (comment != null) {
-                        opComments.add(new OperationComment(null, comment, op.getId(), sample.getId(), slot.getId(), null));
+                    if (singleComment != null) {
+                        opComments.add(new OperationComment(null, singleComment, op.getId(), sample.getId(), slot.getId(), null));
+                    }
+                    Set<Comment> sampleComments = sampleIdComments.get(sample.getId());
+                    if (!nullOrEmpty(sampleComments)) {
+                        for (Comment com : sampleComments) {
+                            if (com != singleComment) {
+                                opComments.add(new OperationComment(null, com, op.getId(), sample.getId(), slot.getId(), null));
+                            }
+                        }
                     }
                 }
             }
             var sms = measurementMap.get(lw.getBarcode());
-            if (sms!=null && !sms.isEmpty()) {
+            if (!nullOrEmpty(sms)) {
                 makeMeasurements(measurements, lw, op.getId(), sms);
             }
             ops.add(op);

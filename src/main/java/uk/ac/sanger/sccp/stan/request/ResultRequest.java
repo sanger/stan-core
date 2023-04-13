@@ -1,11 +1,13 @@
 package uk.ac.sanger.sccp.stan.request;
 
+import org.jetbrains.annotations.NotNull;
 import uk.ac.sanger.sccp.stan.model.*;
 
 import java.util.List;
 import java.util.Objects;
 
 import static uk.ac.sanger.sccp.utils.BasicUtils.describe;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullToEmpty;
 
 /**
  * A request to record results
@@ -16,13 +18,21 @@ public class ResultRequest {
         private Address address;
         private PassFail result;
         private Integer commentId;
+        @NotNull
+        private List<SampleIdCommentId> sampleComments = List.of();
 
         public SampleResult() {}
 
         public SampleResult(Address address, PassFail result, Integer commentId) {
+            this(address, result, commentId, null);
+        }
+
+        public SampleResult(Address address, PassFail result, Integer commentId,
+                            List<SampleIdCommentId> sampleComments) {
             this.address = address;
             this.result = result;
             this.commentId = commentId;
+            setSampleComments(sampleComments);
         }
 
         public Address getAddress() {
@@ -49,6 +59,15 @@ public class ResultRequest {
             this.commentId = commentId;
         }
 
+        @NotNull
+        public List<SampleIdCommentId> getSampleComments() {
+            return this.sampleComments;
+        }
+
+        public void setSampleComments(List<SampleIdCommentId> sampleComments) {
+            this.sampleComments = nullToEmpty(sampleComments);
+        }
+
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
@@ -56,7 +75,9 @@ public class ResultRequest {
             SampleResult that = (SampleResult) o;
             return (Objects.equals(this.address, that.address)
                     && this.result == that.result
-                    && Objects.equals(this.commentId, that.commentId));
+                    && Objects.equals(this.commentId, that.commentId)
+                    && this.sampleComments.equals(that.sampleComments)
+            );
         }
 
         @Override
@@ -70,6 +91,7 @@ public class ResultRequest {
                     .add("address", address)
                     .add("result", result)
                     .add("commentId", commentId)
+                    .add("sampleComments", sampleComments)
                     .toString();
         }
     }
