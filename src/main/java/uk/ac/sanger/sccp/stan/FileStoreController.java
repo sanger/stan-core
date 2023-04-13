@@ -4,7 +4,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
-import org.springframework.http.*;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.authentication.InsufficientAuthenticationException;
 import org.springframework.security.core.Authentication;
@@ -17,6 +18,10 @@ import uk.ac.sanger.sccp.stan.service.FileStoreService;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Collection;
+import java.util.List;
+
+import static uk.ac.sanger.sccp.utils.BasicUtils.asCollection;
 
 /**
  * Controller for handling download/upload of files
@@ -48,11 +53,12 @@ public class FileStoreController {
 
     @PostMapping("/files")
     public ResponseEntity<?> receiveFile(@RequestParam("file") MultipartFile file,
-                                         @RequestParam("workNumber") String workNumber) throws URISyntaxException {
+                                         @RequestParam("workNumber") List<String> workNumbers) throws URISyntaxException {
         User user = checkUserForUpload();
-        StanFile sf = fileService.save(user, file, workNumber);
-        log.info("Saved file "+sf);
-        return ResponseEntity.created(new URI(sf.getUrl())).build();
+        Collection<StanFile> sfs = asCollection(fileService.save(user, file, workNumbers));
+        log.info("Saved files "+sfs);
+        StanFile firstSf = sfs.iterator().next();
+        return ResponseEntity.created(new URI(firstSf.getUrl())).build();
     }
 
     protected User getUser() {

@@ -11,6 +11,8 @@ import uk.ac.sanger.sccp.stan.model.*;
 import javax.persistence.EntityNotFoundException;
 import javax.transaction.Transactional;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
@@ -55,13 +57,14 @@ public class TestStanFileRepo {
         Work work1 = makeWork();
         Work work2 = makeWork();
         User user = entityCreator.createUser("user1");
-        assertThat(fileRepo.findAllActiveByWorkId(work1.getId())).isEmpty();
+        assertThat(fileRepo.findAllActiveByWorkIdIn(List.of(work1.getId()))).isEmpty();
         StanFile sf1 = fileRepo.save(new StanFile(work1, user, "Alpha", "Beta"));
         StanFile sf2 = fileRepo.save(new StanFile(work1, user, "Gamma", "Delta"));
         StanFile sf3 = fileRepo.save(new StanFile(work2, user, "Epsilon", "Zeta"));
         fileRepo.save(new StanFile(null, null, work2, user, "Epsilon", "Eta", LocalDateTime.now()));
-        assertThat(fileRepo.findAllActiveByWorkId(work1.getId())).containsExactlyInAnyOrder(sf1, sf2);
-        assertThat(fileRepo.findAllActiveByWorkId(work2.getId())).containsExactly(sf3);
+        assertThat(fileRepo.findAllActiveByWorkIdIn(List.of(work1.getId()))).containsExactlyInAnyOrder(sf1, sf2);
+        assertThat(fileRepo.findAllActiveByWorkIdIn(List.of(work2.getId()))).containsExactly(sf3);
+        assertThat(fileRepo.findAllActiveByWorkIdIn(List.of(work1.getId(), work2.getId()))).containsExactlyInAnyOrder(sf1, sf2, sf3);
     }
 
     @Test
@@ -72,10 +75,11 @@ public class TestStanFileRepo {
         User user = entityCreator.createUser("user1");
         StanFile sf1 = fileRepo.save(new StanFile(work1, user, "Alpha", "Beta"));
         fileRepo.save(new StanFile(work1, user, "Gamma", "Delta"));
-        fileRepo.save(new StanFile(work2, user, "Alpha", "Epsilon"));
+        StanFile sf2 = fileRepo.save(new StanFile(work2, user, "Alpha", "Epsilon"));
         fileRepo.save(new StanFile(null, null, work1, user, "Alpha", "Eta", LocalDateTime.now()));
-        assertThat(fileRepo.findAllActiveByWorkIdAndName(work1.getId(), "Alpha")).containsExactly(sf1);
-        assertThat(fileRepo.findAllActiveByWorkIdAndName(work2.getId(), "Gamma")).isEmpty();
+        assertThat(fileRepo.findAllActiveByWorkIdAndName(Set.of(work1.getId()), "Alpha")).containsExactly(sf1);
+        assertThat(fileRepo.findAllActiveByWorkIdAndName(Set.of(work2.getId()), "Gamma")).isEmpty();
+        assertThat(fileRepo.findAllActiveByWorkIdAndName(Set.of(work1.getId(), work2.getId()), "Alpha")).containsExactlyInAnyOrder(sf1,sf2);
     }
 
     @Test
@@ -94,10 +98,14 @@ public class TestStanFileRepo {
     @Transactional
     public void testExistsByPath() {
         Work work = makeWork();
+        Work work2 = makeWork();
         User user = entityCreator.createUser("user1");
         final String path = "my/path";
         assertFalse(fileRepo.existsByPath(path));
         fileRepo.save(new StanFile(work, user, "Alpha", path));
+        assertTrue(fileRepo.existsByPath(path));
+        assertFalse(fileRepo.existsByPath("my/other"));
+        fileRepo.save(new StanFile(work2, user, "Alpha", path));
         assertTrue(fileRepo.existsByPath(path));
         assertFalse(fileRepo.existsByPath("my/other"));
     }

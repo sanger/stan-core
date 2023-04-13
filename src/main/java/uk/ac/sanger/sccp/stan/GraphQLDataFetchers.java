@@ -275,8 +275,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
 
     public DataFetcher<List<StanFile>> listStanFiles() {
         return dfe -> {
-            String workNumber = dfe.getArgument("workNumber");
-            return fileStoreService.list(workNumber);
+            List<String> workNumbers = dfe.getArgument("workNumbers");
+            return fileStoreService.list(workNumbers);
         };
     }
 

@@ -54,6 +54,9 @@ public class TestFileStore {
         }
         Work work = entityCreator.createWork(null, null, null, null, null);
         String workNumber = work.getWorkNumber();
+        Work work2 = entityCreator.createWorkLike(work);
+        String workNumber2 = work2.getWorkNumber();
+
         assertThat(listFiles(workNumber)).isEmpty();
         String username = "user1";
         User user = entityCreator.createUser(username);
@@ -61,17 +64,21 @@ public class TestFileStore {
 
         final String filename1 = "stanfile.txt";
         final String fileContent1 = "Hello\nworld";
-        String url1 = upload(workNumber, filename1, fileContent1);
+        String url1 = upload(filename1, fileContent1, workNumber, workNumber2);
+        String url1b = nextFileUrl(url1);
 
         assertEquals(fileContent1, download(url1, filename1));
 
         var filesData = listFiles(workNumber);
         assertThat(filesData).hasSize(1);
         assertFileData(filesData.get(0), filename1, url1, username, workNumber);
+        filesData = listFiles(workNumber2);
+        assertThat(filesData).hasSize(1);
+        assertFileData(filesData.get(0), filename1, url1b, username, workNumber2);
 
         String fileContent2 = "Alabama\nAlaska";
         final String filename2 = "stanfile2.txt";
-        String url2 = upload(workNumber, filename2, fileContent2);
+        String url2 = upload(filename2, fileContent2, workNumber);
 
         assertEquals(fileContent2, download(url2, filename2));
 
@@ -85,7 +92,7 @@ public class TestFileStore {
         assertFileData(filesData.get(1), filename2, url2, username, workNumber);
 
         String fileContentB = "Goodbye\nWorld";
-        url1 = upload(workNumber, filename1, fileContentB);
+        url1 = upload(filename1, fileContentB, workNumber);
 
         assertEquals(fileContentB, download(url1, filename1));
         filesData = listFiles(workNumber);
@@ -98,18 +105,24 @@ public class TestFileStore {
         deleteTestFiles(directory);
     }
 
+    private static String nextFileUrl(String url) {
+        int i = url.lastIndexOf('/')+1;
+        int id = Integer.parseInt(url.substring(i));
+        return url.substring(0, i) + (id+1);
+    }
+
     private List<Map<String, ?>> listFiles(String workNumber) throws Exception {
-        String query = tester.readGraphQL("listfiles.graphql").replace("SGP1", workNumber);
+        String query = tester.readGraphQL("listfiles.graphql").replace("[]", "[\""+workNumber+"\"]");
         Object result = tester.post(query);
         return chainGet(result, "data", "listFiles");
     }
 
-    private String upload(String workNumber, String filename, String content) throws Exception {
+    private String upload(String filename, String content, String... workNumbers) throws Exception {
         MockMultipartFile file = new MockMultipartFile(
                 "file", filename, MediaType.TEXT_PLAIN_VALUE, content.getBytes()
         );
         return tester.getMockMvc().perform(
-                multipart("/files").file(file).queryParam("workNumber", workNumber)
+                multipart("/files").file(file).queryParam("workNumber", workNumbers)
         ).andExpect(status().isCreated()).andReturn().getResponse().getHeader("location");
     }
 

@@ -108,7 +108,7 @@ public class Matchers {
         return (problem == null ? doReturn(returnValue) : doAnswer(addProblem(problem, returnValue)));
     }
 
-    public static <X> Stubber mayAddProblem(final String problem) {
+    public static Stubber mayAddProblem(final String problem) {
         return (problem==null ? doNothing() : doAnswer(addProblem(problem)));
     }
 

@@ -1,5 +1,5 @@
 query {
-    listFiles(workNumber: "SGP1") {
+    listFiles(workNumbers: []) {
         created
         name
         url

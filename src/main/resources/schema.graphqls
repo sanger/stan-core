@@ -1608,8 +1608,8 @@ type Query {
     extractResult(barcode: String!): ExtractResult!
     """Get an operation and the pass/fail result recorded on it, for a given labware barcode and operation type name."""
     passFails(barcode: String!, operationType: String!): [OpPassFail!]!
-    """List files linked to a work number."""
-    listFiles(workNumber: String!): [StanFile!]!
+    """List files linked to work numbers."""
+    listFiles(workNumbers: [String!]!): [StanFile!]!
     """Get the existing costing (if any) for an item of labware."""
     labwareCosting(barcode: String!): SlideCosting
 

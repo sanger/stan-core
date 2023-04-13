@@ -139,4 +139,9 @@ public interface WorkRepo extends CrudRepository<Work, Integer> {
      */
     @Query(value="select * from work_sample ws join work on (ws.work_id=work.id) where ws.sample_id=(?1) and ws.slot_id = (?2)", nativeQuery = true)
     Set<Work> findWorkForSampleIdAndSlotId(Integer sampleId, Integer slotId);
+
+    default Set<Work> getSetByWorkNumberIn(Collection<String> workNumbers) throws EntityNotFoundException {
+        return RepoUtils.getSetByField(this::findAllByWorkNumberIn, workNumbers, Work::getWorkNumber,
+                "Unknown work number{s}: ", String::toUpperCase);
+    }
 }
