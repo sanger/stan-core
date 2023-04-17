@@ -9,6 +9,8 @@ scalar Date
 enum UserRole {
     """User cannot record anything."""
     disabled
+    """User can request work."""
+    enduser
     """User can record work."""
     normal
     """User can record work and can perform admin actions."""

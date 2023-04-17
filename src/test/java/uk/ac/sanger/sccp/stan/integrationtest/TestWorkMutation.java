@@ -50,7 +50,8 @@ public class TestWorkMutation {
         WorkType workType = entityCreator.createWorkType("Drywalling");
         ReleaseRecipient workRequester = releaseRecipientRepo.save(new ReleaseRecipient(null, "test1"));
         Program prog = entityCreator.createProgram("Hello");
-        User user = entityCreator.createUser("user1", User.Role.normal);
+        User enduser = entityCreator.createUser("jeff", User.Role.enduser);
+        User normaluser = entityCreator.createUser("user1", User.Role.normal);
         OmeroProject omero = omeroProjectRepo.save(new OmeroProject("om_proj"));
 
         String worksQuery  = "query { works(status: [active]) { workNumber, workType {name}, workRequester {username}, project {name}, program {name}, costCode {code}, status, omeroProject {name} } }";
@@ -59,7 +60,7 @@ public class TestWorkMutation {
         assertNotNull(worksData);
         int startingNum = worksData.size();
 
-        tester.setUser(user);
+        tester.setUser(enduser);
         data = tester.post(tester.readGraphQL("createWork.graphql"));
 
         Map<String, Object> workData = chainGet(data, "data", "createWork");
@@ -77,6 +78,8 @@ public class TestWorkMutation {
         worksData = chainGet(data, "data", "works");
         assertEquals(startingNum, worksData.size());
         assertFalse(worksData.stream().anyMatch(d -> d.get("workNumber").equals(workNumber)));
+
+        tester.setUser(normaluser);
 
         data = tester.post("mutation { updateWorkStatus(workNumber: \""+workNumber+"\", status: paused, commentId: 1) {work{status},comment}}");
         assertEquals("paused", chainGet(data, "data", "updateWorkStatus", "work", "status"));

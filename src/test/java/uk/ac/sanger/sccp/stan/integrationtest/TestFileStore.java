@@ -59,7 +59,7 @@ public class TestFileStore {
 
         assertThat(listFiles(workNumber)).isEmpty();
         String username = "user1";
-        User user = entityCreator.createUser(username);
+        User user = entityCreator.createUser(username, User.Role.enduser);
         tester.setUser(user);
 
         final String filename1 = "stanfile.txt";

@@ -77,7 +77,7 @@ public class FileStoreController {
         if (user==null) {
             throw new AuthenticationCredentialsNotFoundException("Not logged in");
         }
-        if (!user.hasRole(User.Role.normal)) {
+        if (!user.hasRole(User.Role.enduser)) {
             throw new InsufficientAuthenticationException("User "+user.getUsername()+" does not have privilege to upload files.");
         }
         return user;
