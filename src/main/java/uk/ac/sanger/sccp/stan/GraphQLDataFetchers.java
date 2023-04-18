@@ -338,10 +338,11 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     public DataFetcher<List<WorkProgress>> workProgress() {
         return dfe -> {
             String workNumber = dfe.getArgument("workNumber");
-            List<String> workTypeNames = arg(dfe, "workTypes", new TypeReference<>() {});
+            List<String> workTypeNames = dfe.getArgument("workTypes");
             List<Work.Status> statuses = arg(dfe, "statuses", new TypeReference<>() {});
-            List<String> programNames = arg(dfe, "programs", new TypeReference<>() {});
-            return workProgressService.getProgress(workNumber, workTypeNames, programNames, statuses);
+            List<String> programNames = dfe.getArgument("programs");
+            List<String> requesterNames = dfe.getArgument("requesters");
+            return workProgressService.getProgress(workNumber, workTypeNames, programNames, statuses, requesterNames);
         };
     }
 
