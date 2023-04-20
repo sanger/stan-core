@@ -13,6 +13,7 @@ import uk.ac.sanger.sccp.stan.EntityCreator;
 import uk.ac.sanger.sccp.stan.GraphQLTester;
 import uk.ac.sanger.sccp.stan.config.StanFileConfig;
 import uk.ac.sanger.sccp.stan.model.*;
+import uk.ac.sanger.sccp.stan.repo.WorkEventRepo;
 
 import javax.transaction.Transactional;
 import java.io.IOException;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
+import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -44,6 +46,8 @@ public class TestFileStore {
     private GraphQLTester tester;
     @Autowired
     private EntityCreator entityCreator;
+    @Autowired
+    private WorkEventRepo workEventRepo;
 
     @Test
     @Transactional
@@ -60,6 +64,10 @@ public class TestFileStore {
         assertThat(listFiles(workNumber)).isEmpty();
         String username = "user1";
         User user = entityCreator.createUser(username, User.Role.enduser);
+        workEventRepo.saveAll(Stream.of(work, work2)
+                .map(w -> new WorkEvent(w, WorkEvent.Type.create, user, null))
+                .collect(toList()));
+
         tester.setUser(user);
 
         final String filename1 = "stanfile.txt";

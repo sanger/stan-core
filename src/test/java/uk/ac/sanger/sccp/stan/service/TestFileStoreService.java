@@ -1,15 +1,16 @@
 package uk.ac.sanger.sccp.stan.service;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.security.authentication.InsufficientAuthenticationException;
 import org.springframework.web.multipart.MultipartFile;
 import uk.ac.sanger.sccp.stan.*;
 import uk.ac.sanger.sccp.stan.config.StanFileConfig;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.repo.StanFileRepo;
-import uk.ac.sanger.sccp.stan.repo.WorkRepo;
+import uk.ac.sanger.sccp.stan.repo.*;
 
 import java.io.*;
 import java.nio.file.*;
@@ -29,25 +30,30 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.asCollection;
  * @author dr6
  */
 public class TestFileStoreService {
-    private StanFileConfig mockConfig;
+    @Mock private StanFileConfig mockConfig;
+    @Mock private StanFileRepo mockFileRepo;
+    @Mock private WorkRepo mockWorkRepo;
+    @Mock private WorkEventRepo mockWorkEventRepo;
+    @Mock private Transactor mockTransactor;
     private Clock clock;
-    private StanFileRepo mockFileRepo;
-    private WorkRepo mockWorkRepo;
-    private Transactor mockTransactor;
 
     private FileStoreServiceImp service;
 
+    private AutoCloseable mocking;
+
     @BeforeEach
     void setup() {
-        mockConfig = mock(StanFileConfig.class);
+        mocking = MockitoAnnotations.openMocks(this);
         when(mockConfig.getRoot()).thenReturn("/ROOT");
         when(mockConfig.getDir()).thenReturn("path-to-folder");
         clock = Clock.fixed(LocalDateTime.of(2022,11,4,14,0).toInstant(ZoneOffset.UTC), ZoneId.systemDefault());
-        mockFileRepo = mock(StanFileRepo.class);
-        mockWorkRepo = mock(WorkRepo.class);
-        mockTransactor = mock(Transactor.class);
 
-        service = spy(new FileStoreServiceImp(mockConfig, clock, mockTransactor, mockFileRepo, mockWorkRepo));
+        service = spy(new FileStoreServiceImp(mockConfig, clock, mockTransactor, mockFileRepo, mockWorkRepo, mockWorkEventRepo));
+    }
+
+    @AfterEach
+    void tearDown() throws Exception {
+        mocking.close();
     }
 
     @ParameterizedTest
@@ -78,8 +84,10 @@ public class TestFileStoreService {
             }
             return sfs;
         });
-        when(mockWorkRepo.getSetByWorkNumberIn(List.of(work.getWorkNumber()))).thenReturn(Set.of(work));
+        final Set<Work> works = Set.of(work);
+        when(mockWorkRepo.getSetByWorkNumberIn(List.of(work.getWorkNumber()))).thenReturn(works);
         User user = EntityFactory.getUser();
+        doNothing().when(service).checkAuthorisation(any(), any());
         Matchers.mockTransactor(mockTransactor);
 
         if (expectedName==null) {
@@ -87,6 +95,7 @@ public class TestFileStoreService {
             verify(data, never()).transferTo(any(Path.class));
             verifyNoInteractions(mockTransactor);
             verifyNoInteractions(mockFileRepo);
+            verify(service).checkAuthorisation(user, works);
             return;
         }
 
@@ -100,6 +109,7 @@ public class TestFileStoreService {
         assertEquals(user, sf.getUser());
 
         verify(data).transferTo(Paths.get("/ROOT/"+expectedPath));
+        verify(service).checkAuthorisation(user, works);
         verify(service).deprecateOldFiles(expectedName, List.of(work.getId()), time);
         verify(mockFileRepo).saveAll(any());
         verify(mockTransactor).transact(eq("updateStanFiles"), notNull());
@@ -118,6 +128,7 @@ public class TestFileStoreService {
         LocalDateTime time = LocalDateTime.now(clock);
         when(data.getOriginalFilename()).thenReturn(originalFilename);
         final int[] newFileId = {300};
+        doNothing().when(service).checkAuthorisation(any(), any());
 
         when(mockFileRepo.saveAll(any())).then(invocation -> {
             Collection<StanFile> sfs = invocation.getArgument(0);
@@ -148,9 +159,59 @@ public class TestFileStoreService {
         }
 
         verify(data).transferTo(Paths.get("/ROOT/"+expectedPath));
+        verify(service).checkAuthorisation(user, works);
         verify(service).deprecateOldFiles(eq(originalBasename), Matchers.sameElements(workIds), eq(time));
         verify(mockFileRepo).saveAll(any());
         verify(mockTransactor).transact(eq("updateStanFiles"), notNull());
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "normal, 012,",
+            "enduser, 12, User user1 does not have privilege to upload files for work number [SGP12]",
+            "enduser, 012, User user1 does not have privilege to upload files for work numbers [SGP11, SGP13]",
+            "disabled, 1, User user1 does not have privilege to upload files.",
+            "enduser, 111,",
+    })
+    public void testCheckAuthorisation(User.Role role, String ownerJoined, String expectedError) {
+        int numUsers = ownerJoined.chars().map(n -> n - '0').max().orElseThrow();
+        User[] users = IntStream.rangeClosed(1, numUsers)
+                .mapToObj(i -> new User(i, "user"+i, User.Role.normal))
+                .toArray(User[]::new);
+        users[0].setRole(role);
+        List<Work> works = IntStream.rangeClosed(11, 10+ownerJoined.length())
+                .mapToObj(TestFileStoreService::makeWork)
+                .collect(toList());
+        List<WorkEvent> workEvents = IntStream.range(0, ownerJoined.length())
+                .mapToObj(i -> {
+                    int userIndex = ownerJoined.charAt(i)-'1';
+                    if (userIndex < 0) {
+                        return null;
+                    }
+                    return new WorkEvent(21+i, works.get(i), WorkEvent.Type.create,
+                            users[userIndex], null, null);
+                })
+                .filter(Objects::nonNull)
+                .collect(toList());
+        when(mockWorkEventRepo.findAllByWorkInAndType(any(), any())).thenReturn(workEvents);
+
+        if (expectedError==null) {
+            service.checkAuthorisation(users[0], works);
+        } else {
+            assertThrows(InsufficientAuthenticationException.class, () -> service.checkAuthorisation(users[0], works));
+        }
+        if (role==User.Role.enduser) {
+            verify(mockWorkEventRepo).findAllByWorkInAndType(works, WorkEvent.Type.create);
+        } else {
+            verifyNoInteractions(mockWorkEventRepo);
+        }
+    }
+
+    private static Work makeWork(int id) {
+        Work work = new Work();
+        work.setId(id);
+        work.setWorkNumber("SGP"+id);
+        return work;
     }
 
     @Test

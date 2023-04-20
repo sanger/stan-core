@@ -5,13 +5,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
+import org.springframework.security.authentication.InsufficientAuthenticationException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import uk.ac.sanger.sccp.stan.Transactor;
 import uk.ac.sanger.sccp.stan.config.StanFileConfig;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.repo.StanFileRepo;
-import uk.ac.sanger.sccp.stan.repo.WorkRepo;
+import uk.ac.sanger.sccp.stan.repo.*;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -23,8 +23,8 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 import static java.util.stream.Collectors.toList;
-import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
-import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
+import static java.util.stream.Collectors.toSet;
+import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 /**
  * @author dr6
@@ -38,15 +38,17 @@ public class FileStoreServiceImp implements FileStoreService {
     private final Transactor transactor;
     private final StanFileRepo fileRepo;
     private final WorkRepo workRepo;
+    private final WorkEventRepo workEventRepo;
 
     @Autowired
     public FileStoreServiceImp(StanFileConfig config, Clock clock, Transactor transactor,
-                               StanFileRepo fileRepo, WorkRepo workRepo) {
+                               StanFileRepo fileRepo, WorkRepo workRepo, WorkEventRepo workEventRepo) {
         this.config = config;
         this.clock = clock;
         this.transactor = transactor;
         this.fileRepo = fileRepo;
         this.workRepo = workRepo;
+        this.workEventRepo = workEventRepo;
     }
 
     @Override
@@ -55,6 +57,7 @@ public class FileStoreServiceImp implements FileStoreService {
             throw new IllegalArgumentException("No work numbers specified.");
         }
         Set<Work> works = workRepo.getSetByWorkNumberIn(workNumbers);
+        checkAuthorisation(user, works);
 
         String filename = getFilename(fileData);
         if (filename.length() > StanFile.MAX_NAME_LENGTH) {
@@ -94,6 +97,36 @@ public class FileStoreServiceImp implements FileStoreService {
 
             return transactor.transact("updateStanFiles",
                     () -> updateStanFiles(user, filename, works, now, pathString));
+        }
+    }
+
+    /**
+     * Checks that the given user is allowed to upload files to the given works.
+     * @param user the user
+     * @param works the works
+     * @exception InsufficientAuthenticationException if the user is not authorised
+     */
+    public void checkAuthorisation(User user, Collection<Work> works) {
+        if (user.hasRole(User.Role.normal)) {
+            return;
+        }
+        if (!user.hasRole(User.Role.enduser)) {
+            throw new InsufficientAuthenticationException("User "+user.getUsername()+" does not have privilege to upload files.");
+        }
+        List<WorkEvent> events = workEventRepo.findAllByWorkInAndType(works, WorkEvent.Type.create);
+        Set<Integer> usersWorkIds = events.stream()
+                .filter(e -> user.equals(e.getUser()))
+                .map(e -> e.getWork().getId())
+                .collect(toSet());
+
+        List<String> otherUsersWorks = works.stream()
+                .filter(work -> !usersWorkIds.contains(work.getId()))
+                .map(Work::getWorkNumber)
+                .collect(toList());
+        if (!otherUsersWorks.isEmpty()) {
+            throw new InsufficientAuthenticationException("User "+user.getUsername()+
+                    pluralise(" does not have privilege to upload files for work number{s} ", otherUsersWorks.size())
+                    + otherUsersWorks);
         }
     }
 
