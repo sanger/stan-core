@@ -9,12 +9,12 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.WorkProgress;
 import uk.ac.sanger.sccp.stan.request.WorkProgress.WorkProgressTimestamp;
 import uk.ac.sanger.sccp.stan.service.work.WorkEventService;
-import uk.ac.sanger.sccp.utils.BasicUtils;
-import uk.ac.sanger.sccp.utils.EntityNameFilter;
+import uk.ac.sanger.sccp.utils.*;
 
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -32,6 +32,7 @@ public class WorkProgressServiceImp implements WorkProgressService {
     private final LabwareRepo lwRepo;
     private final ReleaseRepo releaseRepo;
     private final StainTypeRepo stainTypeRepo;
+    private final ReleaseRecipientRepo recipientRepo;
     private final WorkEventService workEventService;
     // Consider for the future moving these sets to a config class and injecting them
     private final Set<String> includedOpTypes = Set.of("section", "stain", "extract", "transfer", "image",
@@ -43,7 +44,8 @@ public class WorkProgressServiceImp implements WorkProgressService {
 
     @Autowired
     public WorkProgressServiceImp(WorkRepo workRepo, WorkTypeRepo workTypeRepo, ProgramRepo programRepo, OperationRepo opRepo,
-                                  LabwareRepo lwRepo, ReleaseRepo releaseRepo, StainTypeRepo stainTypeRepo, WorkEventService workEventService) {
+                                  LabwareRepo lwRepo, ReleaseRepo releaseRepo, StainTypeRepo stainTypeRepo, ReleaseRecipientRepo recipientRepo,
+                                  WorkEventService workEventService) {
         this.workRepo = workRepo;
         this.workTypeRepo = workTypeRepo;
         this.programRepo = programRepo;
@@ -51,12 +53,13 @@ public class WorkProgressServiceImp implements WorkProgressService {
         this.lwRepo = lwRepo;
         this.releaseRepo = releaseRepo;
         this.stainTypeRepo = stainTypeRepo;
+        this.recipientRepo = recipientRepo;
         this.workEventService = workEventService;
     }
 
     @Override
     public List<WorkProgress> getProgress(String workNumber, List<String> workTypeNames, List<String> programNames,
-                                          List<Status> statuses) {
+                                          List<Status> statuses, List<String> requesterNames) {
         Work singleWork = (workNumber==null ? null : workRepo.getByWorkNumber(workNumber));
         Set<WorkType> workTypes;
         if (workTypeNames==null) {
@@ -74,11 +77,30 @@ public class WorkProgressServiceImp implements WorkProgressService {
         } else {
             programs = new HashSet<>(programRepo.getAllByNameIn(programNames));
         }
-        if (workTypes!=null && workTypes.isEmpty()
-                || statuses!=null && statuses.isEmpty()
-                || programs!=null && programs.isEmpty()) {
+        Set<ReleaseRecipient> requesters;
+        if (requesterNames ==null) {
+            requesters = null;
+        } else if (requesterNames.isEmpty()) {
+            return List.of();
+        } else {
+            requesters = new HashSet<>(recipientRepo.getAllByUsernameIn(requesterNames));
+        }
+        if (Stream.of(workTypes, statuses, programs, requesters).anyMatch(c -> c!=null && c.isEmpty())) {
             return List.of();
         }
+
+        StreamerFilter<Work> ws = new StreamerFilter<>();
+        if (singleWork!=null) {
+            ws.setSource(() -> List.of(singleWork));
+        }
+        ws.addFilter(workTypes, Work::getWorkType, workRepo::findAllByWorkTypeIn);
+        ws.addFilter(programs, Work::getProgram, workRepo::findAllByProgramIn);
+        ws.addFilter(requesters, Work::getWorkRequester, workRepo::findAllByWorkRequesterIn);
+        ws.addFilter(statuses, Work::getStatus, workRepo::findAllByStatusIn);
+        if (!ws.hasSource()) {
+            ws.setSource((Supplier<? extends Iterable<Work>>) workRepo::findAll);
+        }
+
         EntityNameFilter<OperationType> opTypeFilter = new EntityNameFilter<>(includedOpTypes);
         EntityNameFilter<StainType> stainTypeFilter = new EntityNameFilter<>(specialStainTypes);
         EntityNameFilter<LabwareType> labwareTypeFilter = new EntityNameFilter<>(specialLabwareTypes);
@@ -86,55 +108,7 @@ public class WorkProgressServiceImp implements WorkProgressService {
 
         final Map<Integer, Labware> labwareIdToLabware = new HashMap<>();
 
-        if (singleWork!=null) {
-            if (workTypes!=null && !workTypes.contains(singleWork.getWorkType())) {
-                return List.of();
-            }
-            if (statuses!=null && !statuses.contains(singleWork.getStatus())) {
-                return List.of();
-            }
-            if (programs!=null && !programs.contains(singleWork.getProgram())) {
-                return List.of();
-            }
-            return List.of(getProgressForWork(singleWork, opTypeFilter, stainTypeFilter, labwareTypeFilter,
-                    releaseLabwareTypeFilter, labwareIdToLabware, labwareTypeToStainMap));
-        }
-
-        if (workTypes!=null) {
-            List<Work> works = workRepo.findAllByWorkTypeIn(workTypes);
-            Stream<Work> workStream = works.stream();
-            if (statuses!=null) {
-                workStream = workStream.filter(work -> statuses.contains(work.getStatus()));
-            }
-            if (programs!=null) {
-                workStream = workStream.filter(work -> programs.contains(work.getProgram()));
-            }
-            return workStream
-                    .map(work -> getProgressForWork(work, opTypeFilter, stainTypeFilter, labwareTypeFilter,
-                            releaseLabwareTypeFilter, labwareIdToLabware, labwareTypeToStainMap))
-                    .collect(toList());
-        }
-
-        if (programs!=null) {
-            List<Work> works = workRepo.findAllByProgramIn(programs);
-            Stream<Work> workStream = works.stream();
-            if (statuses!=null) {
-                workStream = workStream.filter(work -> statuses.contains(work.getStatus()));
-            }
-            return workStream
-                    .map(work -> getProgressForWork(work, opTypeFilter, stainTypeFilter, labwareTypeFilter,
-                            releaseLabwareTypeFilter, labwareIdToLabware, labwareTypeToStainMap))
-                    .collect(toList());
-        }
-
-        Iterable<Work> works;
-        if (statuses!=null) {
-            works = workRepo.findAllByStatusIn(statuses);
-        } else {
-            works = workRepo.findAll();
-        }
-
-        return BasicUtils.stream(works)
+        return ws.filterStream()
                 .map(work -> getProgressForWork(work, opTypeFilter, stainTypeFilter, labwareTypeFilter,
                         releaseLabwareTypeFilter, labwareIdToLabware, labwareTypeToStainMap))
                 .collect(toList());

@@ -144,4 +144,6 @@ public interface WorkRepo extends CrudRepository<Work, Integer> {
         return RepoUtils.getSetByField(this::findAllByWorkNumberIn, workNumbers, Work::getWorkNumber,
                 "Unknown work number{s}: ", String::toUpperCase);
     }
+
+    List<Work> findAllByWorkRequesterIn(Collection<ReleaseRecipient> requesters);
 }

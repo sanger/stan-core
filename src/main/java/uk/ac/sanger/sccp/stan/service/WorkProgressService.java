@@ -16,7 +16,9 @@ public interface WorkProgressService {
      * @param workTypeNames the work type (if any) to look up, or null
      * @param programNames the names of the programs to look up, or null
      * @param statuses the statuses of works to look up, or null
+     * @param requesterNames the requesters of works to look up, or null
      * @return a list of work progresses for matching works.
      */
-    List<WorkProgress> getProgress(String workNumber, List<String> workTypeNames, List<String> programNames, List<Work.Status> statuses);
+    List<WorkProgress> getProgress(String workNumber, List<String> workTypeNames, List<String> programNames,
+                                   List<Work.Status> statuses, List<String> requesterNames);
 }
