@@ -16,7 +16,7 @@ public class User {
      */
     public enum Role {
         // Note that the order here is significant to how includes(role) works
-        disabled, normal, admin;
+        disabled, enduser, normal, admin;
 
         public boolean includes(Role other) {
             return this.ordinal() >= other.ordinal();

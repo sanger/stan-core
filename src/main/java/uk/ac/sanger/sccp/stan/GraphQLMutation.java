@@ -476,7 +476,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
 
     public DataFetcher<Work> createWork() {
         return dfe -> {
-            User user = checkUser(dfe, User.Role.normal);
+            User user = checkUser(dfe, User.Role.enduser);
             String projectName = dfe.getArgument("project");
             String programName = dfe.getArgument("program");
             String code = dfe.getArgument("costCode");
