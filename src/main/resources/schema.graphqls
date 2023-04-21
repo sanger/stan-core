@@ -1604,6 +1604,8 @@ type Query {
     works(status: [WorkStatus!]): [Work!]!
     """Get the work with the specified work number."""
     work(workNumber: String!): Work!
+    """Get all work created by the specified user."""
+    worksCreatedBy(username: String!): [Work!]!
     """Get all the works with associated comment, or get all the ones in the given statuses."""
     worksWithComments(status: [WorkStatus!]): [WorkWithComment!]!
     """Get summary of works."""

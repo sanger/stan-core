@@ -2,8 +2,7 @@ package uk.ac.sanger.sccp.stan.repo;
 
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
-import uk.ac.sanger.sccp.stan.model.Work;
-import uk.ac.sanger.sccp.stan.model.WorkEvent;
+import uk.ac.sanger.sccp.stan.model.*;
 
 import java.util.Collection;
 import java.util.List;
@@ -39,4 +38,6 @@ public interface WorkEventRepo extends CrudRepository<WorkEvent, Integer> {
     List<Integer> _latestEventIdsForWorkIds(Collection<Integer> workIds);
 
     List<WorkEvent> findAllByWorkInAndType(Collection<Work> workIds, WorkEvent.Type type);
+
+    List<WorkEvent> findAllByUserAndType(User user, WorkEvent.Type type);
 }

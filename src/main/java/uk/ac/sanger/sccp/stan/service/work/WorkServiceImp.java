@@ -31,13 +31,14 @@ public class WorkServiceImp implements WorkService {
     private final LabwareRepo lwRepo;
     private final OmeroProjectRepo omeroProjectRepo;
     private final ReleaseRecipientRepo recipientRepo;
+    private final WorkEventRepo workEventRepo;
     private final WorkEventService workEventService;
     private final Validator<String> priorityValidator;
 
     @Autowired
     public WorkServiceImp(ProjectRepo projectRepo, ProgramRepo programRepo, CostCodeRepo costCodeRepo,
                           WorkTypeRepo workTypeRepo, WorkRepo workRepo, LabwareRepo lwRepo, OmeroProjectRepo omeroProjectRepo,
-                          ReleaseRecipientRepo recipientRepo, WorkEventService workEventService,
+                          ReleaseRecipientRepo recipientRepo, WorkEventRepo workEventRepo, WorkEventService workEventService,
                           @Qualifier("workPriorityValidator") Validator<String> priorityValidator) {
         this.projectRepo = projectRepo;
         this.programRepo = programRepo;
@@ -47,6 +48,7 @@ public class WorkServiceImp implements WorkService {
         this.lwRepo = lwRepo;
         this.omeroProjectRepo = omeroProjectRepo;
         this.recipientRepo = recipientRepo;
+        this.workEventRepo = workEventRepo;
         this.workEventService = workEventService;
         this.priorityValidator = priorityValidator;
     }
@@ -441,13 +443,22 @@ public class WorkServiceImp implements WorkService {
                 .collect(toList());
     }
 
+    @Override
+    public List<Work> getWorksCreatedBy(User user) {
+        return workEventRepo.findAllByUserAndType(user, WorkEvent.Type.create)
+                .stream()
+                .map(WorkEvent::getWork)
+                .collect(toList());
+    }
+
     public void fillInComments(Collection<WorkWithComment> wcs, Map<Integer, WorkEvent> workEvents) {
         for (WorkWithComment wc : wcs) {
             Work work = wc.getWork();
             WorkEvent event = workEvents.get(work.getId());
             if (event != null && event.getComment()!=null &&
                     (work.getStatus()==Status.paused && event.getType()==WorkEvent.Type.pause
-                            || work.getStatus()==Status.failed && event.getType()==WorkEvent.Type.fail|| work.getStatus()==Status.withdrawn && event.getType()==WorkEvent.Type.withdraw)) {
+                            || work.getStatus()==Status.failed && event.getType()==WorkEvent.Type.fail
+                            || work.getStatus()==Status.withdrawn && event.getType()==WorkEvent.Type.withdraw)) {
                 wc.setComment(event.getComment().getText());
             }
         }

@@ -251,6 +251,14 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         return dfe -> workRepo.getByWorkNumber(dfe.getArgument("workNumber"));
     }
 
+    public DataFetcher<Iterable<Work>> getWorksCreatedBy() {
+        return dfe -> {
+            String username = dfe.getArgument("username");
+            User user = userRepo.getByUsername(username);
+            return workService.getWorksCreatedBy(user);
+        };
+    }
+
     public DataFetcher<List<WorkWithComment>> getWorksWithComments() {
         return dfe -> {
             Collection<Work.Status> statuses = arg(dfe, "status", new TypeReference<List<Work.Status>>() {});

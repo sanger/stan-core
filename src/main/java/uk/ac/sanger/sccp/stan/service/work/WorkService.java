@@ -194,4 +194,11 @@ public interface WorkService {
      * @exception javax.persistence.EntityNotFoundException if the work number is not found
      */
     List<Labware> suggestLabwareForWorkNumber(String workNumber);
+
+    /**
+     * Gets the works created by the given user.
+     * @param user the user who created the works
+     * @return the works created by the user
+     */
+    List<Work> getWorksCreatedBy(User user);
 }

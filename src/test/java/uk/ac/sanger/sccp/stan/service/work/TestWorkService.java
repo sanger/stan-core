@@ -1,10 +1,9 @@
 package uk.ac.sanger.sccp.stan.service.work;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
-import org.mockito.ArgumentMatcher;
+import org.mockito.*;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
@@ -33,35 +32,32 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
  * @author dr6
  */
 public class TestWorkService {
-    private WorkServiceImp workService;
+    @Mock private ProjectRepo mockProjectRepo;
+    @Mock private ProgramRepo mockProgramRepo;
+    @Mock private CostCodeRepo mockCostCodeRepo;
+    @Mock private WorkRepo mockWorkRepo;
+    @Mock private LabwareRepo mockLwRepo;
+    @Mock private OmeroProjectRepo mockOmeroProjectRepo;
+    @Mock private WorkTypeRepo mockWorkTypeRepo;
+    @Mock private ReleaseRecipientRepo mockReleaseRecipientRepo;
+    @Mock private WorkEventRepo mockWorkEventRepo;
+    @Mock private WorkEventService mockWorkEventService;
+    @Mock private Validator<String> mockPriorityValidator;
 
-    private ProjectRepo mockProjectRepo;
-    private ProgramRepo mockProgramRepo;
-    private CostCodeRepo mockCostCodeRepo;
-    private WorkRepo mockWorkRepo;
-    private LabwareRepo mockLwRepo;
-    private OmeroProjectRepo mockOmeroProjectRepo;
-    private WorkTypeRepo mockWorkTypeRepo;
-    private ReleaseRecipientRepo mockReleaseRecipientRepo;
-    private WorkEventService mockWorkEventService;
-    private Validator<String> mockPriorityValidator;
+    private AutoCloseable mocking;
+
+    @InjectMocks
+    private WorkServiceImp workService;
 
     @BeforeEach
     void setup() {
-        mockProjectRepo = mock(ProjectRepo.class);
-        mockProgramRepo = mock(ProgramRepo.class);
-        mockCostCodeRepo = mock(CostCodeRepo.class);
-        mockWorkRepo = mock(WorkRepo.class);
-        mockLwRepo = mock(LabwareRepo.class);
-        mockOmeroProjectRepo = mock(OmeroProjectRepo.class);
-        mockWorkEventService = mock(WorkEventService.class);
-        mockWorkTypeRepo = mock(WorkTypeRepo.class);
-        mockReleaseRecipientRepo = mock(ReleaseRecipientRepo.class);
-        //noinspection unchecked
-        mockPriorityValidator = mock(Validator.class);
+        mocking = MockitoAnnotations.openMocks(this);
+        workService = spy(workService);
+    }
 
-        workService = spy(new WorkServiceImp(mockProjectRepo, mockProgramRepo, mockCostCodeRepo, mockWorkTypeRepo,
-                mockWorkRepo, mockLwRepo, mockOmeroProjectRepo, mockReleaseRecipientRepo, mockWorkEventService, mockPriorityValidator));
+    @AfterEach
+    void cleanup() throws Exception {
+        mocking.close();
     }
 
     @ParameterizedTest
@@ -824,11 +820,11 @@ public class TestWorkService {
     }
 
     static Stream<Arguments> getWorksWithCommentsArgs() {
-        Work workA = new Work(1, "SGP1", null, null, null, null, null, Status.active);
-        Work workC = new Work(2, "SGP2", null, null, null, null, null, Status.completed);
-        Work workF = new Work(3, "SGP3", null, null, null, null, null, Status.failed);
-        Work workP = new Work(4, "SGP4", null, null, null, null, null, Status.paused);
-        Work workW = new Work(5, "SGP5", null, null, null, null, null, Status.withdrawn);
+        Work workA = quickWork(1, Status.active);
+        Work workC = quickWork(2, Status.completed);
+        Work workF = quickWork(3, Status.failed);
+        Work workP = quickWork(4, Status.paused);
+        Work workW = quickWork(5, Status.withdrawn);
 
         WorkEvent eventF = new WorkEvent(workF, WorkEvent.Type.fail, null, null);
         WorkEvent eventP = new WorkEvent(workP, WorkEvent.Type.pause, null, null);
@@ -843,13 +839,28 @@ public class TestWorkService {
     }
 
     @Test
+    public void testGetWorksCreatedBy() {
+        User user = EntityFactory.getUser();
+        List<Work> works = IntStream.range(1,3)
+                .mapToObj(i -> quickWork(i, Status.active))
+                .collect(toList());
+        List<WorkEvent> events = works.stream()
+                .map(work -> new WorkEvent(10 + work.getId(), work, WorkEvent.Type.create, user, null, null))
+                .collect(toList());
+        when(mockWorkEventRepo.findAllByUserAndType(user, WorkEvent.Type.create)).thenReturn(events);
+
+        assertEquals(works, workService.getWorksCreatedBy(user));
+        verify(mockWorkEventRepo).findAllByUserAndType(user, WorkEvent.Type.create);
+    }
+
+    @Test
     public void testFillInComments() {
-        Work workF1 = new Work(1, "SGP1", null, null, null, null, null, Status.failed);
-        Work workF2 = new Work(2, "SGP2", null, null, null, null, null, Status.failed);
-        Work workP1 = new Work(3, "SGP3", null, null, null, null, null, Status.paused);
-        Work workP2 = new Work(4, "SGP4", null, null, null, null, null, Status.paused);
-        Work workW1 = new Work(5, "SGP5", null, null, null, null, null, Status.withdrawn);
-        Work workW2 = new Work(6, "SGP6", null, null, null, null, null, Status.withdrawn);
+        Work workF1 = quickWork(1, Status.failed);
+        Work workF2 = quickWork(2, Status.failed);
+        Work workP1 = quickWork(3, Status.paused);
+        Work workP2 = quickWork(4, Status.paused);
+        Work workW1 = quickWork(5, Status.withdrawn);
+        Work workW2 = quickWork(6, Status.withdrawn);
         Map<Integer, WorkEvent> events = Stream.of(
                 new WorkEvent(workF1, WorkEvent.Type.fail, null, new Comment(1, "Ohio", "")),
                 new WorkEvent(workF2, WorkEvent.Type.create, null, new Comment(2, "Oklahoma", "")),

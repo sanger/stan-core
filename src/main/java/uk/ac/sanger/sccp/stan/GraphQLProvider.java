@@ -91,6 +91,7 @@ public class GraphQLProvider {
                         .dataFetcher("workTypes", graphQLDataFetchers.getWorkTypes())
                         .dataFetcher("works", graphQLDataFetchers.getWorks())
                         .dataFetcher("work", graphQLDataFetchers.getWork())
+                        .dataFetcher("worksCreatedBy", graphQLDataFetchers.getWorksCreatedBy())
                         .dataFetcher("worksWithComments", graphQLDataFetchers.getWorksWithComments())
                         .dataFetcher("worksSummary", graphQLDataFetchers.worksSummary())
                         .dataFetcher("listFiles", graphQLDataFetchers.listStanFiles())

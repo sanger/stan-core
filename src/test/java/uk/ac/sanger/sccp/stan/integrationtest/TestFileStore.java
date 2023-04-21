@@ -146,9 +146,9 @@ public class TestFileStore {
     private void assertFileData(Map<String, ?> data, String filename, String url, String username, String workNumber) {
         assertNotNull(data.get("created"));
         assertEquals(filename, data.get("name"));
-        assertEquals(url, data.get("url"));
         assertEquals(username, chainGet(data, "user", "username"));
         assertEquals(workNumber, chainGet(data, "work", "workNumber"));
+        assertEquals(url, data.get("url"));
     }
 
     private void deleteTestFiles(Path directory) throws IOException {
