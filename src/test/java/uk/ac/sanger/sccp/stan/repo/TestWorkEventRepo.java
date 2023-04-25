@@ -31,12 +31,10 @@ public class TestWorkEventRepo {
     @Autowired
     private CommentRepo commentRepo;
 
-    private User user;
-
     @Transactional
     @Test
     public void testGetLatestEventForEachWorkId() {
-        user = entityCreator.createUser("user1");
+        User user = entityCreator.createUser("user1");
         WorkType wt = entityCreator.createWorkType("Rocks");
         Project pr = entityCreator.createProject("Stargate");
         CostCode cc = entityCreator.createCostCode("4");
@@ -47,16 +45,34 @@ public class TestWorkEventRepo {
         Comment com1 = commentRepo.save(new Comment(null, "Alpha", "work"));
         Comment com2 = commentRepo.save(new Comment(null, "Beta", "work"));
 
-        createEvent(work1, Type.create, null, 1);
-        WorkEvent event2 = createEvent(work1, Type.pause, com1, 2);
-        createEvent(work2, Type.create, null, 3);
-        WorkEvent event4 = createEvent(work2, Type.fail, com2, 4);
+        createEvent(work1, Type.create, null, 1, user);
+        WorkEvent event2 = createEvent(work1, Type.pause, com1, 2, user);
+        createEvent(work2, Type.create, null, 3, user);
+        WorkEvent event4 = createEvent(work2, Type.fail, com2, 4, user);
 
         Iterable<WorkEvent> events = workEventRepo.getLatestEventForEachWorkId(List.of(work1.getId(), work2.getId(), -5));
         assertThat(events).containsExactlyInAnyOrder(event2, event4);
     }
 
-    private WorkEvent createEvent(Work work, Type type, Comment comment, int day) {
+    @Transactional
+    @Test
+    public void testFindAllByUserAndType() {
+        User user1 = entityCreator.createUser("user1");
+        User user2 = entityCreator.createUser("user2");
+        Work[] works = new Work[4];
+        works[0] = entityCreator.createWork(null, null, null, null, null);
+        for (int i = 1; i < works.length; ++i) {
+            works[i] = entityCreator.createWorkLike(works[0]);
+        }
+        WorkEvent[] events = {createEvent(works[0], Type.create, null, 1, user1),
+                createEvent(works[1], Type.create, null, 1, user2),
+                createEvent(works[1], Type.pause, null, 1, user1),
+                createEvent(works[2], Type.create, null, 1, user1)};
+        assertThat(workEventRepo.findAllByUserAndType(user1, Type.create))
+                .containsExactlyInAnyOrder(events[0], events[3]);
+    }
+
+    private WorkEvent createEvent(Work work, Type type, Comment comment, int day, User user) {
         var time = LocalDateTime.of(2021,10, day,0,0);
         WorkEvent event = new WorkEvent(work, type, user, comment);
         event = workEventRepo.save(event); // The time can only be explicitly set in an update, not an insert
