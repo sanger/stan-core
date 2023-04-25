@@ -18,6 +18,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGet;
+import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGetList;
 
 /**
  * Tests work mutation
@@ -73,6 +74,15 @@ public class TestWorkMutation {
         assertEquals(workRequester.getUsername(), chainGet(workData, "workRequester", "username"));
         assertEquals(omero.getName(), chainGet(workData, "omeroProject", "name"));
         assertEquals("unstarted", workData.get("status"));
+
+        String worksCreatedByQuery = "query { worksCreatedBy(username: \"USER\") { workNumber } }";
+        data = tester.post(worksCreatedByQuery.replace("USER", enduser.getUsername()));
+        List<?> createdWorks = chainGet(data, "data", "worksCreatedBy");
+        assertThat(createdWorks).hasSize(1);
+        assertEquals(workNumber, chainGet(createdWorks, 0, "workNumber"));
+
+        data = tester.post(worksCreatedByQuery.replace("USER", normaluser.getUsername()));
+        assertThat(chainGetList(data, "data", "worksCreatedBy")).isEmpty();
 
         data = tester.post(worksQuery);
         worksData = chainGet(data, "data", "works");
