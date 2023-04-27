@@ -1,6 +1,6 @@
 package uk.ac.sanger.sccp.stan.integrationtest;
 
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -48,14 +48,24 @@ public class TestFileStore {
     private EntityCreator entityCreator;
     @Autowired
     private WorkEventRepo workEventRepo;
+    private Path directory;
+
+    @BeforeEach
+    void setup() throws IOException {
+        directory = Paths.get(stanFileConfig.getRoot(), stanFileConfig.getDir());
+        if (!Files.isDirectory(directory)) {
+            Files.createDirectories(directory);
+        }
+    }
+
+    @AfterEach
+    void cleanup() throws IOException {
+        deleteTestFiles(directory);
+    }
 
     @Test
     @Transactional
     public void testFileStore() throws Exception {
-        Path directory = Paths.get(stanFileConfig.getRoot(), stanFileConfig.getDir());
-        if (!Files.isDirectory(directory)) {
-            Files.createDirectories(directory);
-        }
         Work work = entityCreator.createWork(null, null, null, null, null);
         String workNumber = work.getWorkNumber();
         Work work2 = entityCreator.createWorkLike(work);
@@ -109,8 +119,6 @@ public class TestFileStore {
 
         assertFileData(filesData.get(index0), filename1, url1, username, workNumber);
         assertFileData(filesData.get(1-index0), filename2, url2, username, workNumber);
-
-        deleteTestFiles(directory);
     }
 
     private static String nextFileUrl(String url) {
