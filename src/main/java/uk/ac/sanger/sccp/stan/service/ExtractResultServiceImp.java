@@ -128,7 +128,7 @@ public class ExtractResultServiceImp extends BaseResultService implements Extrac
                 .filter(Objects::nonNull);
 
         List<Comment> comments = commentValidationService.validateCommentIds(problems, commentIdStream);
-        return comments.stream().collect(BasicUtils.toMap(Comment::getId));
+        return comments.stream().collect(BasicUtils.inMap(Comment::getId));
     }
 
     /**

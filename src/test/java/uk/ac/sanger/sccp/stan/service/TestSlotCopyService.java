@@ -4,8 +4,8 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
 import org.mockito.*;
-import uk.ac.sanger.sccp.stan.*;
 import uk.ac.sanger.sccp.stan.Matchers;
+import uk.ac.sanger.sccp.stan.*;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
@@ -818,7 +818,7 @@ public class TestSlotCopyService {
     public void testFillLabware() {
         UCMap<Labware> lwMap = makeLabwareMap();
         Map<Integer, Sample> sampleMap = makeSourceSamples(cdna).stream()
-                .collect(BasicUtils.toMap(Sample::getId));
+                .collect(BasicUtils.inMap(Sample::getId));
         Labware lw = EntityFactory.makeEmptyLabware(plateType);
         final Address A1 = new Address(1,1);
         final Address B1 = new Address(2,1);

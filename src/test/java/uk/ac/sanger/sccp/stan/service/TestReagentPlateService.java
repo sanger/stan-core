@@ -1,12 +1,10 @@
 package uk.ac.sanger.sccp.stan.service;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
+import org.junit.jupiter.api.*;
+import org.mockito.*;
 import uk.ac.sanger.sccp.stan.model.Address;
 import uk.ac.sanger.sccp.stan.model.reagentplate.*;
-import uk.ac.sanger.sccp.stan.repo.ReagentPlateRepo;
-import uk.ac.sanger.sccp.stan.repo.ReagentSlotRepo;
+import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
@@ -20,27 +18,34 @@ import static org.mockito.Mockito.*;
  * @author dr6
  */
 public class TestReagentPlateService {
-    private ReagentPlateRepo mockReagentPlateRepo;
-    private ReagentSlotRepo mockReagentSlotRepo;
-    private Validator<String> mockBarcodeValidator;
+    @Mock private ReagentPlateRepo mockReagentPlateRepo;
+    @Mock private ReagentSlotRepo mockReagentSlotRepo;
+    @Mock private TagLayoutRepo mockTagLayoutRepo;
+    @Mock private Validator<String> mockBarcodeValidator;
     private ReagentPlateServiceImp service;
+    private AutoCloseable mocking;
 
-    @SuppressWarnings("unchecked")
     @BeforeEach
     void setup() {
-        mockReagentPlateRepo = mock(ReagentPlateRepo.class);
-        mockReagentSlotRepo = mock(ReagentSlotRepo.class);
-        mockBarcodeValidator = mock(Validator.class);
-        service = spy(new ReagentPlateServiceImp(mockReagentPlateRepo, mockReagentSlotRepo, mockBarcodeValidator));
+        mocking = MockitoAnnotations.openMocks(this);
+        service = spy(new ReagentPlateServiceImp(mockReagentPlateRepo, mockReagentSlotRepo, mockTagLayoutRepo,
+                mockBarcodeValidator));
+    }
+
+    @AfterEach
+    void cleanup() throws Exception {
+        mocking.close();
     }
 
     @Test
     public void testCreateReagentPlate_valid() {
         String barcode = "123";
         String plateType = ReagentPlate.TYPE_FRESH_FROZEN;
+        Integer layoutId = 700;
         ReagentPlate plate = new ReagentPlate(barcode, plateType);
         when(mockReagentPlateRepo.findByBarcode(barcode)).thenReturn(Optional.empty());
         when(mockReagentPlateRepo.save(any())).thenReturn(plate);
+        when(mockTagLayoutRepo.layoutIdForReagentPlateType(plateType)).thenReturn(layoutId);
         List<ReagentSlot> rslots = List.of(new ReagentSlot(null, new Address(1,2)));
         doReturn(rslots).when(service).createSlots(any());
 
@@ -49,7 +54,8 @@ public class TestReagentPlateService {
         verify(mockBarcodeValidator).checkArgument(barcode);
         assertSame(rslots, plate.getSlots());
         verify(service).createSlots(plate);
-        verify(mockReagentPlateRepo).save(new ReagentPlate(barcode, plateType));
+        verify(mockTagLayoutRepo).layoutIdForReagentPlateType(plateType);
+        verify(mockReagentPlateRepo).save(new ReagentPlate(barcode, plateType, layoutId));
     }
 
     @Test
@@ -66,7 +72,7 @@ public class TestReagentPlateService {
 
     @Test
     public void testCreateSlots() {
-        ReagentPlate plate = new ReagentPlate(500, "123", ReagentPlate.TYPE_FFPE, null);
+        ReagentPlate plate = new ReagentPlate(500, "123", ReagentPlate.TYPE_FFPE, null, null);
         ReagentPlateLayout layout = plate.getPlateLayout();
         assertEquals(8, layout.getNumRows());
         assertEquals(12, layout.getNumColumns());

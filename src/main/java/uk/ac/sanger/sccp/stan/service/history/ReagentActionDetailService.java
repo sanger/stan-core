@@ -5,7 +5,8 @@ import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.Address;
 import uk.ac.sanger.sccp.stan.model.reagentplate.ReagentAction;
 import uk.ac.sanger.sccp.stan.model.reagentplate.ReagentPlate;
-import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.repo.ReagentActionRepo;
+import uk.ac.sanger.sccp.stan.repo.ReagentPlateRepo;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import java.util.*;
@@ -65,7 +66,7 @@ public class ReagentActionDetailService {
                 .collect(toSet());
         var reagentPlates = reagentPlateRepo.findAllById(reagentPlateIds);
         Map<Integer, ReagentPlate> reagentPlateMap = BasicUtils.stream(reagentPlates)
-                .collect(BasicUtils.toMap(ReagentPlate::getId));
+                .collect(BasicUtils.inMap(ReagentPlate::getId));
         final Map<K, List<ReagentActionDetail>> map = new HashMap<>();
         for (var ra : reagentActions) {
             ReagentPlate rp = reagentPlateMap.get(ra.getReagentSlot().getPlateId());

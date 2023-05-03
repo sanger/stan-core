@@ -121,7 +121,7 @@ public class ExtractResultQueryService {
                                 filter(Objects::nonNull).collect(toSet()))
                 ).stream()
                 .filter(op -> op.getOperationType().getName().equalsIgnoreCase(EXTRACT_OP_NAME))
-                .collect(BasicUtils.toMap(Operation::getId));
+                .collect(BasicUtils.inMap(Operation::getId));
 
         if (referredToOps.isEmpty()) {
             return null;
@@ -129,7 +129,7 @@ public class ExtractResultQueryService {
 
         Map<Integer, ResultOp> roMap = resultOps.stream()
                 .filter(ro -> referredToOps.get(ro.getRefersToOpId()) !=null)
-                .collect(BasicUtils.toMap(ResultOp::getOperationId));
+                .collect(BasicUtils.inMap(ResultOp::getOperationId));
 
         return ops.stream()
                 .filter(op -> roMap.get(op.getId()) !=null)

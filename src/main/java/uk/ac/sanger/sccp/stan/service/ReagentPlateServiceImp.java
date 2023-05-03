@@ -5,8 +5,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.Address;
 import uk.ac.sanger.sccp.stan.model.reagentplate.*;
-import uk.ac.sanger.sccp.stan.repo.ReagentPlateRepo;
-import uk.ac.sanger.sccp.stan.repo.ReagentSlotRepo;
+import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.UCMap;
 
@@ -23,13 +22,16 @@ import static java.util.stream.Collectors.toList;
 public class ReagentPlateServiceImp implements ReagentPlateService {
     private final ReagentPlateRepo reagentPlateRepo;
     private final ReagentSlotRepo reagentSlotRepo;
+    private final TagLayoutRepo tagLayoutRepo;
     private final Validator<String> reagentPlateBarcodeValidator;
 
     @Autowired
     public ReagentPlateServiceImp(ReagentPlateRepo reagentPlateRepo, ReagentSlotRepo reagentSlotRepo,
+                                  TagLayoutRepo tagLayoutRepo,
                                   @Qualifier("reagentPlateBarcodeValidator") Validator<String> reagentPlateBarcodeValidator) {
         this.reagentPlateRepo = reagentPlateRepo;
         this.reagentSlotRepo = reagentSlotRepo;
+        this.tagLayoutRepo = tagLayoutRepo;
         this.reagentPlateBarcodeValidator = reagentPlateBarcodeValidator;
     }
 
@@ -48,7 +50,8 @@ public class ReagentPlateServiceImp implements ReagentPlateService {
     @Override
     public ReagentPlate createReagentPlate(String barcode, String plateType) {
         reagentPlateBarcodeValidator.checkArgument(barcode);
-        ReagentPlate plate = reagentPlateRepo.save(new ReagentPlate(barcode, plateType));
+        Integer tagLayoutId = tagLayoutRepo.layoutIdForReagentPlateType(plateType);
+        ReagentPlate plate = reagentPlateRepo.save(new ReagentPlate(barcode, plateType, tagLayoutId));
         plate.setSlots(createSlots(plate));
         return plate;
     }

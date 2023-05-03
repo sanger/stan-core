@@ -152,7 +152,7 @@ public class RNAAnalysisServiceImp extends BaseResultService implements RNAAnaly
                 .map(RNAAnalysisLabware::getCommentId)
                 .filter(Objects::nonNull);
         return commentValidationService.validateCommentIds(problems, commentIdStream).stream()
-                .collect(BasicUtils.toMap(Comment::getId));
+                .collect(BasicUtils.inMap(Comment::getId));
     }
 
     /**

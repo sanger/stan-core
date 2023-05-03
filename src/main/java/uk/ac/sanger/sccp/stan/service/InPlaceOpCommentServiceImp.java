@@ -121,7 +121,7 @@ public class InPlaceOpCommentServiceImp implements InPlaceOpCommentService {
         var comments = commentValidationService.validateCommentIds(problems,
                 barcodesAndCommentIds.stream().map(BarcodeAndCommentId::getCommentId));
         return comments.stream()
-                .collect(BasicUtils.toMap(Comment::getId));
+                .collect(BasicUtils.inMap(Comment::getId));
     }
 
     /**

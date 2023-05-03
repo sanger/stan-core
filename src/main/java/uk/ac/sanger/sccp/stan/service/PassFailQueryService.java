@@ -64,7 +64,7 @@ public class PassFailQueryService {
             return List.of();
         }
         Map<Integer, Slot> slotMap = lw.getSlots().stream()
-                .collect(BasicUtils.toMap(Slot::getId));
+                .collect(BasicUtils.inMap(Slot::getId));
         var commentMap = getCommentMap(slotMap, opId);
 
         Map<SlotPassFail, Set<Integer>> spfMap = new HashMap<>();

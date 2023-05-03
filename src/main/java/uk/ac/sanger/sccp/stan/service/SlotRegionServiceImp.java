@@ -31,7 +31,7 @@ public class SlotRegionServiceImp implements SlotRegionService {
     @Override
     public List<SamplePositionResult> loadSamplePositionResultsForLabware(String barcode) {
         Labware lw = lwRepo.getByBarcode(barcode);
-        Map<Integer, Slot> slotIdMap = lw.getSlots().stream().collect(BasicUtils.toMap(Slot::getId));
+        Map<Integer, Slot> slotIdMap = lw.getSlots().stream().collect(BasicUtils.inMap(Slot::getId));
         List<SamplePosition> sps = samplePositionRepo.findAllBySlotIdIn(slotIdMap.keySet());
         if (sps.isEmpty()) {
             return List.of();

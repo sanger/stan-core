@@ -5,8 +5,9 @@ import uk.ac.sanger.sccp.utils.UCMap;
 
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
-import java.util.function.Function;
-import java.util.function.Supplier;
+import java.util.function.*;
+
+import static uk.ac.sanger.sccp.utils.BasicUtils.coalesce;
 
 /**
  * Utils for repos
@@ -32,26 +33,7 @@ public class RepoUtils {
                                                                         Function<E, V> getField, String errorText,
                                                                         Function<? super V, ? extends V> canonicalise)
             throws EntityNotFoundException {
-        if (values.isEmpty()) {
-            return List.of();
-        }
-        Iterable<E> found = findBy.apply(values);
-        final Function<? super V, ? extends V> canon = (canonicalise==null ? Function.identity() : canonicalise);
-        Map<V, E> map = BasicUtils.stream(found).collect(BasicUtils.toMap(getField.andThen(canon)));
-        LinkedHashSet<V> missing = new LinkedHashSet<>(values.size() - map.size());
-        List<E> items = new ArrayList<>(values.size());
-        for (V value : values) {
-            E item = map.get(canon.apply(value));
-            if (item == null) {
-                missing.add(value);
-            } else {
-                items.add(item);
-            }
-        }
-        if (!missing.isEmpty()) {
-            throw new EntityNotFoundException(BasicUtils.pluralise(errorText, missing.size()) + missing);
-        }
-        return items;
+        return getCollectionByField(findBy, values, getField, errorText, canonicalise, ArrayList::new, List::of);
     }
 
     /**
@@ -74,14 +56,42 @@ public class RepoUtils {
                                                                        String errorText,
                                                                        Function<? super V, ? extends V> canonicalise)
             throws EntityNotFoundException {
+        return getCollectionByField(findBy, values, getField, errorText, canonicalise, HashSet::new, Set::of);
+    }
+
+    /**
+     * Gets the indicated items from the given repo function, in a collection.
+     * Throws an exception if any items cannot be found.
+     * @param <V> the type of values being given to look up the entities
+     * @param <E> the type of entity being looked up
+     * @param <C> the type of collection of values given
+     * @param <R> the type of collection the entities will be returned in
+     * @param findBy function to find entities matching the given values
+     * @param values the values to use to look up the entities
+     * @param getField function to get a value from an entity
+     * @param errorText the text of the error, which will be followed by the list of missing values
+     * @param canonicalise (optional) function to canonicalise the values
+     *        (e.g. put strings in upper case for deduplication)
+     * @param clSupplier supplier for a collection, given a suggested capacity
+     * @param emptyClSupplier supplier for an empty collection (optional)
+     * @return collection of matching items
+     * @exception EntityNotFoundException any specified items cannot be found
+     */
+    public static <V, E, C extends Collection<V>, R extends Collection<E>> R getCollectionByField(Function<C, ? extends Iterable<E>> findBy,
+                                                                       C values, Function<E, V> getField,
+                                                                       String errorText,
+                                                                       Function<? super V, ? extends V> canonicalise,
+                                                                       IntFunction<? extends R> clSupplier,
+                                                                       Supplier<? extends R> emptyClSupplier)
+            throws EntityNotFoundException {
         if (values.isEmpty()) {
-            return Set.of();
+            return (emptyClSupplier!=null ? emptyClSupplier.get() : clSupplier.apply(0));
         }
         Iterable<E> found = findBy.apply(values);
-        final Function<? super V, ? extends V> canon = (canonicalise==null ? Function.identity() : canonicalise);
-        Map<V, E> map = BasicUtils.stream(found).collect(BasicUtils.toMap(getField.andThen(canon)));
+        final Function<? super V, ? extends V> canon = coalesce(canonicalise, Function.identity());
+        Map<V, E> map = BasicUtils.stream(found).collect(BasicUtils.inMap(getField.andThen(canon)));
         LinkedHashSet<V> missing = new LinkedHashSet<>(values.size() - map.size());
-        Set<E> items = new HashSet<>(map.size());
+        R items = clSupplier.apply(values.size());
         for (V value : values) {
             E item = map.get(canon.apply(value));
             if (item == null) {
@@ -116,13 +126,10 @@ public class RepoUtils {
             Function<C, ? extends Iterable<E>> findBy, C values, Function<E, V> getField, String errorText,
             Supplier<M> mapSupplier, Supplier<M> emptyMapSupplier) throws EntityNotFoundException {
         if (values.isEmpty()) {
-            if (emptyMapSupplier!=null) {
-                return emptyMapSupplier.get();
-            }
-            return mapSupplier.get();
+            return coalesce(emptyMapSupplier, mapSupplier).get();
         }
 
-        M map = BasicUtils.stream(findBy.apply(values)).collect(BasicUtils.toMap(getField, mapSupplier));
+        M map = BasicUtils.stream(findBy.apply(values)).collect(BasicUtils.inMap(getField, mapSupplier));
 
         if (map.size() < values.size()) {
             LinkedHashSet<V> missing = values.stream()

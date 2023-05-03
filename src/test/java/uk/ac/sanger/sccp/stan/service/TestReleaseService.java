@@ -165,7 +165,7 @@ public class TestReleaseService {
                 .map(ReleaseLabware::getBarcode)
                 .collect(toList());
 
-        verify(service).loadLabware(sameElements(expectedBarcodes));
+        verify(service).loadLabware(sameElements(expectedBarcodes, true));
         verify(service).validateLabware(labware);
         verify(service).validateContents(labware);
         verify(service).loadWork(request.getReleaseLabware());
@@ -173,7 +173,7 @@ public class TestReleaseService {
         verify(mockEmailService).tryReleaseEmail(recEmail, List.of("ford@sanger.ac.uk"), releaseFilePath);
         verify(mockStoreService).loadBasicLocationsOfItems(labware.stream().map(Labware::getBarcode).collect(toList()));
         verify(service).transactRelease(user, recipient, otherRecs, destination, labware, locations, workMap);
-        verify(mockStoreService).discardStorage(same(user), sameElements(expectedBarcodes));
+        verify(mockStoreService).discardStorage(same(user), sameElements(expectedBarcodes, true));
         assertEquals(result, new ReleaseResult(releases));
     }
 

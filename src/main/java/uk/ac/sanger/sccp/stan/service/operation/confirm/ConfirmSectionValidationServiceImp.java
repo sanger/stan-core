@@ -100,7 +100,7 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
                 .flatMap(cs -> cs.getCommentIds().stream());
         Stream<Integer> commentIds = Stream.concat(slotCommentIds, sampleCommentIds).filter(Objects::nonNull);
         return commentValidationService.validateCommentIds(problems, commentIds).stream()
-                .collect(BasicUtils.toMap(Comment::getId));
+                .collect(BasicUtils.inMap(Comment::getId));
     }
 
     /**

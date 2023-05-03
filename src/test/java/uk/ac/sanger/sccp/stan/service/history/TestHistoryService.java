@@ -187,7 +187,7 @@ public class TestHistoryService {
 
         List<Sample> samples = List.of(sam1, sam2);
         List<Labware> allLabware = BasicUtils.concat(lws, List.of(rlw1, rlw2));
-        doReturn(samples).when(service).referencedSamples(sameElements(entries), sameElements(allLabware));
+        doReturn(samples).when(service).referencedSamples(sameElements(entries, true), sameElements(allLabware, true));
 
         History history = service.getHistoryForWorkNumber(workNumber);
         assertEquals(entries, history.getEntries());
