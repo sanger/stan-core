@@ -151,12 +151,19 @@ public class TestFileStore {
         return r.getContentAsString();
     }
 
-    private void assertFileData(Map<String, ?> data, String filename, String url, String username, String workNumber) {
+    private void assertFileData(Map<String, ?> data, String filename, String url, String username, String workNumber) throws IOException {
         assertNotNull(data.get("created"));
         assertEquals(filename, data.get("name"));
         assertEquals(username, chainGet(data, "user", "username"));
         assertEquals(workNumber, chainGet(data, "work", "workNumber"));
-        assertEquals(url, data.get("url"));
+        if (!url.equals(data.get("url"))) {
+            System.err.printf("URL is wrong: %s != %s%n", url, data.get("url"));
+            System.err.println("Actual files:");
+            try (Stream<Path> files = Files.list(directory)) {
+                files.forEach(System.err::println);
+            }
+            assertEquals(url, data.get("url")); // Fail the test
+        }
     }
 
     private void deleteTestFiles(Path directory) throws IOException {
