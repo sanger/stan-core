@@ -5,14 +5,16 @@ import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.Address;
 import uk.ac.sanger.sccp.stan.model.reagentplate.ReagentAction;
 import uk.ac.sanger.sccp.stan.model.reagentplate.ReagentPlate;
-import uk.ac.sanger.sccp.stan.repo.ReagentActionRepo;
-import uk.ac.sanger.sccp.stan.repo.ReagentPlateRepo;
+import uk.ac.sanger.sccp.stan.model.taglayout.TagLayout;
+import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import java.util.*;
 import java.util.function.Function;
 
 import static java.util.stream.Collectors.toSet;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullToEmpty;
+import static uk.ac.sanger.sccp.utils.BasicUtils.stream;
 
 /**
  * Service to describe the details of reagent transfers for particular operations.
@@ -22,11 +24,14 @@ import static java.util.stream.Collectors.toSet;
 public class ReagentActionDetailService {
     private final ReagentActionRepo reagentActionRepo;
     private final ReagentPlateRepo reagentPlateRepo;
+    private final TagLayoutRepo tagLayoutRepo;
 
     @Autowired
-    public ReagentActionDetailService(ReagentActionRepo reagentActionRepo, ReagentPlateRepo reagentPlateRepo) {
+    public ReagentActionDetailService(ReagentActionRepo reagentActionRepo, ReagentPlateRepo reagentPlateRepo,
+                                      TagLayoutRepo tagLayoutRepo) {
         this.reagentActionRepo = reagentActionRepo;
         this.reagentPlateRepo = reagentPlateRepo;
+        this.tagLayoutRepo = tagLayoutRepo;
     }
 
     /**
@@ -65,14 +70,22 @@ public class ReagentActionDetailService {
                 .map(ra -> ra.getReagentSlot().getPlateId())
                 .collect(toSet());
         var reagentPlates = reagentPlateRepo.findAllById(reagentPlateIds);
-        Map<Integer, ReagentPlate> reagentPlateMap = BasicUtils.stream(reagentPlates)
+        Map<Integer, ReagentPlate> reagentPlateMap = stream(reagentPlates)
                 .collect(BasicUtils.inMap(ReagentPlate::getId));
+        Map<Integer, TagLayout> tagLayoutMap = tagLayoutRepo.getMapByIdIn(
+                reagentPlateMap.values().stream()
+                        .map(ReagentPlate::getTagLayoutId)
+                        .filter(Objects::nonNull)
+                        .collect(toSet())
+        );
         final Map<K, List<ReagentActionDetail>> map = new HashMap<>();
         for (var ra : reagentActions) {
             ReagentPlate rp = reagentPlateMap.get(ra.getReagentSlot().getPlateId());
+            TagLayout tl = rp.getTagLayoutId()==null ? null : tagLayoutMap.get(rp.getTagLayoutId());
+            Map<String, String> tagData = (tl==null ? null : tl.getTagData(ra.getReagentSlot().getAddress()));
             ReagentActionDetail rad = new ReagentActionDetail(rp.getBarcode(), rp.getPlateType(),
                     ra.getReagentSlot().getAddress(), ra.getDestination().getAddress(),
-                    ra.getDestination().getLabwareId());
+                    ra.getDestination().getLabwareId(), tagData);
             map.computeIfAbsent(keyFunction.apply(ra), k -> new ArrayList<>()).add(rad);
         }
         return map;
@@ -87,15 +100,21 @@ public class ReagentActionDetailService {
         public final Address reagentSlotAddress;
         public final Address destSlotAddress;
         public final int destinationLabwareId;
+        public final Map<String, String> tagData;
 
         public ReagentActionDetail(String reagentPlateBarcode, String reagentPlateType,
                                    Address reagentSlotAddress, Address destSlotAddress,
-                                   int destinationLabwareId) {
+                                   int destinationLabwareId, Map<String, String> tagData) {
             this.reagentPlateBarcode = reagentPlateBarcode;
             this.reagentPlateType = reagentPlateType;
             this.reagentSlotAddress = reagentSlotAddress;
             this.destSlotAddress = destSlotAddress;
             this.destinationLabwareId = destinationLabwareId;
+            this.tagData = nullToEmpty(tagData);
+        }
+
+        public Map<String, String> getTagData() {
+            return this.tagData;
         }
 
         @Override
@@ -107,7 +126,8 @@ public class ReagentActionDetailService {
                     && Objects.equals(this.reagentPlateBarcode, that.reagentPlateBarcode)
                     && Objects.equals(this.reagentPlateType, that.reagentPlateType)
                     && Objects.equals(this.reagentSlotAddress, that.reagentSlotAddress)
-                    && Objects.equals(this.destSlotAddress, that.destSlotAddress));
+                    && Objects.equals(this.destSlotAddress, that.destSlotAddress)
+                    && Objects.equals(this.tagData, that.tagData));
         }
 
         @Override

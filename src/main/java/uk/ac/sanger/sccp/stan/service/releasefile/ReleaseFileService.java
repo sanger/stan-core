@@ -10,6 +10,7 @@ import uk.ac.sanger.sccp.stan.service.ComplexStainServiceImp;
 import uk.ac.sanger.sccp.stan.service.history.ReagentActionDetailService;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.Ancestry;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
+import uk.ac.sanger.sccp.utils.tsv.TsvColumn;
 
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
@@ -18,6 +19,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.*;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
+import static uk.ac.sanger.sccp.utils.BasicUtils.toLinkedHashSet;
 
 /**
  * Service loading data for release files
@@ -621,9 +624,37 @@ public class ReleaseFileService {
                             .distinct()
                             .collect(joining(", "));
                     entry.setReagentPlateType(radTypeString);
+                    var datas = rads.stream()
+                            .map(ReagentActionDetailService.ReagentActionDetail::getTagData)
+                            .filter(td -> !td.isEmpty());
+                    entry.setTagData(assembleTagData(datas));
                 }
             }
         }
+    }
+
+    public Map<String, String> assembleTagData(Stream<Map<String, String>> datas) {
+        var iter = datas.iterator();
+        if (!iter.hasNext()) {
+            return Map.of();
+        }
+        var data = iter.next();
+        if (!iter.hasNext()) {
+            return data;
+        }
+        final Map<String, String> merged = new LinkedHashMap<>(data);
+        while (iter.hasNext()) {
+            data = iter.next();
+            data.forEach((k,v) -> {
+                String old = merged.get(k);
+                if (old==null) {
+                    merged.put(k, v);
+                } else if (!old.contains(v)) {
+                    merged.put(k, old+","+v);
+                }
+            });
+        }
+        return merged;
     }
 
     /**
@@ -729,5 +760,19 @@ public class ReleaseFileService {
     public Map<Integer, List<StainType>> loadStainTypes(Map<Integer, Operation> lwOps) {
         Set<Integer> opIds = lwOps.values().stream().map(Operation::getId).collect(toSet());
         return stainTypeRepo.loadOperationStainTypes(opIds);
+    }
+
+    public List<? extends TsvColumn<ReleaseEntry>> computeColumns(ReleaseFileContent rfc) {
+        List<ReleaseColumn> modeColumns = ReleaseColumn.forMode(rfc.getMode());
+        if (rfc.getEntries().stream().allMatch(e -> nullOrEmpty(e.getTagData()))) {
+            return modeColumns;
+        }
+        LinkedHashSet<String> tagDataColumnNames = rfc.getEntries().stream()
+                .map(ReleaseEntry::getTagData)
+                .filter(e -> !nullOrEmpty(e))
+                .flatMap(e -> e.keySet().stream())
+                .collect(toLinkedHashSet());
+        return Stream.concat(modeColumns.stream(), tagDataColumnNames.stream().map(TagDataColumn::new))
+                .collect(toList());
     }
 }

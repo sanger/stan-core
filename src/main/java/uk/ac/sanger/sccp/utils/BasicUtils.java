@@ -252,6 +252,7 @@ public class BasicUtils {
     public static <T, K> Collector<T, ?, HashMap<K,T>> inMap(Function<? super T, ? extends K> keyMapper) {
         return Collectors.toMap(keyMapper, Function.identity(), illegalStateMerge(), HashMap::new);
     }
+
     /**
      * A binary operator that throws an illegal state exception. Used as the merge function for collecting
      * to a map whose incoming keys are expected to be unique.
@@ -423,6 +424,11 @@ public class BasicUtils {
         return (c==null || c.isEmpty());
     }
 
+    /** Is the given map null or empty? **/
+    public static boolean nullOrEmpty(Map<?,?> m) {
+        return (m==null || m.isEmpty());
+    }
+
     /**
      * If the string is empty, return null. Otherwise, return the string.
      * @param string the string that may be empty
@@ -430,15 +436,6 @@ public class BasicUtils {
      */
     public static String emptyToNull(String string) {
         return (string==null || string.isEmpty() ? null : string);
-    }
-
-    /**
-     * If the collection is empty, return null. Otherwise, return the collection.
-     * @param items the collection that may be empty
-     * @return the nonempty collection, or null
-     */
-    public static <C extends Collection<?>> C emptyToNull(C items) {
-        return (items==null || items.isEmpty() ? null : items);
     }
 
     /**
@@ -460,6 +457,13 @@ public class BasicUtils {
      */
     @NonNull public static <K,V> Map<K,V> nullToEmpty(@Nullable Map<K,V> map) {
         return (map==null ? Map.of() : map);
+    }
+
+    public static <K,V> LinkedHashMap<K,V> orderedMap(K key1, V value1, K key2, V value2) {
+        LinkedHashMap<K,V> map = new LinkedHashMap<>(2);
+        map.put(key1, value1);
+        map.put(key2, value2);
+        return map;
     }
 
     /**

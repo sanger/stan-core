@@ -1,8 +1,9 @@
 package uk.ac.sanger.sccp.stan.model.taglayout;
 
+import uk.ac.sanger.sccp.stan.model.Address;
+
 import javax.persistence.*;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 import static uk.ac.sanger.sccp.utils.BasicUtils.nullToEmpty;
 
@@ -16,13 +17,6 @@ public class TagLayout {
     private Integer id;
 
     private String name;
-
-    public TagLayout(Integer id, String name) {
-        this.id = id;
-        this.name = name;
-    }
-
-    public TagLayout() {}
 
     @OneToMany
     @JoinColumn(name="tag_layout_id")
@@ -71,5 +65,18 @@ public class TagLayout {
     @Override
     public int hashCode() {
         return (id!=null ? id.hashCode() : name!=null ? name.hashCode() : 0);
+    }
+
+    /**
+     * Gets a map of tag heading to tag value for the given address.
+     * @param address the address to get tag data for
+     * @return a map of tag heading to tag value
+     */
+    public Map<String, String> getTagData(Address address) {
+        Map<String, String> map = new LinkedHashMap<>(headings.size());
+        for (TagHeading heading : headings) {
+            map.put(heading.getName(), heading.getEntries().get(address));
+        }
+        return map;
     }
 }
