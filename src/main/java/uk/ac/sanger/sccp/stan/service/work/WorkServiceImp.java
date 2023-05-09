@@ -432,14 +432,14 @@ public class WorkServiceImp implements WorkService {
     }
 
     @Override
-    public List<Labware> suggestLabwareForWorkNumber(String workNumber) {
+    public List<Labware> suggestLabwareForWorkNumber(String workNumber, boolean forRelease) {
         Work work = workRepo.getByWorkNumber(workNumber);
         List<Integer> possibleLabwareIds = workRepo.findLabwareIdsForWorkIds(List.of(work.getId()));
         if (possibleLabwareIds.isEmpty()) {
             return List.of();
         }
         return lwRepo.findAllByIdIn(possibleLabwareIds).stream()
-                .filter(Labware::isUsable)
+                .filter(forRelease ? Labware::isReleasable : Labware::isUsable)
                 .collect(toList());
     }
 

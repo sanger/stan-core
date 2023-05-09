@@ -1651,7 +1651,7 @@ type Query {
     """Get suggested work (if any) for labware. By default, only returns active work."""
     suggestedWorkForLabware(barcodes: [String!]!, includeInactive: Boolean): SuggestedWorkResponse!
     """Get suggested labware for work."""
-    suggestedLabwareForWork(workNumber: String!): [Labware!]!
+    suggestedLabwareForWork(workNumber: String!, forRelease: Boolean): [Labware!]!
 
     """Get the specified storage location."""
     location(locationBarcode: String!): Location!

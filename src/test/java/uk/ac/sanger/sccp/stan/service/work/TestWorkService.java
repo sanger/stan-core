@@ -932,15 +932,16 @@ public class TestWorkService {
         assertThat(response.getWorks()).containsExactlyInAnyOrderElementsOf(works);
     }
 
-    @Test
-    public void testSuggestLabwareForWork() {
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testSuggestLabwareForWork(boolean forRelease) {
         Work work = new Work();
         work.setId(100);
         work.setWorkNumber("SGP100");
         when(mockWorkRepo.getByWorkNumber(work.getWorkNumber())).thenReturn(work);
         Sample sample = EntityFactory.getSample();
         LabwareType lt = EntityFactory.getTubeType();
-        List<Labware> labware = IntStream.range(0,4)
+        List<Labware> labware = IntStream.range(0,5)
                 .mapToObj(i -> {
                     Labware lw = EntityFactory.makeLabware(lt, sample);
                     lw.setId(100+i);
@@ -948,14 +949,16 @@ public class TestWorkService {
                     return lw;
                 })
                 .collect(toList());
-        labware.get(2).setReleased(true);
-        labware.get(3).setDiscarded(true);
-        final List<Integer> lwIds = List.of(100, 101, 102, 103);
+        labware.get(2).setUsed(true);
+        labware.get(3).setReleased(true);
+        labware.get(4).setDiscarded(true);
+        final List<Integer> lwIds = List.of(100, 101, 102, 103, 104);
         when(mockWorkRepo.findLabwareIdsForWorkIds(List.of(work.getId())))
                 .thenReturn(lwIds);
         when(mockLwRepo.findAllByIdIn(lwIds)).thenReturn(labware);
 
-        assertEquals(labware.subList(0,2), workService.suggestLabwareForWorkNumber(work.getWorkNumber()));
+        assertEquals(labware.subList(0, forRelease ? 3 : 2),
+                workService.suggestLabwareForWorkNumber(work.getWorkNumber(), forRelease));
     }
 
     private Operation makeOp(OperationType opType, int opId, Labware srcLw, Labware dstLw) {

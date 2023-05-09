@@ -190,10 +190,11 @@ public interface WorkService {
     /**
      * Gets the labware last associated with the specified work.
      * @param workNumber an existing work number
+     * @param forRelease true if to suggest releasable labware rather than usable labware
      * @return the list of labware whose last work is the given work
      * @exception javax.persistence.EntityNotFoundException if the work number is not found
      */
-    List<Labware> suggestLabwareForWorkNumber(String workNumber);
+    List<Labware> suggestLabwareForWorkNumber(String workNumber, boolean forRelease);
 
     /**
      * Gets the works created by the given user.

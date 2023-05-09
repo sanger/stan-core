@@ -206,6 +206,11 @@ public class Labware {
     }
 
     @JsonIgnore
+    public boolean isReleasable() {
+        return !(isDestroyed() || isReleased() || isDiscarded() || isEmpty());
+    }
+
+    @JsonIgnore
     public boolean isEmpty() {
         return this.slots.stream().allMatch(slot -> slot.getSamples().isEmpty());
     }

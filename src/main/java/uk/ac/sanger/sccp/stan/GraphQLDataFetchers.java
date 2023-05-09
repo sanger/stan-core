@@ -277,7 +277,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     public DataFetcher<List<Labware>> getSuggestedLabwareForWork() {
         return dfe -> {
             String workNumber = dfe.getArgument("workNumber");
-            return workService.suggestLabwareForWorkNumber(workNumber);
+            boolean forRelease = argOrFalse(dfe, "forRelease");
+            return workService.suggestLabwareForWorkNumber(workNumber, forRelease);
         };
     }
 
