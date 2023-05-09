@@ -75,7 +75,9 @@ public class TagLayout {
     public Map<String, String> getTagData(Address address) {
         Map<String, String> map = new LinkedHashMap<>(headings.size());
         for (TagHeading heading : headings) {
-            map.put(heading.getName(), heading.getEntries().get(address));
+            if (heading.isInRelease()) {
+                map.put(heading.getName(), heading.getEntries().get(address));
+            }
         }
         return map;
     }
