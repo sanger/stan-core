@@ -423,7 +423,7 @@ public class WorkServiceImp implements WorkService {
             }
         }
         Map<Integer, Work> workIdMap = BasicUtils.stream(workRepo.findAllById(workIds))
-                .collect(BasicUtils.toMap(Work::getId));
+                .collect(BasicUtils.inMap(Work::getId));
         List<SuggestedWork> suggestedWorks = barcodeWorkIds.entrySet().stream()
                 .map(e -> new SuggestedWork(e.getKey(), e.getValue()==null ? null : workIdMap.get(e.getValue()).getWorkNumber()))
                 .collect(toList());

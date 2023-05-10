@@ -23,6 +23,7 @@ public class ReagentPlate implements HasIntId {
     private Integer id;
     private String barcode;
     private String plateType;
+    private Integer tagLayoutId;
 
     @OneToMany
     @JoinColumn(name="plate_id")
@@ -30,17 +31,22 @@ public class ReagentPlate implements HasIntId {
     private List<ReagentSlot> slots;
 
     public ReagentPlate() {
-        this(null, null, null, null);
+        this(null, null, null, null, null);
     }
 
     public ReagentPlate(String barcode, String plateType) {
-        this(null, barcode, plateType, null);
+        this(null, barcode, plateType, null, null);
     }
 
-    public ReagentPlate(Integer id, String barcode, String plateType, List<ReagentSlot> slots) {
+    public ReagentPlate(String barcode, String plateType, Integer tagLayoutId) {
+        this(null, barcode, plateType, null, tagLayoutId);
+    }
+
+    public ReagentPlate(Integer id, String barcode, String plateType, List<ReagentSlot> slots, Integer tagLayoutId) {
         this.id = id;
         this.barcode = barcode;
         this.plateType = plateType;
+        this.tagLayoutId = tagLayoutId;
         setSlots(slots);
     }
 
@@ -99,6 +105,14 @@ public class ReagentPlate implements HasIntId {
                 .orElseThrow(() -> new IllegalStateException("Address "+address+" is not valid in "+ getPlateLayout().getName()));
     }
 
+    public Integer getTagLayoutId() {
+        return this.tagLayoutId;
+    }
+
+    public void setTagLayoutId(Integer tagLayoutId) {
+        this.tagLayoutId = tagLayoutId;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -107,7 +121,8 @@ public class ReagentPlate implements HasIntId {
         return (Objects.equals(this.id, that.id)
                 && Objects.equals(this.barcode, that.barcode)
                 && Objects.equals(this.plateType, that.plateType)
-                && Objects.equals(this.slots, that.slots));
+                && Objects.equals(this.slots, that.slots)
+                && Objects.equals(this.tagLayoutId, that.tagLayoutId));
     }
 
     @Override

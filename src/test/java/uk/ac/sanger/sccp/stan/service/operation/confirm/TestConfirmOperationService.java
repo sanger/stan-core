@@ -8,8 +8,8 @@ import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.request.AddressCommentId;
+import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.service.OperationService;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
 import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmOperationServiceImp.ConfirmLabwareResult;
@@ -115,7 +115,7 @@ public class TestConfirmOperationService {
         ConfirmOperationResult result = service.recordConfirmation(user, new ConfirmOperationRequest(cols));
 
         verify(service).loadLabware(labwareMap.keySet());
-        verify(service).loadPlans(sameElements(labware));
+        verify(service).loadPlans(sameElements(labware, true));
         for (int i = 0; i < labware.size(); ++i) {
             Labware lw = labware.get(i);
             verify(service).performConfirmation(cols.get(i), lw, planMap.get(lw.getId()), user);
@@ -210,7 +210,7 @@ public class TestConfirmOperationService {
         assertFalse(labware.isDiscarded());
         verify(mockOperationService).createOperation(opType, user, expectedActions, planId);
         if (expectedMeasurements!=null && !expectedMeasurements.isEmpty()) {
-            verify(mockMeasurementRepo).saveAll(Matchers.sameElements(expectedMeasurements));
+            verify(mockMeasurementRepo).saveAll(Matchers.sameElements(expectedMeasurements, true));
         } else {
             verifyNoInteractions(mockMeasurementRepo);
         }
@@ -389,7 +389,7 @@ public class TestConfirmOperationService {
             verifyNoInteractions(mockCommentRepo);
             verifyNoInteractions(mockOperationCommentRepo);
         } else {
-            verify(mockOperationCommentRepo).saveAll(Matchers.sameElements(expectedRecordedComments));
+            verify(mockOperationCommentRepo).saveAll(Matchers.sameElements(expectedRecordedComments, true));
             verify(mockCommentRepo).findAllByIdIn(addressCommentIds.stream().map(AddressCommentId::getCommentId).collect(toSet()));
         }
     }

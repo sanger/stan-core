@@ -158,31 +158,13 @@ public class TestBasicUtils {
     }
 
     @Test
-    public void testToMapWithKeyMapperAndValueMapperAndFactory() {
+    public void testInMapWithKeyMapperAndFactory() {
         LinkedHashMap<String, String> map = Stream.of("Alpha", "Beta", "Gamma")
-                .collect(toMap(String::toLowerCase, String::toUpperCase, LinkedHashMap::new));
-        assertEquals(map, Map.of("alpha", "ALPHA", "beta", "BETA", "gamma", "GAMMA"));
-
-        EnumMap<DayOfWeek, String> dayMap = Stream.of(DayOfWeek.values())
-                .collect(toMap(day -> day.plus(1L), DayOfWeek::name, () -> new EnumMap<>(DayOfWeek.class)));
-        assertThat(dayMap).hasSize(7);
-        assertEquals("SUNDAY", dayMap.get(DayOfWeek.MONDAY));
-
-        //noinspection ResultOfMethodCallIgnored
-        assertThrows(IllegalStateException.class,
-                () -> Stream.of("Alpha", "Beta", "Alpha")
-                        .collect(toMap(String::toLowerCase, String::toUpperCase, LinkedHashMap::new))
-        );
-    }
-
-    @Test
-    public void testToMapWithKeyMapperAndFactory() {
-        LinkedHashMap<String, String> map = Stream.of("Alpha", "Beta", "Gamma")
-                .collect(toMap(String::toUpperCase, LinkedHashMap::new));
+                .collect(inMap(String::toUpperCase, LinkedHashMap::new));
         assertEquals(map, Map.of("ALPHA", "Alpha", "BETA", "Beta", "GAMMA", "Gamma"));
 
         EnumMap<DayOfWeek, String> dayMap = Stream.of("MONDAY", "TUESDAY")
-                .collect(toMap(DayOfWeek::valueOf, () -> new EnumMap<>(DayOfWeek.class)));
+                .collect(inMap(DayOfWeek::valueOf, () -> new EnumMap<>(DayOfWeek.class)));
         assertThat(dayMap).hasSize(2);
         assertEquals("MONDAY", dayMap.get(DayOfWeek.MONDAY));
         assertEquals("TUESDAY", dayMap.get(DayOfWeek.TUESDAY));
@@ -190,20 +172,20 @@ public class TestBasicUtils {
         //noinspection ResultOfMethodCallIgnored
         assertThrows(IllegalStateException.class,
                 () -> Stream.of("Alpha", "Beta", "Gamma", "Beta")
-                        .collect(toMap(String::toUpperCase, LinkedHashMap::new))
+                        .collect(inMap(String::toUpperCase, LinkedHashMap::new))
         );
     }
 
     @Test
-    public void testToMapWithKeyMapper() {
+    public void testInMapWithKeyMapper() {
         HashMap<String, String> map = Stream.of("Alpha", "Beta", "Gamma")
-                .collect(toMap(String::toUpperCase));
+                .collect(inMap(String::toUpperCase));
         assertEquals(map, Map.of("ALPHA", "Alpha", "BETA", "Beta", "GAMMA", "Gamma"));
 
         //noinspection ResultOfMethodCallIgnored
         assertThrows(IllegalStateException.class,
                 () -> Stream.of("Alpha", "Beta", "Gamma", "Gamma")
-                        .collect(toMap(String::toUpperCase))
+                        .collect(inMap(String::toUpperCase))
         );
     }
 

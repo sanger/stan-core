@@ -802,7 +802,7 @@ public class TestWorkService {
         if (events==null) {
             eventMap = null;
         } else {
-            eventMap = events.stream().collect(BasicUtils.toMap(e -> e.getWork().getId()));
+            eventMap = events.stream().collect(BasicUtils.inMap(e -> e.getWork().getId()));
             when(mockWorkEventService.loadLatestEvents(any())).thenReturn(eventMap);
         }
         List<WorkWithComment> wcs = workService.getWorksWithComments(statuses);
@@ -866,7 +866,7 @@ public class TestWorkService {
                 new WorkEvent(workF2, WorkEvent.Type.create, null, new Comment(2, "Oklahoma", "")),
                 new WorkEvent(workP1, WorkEvent.Type.pause, null, new Comment(3, "Oregon", "")),
                 new WorkEvent(workW1, WorkEvent.Type.withdraw, null, new Comment(3, "Withdrawn", ""))
-        ).collect(BasicUtils.toMap(e -> e.getWork().getId()));
+        ).collect(BasicUtils.inMap(e -> e.getWork().getId()));
 
         List<WorkWithComment> wcs = Stream.of(workF1, workF2, workP1, workP2,workW1,workW2)
                 .map(WorkWithComment::new)

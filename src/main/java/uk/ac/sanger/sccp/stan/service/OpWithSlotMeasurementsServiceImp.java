@@ -369,7 +369,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
      */
     public void recordComments(Integer opId, Collection<Comment> comments, Labware lw,
                                Collection<SlotMeasurementRequest> sms) {
-        Map<Integer, Comment> commentMap = comments.stream().collect(BasicUtils.toMap(Comment::getId));
+        Map<Integer, Comment> commentMap = comments.stream().collect(BasicUtils.inMap(Comment::getId));
 
         List<OperationComment> opComs = sms.stream()
                 .filter(sm -> sm.getCommentId()!=null)

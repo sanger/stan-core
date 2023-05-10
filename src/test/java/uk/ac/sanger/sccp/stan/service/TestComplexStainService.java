@@ -20,7 +20,8 @@ import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -470,6 +471,6 @@ public class TestComplexStainService {
         expectedNotes.add(new LabwareNote(null, lwId, opId, ComplexStainServiceImp.LW_NOTE_PANEL, "negative"));
         expectedNotes.add(new LabwareNote(null, lwId, opId, ComplexStainServiceImp.LW_NOTE_BOND_BARCODE, csl.getBondBarcode()));
         expectedNotes.add(new LabwareNote(null, lwId, opId, ComplexStainServiceImp.LW_NOTE_BOND_RUN, "23"));
-        verify(mockLwNoteRepo).saveAll(Matchers.sameElements(expectedNotes));
+        verify(mockLwNoteRepo).saveAll(Matchers.sameElements(expectedNotes, true));
     }
 }

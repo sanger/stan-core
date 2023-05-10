@@ -140,7 +140,7 @@ public class TestFileStoreService {
             return sfs;
         });
         List<String> workNumbers = works.stream().map(Work::getWorkNumber).collect(toList());
-        when(mockWorkRepo.getSetByWorkNumberIn(Matchers.sameElements(workNumbers))).thenReturn(works);
+        when(mockWorkRepo.getSetByWorkNumberIn(Matchers.sameElements(workNumbers, true))).thenReturn(works);
         User user = EntityFactory.getUser();
         Matchers.mockTransactor(mockTransactor);
 
@@ -160,7 +160,7 @@ public class TestFileStoreService {
 
         verify(data).transferTo(Paths.get("/ROOT/"+expectedPath));
         verify(service).checkAuthorisation(user, works);
-        verify(service).deprecateOldFiles(eq(originalBasename), Matchers.sameElements(workIds), eq(time));
+        verify(service).deprecateOldFiles(eq(originalBasename), Matchers.sameElements(workIds, true), eq(time));
         verify(mockFileRepo).saveAll(any());
         verify(mockTransactor).transact(eq("updateStanFiles"), notNull());
     }
@@ -329,7 +329,7 @@ public class TestFileStoreService {
         List<Integer> workIds = List.of(501, 502);
         List<String> workNumbers = List.of("SGP501", "SGP502");
         when(mockWorkRepo.getSetByWorkNumberIn(workNumbers)).thenReturn(Set.of(work1, work2));
-        when(mockFileRepo.findAllActiveByWorkIdIn(Matchers.sameElements(workIds))).thenReturn(sfs);
+        when(mockFileRepo.findAllActiveByWorkIdIn(Matchers.sameElements(workIds, true))).thenReturn(sfs);
         assertEquals(sfs, service.list(workNumbers));
     }
 }

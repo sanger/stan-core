@@ -291,7 +291,7 @@ public class TestConfirmSectionService {
         Map<PlanActionKey, PlanAction> planActionMap = Stream.of(
                 new PlanAction(1, 1, source, lw1.getSlot(A1), sample),
                 new PlanAction(2, 1, source, lw1.getSlot(B3), sample, 12, 50, null)
-        ).collect(BasicUtils.toMap(PlanActionKey::new, HashMap::new));
+        ).collect(BasicUtils.inMap(PlanActionKey::new, HashMap::new));
         plan.setPlanActions(new ArrayList<>(planActionMap.values()));
 
         doReturn(planActionMap).when(service).getPlanActionMap(any(), anyInt());
@@ -330,7 +330,7 @@ public class TestConfirmSectionService {
         for (ConfirmSection csec : csecs) {
             verify(service).makeAction(csec, planActionMap.get(new PlanActionKey(csec.getDestinationAddress(), csec.getSampleId())), lw1.getSlot(csec.getDestinationAddress()));
         }
-        verify(mockSlotRepo).saveAll(Matchers.sameElements(List.of(lw1.getSlot(A1), lw1.getSlot(B3))));
+        verify(mockSlotRepo).saveAll(Matchers.sameElements(List.of(lw1.getSlot(A1), lw1.getSlot(B3)), true));
         verify(mockEntityManager).refresh(lw1);
         verify(mockOpService).createOperation(opType, user, actions, plan.getId());
         final Integer opId = op.getId();
@@ -448,7 +448,7 @@ public class TestConfirmSectionService {
                 new OperationComment(null, comment1, opId, null, slot2Id, null),
                 new OperationComment(null, comment2, opId, null, slot2Id, null)
         );
-        verify(mockOpCommentRepo).saveAll(Matchers.sameElements(expectedOpComments));
+        verify(mockOpCommentRepo).saveAll(Matchers.sameElements(expectedOpComments, true));
     }
 
     @Test

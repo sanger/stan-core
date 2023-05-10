@@ -226,7 +226,7 @@ public class PotProcessingServiceImp implements PotProcessingService {
                 .filter(Objects::nonNull);
         return commentValidationService.validateCommentIds(problems, commentIds)
                 .stream()
-                .collect(BasicUtils.toMap(Comment::getId));
+                .collect(BasicUtils.inMap(Comment::getId));
     }
 
     /**

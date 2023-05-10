@@ -227,7 +227,7 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
         if (comments.isEmpty()) {
             return Map.of();
         }
-        return comments.stream().collect(BasicUtils.toMap(Comment::getId));
+        return comments.stream().collect(BasicUtils.inMap(Comment::getId));
     }
 
     /**

@@ -43,12 +43,13 @@ public class Matchers {
      * A collection matching an argument that has the same content as the given collection (in any order).
      * If the collections are the same size, element counts are ignored
      * (e.g. {@code [3,2,1,2]} will match {@code [1,2,3,1])}).
-     * @param collection the collection with the expected elements
      * @param <E> the type of element expected
      * @param <C> the type of collection expected
+     * @param collection the collection with the expected elements
+     * @param checkSize true if the collections must have the same size
      */
-    public static <E, C extends Collection<E>> C sameElements(C collection) {
-        return argThat(new OrderInsensitiveCollectionMatcher<>(collection));
+    public static <E, C extends Collection<E>> C sameElements(C collection, boolean checkSize) {
+        return argThat(new OrderInsensitiveCollectionMatcher<>(collection, checkSize));
     }
 
     /**
@@ -143,14 +144,16 @@ public class Matchers {
 
     private static class OrderInsensitiveCollectionMatcher<E, C extends Collection<E>> implements ArgumentMatcher<C> {
         C collection;
+        boolean checkSize;
 
-        public OrderInsensitiveCollectionMatcher(C collection) {
+        public OrderInsensitiveCollectionMatcher(C collection, boolean checkSize) {
             this.collection = collection;
+            this.checkSize = checkSize;
         }
 
         @Override
         public boolean matches(C argument) {
-            return sameContents(this.collection, argument);
+            return sameContents(this.collection, argument, checkSize);
         }
 
         @Override

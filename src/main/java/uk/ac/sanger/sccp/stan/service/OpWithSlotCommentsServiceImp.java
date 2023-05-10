@@ -150,7 +150,7 @@ public class OpWithSlotCommentsServiceImp implements OpWithSlotCommentsService {
         List<Comment> comments = commentValidationService.validateCommentIds(problems, lrs.stream()
                 .flatMap(lr -> lr.getAddressComments().stream())
                 .map(AddressCommentId::getCommentId));
-        return comments.stream().collect(BasicUtils.toMap(Comment::getId));
+        return comments.stream().collect(BasicUtils.inMap(Comment::getId));
     }
 
     /**

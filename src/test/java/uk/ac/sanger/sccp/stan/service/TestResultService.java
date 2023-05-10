@@ -744,7 +744,7 @@ public class TestResultService {
                 new OperationComment(null, com1, op1.getId(), sam2id, lw1.getSlot(A2).getId(), null),
                 new OperationComment(null, com2, op2.getId(), sam1id, lw2.getSlot(A1).getId(), null),
                 new OperationComment(null, com2, op2.getId(), sam2id, lw2.getSlot(A1).getId(), null)
-        )));
+        ), true));
         verify(mockResOpRepo).saveAll(List.of(
                 new ResultOp(null, PassFail.pass, op1.getId(), sam1id, lw1.getSlot(A1).getId(), stainId1),
                 new ResultOp(null, PassFail.fail, op1.getId(), sam2id, lw1.getSlot(A2).getId(), stainId1),

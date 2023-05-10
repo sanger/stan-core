@@ -565,7 +565,7 @@ public class HistoryServiceImp implements HistoryService {
                                                        Map<Integer, String> releaseWorkNumbers, String singleWorkNumber) {
         Set<Integer> snapshotIds = releases.stream().map(Release::getSnapshotId).filter(Objects::nonNull).collect(toSet());
         Map<Integer, Snapshot> snapshotMap = snapshotRepo.findAllByIdIn(snapshotIds).stream()
-                .collect(BasicUtils.toMap(Snapshot::getId, HashMap::new));
+                .collect(BasicUtils.inMap(Snapshot::getId, HashMap::new));
         List<HistoryEntry> entries = new ArrayList<>();
         for (Release release : releases) {
             String workNum;

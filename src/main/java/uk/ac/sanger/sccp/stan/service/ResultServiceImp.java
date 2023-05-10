@@ -259,7 +259,7 @@ public class ResultServiceImp extends BaseResultService implements ResultService
         var commentIdStream = lrs.stream()
                         .flatMap(lr -> lr.getSampleResults().stream().flatMap(ResultServiceImp::streamCommentIds));
         List<Comment> comments = commentValidationService.validateCommentIds(problems, commentIdStream);
-        return comments.stream().collect(BasicUtils.toMap(Comment::getId));
+        return comments.stream().collect(BasicUtils.inMap(Comment::getId));
     }
 
     private static Stream<Integer> streamCommentIds(SampleResult sr) {

@@ -11,6 +11,7 @@ import uk.ac.sanger.sccp.stan.service.history.ReagentActionDetailService;
 import uk.ac.sanger.sccp.stan.service.history.ReagentActionDetailService.ReagentActionDetail;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.Ancestry;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
+import uk.ac.sanger.sccp.utils.tsv.TsvColumn;
 
 import javax.persistence.EntityNotFoundException;
 import java.time.LocalDateTime;
@@ -22,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.service.ComplexStainServiceImp.*;
+import static uk.ac.sanger.sccp.utils.BasicUtils.orderedMap;
 
 /**
  * Tests {@link ReleaseFileService}
@@ -844,19 +846,21 @@ public class TestReleaseFileService {
         final Address A1 = new Address(1, 1);
         final Address B1 = new Address(2, 1);
         final Address B2 = new Address(2,2);
+        Map<String, String> tagData = Map.of("Alpha", "ABC", "Beta", "BCD", "Gamma", "GHI");
         Map<Integer, List<ReagentActionDetail>> radMap = Map.of(
                 slot1.getId(), List.of(
-                        new ReagentActionDetail("123", "rt1", A1, A1, lw1.getId()),
-                        new ReagentActionDetail("123", "rt1", A1, A1, lw1.getId()),
-                        new ReagentActionDetail("456", "rt2", B1, A1, lw1.getId())
+                        new ReagentActionDetail("123", "rt1", A1, A1, lw1.getId(), tagData),
+                        new ReagentActionDetail("123", "rt1", A1, A1, lw1.getId(), null),
+                        new ReagentActionDetail("456", "rt2", B1, A1, lw1.getId(), null)
                 ),
                 slot3.getId(), List.of(
-                        new ReagentActionDetail("456", "rt2", B2, A1, lw2.getId())
+                        new ReagentActionDetail("456", "rt2", B2, A1, lw2.getId(), null)
                 )
         );
         when(mockRadService.loadReagentTransfersForSlotIds(any())).thenReturn(radMap);
 
         service.loadReagentSources(entries);
+        verify(service, times(2)).assembleTagData(any());
         verify(mockRadService).loadReagentTransfersForSlotIds(Set.of(slot1.getId(), slot2.getId(), slot3.getId()));
 
         assertEquals("123 : A1, 456 : B1", entries.get(0).getReagentSource());
@@ -864,6 +868,33 @@ public class TestReleaseFileService {
         assertEquals("456 : B2", entries.get(2).getReagentSource());
         assertEquals("rt1, rt2", entries.get(0).getReagentPlateType());
         assertEquals("rt2", entries.get(2).getReagentPlateType());
+        assertEquals(Map.of("Alpha", "ABC", "Beta", "BCD", "Gamma", "GHI"), entries.get(0).getTagData());
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints={0,1,2})
+    public void testAssembleTagData(int numDicts) {
+        List<Map<String, String>> datas = new ArrayList<>(numDicts);
+        if (numDicts>0) {
+            datas.add(orderedMap("Alpha", "X", "Beta", "Y"));
+        }
+        if (numDicts>1) {
+            datas.add(Map.of("Alpha", "X", "Beta", "B", "Gamma", "G"));
+        }
+        Map<String, String> merged = service.assembleTagData(datas.stream());
+        if (numDicts==0) {
+            assertThat(merged).isEmpty();
+            return;
+        }
+        if (numDicts==1) {
+            assertSame(datas.get(0), merged);
+            return;
+        }
+        assertThat(merged).containsExactly(
+                Map.entry("Alpha", "X"),
+                Map.entry("Beta", "Y,B"),
+                Map.entry("Gamma", "G")
+        );
     }
 
     @Test
@@ -922,6 +953,32 @@ public class TestReleaseFileService {
         assertEquals("com1; com2", entries.get(0).getSectionComment());
         assertEquals("com1", entries.get(1).getSectionComment());
         assertNull(entries.get(2).getSectionComment());
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testComputeColumns(boolean anyTagData) {
+        List<ReleaseEntry> entries = List.of(
+                new ReleaseEntry(null, null, null),
+                new ReleaseEntry(null, null, null),
+                new ReleaseEntry(null, null, null)
+        );
+        ReleaseFileMode mode = ReleaseFileMode.CDNA;
+        if (anyTagData) {
+            entries.get(1).setTagData(orderedMap("Alpha", "A", "Beta", "B"));
+            entries.get(2).setTagData(orderedMap("Beta", "8", "Gamma", "9"));
+        }
+        var columns = service.computeColumns(new ReleaseFileContent(mode, entries));
+        List modeColumns = ReleaseColumn.forMode(mode);
+        if (!anyTagData) {
+            assertThat(columns).containsExactlyElementsOf(modeColumns);
+            return;
+        }
+        assertThat(columns.subList(0, modeColumns.size())).containsExactlyElementsOf(modeColumns);
+        assertThat(columns.subList(modeColumns.size(), columns.size()).stream()
+                .map(TsvColumn::toString)
+        ).containsExactly("Alpha", "Beta", "Gamma");
     }
 
     private LocalDateTime time(int day) {

@@ -6,6 +6,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.jdbc.Sql;
 import uk.ac.sanger.sccp.stan.EntityCreator;
 import uk.ac.sanger.sccp.stan.GraphQLTester;
 import uk.ac.sanger.sccp.stan.model.*;
@@ -27,6 +28,7 @@ import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainG
  * Tests the reagentTransfer mutation.
  * @author dr6
  */
+@Sql("/testdata/reagent_transfer_mutation_test.sql")
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
 @ActiveProfiles("test")
@@ -65,6 +67,8 @@ public class TestReagentTransferMutation {
         for (ReagentSlot rslot : rp.getSlots()) {
             entityManager.refresh(rslot);
         }
+
+        assertEquals(2, rp.getTagLayoutId());
 
         checkHistory(rpBarcode, lw.getBarcode());
 

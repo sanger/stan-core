@@ -4,7 +4,10 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import java.time.LocalDate;
+import java.util.Map;
 import java.util.Objects;
+
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullToEmpty;
 
 /**
  * A helper data type used to return information about releases to be put into a file
@@ -33,6 +36,7 @@ public class ReleaseEntry {
     private String permTime;
     private String samplePosition;
     private String sectionComment;
+    private Map<String, String> tagData = Map.of();
 
     public ReleaseEntry(Labware labware, Slot slot, Sample sample) {
         this(labware, slot, sample, null);
@@ -211,6 +215,14 @@ public class ReleaseEntry {
         this.sectionComment = sectionComment;
     }
 
+    public Map<String, String> getTagData() {
+        return this.tagData;
+    }
+
+    public void setTagData(Map<String, String> tagData) {
+        this.tagData = nullToEmpty(tagData);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -237,6 +249,7 @@ public class ReleaseEntry {
                 && Objects.equals(this.sectionDate, that.sectionDate)
                 && Objects.equals(this.samplePosition, that.samplePosition)
                 && Objects.equals(this.sectionComment, that.sectionComment)
+                && Objects.equals(this.tagData, that.tagData)
         );
     }
 
@@ -268,6 +281,7 @@ public class ReleaseEntry {
                 .add("permTime", permTime)
                 .add("samplePosition", samplePosition)
                 .add("sectionComment", sectionComment)
+                .addIfNotEmpty("tagData", tagData)
                 .omitNullValues()
                 .reprStringValues()
                 .toString();

@@ -144,26 +144,44 @@ public class BasicUtils {
         return StringUtils.messageAndList(template, items, null);
     }
 
+
+    /**
+     * Do two collections have the same size and contents (maybe in a different order)?
+     * If the collections contain repetitions, this method does <i>not</i> check
+     * that they have the same number of repetitions.
+     * @param a a collection
+     * @param b a collection
+     * @return {@code true} if the two collections have the same contents and size
+     */
+    public static boolean sameContents(Collection<?> a, Collection<?> b) {
+        return sameContents(a, b, true);
+    }
+
     /**
      * Do two collections have the same contents (maybe in a different order)?
      * If the collections contain repetitions, this method does <i>not</i> check
      * that they have the same number of repetitions.
      * @param a a collection
      * @param b a collection
-     * @return {@code true} if the two collections have the same size and contents
+     * @param checkSize whether to check the two collections are the same size
+     * @return {@code true} if the two collections have the same contents
      */
     @SuppressWarnings("SuspiciousMethodCalls")
-    public static boolean sameContents(Collection<?> a, Collection<?> b) {
+    public static boolean sameContents(Collection<?> a, Collection<?> b, boolean checkSize) {
         if (a==b) {
             return true;
         }
         if (a instanceof Set && b instanceof Set) {
             return a.equals(b);
         }
-        if (a==null || b==null || a.size()!=b.size()) {
+        if (a==null || b==null) {
             return false;
         }
-        if (a.size() <= 3) {
+        int len = a.size();
+        if (checkSize && len != b.size()) {
+            return false;
+        }
+        if (len <= 3 && (checkSize || b.size() <= 3)) {
             return (a.containsAll(b) && b.containsAll(a));
         }
         if (!(a instanceof Set)) {
@@ -206,27 +224,6 @@ public class BasicUtils {
     }
 
     /**
-     * Collector to a map supplied by a factory, using {@link #illegalStateMerge}
-     * @param <T> the type of the input elements
-     * @param <K> the output type of the key mapping function
-     * @param <U> the output type of the value mapping function
-     * @param <M> the type of the resulting {@code Map}
-     * @param keyMapper a mapping function to produce keys
-     * @param valueMapper a mapping function to produce values
-     * @param mapFactory a supplier providing a new empty {@code Map}
-     *                   into which the results will be inserted
-     * @return a {@code Collector} which collects elements into a {@code Map}
-     *             whose keys are the result of applying a key mapping function to the input
-     *             elements, and whose values are the result of applying a value mapping
-     *             function to all input elements
-     */
-    public static <T, K, U, M extends Map<K, U>> Collector<T, ?, M> toMap(Function<? super T, ? extends K> keyMapper,
-                                                                          Function<? super T, ? extends U> valueMapper,
-                                                                          Supplier<M> mapFactory) {
-        return Collectors.toMap(keyMapper, valueMapper, illegalStateMerge(), mapFactory);
-    }
-
-    /**
      * Collector to a map where the values are the input objects
      * @param keyMapper a mapping function to produce keys
      * @param mapFactory a supplier providing a new empty {@code Map}
@@ -238,7 +235,7 @@ public class BasicUtils {
      *             whose keys are the result of applying a key mapping function to the input
      *             elements, and whose values are input elements
      */
-    public static <T, K, M extends Map<K, T>> Collector<T, ?, M> toMap(Function<? super T, ? extends K> keyMapper,
+    public static <T, K, M extends Map<K, T>> Collector<T, ?, M> inMap(Function<? super T, ? extends K> keyMapper,
                                                                        Supplier<M> mapFactory) {
         return Collectors.toMap(keyMapper, Function.identity(), illegalStateMerge(), mapFactory);
     }
@@ -252,9 +249,10 @@ public class BasicUtils {
      *             whose keys are the result of applying a key mapping function to the input
      *             elements, and whose values are input elements
      */
-    public static <T, K> Collector<T, ?, HashMap<K,T>> toMap(Function<? super T, ? extends K> keyMapper) {
+    public static <T, K> Collector<T, ?, HashMap<K,T>> inMap(Function<? super T, ? extends K> keyMapper) {
         return Collectors.toMap(keyMapper, Function.identity(), illegalStateMerge(), HashMap::new);
     }
+
     /**
      * A binary operator that throws an illegal state exception. Used as the merge function for collecting
      * to a map whose incoming keys are expected to be unique.
@@ -426,6 +424,11 @@ public class BasicUtils {
         return (c==null || c.isEmpty());
     }
 
+    /** Is the given map null or empty? **/
+    public static boolean nullOrEmpty(Map<?,?> m) {
+        return (m==null || m.isEmpty());
+    }
+
     /**
      * If the string is empty, return null. Otherwise, return the string.
      * @param string the string that may be empty
@@ -436,15 +439,6 @@ public class BasicUtils {
     }
 
     /**
-     * If the collection is empty, return null. Otherwise, return the collection.
-     * @param items the collection that may be empty
-     * @return the nonempty collection, or null
-     */
-    public static <C extends Collection<?>> C emptyToNull(C items) {
-        return (items==null || items.isEmpty() ? null : items);
-    }
-
-    /**
      * If the given list is non-null, it is returned. Otherwise, returns the immutable empty list.
      * @param list list or null
      * @return a non-null list
@@ -452,6 +446,24 @@ public class BasicUtils {
      */
     @NonNull public static <E> List<E> nullToEmpty(@Nullable List<E> list) {
         return (list==null ? List.of() : list);
+    }
+
+    /**
+     * If the given map is non-null, it is returned. Otherwise, returns the immutable empty map.
+     * @param map map or null
+     * @return a non-null map
+     * @param <K> map's key-type
+     * @param <V> map's value-type
+     */
+    @NonNull public static <K,V> Map<K,V> nullToEmpty(@Nullable Map<K,V> map) {
+        return (map==null ? Map.of() : map);
+    }
+
+    public static <K,V> LinkedHashMap<K,V> orderedMap(K key1, V value1, K key2, V value2) {
+        LinkedHashMap<K,V> map = new LinkedHashMap<>(2);
+        map.put(key1, value1);
+        map.put(key2, value2);
+        return map;
     }
 
     /**

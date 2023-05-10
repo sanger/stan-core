@@ -187,7 +187,7 @@ public class TestHistoryService {
 
         List<Sample> samples = List.of(sam1, sam2);
         List<Labware> allLabware = BasicUtils.concat(lws, List.of(rlw1, rlw2));
-        doReturn(samples).when(service).referencedSamples(sameElements(entries), sameElements(allLabware));
+        doReturn(samples).when(service).referencedSamples(sameElements(entries, true), sameElements(allLabware, true));
 
         History history = service.getHistoryForWorkNumber(workNumber);
         assertEquals(entries, history.getEntries());
@@ -570,8 +570,8 @@ public class TestHistoryService {
         doReturn(opStainTypes).when(mockStainTypeRepo).loadOperationStainTypes(any());
 
         Map<Integer, List<ReagentActionDetail>> radMap = Map.of(opIds[0],
-                List.of(new ReagentActionDetail("123", "type1", new Address(1,2), new Address(2,3), labware[1].getId()),
-                        new ReagentActionDetail("456", "type2", new Address(3,4), new Address(5,6), labware[1].getId())
+                List.of(new ReagentActionDetail("123", "type1", new Address(1,2), new Address(2,3), labware[1].getId(), null),
+                        new ReagentActionDetail("456", "type2", new Address(3,4), new Address(5,6), labware[1].getId(), null)
                 ));
         when(mockRadService.loadReagentTransfers(any())).thenReturn(radMap);
         Map<Integer, Set<String>> opWork = Map.of(

@@ -125,7 +125,7 @@ public class UCMap<V> implements Map<String, V> {
      * @return a collector to collect to a {@code UCMap}
      */
     public static <T> Collector<T, ?, UCMap<T>> toUCMap(Function<? super T, String> keyMapper) {
-        return BasicUtils.toMap(keyMapper, UCMap::new);
+        return BasicUtils.inMap(keyMapper, UCMap::new);
     }
 
     public static <T> UCMap<T> from(Function<T, String> keyMapper, T value) {

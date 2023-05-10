@@ -256,7 +256,7 @@ public class TestStainService {
         when(mockMeasurementRepo.saveAll(any())).thenReturn(savedMeasurements);
 
         assertSame(savedMeasurements, service.recordMeasurements(ops, tms));
-        verify(mockMeasurementRepo).saveAll(Matchers.sameElements(expectedMeasurements));
+        verify(mockMeasurementRepo).saveAll(Matchers.sameElements(expectedMeasurements, true));
     }
 
     @ParameterizedTest
