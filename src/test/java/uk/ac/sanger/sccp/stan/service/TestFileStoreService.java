@@ -257,17 +257,20 @@ public class TestFileStoreService {
     public void testLoadResource() throws IOException {
         String root = System.getProperty("user.home");
         doReturn(root).when(mockConfig).getRoot();
-        mkdir(Paths.get(root, "stan_files"));
-        mkdir(Paths.get(root, "stan_files", "test"));
+        Files.createDirectories(Paths.get(root, "stan_files", "test"));
         Path filePath = Paths.get(root, "stan_files", "test", "testfile.txt");
         List<String> fileLines = List.of("Alpha", "Beta");
-        Files.write(filePath, fileLines);
-        User user = EntityFactory.getUser();
-        StanFile sf = new StanFile(200, null, null, user,"filename",
-                "stan_files/test/testfile.txt", null);
-        var resource = service.loadResource(sf);
-        try (var in = new BufferedReader(new InputStreamReader(resource.getInputStream()))) {
-            assertThat(in.lines()).containsExactlyElementsOf(fileLines);
+        try {
+            Files.write(filePath, fileLines);
+            User user = EntityFactory.getUser();
+            StanFile sf = new StanFile(200, null, null, user, "filename",
+                    "stan_files/test/testfile.txt", null);
+            var resource = service.loadResource(sf);
+            try (var in = new BufferedReader(new InputStreamReader(resource.getInputStream()))) {
+                assertThat(in.lines()).containsExactlyElementsOf(fileLines);
+            }
+        } finally {
+            Files.delete(filePath);
         }
     }
 
@@ -276,13 +279,6 @@ public class TestFileStoreService {
         StanFile sf = new StanFile(200, null, null, null, "filename",
                 "stan_files/test/testfile.txt", LocalDateTime.now());
         assertThrows(IllegalStateException.class, () -> service.loadResource(sf));
-    }
-
-    private static Path mkdir(Path path) throws IOException {
-        if (!Files.isDirectory(path)) {
-            Files.createDirectory(path);
-        }
-        return path;
     }
 
     @Test

@@ -48,12 +48,15 @@ public class TestFileStore {
     private EntityCreator entityCreator;
     @Autowired
     private WorkEventRepo workEventRepo;
+
     private Path directory;
 
     @BeforeEach
     void setup() throws IOException {
         directory = Paths.get(stanFileConfig.getRoot(), stanFileConfig.getDir());
-        if (!Files.isDirectory(directory)) {
+        if (Files.isDirectory(directory)) {
+            deleteTestFiles(directory);
+        } else {
             Files.createDirectories(directory);
         }
     }
@@ -82,17 +85,24 @@ public class TestFileStore {
 
         final String filename1 = "stanfile.txt";
         final String fileContent1 = "Hello\nworld";
-        String url1 = upload(filename1, fileContent1, workNumber, workNumber2);
-        String url1b = nextFileUrl(url1);
+        String url = upload(filename1, fileContent1, workNumber, workNumber2);
 
-        assertEquals(fileContent1, download(url1, filename1));
+        assertEquals(fileContent1, download(url, filename1));
 
         var filesData = listFiles(workNumber);
         assertThat(filesData).hasSize(1);
+        var filesData2 = listFiles(workNumber2);
+        assertThat(filesData2).hasSize(1);
+        String url1, url1b;
+        if (filesData.get(0).get("url").equals(url)) {
+            url1 = url;
+            url1b = nextFileUrl(url);
+        } else {
+            url1b = url;
+            url1 = nextFileUrl(url);
+        }
         assertFileData(filesData.get(0), filename1, url1, username, workNumber);
-        filesData = listFiles(workNumber2);
-        assertThat(filesData).hasSize(1);
-        assertFileData(filesData.get(0), filename1, url1b, username, workNumber2);
+        assertFileData(filesData2.get(0), filename1, url1b, username, workNumber2);
 
         String fileContent2 = "Alabama\nAlaska";
         final String filename2 = "stanfile2.txt";
@@ -110,14 +120,14 @@ public class TestFileStore {
         assertFileData(filesData.get(1), filename2, url2, username, workNumber);
 
         String fileContentB = "Goodbye\nWorld";
-        url1 = upload(filename1, fileContentB, workNumber);
+        url = upload(filename1, fileContentB, workNumber);
 
-        assertEquals(fileContentB, download(url1, filename1));
+        assertEquals(fileContentB, download(url, filename1));
         filesData = listFiles(workNumber);
         assertThat(filesData).hasSize(2);
         int index0 = filesData.get(0).get("name").equals(filename1) ? 0 : 1;
 
-        assertFileData(filesData.get(index0), filename1, url1, username, workNumber);
+        assertFileData(filesData.get(index0), filename1, url, username, workNumber);
         assertFileData(filesData.get(1-index0), filename2, url2, username, workNumber);
     }
 
@@ -156,14 +166,7 @@ public class TestFileStore {
         assertEquals(filename, data.get("name"));
         assertEquals(username, chainGet(data, "user", "username"));
         assertEquals(workNumber, chainGet(data, "work", "workNumber"));
-        if (!url.equals(data.get("url"))) {
-            System.err.printf("URL is wrong: %s != %s%n", url, data.get("url"));
-            System.err.println("Actual files:");
-            try (Stream<Path> files = Files.list(directory)) {
-                files.forEach(System.err::println);
-            }
-            assertEquals(url, data.get("url")); // Fail the test
-        }
+        assertEquals(url, data.get("url"));
     }
 
     private void deleteTestFiles(Path directory) throws IOException {
