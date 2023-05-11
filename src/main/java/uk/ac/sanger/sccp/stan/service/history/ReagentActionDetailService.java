@@ -7,6 +7,7 @@ import uk.ac.sanger.sccp.stan.model.reagentplate.ReagentAction;
 import uk.ac.sanger.sccp.stan.model.reagentplate.ReagentPlate;
 import uk.ac.sanger.sccp.stan.model.taglayout.TagLayout;
 import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import java.util.*;
@@ -22,13 +23,16 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.stream;
  */
 @Service
 public class ReagentActionDetailService {
+    private final Ancestoriser ancestoriser;
     private final ReagentActionRepo reagentActionRepo;
     private final ReagentPlateRepo reagentPlateRepo;
     private final TagLayoutRepo tagLayoutRepo;
 
     @Autowired
-    public ReagentActionDetailService(ReagentActionRepo reagentActionRepo, ReagentPlateRepo reagentPlateRepo,
+    public ReagentActionDetailService(Ancestoriser ancestoriser,
+                                      ReagentActionRepo reagentActionRepo, ReagentPlateRepo reagentPlateRepo,
                                       TagLayoutRepo tagLayoutRepo) {
+        this.ancestoriser = ancestoriser;
         this.reagentActionRepo = reagentActionRepo;
         this.reagentPlateRepo = reagentPlateRepo;
         this.tagLayoutRepo = tagLayoutRepo;
@@ -55,7 +59,29 @@ public class ReagentActionDetailService {
     }
 
     /**
-     * Converts reagent actions to details, and puts them in a multi-valued map.
+     * Makes reagent actions details for ancestors of the specified slots and samples.
+     * @param slotSamples the slots and samples
+     * @return a map from slot id to list of ancestral reagent actions for that slot
+     */
+    public Map<Integer, List<ReagentActionDetail>> loadAncestralReagentTransfers(
+            Collection<Ancestoriser.SlotSample> slotSamples) {
+        Ancestoriser.Ancestry ancestry = ancestoriser.findAncestry(slotSamples);
+        Set<Integer> slotIds = ancestry.keySet().stream().map(ss -> ss.getSlot().getId()).collect(toSet());
+        Map<Integer, List<ReagentActionDetail>> ancResults = loadReagentTransfersForSlotIds(slotIds);
+        Map<Integer, List<ReagentActionDetail>> results = new HashMap<>(slotSamples.size());
+
+        for (Ancestoriser.SlotSample ss : slotSamples) {
+            ancestry.ancestors(ss).stream()
+                    .map(ssa -> ancResults.get(ssa.getSlot().getId()))
+                    .filter(Objects::nonNull)
+                    .findFirst()
+                    .ifPresent(rads -> results.put(ss.getSlot().getId(), rads));
+        }
+        return results;
+    }
+
+    /**
+     * Converts reagent actions to details, and puts them in a multivalued map.
      * @param reagentActions the reagent actions
      * @param keyFunction the function giving the map key
      * @param <K> the type of key for the map

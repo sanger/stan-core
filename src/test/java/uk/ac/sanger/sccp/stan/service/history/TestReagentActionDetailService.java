@@ -5,13 +5,15 @@ import org.junit.jupiter.api.*;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import uk.ac.sanger.sccp.stan.EntityFactory;
-import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.reagentplate.ReagentAction;
 import uk.ac.sanger.sccp.stan.model.reagentplate.ReagentPlate;
 import uk.ac.sanger.sccp.stan.model.taglayout.TagLayout;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.service.history.ReagentActionDetailService.ReagentActionDetail;
+import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser;
+import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.Ancestry;
+import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
 
 import java.util.*;
 import java.util.stream.Stream;
@@ -21,12 +23,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.stan.Matchers.sameElements;
 
 /**
  * Tests {@link ReagentActionDetailService}
  * @author dr6
  */
 public class TestReagentActionDetailService {
+    @Mock private Ancestoriser mockAncestoriser;
     @Mock private ReagentActionRepo mockReagentActionRepo;
     @Mock private ReagentPlateRepo mockReagentPlateRepo;
     @Mock private TagLayoutRepo mockTagLayoutRepo;
@@ -38,7 +42,8 @@ public class TestReagentActionDetailService {
     @BeforeEach
     void setup() {
         mocking = MockitoAnnotations.openMocks(this);
-        radService = new ReagentActionDetailService(mockReagentActionRepo, mockReagentPlateRepo, mockTagLayoutRepo);
+        radService = spy(new ReagentActionDetailService(mockAncestoriser, mockReagentActionRepo, mockReagentPlateRepo,
+                mockTagLayoutRepo));
     }
 
     @AfterEach
@@ -87,7 +92,7 @@ public class TestReagentActionDetailService {
 
         verify(mockReagentActionRepo).findAllByOperationIdIn(opIds);
         verify(mockReagentPlateRepo).findAllById(Set.of(rp1.getId(), rp2.getId()));
-        verify(mockTagLayoutRepo).getMapByIdIn(Matchers.sameElements(Set.of(layoutId), false));
+        verify(mockTagLayoutRepo).getMapByIdIn(sameElements(Set.of(layoutId), false));
 
         assertThat(result).hasSize(2);
         assertThat(result.get(1)).containsExactlyInAnyOrder(
@@ -96,6 +101,43 @@ public class TestReagentActionDetailService {
         );
         assertThat(result.get(2)).containsExactly(new ReagentActionDetail(rp2.getBarcode(), rp2.getPlateType(), B1, B1, lw2.getId(), null));
         assertNotEquals(result.get(1).get(0).hashCode(), result.get(1).get(1).hashCode());
+    }
+
+    @Test
+    public void testLoadAncestralReagentTransfers() {
+        Address A1 = new Address(1,1);
+        Address A2 = new Address(1,2);
+        List<ReagentActionDetail> rads = List.of(
+                new ReagentActionDetail("REA-1", "A+", A1, A1,
+                        10, Map.of()),
+                new ReagentActionDetail("REA-2", "B+", A1, A2,
+                        11, Map.of())
+        );
+        Sample sample = EntityFactory.getSample();
+        final LabwareType lt = EntityFactory.makeLabwareType(1, 2);
+        Labware lw = EntityFactory.makeLabware(lt, sample, sample);
+        Labware lw1 = EntityFactory.makeLabware(lt, sample, sample);
+        SlotSample ss1 = new SlotSample(lw.getSlot(A1), sample);
+        SlotSample ss2 = new SlotSample(lw.getSlot(A2), sample);
+        List<SlotSample> inputSS = List.of(ss1, ss2);
+        SlotSample ss3 = new SlotSample(lw1.getSlot(A1), sample);
+        SlotSample ss4 = new SlotSample(lw1.getSlot(A2), sample);
+        Ancestry ancestry = new Ancestry();
+        ancestry.put(ss1, Set.of(ss3));
+        ancestry.put(ss2, Set.of(ss4));
+        when(mockAncestoriser.findAncestry(inputSS)).thenReturn(ancestry);
+        doReturn(Map.of(lw.getSlot(A1).getId(), List.of(new ReagentActionDetail("REA-1", "A+", A1, A1,
+                10, Map.of()), new ReagentActionDetail("REA-2", "B+", A1, A2,
+                        11, Map.of()))))
+                .when(radService).loadReagentTransfersForSlotIds(any());
+
+        Map<Integer, List<ReagentActionDetail>> result = radService.loadAncestralReagentTransfers(inputSS);
+        assertThat(result).hasSize(1);
+        assertEquals(rads, result.get(lw.getSlot(A1).getId()));
+
+        verify(mockAncestoriser).findAncestry(inputSS);
+        verify(radService).loadReagentTransfersForSlotIds(Set.of(lw.getSlot(A1).getId(), lw.getSlot(A2).getId()));
+
     }
 
     @NotNull
@@ -147,7 +189,7 @@ public class TestReagentActionDetailService {
 
         verify(mockReagentActionRepo).findAllByDestinationIdIn(slotIds);
         verify(mockReagentPlateRepo).findAllById(Set.of(rp1.getId(), rp2.getId()));
-        verify(mockTagLayoutRepo).getMapByIdIn(Matchers.sameElements(Set.of(layoutId), false));
+        verify(mockTagLayoutRepo).getMapByIdIn(sameElements(Set.of(layoutId), false));
         assertThat(result).hasSize(2);
         assertEquals(List.of(new ReagentActionDetail(rp1.getBarcode(), rp1.getPlateType(), A1, A2, lw1.getId(), mockLayout.getTagData(A1))), result.get(slot1.getId()));
         assertEquals(List.of(

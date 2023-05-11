@@ -606,10 +606,11 @@ public class ReleaseFileService {
     }
 
     public void loadReagentSources(Collection<ReleaseEntry> entries) {
-        Set<Integer> slotIds = entries.stream()
-                .map(e -> e.getSlot().getId())
+        Set<SlotSample> slotSamples = entries.stream()
+                .map(e -> new SlotSample(e.getSlot(), e.getSample()))
                 .collect(toSet());
-        var radMap = reagentActionDetailService.loadReagentTransfersForSlotIds(slotIds);
+
+        var radMap = reagentActionDetailService.loadAncestralReagentTransfers(slotSamples);
         if (!radMap.isEmpty()) {
             for (var entry : entries) {
                 var rads = radMap.get(entry.getSlot().getId());

@@ -857,11 +857,14 @@ public class TestReleaseFileService {
                         new ReagentActionDetail("456", "rt2", B2, A1, lw2.getId(), null)
                 )
         );
-        when(mockRadService.loadReagentTransfersForSlotIds(any())).thenReturn(radMap);
+        when(mockRadService.loadAncestralReagentTransfers(any())).thenReturn(radMap);
 
         service.loadReagentSources(entries);
         verify(service, times(2)).assembleTagData(any());
-        verify(mockRadService).loadReagentTransfersForSlotIds(Set.of(slot1.getId(), slot2.getId(), slot3.getId()));
+        Set<SlotSample> ss = entries.stream()
+                .map(e -> new SlotSample(e.getSlot(), e.getSample()))
+                .collect(toSet());
+        verify(mockRadService).loadAncestralReagentTransfers(ss);
 
         assertEquals("123 : A1, 456 : B1", entries.get(0).getReagentSource());
         assertNull(entries.get(1).getReagentSource());
