@@ -568,7 +568,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
 
     public DataFetcher<Work> updateWorkOmeroProject() {
         return dfe -> {
-            User user = checkUser(dfe, User.Role.normal);
+            User user = checkUser(dfe, User.Role.enduser);
             String workNumber = dfe.getArgument("workNumber");
             String omeroProjectName = dfe.getArgument("omeroProject");
             logRequest("Update work omero project name", user,
@@ -579,7 +579,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
 
     public DataFetcher<Work> updateWorkDnapStudy() {
         return dfe -> {
-            User user = checkUser(dfe, User.Role.normal);
+            User user = checkUser(dfe, User.Role.enduser);
             String workNumber = dfe.getArgument("workNumber");
             String dnapStudyName = dfe.getArgument("dnapStudy");
             logRequest("Update work dnap study", user,
