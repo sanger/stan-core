@@ -17,7 +17,7 @@ public class OmeroProjectAdminService extends BaseAdminService<OmeroProject, Ome
     @Autowired
     public OmeroProjectAdminService(OmeroProjectRepo repo,
                                     @Qualifier("omeroProjectNameValidator") Validator<String> omeroProjectValidator) {
-        super(repo, "Release recipient", "Name", omeroProjectValidator);
+        super(repo, "Omero project", "Name", omeroProjectValidator);
     }
 
     @Override
