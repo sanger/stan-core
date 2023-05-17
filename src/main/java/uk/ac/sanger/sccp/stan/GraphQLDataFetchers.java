@@ -48,6 +48,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final ProjectRepo projectRepo;
     final ProgramRepo programRepo;
     final CostCodeRepo costCodeRepo;
+    final DnapStudyRepo dnapStudyRepo;
     final SolutionRepo solutionRepo;
     final OmeroProjectRepo omeroProjectRepo;
     final WorkTypeRepo workTypeRepo;
@@ -79,7 +80,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                SpeciesRepo speciesRepo, HmdmcRepo hmdmcRepo, LabwareRepo labwareRepo,
                                ReleaseDestinationRepo releaseDestinationRepo, ReleaseRecipientRepo releaseRecipientRepo,
                                DestructionReasonRepo destructionReasonRepo, ProjectRepo projectRepo,
-                               ProgramRepo programRepo, CostCodeRepo costCodeRepo,
+                               ProgramRepo programRepo, CostCodeRepo costCodeRepo, DnapStudyRepo dnapStudyRepo,
                                SolutionRepo solutionRepo, OmeroProjectRepo omeroProjectRepo,
                                WorkTypeRepo workTypeRepo, WorkRepo workRepo,
                                ReagentPlateRepo reagentPlateRepo,
@@ -101,6 +102,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.speciesRepo = speciesRepo;
         this.hmdmcRepo = hmdmcRepo;
         this.labwareRepo = labwareRepo;
+        this.dnapStudyRepo = dnapStudyRepo;
         this.solutionRepo = solutionRepo;
         this.omeroProjectRepo = omeroProjectRepo;
         this.reagentPlateRepo = reagentPlateRepo;
@@ -215,6 +217,10 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
 
     public DataFetcher<Iterable<CostCode>> getCostCodes() {
         return allOrEnabled(costCodeRepo::findAll, costCodeRepo::findAllByEnabled);
+    }
+
+    public DataFetcher<Iterable<DnapStudy>> getDnapStudies() {
+        return allOrEnabled(dnapStudyRepo::findAll, dnapStudyRepo::findAllByEnabled);
     }
 
     public DataFetcher<Iterable<Solution>> getSolutions() {

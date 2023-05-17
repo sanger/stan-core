@@ -27,10 +27,11 @@ public interface WorkService {
      * @param numSlides the value for the "numSlides" field (may be null)
      * @param numOriginalSamples the value for the "numOriginalSamples" field (may be null)
      * @param omeroProjectName the name of the omero project for this work (may be null)
+     * @param dnapStudyName the name of the DNAP study (may be null)
      * @return the new work
      */
     Work createWork(User user, String prefix, String workTypeName, String workRequesterName, String projectName, String programName, String costCode,
-                    Integer numBlocks, Integer numSlides, Integer numOriginalSamples, String omeroProjectName);
+                    Integer numBlocks, Integer numSlides, Integer numOriginalSamples, String omeroProjectName, String dnapStudyName);
 
     /**
      * Updates the status of the work. Records a work event for the change.
@@ -89,6 +90,16 @@ public interface WorkService {
      * @return the updated work
      */
     Work updateWorkOmeroProject(User user, String workNumber, String omeroProjectName);
+
+
+    /**
+     * Updates the DNAP study of an existing work.
+     * @param user the user responsible
+     * @param workNumber the work number of the work
+     * @param dnapStudyName the name of a DNAP study; or null to clear the field
+     * @return the updated work
+     */
+    Work updateWorkDnapStudy(User user, String workNumber, String dnapStudyName);
 
     /**
      * Updates the existing work linking it to the given operations and samples in slots in the ops' actions

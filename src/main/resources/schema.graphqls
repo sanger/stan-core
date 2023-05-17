@@ -959,6 +959,12 @@ type CostCode {
     enabled: Boolean!
 }
 
+"""A DNAP study."""
+type DnapStudy {
+    name: String!
+    enabled: Boolean!
+}
+
 """A type of work, describing what kind of work it is (its purpose or activity)."""
 type WorkType {
     name: String!
@@ -1012,6 +1018,8 @@ type Work {
     priority: String
     """The omero project associated with this work, if any."""
     omeroProject: OmeroProject
+    """The DNAP study associated with this work, if any."""
+    dnapStudy: DnapStudy
 }
 
 """A work along with a comment that was recorded to explain its current status."""
@@ -1590,6 +1598,8 @@ type Query {
     programs(includeDisabled: Boolean): [Program!]!
     """Get all the cost codes that are enabled, or get all including those that are disabled."""
     costCodes(includeDisabled: Boolean): [CostCode!]!
+    """Get all the DNAP studies that are enabled, or get all including those that are disabled."""
+    dnapStudies(includeDisabled: Boolean): [DnapStudy!]!
     """Get all the solutions that are enabled, or get all including those that are disabled."""
     solutions(includeDisabled: Boolean): [Solution!]!
     """Get all the omero projects that are enabled, or including those that are disabled."""
@@ -1732,6 +1742,10 @@ type Mutation {
     addCostCode(code: String!): CostCode!
     """Enable or disable a cost code."""
     setCostCodeEnabled(code: String!, enabled: Boolean!): CostCode!
+    """Create a new study."""
+    addDnapStudy(name: String!): DnapStudy!
+    """Enable or disable a study."""
+    setDnapStudyEnabled(name: String!, enabled: Boolean!): DnapStudy!
     """Create a new fixative that can be selected when registering tissue."""
     addFixative(name: String!): Fixative!
     """Enable or disable a fixative."""
@@ -1754,7 +1768,7 @@ type Mutation {
     setSlotRegionEnabled(name: String!, enabled: Boolean!): SlotRegion!
 
     """Create a new work, which will be allocated a new work number with the given prefix."""
-    createWork(prefix: String!, workType: String!, workRequester: String!, project: String!, program: String!, costCode: String!, numBlocks: Int, numSlides: Int, numOriginalSamples: Int, omeroProject: String): Work!
+    createWork(prefix: String!, workType: String!, workRequester: String!, project: String!, program: String!, costCode: String!, numBlocks: Int, numSlides: Int, numOriginalSamples: Int, omeroProject: String, dnapStudy: String): Work!
     """Update the status of an existing work."""
     updateWorkStatus(workNumber: String!, status: WorkStatus!, commentId: Int): WorkWithComment!
     """Update the number of blocks field in a work."""
@@ -1767,6 +1781,8 @@ type Mutation {
     updateWorkPriority(workNumber: String!, priority: String): Work!
     """Update the omero project of a work."""
     updateWorkOmeroProject(workNumber: String!, omeroProject: String): Work!
+    """Update the DNAP study of a work."""
+    updateWorkDnapProject(workNumber: String!, dnapStudy: String): Work!
 
     """Record a new stain with time measurements."""
     stain(request: StainRequest!): OperationResult!

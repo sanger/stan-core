@@ -4,30 +4,30 @@ import javax.persistence.*;
 import java.util.Objects;
 
 /**
- * A project in Omero
+ * A DNAP study
  * @author dr6
  */
 @Entity
-public class OmeroProject implements HasIntId, HasName, HasEnabled {
+public class DnapStudy implements HasIntId, HasEnabled, HasName {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy= GenerationType.IDENTITY)
     private Integer id;
     private String name;
-    private boolean enabled;
+    private boolean enabled = true;
 
-    public OmeroProject() {}
+    public DnapStudy() {}
 
-    public OmeroProject(Integer id, String name, boolean enabled) {
+    public DnapStudy(Integer id, String name, boolean enabled) {
         this.id = id;
         this.name = name;
         this.enabled = enabled;
     }
 
-    public OmeroProject(String name) {
+    public DnapStudy(String name) {
         this(null, name, true);
     }
 
-    public OmeroProject(Integer id, String name) {
+    public DnapStudy(Integer id, String name) {
         this(id, name, true);
     }
 
@@ -68,7 +68,7 @@ public class OmeroProject implements HasIntId, HasName, HasEnabled {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        OmeroProject that = (OmeroProject) o;
+        DnapStudy that = (DnapStudy) o;
         return (this.enabled == that.enabled
                 && Objects.equals(this.id, that.id)
                 && Objects.equals(this.name, that.name));
@@ -76,6 +76,6 @@ public class OmeroProject implements HasIntId, HasName, HasEnabled {
 
     @Override
     public int hashCode() {
-        return (id!=null ? id.hashCode() : name!=null ? name.hashCode() : Boolean.hashCode(enabled));
+        return (id!=null ? id.hashCode() : name!=null ? name.hashCode() : enabled ? 1 : 0);
     }
 }
