@@ -120,6 +120,8 @@ public class GraphQLProvider {
                         .dataFetcher("stored", graphQLStore.getStored())
                         .dataFetcher("labwareInLocation", graphQLStore.getLabwareInLocation())
                         .dataFetcher("storagePath", graphQLStore.getLocationHierarchy())
+
+                        .dataFetcher("git", graphQLDataFetchers.gitInfo())
                 )
                 .type(newTypeWiring("Mutation")
                         .dataFetcher("login", graphQLMutation.logIn())
