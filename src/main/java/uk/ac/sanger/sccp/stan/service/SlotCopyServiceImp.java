@@ -33,7 +33,15 @@ public class SlotCopyServiceImp implements SlotCopyService {
     static final String CYTASSIST_OP = "CytAssist";
     static final String CYTASSIST_SLIDE = "Visium LP CytAssist", CYTASSIST_SLIDE_XL = "Visium LP CytAssist XL";
 
-    static final String BS_PROBES = "Probes", BS_CDNA = "cDNA", BS_LIBRARY = "Library";
+    static final String BS_PROBES = "Probes", BS_CDNA = "cDNA", BS_LIBRARY = "Library",
+            BS_LIB_PRE_CLEAN = "Library pre-clean", BS_LIB_POST_CLEAN = "Library post-clean",
+            BS_PROBES_PRE_CLEAN = "Probes pre-clean", BS_PROBES_POST_CLEAN = "Probes post-clean";
+
+    static final Set<String> VALID_BS_UPPER = Stream.of(
+                    BS_PROBES, BS_CDNA, BS_LIBRARY, BS_LIB_PRE_CLEAN, BS_LIB_POST_CLEAN,
+                    BS_PROBES_PRE_CLEAN, BS_PROBES_POST_CLEAN
+            ).map(String::toUpperCase)
+            .collect(toSet());
 
     private final OperationTypeRepo opTypeRepo;
     private final LabwareTypeRepo lwTypeRepo;
@@ -442,12 +450,9 @@ public class SlotCopyServiceImp implements SlotCopyService {
         if (!unknown.isEmpty()) {
             problems.add("Unknown bio state: "+unknown);
         }
-        Set<String> allowedBsUpper = Stream.of(BS_LIBRARY, BS_CDNA, BS_PROBES)
-                .map(String::toUpperCase)
-                .collect(toSet());
         Set<String> wrongBs = bioStates.values().stream()
                 .map(BioState::getName)
-                .filter(name -> !allowedBsUpper.contains(name.toUpperCase()))
+                .filter(name -> !VALID_BS_UPPER.contains(name.toUpperCase()))
                 .collect(toSet());
         if (!wrongBs.isEmpty()) {
             problems.add("Bio state not allowed for this operation: "+wrongBs);
