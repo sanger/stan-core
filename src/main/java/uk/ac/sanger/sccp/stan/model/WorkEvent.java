@@ -1,6 +1,7 @@
 package uk.ac.sanger.sccp.stan.model;
 
 import org.hibernate.annotations.*;
+import uk.ac.sanger.sccp.stan.model.Work.Status;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import javax.persistence.Entity;
@@ -16,7 +17,23 @@ import java.util.Objects;
 @DynamicInsert
 public class WorkEvent {
     public enum Type {
-        create, start, pause, resume, complete, fail, withdraw
+        create(Status.unstarted),
+        start(Status.active),
+        pause(Status.paused),
+        resume(Status.active),
+        complete(Status.completed),
+        fail(Status.failed),
+        withdraw(Status.withdrawn),
+        ;
+        public final Status nextStatus;
+
+        Type(Status nextStatus) {
+            this.nextStatus = nextStatus;
+        }
+
+        public boolean leadsTo(Status status) {
+            return (this.nextStatus == status);
+        }
     }
 
     @Id

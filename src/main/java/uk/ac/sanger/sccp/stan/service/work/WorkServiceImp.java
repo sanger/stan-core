@@ -491,10 +491,7 @@ public class WorkServiceImp implements WorkService {
         for (WorkWithComment wc : wcs) {
             Work work = wc.getWork();
             WorkEvent event = workEvents.get(work.getId());
-            if (event != null && event.getComment()!=null &&
-                    (work.getStatus()==Status.paused && event.getType()==WorkEvent.Type.pause
-                            || work.getStatus()==Status.failed && event.getType()==WorkEvent.Type.fail
-                            || work.getStatus()==Status.withdrawn && event.getType()==WorkEvent.Type.withdraw)) {
+            if (event != null && event.getComment()!=null && event.getType().leadsTo(work.getStatus())) {
                 wc.setComment(event.getComment().getText());
             }
         }
