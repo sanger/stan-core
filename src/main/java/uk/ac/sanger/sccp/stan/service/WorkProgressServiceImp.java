@@ -212,8 +212,10 @@ public class WorkProgressServiceImp implements WorkProgressService {
      */
     public String getMostRecentOperation(List<WorkProgressTimestamp> workProgressTimestamps) {
         if (workProgressTimestamps != null && !workProgressTimestamps.isEmpty()) {
-            WorkProgressTimestamp maxwpt = workProgressTimestamps.stream().max(Comparator.comparing(WorkProgressTimestamp::getTimestamp)).get();
-            return maxwpt.getType();
+            return workProgressTimestamps.stream()
+                    .max(Comparator.comparing(WorkProgressTimestamp::getTimestamp))
+                    .map(WorkProgressTimestamp::getType)
+                    .orElse(null);
         }
         return null;
     }
