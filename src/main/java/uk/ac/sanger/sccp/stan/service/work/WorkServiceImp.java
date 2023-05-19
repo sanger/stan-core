@@ -3,6 +3,7 @@ package uk.ac.sanger.sccp.stan.service.work;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.util.Streamable;
+import org.springframework.security.authentication.InsufficientAuthenticationException;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.Work.SampleSlotId;
@@ -30,6 +31,7 @@ public class WorkServiceImp implements WorkService {
     private final WorkRepo workRepo;
     private final LabwareRepo lwRepo;
     private final OmeroProjectRepo omeroProjectRepo;
+    private final DnapStudyRepo dnapStudyRepo;
     private final ReleaseRecipientRepo recipientRepo;
     private final WorkEventRepo workEventRepo;
     private final WorkEventService workEventService;
@@ -38,7 +40,7 @@ public class WorkServiceImp implements WorkService {
     @Autowired
     public WorkServiceImp(ProjectRepo projectRepo, ProgramRepo programRepo, CostCodeRepo costCodeRepo,
                           WorkTypeRepo workTypeRepo, WorkRepo workRepo, LabwareRepo lwRepo, OmeroProjectRepo omeroProjectRepo,
-                          ReleaseRecipientRepo recipientRepo, WorkEventRepo workEventRepo, WorkEventService workEventService,
+                          DnapStudyRepo dnapStudyRepo, ReleaseRecipientRepo recipientRepo, WorkEventRepo workEventRepo, WorkEventService workEventService,
                           @Qualifier("workPriorityValidator") Validator<String> priorityValidator) {
         this.projectRepo = projectRepo;
         this.programRepo = programRepo;
@@ -47,6 +49,7 @@ public class WorkServiceImp implements WorkService {
         this.workRepo = workRepo;
         this.lwRepo = lwRepo;
         this.omeroProjectRepo = omeroProjectRepo;
+        this.dnapStudyRepo = dnapStudyRepo;
         this.recipientRepo = recipientRepo;
         this.workEventRepo = workEventRepo;
         this.workEventService = workEventService;
@@ -66,7 +69,7 @@ public class WorkServiceImp implements WorkService {
     public Work createWork(User user, String prefix, String workTypeName, String workRequesterName, String projectName,
                            String programName, String costCode,
                            Integer numBlocks, Integer numSlides, Integer numOriginalSamples,
-                           String omeroProjectName) {
+                           String omeroProjectName, String dnapStudyName) {
         checkPrefix(prefix);
 
         Project project = projectRepo.getByName(projectName);
@@ -82,6 +85,15 @@ public class WorkServiceImp implements WorkService {
                 throw new IllegalArgumentException("Omero project "+omeroProject.getName()+" is disabled.");
             }
         }
+        DnapStudy dnapStudy;
+        if (dnapStudyName==null) {
+            dnapStudy = null;
+        } else {
+            dnapStudy = dnapStudyRepo.getByName(dnapStudyName);
+            if (!dnapStudy.isEnabled()) {
+                throw new IllegalArgumentException("DNAP study is disabled: "+dnapStudy.getName());
+            }
+        }
         ReleaseRecipient workRequester = recipientRepo.getByUsername(workRequesterName);
         if (numBlocks!=null && numBlocks < 0) {
             throw new IllegalArgumentException("Number of blocks cannot be a negative number.");
@@ -94,7 +106,8 @@ public class WorkServiceImp implements WorkService {
         }
 
         String workNumber = workRepo.createNumber(prefix);
-        Work work = workRepo.save(new Work(null, workNumber, type, workRequester, project, program, cc, Status.unstarted, numBlocks, numSlides, numOriginalSamples, null, omeroProject));
+        Work work = workRepo.save(new Work(null, workNumber, type, workRequester, project, program, cc, Status.unstarted,
+                numBlocks, numSlides, numOriginalSamples, null, omeroProject, dnapStudy));
         workEventService.recordEvent(user, work, WorkEvent.Type.create, null);
         return work;
     }
@@ -175,6 +188,7 @@ public class WorkServiceImp implements WorkService {
     @Override
     public Work updateWorkOmeroProject(User user, String workNumber, String omeroProjectName) {
         Work work = workRepo.getByWorkNumber(workNumber);
+        checkAuthorisation(user, work);
         if (omeroProjectName==null) {
             if (work.getOmeroProject()!=null) {
                 work.setOmeroProject(null);
@@ -187,6 +201,28 @@ public class WorkServiceImp implements WorkService {
                     throw new IllegalArgumentException("Omero project "+omeroProject.getName()+" is disabled.");
                 }
                 work.setOmeroProject(omeroProject);
+                work = workRepo.save(work);
+            }
+        }
+        return work;
+    }
+
+    @Override
+    public Work updateWorkDnapStudy(User user, String workNumber, String dnapStudyName) {
+        Work work = workRepo.getByWorkNumber(workNumber);
+        checkAuthorisation(user, work);
+        if (dnapStudyName==null) {
+            if (work.getDnapStudy()!=null) {
+                work.setDnapStudy(null);
+                work = workRepo.save(work);
+            }
+        } else {
+            DnapStudy dnapStudy = dnapStudyRepo.getByName(dnapStudyName);
+            if (work.getDnapStudy()==null || !work.getDnapStudy().equals(dnapStudy)) {
+                if (!dnapStudy.isEnabled()) {
+                    throw new IllegalArgumentException("DNAP study is disabled: "+dnapStudy.getName());
+                }
+                work.setDnapStudy(dnapStudy);
                 work = workRepo.save(work);
             }
         }
@@ -463,4 +499,21 @@ public class WorkServiceImp implements WorkService {
             }
         }
     }
+
+    /** Check if the given user has permission to update the given work. */
+    public void checkAuthorisation(User user, Work work) {
+        if (user.hasRole(User.Role.normal)) {
+            return;
+        }
+        if (!user.hasRole(User.Role.enduser)) {
+            throw new InsufficientAuthenticationException("User "+user.getUsername()+" does not have privilege to update work.");
+        }
+        List<WorkEvent> events = workEventRepo.findAllByWorkInAndType(List.of(work), WorkEvent.Type.create);
+        if (events.stream().noneMatch(e -> user.equals(e.getUser()))) {
+            throw new InsufficientAuthenticationException(String.format(
+                    "User %s does not have privilege to update work number %s.",
+                    user.getUsername(), work.getWorkNumber()));
+        }
+    }
+
 }

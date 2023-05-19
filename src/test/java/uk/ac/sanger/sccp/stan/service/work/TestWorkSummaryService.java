@@ -13,7 +13,8 @@ import uk.ac.sanger.sccp.stan.request.WorkSummaryData;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.mockito.Mockito.*;
 
 /**
@@ -98,7 +99,7 @@ public class TestWorkSummaryService {
     private Work work(WorkType wt, Status status, Integer numBlocks, Integer numSlides, Integer numOriginal) {
         int id = ++idCounter;
         return new Work(id, "SGP"+id, wt, null, null, null, null, status,
-                numBlocks, numSlides, numOriginal, null, null);
+                numBlocks, numSlides, numOriginal, null, null, null);
     }
 
 }

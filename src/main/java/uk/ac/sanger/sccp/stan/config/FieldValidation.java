@@ -206,6 +206,15 @@ public class FieldValidation {
     }
 
     @Bean
+    public Validator<String> dnapStudyNameValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN,
+                CharacterType.UNDERSCORE, CharacterType.SPACE, CharacterType.SLASH, CharacterType.BACKSLASH,
+                CharacterType.PAREN, CharacterType.FULL_STOP, CharacterType.APOSTROPHE, CharacterType.PERCENT,
+                CharacterType.COMMA, CharacterType.COLON, CharacterType.SEMICOLON);
+        return new StringValidator("Dnap study name", 2, 255, charTypes);
+    }
+
+    @Bean
     public Sanitiser<String> concentrationSanitiser() {
         return new DecimalSanitiser("concentration", 2, null, null);
     }
