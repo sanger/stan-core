@@ -7,7 +7,10 @@ import graphql.execution.AsyncExecutionStrategy;
 import graphql.execution.AsyncSerialExecutionStrategy;
 import graphql.schema.DataFetcher;
 import graphql.schema.GraphQLSchema;
-import graphql.schema.idl.*;
+import graphql.schema.idl.RuntimeWiring;
+import graphql.schema.idl.SchemaGenerator;
+import graphql.schema.idl.SchemaParser;
+import graphql.schema.idl.TypeDefinitionRegistry;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
@@ -122,7 +125,7 @@ public class GraphQLProvider {
                         .dataFetcher("labwareInLocation", graphQLStore.getLabwareInLocation())
                         .dataFetcher("storagePath", graphQLStore.getLocationHierarchy())
 
-                        .dataFetcher("git", graphQLDataFetchers.gitInfo())
+                        .dataFetcher("version", graphQLDataFetchers.versionInfo())
                 )
                 .type(newTypeWiring("Mutation")
                         .dataFetcher("login", graphQLMutation.logIn())

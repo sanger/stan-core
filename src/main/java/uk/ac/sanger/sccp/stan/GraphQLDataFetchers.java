@@ -7,8 +7,8 @@ import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import uk.ac.sanger.sccp.stan.config.GitInfo;
 import uk.ac.sanger.sccp.stan.config.SessionConfig;
+import uk.ac.sanger.sccp.stan.config.VersionInfo;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.reagentplate.ReagentPlate;
 import uk.ac.sanger.sccp.stan.repo.*;
@@ -36,7 +36,7 @@ import static java.util.stream.Collectors.toList;
 public class GraphQLDataFetchers extends BaseGraphQLResource {
 
     final SessionConfig sessionConfig;
-    final GitInfo gitInfo;
+    final VersionInfo versionInfo;
     final TissueTypeRepo tissueTypeRepo;
     final LabwareTypeRepo labwareTypeRepo;
     final MediumRepo mediumRepo;
@@ -76,7 +76,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
 
     @Autowired
     public GraphQLDataFetchers(ObjectMapper objectMapper, AuthenticationComponent authComp, UserRepo userRepo,
-                               SessionConfig sessionConfig, GitInfo gitInfo,
+                               SessionConfig sessionConfig, VersionInfo versionInfo,
                                TissueTypeRepo tissueTypeRepo, LabwareTypeRepo labwareTypeRepo,
                                MediumRepo mediumRepo, FixativeRepo fixativeRepo,
                                SpeciesRepo speciesRepo, HmdmcRepo hmdmcRepo, LabwareRepo labwareRepo,
@@ -97,7 +97,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                SlotRegionService slotRegionService) {
         super(objectMapper, authComp, userRepo);
         this.sessionConfig = sessionConfig;
-        this.gitInfo = gitInfo;
+        this.versionInfo = versionInfo;
         this.tissueTypeRepo = tissueTypeRepo;
         this.labwareTypeRepo = labwareTypeRepo;
         this.mediumRepo = mediumRepo;
@@ -415,8 +415,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         return dfe -> labwareService.getLabwareCosting(dfe.getArgument("barcode"));
     }
 
-    public DataFetcher<GitInfo> gitInfo() {
-        return dfe -> gitInfo;
+    public DataFetcher<VersionInfo> versionInfo() {
+        return dfe -> versionInfo;
     }
 
     private boolean argOrFalse(DataFetchingEnvironment dfe, String argName) {
