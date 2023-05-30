@@ -9,14 +9,18 @@ import uk.ac.sanger.sccp.stan.repo.MeasurementRepo;
 import uk.ac.sanger.sccp.stan.request.ControlType;
 import uk.ac.sanger.sccp.stan.request.VisiumPermData;
 import uk.ac.sanger.sccp.stan.request.VisiumPermData.AddressPermData;
+import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser;
+import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.Ancestry;
+import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
 
-import java.util.List;
+import java.util.*;
+import java.util.stream.IntStream;
 
+import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.service.VisiumPermDataService.*;
 
 /**
@@ -25,13 +29,15 @@ import static uk.ac.sanger.sccp.stan.service.VisiumPermDataService.*;
 public class TestVisiumPermDataService {
     private LabwareRepo mockLwRepo;
     private MeasurementRepo mockMeasurementRepo;
+    private Ancestoriser mockAncestoriser;
     private VisiumPermDataService service;
 
     @BeforeEach
     void setUp() {
         mockLwRepo = mock(LabwareRepo.class);
         mockMeasurementRepo = mock(MeasurementRepo.class);
-        service = new VisiumPermDataService(mockLwRepo, mockMeasurementRepo);
+        mockAncestoriser = mock(Ancestoriser.class);
+        service = new VisiumPermDataService(mockLwRepo, mockMeasurementRepo, mockAncestoriser);
     }
 
     @Test
@@ -39,11 +45,16 @@ public class TestVisiumPermDataService {
         LabwareType lt = EntityFactory.makeLabwareType(3,2);
         Sample sample = EntityFactory.getSample();
         Labware lw = EntityFactory.makeLabware(lt, sample, sample, sample);
-        Integer sampleId = 50;
+        final Slot slot = lw.getFirstSlot();
+        Ancestry ancestry = new Ancestry();
+        when(mockAncestoriser.findAncestry(any())).thenReturn(ancestry);
+        final SlotSample slotSample = new SlotSample(slot, sample);
+        ancestry.put(slotSample, Set.of(slotSample));
+        Integer sampleId = sample.getId();
         Integer opId = 100;
         final Address A1 = new Address(1,1);
         List<Measurement> measurements = List.of(
-                new Measurement(100, PERM_TIME, "120", sampleId, opId, lw.getSlot(A1).getId())
+                new Measurement(100, PERM_TIME, "120", sampleId, opId, slot.getId())
         );
         when(mockLwRepo.getByBarcode(lw.getBarcode())).thenReturn(lw);
         when(mockMeasurementRepo.findAllBySlotIdIn(any())).thenReturn(measurements);
@@ -51,36 +62,59 @@ public class TestVisiumPermDataService {
         VisiumPermData pd = service.load(lw.getBarcode());
         assertSame(lw, pd.getLabware());
         assertThat(pd.getAddressPermData()).containsExactly(new AddressPermData(A1, 120));
+        verify(mockAncestoriser).findAncestry(SlotSample.stream(lw).collect(toList()));
+    }
+
+    @Test
+    public void testMakeSlotSampleIdAddressMap() {
+        Ancestry ancestry = new Ancestry();
+        Sample sam1 = EntityFactory.getSample();
+        Sample sam2 = new Sample(sam1.getId()+1, null, sam1.getTissue(), sam1.getBioState());
+        final Address A1 = new Address(1,1);
+        final Address A2 = new Address(1,2);
+        Labware lw  = EntityFactory.makeLabware(EntityFactory.makeLabwareType(1,2), sam1, sam2);
+        LabwareType lt = EntityFactory.getTubeType();
+        Slot[] slots = IntStream.range(0, 3)
+                .mapToObj(i -> EntityFactory.makeLabware(lt, sam1).getFirstSlot())
+                .toArray(Slot[]::new);
+        ancestry.put(new SlotSample(lw.getSlot(A1), sam1), Set.of(new SlotSample(slots[0], sam1), new SlotSample(slots[1], sam1)));
+        ancestry.put(new SlotSample(slots[0], sam1), Set.of(new SlotSample(slots[2], sam2)));
+        ancestry.put(new SlotSample(lw.getSlot(A2), sam2), Set.of(new SlotSample(slots[0], sam2)));
+
+        var result = service.makeSlotSampleIdAddressMap(lw, ancestry);
+        Map<SlotIdSampleId, Set<Address>> expected = new HashMap<>(6);
+
+        expected.put(new SlotIdSampleId(lw.getFirstSlot(), sam1), Set.of(A1));
+        expected.put(new SlotIdSampleId(lw.getSlot(A2), sam2), Set.of(A2));
+        expected.put(new SlotIdSampleId(slots[0], sam1), Set.of(A1));
+        expected.put(new SlotIdSampleId(slots[1], sam1), Set.of(A1));
+        expected.put(new SlotIdSampleId(slots[2], sam2), Set.of(A1));
+        expected.put(new SlotIdSampleId(slots[0], sam2), Set.of(A2));
+        assertThat(result).containsExactlyInAnyOrderEntriesOf(expected);
     }
 
     @Test
     public void testCompilePermData() {
-        LabwareType lt = EntityFactory.makeLabwareType(3,2);
-        Sample sample = EntityFactory.getSample();
-        Integer sam1id = sample.getId();
-        Integer sam2id = sam1id+1;
-        Labware lw = EntityFactory.makeLabware(lt, sample, sample, sample);
         final Address A1 = new Address(1,1), A2 = new Address(1,2),
-                B1 = new Address(2,1);
-        List<Measurement> measurements = List.of(
-                new Measurement(100, PERM_TIME, "120", sam1id, 80, lw.getSlot(A1).getId()),
-                new Measurement(101, PERM_TIME, "120", sam2id, 80, lw.getSlot(A1).getId()),
-                new Measurement(102, CONTROL, "positive", sam1id, 80, lw.getSlot(A2).getId()),
-                new Measurement(103, CONTROL, "positive", sam1id, 80, lw.getSlot(A2).getId()),
-                new Measurement(104, PERM_TIME, "240", sam1id, 80, lw.getSlot(B1).getId()),
-                new Measurement(105, PERM_TIME, "240", sam2id, 80, lw.getSlot(B1).getId()),
-                new Measurement(110, PERM_TIME, "300", sam1id, 81, lw.getSlot(A1).getId()),
-                new Measurement(111, PERM_TIME, "300", sam2id, 81, lw.getSlot(A1).getId()),
-                new Measurement(120, SELECTED_TIME, "120", sam1id, 82, lw.getSlot(A1).getId()),
-                new Measurement(121, SELECTED_TIME, "120", sam2id, 82, lw.getSlot(A1).getId()),
-                new Measurement(130, SELECTED_TIME, "300", sam1id, 83, lw.getSlot(A1).getId()),
-                new Measurement(131, SELECTED_TIME, "300", sam2id, 83, lw.getSlot(A1).getId())
+                A3 = new Address(1,3);
+        Map<SlotIdSampleId, Set<Address>> ssAd = Map.of(
+                new SlotIdSampleId(1, 11), Set.of(A1, A2),
+                new SlotIdSampleId(2, 11), Set.of(A3),
+                new SlotIdSampleId(2, 12), Set.of(A1)
         );
-        assertThat(service.compilePermData(lw, measurements)).containsExactlyInAnyOrder(
+
+        List<Measurement> measurements = List.of(
+                new Measurement(100, PERM_TIME, "120", 11, 80, 1),
+                new Measurement(101, PERM_TIME, "121", 12, 81, 2),
+                new Measurement(102, CONTROL, "positive", 11, 82, 2),
+                new Measurement(103, SELECTED_TIME, "121", 12, 83, 2)
+        );
+
+        assertThat(service.compilePermData(measurements, ssAd)).containsExactlyInAnyOrder(
                 new AddressPermData(A1, 120),
-                new AddressPermData(A2, ControlType.positive),
-                new AddressPermData(B1, 240),
-                new AddressPermData(A1, 300, null, true)
+                new AddressPermData(A2, 120),
+                new AddressPermData(A1, 121, null, true),
+                new AddressPermData(A3, ControlType.positive)
         );
     }
 }
