@@ -23,6 +23,8 @@ import static java.util.stream.Collectors.toSet;
  */
 @Service
 public class LabwareLabelDataService {
+    private static final String FW_LONG = "Fetal waste", FW_SHORT = "F waste";
+
     private final PlanActionRepo planActionRepo;
 
     @Autowired
@@ -312,6 +314,8 @@ public class LabwareLabelDataService {
         }
         if (stateDesc.equalsIgnoreCase("Original sample")) {
             stateDesc = "Original";
+        } else if (stateDesc.equalsIgnoreCase(FW_LONG)) {
+            stateDesc = FW_SHORT;
         }
         return new LabelContent(tissue.getDonor().getDonorName(),
                 getTissueDesc(tissue), tissue.getReplicate(), stateDesc);
@@ -343,7 +347,8 @@ public class LabwareLabelDataService {
         if (bs==null) {
             bs = planAction.getSample().getBioState();
         }
-        if (bs.getName().equalsIgnoreCase("Tissue")) {
+        String stateDesc = bs.getName();
+        if (stateDesc.equalsIgnoreCase("Tissue")) {
             Integer section = planAction.getNewSection();
             if (section == null) {
                 section = planAction.getSample().getSection();
@@ -356,11 +361,14 @@ public class LabwareLabelDataService {
                     section
             );
         }
+        if (stateDesc.equalsIgnoreCase(FW_LONG)) {
+            stateDesc = FW_SHORT;
+        }
         return new LabelContent(
                 planAction.getSample().getTissue().getDonor().getDonorName(),
                 getTissueDesc(planAction.getSample().getTissue()),
                 planAction.getSample().getTissue().getReplicate(),
-                bs.getName()
+                stateDesc
         );
     }
 

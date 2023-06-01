@@ -35,13 +35,13 @@
     {
       "value": "#replicate[0]#",
       "fontSize": 1.9,
-      "x": 11,
+      "x": 10,
       "y": 8
     },
     {
       "value": "#state[0]#",
       "fontSize": 1.9,
-      "x": 18,
+      "x": 21,
       "y": 8
     }
   ],

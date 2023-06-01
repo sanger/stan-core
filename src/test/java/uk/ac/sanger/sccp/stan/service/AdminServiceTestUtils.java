@@ -1,6 +1,6 @@
 package uk.ac.sanger.sccp.stan.service;
 
-import org.assertj.core.util.TriFunction;
+import org.apache.commons.lang3.function.TriFunction;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.params.provider.Arguments;
 import org.springframework.data.repository.CrudRepository;
@@ -92,7 +92,7 @@ public abstract class AdminServiceTestUtils<E extends HasEnabled, R extends Crud
     }
 
     protected void genericTestSetEnabled(TriFunction<S, String, Boolean, E> serviceSetEnabledFunction,
-                               String string, boolean newValue, Boolean oldValue, Exception expectedException) {
+                                         String string, boolean newValue, Boolean oldValue, Exception expectedException) {
         String name = (string==null ? null : string.trim());
         E entity = (oldValue==null ? null : newEntity(17, name));
         if (entity!=null) {

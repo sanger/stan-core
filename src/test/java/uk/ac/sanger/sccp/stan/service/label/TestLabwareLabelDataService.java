@@ -452,10 +452,12 @@ public class TestLabwareLabelDataService {
         BioState tissueState = new BioState(1, "Tissue");
         BioState originalState = new BioState(2, "Original sample");
         BioState custardState = new BioState(3, "Custard");
+        BioState fwState = new BioState(4, "Fetal waste");
 
         Sample sam1 = new Sample(1, 5, tissue, tissueState);
         Sample sam2 = new Sample(2, null, tissue, originalState);
         Sample sam3 = new Sample(3, 7, tissue, custardState);
+        Sample sam4 = new Sample(4, 8, tissue, fwState);
 
         String tissueDesc = "HEA-1";
 
@@ -463,6 +465,7 @@ public class TestLabwareLabelDataService {
                 {sam1, new LabelContent(donorName, tissueDesc, rep, "S005")},
                 {sam2, new LabelContent(donorName, tissueDesc, rep, "Original")},
                 {sam3, new LabelContent(donorName, tissueDesc, rep, custardState.getName())},
+                {sam4, new LabelContent(donorName, tissueDesc, rep, "F waste")},
         }).map(Arguments::of);
     }
 
