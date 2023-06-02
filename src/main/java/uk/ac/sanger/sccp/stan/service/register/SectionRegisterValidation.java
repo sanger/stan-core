@@ -2,20 +2,24 @@ package uk.ac.sanger.sccp.stan.service.register;
 
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.register.*;
+import uk.ac.sanger.sccp.stan.request.register.SectionRegisterContent;
+import uk.ac.sanger.sccp.stan.request.register.SectionRegisterLabware;
+import uk.ac.sanger.sccp.stan.request.register.SectionRegisterRequest;
+import uk.ac.sanger.sccp.stan.service.SlotRegionService;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
 import uk.ac.sanger.sccp.stan.service.Validator;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
-import java.util.function.*;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
-import static uk.ac.sanger.sccp.utils.BasicUtils.pluralise;
-import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
+import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 import static uk.ac.sanger.sccp.utils.UCMap.toUCMap;
 
 /**
@@ -36,6 +40,7 @@ public class SectionRegisterValidation {
     private final MediumRepo mediumRepo;
     private final TissueRepo tissueRepo;
     private final BioStateRepo bioStateRepo;
+    private final SlotRegionService slotRegionService;
     private final WorkService workService;
     private final Validator<String> externalBarcodeValidation;
     private final Validator<String> donorNameValidation;
@@ -48,7 +53,7 @@ public class SectionRegisterValidation {
                                      LabwareRepo lwRepo, HmdmcRepo hmdmcRepo,
                                      TissueTypeRepo tissueTypeRepo, FixativeRepo fixativeRepo, MediumRepo mediumRepo,
                                      TissueRepo tissueRepo, BioStateRepo bioStateRepo,
-                                     WorkService workService,
+                                     SlotRegionService slotRegionService, WorkService workService,
                                      Validator<String> externalBarcodeValidation, Validator<String> donorNameValidation,
                                      Validator<String> externalNameValidation, Validator<String> replicateValidator,
                                      Validator<String> visiumLpBarcodeValidation) {
@@ -63,6 +68,7 @@ public class SectionRegisterValidation {
         this.mediumRepo = mediumRepo;
         this.tissueRepo = tissueRepo;
         this.bioStateRepo = bioStateRepo;
+        this.slotRegionService = slotRegionService;
         this.workService = workService;
         this.externalBarcodeValidation = externalBarcodeValidation;
         this.donorNameValidation = donorNameValidation;
@@ -78,12 +84,13 @@ public class SectionRegisterValidation {
         validateBarcodes();
         UCMap<Tissue> tissues = validateTissues(donors);
         UCMap<Sample> samples = validateSamples(tissues);
+        UCMap<SlotRegion> regions = validateRegions();
         final String workNumber = request.getWorkNumber();
         Work work = workNumber==null ? null : workService.validateUsableWork(this.problems, workNumber);
         if (!problems.isEmpty()) {
             return null;
         }
-        return new ValidatedSections(lwTypes, donors, samples, work);
+        return new ValidatedSections(lwTypes, donors, samples, regions, work);
     }
 
     public void checkEmpty() {
@@ -392,6 +399,32 @@ public class SectionRegisterValidation {
             }
         }
         return sampleMap;
+    }
+
+    public UCMap<SlotRegion> validateRegions() {
+        if (request.getLabware().stream()
+                .anyMatch(this::anyMissingRegions)) {
+            problems.add("Slot regions must be specified for each section in a shared slot.");
+        }
+        if (contentStream().allMatch(src -> nullOrEmpty(src.getRegion()))) {
+            return new UCMap<>(0);
+        }
+        UCMap<SlotRegion> slotRegions = slotRegionService.loadSlotRegionMap(true);
+
+        for (var srl : request.getLabware()) {
+            Stream<Map.Entry<Address, String>> regionStream = srl.getContents().stream()
+                    .filter(src -> !nullOrEmpty(src.getRegion()) && src.getAddress()!=null)
+                    .map(src -> Map.entry(src.getAddress(), src.getRegion()));
+            problems.addAll(slotRegionService.validateSlotRegions(slotRegions, regionStream));
+        }
+
+        return slotRegions;
+    }
+
+    public boolean anyMissingRegions(SectionRegisterLabware srl) {
+        return slotRegionService.anyMissingRegions(srl.getContents().stream()
+                .filter(src -> src.getAddress()!=null)
+                .map(src -> simpleEntry(src.getAddress(), src.getRegion())));
     }
 
     private Stream<SectionRegisterContent> contentStream() {

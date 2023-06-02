@@ -1,17 +1,21 @@
 package uk.ac.sanger.sccp.stan;
 
 import org.junit.jupiter.api.function.Executable;
+import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatcher;
 import org.mockito.stubbing.Answer;
 import org.mockito.stubbing.Stubber;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -50,6 +54,11 @@ public class Matchers {
      */
     public static <E, C extends Collection<E>> C sameElements(C collection, boolean checkSize) {
         return argThat(new OrderInsensitiveCollectionMatcher<>(collection, checkSize));
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <E> ArgumentCaptor<Stream<E>> streamCaptor() {
+        return ArgumentCaptor.forClass(Stream.class);
     }
 
     /**

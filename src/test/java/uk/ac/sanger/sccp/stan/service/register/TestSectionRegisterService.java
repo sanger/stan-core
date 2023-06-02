@@ -1,18 +1,29 @@
 package uk.ac.sanger.sccp.stan.service.register;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.register.*;
-import uk.ac.sanger.sccp.stan.service.*;
+import uk.ac.sanger.sccp.stan.request.register.RegisterResult;
+import uk.ac.sanger.sccp.stan.request.register.SectionRegisterContent;
+import uk.ac.sanger.sccp.stan.request.register.SectionRegisterLabware;
+import uk.ac.sanger.sccp.stan.request.register.SectionRegisterRequest;
+import uk.ac.sanger.sccp.stan.service.LabwareService;
+import uk.ac.sanger.sccp.stan.service.OperationService;
+import uk.ac.sanger.sccp.stan.service.ValidationException;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -26,39 +37,38 @@ import static org.mockito.Mockito.*;
  * @author dr6
  */
 public class TestSectionRegisterService {
-    private RegisterValidationFactory mockValidationFactory;
-    private DonorRepo mockDonorRepo;
-    private TissueRepo mockTissueRepo;
-    private SampleRepo mockSampleRepo;
-    private MeasurementRepo mockMeasurementRepo;
-    private OperationTypeRepo mockOpTypeRepo;
-    private SlotRepo mockSlotRepo;
+    @Mock private RegisterValidationFactory mockValidationFactory;
+    @Mock private DonorRepo mockDonorRepo;
+    @Mock private TissueRepo mockTissueRepo;
+    @Mock private SampleRepo mockSampleRepo;
+    @Mock private MeasurementRepo mockMeasurementRepo;
+    @Mock private OperationTypeRepo mockOpTypeRepo;
+    @Mock private SlotRepo mockSlotRepo;
+    @Mock private SamplePositionRepo mockSamplePositionRepo;
 
-    private OperationService mockOpService;
-    private LabwareService mockLwService;
-    private WorkService mockWorkService;
+    @Mock private OperationService mockOpService;
+    @Mock private LabwareService mockLwService;
+    @Mock private WorkService mockWorkService;
 
     private User user;
 
     private SectionRegisterServiceImp regService;
 
+    private AutoCloseable mocking;
+
     @BeforeEach
     void setup() {
-        mockValidationFactory = mock(RegisterValidationFactory.class);
-        mockDonorRepo = mock(DonorRepo.class);
-        mockTissueRepo = mock(TissueRepo.class);
-        mockSampleRepo = mock(SampleRepo.class);
-        mockMeasurementRepo = mock(MeasurementRepo.class);
-        mockOpTypeRepo = mock(OperationTypeRepo.class);
-        mockSlotRepo = mock(SlotRepo.class);
-        mockOpService = mock(OperationService.class);
-        mockLwService = mock(LabwareService.class);
-        mockWorkService = mock(WorkService.class);
+        mocking = MockitoAnnotations.openMocks(this);
 
         user = EntityFactory.getUser();
 
         regService = spy(new SectionRegisterServiceImp(mockValidationFactory, mockDonorRepo, mockTissueRepo, mockSampleRepo,
-                mockMeasurementRepo, mockOpTypeRepo, mockSlotRepo, mockOpService, mockLwService, mockWorkService));
+                mockMeasurementRepo, mockOpTypeRepo, mockSlotRepo, mockSamplePositionRepo, mockOpService, mockLwService, mockWorkService));
+    }
+
+    @AfterEach
+    void cleanup() throws Exception {
+        mocking.close();
     }
 
 
@@ -78,7 +88,7 @@ public class TestSectionRegisterService {
             verify(regService, never()).execute(any(), any(), any());
             return;
         }
-        ValidatedSections valSec = new ValidatedSections(new UCMap<>(), new UCMap<>(), new UCMap<>(), new Work());
+        ValidatedSections valSec = new ValidatedSections(new UCMap<>(), new UCMap<>(), new UCMap<>(), new UCMap<>(), new Work());
         when(mockValidation.validate()).thenReturn(valSec);
 
         RegisterResult result = new RegisterResult(List.of());
@@ -98,7 +108,8 @@ public class TestSectionRegisterService {
         SectionRegisterRequest request = new SectionRegisterRequest(List.of(), workNumber);
         Work work = new Work();
         work.setId(15);
-        ValidatedSections valSec = new ValidatedSections(new UCMap<>(), new UCMap<>(), new UCMap<>(), work);
+        UCMap<SlotRegion> regionMap = UCMap.from(SlotRegion::getName, EntityFactory.getSlotRegion());
+        ValidatedSections valSec = new ValidatedSections(new UCMap<>(), new UCMap<>(), new UCMap<>(), regionMap, work);
         UCMap<Donor> donorMap = UCMap.from(Donor::getDonorName, EntityFactory.getDonor());
         UCMap<Tissue> tissueMap = UCMap.from(Tissue::getExternalName, EntityFactory.getTissue());
         UCMap<Sample> sampleMap = UCMap.from(sam -> sam.getTissue().getExternalName(), EntityFactory.getSample());
@@ -109,12 +120,12 @@ public class TestSectionRegisterService {
         doReturn(tissueMap).when(regService).createTissues(valSec.getSampleMap().values(), donorMap);
         doReturn(sampleMap).when(regService).createSamples(valSec.getSampleMap().values(), tissueMap);
         doReturn(lwMap).when(regService).createAllLabware(request, valSec.getLabwareTypes(), sampleMap);
-        doReturn(List.of()).when(regService).recordOperations(user, request, lwMap, sampleMap, work);
+        doReturn(List.of()).when(regService).recordOperations(user, request, lwMap, sampleMap, regionMap, work);
         doReturn(regResult).when(regService).assembleResult(request, lwMap, tissueMap);
 
         assertSame(regResult, regService.execute(user, request, valSec));
 
-        verify(regService).recordOperations(user, request, lwMap, sampleMap, work);
+        verify(regService).recordOperations(user, request, lwMap, sampleMap, regionMap, work);
     }
 
     @Test
@@ -299,7 +310,15 @@ public class TestSectionRegisterService {
     }
 
     private SectionRegisterContent content(Address address, String extName) {
-        return content(address, extName, null);
+        return content(address, extName, (Integer) null);
+    }
+
+    private SectionRegisterContent content(Address address, String extName, String regionName) {
+        SectionRegisterContent src = new SectionRegisterContent();
+        src.setAddress(address);
+        src.setExternalIdentifier(extName);
+        src.setRegion(regionName);
+        return src;
     }
 
     private SectionRegisterContent content(Address address, String extName, Integer thickness) {
@@ -329,18 +348,25 @@ public class TestSectionRegisterService {
                 .map(lw -> new SectionRegisterLabware(lw.getExternalBarcode(), lt.getName(), null))
                 .toArray(SectionRegisterLabware[]::new);
         UCMap<Sample> sampleMap = UCMap.from(sam -> sam.getTissue().getExternalName(), EntityFactory.getSample());
+        UCMap<SlotRegion> regionMap = UCMap.from(SlotRegion::getName, EntityFactory.getSlotRegion());
         SectionRegisterRequest request = new SectionRegisterRequest(Arrays.asList(srls), "SGP1");
         UCMap<Labware> lwMap = UCMap.from(Labware::getExternalBarcode, labware);
         for (int i = 0; i < labware.length; ++i) {
             doReturn(ops[i]).when(regService).createOp(user, opType, labware[i]);
         }
         doReturn(List.of()).when(regService).createMeasurements(any(), any(), any(), any());
+        doReturn(List.of()).when(regService).createSamplePositions(any(), any(), any(), any(), any());
         Work work = new Work();
         work.setId(15);
 
-        List<Operation> operations = regService.recordOperations(user, request, lwMap, sampleMap, work);
+        List<Operation> operations = regService.recordOperations(user, request, lwMap, sampleMap, regionMap, work);
 
-        Arrays.stream(labware).forEach(lw -> verify(regService).createOp(user, opType, lw));
+        for (int i = 0; i < labware.length; i++) {
+            Labware lw = labware[i];
+            verify(regService).createOp(user, opType, lw);
+            verify(regService).createMeasurements(srls[i], lw, ops[i], sampleMap);
+            verify(regService).createSamplePositions(srls[i], lw, ops[i].getId(), sampleMap, regionMap);
+        }
         verify(mockWorkService).link(work, operations);
         assertThat(operations).containsExactly(ops);
     }
@@ -386,15 +412,7 @@ public class TestSectionRegisterService {
         Address B1 = new Address(1, 2);
         Address B2 = new Address(2,2);
         Labware lw = EntityFactory.makeEmptyLabware(lt);
-        final Donor donor = EntityFactory.getDonor();
-        final SpatialLocation sl = EntityFactory.getSpatialLocation();
-        final BioState bs = EntityFactory.getBioState();
-        Sample[] samples = IntStream.range(0,4)
-                .mapToObj(i -> {
-                    Tissue tissue = EntityFactory.makeTissue(donor, sl);
-                    return new Sample(10+i, 5+i, tissue, bs);
-                })
-                .toArray(Sample[]::new);
+        Sample[] samples = makeSamples(4);
         String[] xns = Arrays.stream(samples)
                 .map(sam -> sam.getTissue().getExternalName())
                 .toArray(String[]::new);
@@ -405,12 +423,12 @@ public class TestSectionRegisterService {
         slotB1.getSamples().add(samples[2]);
         slotB2.getSamples().add(samples[3]);
 
-        Operation op = new Operation(200, new OperationType(1, "Register", 0, bs), null, null, null);
+        Operation op = new Operation(200, new OperationType(1, "Register", 0, null), null, null, null);
 
         List<SectionRegisterContent> contents = List.of(
                 content(A1, xns[0], 14),
                 content(A1, xns[1], 15),
-                content(B1, xns[2], null),
+                content(B1, xns[2]),
                 content(B2, xns[3], 16)
         );
 
@@ -431,5 +449,58 @@ public class TestSectionRegisterService {
                 new Measurement(null, "Thickness", "15", samples[1].getId(), opId, slotA1.getId()),
                 new Measurement(null, "Thickness", "16", samples[3].getId(), opId, slotB2.getId())
         ));
+    }
+
+
+    @Test
+    public void testCreateSamplePositions() {
+        final SlotRegion top = new SlotRegion(1, "Top");
+        final SlotRegion bottom = new SlotRegion(2, "Bottom");
+        UCMap<SlotRegion> regionMap = UCMap.from(SlotRegion::getName, top, bottom);
+        Sample[] samples = makeSamples(3);
+        String[] xns = Arrays.stream(samples).map(sam -> sam.getTissue().getExternalName()).toArray(String[]::new);
+        UCMap<Sample> sampleMap = UCMap.from((Sample sam) -> sam.getTissue().getExternalName(), samples);
+        final Address A1 = new Address(1,1),
+                A2 = new Address(1,2),
+                A3 = new Address(1,3);
+        Integer opId = 17;
+        List<SamplePosition> savedSamps = List.of(new SamplePosition(100, 200, top, opId));
+        when(mockSamplePositionRepo.saveAll(any())).thenReturn(savedSamps);
+
+        List<SectionRegisterContent> srcs = List.of(
+                content(A1, xns[0], "top"),
+                content(A1, xns[1], "bottom"),
+                content(A2, xns[2], ""),
+                content(A3, xns[0], "BOTTOM")
+        );
+        LabwareType lt = EntityFactory.makeLabwareType(1,3);
+
+        Labware lw = EntityFactory.makeLabware(lt);
+        lw.getSlot(A1).setSamples(List.of(samples[0], samples[1]));
+        lw.getSlot(A2).setSamples(List.of(samples[2]));
+        lw.getSlot(A3).setSamples(List.of(samples[0]));
+
+        SectionRegisterLabware srl = new SectionRegisterLabware("xbc", "lwt", srcs);
+
+        assertSame(savedSamps, regService.createSamplePositions(srl, lw, opId, sampleMap, regionMap));
+
+        verify(mockSamplePositionRepo).saveAll(List.of(
+                new SamplePosition(lw.getSlot(A1).getId(), samples[0].getId(), top, opId),
+                new SamplePosition(lw.getSlot(A1).getId(), samples[1].getId(), bottom, opId),
+                new SamplePosition(lw.getSlot(A3).getId(), samples[0].getId(), bottom, opId)
+        ));
+    }
+
+
+    private static Sample[] makeSamples(int numSamples) {
+        final Donor donor = EntityFactory.getDonor();
+        final SpatialLocation sl = EntityFactory.getSpatialLocation();
+        BioState bs = EntityFactory.getBioState();
+        return IntStream.range(0,numSamples)
+                .mapToObj(i -> {
+                    Tissue tissue = EntityFactory.makeTissue(donor, sl);
+                    return new Sample(10+i, 5+i, tissue, bs);
+                })
+                .toArray(Sample[]::new);
     }
 }

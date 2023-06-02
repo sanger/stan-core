@@ -4,9 +4,15 @@ import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 
 import java.util.*;
-import java.util.function.*;
+import java.util.function.BinaryOperator;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
-import java.util.stream.*;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 /**
  * Much copied from the corresponding class in CGAP lims
@@ -206,7 +212,6 @@ public class BasicUtils {
             return new ArrayList<>();
         }
         if (items instanceof Collection) {
-            //noinspection unchecked
             return new ArrayList<>((Collection<? extends E>) items);
         }
         ArrayList<E> list = new ArrayList<>();
@@ -464,6 +469,13 @@ public class BasicUtils {
         map.put(key1, value1);
         map.put(key2, value2);
         return map;
+    }
+
+    /**
+     * Makes a map entry of the given key and value, each of which may be null.
+     */
+    public static <K,V> Map.Entry<K,V> simpleEntry(K key, V value) {
+        return new AbstractMap.SimpleImmutableEntry<>(key, value);
     }
 
     /**
