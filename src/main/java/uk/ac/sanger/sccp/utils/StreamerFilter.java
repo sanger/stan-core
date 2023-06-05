@@ -35,12 +35,9 @@ public class StreamerFilter<E> {
      * @return a predicate for filtering the {@code E} entities
      */
     public Predicate<E> filter() {
-        if (filters.isEmpty()) {
-            return E -> true;
-        }
         return filters.stream()
                 .reduce(Predicate::and)
-                .orElseThrow();
+                .orElse(e -> true);
     }
 
     /**

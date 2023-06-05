@@ -66,8 +66,8 @@ public class TsvWriter implements Closeable {
         if (value==null) {
             return; // omit null
         }
-        boolean addQuotes = (quote!=0 && (separator!=0 && value.indexOf(separator) >= 0)
-                            || (quoteEscape!=0 && value.indexOf(quote) >= 0));
+        boolean addQuotes = (quote!=0 && (separator!=0 && value.indexOf(separator) >= 0
+                                        || quoteEscape!=0 && value.indexOf(quote) >= 0));
         if (addQuotes) {
             out.write(quote);
         }
