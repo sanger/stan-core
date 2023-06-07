@@ -42,7 +42,7 @@ public interface SlotRegionService {
 
     /**
      * Checks for problems with the specified regions.
-     * Regions include:<ul>
+     * Problems include:<ul>
      *     <li>unknown region specified</li>
      *     <li>same region used for multiple samples in an address</li>
      * </ul>
