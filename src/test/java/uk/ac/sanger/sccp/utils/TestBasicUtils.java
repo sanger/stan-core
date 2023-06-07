@@ -245,4 +245,14 @@ public class TestBasicUtils {
         assertFalse(startsWithIgnoreCase("Alph", "Alpha"));
         assertFalse(startsWithIgnoreCase("Alpha", "Balpha"));
     }
+
+    @Test
+    public void testReverseIter() {
+        List<Integer> list = List.of(1,2,3,4);
+        Iterator<Integer> expected = List.of(4,3,2,1).iterator();
+        for (Integer value : reverseIter(list)) {
+            assertEquals(value, expected.next());
+        }
+        assertFalse(expected.hasNext());
+    }
 }

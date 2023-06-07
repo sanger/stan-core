@@ -13,6 +13,10 @@ public class SlotIdSampleId implements Serializable {
 
     public SlotIdSampleId() {}
 
+    public SlotIdSampleId(Slot slot, Sample sample) {
+        this(slot.getId(), sample.getId());
+    }
+
     public SlotIdSampleId(Integer slotId, Integer sampleId) {
         this.slotId = slotId;
         this.sampleId = sampleId;

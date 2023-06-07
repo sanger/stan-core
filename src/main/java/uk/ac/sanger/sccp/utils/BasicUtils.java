@@ -381,6 +381,16 @@ public class BasicUtils {
     }
 
     /**
+     * Makes an {@link Iterable} to iterate through a list from end to start.
+     * @param list the list to reverse-iterate
+     * @return an {@code Iterable<T>}
+     */
+    public static <T> Iterable<T> reverseIter(List<T> list) {
+        return () -> new ReverseIterator<>(list.listIterator(list.size()));
+    }
+
+
+    /**
      * Does the given string start with the given substring, ignoring its case?
      * @param string the containing string
      * @param sub the substring
