@@ -55,7 +55,7 @@ jobs:
         MYSQL_DATABASE: stantest
     - name:  Run Snyk tests to check for vulnerabilities
       uses: snyk/actions/node@master #Pre-created container
-      continue-on-error: true #To make sure that CI run is not blocked on snyk test failure
+      continue-on-error: true # To make sure that CI run is not blocked on Snyk test failure
       with:
         command: code test
         args: --severity-threshold=high
