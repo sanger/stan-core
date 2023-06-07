@@ -22,8 +22,8 @@
     },
     {
       "value": "#medium#",
-      "fontSize": 1.8,
-      "x": 8,
+      "fontSize": 1.2,
+      "x": 12,
       "y": 6
     },
     {
@@ -35,19 +35,19 @@
     {
       "value": "#tissue[0]#",
       "fontSize": 1.8,
-      "x": 4,
+      "x": 1,
       "y": 10
     },
     {
       "value": "#replicate[0]#",
       "fontSize": 1.8,
-      "x": 12,
+      "x": 8,
       "y": 10
     },
     {
       "value": "#state[0]#",
       "fontSize": 1.8,
-      "x": 17,
+      "x": 18,
       "y": 10
     },
     {
@@ -59,19 +59,19 @@
     {
       "value": "#tissue[1]#",
       "fontSize": 1.8,
-      "x": 4,
+      "x": 1,
       "y": 14
     },
     {
       "value": "#replicate[1]#",
       "fontSize": 1.8,
-      "x": 12,
+      "x": 8,
       "y": 14
     },
     {
       "value": "#state[1]#",
       "fontSize": 1.8,
-      "x": 17,
+      "x": 18,
       "y": 14
     },
     {
@@ -83,19 +83,19 @@
     {
       "value": "#tissue[2]#",
       "fontSize": 1.8,
-      "x": 4,
+      "x": 1,
       "y": 18
     },
     {
       "value": "#replicate[2]#",
       "fontSize": 1.8,
-      "x": 12,
+      "x": 8,
       "y": 18
     },
     {
       "value": "#state[2]#",
       "fontSize": 1.8,
-      "x": 17,
+      "x": 18,
       "y": 18
     }
   ],
