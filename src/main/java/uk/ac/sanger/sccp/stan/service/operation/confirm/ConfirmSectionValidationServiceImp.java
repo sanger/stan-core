@@ -5,8 +5,10 @@ import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
 import uk.ac.sanger.sccp.stan.repo.PlanOperationRepo;
-import uk.ac.sanger.sccp.stan.request.confirm.*;
+import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSection;
+import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSectionLabware;
 import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSectionLabware.AddressCommentId;
+import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSectionRequest;
 import uk.ac.sanger.sccp.stan.service.CommentValidationService;
 import uk.ac.sanger.sccp.stan.service.SlotRegionService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
@@ -18,7 +20,8 @@ import java.util.stream.Stream;
 
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toSet;
-import static uk.ac.sanger.sccp.utils.BasicUtils.*;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
+import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
  * @author dr6
@@ -149,8 +152,7 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
                 .allMatch(BasicUtils::nullOrEmpty)) {
             return new UCMap<>(0);
         }
-        UCMap<SlotRegion> slotRegions = UCMap.from(asList(slotRegionService.loadSlotRegions(true)),
-                SlotRegion::getName);
+        UCMap<SlotRegion> slotRegions = slotRegionService.loadSlotRegionMap(true);
 
         for (ConfirmSectionLabware csl : csls) {
             if (nullOrEmpty(csl.getBarcode())) {

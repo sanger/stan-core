@@ -19,6 +19,7 @@ mutation {
                         externalIdentifier: "TISSUE1"
                         spatialLocation: 1
                         tissueType: "Heart"
+                        region: "top"
                     }
                     {
                         address: "A1"
@@ -33,6 +34,7 @@ mutation {
                         externalIdentifier: "TISSUE2"
                         spatialLocation: 1
                         tissueType: "Lung"
+                        region: "bottom"
                     }
                     {
                         address: "B2"

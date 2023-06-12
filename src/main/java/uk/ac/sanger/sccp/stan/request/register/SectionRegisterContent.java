@@ -24,6 +24,7 @@ public class SectionRegisterContent {
     private String medium;
     private Integer sectionNumber;
     private Integer sectionThickness;
+    private String region;
 
     public SectionRegisterContent() {}
 
@@ -137,6 +138,15 @@ public class SectionRegisterContent {
         this.sectionThickness = sectionThickness;
     }
 
+    /** The region of the section in the slot, if any */
+    public String getRegion() {
+        return this.region;
+    }
+
+    public void setRegion(String region) {
+        this.region = region;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -154,7 +164,9 @@ public class SectionRegisterContent {
                 && Objects.equals(this.fixative, that.fixative)
                 && Objects.equals(this.medium, that.medium)
                 && Objects.equals(this.sectionNumber, that.sectionNumber)
-                && Objects.equals(this.sectionThickness, that.sectionThickness));
+                && Objects.equals(this.sectionThickness, that.sectionThickness)
+                && Objects.equals(this.region, that.region)
+        );
     }
 
     @Override
@@ -178,6 +190,7 @@ public class SectionRegisterContent {
                 .add("medium", medium)
                 .add("sectionNumber", sectionNumber)
                 .add("sectionThickness", sectionThickness)
+                .add("region", region)
                 .reprStringValues()
                 .omitNullValues()
                 .toString();

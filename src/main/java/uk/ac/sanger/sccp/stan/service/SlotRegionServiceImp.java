@@ -3,14 +3,19 @@ package uk.ac.sanger.sccp.stan.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
+import uk.ac.sanger.sccp.stan.repo.SamplePositionRepo;
+import uk.ac.sanger.sccp.stan.repo.SlotRegionRepo;
 import uk.ac.sanger.sccp.stan.request.SamplePositionResult;
 import uk.ac.sanger.sccp.utils.BasicUtils;
+import uk.ac.sanger.sccp.utils.UCMap;
 
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
+import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
  * @author dr6
@@ -54,5 +59,47 @@ public class SlotRegionServiceImp implements SlotRegionService {
     @Override
     public Iterable<SlotRegion> loadSlotRegions(boolean includeDisabled) {
         return (includeDisabled ? slotRegionRepo.findAll() : slotRegionRepo.findAllByEnabled(true));
+    }
+
+    @Override
+    public boolean anyMissingRegions(Stream<Map.Entry<Address, String>> addressRegionStream) {
+        final Map<Address, Integer> addressRegionCount = new HashMap<>();
+        final Set<Address> addressesWithNoRegion = new HashSet<>();
+        Iterable<Map.Entry<Address, String>> addressRegions = addressRegionStream::iterator;
+        for (var e : addressRegions) {
+            Address address = e.getKey();
+            if (address != null) {
+                addressRegionCount.merge(address, 1, Integer::sum);
+                if (nullOrEmpty(e.getValue())) {
+                    addressesWithNoRegion.add(address);
+                }
+            }
+        }
+        return (addressesWithNoRegion.stream().anyMatch(ad -> addressRegionCount.get(ad) > 1));
+    }
+
+    @Override
+    public Set<String> validateSlotRegions(UCMap<SlotRegion> slotRegionMap,
+                                           Stream<Map.Entry<Address, String>> addressRegionStream) {
+        final LinkedHashSet<String> problems = new LinkedHashSet<>();
+        final Map<Address, Set<SlotRegion>> addressRegions = new HashMap<>();
+        addressRegionStream.forEach(e -> {
+            Address address = e.getKey();
+            String string = e.getValue();
+            SlotRegion region = slotRegionMap.get(string);
+            if (region==null) {
+                problems.add("Unknown region: "+repr(string));
+            } else {
+                var regions = addressRegions.get(address);
+                if (regions==null) {
+                    regions = new HashSet<>();
+                    regions.add(region);
+                    addressRegions.put(address, regions);
+                } else if (!regions.add(region)) {
+                    problems.add(String.format("Region %s repeated in slot address %s.", region.getName(), address));
+                }
+            }
+        });
+        return problems;
     }
 }

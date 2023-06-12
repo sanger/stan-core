@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.register.RegisterRequest;
 import uk.ac.sanger.sccp.stan.request.register.SectionRegisterRequest;
+import uk.ac.sanger.sccp.stan.service.SlotRegionService;
 import uk.ac.sanger.sccp.stan.service.Validator;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 
@@ -31,6 +32,7 @@ public class RegisterValidationFactory {
     private final Validator<String> visiumLpSlideBarcodeValidation;
     private final Validator<String> replicateValidator;
     private final TissueFieldChecker tissueFieldChecker;
+    private final SlotRegionService slotRegionService;
     private final WorkService workService;
 
     @Autowired
@@ -44,7 +46,7 @@ public class RegisterValidationFactory {
                                      @Qualifier("visiumLPBarcodeValidator") Validator<String> visiumLpSlideBarcodeValidation,
                                      @Qualifier("replicateValidator") Validator<String> replicateValidator,
                                      TissueFieldChecker tissueFieldChecker,
-                                     WorkService workService) {
+                                     SlotRegionService slotRegionService, WorkService workService) {
         this.donorRepo = donorRepo;
         this.hmdmcRepo = hmdmcRepo;
         this.ttRepo = ttRepo;
@@ -61,6 +63,7 @@ public class RegisterValidationFactory {
         this.visiumLpSlideBarcodeValidation = visiumLpSlideBarcodeValidation;
         this.replicateValidator = replicateValidator;
         this.tissueFieldChecker = tissueFieldChecker;
+        this.slotRegionService = slotRegionService;
         this.workService = workService;
     }
 
@@ -73,7 +76,8 @@ public class RegisterValidationFactory {
     public SectionRegisterValidation createSectionRegisterValidation(SectionRegisterRequest request) {
         return new SectionRegisterValidation(request, donorRepo, speciesRepo, ltRepo, labwareRepo,
                 hmdmcRepo, ttRepo, fixativeRepo, mediumRepo, tissueRepo, bioStateRepo,
-                workService, externalBarcodeValidation, donorNameValidation, externalNameValidation, replicateValidator,
+                slotRegionService, workService,
+                externalBarcodeValidation, donorNameValidation, externalNameValidation, replicateValidator,
                 visiumLpSlideBarcodeValidation);
     }
 }

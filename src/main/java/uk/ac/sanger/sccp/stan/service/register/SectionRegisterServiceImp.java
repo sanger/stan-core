@@ -3,15 +3,20 @@ package uk.ac.sanger.sccp.stan.service.register;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.register.*;
+import uk.ac.sanger.sccp.stan.request.register.RegisterResult;
+import uk.ac.sanger.sccp.stan.request.register.SectionRegisterLabware;
+import uk.ac.sanger.sccp.stan.request.register.SectionRegisterRequest;
 import uk.ac.sanger.sccp.stan.service.LabwareService;
 import uk.ac.sanger.sccp.stan.service.OperationService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 import static java.util.stream.Collectors.toList;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 import static uk.ac.sanger.sccp.utils.UCMap.toUCMap;
 
 /**
@@ -27,6 +32,7 @@ public class SectionRegisterServiceImp implements SectionRegisterService {
     private final MeasurementRepo measurementRepo;
     private final OperationTypeRepo opTypeRepo;
     private final SlotRepo slotRepo;
+    private final SamplePositionRepo samplePositionRepo;
 
     private final OperationService opService;
     private final LabwareService lwService;
@@ -35,7 +41,7 @@ public class SectionRegisterServiceImp implements SectionRegisterService {
     public SectionRegisterServiceImp(RegisterValidationFactory validationFactory, DonorRepo donorRepo,
                                      TissueRepo tissueRepo, SampleRepo sampleRepo, MeasurementRepo measurementRepo,
                                      OperationTypeRepo opTypeRepo, SlotRepo slotRepo,
-                                     OperationService opService, LabwareService lwService, WorkService workService) {
+                                     SamplePositionRepo samplePositionRepo, OperationService opService, LabwareService lwService, WorkService workService) {
         this.validationFactory = validationFactory;
         this.donorRepo = donorRepo;
         this.tissueRepo = tissueRepo;
@@ -43,6 +49,7 @@ public class SectionRegisterServiceImp implements SectionRegisterService {
         this.measurementRepo = measurementRepo;
         this.opTypeRepo = opTypeRepo;
         this.slotRepo = slotRepo;
+        this.samplePositionRepo = samplePositionRepo;
         this.opService = opService;
         this.lwService = lwService;
         this.workService = workService;
@@ -69,7 +76,7 @@ public class SectionRegisterServiceImp implements SectionRegisterService {
         UCMap<Tissue> tissueMap = createTissues(sections.getSampleMap().values(), donorMap);
         UCMap<Sample> sampleMap = createSamples(sections.getSampleMap().values(), tissueMap);
         UCMap<Labware> labwareMap = createAllLabware(request, sections.getLabwareTypes(), sampleMap);
-        recordOperations(user, request, labwareMap, sampleMap, sections.getWork());
+        recordOperations(user, request, labwareMap, sampleMap, sections.getSlotRegionMap(), sections.getWork());
         return assembleResult(request, labwareMap, tissueMap);
     }
 
@@ -199,7 +206,7 @@ public class SectionRegisterServiceImp implements SectionRegisterService {
      * @return a list of operations
      */
     public List<Operation> recordOperations(User user, SectionRegisterRequest request, UCMap<Labware> labwareMap,
-                                            UCMap<Sample> sampleMap, Work work) {
+                                            UCMap<Sample> sampleMap, UCMap<SlotRegion> regionMap, Work work) {
         OperationType opType = opTypeRepo.getByName("Register");
         List<Operation> ops = new ArrayList<>(request.getLabware().size());
         for (SectionRegisterLabware srl : request.getLabware()) {
@@ -207,6 +214,7 @@ public class SectionRegisterServiceImp implements SectionRegisterService {
             Operation op = createOp(user, opType, lw);
             ops.add(op);
             createMeasurements(srl, lw, op, sampleMap);
+            createSamplePositions(srl, lw, op.getId(), sampleMap, regionMap);
         }
         if (work != null) {
             workService.link(work, ops);
@@ -240,16 +248,33 @@ public class SectionRegisterServiceImp implements SectionRegisterService {
      */
     public Iterable<Measurement> createMeasurements(SectionRegisterLabware srl, Labware lw, Operation op,
                                                 UCMap<Sample> sampleMap) {
-        List<Measurement> measurements = new ArrayList<>(srl.getContents().size());
-        for (var content : srl.getContents()) {
-            if (content.getSectionThickness()!=null) {
-                Measurement measurement = new Measurement(null, "Thickness", content.getSectionThickness().toString(),
+        List<Measurement> measurements = srl.getContents().stream()
+                .filter(content -> content.getSectionThickness() != null)
+                .map(content -> new Measurement(
+                        null, "Thickness", content.getSectionThickness().toString(),
                         sampleMap.get(content.getExternalIdentifier()).getId(), op.getId(),
-                        lw.getSlot(content.getAddress()).getId());
-                measurements.add(measurement);
-            }
-        }
+                        lw.getSlot(content.getAddress()).getId()))
+                .collect(toList());
         return (measurements.isEmpty() ? measurements : measurementRepo.saveAll(measurements));
     }
 
+    /**
+     * Creates sample positions as indicated by the request
+     * @param srl the request pertaining to one item of labware
+     * @param lw the item of labware
+     * @param opId the operation id
+     * @param sampleMap map of external identifier to sample
+     * @param regionMap map of slot regions from their names
+     * @return the sample positions created
+     */
+    public Iterable<SamplePosition> createSamplePositions(SectionRegisterLabware srl, Labware lw, Integer opId,
+                                                          UCMap<Sample> sampleMap, UCMap<SlotRegion> regionMap) {
+        List<SamplePosition> samps = srl.getContents().stream()
+                .filter(src -> !nullOrEmpty(src.getRegion()))
+                .map(src -> new SamplePosition(lw.getSlot(src.getAddress()).getId(),
+                        sampleMap.get(src.getExternalIdentifier()).getId(),
+                        regionMap.get(src.getRegion()), opId))
+                .collect(toList());
+        return (samps.isEmpty() ? samps : samplePositionRepo.saveAll(samps));
+    }
 }

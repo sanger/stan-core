@@ -11,13 +11,15 @@ class ValidatedSections {
     private final UCMap<LabwareType> labwareTypes;
     private final UCMap<Donor> donorMap;
     private final UCMap<Sample> sampleMap;
+    private final UCMap<SlotRegion> slotRegionMap;
     private final Work work;
 
     public ValidatedSections(UCMap<LabwareType> labwareTypes, UCMap<Donor> donorMap,
-                             UCMap<Sample> sampleMap, Work work) {
+                             UCMap<Sample> sampleMap, UCMap<SlotRegion> slotRegionMap, Work work) {
         this.labwareTypes = labwareTypes;
         this.donorMap = donorMap;
         this.sampleMap = sampleMap;
+        this.slotRegionMap = slotRegionMap;
         this.work = work;
     }
 
@@ -34,6 +36,10 @@ class ValidatedSections {
     /** The samples to be created, mapped from the external identifier. */
     public UCMap<Sample> getSampleMap() {
         return this.sampleMap;
+    }
+
+    public UCMap<SlotRegion> getSlotRegionMap() {
+        return this.slotRegionMap;
     }
 
     /** The work specified in the request */

@@ -1,20 +1,33 @@
 package uk.ac.sanger.sccp.stan.service.register;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.*;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.mockito.stubbing.Answer;
 import uk.ac.sanger.sccp.stan.EntityFactory;
+import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.register.*;
+import uk.ac.sanger.sccp.stan.request.register.SectionRegisterContent;
+import uk.ac.sanger.sccp.stan.request.register.SectionRegisterLabware;
+import uk.ac.sanger.sccp.stan.request.register.SectionRegisterRequest;
+import uk.ac.sanger.sccp.stan.service.SlotRegionService;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
 import uk.ac.sanger.sccp.stan.service.Validator;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
-import java.util.function.*;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -25,48 +38,41 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.EntityFactory.objToCollection;
 import static uk.ac.sanger.sccp.utils.BasicUtils.coalesce;
+import static uk.ac.sanger.sccp.utils.BasicUtils.simpleEntry;
 
 /**
  * Tests {@link SectionRegisterValidation}
  * @author dr6
  */
 public class TestSectionRegisterValidation {
-    private DonorRepo mockDonorRepo;
-    private SpeciesRepo mockSpeciesRepo;
-    private LabwareTypeRepo mockLwTypeRepo;
-    private LabwareRepo mockLwRepo;
-    private HmdmcRepo mockHmdmcRepo;
-    private TissueTypeRepo mockTissueTypeRepo;
-    private FixativeRepo mockFixativeRepo;
-    private MediumRepo mockMediumRepo;
-    private BioStateRepo mockBioStateRepo;
-    private TissueRepo mockTissueRepo;
-    private Validator<String> mockExternalBarcodeValidation;
-    private Validator<String> mockDonorNameValidation;
-    private Validator<String> mockExternalNameValidation;
-    private Validator<String> mockReplicateValidator;
-    private Validator<String> mockVisiumLpBarcodeValidation;
-    private WorkService mockWorkService;
+    @Mock private DonorRepo mockDonorRepo;
+    @Mock private SpeciesRepo mockSpeciesRepo;
+    @Mock private LabwareTypeRepo mockLwTypeRepo;
+    @Mock private LabwareRepo mockLwRepo;
+    @Mock private HmdmcRepo mockHmdmcRepo;
+    @Mock private TissueTypeRepo mockTissueTypeRepo;
+    @Mock private FixativeRepo mockFixativeRepo;
+    @Mock private MediumRepo mockMediumRepo;
+    @Mock private BioStateRepo mockBioStateRepo;
+    @Mock private TissueRepo mockTissueRepo;
+    @Mock private Validator<String> mockExternalBarcodeValidation;
+    @Mock private Validator<String> mockDonorNameValidation;
+    @Mock private Validator<String> mockExternalNameValidation;
+    @Mock private Validator<String> mockReplicateValidator;
+    @Mock private Validator<String> mockVisiumLpBarcodeValidation;
+    @Mock private SlotRegionService mockSlotRegionService;
+    @Mock private WorkService mockWorkService;
+    
+    private AutoCloseable mocking;
 
-    @SuppressWarnings("unchecked")
     @BeforeEach
     void setup() {
-        mockDonorRepo = mock(DonorRepo.class);
-        mockSpeciesRepo = mock(SpeciesRepo.class);
-        mockLwTypeRepo = mock(LabwareTypeRepo.class);
-        mockLwRepo = mock(LabwareRepo.class);
-        mockHmdmcRepo = mock(HmdmcRepo.class);
-        mockTissueTypeRepo = mock(TissueTypeRepo.class);
-        mockFixativeRepo = mock(FixativeRepo.class);
-        mockMediumRepo = mock(MediumRepo.class);
-        mockBioStateRepo = mock(BioStateRepo.class);
-        mockTissueRepo = mock(TissueRepo.class);
-        mockExternalBarcodeValidation = mock(Validator.class);
-        mockDonorNameValidation = mock(Validator.class);
-        mockExternalNameValidation = mock(Validator.class);
-        mockReplicateValidator = mock(Validator.class);
-        mockVisiumLpBarcodeValidation = mock(Validator.class);
-        mockWorkService = mock(WorkService.class);
+        mocking = MockitoAnnotations.openMocks(this);
+    }
+    
+    @AfterEach
+    void cleanup() throws Exception {
+        mocking.close();
     }
 
     private SectionRegisterValidation makeValidation(Object requestObj) {
@@ -91,9 +97,9 @@ public class TestSectionRegisterValidation {
             }
         }
         return spy(new SectionRegisterValidation(request, mockDonorRepo, mockSpeciesRepo, mockLwTypeRepo, mockLwRepo,
-                mockHmdmcRepo, mockTissueTypeRepo, mockFixativeRepo, mockMediumRepo,
-                mockTissueRepo, mockBioStateRepo,
-                mockWorkService, mockExternalBarcodeValidation, mockDonorNameValidation, mockExternalNameValidation,
+                mockHmdmcRepo, mockTissueTypeRepo, mockFixativeRepo, mockMediumRepo, mockTissueRepo, mockBioStateRepo,
+                mockSlotRegionService, mockWorkService,
+                mockExternalBarcodeValidation, mockDonorNameValidation, mockExternalNameValidation,
                 mockReplicateValidator, mockVisiumLpBarcodeValidation));
     }
 
@@ -130,6 +136,7 @@ public class TestSectionRegisterValidation {
         UCMap<LabwareType> lwTypes = UCMap.from(LabwareType::getName, EntityFactory.getTubeType());
         UCMap<Tissue> tissues = UCMap.from(Tissue::getExternalName, EntityFactory.getTissue());
         UCMap<Sample> samples = UCMap.from(sam -> sam.getTissue().getExternalName(), EntityFactory.getSample());
+        UCMap<SlotRegion> regions = UCMap.from(SlotRegion::getName, EntityFactory.getSlotRegion());
         Work work = new Work();
         work.setId(16);
         when(mockWorkService.validateUsableWork(anyCollection(), anyString())).thenReturn(work);
@@ -148,6 +155,7 @@ public class TestSectionRegisterValidation {
         doNothing().when(validation).validateBarcodes();
         doReturn(tissues).when(validation).validateTissues(any());
         doReturn(samples).when(validation).validateSamples(any());
+        doReturn(regions).when(validation).validateRegions();
 
         ValidatedSections vs = validation.validate();
 
@@ -155,9 +163,10 @@ public class TestSectionRegisterValidation {
 
         if (valid) {
             assertNotNull(vs);
-            assertSame(vs.getDonorMap(), donors);
-            assertSame(vs.getLabwareTypes(), lwTypes);
-            assertSame(vs.getSampleMap(), samples);
+            assertSame(donors, vs.getDonorMap());
+            assertSame(lwTypes, vs.getLabwareTypes());
+            assertSame(samples, vs.getSampleMap());
+            assertSame(regions, vs.getSlotRegionMap());
             assertThat(validation.getProblems()).isEmpty();
             assertSame(work, vs.getWork());
             validation.throwError();
@@ -614,12 +623,112 @@ public class TestSectionRegisterValidation {
         );
     }
 
+    @ParameterizedTest
+    @CsvSource({"false,false,false",
+            "false,true,false",
+            "true,true,false",
+            "false,true,true",
+    })
+    public void testValidateRegions(boolean anyMissing, boolean anyPresent, boolean anyInvalid) {
+        final Address A1 = new Address(1,1);
+        final Address A2 = new Address(1,2);
+        List<SectionRegisterContent> src1;
+        if (anyPresent) {
+            src1 = List.of(
+                    content(A1, "SR1"),
+                    content(A2, "SR2"),
+                    content(A2, null),
+                    content(null, "SR3")
+            );
+        } else {
+            src1 = List.of();
+        }
+        SectionRegisterRequest req = new SectionRegisterRequest(List.of(
+                new SectionRegisterLabware("A", "", src1),
+                new SectionRegisterLabware("B", "", List.of())
+        ), null);
+        SectionRegisterValidation val = makeValidation(req);
+
+        UCMap<SlotRegion> regions;
+        if (anyPresent) {
+            regions = UCMap.from(SlotRegion::getName, EntityFactory.getSlotRegion());
+            doReturn(regions).when(mockSlotRegionService).loadSlotRegionMap(true);
+        } else {
+            regions = null;
+        }
+        doReturn(false).when(val).anyMissingRegions(any());
+        if (anyMissing) {
+            doReturn(true).when(val).anyMissingRegions(req.getLabware().get(1));
+        }
+        doReturn(regions).when(mockSlotRegionService).loadSlotRegionMap(true);
+
+        if (anyInvalid) {
+            doReturn(Set.of("Bad regions")).when(mockSlotRegionService).validateSlotRegions(any(), any());
+        } else if (anyPresent) {
+            doReturn(Set.of()).when(mockSlotRegionService).validateSlotRegions(any(), any());
+        }
+
+        if (anyPresent) {
+            assertSame(regions, val.validateRegions());
+        } else {
+            assertThat(val.validateRegions()).isEmpty();
+        }
+        Set<String> expectedProblems = new HashSet<>(2);
+        if (anyMissing) {
+            expectedProblems.add("Slot regions must be specified for each section in a shared slot.");
+        }
+        if (anyInvalid) {
+            expectedProblems.add("Bad regions");
+        }
+        assertThat(val.getProblems()).containsExactlyInAnyOrderElementsOf(expectedProblems);
+
+        req.getLabware().forEach(srl -> verify(val).anyMissingRegions(srl));
+        if (anyPresent) {
+            ArgumentCaptor<Stream<Map.Entry<Address, String>>> captor = Matchers.streamCaptor();
+            verify(mockSlotRegionService, times(2)).validateSlotRegions(same(regions), captor.capture());
+            Stream<Map.Entry<Address, String>> elements = captor.getAllValues().get(0);
+            assertThat(elements).containsExactly(Map.entry(A1, "SR1"), Map.entry(A2, "SR2"));
+            elements = captor.getValue();
+            assertThat(elements).isEmpty();
+        } else {
+            verifyNoInteractions(mockSlotRegionService);
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false,true})
+    public void testAnyMissingRegions(boolean anyMissing) {
+        final Address A1 = new Address(1,1);
+        final Address A2 = new Address(1,2);
+        List<SectionRegisterContent> contents = List.of(
+                content(A1, null),
+                content(A2, "Alpha"),
+                content(A2, anyMissing ? "" : "Beta")
+        );
+        SectionRegisterLabware srl = new SectionRegisterLabware();
+        srl.setContents(contents);
+        var val = makeValidation(srl);
+        when(mockSlotRegionService.anyMissingRegions(any())).thenReturn(anyMissing);
+        assertEquals(anyMissing, val.anyMissingRegions(srl));
+        ArgumentCaptor<Stream<Map.Entry<Address, String>>> captor = Matchers.streamCaptor();
+        verify(mockSlotRegionService).anyMissingRegions(captor.capture());
+        assertThat(captor.getValue()).containsExactly(simpleEntry(A1, null), simpleEntry(A2, "Alpha"), simpleEntry(A2, anyMissing ? "" : "Beta"));
+    }
+
     private static SectionRegisterContent content(String extName, Integer section, Integer thickness) {
         SectionRegisterContent content = new SectionRegisterContent();
         content.setExternalIdentifier(extName);
         content.setSectionNumber(section);
         content.setSectionThickness(thickness);
         return content;
+    }
+
+
+    private static SectionRegisterContent content(Address address, String regionName) {
+        SectionRegisterContent src = new SectionRegisterContent();
+        src.setAddress(address);
+        src.setRegion(regionName);
+        return src;
     }
 
     private static class ValidateTissueTestData {

@@ -1,7 +1,9 @@
 package uk.ac.sanger.sccp.stan;
 
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.model.reagentplate.*;
+import uk.ac.sanger.sccp.stan.model.reagentplate.ReagentPlate;
+import uk.ac.sanger.sccp.stan.model.reagentplate.ReagentPlateLayout;
+import uk.ac.sanger.sccp.stan.model.reagentplate.ReagentSlot;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -30,6 +32,8 @@ public class EntityFactory {
     private static Fixative fixative;
     private static Printer printer;
     private static Species human;
+    private static SlotRegion slotRegion;
+
     private static int idCounter = 10_000;
 
     public static User getUser() {
@@ -58,6 +62,13 @@ public class EntityFactory {
             human = new Species(1, "Human");
         }
         return human;
+    }
+
+    public static SlotRegion getSlotRegion() {
+        if (slotRegion==null) {
+            slotRegion = new SlotRegion(55, "Middle");
+        }
+        return slotRegion;
     }
 
     public static SpatialLocation getSpatialLocation() {

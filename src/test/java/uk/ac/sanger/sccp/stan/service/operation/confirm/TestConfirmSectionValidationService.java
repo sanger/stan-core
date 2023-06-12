@@ -1,16 +1,22 @@
 package uk.ac.sanger.sccp.stan.service.operation.confirm;
 
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.*;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
 import uk.ac.sanger.sccp.stan.repo.PlanOperationRepo;
-import uk.ac.sanger.sccp.stan.request.confirm.*;
+import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSection;
+import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSectionLabware;
 import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSectionLabware.AddressCommentId;
+import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSectionRequest;
 import uk.ac.sanger.sccp.stan.service.CommentValidationService;
 import uk.ac.sanger.sccp.stan.service.SlotRegionService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
@@ -152,7 +158,7 @@ public class TestConfirmSectionValidationService {
     public void testValidateRegions(List<SlotRegion> allRegions, List<SlotRegion> expectedRegions,
                                     List<ConfirmSectionLabware> csls, List<String> expectedProblems) {
         List<String> problems = new ArrayList<>(expectedProblems.size());
-        when(mockSlotRegionService.loadSlotRegions(true)).thenReturn(allRegions);
+        when(mockSlotRegionService.loadSlotRegionMap(true)).thenReturn(UCMap.from(allRegions, SlotRegion::getName));
         assertEquals(UCMap.from(expectedRegions, SlotRegion::getName), service.validateSlotRegions(problems, csls));
         assertThat(problems).containsExactlyInAnyOrderElementsOf(expectedProblems);
     }
