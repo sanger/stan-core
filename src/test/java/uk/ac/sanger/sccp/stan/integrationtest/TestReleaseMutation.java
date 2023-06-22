@@ -136,8 +136,8 @@ public class TestReleaseMutation {
         assertThat(message.getTo()).containsExactly(recipient.getUsername()+"@sanger.ac.uk");
         assertThat(message.getCc()).containsExactly("beagledev@sanger.ac.uk");
         String releaseUrl = "stantestroot/release?id=" + releaseIds.stream().map(Object::toString).collect(joining(","));
-        assertEquals("Release to "+recipient.getUsername()+"@sanger.ac.uk.\n" +
-                "The details of the release are available at "+releaseUrl, message.getText());
+        assertEquals("Release to "+recipient.getUsername()+"@sanger.ac.uk for work number "+work1.getWorkNumber()+
+                ".\nThe details of the release are available at "+releaseUrl, message.getText());
 
         String tsvString = getReleaseFile(releaseIds);
         var tsvMaps = tsvToMap(tsvString);

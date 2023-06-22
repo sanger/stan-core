@@ -107,14 +107,23 @@ public class EmailService {
      * Tries to send a release email.
      * @param recipient the recipient of the release email
      * @param ccList optional list of other emails to cc
+     * @param workNumbers work numbers linked to the labware
      * @param releaseFilePath the path to download the release file
      * @return true if the email was sent successfully; false if it was not
      */
-    public boolean tryReleaseEmail(String recipient, List<String> ccList, String releaseFilePath) {
+    public boolean tryReleaseEmail(String recipient, List<String> ccList, List<String> workNumbers, String releaseFilePath) {
         String[] recipients = new String[] {recipient};
         String[] cc = releaseEmailCCs(ccList);
         String subject = mailConfig.getServiceDescription()+" release";
-        String text = "Release to "+recipient
+        String wnString;
+        if (nullOrEmpty(workNumbers)) {
+            wnString = "";
+        } else if (workNumbers.size()==1) {
+            wnString = " for work number "+ String.join(", ", workNumbers);
+        } else {
+            wnString = " for work numbers "+ String.join(", ", workNumbers);
+        }
+        String text = "Release to "+recipient+wnString
                 +".\nThe details of the release are available at "+releaseFilePath;
         try {
             send(subject, text, recipients, cc);

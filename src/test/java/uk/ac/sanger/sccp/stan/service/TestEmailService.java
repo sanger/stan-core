@@ -130,20 +130,22 @@ public class TestEmailService {
     }
 
     @ParameterizedTest
-    @ValueSource(booleans={false,true})
-    public void testTryReleaseEmail(boolean success) {
+    @CsvSource({"false,false", "true,false", "true,true"})
+    public void testTryReleaseEmail(boolean success, boolean anyWork) {
         String recipient = "rec@sanger.ac.uk";
         String desc = "Stan test";
         String[] ccArray = { "a", "b", "c" };
         List<String> ccList = List.of("a", "b");
+        List<String> workNumbers = anyWork ? List.of("SGP1", "SGP2") : List.of();
         when(mockMailConfig.getServiceDescription()).thenReturn(desc);
         doReturn(ccArray).when(service).releaseEmailCCs(any());
         String path = "path_to_file";
         (success ? doNothing() : doThrow(RuntimeException.class)).when(service).send(any(), any(), any(), any());
-        assertEquals(success, service.tryReleaseEmail(recipient, ccList, path));
+        assertEquals(success, service.tryReleaseEmail(recipient, ccList, workNumbers, path));
         verify(service).releaseEmailCCs(ccList);
-        verify(service).send(desc+" release",
-                "Release to rec@sanger.ac.uk.\nThe details of the release are available at "+path,
-                new String[] { recipient }, ccArray);
+        String body = anyWork ?"Release to rec@sanger.ac.uk for work numbers SGP1, SGP2.\nThe details of the release are available at "
+                : "Release to rec@sanger.ac.uk.\nThe details of the release are available at ";
+
+        verify(service).send(desc+" release", body + path, new String[] { recipient }, ccArray);
     }
 }

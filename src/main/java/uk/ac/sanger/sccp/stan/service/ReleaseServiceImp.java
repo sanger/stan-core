@@ -98,7 +98,12 @@ public class ReleaseServiceImp implements ReleaseService {
                 .map(rec -> canonicaliseEmail(rec.getUsername()))
                 .collect(toList());
 
-        emailService.tryReleaseEmail(recipientEmail, otherEmails, releaseFileLink(releases));
+        List<String> workNumbers = workMap.values().stream()
+                .map(Work::getWorkNumber)
+                .sorted()
+                .collect(toList());
+
+        emailService.tryReleaseEmail(recipientEmail, otherEmails, workNumbers, releaseFileLink(releases));
 
         return new ReleaseResult(releases);
     }
