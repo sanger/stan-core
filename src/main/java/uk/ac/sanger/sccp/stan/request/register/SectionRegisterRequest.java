@@ -1,8 +1,11 @@
 package uk.ac.sanger.sccp.stan.request.register;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
 
 import static uk.ac.sanger.sccp.utils.BasicUtils.newArrayList;
+import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
  * A request to register labware (slides) containing samples (sections).
@@ -50,6 +53,6 @@ public class SectionRegisterRequest {
 
     @Override
     public String toString() {
-        return "SectionRegisterRequest(" + labware + ", workNumber="+workNumber+")";
+        return "SectionRegisterRequest(" + labware + ", workNumber="+repr(workNumber)+")";
     }
 }
