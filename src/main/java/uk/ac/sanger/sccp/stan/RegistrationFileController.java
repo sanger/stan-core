@@ -68,7 +68,7 @@ public class RegistrationFileController {
                 return (User) principal;
             }
         }
-        return new User(17, "dr6", User.Role.normal);
+        return null;
     }
 
     protected User checkUserForUpload() {
