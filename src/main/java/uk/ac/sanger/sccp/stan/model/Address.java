@@ -9,8 +9,6 @@ import java.util.Objects;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
-
 /**
  * An address representing a row and a column (both positive ints).
  * @author dr6
@@ -110,7 +108,7 @@ public class Address implements Comparable<Address> {
             }
         }
         if (row < 0 || column < 0) {
-            throw new IllegalArgumentException("Invalid address string: " + repr(string));
+            throw new IllegalArgumentException("Invalid address string: "+string);
         }
         return new Address(row, column);
     }
