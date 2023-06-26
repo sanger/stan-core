@@ -2,6 +2,7 @@ package uk.ac.sanger.sccp.stan;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import graphql.GraphQLContext;
 import graphql.schema.DataFetchingEnvironment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,11 +12,15 @@ import org.springframework.security.core.Authentication;
 import uk.ac.sanger.sccp.stan.model.User;
 import uk.ac.sanger.sccp.stan.repo.UserRepo;
 
+import static uk.ac.sanger.sccp.stan.CustomGraphQLInvocation.USERNAME_CONTEXT_KEY;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
+
 /**
  * Base class for GraphQL data fetcher resources
  * @author dr6
  */
 abstract class BaseGraphQLResource {
+
     private final Logger log = LoggerFactory.getLogger(BaseGraphQLResource.class);
 
     final ObjectMapper objectMapper;
@@ -63,12 +68,13 @@ abstract class BaseGraphQLResource {
                 return (User) principal;
             }
         }
-        StanRequestContext context = dfe.getContext();
-        if (context!=null && context.getUsername()!=null) {
-            log.info("Processing request using API key with user {}.", context.getUsername());
-            return userRepo.getByUsername(context.getUsername());
+        GraphQLContext context = dfe.getGraphQlContext();
+        String username = (context==null ? null : context.get(USERNAME_CONTEXT_KEY));
+        if (nullOrEmpty(username)) {
+            return null;
         }
-        return null;
+        log.info("Processing request using API key with user {}.", username);
+        return userRepo.getByUsername(username);
     }
 
     protected <E> E arg(DataFetchingEnvironment dfe, String name, Class<E> cls) {

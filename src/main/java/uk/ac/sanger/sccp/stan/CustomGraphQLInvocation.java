@@ -19,6 +19,9 @@ import java.util.concurrent.CompletableFuture;
 @Component
 @Primary
 public class CustomGraphQLInvocation implements GraphQLInvocation {
+    public static final String API_KEY_HEADER = "STAN-APIKEY";
+    public static final String API_KEY_CONTEXT_KEY = "apikey", USERNAME_CONTEXT_KEY = "username";
+
     private final GraphQL graphQL;
     private final ApiKeyConfig apiKeyConfig;
 
@@ -31,13 +34,13 @@ public class CustomGraphQLInvocation implements GraphQLInvocation {
     @Override
     public CompletableFuture<ExecutionResult> invoke(GraphQLInvocationData invocationData, WebRequest request) {
         Map<String, Object> variables = invocationData.getVariables();
-        StanRequestContext context = getStoreRequestContext(request, variables);
+        Map<String, Object> contextMap = getStoreRequestContext(request, variables);
 
         ExecutionInput executionInput = ExecutionInput.newExecutionInput()
                 .query(invocationData.getQuery())
                 .operationName(invocationData.getOperationName())
                 .variables(variables)
-                .context(context)
+                .graphQLContext(contextMap)
                 .build();
         return graphQL.executeAsync(executionInput);
     }
@@ -52,9 +55,15 @@ public class CustomGraphQLInvocation implements GraphQLInvocation {
     }
 
     @NotNull
-    private StanRequestContext getStoreRequestContext(WebRequest request, Map<String, Object> variables) {
-        String apiKey = getHeaderOrVariable(StanRequestContext.API_KEY_HEADER, request, variables);
-        String username = (apiKey==null ? null : apiKeyConfig.getUsername(apiKey));
-        return new StanRequestContext(apiKey, username);
+    private Map<String, Object> getStoreRequestContext(WebRequest request, Map<String, Object> variables) {
+        String apiKey = getHeaderOrVariable(API_KEY_HEADER, request, variables);
+        if (apiKey==null) {
+            return Map.of();
+        }
+        String username = apiKeyConfig.getUsername(apiKey);
+        if (username!=null) {
+            return Map.of(API_KEY_CONTEXT_KEY, apiKey, USERNAME_CONTEXT_KEY, username);
+        }
+        return Map.of(API_KEY_CONTEXT_KEY, apiKey);
     }
 }
