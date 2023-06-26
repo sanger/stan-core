@@ -604,7 +604,11 @@ public class TestSlotCopyService {
                 },
                 {
                         List.of(makeSCD("rowLt", "STAN-0", A1, A1, "STAN-0", A2, A1)),
-                        List.of("Repeated destination address: A1")
+                        List.of()
+                },
+                {
+                        List.of(makeSCD("rowLt", "STAN-0", A2, A1, "Stan-0", A2, A1)),
+                        List.of("Repeated copy specified: {sourceBarcode=\"STAN-0\", sourceAddress=A2, destinationAddress=A1}")
                 },
                 {
                     List.of(makeSCD("colLt", "STAN-0", A1, A2)),
