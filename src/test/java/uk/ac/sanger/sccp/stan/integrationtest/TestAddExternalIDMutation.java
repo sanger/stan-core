@@ -9,8 +9,6 @@ import org.springframework.test.context.ActiveProfiles;
 import uk.ac.sanger.sccp.stan.EntityCreator;
 import uk.ac.sanger.sccp.stan.GraphQLTester;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
-
 
 import javax.transaction.Transactional;
 
@@ -29,9 +27,6 @@ public class TestAddExternalIDMutation {
     @Autowired
     private EntityCreator entityCreator;
 
-    @Autowired
-    private LabwareRepo lwRepo;
-
     @Test
     @Transactional
     public void testAddExternalID() throws Exception {
@@ -43,9 +38,8 @@ public class TestAddExternalIDMutation {
         Tissue tissue = entityCreator.createTissue(donor, "", "1");
         Sample sample = entityCreator.createSample(tissue, 1, null);
         LabwareType lt = entityCreator.createLabwareType("LT",1, 1);
-        Labware lw = entityCreator.createLabware("Barcode1", lt, sample);
+        entityCreator.createLabware("Barcode1", lt, sample);
 
-        System.out.println(lw);
         String mutation = tester.readGraphQL("addexternalid.graphql");
         Object result = tester.post(mutation);
 

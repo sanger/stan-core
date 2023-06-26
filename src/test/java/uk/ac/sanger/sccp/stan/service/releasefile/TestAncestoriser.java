@@ -107,10 +107,7 @@ public class TestAncestoriser {
                 { lwB, sampleB, },
         };
         Set<SlotSample> keys = new HashSet<>();
-        int r = 0;
         for (Object[] data : expectedData) {
-            System.out.println("Row "+r);
-            ++r;
             SlotSample key = slotSample(data[0], (Sample) data[1]);
             Set<SlotSample> values = new HashSet<>(data.length/2-1);
             for (int i = 2; i < data.length; i+=2) {
