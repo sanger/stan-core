@@ -284,9 +284,9 @@ public class SlotCopyRequest {
         public SlotCopyContent() {}
 
         public SlotCopyContent(String sourceBarcode, Address sourceAddress, Address destinationAddress) {
-            this.sourceBarcode = sourceBarcode;
-            this.sourceAddress = sourceAddress;
-            this.destinationAddress = destinationAddress;
+            setSourceBarcode(sourceBarcode);
+            setSourceAddress(sourceAddress);
+            setDestinationAddress(destinationAddress);
         }
 
         /** The barcode of the source labware */
@@ -295,7 +295,7 @@ public class SlotCopyRequest {
         }
 
         public void setSourceBarcode(String sourceBarcode) {
-            this.sourceBarcode = sourceBarcode;
+            this.sourceBarcode = (sourceBarcode==null ? null : sourceBarcode.toUpperCase());
         }
 
         /** The address in the source labware */
@@ -334,7 +334,7 @@ public class SlotCopyRequest {
         @Override
         public String toString() {
             return String.format("{sourceBarcode=%s, sourceAddress=%s, destinationAddress=%s}",
-                    sourceBarcode, sourceAddress, destinationAddress);
+                    repr(sourceBarcode), sourceAddress, destinationAddress);
         }
     }
 }

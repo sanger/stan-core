@@ -90,7 +90,8 @@ public class SlotCopyServiceImp implements SlotCopyService {
     @Override
     public OperationResult perform(User user, SlotCopyRequest request) throws ValidationException {
         Set<String> barcodesToUnstore = new HashSet<>();
-        OperationResult result = transactor.transact("SlotCopy", () -> performInsideTransaction(user, request, barcodesToUnstore));
+        OperationResult result = transactor.transact("SlotCopy",
+                () -> performInsideTransaction(user, request, barcodesToUnstore));
         if (!result.getOperations().isEmpty() && !barcodesToUnstore.isEmpty()) {
             storeService.discardStorage(user, barcodesToUnstore);
         }
@@ -124,7 +125,8 @@ public class SlotCopyServiceImp implements SlotCopyService {
             throw new ValidationException("The operation could not be validated.", problems);
         }
         OperationResult opres = executeOps(user, request.getDestinations(), opType, lwTypes, bs, sourceMap, work);
-        final Labware.State newSourceState = opType.discardSource() ? Labware.State.discarded : opType.markSourceUsed() ? Labware.State.used : null;
+        final Labware.State newSourceState = (opType.discardSource() ? Labware.State.discarded
+                : opType.markSourceUsed() ? Labware.State.used : null);
         updateSources(sourceStateMap, sourceMap.values(), newSourceState, barcodesToUnstore);
         return opres;
     }
@@ -408,18 +410,19 @@ public class SlotCopyServiceImp implements SlotCopyService {
             problems.add("No contents specified in destination.");
         }
         for (var dest : request.getDestinations()) {
-            Set<Address> destAddressSet = new HashSet<>();
+            Set<SlotCopyContent> contentSet = new HashSet<>(dest.getContents().size());
             LabwareType lt = lwTypes.get(dest.getLabwareType());
             for (var content : dest.getContents()) {
                 Address destAddress = content.getDestinationAddress();
+                if (!contentSet.add(content)) {
+                    problems.add("Repeated copy specified: "+content);
+                    continue;
+                }
                 if (destAddress == null) {
                     problems.add("No destination address specified.");
-                } else if (!destAddressSet.add(destAddress)) {
-                    problems.add("Repeated destination address: " + destAddress);
                 } else if (lt != null && lt.indexOf(destAddress) < 0) {
                     problems.add("Invalid address " + destAddress + " for labware type " + lt.getName() + ".");
                 }
-
                 Address sourceAddress = content.getSourceAddress();
                 Labware lw = lwMap.get(content.getSourceBarcode());
                 if (sourceAddress == null) {
@@ -565,7 +568,7 @@ public class SlotCopyServiceImp implements SlotCopyService {
             for (Sample oldSample : src.getSamples()) {
                 Sample newSample = oldSampleIdToNewSample.get(oldSample.getId());
                 if (!dst.getSamples().contains(newSample)) {
-                    dst.getSamples().add(newSample);
+                    dst.addSample(newSample);
                 }
             }
         }
