@@ -140,8 +140,9 @@ public class TestReleaseService {
         UCMap<BasicLocation> locations = new UCMap<>(1);
         locations.put(labware.get(0).getBarcode(), new BasicLocation("STO-123", new Address(1,2)));
         when(mockStoreService.loadBasicLocationsOfItems(any())).thenReturn(locations);
-        UCMap<Work> workMap = new UCMap<>(1);
-        workMap.put("STAN-01", new Work());
+        Work work = new Work();
+        work.setWorkNumber("SGP1");
+        UCMap<Work> workMap = UCMap.from(Work::getWorkNumber, work);
         doReturn(workMap).when(service).loadWork(any());
 
         List<Release> releases = List.of(
@@ -170,7 +171,7 @@ public class TestReleaseService {
         verify(service).validateContents(labware);
         verify(service).loadWork(request.getReleaseLabware());
         verify(service).loadOtherRecipients(request.getOtherRecipients());
-        verify(mockEmailService).tryReleaseEmail(recEmail, List.of("ford@sanger.ac.uk"), releaseFilePath);
+        verify(mockEmailService).tryReleaseEmail(recEmail, List.of("ford@sanger.ac.uk"), List.of("SGP1"), releaseFilePath);
         verify(mockStoreService).loadBasicLocationsOfItems(labware.stream().map(Labware::getBarcode).collect(toList()));
         verify(service).transactRelease(user, recipient, otherRecs, destination, labware, locations, workMap);
         verify(mockStoreService).discardStorage(same(user), sameElements(expectedBarcodes, true));
