@@ -4,7 +4,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
-import java.util.function.Function;
+import java.util.function.*;
 import java.util.stream.Collector;
 
 /**
@@ -96,8 +96,65 @@ public class UCMap<V> implements Map<String, V> {
     }
 
     @Override
+    public V getOrDefault(Object key, V defaultValue) {
+        return inner.getOrDefault(upcase(key), defaultValue);
+    }
+
+    @Override
+    public void forEach(BiConsumer<? super String, ? super V> action) {
+        inner.forEach(action);
+    }
+
+    @Override
+    public void replaceAll(BiFunction<? super String, ? super V, ? extends V> function) {
+        inner.replaceAll(function);
+    }
+
+    @Nullable
+    @Override
+    public V putIfAbsent(String key, V value) {
+        return inner.putIfAbsent(upcase(key), value);
+    }
+
+    @Override
+    public boolean remove(Object key, Object value) {
+        return inner.remove(upcase(key), value);
+    }
+
+    @Override
+    public boolean replace(String key, V oldValue, V newValue) {
+        return inner.replace(upcase(key), oldValue, newValue);
+    }
+
+    @Nullable
+    @Override
+    public V replace(String key, V value) {
+        return inner.replace(upcase(key), value);
+    }
+
+    @Override
+    public V computeIfAbsent(String key, @NotNull Function<? super String, ? extends V> mappingFunction) {
+        return inner.computeIfAbsent(upcase(key), mappingFunction);
+    }
+
+    @Override
+    public V computeIfPresent(String key, @NotNull BiFunction<? super String, ? super V, ? extends V> remappingFunction) {
+        return inner.computeIfPresent(upcase(key), remappingFunction);
+    }
+
+    @Override
+    public V compute(String key, @NotNull BiFunction<? super String, ? super V, ? extends V> remappingFunction) {
+        return inner.compute(upcase(key), remappingFunction);
+    }
+
+    @Override
+    public V merge(String key, @NotNull V value, @NotNull BiFunction<? super V, ? super V, ? extends V> remappingFunction) {
+        return inner.merge(upcase(key), value, remappingFunction);
+    }
+
+    @Override
     public boolean equals(Object obj) {
-        return (obj instanceof Map && this.inner.equals(obj));
+        return (obj==this || obj instanceof Map && this.inner.equals(obj));
     }
 
     @Override
