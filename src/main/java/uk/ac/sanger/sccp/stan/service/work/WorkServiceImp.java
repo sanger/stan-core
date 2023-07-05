@@ -77,7 +77,7 @@ public class WorkServiceImp implements WorkService {
         CostCode cc = costCodeRepo.getByCode(costCode);
         WorkType type = workTypeRepo.getByName(workTypeName);
         OmeroProject omeroProject;
-        if (omeroProjectName==null) {
+        if (nullOrEmpty(omeroProjectName)) {
             omeroProject = null;
         } else {
             omeroProject = omeroProjectRepo.getByName(omeroProjectName);
@@ -86,7 +86,7 @@ public class WorkServiceImp implements WorkService {
             }
         }
         DnapStudy dnapStudy;
-        if (dnapStudyName==null) {
+        if (nullOrEmpty(dnapStudyName)) {
             dnapStudy = null;
         } else {
             dnapStudy = dnapStudyRepo.getByName(dnapStudyName);
