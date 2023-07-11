@@ -53,6 +53,7 @@ public class TestLabwareLabelDataService {
         Labware lw = EntityFactory.makeEmptyLabware(EntityFactory.makeLabwareType(1, 2));
         lw.setCreated(LocalDateTime.of(2021,3,17,15,44));
         lw.getSlots().get(1).getSamples().addAll(List.of(sample1, sample2));
+        lw.setExternalBarcode("123456");
 
         LabwareLabelData actual = service.getLabelData(lw);
 
@@ -60,13 +61,13 @@ public class TestLabwareLabelDataService {
                 .map(sam -> new LabelContent(sam.getTissue().getDonor().getDonorName(),
                         tissueString(sam.getTissue()), sam.getTissue().getReplicate(), sam.getSection()))
                 .collect(toList());
-        LabwareLabelData expected = new LabwareLabelData(lw.getBarcode(), tissue.getMedium().getName(), "2021-03-17", expectedContents);
+        LabwareLabelData expected = new LabwareLabelData(lw.getBarcode(), lw.getExternalBarcode(), tissue.getMedium().getName(), "2021-03-17", expectedContents);
         assertEquals(expected, actual);
 
         Labware emptyLabware = EntityFactory.makeEmptyLabware(EntityFactory.getTubeType());
         emptyLabware.setCreated(LocalDateTime.of(2021,3,17,12,0));
         when(mockPlanActionRepo.findAllByDestinationLabwareId(emptyLabware.getId())).thenReturn(List.of());
-        assertEquals(new LabwareLabelData(emptyLabware.getBarcode(), null, "2021-03-17", List.of()), service.getLabelData(emptyLabware));
+        assertEquals(new LabwareLabelData(emptyLabware.getBarcode(), emptyLabware.getExternalBarcode(), null, "2021-03-17", List.of()), service.getLabelData(emptyLabware));
     }
 
     @Test
@@ -84,6 +85,7 @@ public class TestLabwareLabelDataService {
         Sample sample2 = new Sample(null, 5, tissue2, bioState);
         Labware labware = EntityFactory.makeEmptyLabware(EntityFactory.makeLabwareType(1, 4));
         labware.setCreated(LocalDateTime.of(2021,3,17,15,45));
+        labware.setExternalBarcode("123456");
         List<Slot> slots = labware.getSlots();
         final int planId = 400;
         List<PlanAction> planActions = List.of(
@@ -101,7 +103,7 @@ public class TestLabwareLabelDataService {
                 new LabelContent(donor2.getDonorName(), tissueString(tissue2), tissue2.getReplicate(), 5),
                 new LabelContent(donor2.getDonorName(), tissueString(tissue2), tissue2.getReplicate(), 14)
         );
-        assertEquals(new LabwareLabelData(labware.getBarcode(), tissue1.getMedium().getName(), "2021-03-17", expectedContents), actual);
+        assertEquals(new LabwareLabelData(labware.getBarcode(), labware.getExternalBarcode(), tissue1.getMedium().getName(), "2021-03-17", expectedContents), actual);
     }
 
     @Test

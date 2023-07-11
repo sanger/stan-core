@@ -40,10 +40,10 @@ public class TestSprintClient {
     public void testToJson() throws IOException {
         final LabelType labelType = EntityFactory.getLabelType();
         LabelPrintRequest request = new LabelPrintRequest(labelType,
-                List.of(new LabwareLabelData("STAN-1", "None", "2021-03-17",
+                List.of(new LabwareLabelData("STAN-1", "123456", "None", "2021-03-17",
                         List.of(new LabelContent("DONOR1", "TISSUE1", "1", 2),
                                 new LabelContent("DONOR2", "TISSUE2", "3", 4))),
-                        new LabwareLabelData("STAN-2", "None", "2021-03-16",
+                        new LabwareLabelData("STAN-2", null, "None", "2021-03-16",
                                 List.of(new LabelContent("DONOR3", "TISSUE3", "5"))))
         );
         StringTemplate template = new StringTemplate("{\"barcode\":\"#barcode#\", " +

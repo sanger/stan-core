@@ -66,7 +66,7 @@ public class LabwareLabelDataService {
             created = LocalDateTime.now();
         }
         String dateString = created.format(DateTimeFormatter.ISO_LOCAL_DATE);
-        return new LabwareLabelData(labware.getBarcode(), medium, dateString, content);
+        return new LabwareLabelData(labware.getBarcode(), labware.getExternalBarcode(), medium, dateString, content);
     }
 
     /**

@@ -1,6 +1,6 @@
 package uk.ac.sanger.sccp.stan.service.label;
 
-import com.google.common.base.MoreObjects;
+import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import java.util.*;
 
@@ -10,13 +10,16 @@ import java.util.*;
  */
 public class LabwareLabelData {
     private final String barcode;
+    private final String externalBarcode;
     private final String medium;
     private final String date;
 
     private final List<LabelContent> contents;
 
-    public LabwareLabelData(String barcode, String medium, String date, List<LabelContent> contents) {
+    public LabwareLabelData(String barcode, String externalBarcode, String medium, String date,
+                            List<LabelContent> contents) {
         this.barcode = barcode;
+        this.externalBarcode = externalBarcode;
         this.medium = medium;
         this.date = date;
         this.contents = List.copyOf(contents);
@@ -24,6 +27,10 @@ public class LabwareLabelData {
 
     public String getBarcode() {
         return this.barcode;
+    }
+
+    public String getExternalBarcode() {
+        return this.externalBarcode;
     }
 
     public String getMedium() {
@@ -44,6 +51,7 @@ public class LabwareLabelData {
         if (o == null || getClass() != o.getClass()) return false;
         LabwareLabelData that = (LabwareLabelData) o;
         return (Objects.equals(this.barcode, that.barcode)
+                && Objects.equals(this.externalBarcode, that.externalBarcode)
                 && Objects.equals(this.medium, that.medium)
                 && Objects.equals(this.date, that.date)
                 && Objects.equals(this.contents, that.contents));
@@ -56,19 +64,23 @@ public class LabwareLabelData {
 
     @Override
     public String toString() {
-        return MoreObjects.toStringHelper(this)
+        return BasicUtils.describe(this)
                 .add("barcode", barcode)
+                .add("externalBarcode", externalBarcode)
                 .add("medium", medium)
                 .add("date", date)
                 .add("contents", contents)
+                .omitNullValues()
+                .reprStringValues()
                 .toString();
     }
 
     public Map<String, String> getFields() {
-        HashMap<String, String> fields = new HashMap<>(3 + 4 * contents.size());
+        HashMap<String, String> fields = new HashMap<>(4 + 4 * contents.size());
         fields.put("barcode", getBarcode());
         fields.put("medium", getMedium());
         fields.put("date", getDate());
+        fields.put("external", getExternalBarcode());
         int index = 0;
         for (LabelContent content : contents) {
             addField(fields, "donor", index, content.getDonorName());
@@ -106,7 +118,7 @@ public class LabwareLabelData {
 
         public LabelContent(String donorName, String tissueDesc, String replicate, Integer minSection, Integer maxSection) {
             this(donorName, tissueDesc, replicate, minSection==null ? null :
-                    String.format(minSection.equals(maxSection) || maxSection==null ? "S%03d" : "S%03d+", minSection));
+                    String.format(maxSection==null || minSection.equals(maxSection) ? "S%03d" : "S%03d+", minSection));
         }
 
         public LabelContent(String donorName, String tissueDesc, String replicate, String stateDesc) {
@@ -154,11 +166,13 @@ public class LabwareLabelData {
 
         @Override
         public String toString() {
-            return MoreObjects.toStringHelper(this)
+            return BasicUtils.describe(this)
                     .add("donorName", donorName)
                     .add("tissueDesc", tissueDesc)
                     .add("replicate", replicate)
                     .add("stateDesc", stateDesc)
+                    .omitNullValues()
+                    .reprStringValues()
                     .toString();
         }
     }
