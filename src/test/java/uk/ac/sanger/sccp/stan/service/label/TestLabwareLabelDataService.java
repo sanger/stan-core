@@ -106,6 +106,78 @@ public class TestLabwareLabelDataService {
         assertEquals(new LabwareLabelData(labware.getBarcode(), labware.getExternalBarcode(), tissue1.getMedium().getName(), "2021-03-17", expectedContents), actual);
     }
 
+    @ParameterizedTest
+    @CsvSource({"plate,false", "xenium,true"})
+    public void testSlotOrderForLabwareType(String ltName, boolean columnMajor) {
+        LabwareType lt = new LabwareType(null, ltName, 2, 3, null, false);
+        List<Slot> slots = Address.stream(2, 3)
+                .map(ad -> new Slot(null, 100, ad, null, null, null))
+                .sorted(service.slotOrderForLabwareType(lt))
+                .collect(toList());
+        if (columnMajor) {
+            for (int i = 0; i < slots.size(); ++i) {
+                Address ad = slots.get(i).getAddress();
+                int x = i/2;
+                int y = i%2;
+                assertEquals(x+1, ad.getColumn());
+                assertEquals(y+1, ad.getRow());
+            }
+        } else {
+            for (int i = 0; i < slots.size(); ++i) {
+                Address ad = slots.get(i).getAddress();
+                int x = i%3;
+                int y = i/3;
+                assertEquals(x+1, ad.getColumn());
+                assertEquals(y+1, ad.getRow());
+            }
+        }
+    }
+
+    /**
+     * Xenium labware content must be listed in column-major order
+     */
+    @Test
+    public void testXeniumPlannedContents() {
+        Donor donor1 = new Donor(null, "DONOR1", LifeStage.adult, species);
+        Donor donor2 = new Donor(null, "DONOR2", LifeStage.fetal, species);
+        Donor donor3 = new Donor(null, "DONOR3", LifeStage.paediatric, species);
+        TissueType ttype1 = new TissueType(null, "Skellington", "SKE");
+        SpatialLocation sl1 = new SpatialLocation(null, "SL4", 4, ttype1);
+        TissueType ttype2 = new TissueType(null, "Bananas", "BNN");
+        SpatialLocation sl2 = new SpatialLocation(null, "SL7", 7, ttype2);
+        TissueType ttype3 = new TissueType(null, "Custard", "CTD");
+        SpatialLocation sl3 = new SpatialLocation(null, "SL9", 9, ttype3);
+        Tissue tissue1 = EntityFactory.makeTissue(donor1, sl1);
+        Tissue tissue2 = EntityFactory.makeTissue(donor2, sl2);
+        Tissue tissue3 = EntityFactory.makeTissue(donor3, sl3);
+        BioState bs = EntityFactory.getBioState();
+        Sample sample1 = new Sample(null, null, tissue1, bs);
+        Sample sample2 = new Sample(null, 12, tissue2, bs);
+        Sample sample3 = new Sample(null, null, tissue3, bs);
+        Labware lw = EntityFactory.makeEmptyLabware(new LabwareType(100, LabwareType.XENIUM_NAME,
+                5, 3, EntityFactory.getLabelType(), false));
+        lw.setExternalBarcode("123456");
+        lw.setCreated(LocalDateTime.of(2023,7,13, 18, 0));
+        final int planId = 400;
+        Slot A1 = lw.getFirstSlot();
+        Slot A2 = lw.getSlot(new Address(1,2));
+        Slot B1 = lw.getSlot(new Address(2,1));
+        List<PlanAction> planActions = List.of(
+                new PlanAction(403, planId, B1, B1, sample3, 21, null, null),
+                new PlanAction(402, planId, A2, A2, sample2, null, null, null),
+                new PlanAction(401, planId, A1, A1, sample1, 11, null, null)
+        );
+        when(mockPlanActionRepo.findAllByDestinationLabwareId(lw.getId())).thenReturn(planActions);
+        LabwareLabelData actual = service.getLabelData(lw);
+        List<LabelContent> expectedContents = List.of(
+                new LabelContent("DONOR1", tissueString(tissue1), tissue1.getReplicate(), 11),
+                new LabelContent("DONOR3", tissueString(tissue3), tissue3.getReplicate(), 21),
+                new LabelContent("DONOR2", tissueString(tissue2), tissue2.getReplicate(), 12)
+        );
+        assertEquals(new LabwareLabelData(lw.getBarcode(), lw.getExternalBarcode(), tissue1.getMedium().getName(),
+                "2023-07-13", expectedContents), actual);
+    }
+
     @Test
     public void testLabelDataProviasette() {
         Medium medium = new Medium(1, "Sosostris");
