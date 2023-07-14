@@ -1,7 +1,7 @@
 package uk.ac.sanger.sccp.stan.service;
 
-import uk.ac.sanger.sccp.stan.model.FFPEProcessingRequest;
 import uk.ac.sanger.sccp.stan.model.User;
+import uk.ac.sanger.sccp.stan.request.FFPEProcessingRequest;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 
 /**
