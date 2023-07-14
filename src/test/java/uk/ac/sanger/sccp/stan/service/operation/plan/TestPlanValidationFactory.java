@@ -21,10 +21,11 @@ public class TestPlanValidationFactory {
         LabwareRepo lwRepo = mock(LabwareRepo.class);
         LabwareTypeRepo ltRepo = mock(LabwareTypeRepo.class);
         OperationTypeRepo opTypeRepo = mock(OperationTypeRepo.class);
-        Validator<String> mockBarcodeValidator = mock(Validator.class);
+        Validator<String> mockVisiumValidator = mock(Validator.class);
         Validator<String> mockLotValidator = mock(Validator.class);
+        Validator<String> mockXeniumValidator = mock(Validator.class);
         PlanValidationFactory factory = new PlanValidationFactory(lwRepo, ltRepo, opTypeRepo,
-                mockBarcodeValidator, mockLotValidator);
+                mockVisiumValidator, mockXeniumValidator, mockLotValidator);
         PlanRequest request = new PlanRequest();
         PlanValidation validation = factory.createPlanValidation(request);
         assertThat(validation).isInstanceOf(PlanValidationImp.class);
@@ -34,7 +35,8 @@ public class TestPlanValidationFactory {
         assertSame(validationImp.opTypeRepo, opTypeRepo);
         assertSame(validationImp.request, request);
         assertNotNull(validationImp.problems);
-        assertSame(validationImp.prebarcodeValidator, mockBarcodeValidator);
+        assertSame(validationImp.visiumBarcodeValidator, mockVisiumValidator);
+        assertSame(validationImp.xeniumBarcodeValidator, mockXeniumValidator);
         assertSame(validationImp.lotValidator, mockLotValidator);
     }
 }

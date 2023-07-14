@@ -97,11 +97,15 @@ public class LabwareType implements HasIntId, HasName {
         return (name!=null && (name.equalsIgnoreCase(PROVIASETTE_NAME) || name.equalsIgnoreCase(CASSETTE_NAME)));
     }
 
+    public boolean isXenium() {
+        return (name!=null && name.equalsIgnoreCase(XENIUM_NAME));
+    }
+
     /**
      * Should samples be listed in column-major order on the label?
      */
     public boolean columnMajorOrderOnLabel() {
-        return (name!=null && name.equalsIgnoreCase(XENIUM_NAME));
+        return isXenium();
     }
 
     /**
