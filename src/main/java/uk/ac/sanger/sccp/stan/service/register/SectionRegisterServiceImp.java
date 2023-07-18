@@ -16,6 +16,7 @@ import java.util.Collection;
 import java.util.List;
 
 import static java.util.stream.Collectors.toList;
+import static uk.ac.sanger.sccp.utils.BasicUtils.emptyToNull;
 import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 import static uk.ac.sanger.sccp.utils.UCMap.toUCMap;
 
@@ -185,7 +186,11 @@ public class SectionRegisterServiceImp implements SectionRegisterService {
                                  UCMap<Sample> sampleMap) {
         LabwareType lt = labwareTypes.get(srl.getLabwareType());
         String externalBarcode = srl.getExternalBarcode();
-        Labware lw = lwService.create(lt, lt.isPrebarcoded() ? externalBarcode : null, externalBarcode);
+        String prebarcode = emptyToNull(srl.getPreBarcode());
+        if (lt.isPrebarcoded() && prebarcode==null) {
+            prebarcode = externalBarcode;
+        }
+        Labware lw = lwService.create(lt, prebarcode, externalBarcode);
         for (var content : srl.getContents()) {
             Slot slot = lw.getSlot(content.getAddress());
             Sample sample = sampleMap.get(content.getExternalIdentifier());

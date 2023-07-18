@@ -300,6 +300,8 @@ input SectionRegisterLabware {
     labwareType: String!
     """The external barcode of this labware."""
     externalBarcode: String!
+    """The prebarcode of this labware, if any."""
+    preBarcode: String
     """The contents of the labware (new sections)."""
     contents: [SectionRegisterContent!]!
 }
