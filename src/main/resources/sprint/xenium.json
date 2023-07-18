@@ -22,12 +22,6 @@
     },
     {
       "x": 1,
-      "y": 7,
-      "value": "#external#",
-      "fontSize": 2.4
-    },
-    {
-      "x": 1,
       "y": 10,
       "value": "#donor[0]#",
       "fontSize": 1.8
