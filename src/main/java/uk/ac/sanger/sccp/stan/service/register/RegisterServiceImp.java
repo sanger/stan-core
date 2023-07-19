@@ -15,7 +15,7 @@ import java.util.*;
  * @author dr6
  */
 @Service
-public class RegisterServiceImp implements RegisterService {
+public class RegisterServiceImp implements IRegisterService<RegisterRequest> {
     private final EntityManager entityManager;
     private final RegisterValidationFactory validationFactory;
     private final DonorRepo donorRepo;
@@ -48,7 +48,7 @@ public class RegisterServiceImp implements RegisterService {
     }
 
     @Override
-    public RegisterResult register(RegisterRequest request, User user) {
+    public RegisterResult register(User user, RegisterRequest request) {
         if (request.getBlocks().isEmpty()) {
             return new RegisterResult(); // nothing to do
         }

@@ -31,7 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc(addFilters = false)
 @ActiveProfiles("test")
 @Import({GraphQLTester.class, EntityCreator.class})
-public class TestFileSectionRegister {
+public class TestFileBlockRegister {
     @Autowired
     EntityCreator creator;
     @Autowired
@@ -44,10 +44,11 @@ public class TestFileSectionRegister {
     public void testValidationError() throws Exception {
         User user = creator.createUser("user1");
         tester.setUser(user);
-        var response = upload("testdata/section_reg.xlsx");
+        var response = upload("testdata/block_reg.xlsx");
         var map = objectMapper.readValue(response.getContentAsString(), Map.class);
         List<?> problems = (List<?>) map.get("problems");
-        assertThat(problems).hasSize(3);
+        assertThat(problems).hasSize(1);
+        assertThat((String) problems.get(0)).matches(".*work number.*");
     }
 
     @Test
@@ -67,7 +68,7 @@ public class TestFileSectionRegister {
         byte[] bytes = Resources.toByteArray(url);
         MockMultipartFile file = new MockMultipartFile("file", bytes);
         MvcResult mvcr = tester.getMockMvc().perform(
-                multipart("/register/section").file(file)
+                multipart("/register/block").file(file)
         ).andExpect(status().is4xxClientError()).andReturn();
         return mvcr.getResponse();
     }
