@@ -224,6 +224,14 @@ type OmeroProject {
     enabled: Boolean!
 }
 
+"""A probe panel."""
+type ProbePanel {
+    """The name of the probe panel."""
+    name: String!
+    """Whether the probe panel is available for use."""
+    enabled: Boolean!
+}
+
 """A request to register a new block of tissue."""
 input BlockRegisterRequest {
     """The string to use as the donor name."""
@@ -1590,6 +1598,8 @@ type Query {
     fixatives(includeDisabled: Boolean): [Fixative!]!
     """Get all the species that are enabled, or get all including those that are disabled."""
     species(includeDisabled: Boolean): [Species!]!
+    """Get all probe panels, optionally including the disabled."""
+    probePanels(includeDisabled: Boolean): [ProbePanel!]!
     """Get the labware with the given barcode."""
     labware(barcode: String!): Labware!
     """Get all printers available, or get all printers that support a named label type."""
@@ -1780,6 +1790,10 @@ type Mutation {
     addSlotRegion(name: String!): SlotRegion!
     """Enable or disable a slot region."""
     setSlotRegionEnabled(name: String!, enabled: Boolean!): SlotRegion!
+    """Add a new probe panel."""
+    addProbePanel(name: String!): ProbePanel!
+    """Enable or disable a probe panel."""
+    setProbePanelEnabled(name: String!, enabled: Boolean!): ProbePanel!
 
     """Create a new work, which will be allocated a new work number with the given prefix."""
     createWork(prefix: String!, workType: String!, workRequester: String!, project: String!, program: String!, costCode: String!, numBlocks: Int, numSlides: Int, numOriginalSamples: Int, omeroProject: String, dnapStudy: String): Work!

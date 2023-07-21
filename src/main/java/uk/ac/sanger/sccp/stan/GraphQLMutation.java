@@ -12,10 +12,15 @@ import uk.ac.sanger.sccp.stan.config.SessionConfig;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.UserRepo;
 import uk.ac.sanger.sccp.stan.request.*;
-import uk.ac.sanger.sccp.stan.request.confirm.*;
+import uk.ac.sanger.sccp.stan.request.confirm.ConfirmOperationRequest;
+import uk.ac.sanger.sccp.stan.request.confirm.ConfirmOperationResult;
+import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSectionRequest;
 import uk.ac.sanger.sccp.stan.request.plan.PlanRequest;
 import uk.ac.sanger.sccp.stan.request.plan.PlanResult;
-import uk.ac.sanger.sccp.stan.request.register.*;
+import uk.ac.sanger.sccp.stan.request.register.OriginalSampleRegisterRequest;
+import uk.ac.sanger.sccp.stan.request.register.RegisterRequest;
+import uk.ac.sanger.sccp.stan.request.register.RegisterResult;
+import uk.ac.sanger.sccp.stan.request.register.SectionRegisterRequest;
 import uk.ac.sanger.sccp.stan.request.stain.ComplexStainRequest;
 import uk.ac.sanger.sccp.stan.request.stain.StainRequest;
 import uk.ac.sanger.sccp.stan.service.*;
@@ -27,11 +32,15 @@ import uk.ac.sanger.sccp.stan.service.operation.InPlaceOpService;
 import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmOperationService;
 import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmSectionService;
 import uk.ac.sanger.sccp.stan.service.operation.plan.PlanService;
-import uk.ac.sanger.sccp.stan.service.register.*;
+import uk.ac.sanger.sccp.stan.service.register.OriginalSampleRegisterService;
+import uk.ac.sanger.sccp.stan.service.register.RegisterService;
+import uk.ac.sanger.sccp.stan.service.register.SectionRegisterService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.stan.service.work.WorkTypeService;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -72,6 +81,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final SolutionAdminService solutionAdminService;
     final OmeroProjectAdminService omeroProjectAdminService;
     final SlotRegionAdminService slotRegionAdminService;
+    final ProbePanelService probePanelService;
     final WorkTypeService workTypeService;
     final WorkService workService;
     final StainService stainService;
@@ -110,7 +120,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            ProjectService projectService, ProgramService programService, CostCodeService costCodeService,
                            DnapStudyService dnapStudyService, FixativeService fixativeService,
                            SolutionAdminService solutionAdminService, OmeroProjectAdminService omeroProjectAdminService,
-                           SlotRegionAdminService slotRegionAdminService, WorkTypeService workTypeService, WorkService workService, StainService stainService,
+                           SlotRegionAdminService slotRegionAdminService, ProbePanelService probePanelService, WorkTypeService workTypeService, WorkService workService, StainService stainService,
                            UnreleaseService unreleaseService, ResultService resultService, ExtractResultService extractResultService,
                            PermService permService, RNAAnalysisService rnaAnalysisService,
                            VisiumAnalysisService visiumAnalysisService, OpWithSlotMeasurementsService opWithSlotMeasurementsService,
@@ -150,6 +160,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.solutionAdminService = solutionAdminService;
         this.omeroProjectAdminService = omeroProjectAdminService;
         this.slotRegionAdminService = slotRegionAdminService;
+        this.probePanelService = probePanelService;
         this.workTypeService = workTypeService;
         this.workService = workService;
         this.stainService = stainService;
@@ -475,6 +486,14 @@ public class GraphQLMutation extends BaseGraphQLResource {
 
     public DataFetcher<SlotRegion> setSlotRegionEnabled() {
         return adminSetEnabled(slotRegionAdminService::setEnabled, "SetSlotRegionEnabled", "name");
+    }
+
+    public DataFetcher<ProbePanel> addProbePanel() {
+        return adminAdd(probePanelService::addNew, "AddProbePanel", "name");
+    }
+
+    public DataFetcher<ProbePanel> setProbePanelEnabled() {
+        return adminSetEnabled(probePanelService::setEnabled, "SetProbePanelEnabled", "name");
     }
 
     public DataFetcher<WorkType> addWorkType() {
