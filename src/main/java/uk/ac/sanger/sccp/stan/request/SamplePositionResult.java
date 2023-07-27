@@ -15,6 +15,7 @@ public class SamplePositionResult {
     private Address address;
     private Integer sampleId;
     private String region;
+    private Integer operationId;
 
     public SamplePositionResult() {}
 
@@ -25,10 +26,11 @@ public class SamplePositionResult {
         this.region = region;
     }
 
-    public SamplePositionResult(Slot slot, Integer sampleId, String region) {
+    public SamplePositionResult(Slot slot, Integer sampleId, String region, Integer operationId) {
         setSlot(slot);
         this.sampleId = sampleId;
         this.region = region;
+        this.operationId = operationId;
     }
 
     public Integer getSlotId() {

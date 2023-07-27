@@ -6,6 +6,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
 import uk.ac.sanger.sccp.stan.repo.MeasurementRepo;
 import uk.ac.sanger.sccp.stan.request.ControlType;
+import uk.ac.sanger.sccp.stan.request.SamplePositionResult;
 import uk.ac.sanger.sccp.stan.request.VisiumPermData;
 import uk.ac.sanger.sccp.stan.request.VisiumPermData.AddressPermData;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser;
@@ -31,11 +32,14 @@ public class VisiumPermDataService {
     private final LabwareRepo lwRepo;
     private final MeasurementRepo measurementRepo;
     private final Ancestoriser ancestoriser;
+    private final SlotRegionService slotRegionService;
 
-    public VisiumPermDataService(LabwareRepo lwRepo, MeasurementRepo measurementRepo, Ancestoriser ancestoriser) {
+    public VisiumPermDataService(LabwareRepo lwRepo, MeasurementRepo measurementRepo, Ancestoriser ancestoriser,
+                                 SlotRegionService slotRegionService) {
         this.lwRepo = lwRepo;
         this.measurementRepo = measurementRepo;
         this.ancestoriser = ancestoriser;
+        this.slotRegionService = slotRegionService;
     }
 
     /**
@@ -53,7 +57,8 @@ public class VisiumPermDataService {
                 .collect(toSet());
         List<Measurement> measurements = measurementRepo.findAllBySlotIdIn(slotIds);
         List<AddressPermData> pds = compilePermData(measurements, ssToAddress);
-        return new VisiumPermData(lw, pds);
+        List<SamplePositionResult> samplePositionResults = slotRegionService.loadSamplePositionResultsForLabware(barcode);
+        return new VisiumPermData(lw, pds, samplePositionResults);
     }
 
     /**

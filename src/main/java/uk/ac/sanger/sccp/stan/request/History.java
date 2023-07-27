@@ -14,11 +14,17 @@ public class History {
     private List<HistoryEntry> entries;
     private List<Sample> samples;
     private List<Labware> labware;
+    private List<SamplePositionResult> samplePositionResults;
 
     public History(List<HistoryEntry> entries, List<Sample> samples, List<Labware> labware) {
         setEntries(entries);
         setSamples(samples);
         setLabware(labware);
+    }
+
+    public History(List<HistoryEntry> entries, List<Sample> samples, List<Labware> labware, List<SamplePositionResult> samplePositionResults) {
+        this(entries, samples, labware);
+        this.samplePositionResults = samplePositionResults;
     }
 
     public History() {}
@@ -45,6 +51,14 @@ public class History {
 
     public void setLabware(List<Labware> labware) {
         this.labware = labware;
+    }
+
+    public List<SamplePositionResult> getSamplePositionResults() {
+        return samplePositionResults;
+    }
+
+    public void setSamplePositionResults(List<SamplePositionResult> samplePositionResults) {
+        this.samplePositionResults = samplePositionResults;
     }
 
     @Override

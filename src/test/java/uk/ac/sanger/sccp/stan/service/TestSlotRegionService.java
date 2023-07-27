@@ -67,8 +67,8 @@ public class TestSlotRegionService {
         List<SamplePositionResult> results = service.loadSamplePositionResultsForLabware(lw.getBarcode());
         verify(mockSamplePositionRepo).findAllBySlotIdIn(lw.getSlots().stream().map(Slot::getId).collect(toSet()));
         assertThat(results).containsExactly(
-                new SamplePositionResult(slot1, sam1.getId(), top.getName()),
-                new SamplePositionResult(slot1, sam2.getId(), bottom.getName())
+                new SamplePositionResult(slot1, sam1.getId(), top.getName(),opId),
+                new SamplePositionResult(slot1, sam2.getId(), bottom.getName(), opId)
         );
     }
 

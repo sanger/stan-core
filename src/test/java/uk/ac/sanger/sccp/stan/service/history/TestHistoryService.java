@@ -9,6 +9,8 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.History;
 import uk.ac.sanger.sccp.stan.request.HistoryEntry;
+import uk.ac.sanger.sccp.stan.request.SamplePositionResult;
+import uk.ac.sanger.sccp.stan.service.SlotRegionService;
 import uk.ac.sanger.sccp.stan.service.history.ReagentActionDetailService.ReagentActionDetail;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
@@ -44,6 +46,7 @@ public class TestHistoryService {
     private ResultOpRepo mockResultOpRepo;
     private StainTypeRepo mockStainTypeRepo;
     private ReagentActionDetailService mockRadService;
+    private SlotRegionService mockSlotRegionService;
 
     private HistoryServiceImp service;
 
@@ -68,10 +71,11 @@ public class TestHistoryService {
         mockResultOpRepo = mock(ResultOpRepo.class);
         mockRadService = mock(ReagentActionDetailService.class);
         mockStainTypeRepo = mock(StainTypeRepo.class);
+        mockSlotRegionService = mock(SlotRegionService.class);
 
         service = spy(new HistoryServiceImp(mockOpRepo, mockLwRepo, mockSampleRepo, mockTissueRepo, mockDonorRepo,
                 mockReleaseRepo, mockDestructionRepo, mockOpCommentRepo, mockSnapshotRepo, mockWorkRepo,
-                mockMeasurementRepo, mockLwNoteRepo, mockResultOpRepo, mockStainTypeRepo, mockRadService));
+                mockMeasurementRepo, mockLwNoteRepo, mockResultOpRepo, mockStainTypeRepo, mockRadService, mockSlotRegionService));
     }
 
     @Test
@@ -189,10 +193,14 @@ public class TestHistoryService {
         List<Labware> allLabware = BasicUtils.concat(lws, List.of(rlw1, rlw2));
         doReturn(samples).when(service).referencedSamples(sameElements(entries, true), sameElements(allLabware, true));
 
+        SamplePositionResult samplePositionResult = new SamplePositionResult(lw1.getFirstSlot(), sam1.getId(), "Top", ops.get(0).getId());
+        when(mockSlotRegionService.loadSamplePositionResultsForLabware(any())).thenReturn(List.of(samplePositionResult));
+
         History history = service.getHistoryForWorkNumber(workNumber);
         assertEquals(entries, history.getEntries());
         assertSame(samples, history.getSamples());
         assertEquals(allLabware, history.getLabware());
+        assertEquals(Collections.nCopies(allLabware.size(), samplePositionResult), history.getSamplePositionResults());
     }
 
     @Test
@@ -205,6 +213,7 @@ public class TestHistoryService {
         assertThat(history.getEntries()).isEmpty();
         assertThat(history.getLabware()).isEmpty();
         assertThat(history.getSamples()).isEmpty();
+        assertThat(history.getSamplePositionResults()).isEmpty();
     }
 
     @Test
@@ -278,10 +287,14 @@ public class TestHistoryService {
 
         doReturn(entries).when(service).assembleEntries(List.of(opEntries, releaseEntries, destructionEntries));
 
+        SamplePositionResult samplePositionResult = new SamplePositionResult(labware.get(0).getFirstSlot(), samples.get(0).getId(), "Top", ops.get(0).getId());
+        when(mockSlotRegionService.loadSamplePositionResultsForLabware(any())).thenReturn(List.of(samplePositionResult));
+
         History history = service.getHistoryForSamples(samples);
         assertEquals(history.getEntries(), entries);
         assertEquals(history.getSamples(), samples);
         assertEquals(history.getLabware(), labware);
+        assertEquals(Collections.nCopies(labware.size(), samplePositionResult), history.getSamplePositionResults());
     }
 
     private static Stream<Slot> streamSlots(Labware lw, Address... addresses) {

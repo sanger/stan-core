@@ -6,6 +6,8 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.History;
 import uk.ac.sanger.sccp.stan.request.HistoryEntry;
+import uk.ac.sanger.sccp.stan.request.SamplePositionResult;
+import uk.ac.sanger.sccp.stan.service.SlotRegionService;
 import uk.ac.sanger.sccp.stan.service.history.ReagentActionDetailService.ReagentActionDetail;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
@@ -37,6 +39,7 @@ public class HistoryServiceImp implements HistoryService {
     private final ResultOpRepo resultOpRepo;
     private final StainTypeRepo stainTypeRepo;
     private final ReagentActionDetailService reagentActionDetailService;
+    private final SlotRegionService slotRegionService;
 
     @Autowired
     public HistoryServiceImp(OperationRepo opRepo, LabwareRepo lwRepo, SampleRepo sampleRepo, TissueRepo tissueRepo,
@@ -45,7 +48,8 @@ public class HistoryServiceImp implements HistoryService {
                              SnapshotRepo snapshotRepo, WorkRepo workRepo, MeasurementRepo measurementRepo,
                              LabwareNoteRepo labwareNoteRepo, ResultOpRepo resultOpRepo,
                              StainTypeRepo stainTypeRepo,
-                             ReagentActionDetailService reagentActionDetailService) {
+                             ReagentActionDetailService reagentActionDetailService,
+                             SlotRegionService slotRegionService) {
         this.opRepo = opRepo;
         this.lwRepo = lwRepo;
         this.sampleRepo = sampleRepo;
@@ -61,11 +65,12 @@ public class HistoryServiceImp implements HistoryService {
         this.resultOpRepo = resultOpRepo;
         this.stainTypeRepo = stainTypeRepo;
         this.reagentActionDetailService = reagentActionDetailService;
+        this.slotRegionService = slotRegionService;
     }
 
     @Override
     public History getHistoryForSampleId(int sampleId) {
-        Sample sample = sampleRepo.findById(sampleId).orElseThrow(() -> new EntityNotFoundException("Sample id "+ sampleId +" not found."));
+        Sample sample = sampleRepo.findById(sampleId).orElseThrow(() -> new EntityNotFoundException("Sample id " + sampleId + " not found."));
         Tissue tissue = sample.getTissue();
         List<Sample> samples = sampleRepo.findAllByTissueIdIn(List.of(tissue.getId()));
         return getHistoryForSamples(samples);
@@ -130,7 +135,18 @@ public class HistoryServiceImp implements HistoryService {
         }
         List<Sample> samples = referencedSamples(entries, allLabware);
         entries.sort(Comparator.comparing(HistoryEntry::getTime));
-        return new History(entries, samples, allLabware);
+        List<SamplePositionResult> samplePositionResults = getAllSamplePositionResults(allLabware);
+        return new History(entries, samples, allLabware, samplePositionResults);
+    }
+
+    private List<SamplePositionResult> getAllSamplePositionResults(List<Labware> labwareList) {
+        if (labwareList.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return labwareList.parallelStream()
+                .map(labware -> slotRegionService.loadSamplePositionResultsForLabware(labware.getBarcode()))
+                .flatMap(Collection::stream)
+                .collect(Collectors.toList());
     }
 
     /**
@@ -205,7 +221,8 @@ public class HistoryServiceImp implements HistoryService {
         List<HistoryEntry> destructionEntries = createEntriesForDestructions(destructions, sampleIds);
 
         List<HistoryEntry> entries = assembleEntries(List.of(opEntries, releaseEntries, destructionEntries));
-        return new History(entries, samples, labware);
+        List<SamplePositionResult> samplePositionResults = getAllSamplePositionResults(labware);
+        return new History(entries, samples, labware, samplePositionResults);
     }
 
 

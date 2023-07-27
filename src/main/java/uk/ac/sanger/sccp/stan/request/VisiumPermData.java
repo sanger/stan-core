@@ -84,13 +84,11 @@ public class VisiumPermData {
 
     private Labware labware;
     private List<AddressPermData> addressPermData;
+    private List<SamplePositionResult> samplePositionResults;
 
-    public VisiumPermData() {
-        this(null, null);
-    }
-
-    public VisiumPermData(Labware labware, List<AddressPermData> addressPermData) {
+    public VisiumPermData(Labware labware, List<AddressPermData> addressPermData, List<SamplePositionResult> samplePositionResults) {
         this.labware = labware;
+        this.samplePositionResults = samplePositionResults;
         setAddressPermData(addressPermData);
     }
 
@@ -108,6 +106,14 @@ public class VisiumPermData {
 
     public void setAddressPermData(List<AddressPermData> addressPermData) {
         this.addressPermData = (addressPermData==null ? List.of() : addressPermData);
+    }
+
+    public List<SamplePositionResult> getSamplePositionResults() {
+        return samplePositionResults;
+    }
+
+    public void setSamplePositionResults(List<SamplePositionResult> samplePositionResults) {
+        this.samplePositionResults = samplePositionResults;
     }
 
     @Override

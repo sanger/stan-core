@@ -53,7 +53,7 @@ public class SlotRegionServiceImp implements SlotRegionService {
      * @return a SamplePositionResult for the given SamplePosition
      */
     public SamplePositionResult toSamplePositionResult(SamplePosition sp, Map<Integer, Slot> slotIdMap) {
-        return new SamplePositionResult(slotIdMap.get(sp.getSlotId()), sp.getSampleId(), sp.getSlotRegion().getName());
+        return new SamplePositionResult(slotIdMap.get(sp.getSlotId()), sp.getSampleId(), sp.getSlotRegion().getName(), sp.getOperationId());
     }
 
     @Override
