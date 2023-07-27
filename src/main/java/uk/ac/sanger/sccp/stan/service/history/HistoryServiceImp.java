@@ -70,7 +70,7 @@ public class HistoryServiceImp implements HistoryService {
 
     @Override
     public History getHistoryForSampleId(int sampleId) {
-        Sample sample = sampleRepo.findById(sampleId).orElseThrow(() -> new EntityNotFoundException("Sample id " + sampleId + " not found."));
+        Sample sample = sampleRepo.findById(sampleId).orElseThrow(() -> new EntityNotFoundException("Sample id "+ sampleId +" not found."));
         Tissue tissue = sample.getTissue();
         List<Sample> samples = sampleRepo.findAllByTissueIdIn(List.of(tissue.getId()));
         return getHistoryForSamples(samples);
@@ -140,10 +140,11 @@ public class HistoryServiceImp implements HistoryService {
     }
 
     private List<SamplePositionResult> getAllSamplePositionResults(List<Labware> labwareList) {
-        return labwareList.parallelStream()
-                .map(labware -> slotRegionService.loadSamplePositionResultsForLabware(labware.getBarcode()))
-                .flatMap(Collection::stream)
-                .collect(Collectors.toList());
+        List<SamplePositionResult> samplePositionResultList = new ArrayList<>();
+        for(Labware labware : labwareList) {
+           samplePositionResultList.addAll(slotRegionService.loadSamplePositionResultsForLabware(labware.getBarcode()));
+        }
+        return samplePositionResultList;
     }
 
     /**
