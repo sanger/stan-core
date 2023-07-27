@@ -114,7 +114,7 @@ public class HistoryServiceImp implements HistoryService {
         List<Integer> opIds = work.getOperationIds();
         List<Integer> releaseIds = work.getReleaseIds();
         if (opIds.isEmpty() && releaseIds.isEmpty()) {
-            return new History(List.of(), List.of(), List.of());
+            return new History(List.of(), List.of(), List.of(), List.of());
         }
         Collection<Operation> ops = opIds.isEmpty() ? List.of() : BasicUtils.asCollection(opRepo.findAllById(opIds));
         List<Release> releases = releaseIds.isEmpty() ? List.of() : releaseRepo.findAllByIdIn(releaseIds);
@@ -140,9 +140,6 @@ public class HistoryServiceImp implements HistoryService {
     }
 
     private List<SamplePositionResult> getAllSamplePositionResults(List<Labware> labwareList) {
-        if (labwareList.isEmpty()) {
-            return Collections.emptyList();
-        }
         return labwareList.parallelStream()
                 .map(labware -> slotRegionService.loadSamplePositionResultsForLabware(labware.getBarcode()))
                 .flatMap(Collection::stream)
