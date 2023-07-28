@@ -64,12 +64,13 @@ public class History {
         History that = (History) o;
         return (Objects.equals(this.entries, that.entries)
                 && Objects.equals(this.samples, that.samples)
-                && Objects.equals(this.labware, that.labware));
+                && Objects.equals(this.labware, that.labware)
+                && Objects.equals(this.samplePositionResults, that.samplePositionResults));
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(entries, samples, labware);
+        return Objects.hash(entries, samples, labware, samplePositionResults);
     }
 
     @Override
@@ -78,6 +79,7 @@ public class History {
                 .add("entries", entries)
                 .add("samples", samples)
                 .add("labware", labware)
+                .add("samplePositionResults", samplePositionResults)
                 .toString();
     }
 }

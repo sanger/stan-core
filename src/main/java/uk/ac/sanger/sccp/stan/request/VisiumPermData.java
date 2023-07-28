@@ -122,12 +122,13 @@ public class VisiumPermData {
         if (o == null || getClass() != o.getClass()) return false;
         VisiumPermData that = (VisiumPermData) o;
         return (Objects.equals(this.labware, that.labware)
-                && Objects.equals(this.addressPermData, that.addressPermData));
+                && Objects.equals(this.addressPermData, that.addressPermData)
+                && Objects.equals(this.samplePositionResults, that.samplePositionResults));
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(labware, addressPermData);
+        return Objects.hash(labware, addressPermData, samplePositionResults);
     }
 
     @Override
@@ -135,6 +136,7 @@ public class VisiumPermData {
         return BasicUtils.describe("VisiumPermData")
                 .add("labware", labware)
                 .add("addressPermData", addressPermData)
+                .add("samplePositionResults", samplePositionResults)
                 .toString();
     }
 }
