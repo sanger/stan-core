@@ -19,13 +19,6 @@ public class SamplePositionResult {
 
     public SamplePositionResult() {}
 
-    public SamplePositionResult(Integer slotId, Address address, Integer sampleId, String region) {
-        this.slotId = slotId;
-        this.address = address;
-        this.sampleId = sampleId;
-        this.region = region;
-    }
-
     public SamplePositionResult(Slot slot, Integer sampleId, String region, Integer operationId) {
         setSlot(slot);
         this.sampleId = sampleId;

@@ -79,7 +79,7 @@ public class TestSlotRegionService {
         Integer opId = 30;
         Map<Integer, Slot> slotMap = Map.of(slot.getId(), slot);
         SamplePosition samPos = new SamplePosition(slot.getId(), sampleId, new SlotRegion(1, "Top"), opId);
-        assertEquals(new SamplePositionResult(slot.getId(), slot.getAddress(), sampleId, "Top"),
+        assertEquals(new SamplePositionResult(slot, sampleId, "Top", opId),
                 service.toSamplePositionResult(samPos, slotMap));
     }
 
