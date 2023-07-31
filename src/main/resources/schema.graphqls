@@ -649,7 +649,7 @@ type SamplePosition {
     """The name of the region of the sample in the slot."""
     region: String!
     """The name of the region of the sample in the slot."""
-    operationId: Int
+    operationId: Int!
 }
 
 """A piece of equipment that may be associated with certain operations."""
