@@ -23,4 +23,40 @@
         </createTable>
     </changeSet>
 
+    <changeSet id="2.25.1" author="dr6">
+        <createTable tableName="labware_probe">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="labware_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_labware_probe_labware" referencedTableName="labware" referencedColumnNames="id"/>
+            </column>
+            <column name="operation_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_labware_probe_operation" referencedTableName="operation" referencedColumnNames="id"/>
+            </column>
+            <column name="probe_panel_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_labware_probe_probe_panel" referencedTableName="probe_panel" referencedColumnNames="id"/>
+            </column>
+            <column name="lot_number" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="plex" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="labware_probe" indexName="ix_labware_probe_lot_number" unique="false">
+            <column name="lot_number"/>
+        </createIndex>
+        <rollback>
+            <dropAllForeignKeyConstraints baseTableName="labware_probe"/>
+            <dropTable tableName="labware_probe"/>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>

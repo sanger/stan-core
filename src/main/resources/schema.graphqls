@@ -1569,6 +1569,36 @@ input LabwareWithSlotCommentsRequest {
     addressComments: [AddressCommentInput!]!
 }
 
+"""Request to record an operation with probe panels."""
+input ProbeOperationRequest {
+    """The name of the type of operation."""
+    operationType: String!
+    """The time when the operation was performed, if specified."""
+    performed: Timestamp
+    """The labware involved in the operation."""
+    labware: [ProbeOperationLabware!]!
+}
+
+"""Labware in a probe operation request."""
+input ProbeOperationLabware {
+    """The barcode of the labware."""
+    barcode: String!
+    """The work number of the operation on this labware."""
+    workNumber: String!
+    """The probes used on this labware."""
+    probes: [ProbeLot!]!
+}
+
+"""The probe used on a piece of labware in an operation."""
+input ProbeLot {
+    """The name of the probe panel."""
+    name: String!
+    """The lot number of the probe."""
+    lot: String!
+    """The plex number."""
+    plex: Int!
+}
+
 """Info about the app version."""
 type VersionInfo {
     """The output of git describe."""
@@ -1853,7 +1883,9 @@ type Mutation {
     """Record an operation adding a external ID to a sample."""
     addExternalID(request: AddExternalIDRequest!): OperationResult!
     """Record an operation in-place with comments on slots."""
-    recordOpWithSlotComments(request: OpWithSlotCommentsRequest): OperationResult!
+    recordOpWithSlotComments(request: OpWithSlotCommentsRequest!): OperationResult!
+    """Record an operation involving probe panels."""
+    recordProbeOperation(request: ProbeOperationRequest!): OperationResult!
 
     """Create a new user for the application."""
     addUser(username: String!): User!

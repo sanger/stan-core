@@ -5,9 +5,7 @@ import org.springframework.context.annotation.Configuration;
 import uk.ac.sanger.sccp.stan.service.StringValidator;
 import uk.ac.sanger.sccp.stan.service.StringValidator.CharacterType;
 import uk.ac.sanger.sccp.stan.service.Validator;
-import uk.ac.sanger.sccp.stan.service.sanitiser.DecimalSanitiser;
-import uk.ac.sanger.sccp.stan.service.sanitiser.IntSanitiser;
-import uk.ac.sanger.sccp.stan.service.sanitiser.Sanitiser;
+import uk.ac.sanger.sccp.stan.service.sanitiser.*;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -83,6 +81,14 @@ public class FieldValidation {
                 CharacterType.SLASH, CharacterType.PAREN, CharacterType.FULL_STOP, CharacterType.APOSTROPHE
         );
         return new StringValidator("Probe panel name", 1, 64, charTypes);
+    }
+
+    @Bean
+    public Validator<String> probeLotNumberValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(
+                CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.UNDERSCORE
+        );
+        return new StringValidator("Probe lot number", 1, 20, charTypes);
     }
 
     @Bean

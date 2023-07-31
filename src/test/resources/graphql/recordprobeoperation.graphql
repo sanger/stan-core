@@ -1,0 +1,21 @@
+mutation {
+    recordProbeOperation(request: {
+        operationType: "probify"
+        labware: [{
+            barcode: "STAN-1"
+            probes: [{
+                name: "probe1"
+                lot: "lot1"
+                plex: 1
+            }, {
+                name: "probe2"
+                lot: "lot2"
+                plex: 2
+            }]
+            workNumber: "SGP1"
+        }]
+    }) {
+        labware { barcode }
+        operations { id }
+    }
+}

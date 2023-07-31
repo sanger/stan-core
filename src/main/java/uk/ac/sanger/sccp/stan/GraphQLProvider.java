@@ -7,10 +7,7 @@ import graphql.execution.AsyncExecutionStrategy;
 import graphql.execution.AsyncSerialExecutionStrategy;
 import graphql.schema.DataFetcher;
 import graphql.schema.GraphQLSchema;
-import graphql.schema.idl.RuntimeWiring;
-import graphql.schema.idl.SchemaGenerator;
-import graphql.schema.idl.SchemaParser;
-import graphql.schema.idl.TypeDefinitionRegistry;
+import graphql.schema.idl.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
@@ -205,6 +202,7 @@ public class GraphQLProvider {
                         .dataFetcher("performFFPEProcessing", transact(graphQLMutation.performFFPEProcessing()))
                         .dataFetcher("performSolutionTransfer", transact(graphQLMutation.performSolutionTransfer()))
                         .dataFetcher("recordOpWithSlotComments", transact(graphQLMutation.performOpWithSlotComments()))
+                        .dataFetcher("recordProbeOperation", transact(graphQLMutation.recordProbeOperation()))
 
                         .dataFetcher("addUser", transact(graphQLMutation.addUser()))
                         .dataFetcher("setUserRole", transact(graphQLMutation.setUserRole()))

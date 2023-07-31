@@ -860,14 +860,15 @@ public class TestWorkService {
         List<Work> works = IntStream.range(0, workData.length/2)
                 .mapToObj(i -> new Work(i, (String) workData[2*i], null, null, null, null, null, (Status) workData[2*i+1]))
                 .collect(toList());
-        List<String> workNumbersList = new LinkedList(Arrays.asList(workNumbers));
-        when(mockWorkRepo.findAllByWorkNumberIn(workNumbersList)).thenReturn(works);
+        List<String> workNumbersList = (List) Arrays.asList(workNumbers);
+        List<String> nonNullWorkNumbers = workNumbersList.stream().filter(Objects::nonNull).collect(toList());
+        when(mockWorkRepo.findAllByWorkNumberIn(nonNullWorkNumbers)).thenReturn(works);
 
         final List<String> problems = new ArrayList<>(expectedErrors.length);
         UCMap<Work> workMap = workService.validateUsableWorks(problems, workNumbersList);
 
-        if (!workNumbersList.isEmpty()) {
-            verify(mockWorkRepo).findAllByWorkNumberIn(workNumbersList);
+        if (!nonNullWorkNumbers.isEmpty()) {
+            verify(mockWorkRepo).findAllByWorkNumberIn(nonNullWorkNumbers);
         }
         assertThat(workMap.values()).containsExactlyInAnyOrderElementsOf(works);
         if (expectedErrors.length==1 && expectedErrors[0] instanceof ArgumentMatcher) {
@@ -881,7 +882,7 @@ public class TestWorkService {
     static Stream<Arguments> usableWorksArgs() {
         return Arrays.stream(new Object[][][] {
                 {{},{},{"No work numbers given."}},
-                {{null},{},{"Work number is not specified.", "No work numbers given."}},
+                {{null},{},{"No work numbers given."}},
                 {{"SGP1", null}, {"SGP1", Status.active}, {"Work number is not specified."}},
                 {{"SGP1", "sgp2", "SGP2"}, {"SGP1", Status.active, "SGP2", Status.active}, {}},
                 {{"SGP1", "SGP2", "SGP404", "SGP405"}, {"SGP1", Status.active, "SGP2", Status.active},

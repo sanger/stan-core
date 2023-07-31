@@ -12,15 +12,10 @@ import uk.ac.sanger.sccp.stan.config.SessionConfig;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.UserRepo;
 import uk.ac.sanger.sccp.stan.request.*;
-import uk.ac.sanger.sccp.stan.request.confirm.ConfirmOperationRequest;
-import uk.ac.sanger.sccp.stan.request.confirm.ConfirmOperationResult;
-import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSectionRequest;
+import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.request.plan.PlanRequest;
 import uk.ac.sanger.sccp.stan.request.plan.PlanResult;
-import uk.ac.sanger.sccp.stan.request.register.OriginalSampleRegisterRequest;
-import uk.ac.sanger.sccp.stan.request.register.RegisterRequest;
-import uk.ac.sanger.sccp.stan.request.register.RegisterResult;
-import uk.ac.sanger.sccp.stan.request.register.SectionRegisterRequest;
+import uk.ac.sanger.sccp.stan.request.register.*;
 import uk.ac.sanger.sccp.stan.request.stain.ComplexStainRequest;
 import uk.ac.sanger.sccp.stan.request.stain.StainRequest;
 import uk.ac.sanger.sccp.stan.service.*;
@@ -32,15 +27,11 @@ import uk.ac.sanger.sccp.stan.service.operation.InPlaceOpService;
 import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmOperationService;
 import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmSectionService;
 import uk.ac.sanger.sccp.stan.service.operation.plan.PlanService;
-import uk.ac.sanger.sccp.stan.service.register.OriginalSampleRegisterService;
-import uk.ac.sanger.sccp.stan.service.register.RegisterService;
-import uk.ac.sanger.sccp.stan.service.register.SectionRegisterService;
+import uk.ac.sanger.sccp.stan.service.register.*;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.stan.service.work.WorkTypeService;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -103,6 +94,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final SolutionTransferService solutionTransferService;
     final FFPEProcessingService ffpeProcessingService;
     final OpWithSlotCommentsService opWithSlotCommentsService;
+    final ProbeService probeService;
     final UserAdminService userAdminService;
 
     @Autowired
@@ -130,7 +122,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            InPlaceOpCommentService inPlaceOpCommentService,
                            SampleProcessingService sampleProcessingService, SolutionTransferService solutionTransferService,
                            FFPEProcessingService ffpeProcessingService, OpWithSlotCommentsService opWithSlotCommentsService,
-                           UserAdminService userAdminService) {
+                           ProbeService probeService, UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
@@ -182,6 +174,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.solutionTransferService = solutionTransferService;
         this.ffpeProcessingService = ffpeProcessingService;
         this.opWithSlotCommentsService = opWithSlotCommentsService;
+        this.probeService = probeService;
         this.userAdminService = userAdminService;
     }
 
@@ -786,6 +779,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             OpWithSlotCommentsRequest request = arg(dfe, "request", OpWithSlotCommentsRequest.class);
             logRequest("Perform op with slot comments", user, request);
             return opWithSlotCommentsService.perform(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> recordProbeOperation() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            ProbeOperationRequest request = arg(dfe, "request", ProbeOperationRequest.class);
+            logRequest("Record probe operation", user, request);
+            return probeService.recordProbeOperation(user, request);
         };
     }
 
