@@ -79,7 +79,7 @@ public class BlockRegisterFileReaderImp extends BaseRegisterFileReader<RegisterR
         final Path path = Paths.get("/Users/dr6/Desktop/regtest.xlsx");
         RegisterRequest request;
         try (Workbook wb = WorkbookFactory.create(Files.newInputStream(path))) {
-            request = r.read(wb.getSheetAt(2));
+            request = r.read(wb.getSheetAt(SHEET_INDEX));
         } catch (ValidationException e) {
             System.err.println("\n****\nException: "+e);
             System.err.println("Problems:");

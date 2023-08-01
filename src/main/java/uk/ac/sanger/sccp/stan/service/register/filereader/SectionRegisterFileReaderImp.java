@@ -115,7 +115,7 @@ public class SectionRegisterFileReaderImp extends BaseRegisterFileReader<Section
         final Path path = Paths.get("/Users/dr6/Desktop/regtest.xlsx");
         SectionRegisterRequest request;
         try (Workbook wb = WorkbookFactory.create(Files.newInputStream(path))) {
-            request = r.read(wb.getSheetAt(3));
+            request = r.read(wb.getSheetAt(SHEET_INDEX));
         } catch (ValidationException e) {
             System.err.println("\n****\nException: "+e);
             System.err.println("Problems:");

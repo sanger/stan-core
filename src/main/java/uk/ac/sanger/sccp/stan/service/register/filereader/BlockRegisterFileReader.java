@@ -1,8 +1,6 @@
 package uk.ac.sanger.sccp.stan.service.register.filereader;
 
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.apache.poi.ss.usermodel.*;
 import org.springframework.web.multipart.MultipartFile;
 import uk.ac.sanger.sccp.stan.request.register.RegisterRequest;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
@@ -15,6 +13,9 @@ import java.util.regex.Pattern;
  * Reads a block registration request from an Excel file.
  */
 public interface BlockRegisterFileReader extends MultipartFileReader<RegisterRequest> {
+    /** The relevant sheet in the excel file to read. */
+    int SHEET_INDEX = 2;
+
     /** Column headings expected in the Excel file. */
     enum Column implements IColumn {
         _preamble(Void.class, Pattern.compile("all\\s*information.*needed", Pattern.CASE_INSENSITIVE)),
@@ -83,7 +84,7 @@ public interface BlockRegisterFileReader extends MultipartFileReader<RegisterReq
     @Override
     default RegisterRequest read(MultipartFile multipartFile) throws IOException, ValidationException {
         try (Workbook wb = WorkbookFactory.create(multipartFile.getInputStream())) {
-            return read(wb.getSheetAt(2));
+            return read(wb.getSheetAt(SHEET_INDEX));
         }
     }
 

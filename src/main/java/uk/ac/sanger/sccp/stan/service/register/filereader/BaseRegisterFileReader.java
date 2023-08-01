@@ -1,5 +1,6 @@
 package uk.ac.sanger.sccp.stan.service.register.filereader;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.ss.usermodel.*;
 import uk.ac.sanger.sccp.stan.model.Address;
 import uk.ac.sanger.sccp.stan.model.LifeStage;
@@ -76,13 +77,10 @@ public abstract class BaseRegisterFileReader<RequestType, ColumnType extends Enu
         Map<ColumnType, Integer> map = makeColumnMap();
         for (Cell cell : row) {
             String heading = (cell==null ? null : cell.getStringCellValue());
-            if (heading==null) {
+            if (StringUtils.isBlank(heading)) {
                 continue;
             }
             heading = heading.trim();
-            if (heading.isEmpty()) {
-                continue;
-            }
             ColumnType column = columnForHeading(heading);
             if (column==null) {
                 problems.add("Unexpected column heading: "+repr(heading));

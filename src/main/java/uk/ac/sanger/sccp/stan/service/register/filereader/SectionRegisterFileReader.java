@@ -12,6 +12,8 @@ import java.util.regex.Pattern;
  * Reads a section registration request from an Excel file.
  */
 public interface SectionRegisterFileReader extends MultipartFileReader<SectionRegisterRequest> {
+    /** The relevant sheet in the excel file to read. */
+    int SHEET_INDEX = 3;
     /** Column headings expected in the Excel file. */
     enum Column implements IColumn {
         Work_number(Pattern.compile("(work|sgp)\\s*number", Pattern.CASE_INSENSITIVE)),
@@ -80,7 +82,7 @@ public interface SectionRegisterFileReader extends MultipartFileReader<SectionRe
     @Override
     default SectionRegisterRequest read(MultipartFile multipartFile) throws IOException, ValidationException {
         try (Workbook wb = WorkbookFactory.create(multipartFile.getInputStream())) {
-            return read(wb.getSheetAt(3));
+            return read(wb.getSheetAt(SHEET_INDEX));
         }
     }
 
