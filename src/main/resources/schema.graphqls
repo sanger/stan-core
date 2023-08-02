@@ -648,7 +648,7 @@ type SamplePosition {
     sampleId: Int!
     """The name of the region of the sample in the slot."""
     region: String!
-    """The name of the region of the sample in the slot."""
+    """The operation id related to this sample position"""
     operationId: Int!
 }
 
@@ -933,7 +933,7 @@ type History {
     entries: [HistoryEntry!]!
     """The labware referenced by the entries."""
     labware: [Labware!]!
-    """The samples references by the entries."""
+    """The samples referenced by the entries."""
     samples: [Sample!]!
     """The region of a sample in a particular slot  references by the entries"""
     samplePositionResults : [SamplePosition!]!
@@ -1235,7 +1235,7 @@ type VisiumPermData {
     labware: Labware!
     """The permeabilisation data for each slot."""
     addressPermData: [AddressPermData!]!
-    """The region of a sample in a particular slot references by the entries"""
+    """The region of a sample in a particular slot referenced by the entries"""
     samplePositionResults : [SamplePosition!]!
 }
 
