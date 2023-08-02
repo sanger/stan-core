@@ -194,13 +194,13 @@ public class TestHistoryService {
         doReturn(samples).when(service).referencedSamples(sameElements(entries, true), sameElements(allLabware, true));
 
         SamplePositionResult samplePositionResult = new SamplePositionResult(lw1.getFirstSlot(), sam1.getId(), "Top", ops.get(0).getId());
-        when(mockSlotRegionService.loadSamplePositionResultsForLabware(any())).thenReturn(List.of(samplePositionResult));
+        when(mockSlotRegionService.loadSamplePositionResultsForLabware(allLabware)).thenReturn(List.of(samplePositionResult));
 
         History history = service.getHistoryForWorkNumber(workNumber);
         assertEquals(entries, history.getEntries());
         assertSame(samples, history.getSamples());
         assertEquals(allLabware, history.getLabware());
-        assertEquals(Collections.nCopies(allLabware.size(), samplePositionResult), history.getSamplePositionResults());
+        assertEquals(List.of(samplePositionResult), history.getSamplePositionResults());
     }
 
     @Test
@@ -288,13 +288,13 @@ public class TestHistoryService {
         doReturn(entries).when(service).assembleEntries(List.of(opEntries, releaseEntries, destructionEntries));
 
         SamplePositionResult samplePositionResult = new SamplePositionResult(labware.get(0).getFirstSlot(), samples.get(0).getId(), "Top", ops.get(0).getId());
-        when(mockSlotRegionService.loadSamplePositionResultsForLabware(any())).thenReturn(List.of(samplePositionResult));
+        when(mockSlotRegionService.loadSamplePositionResultsForLabware(labware)).thenReturn(List.of(samplePositionResult));
 
         History history = service.getHistoryForSamples(samples);
         assertEquals(history.getEntries(), entries);
         assertEquals(history.getSamples(), samples);
         assertEquals(history.getLabware(), labware);
-        assertEquals(Collections.nCopies(labware.size(), samplePositionResult), history.getSamplePositionResults());
+        assertEquals(List.of(samplePositionResult), history.getSamplePositionResults());
     }
 
     private static Stream<Slot> streamSlots(Labware lw, Address... addresses) {

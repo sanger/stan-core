@@ -17,16 +17,12 @@ import uk.ac.sanger.sccp.stan.repo.SlotRegionRepo;
 import uk.ac.sanger.sccp.stan.request.SamplePositionResult;
 import uk.ac.sanger.sccp.utils.UCMap;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -70,6 +66,39 @@ public class TestSlotRegionService {
                 new SamplePositionResult(slot1, sam1.getId(), top.getName(),opId),
                 new SamplePositionResult(slot1, sam2.getId(), bottom.getName(), opId)
         );
+    }
+
+    @Test
+    void testLoadSamplePositionResultsForACollectionOfLabware() {
+        LabwareType lt = EntityFactory.makeLabwareType(1,3);
+        Sample sam1 = EntityFactory.getSample();
+        Sample sam2 = new Sample(sam1.getId()+1, null, sam1.getTissue(), sam1.getBioState());
+        Labware lw = EntityFactory.makeEmptyLabware(lt);
+        Slot slot1 = lw.getFirstSlot();
+        slot1.setSamples(List.of(sam1, sam2));
+        Slot slot2 = lw.getSlot(new Address(1,2));
+        slot2.setSamples(List.of(sam1));
+        SlotRegion top = new SlotRegion(1, "Top");
+        SlotRegion bottom = new SlotRegion(2, "Bottom");
+        final Integer opId = 50;
+        List<SamplePosition> samplePositions = List.of(
+                new SamplePosition(slot1.getId(), sam1.getId(), top, opId),
+                new SamplePosition(slot1.getId(), sam2.getId(), bottom, opId)
+        );
+        when(mockSamplePositionRepo.findAllBySlotIdIn(any())).thenReturn(samplePositions);
+
+        List<SamplePositionResult> results = service.loadSamplePositionResultsForLabware(List.of(lw));
+        verify(mockSamplePositionRepo).findAllBySlotIdIn(lw.getSlots().stream().map(Slot::getId).collect(toSet()));
+        assertThat(results).containsExactly(
+                new SamplePositionResult(slot1, sam1.getId(), top.getName(),opId),
+                new SamplePositionResult(slot1, sam2.getId(), bottom.getName(), opId)
+        );
+    }
+    @Test
+    void testLoadSamplePositionResultsForACollectionOfLabware_givenAnEmptyCollection() {
+        List<Labware> labware = new ArrayList<>();
+        List<SamplePositionResult> results = service.loadSamplePositionResultsForLabware(labware);
+        assertTrue(results.isEmpty());
     }
 
     @Test
