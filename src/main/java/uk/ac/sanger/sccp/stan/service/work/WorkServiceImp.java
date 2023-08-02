@@ -384,13 +384,11 @@ public class WorkServiceImp implements WorkService {
     @Override
     public UCMap<Work> validateUsableWorks(Collection<String> problems, Collection<String> workNumbers) {
         // Check if there are any null workNumbers given
-        for (String number : workNumbers) {
-            if (number == null) {
-                problems.add("Work number is not specified.");
-            }
+        if (workNumbers.stream().anyMatch(Objects::isNull)) {
+            problems.add("Work number is not specified.");
+            // Filter out the null numbers for the rest of the checks
+            workNumbers = workNumbers.stream().filter(Objects::nonNull).collect(toList());
         }
-        // Filter out the null numbers for the rest of the checks
-        workNumbers.removeAll(Collections.singleton(null));
         // Check there are non-null values before running other checks
         if (workNumbers.isEmpty()) {
             problems.add("No work numbers given.");
