@@ -135,16 +135,8 @@ public class HistoryServiceImp implements HistoryService {
         }
         List<Sample> samples = referencedSamples(entries, allLabware);
         entries.sort(Comparator.comparing(HistoryEntry::getTime));
-        List<SamplePositionResult> samplePositionResults = getAllSamplePositionResults(allLabware);
+        List<SamplePositionResult> samplePositionResults = slotRegionService.loadSamplePositionResultsForLabware(allLabware);
         return new History(entries, samples, allLabware, samplePositionResults);
-    }
-
-    private List<SamplePositionResult> getAllSamplePositionResults(List<Labware> labwareList) {
-        List<SamplePositionResult> samplePositionResultList = new ArrayList<>();
-        for(Labware labware : labwareList) {
-           samplePositionResultList.addAll(slotRegionService.loadSamplePositionResultsForLabware(labware.getBarcode()));
-        }
-        return samplePositionResultList;
     }
 
     /**
@@ -219,7 +211,7 @@ public class HistoryServiceImp implements HistoryService {
         List<HistoryEntry> destructionEntries = createEntriesForDestructions(destructions, sampleIds);
 
         List<HistoryEntry> entries = assembleEntries(List.of(opEntries, releaseEntries, destructionEntries));
-        List<SamplePositionResult> samplePositionResults = getAllSamplePositionResults(labware);
+        List<SamplePositionResult> samplePositionResults = slotRegionService.loadSamplePositionResultsForLabware(labware);
         return new History(entries, samples, labware, samplePositionResults);
     }
 

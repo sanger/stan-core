@@ -239,7 +239,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     }
 
     public DataFetcher<Iterable<SamplePositionResult>> getSamplePositions() {
-        return dfe -> slotRegionService.loadSamplePositionResultsForLabware(dfe.getArgument("labwareBarcode"));
+        return dfe -> slotRegionService.loadSamplePositionResultsForLabware((String)dfe.getArgument("labwareBarcode"));
     }
 
     public DataFetcher<Iterable<WorkType>> getWorkTypes() {

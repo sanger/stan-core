@@ -37,6 +37,10 @@ public class SlotRegionServiceImp implements SlotRegionService {
     public List<SamplePositionResult> loadSamplePositionResultsForLabware(String barcode) {
         Labware lw = lwRepo.getByBarcode(barcode);
         Map<Integer, Slot> slotIdMap = lw.getSlots().stream().collect(BasicUtils.inMap(Slot::getId));
+        return getSamplePositionResultsForSlots(slotIdMap);
+    }
+
+    private List<SamplePositionResult> getSamplePositionResultsForSlots(Map<Integer, Slot> slotIdMap){
         List<SamplePosition> sps = samplePositionRepo.findAllBySlotIdIn(slotIdMap.keySet());
         if (sps.isEmpty()) {
             return List.of();
@@ -44,6 +48,14 @@ public class SlotRegionServiceImp implements SlotRegionService {
         return sps.stream()
                 .map(sp -> toSamplePositionResult(sp, slotIdMap))
                 .collect(toList());
+    }
+
+    @Override
+    public List<SamplePositionResult> loadSamplePositionResultsForLabware(Collection<Labware> labware) {
+        Map<Integer, Slot> slotIdMap = labware.stream()
+                .flatMap(lw -> lw.getSlots().stream())
+                .collect(BasicUtils.inMap(Slot::getId));
+        return getSamplePositionResultsForSlots(slotIdMap);
     }
 
     /**
