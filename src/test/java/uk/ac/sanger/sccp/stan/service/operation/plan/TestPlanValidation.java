@@ -1,10 +1,10 @@
 package uk.ac.sanger.sccp.stan.service.operation.plan;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.*;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
@@ -24,31 +24,41 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.EntityFactory.nullableObjToList;
 import static uk.ac.sanger.sccp.stan.Matchers.eqCi;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 
 /**
  * Tests {@link PlanValidationImp}
  * @author dr6
  */
 public class TestPlanValidation {
+    @Mock
     private LabwareRepo mockLabwareRepo;
+    @Mock
     private LabwareTypeRepo mockLabwareTypeRepo;
+    @Mock
     private OperationTypeRepo mockOpTypeRepo;
-    private Validator<String> mockPrebarcodeValidator;
+    @Mock
+    private Validator<String> mockVisiumValidator;
+    @Mock
+    private Validator<String> mockXeniumValidator;
+    @Mock
     private Validator<String> mockLotValidator;
 
-    @SuppressWarnings("unchecked")
+    private AutoCloseable mocking;
+
     @BeforeEach
     void setup() {
-        mockLabwareRepo = mock(LabwareRepo.class);
-        mockLabwareTypeRepo = mock(LabwareTypeRepo.class);
-        mockOpTypeRepo = mock(OperationTypeRepo.class);
-        mockPrebarcodeValidator = mock(Validator.class);
-        mockLotValidator = mock(Validator.class);
+        mocking = MockitoAnnotations.openMocks(this);
+    }
+
+    @AfterEach
+    void cleanup() throws Exception {
+        mocking.close();
     }
 
     private PlanValidationImp makeValidation(PlanRequest request) {
         return spy(new PlanValidationImp(request, mockLabwareRepo, mockLabwareTypeRepo,
-                mockOpTypeRepo, mockPrebarcodeValidator, mockLotValidator));
+                mockOpTypeRepo, mockVisiumValidator, mockXeniumValidator, mockLotValidator));
     }
 
     @Test
@@ -100,6 +110,44 @@ public class TestPlanValidation {
             } else {
                 assertThat(validation.problems).containsOnly(problem);
             }
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource({",false,false,",
+                "bc,false,true,",
+                "bc,false,false,Unexpected barcode supplied for new labware of type visium.",
+                ",false,true,No barcode supplied for new labware of type visium.",
+                "bc*,false,true,Bad barcode: bc*",
+                "bc*,true,true,Bad barcode: bc*"})
+    public void testValidatePrebarcode(String barcode, boolean xenium, boolean prebarcoded,
+                                       String expectedProblem) {
+        var val = makeValidation(new PlanRequest());
+        LabwareType lt = new LabwareType();
+        lt.setName(xenium ? "xenium" : "visium");
+        lt.setPrebarcoded(prebarcoded);
+        boolean gotBarcode = !nullOrEmpty(barcode);
+        Validator<String> bcval = (xenium ? mockXeniumValidator : mockVisiumValidator);
+        if (prebarcoded && gotBarcode) {
+            when(bcval.validate(anyString(), any())).then(invocation -> {
+                String bc = invocation.getArgument(0);
+                if (bc.indexOf('*') < 0) {
+                    return true;
+                }
+                Consumer<String> prob = invocation.getArgument(1);
+                prob.accept("Bad barcode: " + bc);
+                return false;
+            });
+        }
+
+        val.validatePrebarcode(barcode, lt);
+        if (expectedProblem==null) {
+            assertThat(val.problems).isEmpty();
+        } else {
+            assertThat(val.problems).containsOnly(expectedProblem);
+        }
+        if (prebarcoded && gotBarcode) {
+            verify(bcval).validate(eq(barcode), any());
         }
     }
 
@@ -165,6 +213,7 @@ public class TestPlanValidation {
         PlanValidationImp validation = makeValidation(request);
         doNothing().when(validation).checkActions(any(), any());
         doNothing().when(validation).validateLotAndCostings(any());
+        doNothing().when(validation).validatePrebarcode(any(), any());
 
         when(mockLabwareTypeRepo.findByName(anyString())).thenReturn(Optional.empty());
         if (labwareTypes!=null && !labwareTypes.isEmpty()) {
@@ -177,16 +226,6 @@ public class TestPlanValidation {
                 .flatMap(rl -> mockLabwareTypeRepo.findByName(rl.getLabwareType()).stream())
                 .distinct()
                 .collect(UCMap.toUCMap(LabwareType::getName));
-
-        when(mockPrebarcodeValidator.validate(anyString(), any())).then(invocation -> {
-            String string = invocation.getArgument(0);
-            if (string.contains("*")) {
-                Consumer<String> addProblem = invocation.getArgument(1);
-                addProblem.accept("Invalid barcode: "+string);
-                return false;
-            }
-            return true;
-        });
 
         if (request.getLabware().stream().anyMatch(lw -> "extant".equalsIgnoreCase(lw.getBarcode()))) {
             when(mockLabwareRepo.existsByBarcode(eqCi("extant"))).thenReturn(true);
@@ -221,9 +260,11 @@ public class TestPlanValidation {
 
         if (expectedProblems==null) {
             verify(validation, times(request.getLabware().size())).checkActions(any(), any());
+            verify(validation, times(request.getLabware().size()))
+                    .validatePrebarcode(any(), isNotNull());
             for (PlanRequestLabware prlw : request.getLabware()) {
                 if (prlw.getBarcode()!=null) {
-                    verify(mockPrebarcodeValidator).validate(eqCi(prlw.getBarcode()), any());
+                    verify(validation).validatePrebarcode(eq(prlw.getBarcode()), isNotNull());
                 }
             }
         }
@@ -435,20 +476,13 @@ public class TestPlanValidation {
                         lts, "Missing labware type.", null),
                 Arguments.of(new PlanRequestLabware(preName, "EXTANT", noActions),
                         lts, "Labware with the barcode EXTANT already exists in the database.", null),
-                Arguments.of(new PlanRequestLabware(preName, null, noActions),
-                        lts, "No barcode supplied for new labware of type "+preName+".", null),
-                Arguments.of(new PlanRequestLabware(ltName, "SPECIAL1", noActions),
-                        lts, "Unexpected barcode supplied for new labware of type "+ltName+".", null),
                 Arguments.of(new PlanRequestLabware("Mist", null, noActions),
                         lts, "Unknown labware type: [Mist]", null),
                 Arguments.of(List.of(
                         new PlanRequestLabware("Mist", null, noActions),
                         new PlanRequestLabware("MIST", null, noActions),
                         new PlanRequestLabware("Fog", null, noActions)
-                ), lts, "Unknown labware types: [Mist, MIST, Fog]", null),
-                Arguments.of(new PlanRequestLabware(preName, "SPECIAL*", noActions),
-                        lts, "Invalid barcode: SPECIAL*", null)
-
+                ), lts, "Unknown labware types: [Mist, MIST, Fog]", null)
         );
     }
 

@@ -75,11 +75,11 @@ public class TestLabelPrintService {
     public void testPrintLabwareSuccessful() throws IOException {
         when(mockPrinterRepo.getByName(printer.getName())).thenReturn(printer);
         List<LabwareLabelData> labelData = List.of(
-                new LabwareLabelData(labware.get(0).getBarcode(), "None", "2021-03-17", List.of(
+                new LabwareLabelData(labware.get(0).getBarcode(), labware.get(0).getExternalBarcode(), "None", "2021-03-17", List.of(
                         new LabelContent("DONOR1", "TISSUE1", "2", 3),
                         new LabelContent("DONOR2", "TISSUE2", "3", 4)
                 )),
-                new LabwareLabelData(labware.get(1).getBarcode(), "None", "2021-03-16", List.of(
+                new LabwareLabelData(labware.get(1).getBarcode(), labware.get(1).getExternalBarcode(), "None", "2021-03-16", List.of(
                         new LabelContent("DONOR3", "TISSUE3", "4")
                 ))
         );
@@ -103,7 +103,7 @@ public class TestLabelPrintService {
         Labware lw = EntityFactory.makeEmptyLabware(lt);
         when(mockPrinterRepo.getByName(printer.getName())).thenReturn(printer);
         List<LabwareLabelData> labelData = List.of(
-                new LabwareLabelData(lw.getBarcode(), "None", "2021-03-17", List.of(
+                new LabwareLabelData(lw.getBarcode(), lw.getExternalBarcode(), "None", "2021-03-17", List.of(
                         new LabelContent("DONOR1", "TISSUE1", "2", 3),
                         new LabelContent("DONOR2", "TISSUE2", "3", 4)
                 ))

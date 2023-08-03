@@ -2,7 +2,9 @@ package uk.ac.sanger.sccp.stan.request.register;
 
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
 
 import static uk.ac.sanger.sccp.utils.BasicUtils.newArrayList;
 
@@ -12,6 +14,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.newArrayList;
  */
 public class SectionRegisterLabware {
     private String externalBarcode;
+    private String preBarcode;
     private String labwareType;
     private List<SectionRegisterContent> contents;
 
@@ -31,6 +34,14 @@ public class SectionRegisterLabware {
 
     public void setExternalBarcode(String externalBarcode) {
         this.externalBarcode = externalBarcode;
+    }
+
+    public String getPreBarcode() {
+        return this.preBarcode;
+    }
+
+    public void setPreBarcode(String preBarcode) {
+        this.preBarcode = preBarcode;
     }
 
     public String getLabwareType() {
@@ -55,22 +66,25 @@ public class SectionRegisterLabware {
         if (o == null || getClass() != o.getClass()) return false;
         SectionRegisterLabware that = (SectionRegisterLabware) o;
         return (Objects.equals(this.externalBarcode, that.externalBarcode)
+                && Objects.equals(this.preBarcode, that.preBarcode)
                 && Objects.equals(this.labwareType, that.labwareType)
                 && Objects.equals(this.contents, that.contents));
     }
 
     @Override
     public int hashCode() {
-        return (externalBarcode!=null ? externalBarcode.hashCode() : 0);
+        return (externalBarcode!=null ? externalBarcode.hashCode() : preBarcode != null ? preBarcode.hashCode() : 0);
     }
 
     @Override
     public String toString() {
         return BasicUtils.describe("SectionRegisterLabware")
                 .add("externalBarcode", externalBarcode)
+                .add("preBarcode", preBarcode)
                 .add("labwareType", labwareType)
                 .add("contents", contents)
                 .reprStringValues()
+                .omitNullValues()
                 .toString();
     }
 }

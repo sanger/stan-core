@@ -46,6 +46,7 @@ public class SectionRegisterValidation {
     private final Validator<String> donorNameValidation;
     private final Validator<String> externalNameValidation;
     private final Validator<String> visiumLpBarcodeValidation;
+    private final Validator<String> xeniumBarcodeValidator;
     private final Validator<String> replicateValidator;
 
     public SectionRegisterValidation(SectionRegisterRequest request,
@@ -56,7 +57,7 @@ public class SectionRegisterValidation {
                                      SlotRegionService slotRegionService, WorkService workService,
                                      Validator<String> externalBarcodeValidation, Validator<String> donorNameValidation,
                                      Validator<String> externalNameValidation, Validator<String> replicateValidator,
-                                     Validator<String> visiumLpBarcodeValidation) {
+                                     Validator<String> visiumLpBarcodeValidation, Validator<String> xeniumBarcodeValidator) {
         this.request = request;
         this.donorRepo = donorRepo;
         this.speciesRepo = speciesRepo;
@@ -75,13 +76,14 @@ public class SectionRegisterValidation {
         this.externalNameValidation = externalNameValidation;
         this.replicateValidator = replicateValidator;
         this.visiumLpBarcodeValidation = visiumLpBarcodeValidation;
+        this.xeniumBarcodeValidator = xeniumBarcodeValidator;
     }
 
     public ValidatedSections validate() {
         checkEmpty();
         UCMap<Donor> donors = validateDonors();
         UCMap<LabwareType> lwTypes = validateLabwareTypes();
-        validateBarcodes();
+        validateBarcodes(lwTypes);
         UCMap<Tissue> tissues = validateTissues(donors);
         UCMap<Sample> samples = validateSamples(tissues);
         UCMap<SlotRegion> regions = validateRegions();
@@ -204,7 +206,24 @@ public class SectionRegisterValidation {
         return lwTypeMap;
     }
 
-    public void validateBarcodes() {
+    public String findBarcodeProblem(String barcode, Set<String> seen) {
+        String upper = barcode.toUpperCase();
+        if (!seen.add(upper)) {
+            return "Repeated barcode{s}";
+        }
+        if (upper.startsWith("STAN-") || upper.startsWith("STO-")) {
+            return "Invalid external barcode prefix";
+        }
+        if (lwRepo.existsByExternalBarcode(upper)) {
+            return "External barcode{s} already used";
+        }
+        if (lwRepo.existsByBarcode(upper)) {
+            return "Labware barcode{s} already used";
+        }
+        return null;
+    }
+
+    public void validateBarcodes(UCMap<LabwareType> lwTypes) {
         final Map<String, Set<String>> bcProblemMap = new HashMap<>();
         Set<String> seenBarcodes = new LinkedHashSet<>();
         boolean missing = false;
@@ -212,25 +231,40 @@ public class SectionRegisterValidation {
                 bcProblemMap.computeIfAbsent(problem, k -> new LinkedHashSet<>()).add(bc);
         for (var lw : request.getLabware()) {
             String bc = lw.getExternalBarcode();
-            if (bc==null || bc.isEmpty()) {
+            if (nullOrEmpty(bc)) {
                 missing = true;
                 continue;
             }
-            String bcUpper = bc.toUpperCase();
-            if (!seenBarcodes.add(bcUpper)) {
-                bcProblem.accept("Repeated barcode{s}", bc);
-                continue;
+            boolean separatePrebarcode = !(nullOrEmpty(lw.getPreBarcode()) || lw.getPreBarcode().equalsIgnoreCase(bc));
+            Validator<String> bcVal;
+            if ("Visium LP".equalsIgnoreCase(lw.getLabwareType())) {
+                bcVal = visiumLpBarcodeValidation;
+            } else if ("xenium".equalsIgnoreCase(lw.getLabwareType())) {
+                bcVal = xeniumBarcodeValidator;
+            } else {
+                bcVal = externalBarcodeValidation;
             }
-            if (bcUpper.startsWith("STAN-") || bcUpper.startsWith("STO-")) {
-                bcProblem.accept("Invalid external barcode prefix", bc);
-                continue;
+
+            String problem = findBarcodeProblem(bc, seenBarcodes);
+            if (problem!=null) {
+                bcProblem.accept(problem, bc);
+            } else if (separatePrebarcode) {
+                externalBarcodeValidation.validate(bc, this::addProblem);
+            } else {
+                bcVal.validate(bc, this::addProblem);
             }
-            boolean isVisiumLp = (lw.getLabwareType()!=null && lw.getLabwareType().equalsIgnoreCase("Visium LP"));
-            (isVisiumLp ? visiumLpBarcodeValidation : externalBarcodeValidation).validate(bc, this::addProblem);
-            if (lwRepo.existsByExternalBarcode(bc)) {
-                bcProblem.accept("External barcode{s} already used", bc);
-            } else if (lwRepo.existsByBarcode(bc)) {
-                bcProblem.accept("Labware barcode{s} already used", bc);
+            String pbc = lw.getPreBarcode();
+            if (!nullOrEmpty(pbc) && !pbc.equalsIgnoreCase(bc)) {
+                problem = findBarcodeProblem(pbc, seenBarcodes);
+                if (problem!=null) {
+                    bcProblem.accept(problem, pbc);
+                } else {
+                    bcVal.validate(pbc, this::addProblem);
+                }
+                LabwareType lt = lwTypes.get(lw.getLabwareType());
+                if (lt!=null && !lt.isPrebarcoded()) {
+                    addProblem("Prebarcode not expected for labware type "+lt.getName()+".");
+                }
             }
         }
         if (missing) {
