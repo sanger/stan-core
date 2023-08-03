@@ -62,6 +62,8 @@ public class TestAdminMutations {
     private DnapStudyRepo dnapStudyRepo;
     @Autowired
     private SlotRegionRepo slotRegionRepo;
+    @Autowired
+    private ProbePanelRepo probePanelRepo;
 
     @Test
     @Transactional
@@ -142,6 +144,11 @@ public class TestAdminMutations {
     @Transactional
     public void testAddNewCostCodeAndSetEnabled() throws Exception {
         testGenericAddNewAndSetEnabled("CostCode", "code", "S12345", costCodeRepo::findByCode, CostCode::getCode, "costCodes");
+    }
+    @Test
+    @Transactional
+    public void testAddNewProbePanelAndSetEnabled() throws Exception {
+        testGenericAddNewAndSetEnabled("ProbePanel", "name", "Alpha", probePanelRepo::findByName, ProbePanel::getName, "probePanels");
     }
     @Test
     @Transactional

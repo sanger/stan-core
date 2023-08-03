@@ -224,6 +224,14 @@ type OmeroProject {
     enabled: Boolean!
 }
 
+"""A probe panel."""
+type ProbePanel {
+    """The name of the probe panel."""
+    name: String!
+    """Whether the probe panel is available for use."""
+    enabled: Boolean!
+}
+
 """A request to register a new block of tissue."""
 input BlockRegisterRequest {
     """The string to use as the donor name."""
@@ -1563,6 +1571,36 @@ input LabwareWithSlotCommentsRequest {
     addressComments: [AddressCommentInput!]!
 }
 
+"""Request to record an operation with probe panels."""
+input ProbeOperationRequest {
+    """The name of the type of operation."""
+    operationType: String!
+    """The time when the operation was performed, if specified."""
+    performed: Timestamp
+    """The labware involved in the operation."""
+    labware: [ProbeOperationLabware!]!
+}
+
+"""Labware in a probe operation request."""
+input ProbeOperationLabware {
+    """The barcode of the labware."""
+    barcode: String!
+    """The work number of the operation on this labware."""
+    workNumber: String!
+    """The probes used on this labware."""
+    probes: [ProbeLot!]!
+}
+
+"""The probe used on a piece of labware in an operation."""
+input ProbeLot {
+    """The name of the probe panel."""
+    name: String!
+    """The lot number of the probe."""
+    lot: String!
+    """The plex number."""
+    plex: Int!
+}
+
 """Info about the app version."""
 type VersionInfo {
     """The output of git describe."""
@@ -1592,6 +1630,8 @@ type Query {
     fixatives(includeDisabled: Boolean): [Fixative!]!
     """Get all the species that are enabled, or get all including those that are disabled."""
     species(includeDisabled: Boolean): [Species!]!
+    """Get all probe panels, optionally including the disabled."""
+    probePanels(includeDisabled: Boolean): [ProbePanel!]!
     """Get the labware with the given barcode."""
     labware(barcode: String!): Labware!
     """Get all printers available, or get all printers that support a named label type."""
@@ -1782,6 +1822,10 @@ type Mutation {
     addSlotRegion(name: String!): SlotRegion!
     """Enable or disable a slot region."""
     setSlotRegionEnabled(name: String!, enabled: Boolean!): SlotRegion!
+    """Add a new probe panel."""
+    addProbePanel(name: String!): ProbePanel!
+    """Enable or disable a probe panel."""
+    setProbePanelEnabled(name: String!, enabled: Boolean!): ProbePanel!
 
     """Create a new work, which will be allocated a new work number with the given prefix."""
     createWork(prefix: String!, workType: String!, workRequester: String!, project: String!, program: String!, costCode: String!, numBlocks: Int, numSlides: Int, numOriginalSamples: Int, omeroProject: String, dnapStudy: String): Work!
@@ -1841,7 +1885,9 @@ type Mutation {
     """Record an operation adding a external ID to a sample."""
     addExternalID(request: AddExternalIDRequest!): OperationResult!
     """Record an operation in-place with comments on slots."""
-    recordOpWithSlotComments(request: OpWithSlotCommentsRequest): OperationResult!
+    recordOpWithSlotComments(request: OpWithSlotCommentsRequest!): OperationResult!
+    """Record an operation involving probe panels."""
+    recordProbeOperation(request: ProbeOperationRequest!): OperationResult!
 
     """Create a new user for the application."""
     addUser(username: String!): User!

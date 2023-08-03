@@ -81,6 +81,23 @@ public class FieldValidation {
     }
 
     @Bean
+    public Validator<String> probePanelNameValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(
+                CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN, CharacterType.SPACE, CharacterType.COLON,
+                CharacterType.SLASH, CharacterType.PAREN, CharacterType.FULL_STOP, CharacterType.APOSTROPHE
+        );
+        return new StringValidator("Probe panel name", 1, 64, charTypes);
+    }
+
+    @Bean
+    public Validator<String> probeLotNumberValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(
+                CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.UNDERSCORE
+        );
+        return new StringValidator("Probe lot number", 1, 20, charTypes);
+    }
+
+    @Bean
     public Validator<String> commentTextValidator() {
         Set<CharacterType> charTypes = EnumSet.of(
                 CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN, CharacterType.SPACE, CharacterType.COLON,

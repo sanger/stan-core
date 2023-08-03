@@ -7,10 +7,7 @@ import graphql.execution.AsyncExecutionStrategy;
 import graphql.execution.AsyncSerialExecutionStrategy;
 import graphql.schema.DataFetcher;
 import graphql.schema.GraphQLSchema;
-import graphql.schema.idl.RuntimeWiring;
-import graphql.schema.idl.SchemaGenerator;
-import graphql.schema.idl.SchemaParser;
-import graphql.schema.idl.TypeDefinitionRegistry;
+import graphql.schema.idl.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
@@ -91,6 +88,7 @@ public class GraphQLProvider {
                         .dataFetcher("solutions", graphQLDataFetchers.getSolutions())
                         .dataFetcher("omeroProjects", graphQLDataFetchers.getOmeroProjects())
                         .dataFetcher("slotRegions", graphQLDataFetchers.getSlotRegions())
+                        .dataFetcher("probePanels", graphQLDataFetchers.getProbePanels())
                         .dataFetcher("samplePositions", graphQLDataFetchers.getSamplePositions())
                         .dataFetcher("workTypes", graphQLDataFetchers.getWorkTypes())
                         .dataFetcher("works", graphQLDataFetchers.getWorks())
@@ -172,6 +170,8 @@ public class GraphQLProvider {
                         .dataFetcher("setOmeroProjectEnabled", transact(graphQLMutation.setOmeroProjectEnabled()))
                         .dataFetcher("addSlotRegion", transact(graphQLMutation.addSlotRegion()))
                         .dataFetcher("setSlotRegionEnabled", transact(graphQLMutation.setSlotRegionEnabled()))
+                        .dataFetcher("addProbePanel", transact(graphQLMutation.addProbePanel()))
+                        .dataFetcher("setProbePanelEnabled", transact(graphQLMutation.setProbePanelEnabled()))
                         .dataFetcher("addWorkType", transact(graphQLMutation.addWorkType()))
                         .dataFetcher("setWorkTypeEnabled", transact(graphQLMutation.setWorkTypeEnabled()))
                         .dataFetcher("createWork", transact(graphQLMutation.createWork()))
@@ -202,6 +202,7 @@ public class GraphQLProvider {
                         .dataFetcher("performFFPEProcessing", transact(graphQLMutation.performFFPEProcessing()))
                         .dataFetcher("performSolutionTransfer", transact(graphQLMutation.performSolutionTransfer()))
                         .dataFetcher("recordOpWithSlotComments", transact(graphQLMutation.performOpWithSlotComments()))
+                        .dataFetcher("recordProbeOperation", transact(graphQLMutation.recordProbeOperation()))
 
                         .dataFetcher("addUser", transact(graphQLMutation.addUser()))
                         .dataFetcher("setUserRole", transact(graphQLMutation.setUserRole()))

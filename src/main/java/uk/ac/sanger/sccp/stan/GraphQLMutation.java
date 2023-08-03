@@ -72,6 +72,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final SolutionAdminService solutionAdminService;
     final OmeroProjectAdminService omeroProjectAdminService;
     final SlotRegionAdminService slotRegionAdminService;
+    final ProbePanelService probePanelService;
     final WorkTypeService workTypeService;
     final WorkService workService;
     final StainService stainService;
@@ -93,6 +94,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final SolutionTransferService solutionTransferService;
     final FFPEProcessingService ffpeProcessingService;
     final OpWithSlotCommentsService opWithSlotCommentsService;
+    final ProbeService probeService;
     final UserAdminService userAdminService;
 
     @Autowired
@@ -111,7 +113,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            ProjectService projectService, ProgramService programService, CostCodeService costCodeService,
                            DnapStudyService dnapStudyService, FixativeService fixativeService,
                            SolutionAdminService solutionAdminService, OmeroProjectAdminService omeroProjectAdminService,
-                           SlotRegionAdminService slotRegionAdminService, WorkTypeService workTypeService, WorkService workService, StainService stainService,
+                           SlotRegionAdminService slotRegionAdminService, ProbePanelService probePanelService, WorkTypeService workTypeService, WorkService workService, StainService stainService,
                            UnreleaseService unreleaseService, ResultService resultService, ExtractResultService extractResultService,
                            PermService permService, RNAAnalysisService rnaAnalysisService,
                            VisiumAnalysisService visiumAnalysisService, OpWithSlotMeasurementsService opWithSlotMeasurementsService,
@@ -122,7 +124,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            InPlaceOpCommentService inPlaceOpCommentService,
                            SampleProcessingService sampleProcessingService, SolutionTransferService solutionTransferService,
                            FFPEProcessingService ffpeProcessingService, OpWithSlotCommentsService opWithSlotCommentsService,
-                           UserAdminService userAdminService) {
+                           ProbeService probeService, UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
@@ -152,6 +154,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.solutionAdminService = solutionAdminService;
         this.omeroProjectAdminService = omeroProjectAdminService;
         this.slotRegionAdminService = slotRegionAdminService;
+        this.probePanelService = probePanelService;
         this.workTypeService = workTypeService;
         this.workService = workService;
         this.stainService = stainService;
@@ -173,6 +176,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.solutionTransferService = solutionTransferService;
         this.ffpeProcessingService = ffpeProcessingService;
         this.opWithSlotCommentsService = opWithSlotCommentsService;
+        this.probeService = probeService;
         this.userAdminService = userAdminService;
     }
 
@@ -479,6 +483,14 @@ public class GraphQLMutation extends BaseGraphQLResource {
         return adminSetEnabled(slotRegionAdminService::setEnabled, "SetSlotRegionEnabled", "name");
     }
 
+    public DataFetcher<ProbePanel> addProbePanel() {
+        return adminAdd(probePanelService::addNew, "AddProbePanel", "name");
+    }
+
+    public DataFetcher<ProbePanel> setProbePanelEnabled() {
+        return adminSetEnabled(probePanelService::setEnabled, "SetProbePanelEnabled", "name");
+    }
+
     public DataFetcher<WorkType> addWorkType() {
         return adminAdd(workTypeService::addNew, "AddWorkType", "name");
     }
@@ -769,6 +781,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             OpWithSlotCommentsRequest request = arg(dfe, "request", OpWithSlotCommentsRequest.class);
             logRequest("Perform op with slot comments", user, request);
             return opWithSlotCommentsService.perform(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> recordProbeOperation() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            ProbeOperationRequest request = arg(dfe, "request", ProbeOperationRequest.class);
+            logRequest("Record probe operation", user, request);
+            return probeService.recordProbeOperation(user, request);
         };
     }
 

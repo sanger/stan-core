@@ -1,9 +1,7 @@
 package uk.ac.sanger.sccp.stan;
 
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.model.reagentplate.ReagentPlate;
-import uk.ac.sanger.sccp.stan.model.reagentplate.ReagentPlateLayout;
-import uk.ac.sanger.sccp.stan.model.reagentplate.ReagentSlot;
+import uk.ac.sanger.sccp.stan.model.reagentplate.*;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -163,12 +161,19 @@ public class EntityFactory {
     }
 
     public static Labware makeEmptyLabware(LabwareType lt) {
+        return makeEmptyLabware(lt, null);
+    }
+
+    public static Labware makeEmptyLabware(LabwareType lt, String barcode) {
         int lwId = ++idCounter;
         final int[] slotId = { 10*lwId };
         List<Slot> slots = Address.stream(lt.getNumRows(), lt.getNumColumns())
                 .map(ad -> new Slot(++slotId[0], lwId, ad, new ArrayList<>(), null, null))
                 .collect(toList());
-        return new Labware(lwId, "STAN-"+lwId, lt, slots);
+        if (barcode==null) {
+            barcode = "STAN-"+lwId;
+        }
+        return new Labware(lwId, barcode, lt, slots);
     }
 
     public static Labware makeLabware(LabwareType lt, Sample... samples) {
@@ -284,6 +289,13 @@ public class EntityFactory {
                         .map(sam -> new SnapshotElement(++elId[0], snapId, slot.getId(), sam.getId())))
                 .collect(toList());
         return new Snapshot(snapId, lw.getId(), elements);
+    }
+
+    public static Work makeWork(String workNumber) {
+        Integer workId = ++idCounter;
+        return new Work(workId, workNumber, new WorkType(5, "worktype"), null,
+                new Project(6, "proj"), new Program(7, "prog"),
+                new CostCode(7, "cc"), Work.Status.active);
     }
 
     @SuppressWarnings("unchecked")

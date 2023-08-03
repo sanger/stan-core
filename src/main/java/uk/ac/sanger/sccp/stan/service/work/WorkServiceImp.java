@@ -383,21 +383,19 @@ public class WorkServiceImp implements WorkService {
 
     @Override
     public UCMap<Work> validateUsableWorks(Collection<String> problems, Collection<String> workNumbers) {
-        // Check if there are any null workNumbers given
-        if (workNumbers.stream().anyMatch(Objects::isNull)) {
-            problems.add("Work number is not specified.");
-            // Filter out the null numbers for the rest of the checks
-            workNumbers = workNumbers.stream().filter(Objects::nonNull).collect(toList());
-        }
-        // Check there are non-null values before running other checks
-        if (workNumbers.isEmpty()) {
+        List<String> nonNullWorkNumbers = workNumbers.stream()
+                .filter(Objects::nonNull)
+                .collect(toList());
+        if (nonNullWorkNumbers.isEmpty()) {
             problems.add("No work numbers given.");
             return new UCMap<>(0);
+        } else if (nonNullWorkNumbers.size() < workNumbers.size()) {
+            problems.add("Work number is not specified.");
         }
-        UCMap<Work> workMap = workRepo.findAllByWorkNumberIn(workNumbers).stream()
+        UCMap<Work> workMap = workRepo.findAllByWorkNumberIn(nonNullWorkNumbers).stream()
                 .collect(UCMap.toUCMap(Work::getWorkNumber));
 
-        List<String> missing = workNumbers.stream()
+        List<String> missing = nonNullWorkNumbers.stream()
                 .filter(s -> workMap.get(s)==null)
                 .filter(BasicUtils.distinctUCSerial())
                 .collect(toList());
@@ -431,8 +429,9 @@ public class WorkServiceImp implements WorkService {
         List<WorkWithComment> wcs = Streamable.of(works).stream()
                 .map(WorkWithComment::new)
                 .collect(toList());
+        final Set<Status> pausedOrFailedStatuses = EnumSet.of(Status.paused, Status.failed, Status.withdrawn);
         List<Integer> pausedOrFailedIds = wcs.stream().map(WorkWithComment::getWork)
-                .filter(work -> work.getStatus()==Status.paused || work.getStatus()==Status.failed || work.getStatus()==Status.withdrawn)
+                .filter(work -> pausedOrFailedStatuses.contains(work.getStatus()))
                 .map(Work::getId)
                 .collect(toList());
         if (!pausedOrFailedIds.isEmpty()) {
