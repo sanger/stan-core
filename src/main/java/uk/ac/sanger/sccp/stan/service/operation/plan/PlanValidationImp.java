@@ -17,26 +17,28 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.pluralise;
  */
 public class PlanValidationImp implements PlanValidation {
     static final Set<String> LOT_AND_COSTING_LW_TYPES_UC = Set.of(
-            "VISIUM TO", "VISIUM LP", "VISIUM ADH"
+            "VISIUM TO", "VISIUM LP", "VISIUM ADH", "XENIUM"
     );
 
     final LabwareRepo labwareRepo;
     final LabwareTypeRepo ltRepo;
     final OperationTypeRepo opTypeRepo;
-    final Validator<String> prebarcodeValidator;
+    final Validator<String> visiumBarcodeValidator, xeniumBarcodeValidator;
+
     final Validator<String> lotValidator;
 
     final PlanRequest request;
     final Set<String> problems = new LinkedHashSet<>();
 
     public PlanValidationImp(PlanRequest request, LabwareRepo labwareRepo, LabwareTypeRepo ltRepo,
-                             OperationTypeRepo opTypeRepo, Validator<String> prebarcodeValidator,
-                             Validator<String> lotValidator) {
+                             OperationTypeRepo opTypeRepo, Validator<String> visiumBarcodeValidator,
+                             Validator<String> xeniumBarcodeValidator, Validator<String> lotValidator) {
         this.labwareRepo = labwareRepo;
         this.ltRepo = ltRepo;
         this.opTypeRepo = opTypeRepo;
         this.request = request;
-        this.prebarcodeValidator = prebarcodeValidator;
+        this.visiumBarcodeValidator = visiumBarcodeValidator;
+        this.xeniumBarcodeValidator = xeniumBarcodeValidator;
         this.lotValidator = lotValidator;
     }
 
@@ -128,6 +130,24 @@ public class PlanValidationImp implements PlanValidation {
         return labwareMap;
     }
 
+    /**
+     * Validates the format/presence of given prebarcode
+     * @param barcode the barcode (may be null)
+     * @param lt the labware type
+     */
+    public void validatePrebarcode(String barcode, LabwareType lt) {
+        if (nullOrEmpty(barcode)) {
+            if (lt.isPrebarcoded()) {
+                addProblem("No barcode supplied for new labware of type "+lt.getName()+".");
+            }
+        } else if (!lt.isPrebarcoded()) {
+            addProblem("Unexpected barcode supplied for new labware of type "+lt.getName()+".");
+        } else {
+            Validator<String> val = lt.isXenium() ? xeniumBarcodeValidator : visiumBarcodeValidator;
+            val.validate(barcode, this::addProblem);
+        }
+    }
+
     public void validateDestinations(UCMap<Labware> sourceLabwareMap) {
         if (request.getLabware().isEmpty()) {
             addProblem("No labware are specified in the plan request.");
@@ -137,22 +157,18 @@ public class PlanValidationImp implements PlanValidation {
         Set<String> unknownTypes = new LinkedHashSet<>();
         Set<String> seenBarcodes = new HashSet<>();
         for (PlanRequestLabware lw : request.getLabware()) {
-            boolean gotBarcode = (lw.getBarcode()!=null && !lw.getBarcode().isEmpty());
+            boolean gotBarcode = !nullOrEmpty(lw.getBarcode());
             boolean alreadySeen = false;
-            if (gotBarcode) {
-                if (!seenBarcodes.add(lw.getBarcode().toUpperCase())) {
-                    addProblem("Repeated barcode given for new labware: " + lw.getBarcode());
-                    alreadySeen = true;
-                } else {
-                    prebarcodeValidator.validate(lw.getBarcode(), this::addProblem);
-                }
+            if (gotBarcode && !seenBarcodes.add(lw.getBarcode().toUpperCase())) {
+                addProblem("Repeated barcode given for new labware: " + lw.getBarcode());
+                alreadySeen = true;
             }
 
-            if (lw.getLabwareType() ==null || lw.getLabwareType().isEmpty()) {
+            String ltn = lw.getLabwareType();
+            if (nullOrEmpty(ltn)) {
                 addProblem("Missing labware type.");
                 continue;
             }
-            String ltn = lw.getLabwareType();
             LabwareType lt = labwareTypeMap.get(ltn);
             if (lt==null) {
                 if (unknownTypes.contains(ltn.toUpperCase())) {
@@ -166,10 +182,7 @@ public class PlanValidationImp implements PlanValidation {
                 lt = optLt.get();
                 labwareTypeMap.put(ltn, lt);
             }
-            if (gotBarcode != lt.isPrebarcoded()) {
-                addProblem("%s barcode supplied for new labware of type %s.",
-                        gotBarcode ? "Unexpected": "No", lt.getName());
-            }
+            validatePrebarcode(lw.getBarcode(), lt);
             checkActions(lw, lt);
             if (gotBarcode && !alreadySeen && labwareRepo.existsByBarcode(lw.getBarcode())) {
                 addProblem("Labware with the barcode "+lw.getBarcode()+" already exists in the database.");

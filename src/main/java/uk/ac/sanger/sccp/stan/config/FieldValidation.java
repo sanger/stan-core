@@ -38,6 +38,12 @@ public class FieldValidation {
     }
 
     @Bean
+    public Validator<String> xeniumBarcodeValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(CharacterType.DIGIT);
+        return new StringValidator("Xenium barcode", 7, 7, charTypes);
+    }
+
+    @Bean
     public Validator<String> tubePrebarcodeValidator() {
         Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA, CharacterType.DIGIT);
         Pattern pattern = Pattern.compile("[A-Z]{2}[0-9]{8}", Pattern.CASE_INSENSITIVE);
@@ -72,6 +78,23 @@ public class FieldValidation {
     public Validator<String> commentCategoryValidator() {
         Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA, CharacterType.SPACE);
         return new StringValidator("Comment category", 2, 32, charTypes);
+    }
+
+    @Bean
+    public Validator<String> probePanelNameValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(
+                CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN, CharacterType.SPACE, CharacterType.COLON,
+                CharacterType.SLASH, CharacterType.PAREN, CharacterType.FULL_STOP, CharacterType.APOSTROPHE
+        );
+        return new StringValidator("Probe panel name", 1, 64, charTypes);
+    }
+
+    @Bean
+    public Validator<String> probeLotNumberValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(
+                CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.UNDERSCORE
+        );
+        return new StringValidator("Probe lot number", 1, 20, charTypes);
     }
 
     @Bean

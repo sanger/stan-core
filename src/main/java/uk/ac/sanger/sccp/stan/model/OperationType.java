@@ -95,6 +95,10 @@ public class OperationType implements HasName, HasIntId {
     public boolean transfersReagent() {
         return this.has(OperationTypeFlag.REAGENT_TRANSFER);
     }
+
+    public boolean usesProbes() {
+        return this.has(OperationTypeFlag.PROBES);
+    }
     //endregion
 
     @Override

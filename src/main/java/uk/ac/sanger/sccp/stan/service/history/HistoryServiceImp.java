@@ -38,6 +38,7 @@ public class HistoryServiceImp implements HistoryService {
     private final LabwareNoteRepo labwareNoteRepo;
     private final ResultOpRepo resultOpRepo;
     private final StainTypeRepo stainTypeRepo;
+    private final LabwareProbeRepo lwProbeRepo;
     private final ReagentActionDetailService reagentActionDetailService;
     private final SlotRegionService slotRegionService;
 
@@ -47,7 +48,7 @@ public class HistoryServiceImp implements HistoryService {
                              DestructionRepo destructionRepo, OperationCommentRepo opCommentRepo,
                              SnapshotRepo snapshotRepo, WorkRepo workRepo, MeasurementRepo measurementRepo,
                              LabwareNoteRepo labwareNoteRepo, ResultOpRepo resultOpRepo,
-                             StainTypeRepo stainTypeRepo,
+                             StainTypeRepo stainTypeRepo, LabwareProbeRepo lwProbeRepo,
                              ReagentActionDetailService reagentActionDetailService,
                              SlotRegionService slotRegionService) {
         this.opRepo = opRepo;
@@ -64,6 +65,7 @@ public class HistoryServiceImp implements HistoryService {
         this.labwareNoteRepo = labwareNoteRepo;
         this.resultOpRepo = resultOpRepo;
         this.stainTypeRepo = stainTypeRepo;
+        this.lwProbeRepo = lwProbeRepo;
         this.reagentActionDetailService = reagentActionDetailService;
         this.slotRegionService = slotRegionService;
     }
@@ -407,6 +409,19 @@ public class HistoryServiceImp implements HistoryService {
     }
 
     /**
+     * Converts a labware probe into details for a history entry.
+     * @param lwProbe the labware probe to detail
+     * @return a list of strings describing the labware probe
+     */
+    public List<String> getLabwareProbeDetails(LabwareProbe lwProbe) {
+        return List.of(
+                "Probe panel: "+lwProbe.getProbePanel().getName(),
+                "Lot: "+lwProbe.getLotNumber(),
+                "Plex: "+lwProbe.getPlex()
+        );
+    }
+
+    /**
      * Loads the results recorded against any result operations in the given collection of operations
      * @param ops some operations, some of which might be result ops
      * @return a map of op id to list of applicable results
@@ -421,6 +436,23 @@ public class HistoryServiceImp implements HistoryService {
         }
         Iterable<ResultOp> results = resultOpRepo.findAllByOperationIdIn(resultOpIds);
         return BasicUtils.stream(results).collect(Collectors.groupingBy(ResultOp::getOperationId));
+    }
+
+    /**
+     * Loads the probe panels (lots etc.) recorded against the given operations
+     * @param ops some operations, some of which might involve probes
+     * @return a map of op id to list of applicable labware probes
+     */
+    public Map<Integer, List<LabwareProbe>> loadOpProbes(Collection<Operation> ops) {
+        List<Integer> probeOpIds = ops.stream()
+                .filter(op -> op.getOperationType().usesProbes())
+                .map(Operation::getId)
+                .collect(toList());
+        if (probeOpIds.isEmpty()) {
+            return Map.of();
+        }
+        return lwProbeRepo.findAllByOperationIdIn(probeOpIds).stream()
+                .collect(Collectors.groupingBy(LabwareProbe::getOperationId));
     }
 
     /**
@@ -459,6 +491,7 @@ public class HistoryServiceImp implements HistoryService {
         var opStainTypes = stainTypeRepo.loadOperationStainTypes(opIds);
         var opReagentActions = reagentActionDetailService.loadReagentTransfers(opIds);
         var opResults = loadOpResults(operations);
+        var opProbes = loadOpProbes(operations);
         final Map<Integer, Slot> slotIdMap;
         if (!opComments.isEmpty() || !opMeasurements.isEmpty()) {
             slotIdMap = labware.stream()
@@ -489,6 +522,7 @@ public class HistoryServiceImp implements HistoryService {
             List<Measurement> measurements = opMeasurements.getOrDefault(op.getId(), List.of());
             List<LabwareNote> lwNotes = opLabwareNotes.getOrDefault(op.getId(), List.of());
             List<ReagentActionDetail> reagentActions = opReagentActions.getOrDefault(op.getId(), List.of());
+            List<LabwareProbe> lwProbes = opProbes.getOrDefault(op.getId(), List.of());
             String workNumber;
             if (opWork!=null) {
                 Set<String> workNumbers = opWork.get(op.getId());
@@ -525,6 +559,12 @@ public class HistoryServiceImp implements HistoryService {
                     if (lwNote.getLabwareId() == item.destId) {
                         String detail = labwareNoteDetail(lwNote);
                         entry.addDetail(detail);
+                    }
+                }
+                for (LabwareProbe lwProbe : lwProbes) {
+                    if (lwProbe.getLabwareId() == item.destId) {
+                        List<String> details = getLabwareProbeDetails(lwProbe);
+                        entry.addDetails(details);
                     }
                 }
                 if (equipment!=null) {

@@ -53,6 +53,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final DnapStudyRepo dnapStudyRepo;
     final SolutionRepo solutionRepo;
     final OmeroProjectRepo omeroProjectRepo;
+    final ProbePanelRepo probePanelRepo;
     final WorkTypeRepo workTypeRepo;
     final WorkRepo workRepo;
     final ReagentPlateRepo reagentPlateRepo;
@@ -84,7 +85,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                DestructionReasonRepo destructionReasonRepo, ProjectRepo projectRepo,
                                ProgramRepo programRepo, CostCodeRepo costCodeRepo, DnapStudyRepo dnapStudyRepo,
                                SolutionRepo solutionRepo, OmeroProjectRepo omeroProjectRepo,
-                               WorkTypeRepo workTypeRepo, WorkRepo workRepo,
+                               ProbePanelRepo probePanelRepo, WorkTypeRepo workTypeRepo, WorkRepo workRepo,
                                ReagentPlateRepo reagentPlateRepo,
                                LabelPrintService labelPrintService, FindService findService,
                                CommentAdminService commentAdminService, EquipmentAdminService equipmentAdminService,
@@ -108,6 +109,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.dnapStudyRepo = dnapStudyRepo;
         this.solutionRepo = solutionRepo;
         this.omeroProjectRepo = omeroProjectRepo;
+        this.probePanelRepo = probePanelRepo;
         this.reagentPlateRepo = reagentPlateRepo;
         this.equipmentAdminService = equipmentAdminService;
         this.releaseDestinationRepo = releaseDestinationRepo;
@@ -236,6 +238,10 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
 
     public DataFetcher<Iterable<SlotRegion>> getSlotRegions() {
         return dfe -> slotRegionService.loadSlotRegions(argOrFalse(dfe, "includeDisabled"));
+    }
+
+    public DataFetcher<Iterable<ProbePanel>> getProbePanels() {
+        return allOrEnabled(probePanelRepo::findAll, probePanelRepo::findAllByEnabled);
     }
 
     public DataFetcher<Iterable<SamplePositionResult>> getSamplePositions() {

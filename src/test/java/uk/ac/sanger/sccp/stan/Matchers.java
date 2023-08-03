@@ -7,9 +7,7 @@ import org.mockito.stubbing.Answer;
 import org.mockito.stubbing.Stubber;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
@@ -96,6 +94,18 @@ public class Matchers {
         assertThat(ex).hasMessage(exceptionMessage);
         //noinspection unchecked
         assertThat((Collection<Object>) ex.getProblems()).containsExactlyInAnyOrder(problems);
+    }
+
+
+    /**
+     * Asserts that an executable throws a validation exception with the given problems.
+     * @param executable the logic to run that should throw the exception
+     * @param problems the expected problems listed in the exception
+     */
+    public static void assertValidationException(final Executable executable, Collection<String> problems) {
+        ValidationException ex = assertThrows(ValidationException.class, executable);
+        //noinspection unchecked
+        assertThat((Collection<Object>) ex.getProblems()).containsExactlyInAnyOrderElementsOf(problems);
     }
 
     public static <T> Answer<T> returnArgument() {

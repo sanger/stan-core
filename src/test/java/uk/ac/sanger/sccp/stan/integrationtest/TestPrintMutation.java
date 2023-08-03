@@ -56,6 +56,7 @@ public class TestPrintMutation {
                 entityCreator.createSample(tissue, 1), entityCreator.createSample(tissue, 2),
                 entityCreator.createSample(tissue, 3), entityCreator.createSample(tissue, 4, rna));
         lw.setCreated(LocalDateTime.of(2021,3,17,15,57));
+        lw.setExternalBarcode("12345");
         Printer printer = entityCreator.createPrinter("stub");
         String mutation = "mutation { printLabware(barcodes: [\"STAN-SLIDE\"], printer: \"stub\") }";
         assertThat(tester.<Map<?,?>>post(mutation)).isEqualTo(Map.of("data", Map.of("printLabware", "OK")));
@@ -64,7 +65,7 @@ public class TestPrintMutation {
         String replicate = tissue.getReplicate();
         verify(mockPrintClient).print("stub", new LabelPrintRequest(
                 lw.getLabwareType().getLabelType(),
-                List.of(new LabwareLabelData(lw.getBarcode(), tissue.getMedium().getName(), "2021-03-17",
+                List.of(new LabwareLabelData(lw.getBarcode(), lw.getExternalBarcode(), tissue.getMedium().getName(), "2021-03-17",
                         List.of(
                                 new LabwareLabelData.LabelContent(donorName, tissueDesc, replicate, 1),
                                 new LabwareLabelData.LabelContent(donorName, tissueDesc, replicate, 2),

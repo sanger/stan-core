@@ -1,0 +1,5 @@
+mutation {
+    addProbePanel(name: "PROBENAME") {
+        name
+    }
+}

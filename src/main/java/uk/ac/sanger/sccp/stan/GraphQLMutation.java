@@ -27,7 +27,7 @@ import uk.ac.sanger.sccp.stan.service.operation.InPlaceOpService;
 import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmOperationService;
 import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmSectionService;
 import uk.ac.sanger.sccp.stan.service.operation.plan.PlanService;
-import uk.ac.sanger.sccp.stan.service.register.*;
+import uk.ac.sanger.sccp.stan.service.register.IRegisterService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.stan.service.work.WorkTypeService;
 
@@ -46,8 +46,8 @@ public class GraphQLMutation extends BaseGraphQLResource {
     Logger log = LoggerFactory.getLogger(GraphQLMutation.class);
     final LDAPService ldapService;
     final SessionConfig sessionConfig;
-    final RegisterService registerService;
-    final SectionRegisterService sectionRegisterService;
+    final IRegisterService<RegisterRequest> registerService;
+    final IRegisterService<SectionRegisterRequest> sectionRegisterService;
     final PlanService planService;
     final LabelPrintService labelPrintService;
     final ConfirmOperationService confirmOperationService;
@@ -72,6 +72,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final SolutionAdminService solutionAdminService;
     final OmeroProjectAdminService omeroProjectAdminService;
     final SlotRegionAdminService slotRegionAdminService;
+    final ProbePanelService probePanelService;
     final WorkTypeService workTypeService;
     final WorkService workService;
     final StainService stainService;
@@ -85,7 +86,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final ComplexStainService complexStainService;
     final AliquotService aliquotService;
     final ReagentTransferService reagentTransferService;
-    final OriginalSampleRegisterService originalSampleRegisterService;
+    final IRegisterService<OriginalSampleRegisterRequest> originalSampleRegisterService;
     final BlockProcessingService blockProcessingService;
     final PotProcessingService potProcessingService;
     final InPlaceOpCommentService inPlaceOpCommentService;
@@ -93,13 +94,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final SolutionTransferService solutionTransferService;
     final FFPEProcessingService ffpeProcessingService;
     final OpWithSlotCommentsService opWithSlotCommentsService;
+    final ProbeService probeService;
     final UserAdminService userAdminService;
 
     @Autowired
     public GraphQLMutation(ObjectMapper objectMapper, AuthenticationComponent authComp,
                            LDAPService ldapService, SessionConfig sessionConfig,
-                           RegisterService registerService, SectionRegisterService sectionRegisterService, PlanService planService,
-                           LabelPrintService labelPrintService,
+                           IRegisterService<RegisterRequest> registerService,
+                           IRegisterService<SectionRegisterRequest> sectionRegisterService,
+                           PlanService planService, LabelPrintService labelPrintService,
                            ConfirmOperationService confirmOperationService,
                            UserRepo userRepo, ConfirmSectionService confirmSectionService, ReleaseService releaseService, ExtractService extractService,
                            DestructionService destructionService, SlotCopyService slotCopyService, InPlaceOpService inPlaceOpService,
@@ -110,17 +113,18 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            ProjectService projectService, ProgramService programService, CostCodeService costCodeService,
                            DnapStudyService dnapStudyService, FixativeService fixativeService,
                            SolutionAdminService solutionAdminService, OmeroProjectAdminService omeroProjectAdminService,
-                           SlotRegionAdminService slotRegionAdminService, WorkTypeService workTypeService, WorkService workService, StainService stainService,
+                           SlotRegionAdminService slotRegionAdminService, ProbePanelService probePanelService, WorkTypeService workTypeService, WorkService workService, StainService stainService,
                            UnreleaseService unreleaseService, ResultService resultService, ExtractResultService extractResultService,
                            PermService permService, RNAAnalysisService rnaAnalysisService,
                            VisiumAnalysisService visiumAnalysisService, OpWithSlotMeasurementsService opWithSlotMeasurementsService,
                            ComplexStainService complexStainService, AliquotService aliquotService,
-                           ReagentTransferService reagentTransferService, OriginalSampleRegisterService originalSampleRegisterService,
+                           ReagentTransferService reagentTransferService,
+                           IRegisterService<OriginalSampleRegisterRequest> originalSampleRegisterService,
                            BlockProcessingService blockProcessingService, PotProcessingService potProcessingService,
                            InPlaceOpCommentService inPlaceOpCommentService,
                            SampleProcessingService sampleProcessingService, SolutionTransferService solutionTransferService,
                            FFPEProcessingService ffpeProcessingService, OpWithSlotCommentsService opWithSlotCommentsService,
-                           UserAdminService userAdminService) {
+                           ProbeService probeService, UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
@@ -150,6 +154,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.solutionAdminService = solutionAdminService;
         this.omeroProjectAdminService = omeroProjectAdminService;
         this.slotRegionAdminService = slotRegionAdminService;
+        this.probePanelService = probePanelService;
         this.workTypeService = workTypeService;
         this.workService = workService;
         this.stainService = stainService;
@@ -171,6 +176,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.solutionTransferService = solutionTransferService;
         this.ffpeProcessingService = ffpeProcessingService;
         this.opWithSlotCommentsService = opWithSlotCommentsService;
+        this.probeService = probeService;
         this.userAdminService = userAdminService;
     }
 
@@ -231,7 +237,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
             User user = checkUser(dfe, User.Role.normal);
             RegisterRequest request = arg(dfe, "request", RegisterRequest.class);
             logRequest("Register", user, request);
-            return registerService.register(request, user);
+            return registerService.register(user, request);
         };
     }
 
@@ -475,6 +481,14 @@ public class GraphQLMutation extends BaseGraphQLResource {
 
     public DataFetcher<SlotRegion> setSlotRegionEnabled() {
         return adminSetEnabled(slotRegionAdminService::setEnabled, "SetSlotRegionEnabled", "name");
+    }
+
+    public DataFetcher<ProbePanel> addProbePanel() {
+        return adminAdd(probePanelService::addNew, "AddProbePanel", "name");
+    }
+
+    public DataFetcher<ProbePanel> setProbePanelEnabled() {
+        return adminSetEnabled(probePanelService::setEnabled, "SetProbePanelEnabled", "name");
     }
 
     public DataFetcher<WorkType> addWorkType() {
@@ -767,6 +781,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             OpWithSlotCommentsRequest request = arg(dfe, "request", OpWithSlotCommentsRequest.class);
             logRequest("Perform op with slot comments", user, request);
             return opWithSlotCommentsService.perform(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> recordProbeOperation() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            ProbeOperationRequest request = arg(dfe, "request", ProbeOperationRequest.class);
+            logRequest("Record probe operation", user, request);
+            return probeService.recordProbeOperation(user, request);
         };
     }
 

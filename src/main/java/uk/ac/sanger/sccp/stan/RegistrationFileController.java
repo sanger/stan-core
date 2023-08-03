@@ -16,11 +16,12 @@ import uk.ac.sanger.sccp.stan.model.Labware;
 import uk.ac.sanger.sccp.stan.model.User;
 import uk.ac.sanger.sccp.stan.request.register.RegisterResult;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
-import uk.ac.sanger.sccp.stan.service.register.FileSectionRegisterService;
+import uk.ac.sanger.sccp.stan.service.register.FileRegisterService;
 
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiFunction;
 
 import static java.util.stream.Collectors.toList;
 
@@ -32,29 +33,40 @@ import static java.util.stream.Collectors.toList;
 public class RegistrationFileController {
     private final Logger log = LoggerFactory.getLogger(RegistrationFileController.class);
 
-    private final FileSectionRegisterService fileSectionRegisterService;
+    private final FileRegisterService fileRegisterService;
     private final AuthenticationComponent authComp;
 
     @Autowired
     public RegistrationFileController(AuthenticationComponent authComp,
-                                      FileSectionRegisterService fileSectionRegisterService) {
+                                      FileRegisterService fileRegisterService) {
         this.authComp = authComp;
-        this.fileSectionRegisterService = fileSectionRegisterService;
+        this.fileRegisterService = fileRegisterService;
     }
 
     @PostMapping(value = "/register/section", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> receiveFile(@RequestParam("file") MultipartFile file) throws URISyntaxException {
+    public ResponseEntity<?> receiveSectionFile(@RequestParam("file") MultipartFile file) throws URISyntaxException {
+        return receiveFile("section", file, fileRegisterService::registerSections);
+    }
+
+    @PostMapping(value = "/register/block", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> receiveBlockFile(@RequestParam("file") MultipartFile file) throws URISyntaxException {
+        return receiveFile("block", file, fileRegisterService::registerBlocks);
+    }
+
+    public ResponseEntity<?> receiveFile(String desc, MultipartFile file,
+                                         BiFunction<User, MultipartFile, RegisterResult> serviceFunction)
+            throws URISyntaxException {
         User user = checkUserForUpload();
         RegisterResult result;
         try {
-            result = fileSectionRegisterService.register(user, file);
+            result = serviceFunction.apply(user, file);
         } catch (ValidationException e) {
-            log.error("File section registration failed.", e);
+            log.error("File "+desc+" registration failed.", e);
             List<String> problems = e.getProblems().stream().map(Object::toString).collect(toList());
             Map<String, List<String>> output = Map.of("problems", problems);
             return ResponseEntity.badRequest().body(output);
         }
-        log.info("{} file registration: {}", user.getUsername(), result);
+        log.info("{} {} file registration: {}", user.getUsername(), desc, result);
         List<String> barcodes = result.getLabware().stream().map(Labware::getBarcode).collect(toList());
         Map<String, List<String>> output = Map.of("barcodes", barcodes);
         return ResponseEntity.ok().body(output);

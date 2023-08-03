@@ -37,8 +37,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.EntityFactory.objToCollection;
-import static uk.ac.sanger.sccp.utils.BasicUtils.coalesce;
-import static uk.ac.sanger.sccp.utils.BasicUtils.simpleEntry;
+import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 /**
  * Tests {@link SectionRegisterValidation}
@@ -60,6 +59,7 @@ public class TestSectionRegisterValidation {
     @Mock private Validator<String> mockExternalNameValidation;
     @Mock private Validator<String> mockReplicateValidator;
     @Mock private Validator<String> mockVisiumLpBarcodeValidation;
+    @Mock private Validator<String> mockXeniumBarcodeValidator;
     @Mock private SlotRegionService mockSlotRegionService;
     @Mock private WorkService mockWorkService;
     
@@ -100,7 +100,7 @@ public class TestSectionRegisterValidation {
                 mockHmdmcRepo, mockTissueTypeRepo, mockFixativeRepo, mockMediumRepo, mockTissueRepo, mockBioStateRepo,
                 mockSlotRegionService, mockWorkService,
                 mockExternalBarcodeValidation, mockDonorNameValidation, mockExternalNameValidation,
-                mockReplicateValidator, mockVisiumLpBarcodeValidation));
+                mockReplicateValidator, mockVisiumLpBarcodeValidation, mockXeniumBarcodeValidator));
     }
 
     private void mockValidator(Validator<String> validator) {
@@ -113,6 +113,8 @@ public class TestSectionRegisterValidation {
             desc = "Bad external name: ";
         } else if (validator==mockVisiumLpBarcodeValidation) {
             desc = "Bad visium barcode: ";
+        } else if (validator==mockXeniumBarcodeValidator) {
+            desc = "Bad xenium barcode: ";
         } else if (validator==mockReplicateValidator) {
             desc = "Bad replicate: ";
         } else {
@@ -152,7 +154,7 @@ public class TestSectionRegisterValidation {
         }
         doReturn(donors).when(validation).validateDonors();
         doReturn(lwTypes).when(validation).validateLabwareTypes();
-        doNothing().when(validation).validateBarcodes();
+        doNothing().when(validation).validateBarcodes(lwTypes);
         doReturn(tissues).when(validation).validateTissues(any());
         doReturn(samples).when(validation).validateSamples(any());
         doReturn(regions).when(validation).validateRegions();
@@ -380,58 +382,74 @@ public class TestSectionRegisterValidation {
                         lt1, lts)
         );
     }
-
     @ParameterizedTest
     @MethodSource("validateBarcodesArgs")
-    public void testValidateBarcodes(Object barcodesObj, String labwareType, Object expectedProblemsObj, Object existingExternalBarcodesObj,
-                                     Object existingLabwareBarcodes) {
-        Collection<String> barcodes = objToCollection(barcodesObj);
-        Collection<String> expectedProblems = objToCollection(expectedProblemsObj);
-        SectionRegisterRequest request = new SectionRegisterRequest(barcodes.stream()
-                .map(bc -> new SectionRegisterLabware(bc, labwareType, null))
+    public void testValidateBarcodes(List<String> xbs, List<String> pbs, String ltName, List<String> expectedProblems,
+                                      UCMap<LabwareType> lwTypes) {
+        SectionRegisterRequest request = new SectionRegisterRequest(xbs.stream()
+                .map(bc -> new SectionRegisterLabware(bc, ltName, null))
                 .collect(toList()), "SGP1");
-
-        if (existingExternalBarcodesObj!=null) {
-            Collection<String> xbcs = objToCollection(existingExternalBarcodesObj);
-            for (String xbc : xbcs) {
-                when(mockLwRepo.existsByExternalBarcode(xbc)).thenReturn(true);
-            }
-        }
-        if (existingLabwareBarcodes!=null) {
-            Collection<String> bcs = objToCollection(existingLabwareBarcodes);
-            for (String bc : bcs) {
-                when(mockLwRepo.existsByBarcode(bc)).thenReturn(true);
+        if (pbs!=null) {
+            var reqIter = request.getLabware().iterator();
+            for (String pb : pbs) {
+                reqIter.next().setPreBarcode(pb);
             }
         }
         mockValidator(mockExternalBarcodeValidation);
         mockValidator(mockVisiumLpBarcodeValidation);
+        mockValidator(mockXeniumBarcodeValidator);
 
         SectionRegisterValidation validation = makeValidation(request);
-        validation.validateBarcodes();
-        assertThat(validation.getProblems()).containsExactlyInAnyOrderElementsOf(expectedProblems);
+        validation.validateBarcodes(lwTypes);
+        assertThat(validation.getProblems()).containsExactlyInAnyOrderElementsOf(nullToEmpty(expectedProblems));
     }
 
     static Stream<Arguments> validateBarcodesArgs() {
-        return Stream.of(
-                Arguments.of("Alpha", "lt", null, null, null),
-                Arguments.of(Collections.singletonList(null), "lt", "Missing external barcode.", null, null),
-                Arguments.of(List.of("", "X123"), "lt", "Missing external barcode.", null, null),
-                Arguments.of(List.of("X11", "!ABC"), "lt", "Bad external barcode: !ABC", null, null),
-                Arguments.of(List.of("X11", "!ABC"), "Visium LP", "Bad visium barcode: !ABC", null, null),
-                Arguments.of(List.of("Alpha", "Beta", "ALPHA", "BETA", "Gamma"), "lt", "Repeated barcodes: [ALPHA, BETA]", null, null),
-                Arguments.of(List.of("X11", "X12", "X13"), "lt", "External barcodes already used: [X11, X12]",
-                        List.of("X11", "X12"), null),
-                Arguments.of(List.of("X11", "X12", "X13"), "lt", "Labware barcodes already used: [X12, X13]",
-                        null, List.of("X12", "X13")),
-                Arguments.of(List.of("stan-ABC", "STO-123"), "lt", "Invalid external barcode prefix: [stan-ABC, STO-123]",
-                        null, null),
-                Arguments.of(List.of("", "!ABC", "Alpha", "ALPHA", "X11", "Y11", "STO-123"), "lt",
-                        List.of("Missing external barcode.", "Bad external barcode: !ABC",
-                                "Repeated barcode: [ALPHA]", "External barcode already used: [X11]",
-                                "Labware barcode already used: [Y11]",
-                                "Invalid external barcode prefix: [STO-123]"),
-                        "X11", "Y11")
-        );
+        LabwareType normalLt = new LabwareType(1, "lt", 1, 1, null, false);
+        LabwareType visiumLt = new LabwareType(2, "Visium LP", 1, 1, null, true);
+        LabwareType xeniumLt = new LabwareType(3, "Xenium", 1, 1, null, true);
+        UCMap<LabwareType> lwTypes = UCMap.from(LabwareType::getName, normalLt, visiumLt, xeniumLt);
+        return Arrays.stream(new Object[][] {
+                {List.of("Alpha","Beta"), null, "lt"},
+                {List.of("Gamma"), List.of("Delta"), "Visium LP"},
+                {List.of("Delta"), List.of("Epsilon"), "Xenium"},
+                {List.of("!Bad"), null, "lt", List.of("Bad external barcode: !Bad")},
+                {List.of(""), null, "lt",List.of("Missing external barcode.")},
+                {List.of("Alpha"), List.of("Beta"), "lt", List.of("Prebarcode not expected for labware type lt.")},
+                {List.of("!Alpha"), null, "Visium LP", List.of("Bad visium barcode: !Alpha")},
+                {List.of("Alpha"), List.of("!Beta"), "Visium LP", List.of("Bad visium barcode: !Beta")},
+                {List.of("Alpha"), List.of("!Beta"), "Xenium", List.of("Bad xenium barcode: !Beta")},
+                {List.of("Alpha", "Beta", "ALPHA"), null, "lt", List.of("Repeated barcode: [ALPHA]")},
+                {List.of("Alpha", "Beta", "Gamma", "Delta", "Epsilon"), List.of("Alpha", "Alaska", "", "Beta", "ALASKA"), "xenium",
+                        List.of("Repeated barcodes: [Beta, ALASKA]")},
+        }).map(arr -> {
+            Object[] arr2 = Arrays.copyOf(arr, 5);
+            arr2[4] = lwTypes;
+            return Arguments.of(arr2);
+        });
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "MYBC,,",
+            "mybc,seen,Repeated barcode{s}",
+            "stan-abc,,Invalid external barcode prefix",
+            "sto-abc,,Invalid external barcode prefix",
+            "mybc,existsExternal,External barcode{s} already used",
+            "mybc,exists,Labware barcode{s} already used",
+    })
+    public void testFindBarcodeProblem(String barcode, String mode, String expectedProblem) {
+        Set<String> seen = new HashSet<>(1);
+        if (mode!=null) {
+            String upper = barcode.toUpperCase();
+            switch (mode) {
+                case "seen": seen.add(upper); break;
+                case "existsExternal": when(mockLwRepo.existsByExternalBarcode(upper)).thenReturn(true); break;
+                case "exists": when(mockLwRepo.existsByBarcode(upper)).thenReturn(true); break;
+            }
+        }
+        SectionRegisterValidation validation = makeValidation(null);
+        assertEquals(expectedProblem, validation.findBarcodeProblem(barcode, seen));
     }
 
     @ParameterizedTest

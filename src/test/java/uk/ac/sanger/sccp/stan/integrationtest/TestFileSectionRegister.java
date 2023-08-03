@@ -11,9 +11,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
-import uk.ac.sanger.sccp.stan.EntityCreator;
-import uk.ac.sanger.sccp.stan.GraphQLTester;
-import uk.ac.sanger.sccp.stan.RegistrationFileController;
+import uk.ac.sanger.sccp.stan.*;
 import uk.ac.sanger.sccp.stan.model.User;
 
 import javax.transaction.Transactional;
@@ -57,7 +55,7 @@ public class TestFileSectionRegister {
     public void testNoRows() throws Exception {
         User user = creator.createUser("user1");
         tester.setUser(user);
-        var response = upload("testdata/section_reg_empty.xlsx");
+        var response = upload("testdata/reg_empty.xlsx");
         var map = objectMapper.readValue(response.getContentAsString(), Map.class);
         //noinspection unchecked
         List<String> problems = (List<String>) map.get("problems");

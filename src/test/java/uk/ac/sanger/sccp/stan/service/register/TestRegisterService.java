@@ -85,7 +85,7 @@ public class TestRegisterService {
 
     @Test
     public void testRegisterNoBlocks() {
-        RegisterResult result = registerService.register(new RegisterRequest(List.of()), user);
+        RegisterResult result = registerService.register(user, new RegisterRequest(List.of()));
         assertThat(result.getLabware()).isEmpty();
         verifyNoInteractions(mockValidationFactory);
         verify(registerService, never()).updateExistingTissues(any(), any());
@@ -101,7 +101,7 @@ public class TestRegisterService {
         doReturn(result).when(registerService).create(any(), any(), any());
         when(mockClashChecker.findClashes(any())).thenReturn(List.of());
 
-        assertSame(result, registerService.register(request, user));
+        assertSame(result, registerService.register(user, request));
 
         verify(mockClashChecker).findClashes(request);
         verify(mockValidationFactory).createRegisterValidation(request);
@@ -115,7 +115,7 @@ public class TestRegisterService {
         RegisterRequest request = new RegisterRequest(List.of(new BlockRegisterRequest()));
         List<RegisterClash> clashes = List.of(new RegisterClash(EntityFactory.getTissue(), List.of()));
         when(mockClashChecker.findClashes(any())).thenReturn(clashes);
-        assertEquals(RegisterResult.clashes(clashes), registerService.register(request, user));
+        assertEquals(RegisterResult.clashes(clashes), registerService.register(user, request));
         verifyNoInteractions(mockValidationFactory);
         verifyNoInteractions(mockValidation);
         verify(registerService, never()).updateExistingTissues(any(), any());
@@ -129,7 +129,7 @@ public class TestRegisterService {
         when(mockValidation.validate()).thenReturn(problems);
 
         try {
-            registerService.register(request, user);
+            registerService.register(user, request);
             fail("Expected validation exception.");
         } catch (ValidationException ex) {
             assertEquals(ex.getProblems(), problems);

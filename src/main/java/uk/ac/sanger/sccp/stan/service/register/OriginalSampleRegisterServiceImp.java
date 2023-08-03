@@ -21,7 +21,7 @@ import static java.util.stream.Collectors.toSet;
 import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 @Service
-public class OriginalSampleRegisterServiceImp implements OriginalSampleRegisterService {
+public class OriginalSampleRegisterServiceImp implements IRegisterService<OriginalSampleRegisterRequest> {
     private final DonorRepo donorRepo;
     private final TissueRepo tissueRepo;
     private final TissueTypeRepo tissueTypeRepo;

@@ -3,19 +3,16 @@ package uk.ac.sanger.sccp.stan.service.register;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.register.RegisterResult;
-import uk.ac.sanger.sccp.stan.request.register.SectionRegisterLabware;
-import uk.ac.sanger.sccp.stan.request.register.SectionRegisterRequest;
+import uk.ac.sanger.sccp.stan.request.register.*;
 import uk.ac.sanger.sccp.stan.service.LabwareService;
 import uk.ac.sanger.sccp.stan.service.OperationService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 
 import static java.util.stream.Collectors.toList;
+import static uk.ac.sanger.sccp.utils.BasicUtils.emptyToNull;
 import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 import static uk.ac.sanger.sccp.utils.UCMap.toUCMap;
 
@@ -24,7 +21,7 @@ import static uk.ac.sanger.sccp.utils.UCMap.toUCMap;
  * @author dr6
  */
 @Service
-public class SectionRegisterServiceImp implements SectionRegisterService {
+public class SectionRegisterServiceImp implements IRegisterService<SectionRegisterRequest> {
     private final RegisterValidationFactory validationFactory;
     private final DonorRepo donorRepo;
     private final TissueRepo tissueRepo;
@@ -185,7 +182,11 @@ public class SectionRegisterServiceImp implements SectionRegisterService {
                                  UCMap<Sample> sampleMap) {
         LabwareType lt = labwareTypes.get(srl.getLabwareType());
         String externalBarcode = srl.getExternalBarcode();
-        Labware lw = lwService.create(lt, lt.isPrebarcoded() ? externalBarcode : null, externalBarcode);
+        String prebarcode = emptyToNull(srl.getPreBarcode());
+        if (lt.isPrebarcoded() && prebarcode==null) {
+            prebarcode = externalBarcode;
+        }
+        Labware lw = lwService.create(lt, prebarcode, externalBarcode);
         for (var content : srl.getContents()) {
             Slot slot = lw.getSlot(content.getAddress());
             Sample sample = sampleMap.get(content.getExternalIdentifier());

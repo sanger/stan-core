@@ -105,6 +105,10 @@ public class HistoryEntry {
         this.details.add(detail);
     }
 
+    public void addDetails(Collection<String> details) {
+        this.details.addAll(details);
+    }
+
     public String getUsername() {
         return this.username;
     }

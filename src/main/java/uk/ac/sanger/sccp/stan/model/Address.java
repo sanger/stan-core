@@ -18,7 +18,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 @SuppressWarnings("JpaDataSourceORMInspection")
 @Embeddable
 public class Address implements Comparable<Address> {
-    public static Comparator<Address> COLUMN_MAJOR = Comparator.comparing(Address::getColumn).thenComparing(Address::getRow);
+    public static final Comparator<Address> COLUMN_MAJOR = Comparator.comparing(Address::getColumn).thenComparing(Address::getRow);
 
     @Column(name="row_index")
     private int row;
@@ -84,6 +84,7 @@ public class Address implements Comparable<Address> {
      * @exception NullPointerException if the string is null
      * @exception IllegalArgumentException if the string is not parsable as an address
      */
+    @SuppressWarnings("DataFlowIssue")
     public static Address valueOf(String string) {
         // Adapted from CGAP LIMS
         Objects.requireNonNull(string, "Cannot convert null to an address.");
