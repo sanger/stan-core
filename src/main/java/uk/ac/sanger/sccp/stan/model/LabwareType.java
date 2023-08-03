@@ -10,7 +10,8 @@ import java.util.Objects;
 public class LabwareType implements HasIntId, HasName {
     public static final String FETAL_WASTE_NAME = "Fetal waste container",
             PROVIASETTE_NAME = "Proviasette",
-            CASSETTE_NAME = "Cassette";
+            CASSETTE_NAME = "Cassette",
+            XENIUM_NAME = "Xenium";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -94,6 +95,17 @@ public class LabwareType implements HasIntId, HasName {
      */
     public boolean showMediumAsStateOnLabel() {
         return (name!=null && (name.equalsIgnoreCase(PROVIASETTE_NAME) || name.equalsIgnoreCase(CASSETTE_NAME)));
+    }
+
+    public boolean isXenium() {
+        return (name!=null && name.equalsIgnoreCase(XENIUM_NAME));
+    }
+
+    /**
+     * Should samples be listed in column-major order on the label?
+     */
+    public boolean columnMajorOrderOnLabel() {
+        return isXenium();
     }
 
     /**

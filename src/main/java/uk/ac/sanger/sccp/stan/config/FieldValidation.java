@@ -38,6 +38,12 @@ public class FieldValidation {
     }
 
     @Bean
+    public Validator<String> xeniumBarcodeValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(CharacterType.DIGIT);
+        return new StringValidator("Xenium barcode", 7, 7, charTypes);
+    }
+
+    @Bean
     public Validator<String> tubePrebarcodeValidator() {
         Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA, CharacterType.DIGIT);
         Pattern pattern = Pattern.compile("[A-Z]{2}[0-9]{8}", Pattern.CASE_INSENSITIVE);

@@ -33,7 +33,9 @@ public class LabwareLabelDataService {
     }
 
     public LabwareLabelData getLabelData(Labware labware) {
+        var slotOrder = slotOrderForLabwareType(labware.getLabwareType());
         List<LabelContent> content = labware.getSlots().stream()
+                .sorted(slotOrder)
                 .flatMap(slot -> slot.getSamples().stream())
                 .map(this::getContent)
                 .collect(toList());
@@ -47,7 +49,7 @@ public class LabwareLabelDataService {
                 mediums = planActions.stream()
                         .map(pa -> pa.getSample().getTissue().getMedium().getName())
                         .collect(toSet());
-                content = getPlannedContent(planActions);
+                content = getPlannedContent(planActions, slotOrder);
             }
         }
         if (labware.getLabwareType().showMediumAsStateOnLabel() && content.size()==1 && mediums.size()==1) {
@@ -59,6 +61,18 @@ public class LabwareLabelDataService {
         return toLabelData(labware, content, mediums);
     }
 
+    /**
+     * What order should contents of slots be in?
+     * @param lt the labware type
+     * @return a comparator to sort the slots
+     */
+    public Comparator<Slot> slotOrderForLabwareType(LabwareType lt) {
+        if (lt.columnMajorOrderOnLabel()) {
+            return Comparator.comparing(Slot::getAddress, Address.COLUMN_MAJOR);
+        }
+        return Comparator.comparing(Slot::getAddress);
+    }
+
     public LabwareLabelData toLabelData(Labware labware, List<LabelContent> content, Set<String> mediums) {
         String medium = (mediums.size()==1 ? mediums.iterator().next() : null);
         LocalDateTime created = labware.getCreated();
@@ -66,7 +80,7 @@ public class LabwareLabelDataService {
             created = LocalDateTime.now();
         }
         String dateString = created.format(DateTimeFormatter.ISO_LOCAL_DATE);
-        return new LabwareLabelData(labware.getBarcode(), medium, dateString, content);
+        return new LabwareLabelData(labware.getBarcode(), labware.getExternalBarcode(), medium, dateString, content);
     }
 
     /**
@@ -334,9 +348,9 @@ public class LabwareLabelDataService {
         }
     }
 
-    public List<LabelContent> getPlannedContent(List<PlanAction> planActions) {
+    public List<LabelContent> getPlannedContent(List<PlanAction> planActions, Comparator<Slot> slotOrder) {
         return planActions.stream()
-                .sorted(Comparator.comparing((PlanAction ac) -> ac.getDestination().getAddress())
+                .sorted(Comparator.comparing(PlanAction::getDestination, slotOrder)
                         .thenComparing(PlanAction::getId))
                 .map(this::getContent)
                 .collect(toList());

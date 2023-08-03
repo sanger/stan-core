@@ -1,22 +1,21 @@
-package uk.ac.sanger.sccp.stan.service.register;
+package uk.ac.sanger.sccp.stan.service.register.filereader;
 
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.apache.poi.ss.usermodel.*;
 import org.springframework.web.multipart.MultipartFile;
 import uk.ac.sanger.sccp.stan.request.register.SectionRegisterRequest;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.regex.Pattern;
 
 /**
  * Reads a section registration request from an Excel file.
  */
-public interface SectionRegisterFileReader {
+public interface SectionRegisterFileReader extends MultipartFileReader<SectionRegisterRequest> {
+    /** The relevant sheet in the excel file to read. */
+    int SHEET_INDEX = 3;
     /** Column headings expected in the Excel file. */
-    enum Column {
+    enum Column implements IColumn {
         Work_number(Pattern.compile("(work|sgp)\\s*number", Pattern.CASE_INSENSITIVE)),
         Slide_type,
         External_slide_ID,
@@ -61,22 +60,15 @@ public interface SectionRegisterFileReader {
             return this.name().replace('_',' ');
         }
 
-        /** Gets the column matching the given heading, if any. */
-        public static Column forHeading(String heading) {
-            int n = heading.indexOf('(');
-            if (n >= 0) {
-                heading = heading.substring(0, n);
-            }
-            final String final_heading = heading.trim();
-            return Arrays.stream(values())
-                    .filter(col -> col.pattern.matcher(final_heading).matches())
-                    .findAny()
-                    .orElse(null);
-        }
-
         /** The data type (String or Integer) expected in the column. */
+        @Override
         public Class<?> getDataType() {
             return this.dataType;
+        }
+
+        @Override
+        public Pattern getPattern() {
+            return this.pattern;
         }
     }
 
@@ -87,9 +79,10 @@ public interface SectionRegisterFileReader {
      * @exception IOException the file cannot be read
      * @exception ValidationException the request is invalid
      * */
+    @Override
     default SectionRegisterRequest read(MultipartFile multipartFile) throws IOException, ValidationException {
         try (Workbook wb = WorkbookFactory.create(multipartFile.getInputStream())) {
-            return read(wb.getSheetAt(3));
+            return read(wb.getSheetAt(SHEET_INDEX));
         }
     }
 

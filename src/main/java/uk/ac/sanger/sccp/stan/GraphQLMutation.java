@@ -27,7 +27,7 @@ import uk.ac.sanger.sccp.stan.service.operation.InPlaceOpService;
 import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmOperationService;
 import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmSectionService;
 import uk.ac.sanger.sccp.stan.service.operation.plan.PlanService;
-import uk.ac.sanger.sccp.stan.service.register.*;
+import uk.ac.sanger.sccp.stan.service.register.IRegisterService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.stan.service.work.WorkTypeService;
 
@@ -46,8 +46,8 @@ public class GraphQLMutation extends BaseGraphQLResource {
     Logger log = LoggerFactory.getLogger(GraphQLMutation.class);
     final LDAPService ldapService;
     final SessionConfig sessionConfig;
-    final RegisterService registerService;
-    final SectionRegisterService sectionRegisterService;
+    final IRegisterService<RegisterRequest> registerService;
+    final IRegisterService<SectionRegisterRequest> sectionRegisterService;
     final PlanService planService;
     final LabelPrintService labelPrintService;
     final ConfirmOperationService confirmOperationService;
@@ -86,7 +86,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final ComplexStainService complexStainService;
     final AliquotService aliquotService;
     final ReagentTransferService reagentTransferService;
-    final OriginalSampleRegisterService originalSampleRegisterService;
+    final IRegisterService<OriginalSampleRegisterRequest> originalSampleRegisterService;
     final BlockProcessingService blockProcessingService;
     final PotProcessingService potProcessingService;
     final InPlaceOpCommentService inPlaceOpCommentService;
@@ -100,8 +100,9 @@ public class GraphQLMutation extends BaseGraphQLResource {
     @Autowired
     public GraphQLMutation(ObjectMapper objectMapper, AuthenticationComponent authComp,
                            LDAPService ldapService, SessionConfig sessionConfig,
-                           RegisterService registerService, SectionRegisterService sectionRegisterService, PlanService planService,
-                           LabelPrintService labelPrintService,
+                           IRegisterService<RegisterRequest> registerService,
+                           IRegisterService<SectionRegisterRequest> sectionRegisterService,
+                           PlanService planService, LabelPrintService labelPrintService,
                            ConfirmOperationService confirmOperationService,
                            UserRepo userRepo, ConfirmSectionService confirmSectionService, ReleaseService releaseService, ExtractService extractService,
                            DestructionService destructionService, SlotCopyService slotCopyService, InPlaceOpService inPlaceOpService,
@@ -117,7 +118,8 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            PermService permService, RNAAnalysisService rnaAnalysisService,
                            VisiumAnalysisService visiumAnalysisService, OpWithSlotMeasurementsService opWithSlotMeasurementsService,
                            ComplexStainService complexStainService, AliquotService aliquotService,
-                           ReagentTransferService reagentTransferService, OriginalSampleRegisterService originalSampleRegisterService,
+                           ReagentTransferService reagentTransferService,
+                           IRegisterService<OriginalSampleRegisterRequest> originalSampleRegisterService,
                            BlockProcessingService blockProcessingService, PotProcessingService potProcessingService,
                            InPlaceOpCommentService inPlaceOpCommentService,
                            SampleProcessingService sampleProcessingService, SolutionTransferService solutionTransferService,
@@ -235,7 +237,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
             User user = checkUser(dfe, User.Role.normal);
             RegisterRequest request = arg(dfe, "request", RegisterRequest.class);
             logRequest("Register", user, request);
-            return registerService.register(request, user);
+            return registerService.register(user, request);
         };
     }
 
