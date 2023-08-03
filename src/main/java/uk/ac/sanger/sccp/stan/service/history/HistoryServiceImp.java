@@ -6,6 +6,8 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.History;
 import uk.ac.sanger.sccp.stan.request.HistoryEntry;
+import uk.ac.sanger.sccp.stan.request.SamplePositionResult;
+import uk.ac.sanger.sccp.stan.service.SlotRegionService;
 import uk.ac.sanger.sccp.stan.service.history.ReagentActionDetailService.ReagentActionDetail;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
@@ -38,6 +40,7 @@ public class HistoryServiceImp implements HistoryService {
     private final StainTypeRepo stainTypeRepo;
     private final LabwareProbeRepo lwProbeRepo;
     private final ReagentActionDetailService reagentActionDetailService;
+    private final SlotRegionService slotRegionService;
 
     @Autowired
     public HistoryServiceImp(OperationRepo opRepo, LabwareRepo lwRepo, SampleRepo sampleRepo, TissueRepo tissueRepo,
@@ -46,7 +49,8 @@ public class HistoryServiceImp implements HistoryService {
                              SnapshotRepo snapshotRepo, WorkRepo workRepo, MeasurementRepo measurementRepo,
                              LabwareNoteRepo labwareNoteRepo, ResultOpRepo resultOpRepo,
                              StainTypeRepo stainTypeRepo, LabwareProbeRepo lwProbeRepo,
-                             ReagentActionDetailService reagentActionDetailService) {
+                             ReagentActionDetailService reagentActionDetailService,
+                             SlotRegionService slotRegionService) {
         this.opRepo = opRepo;
         this.lwRepo = lwRepo;
         this.sampleRepo = sampleRepo;
@@ -63,6 +67,7 @@ public class HistoryServiceImp implements HistoryService {
         this.stainTypeRepo = stainTypeRepo;
         this.lwProbeRepo = lwProbeRepo;
         this.reagentActionDetailService = reagentActionDetailService;
+        this.slotRegionService = slotRegionService;
     }
 
     @Override
@@ -111,7 +116,7 @@ public class HistoryServiceImp implements HistoryService {
         List<Integer> opIds = work.getOperationIds();
         List<Integer> releaseIds = work.getReleaseIds();
         if (opIds.isEmpty() && releaseIds.isEmpty()) {
-            return new History(List.of(), List.of(), List.of());
+            return new History(List.of(), List.of(), List.of(), List.of());
         }
         Collection<Operation> ops = opIds.isEmpty() ? List.of() : BasicUtils.asCollection(opRepo.findAllById(opIds));
         List<Release> releases = releaseIds.isEmpty() ? List.of() : releaseRepo.findAllByIdIn(releaseIds);
@@ -132,7 +137,8 @@ public class HistoryServiceImp implements HistoryService {
         }
         List<Sample> samples = referencedSamples(entries, allLabware);
         entries.sort(Comparator.comparing(HistoryEntry::getTime));
-        return new History(entries, samples, allLabware);
+        List<SamplePositionResult> samplePositionResults = slotRegionService.loadSamplePositionResultsForLabware(allLabware);
+        return new History(entries, samples, allLabware, samplePositionResults);
     }
 
     /**
@@ -207,7 +213,8 @@ public class HistoryServiceImp implements HistoryService {
         List<HistoryEntry> destructionEntries = createEntriesForDestructions(destructions, sampleIds);
 
         List<HistoryEntry> entries = assembleEntries(List.of(opEntries, releaseEntries, destructionEntries));
-        return new History(entries, samples, labware);
+        List<SamplePositionResult> samplePositionResults = slotRegionService.loadSamplePositionResultsForLabware(labware);
+        return new History(entries, samples, labware, samplePositionResults);
     }
 
 

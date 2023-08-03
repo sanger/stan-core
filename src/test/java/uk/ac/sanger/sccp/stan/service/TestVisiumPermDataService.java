@@ -7,6 +7,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
 import uk.ac.sanger.sccp.stan.repo.MeasurementRepo;
 import uk.ac.sanger.sccp.stan.request.ControlType;
+import uk.ac.sanger.sccp.stan.request.SamplePositionResult;
 import uk.ac.sanger.sccp.stan.request.VisiumPermData;
 import uk.ac.sanger.sccp.stan.request.VisiumPermData.AddressPermData;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser;
@@ -31,13 +32,15 @@ public class TestVisiumPermDataService {
     private MeasurementRepo mockMeasurementRepo;
     private Ancestoriser mockAncestoriser;
     private VisiumPermDataService service;
+    private SlotRegionService mockSlotRegionService;
 
     @BeforeEach
     void setUp() {
         mockLwRepo = mock(LabwareRepo.class);
         mockMeasurementRepo = mock(MeasurementRepo.class);
         mockAncestoriser = mock(Ancestoriser.class);
-        service = new VisiumPermDataService(mockLwRepo, mockMeasurementRepo, mockAncestoriser);
+        mockSlotRegionService = mock(SlotRegionService.class);
+        service = new VisiumPermDataService(mockLwRepo, mockMeasurementRepo, mockAncestoriser, mockSlotRegionService);
     }
 
     @Test
@@ -56,12 +59,14 @@ public class TestVisiumPermDataService {
         List<Measurement> measurements = List.of(
                 new Measurement(100, PERM_TIME, "120", sampleId, opId, slot.getId())
         );
+        SamplePositionResult samplePositionResult = new SamplePositionResult(slot, sampleId, "Top", opId);
         when(mockLwRepo.getByBarcode(lw.getBarcode())).thenReturn(lw);
         when(mockMeasurementRepo.findAllBySlotIdIn(any())).thenReturn(measurements);
-
+        when(mockSlotRegionService.loadSamplePositionResultsForLabware(lw.getBarcode())).thenReturn(List.of(samplePositionResult));
         VisiumPermData pd = service.load(lw.getBarcode());
         assertSame(lw, pd.getLabware());
         assertThat(pd.getAddressPermData()).containsExactly(new AddressPermData(A1, 120));
+        assertThat(pd.getSamplePositionResults()).containsExactly(samplePositionResult);
         verify(mockAncestoriser).findAncestry(SlotSample.stream(lw).collect(toList()));
     }
 

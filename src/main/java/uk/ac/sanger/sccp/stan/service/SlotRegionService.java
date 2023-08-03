@@ -1,11 +1,13 @@
 package uk.ac.sanger.sccp.stan.service;
 
 import uk.ac.sanger.sccp.stan.model.Address;
+import uk.ac.sanger.sccp.stan.model.Labware;
 import uk.ac.sanger.sccp.stan.model.SamplePosition;
 import uk.ac.sanger.sccp.stan.model.SlotRegion;
 import uk.ac.sanger.sccp.stan.request.SamplePositionResult;
 import uk.ac.sanger.sccp.utils.UCMap;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -24,6 +26,13 @@ public interface SlotRegionService {
      * @exception javax.persistence.EntityNotFoundException if no such labware exists
      */
     List<SamplePositionResult> loadSamplePositionResultsForLabware(String barcode);
+
+    /**
+     * Loads sample position results for a collection of labware
+     * @param labware A collection of Labware objects for which to retrieve the sample position results.
+     * @return the sample position results for the labware collection (if any)
+     */
+    List<SamplePositionResult> loadSamplePositionResultsForLabware(Collection<Labware> labware);
 
     /**
      * Loads all slot regions, optionally including disabled ones

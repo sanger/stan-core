@@ -84,13 +84,11 @@ public class VisiumPermData {
 
     private Labware labware;
     private List<AddressPermData> addressPermData;
+    private List<SamplePositionResult> samplePositionResults;
 
-    public VisiumPermData() {
-        this(null, null);
-    }
-
-    public VisiumPermData(Labware labware, List<AddressPermData> addressPermData) {
+    public VisiumPermData(Labware labware, List<AddressPermData> addressPermData, List<SamplePositionResult> samplePositionResults) {
         this.labware = labware;
+        this.samplePositionResults = samplePositionResults;
         setAddressPermData(addressPermData);
     }
 
@@ -110,18 +108,27 @@ public class VisiumPermData {
         this.addressPermData = (addressPermData==null ? List.of() : addressPermData);
     }
 
+    public List<SamplePositionResult> getSamplePositionResults() {
+        return samplePositionResults;
+    }
+
+    public void setSamplePositionResults(List<SamplePositionResult> samplePositionResults) {
+        this.samplePositionResults = samplePositionResults;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         VisiumPermData that = (VisiumPermData) o;
         return (Objects.equals(this.labware, that.labware)
-                && Objects.equals(this.addressPermData, that.addressPermData));
+                && Objects.equals(this.addressPermData, that.addressPermData)
+                && Objects.equals(this.samplePositionResults, that.samplePositionResults));
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(labware, addressPermData);
+        return Objects.hash(labware, addressPermData, samplePositionResults);
     }
 
     @Override
@@ -129,6 +136,7 @@ public class VisiumPermData {
         return BasicUtils.describe("VisiumPermData")
                 .add("labware", labware)
                 .add("addressPermData", addressPermData)
+                .add("samplePositionResults", samplePositionResults)
                 .toString();
     }
 }

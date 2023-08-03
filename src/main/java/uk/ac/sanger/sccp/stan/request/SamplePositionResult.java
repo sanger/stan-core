@@ -15,20 +15,15 @@ public class SamplePositionResult {
     private Address address;
     private Integer sampleId;
     private String region;
+    private Integer operationId;
 
     public SamplePositionResult() {}
 
-    public SamplePositionResult(Integer slotId, Address address, Integer sampleId, String region) {
-        this.slotId = slotId;
-        this.address = address;
-        this.sampleId = sampleId;
-        this.region = region;
-    }
-
-    public SamplePositionResult(Slot slot, Integer sampleId, String region) {
+    public SamplePositionResult(Slot slot, Integer sampleId, String region, Integer operationId) {
         setSlot(slot);
         this.sampleId = sampleId;
         this.region = region;
+        this.operationId = operationId;
     }
 
     public Integer getSlotId() {
@@ -80,6 +75,7 @@ public class SamplePositionResult {
                 .add("address", address)
                 .add("sampleId", sampleId)
                 .addRepr("region", region)
+                .add("operationId", operationId)
                 .toString();
     }
 
@@ -91,11 +87,12 @@ public class SamplePositionResult {
         return (Objects.equals(this.slotId, that.slotId)
                 && Objects.equals(this.address, that.address)
                 && Objects.equals(this.sampleId, that.sampleId)
-                && Objects.equals(this.region, that.region));
+                && Objects.equals(this.region, that.region)
+                && Objects.equals(this.operationId, that.operationId));
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(slotId, address, sampleId, region);
+        return Objects.hash(slotId, address, sampleId, region, operationId);
     }
 }

@@ -171,6 +171,8 @@ type Sample {
 
 """A slot in a piece of labware, which may contain samples."""
 type Slot {
+    """The unique id of this slot."""
+    id: Int!
     """The address of this slot inside its labware. No two slots in the same item of labware have the same address."""
     address: Address!
     """The id of the labware to which the slot belongs."""
@@ -656,6 +658,8 @@ type SamplePosition {
     sampleId: Int!
     """The name of the region of the sample in the slot."""
     region: String!
+    """The operation id related to this sample position"""
+    operationId: Int!
 }
 
 """A piece of equipment that may be associated with certain operations."""
@@ -939,8 +943,10 @@ type History {
     entries: [HistoryEntry!]!
     """The labware referenced by the entries."""
     labware: [Labware!]!
-    """The samples references by the entries."""
+    """The samples referenced by the entries."""
     samples: [Sample!]!
+    """The region of a sample in a particular slot  references by the entries"""
+    samplePositionResults : [SamplePosition!]!
 }
 
 """Information about a plan previously recorded, now being looked up."""
@@ -1239,6 +1245,8 @@ type VisiumPermData {
     labware: Labware!
     """The permeabilisation data for each slot."""
     addressPermData: [AddressPermData!]!
+    """The region of a sample in a particular slot referenced by the entries"""
+    samplePositionResults : [SamplePosition!]!
 }
 
 """Request to record visium analysis, selecting a permeabilisation time."""
