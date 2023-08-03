@@ -1,4 +1,4 @@
-package uk.ac.sanger.sccp.stan.service.register;
+package uk.ac.sanger.sccp.stan.service.register.filereader;
 
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.*;
@@ -7,16 +7,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.*;
 import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.Address;
 import uk.ac.sanger.sccp.stan.model.LifeStage;
-import uk.ac.sanger.sccp.stan.request.register.SectionRegisterContent;
-import uk.ac.sanger.sccp.stan.request.register.SectionRegisterLabware;
-import uk.ac.sanger.sccp.stan.request.register.SectionRegisterRequest;
-import uk.ac.sanger.sccp.stan.service.register.SectionRegisterFileReader.Column;
+import uk.ac.sanger.sccp.stan.request.register.*;
+import uk.ac.sanger.sccp.stan.service.register.filereader.SectionRegisterFileReader.Column;
 
 import java.io.IOException;
 import java.util.*;
@@ -31,59 +27,14 @@ import static org.mockito.Mockito.*;
 /**
  * Tests {@link SectionRegisterFileReaderImp}
  */
-class TestSectionRegisterFileReader {
-    private static final int HEADING_ROW = 2, DATA_ROW = 4;
-
-    private Sheet sheet;
-    private Row headingRow;
-    private List<Row> rows;
+class TestSectionRegisterFileReader extends BaseTestFileReader {
+    private static final int DATA_ROW = 3;
 
     private SectionRegisterFileReaderImp reader;
 
     @BeforeEach
     void testSetUp() {
-        reader = spy(new SectionRegisterFileReaderImp(HEADING_ROW, DATA_ROW));
-    }
-
-    void mockSheet() {
-        sheet = mock(Sheet.class);
-    }
-    void mockHeadingRow() {
-        headingRow = mock(Row.class);
-        when(headingRow.getRowNum()).thenReturn(HEADING_ROW);
-        if (sheet != null) {
-            when(sheet.getRow(HEADING_ROW)).thenReturn(headingRow);
-        }
-    }
-    void mockRows(int startRange, int endRange) {
-        rows = IntStream.range(startRange, endRange)
-                .mapToObj(i -> {
-                    if (headingRow!=null && i==HEADING_ROW) {
-                        return headingRow;
-                    }
-                    Row row = mock(Row.class);
-                    when(row.getRowNum()).thenReturn(i);
-                    when(sheet.getRow(i)).thenReturn(row);
-                    return row;
-                })
-                .collect(toList());
-        when(sheet.spliterator()).thenReturn(rows.spliterator());
-        when(sheet.iterator()).thenReturn(rows.iterator());
-    }
-    Row mockRow(String... values) {
-        Row row = mock(Row.class);
-        List<Cell> cells = new ArrayList<>(values.length);
-        for (int i = 0; i < values.length; ++i) {
-            String value = values[i];
-            Cell cell = mock(Cell.class);
-            when(cell.getStringCellValue()).thenReturn(value);
-            when(cell.getColumnIndex()).thenReturn(i);
-            when(row.getCell(i)).thenReturn(cell);
-            cells.add(cell);
-        }
-        when(row.spliterator()).thenReturn(cells.spliterator());
-        when(row.iterator()).thenReturn(cells.iterator());
-        return row;
+        reader = spy(new SectionRegisterFileReaderImp());
     }
 
     @Test
@@ -151,26 +102,7 @@ class TestSectionRegisterFileReader {
             verify(reader).createRequest(any(), eq(rowMaps));
         }
     }
-/*
-Work_number(Pattern.compile("(work|sgp)\\s*number", Pattern.CASE_INSENSITIVE)),
-        Slide_type,
-        External_slide_ID,
-        Section_address,
-        Fixative,
-        Embedding_medium,
-        Donor_ID,
-        Life_stage,
-        Species,
-        HuMFre,
-        Tissue_type,
-        Spatial_location(Integer.class),
-        Replicate_number,
-        Section_external_ID,
-        Section_number(Integer.class),
-        Section_thickness(Integer.class),
-        Section_position(Pattern.compile("(if.+)?position", Pattern.CASE_INSENSITIVE)),
-        ;
- */
+
     @Test
     void testIndexColumns() {
         Row row = mockRow("work number", "slide type", "external slide id",
@@ -269,12 +201,6 @@ Work_number(Pattern.compile("(work|sgp)\\s*number", Pattern.CASE_INSENSITIVE)),
             testCellValue(String.class, cell, "bananas", null);
         }
     }
-    static Cell mockCell(CellType cellType) {
-        Cell cell = mock(Cell.class);
-        when(cell.getCellType()).thenReturn(cellType);
-        return cell;
-    }
-
     static Stream<Arguments> cellValueMocks() {
         Cell numCell = mockCell(CellType.NUMERIC);
         when(numCell.getNumericCellValue()).thenReturn(5.0);
