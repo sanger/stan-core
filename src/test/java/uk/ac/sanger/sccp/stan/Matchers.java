@@ -7,6 +7,7 @@ import org.mockito.stubbing.Answer;
 import org.mockito.stubbing.Stubber;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
 
+import java.time.*;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -146,6 +147,12 @@ public class Matchers {
             return sup.get();
         });
         return mockTransactor;
+    }
+
+    public static Clock setMockClock(Clock mockClock, LocalDateTime time) {
+        when(mockClock.getZone()).thenReturn(ZoneId.systemDefault());
+        when(mockClock.instant()).thenReturn(time.toInstant(ZoneId.systemDefault().getRules().getOffset(time)));
+        return mockClock;
     }
 
     private static class CaseInsensitiveStringMatcher implements ArgumentMatcher<String> {

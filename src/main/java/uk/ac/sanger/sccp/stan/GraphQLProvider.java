@@ -203,6 +203,7 @@ public class GraphQLProvider {
                         .dataFetcher("performSolutionTransfer", transact(graphQLMutation.performSolutionTransfer()))
                         .dataFetcher("recordOpWithSlotComments", transact(graphQLMutation.performOpWithSlotComments()))
                         .dataFetcher("recordProbeOperation", transact(graphQLMutation.recordProbeOperation()))
+                        .dataFetcher("recordCompletion", transact(graphQLMutation.recordCompletion()))
 
                         .dataFetcher("addUser", transact(graphQLMutation.addUser()))
                         .dataFetcher("setUserRole", transact(graphQLMutation.setUserRole()))

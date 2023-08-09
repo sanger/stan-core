@@ -95,6 +95,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final FFPEProcessingService ffpeProcessingService;
     final OpWithSlotCommentsService opWithSlotCommentsService;
     final ProbeService probeService;
+    final CompletionService completionService;
     final UserAdminService userAdminService;
 
     @Autowired
@@ -124,7 +125,8 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            InPlaceOpCommentService inPlaceOpCommentService,
                            SampleProcessingService sampleProcessingService, SolutionTransferService solutionTransferService,
                            FFPEProcessingService ffpeProcessingService, OpWithSlotCommentsService opWithSlotCommentsService,
-                           ProbeService probeService, UserAdminService userAdminService) {
+                           ProbeService probeService, CompletionService completionService,
+                           UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
         this.sessionConfig = sessionConfig;
@@ -177,6 +179,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.ffpeProcessingService = ffpeProcessingService;
         this.opWithSlotCommentsService = opWithSlotCommentsService;
         this.probeService = probeService;
+        this.completionService = completionService;
         this.userAdminService = userAdminService;
     }
 
@@ -790,6 +793,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             ProbeOperationRequest request = arg(dfe, "request", ProbeOperationRequest.class);
             logRequest("Record probe operation", user, request);
             return probeService.recordProbeOperation(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> recordCompletion() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            CompletionRequest request = arg(dfe, "request", CompletionRequest.class);
+            logRequest("Record completion", user, request);
+            return completionService.perform(user, request);
         };
     }
 

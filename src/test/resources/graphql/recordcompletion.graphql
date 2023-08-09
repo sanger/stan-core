@@ -1,0 +1,18 @@
+mutation {
+    recordCompletion(request: {
+        workNumber: "SGP1"
+        operationType: "Probe hybridisation QC"
+        labware: [{
+            barcode: "STAN-1"
+            comments: [{
+                address: "A1"
+                commentId: 1
+                sampleId: 555
+            }]
+        }]
+    }) {
+        operations {
+            id
+        }
+    }
+}

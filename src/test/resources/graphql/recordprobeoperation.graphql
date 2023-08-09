@@ -1,6 +1,6 @@
 mutation {
     recordProbeOperation(request: {
-        operationType: "probify"
+        operationType: "Probe hybridisation Xenium"
         labware: [{
             barcode: "STAN-1"
             probes: [{

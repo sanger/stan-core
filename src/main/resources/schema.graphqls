@@ -1185,6 +1185,37 @@ input ResultRequest {
     workNumber: String
 }
 
+"""A comment against a particular sample at an address (in some particular labware)."""
+input SampleAddressComment {
+    """The id of the sample for the comment."""
+    sampleId: Int!
+    """The address of the slot for the comment."""
+    address: Address!
+    """The id of the comment to record."""
+    commentId: Int!
+}
+
+"""The comments against samples in a particular piece of labware."""
+input LabwareSampleComments {
+    """The barcode of the labware."""
+    barcode: String!
+    """The comments to record against particular samples in this labware."""
+    comments: [SampleAddressComment!]!
+    """The (optional) completion time of the process for this labware."""
+    completion: Timestamp
+
+}
+
+"""A request to record the completion of a process."""
+input CompletionRequest {
+    """The name of the type operations being recorded."""
+    operationType: String!
+    """The work number associated with these operations."""
+    workNumber: String!
+    """The details of the labware involved in this operation."""
+    labware: [LabwareSampleComments!]!
+}
+
 """Specification of extract results in a piece of labware."""
 input ExtractResultLabware {
     """The barcode of the labware."""
@@ -1896,6 +1927,8 @@ type Mutation {
     recordOpWithSlotComments(request: OpWithSlotCommentsRequest!): OperationResult!
     """Record an operation involving probe panels."""
     recordProbeOperation(request: ProbeOperationRequest!): OperationResult!
+    """Record a process being completed."""
+    recordCompletion(request: CompletionRequest!): OperationResult!
 
     """Create a new user for the application."""
     addUser(username: String!): User!
