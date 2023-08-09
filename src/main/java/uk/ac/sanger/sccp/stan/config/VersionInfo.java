@@ -3,9 +3,7 @@ package uk.ac.sanger.sccp.stan.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.PropertySource;
-import org.springframework.context.annotation.PropertySources;
+import org.springframework.context.annotation.*;
 
 import java.util.Objects;
 
@@ -14,11 +12,11 @@ import java.util.Objects;
  * @author dr6
  */
 @Configuration
-@PropertySources(@PropertySource("classpath:git.properties"))
+@PropertySources(@PropertySource(value="classpath:git.properties", ignoreResourceNotFound=true))
 public class VersionInfo {
-    @Value("${git.commit.id.describe}")
+    @Value("${git.commit.id.describe:}")
     private String describe;
-    @Value("${git.commit.id}")
+    @Value("${git.commit.id:}")
     private String commit;
     private final String version;
 
