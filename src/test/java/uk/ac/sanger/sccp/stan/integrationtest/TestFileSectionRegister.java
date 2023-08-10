@@ -47,7 +47,7 @@ public class TestFileSectionRegister {
         var response = upload("testdata/section_reg.xlsx");
         var map = objectMapper.readValue(response.getContentAsString(), Map.class);
         List<?> problems = (List<?>) map.get("problems");
-        assertThat(problems).hasSize(3);
+        assertThat(problems).hasSize(4);
     }
 
     @Test

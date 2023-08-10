@@ -19,6 +19,7 @@ public interface SectionRegisterFileReader extends MultipartFileReader<SectionRe
         Work_number(Pattern.compile("(work|sgp)\\s*number", Pattern.CASE_INSENSITIVE)),
         Slide_type,
         External_slide_ID,
+        Prebarcode(String.class, Pattern.compile("(xenium( slide)?\\s*|pre)barcode", Pattern.CASE_INSENSITIVE), false),
         Section_address,
         Fixative,
         Embedding_medium,
@@ -37,22 +38,24 @@ public interface SectionRegisterFileReader extends MultipartFileReader<SectionRe
 
         private final Pattern pattern;
         private final Class<?> dataType;
+        private final boolean required;
 
         Column() {
-            this(null, null);
+            this(null, null, true);
         }
 
         Column(Pattern pattern) {
-            this(null, pattern);
+            this(null, pattern, true);
         }
 
         Column(Class<?> dataType) {
-            this(dataType, null);
+            this(dataType, null, true);
         }
 
-        Column(Class<?> dataType, Pattern pattern) {
+        Column(Class<?> dataType, Pattern pattern, boolean required) {
             this.pattern = (pattern!=null ? pattern : Pattern.compile(this.name().replace("_", "\\s*"), Pattern.CASE_INSENSITIVE));
             this.dataType = (dataType!=null ? dataType : String.class);
+            this.required = required;
         }
 
         @Override
@@ -69,6 +72,11 @@ public interface SectionRegisterFileReader extends MultipartFileReader<SectionRe
         @Override
         public Pattern getPattern() {
             return this.pattern;
+        }
+
+        @Override
+        public boolean isRequired() {
+            return this.required;
         }
     }
 

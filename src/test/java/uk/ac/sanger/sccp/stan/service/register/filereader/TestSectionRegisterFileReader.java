@@ -50,6 +50,16 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
         verify(reader, never()).createRequest(any(), any());
     }
 
+    @ParameterizedTest
+    @CsvSource({"xenium slide barcode,true",
+            "prebarcode,true",
+            "external barcode,false",
+            "xenia onatop,false",
+    })
+    void testPrebarcodeRegex(String string, boolean expectMatch) {
+        assertEquals(expectMatch, Column.Prebarcode.getPattern().matcher(string).matches());
+    }
+
     @Test
     void testRead_noData() {
         mockSheet();
@@ -105,7 +115,7 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
 
     @Test
     void testIndexColumns() {
-        Row row = mockRow("work number", "slide type", "external slide id",
+        Row row = mockRow("work number", "slide type", "external slide id", "xenium barcode",
                 "section address", "fixative", "embedding medium", "donor id", "life stage",
                 "species", "humfre", "tissue type", "spatial location", "replicate number",
                 "section external id", "section number", "section thickness", "if bla bla bla position", null, "");
@@ -114,7 +124,7 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
         assertThat(problems).isEmpty();
         Column[] expectedOrder = Column.values();
         for (int i = 0; i < expectedOrder.length; ++i) {
-            assertEquals(i, result.get(expectedOrder[i]));
+            assertSame(i, result.get(expectedOrder[i]));
         }
     }
 
@@ -315,6 +325,40 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
         SectionRegisterLabware srl = reader.createRequestLabware(problems, rows);
         assertThat(problems).isEmpty();
         assertEquals(srl, new SectionRegisterLabware("X1", "Bowl", srcs));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints={0,1,2})
+    void testCreateRequestLabwareXenium(int numPrebarcodes) {
+        List<Map<Column, Object>> rows = List.of(
+                rowMap("X1", "Xenium"),
+                rowMap("X1", null),
+                rowMap("X1", "xenium")
+        );
+        if (numPrebarcodes > 0) {
+            rows.get(0).put(Column.Prebarcode, "XYZ123");
+            rows.get(1).put(Column.Prebarcode, numPrebarcodes==1 ? "xyz123" : "abc456");
+        }
+        List<SectionRegisterContent> srcs = List.of(
+                new SectionRegisterContent("d1", LifeStage.adult, "human"),
+                new SectionRegisterContent("d2", LifeStage.adult, "human"),
+                new SectionRegisterContent("d3", LifeStage.adult, "human")
+        );
+        var srcIter = srcs.iterator();
+        for (var row : rows) {
+            doReturn(srcIter.next()).when(reader).createRequestContent(any(), same(row));
+        }
+        final List<String> problems = new ArrayList<>(1);
+        SectionRegisterLabware srl = reader.createRequestLabware(problems, rows);
+        String expectedProblem = (numPrebarcodes==0 ? "A prebarcode is expected for Xenium labware."
+                : numPrebarcodes==2 ? "Multiple different prebarcodes specified for external ID X1."
+                : null);
+        Matchers.assertProblem(problems, expectedProblem);
+        SectionRegisterLabware expectedSrl = new SectionRegisterLabware("X1", "Xenium", srcs);
+        if (numPrebarcodes > 0) {
+            expectedSrl.setPreBarcode("XYZ123");
+        }
+        assertEquals(expectedSrl, srl);
     }
 
     @ParameterizedTest
