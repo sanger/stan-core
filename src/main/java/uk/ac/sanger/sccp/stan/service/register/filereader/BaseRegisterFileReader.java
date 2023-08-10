@@ -7,7 +7,7 @@ import uk.ac.sanger.sccp.stan.model.LifeStage;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
 
 import java.time.LocalDate;
-import java.time.ZoneId;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -177,12 +177,12 @@ public abstract class BaseRegisterFileReader<RequestType, ColumnType extends Enu
         if (cellType==null || cellType==CellType.BLANK || type==Void.class) {
             return null;
         }
-        if (type== LocalDate.class) {
-            Date date = cell.getDateCellValue();
-            if (date==null) {
+        if (type==LocalDate.class) {
+            LocalDateTime ldt = cell.getLocalDateTimeCellValue();
+            if (ldt==null) {
                 return null;
             }
-            return (T) LocalDate.ofInstant(date.toInstant(), ZoneId.systemDefault());
+            return (T) ldt.toLocalDate();
         }
         if (type==Integer.class) {
             if (cellType==CellType.NUMERIC || cellType==CellType.FORMULA) {
