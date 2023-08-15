@@ -72,6 +72,13 @@ public interface BlockRegisterFileReader extends MultipartFileReader<RegisterReq
         public Pattern getPattern() {
             return this.pattern;
         }
+
+        @Override
+        public boolean isRequired() {
+            return this.dataType != Void.class;
+        }
+
+
     }
 
     /**

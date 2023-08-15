@@ -33,7 +33,9 @@ interface IColumn {
      */
     Pattern getPattern();
 
-    default boolean isRequired() {
-        return getDataType()!=Void.class;
-    }
+    /**
+     * Is it an error if this column is missing?
+     * @return true if this column is required; false otherwise
+     */
+    boolean isRequired();
 }

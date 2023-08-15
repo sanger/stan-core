@@ -12,6 +12,7 @@ import java.nio.file.*;
 import java.util.*;
 
 import static java.util.stream.Collectors.toList;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 
 /**
  * @author dr6
@@ -71,15 +72,21 @@ public class SectionRegisterFileReaderImp extends BaseRegisterFileReader<Section
         String externalName = (String) group.get(0).get(Column.External_slide_ID);
         String lwType = getUniqueString(group.stream().map(row -> (String) row.get(Column.Slide_type)),
                 () -> problems.add("Multiple different labware types specified for external ID "+externalName+"."));
+        String prebarcode = getUniqueString(group.stream().map(row -> (String) row.get(Column.Prebarcode)),
+                () -> problems.add("Multiple different prebarcodes specified for external ID "+externalName+"."));
         if (lwType==null) {
             problems.add("No labware type specified for external ID "+externalName+".");
+        } else if (lwType.equalsIgnoreCase("xenium") && nullOrEmpty(prebarcode)) {
+            problems.add("A prebarcode is expected for Xenium labware.");
         }
 
         List<SectionRegisterContent> srcs = group.stream()
                 .map(row -> createRequestContent(problems, row))
                 .filter(Objects::nonNull)
                 .collect(toList());
-        return new SectionRegisterLabware(externalName, lwType, srcs);
+        final SectionRegisterLabware srl = new SectionRegisterLabware(externalName, lwType, srcs);
+        srl.setPreBarcode(prebarcode);
+        return srl;
     }
 
     /**
