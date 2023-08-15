@@ -96,6 +96,10 @@ public class OperationType implements HasName, HasIntId {
         return this.has(OperationTypeFlag.REAGENT_TRANSFER);
     }
 
+    public boolean isResult() {
+        return this.has(OperationTypeFlag.RESULT);
+    }
+
     public boolean usesProbes() {
         return this.has(OperationTypeFlag.PROBES);
     }

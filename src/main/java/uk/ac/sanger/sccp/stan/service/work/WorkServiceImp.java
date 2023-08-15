@@ -365,7 +365,7 @@ public class WorkServiceImp implements WorkService {
 
     @Override
     public Work validateUsableWork(Collection<String> problems, String workNumber) {
-        if (workNumber==null) {
+        if (nullOrEmpty(workNumber)) {
             problems.add("Work number is not specified.");
             return null;
         }

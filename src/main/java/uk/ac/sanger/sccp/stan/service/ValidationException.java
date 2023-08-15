@@ -11,6 +11,10 @@ import java.util.*;
 public class ValidationException extends RuntimeException implements GraphQLError {
     private final Collection<?> problems;
 
+    public ValidationException(Collection<?> problems) {
+        this("The request could not be validated.", problems);
+    }
+
     public ValidationException(String message, Collection<?> problems) {
         super(message);
         this.problems = problems;

@@ -9,8 +9,8 @@ import org.springframework.test.context.ActiveProfiles;
 import uk.ac.sanger.sccp.stan.EntityCreator;
 import uk.ac.sanger.sccp.stan.GraphQLTester;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.repo.LabwareProbeRepo;
-import uk.ac.sanger.sccp.stan.repo.OperationRepo;
+import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.service.CompletionServiceImp;
 
 import javax.transaction.Transactional;
 import java.util.List;
@@ -19,6 +19,7 @@ import java.util.stream.IntStream;
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGet;
 
 /**
@@ -38,6 +39,8 @@ public class TestProbeOperationMutation {
     OperationRepo opRepo;
     @Autowired
     LabwareProbeRepo lwProbeRepo;
+    @Autowired
+    OperationCommentRepo opComRepo;
 
     @Test
     @Transactional
@@ -50,7 +53,7 @@ public class TestProbeOperationMutation {
         result = tester.post(addProbeMutation.replace("PROBENAME", "probe2"));
         assertEquals("probe2", chainGet(result, "data", "addProbePanel", "name"));
 
-        OperationType opType = entityCreator.createOpType("probify", null, OperationTypeFlag.PROBES, OperationTypeFlag.IN_PLACE);
+        OperationType opType = entityCreator.createOpType(CompletionServiceImp.PROBE_HYBRIDISATION_NAME, null, OperationTypeFlag.PROBES, OperationTypeFlag.IN_PLACE);
         Sample sample = entityCreator.createSample(null, null);
         Labware lw = entityCreator.createLabware("STAN-1", entityCreator.getTubeType(), sample);
         Work work = entityCreator.createWork(null, null, null, null, null);
@@ -79,5 +82,25 @@ public class TestProbeOperationMutation {
         assertEquals("probe2", lwp.getProbePanel().getName());
         assertEquals(2, lwp.getPlex());
         assertEquals("LOT2", lwp.getLotNumber());
+
+        testCompletion(lw, work, sample);
+    }
+
+    private void testCompletion(Labware lw, Work work, Sample sample) throws Exception {
+        OperationType opType = entityCreator.createOpType(CompletionServiceImp.PROBE_QC_NAME, null, OperationTypeFlag.IN_PLACE);
+        String mutation = tester.readGraphQL("recordcompletion.graphql")
+                .replace("SGP1", work.getWorkNumber())
+                .replace("555", String.valueOf(sample.getId()));
+        Object result = tester.post(mutation);
+        Integer opId = chainGet(result, "data", "recordCompletion", "operations", 0, "id");
+        assertNotNull(opId);
+        Operation op = opRepo.findById(opId).orElseThrow();
+        assertEquals(opType, op.getOperationType());
+        List<OperationComment> opcoms = opComRepo.findAllByOperationIdIn(List.of(opId));
+        assertThat(opcoms).hasSize(1);
+        OperationComment opcom = opcoms.get(0);
+        assertEquals(lw.getFirstSlot().getId(), opcom.getSlotId());
+        assertEquals(sample.getId(), opcom.getSampleId());
+        assertEquals(1, opcom.getComment().getId());
     }
 }

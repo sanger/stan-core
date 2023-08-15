@@ -27,6 +27,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -588,7 +589,7 @@ public class TestResultService {
             assertThat(service.lookUpPrecedingOps(problems, opType, labware, required, ancestral)).isEmpty();
             assertThat(problems).isEmpty();
             verifyNoInteractions(mockOpRepo);
-            verify(service, never()).makeLabwareOpIdMap(any());
+            verify(service, never()).makeLabwareOpMap(any());
             return;
         }
 
@@ -597,26 +598,29 @@ public class TestResultService {
         op.setOperationType(opType);
         List<Operation> ops = (anyStained ? List.of(op) : List.of());
         when(mockOpRepo.findAllByOperationTypeAndDestinationLabwareIdIn(any(), any())).thenReturn(ops);
-        Map<Integer, Integer> opsMap = (slw!=null ? Map.of(slw.getId(), op.getId()) : Map.of());
+        Map<Integer, Operation> opsMap = (slw!=null ? Map.of(slw.getId(), op) : Map.of());
+        Map<Integer, Integer> opIdMap = opsMap.entrySet().stream().collect(toMap(Map.Entry::getKey, e -> e.getValue().getId()));
+
         if (ancestral) {
             Stubber stub;
             if (required && anyUnstained) {
-                stub = doAnswer(Matchers.addProblem("Problem from OpSearcher", opsMap));
+                stub = doAnswer(Matchers.addProblem("Problem from OpSearcher", opIdMap));
             } else {
-                stub = doReturn(opsMap);
+                stub = doReturn(opIdMap);
             }
             stub.when(service).lookUpAncestralOpIds(any(), any(), any(), anyBoolean());
         } else {
-            doReturn(opsMap).when(service).makeLabwareOpIdMap(any());
+            doReturn(opsMap).when(service).makeLabwareOpMap(any());
         }
 
-        assertSame(opsMap, service.lookUpPrecedingOps(problems, opType, labware, required, ancestral));
+
+        assertEquals(opIdMap, service.lookUpPrecedingOps(problems, opType, labware, required, ancestral));
 
         if (ancestral) {
             verify(service).lookUpAncestralOpIds(any(), eq(opType), eq(labware), eq(required));
         } else {
             verify(mockOpRepo).findAllByOperationTypeAndDestinationLabwareIdIn(opType, labwareIds);
-            verify(service).makeLabwareOpIdMap(ops);
+            verify(service).makeLabwareOpMap(ops);
         }
 
         if (anyUnstained && required) {
@@ -654,7 +658,7 @@ public class TestResultService {
     }
 
     @Test
-    public void testMakeLabwareOpIdMap() {
+    public void testMakeLabwareOpMap() {
         Sample sample = EntityFactory.getSample();
         LabwareType lt = EntityFactory.getTubeType();
         Labware[] labware = IntStream.range(0,2)
@@ -672,9 +676,9 @@ public class TestResultService {
         Operation op3 = EntityFactory.makeOpForLabware(opType, lw0only, lw0only);
         op3.setPerformed(op1.getPerformed().minusHours(1));
 
-        Map<Integer, Integer> map = service.makeLabwareOpIdMap(List.of(op1, op2, op3));
+        Map<Integer, Operation> map = service.makeLabwareOpMap(List.of(op1, op2, op3));
 
-        assertThat(map).containsExactlyInAnyOrderEntriesOf(Map.of(labware[0].getId(), op1.getId(), labware[1].getId(), op2.getId()));
+        assertThat(map).containsExactlyInAnyOrderEntriesOf(Map.of(labware[0].getId(), op1, labware[1].getId(), op2));
     }
 
     @Test
