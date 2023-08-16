@@ -28,6 +28,7 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
                 .csrf()
                 .ignoringRequestMatchers(r -> "/files".equalsIgnoreCase(r.getRequestURI()))
                 .ignoringRequestMatchers(r -> "/register/section".equalsIgnoreCase(r.getRequestURI()))
+                .ignoringRequestMatchers(r -> "/register/block".equalsIgnoreCase(r.getRequestURI()))
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse());
     }
 
