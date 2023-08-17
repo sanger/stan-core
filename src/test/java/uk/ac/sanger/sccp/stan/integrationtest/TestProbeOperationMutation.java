@@ -11,9 +11,10 @@ import uk.ac.sanger.sccp.stan.GraphQLTester;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.service.CompletionServiceImp;
+import uk.ac.sanger.sccp.stan.service.operation.AnalyserServiceImp;
 
 import javax.transaction.Transactional;
-import java.util.List;
+import java.util.*;
 import java.util.stream.IntStream;
 
 import static java.util.stream.Collectors.toList;
@@ -41,6 +42,10 @@ public class TestProbeOperationMutation {
     LabwareProbeRepo lwProbeRepo;
     @Autowired
     OperationCommentRepo opComRepo;
+    @Autowired
+    RoiRepo roiRepo;
+    @Autowired
+    LabwareNoteRepo lwNoteRepo;
 
     @Test
     @Transactional
@@ -84,6 +89,7 @@ public class TestProbeOperationMutation {
         assertEquals("LOT2", lwp.getLotNumber());
 
         testCompletion(lw, work, sample);
+        testAnalyser(lw, work, sample);
     }
 
     private void testCompletion(Labware lw, Work work, Sample sample) throws Exception {
@@ -102,5 +108,30 @@ public class TestProbeOperationMutation {
         assertEquals(lw.getFirstSlot().getId(), opcom.getSlotId());
         assertEquals(sample.getId(), opcom.getSampleId());
         assertEquals(1, opcom.getComment().getId());
+    }
+
+    private void testAnalyser(Labware lw, Work work, Sample sample) throws Exception {
+        entityCreator.createOpType(AnalyserServiceImp.ANALYSER_OP_NAME, null, OperationTypeFlag.IN_PLACE);
+        String mutation = tester.readGraphQL("recordanalyser.graphql")
+                .replace("SGP1", work.getWorkNumber())
+                .replace("555", String.valueOf(sample.getId()));
+        Object result = tester.post(mutation);
+        Integer opId = chainGet(result, "data", "recordAnalyser", "operations", 0, "id");
+        assertNotNull(opId);
+
+        List<Roi> rois = roiRepo.findAllByOperationIdIn(List.of(opId));
+
+        assertThat(rois).containsExactly(new Roi(lw.getFirstSlot().getId(), sample.getId(), opId, "roi1"));
+        List<LabwareNote> notes = lwNoteRepo.findAllByOperationIdIn(List.of(opId));
+        Map<String, String> noteValues = new HashMap<>(3);
+        notes.forEach(note -> {
+            assertEquals(lw.getId(), note.getLabwareId());
+            assertEquals(opId, note.getOperationId());
+            noteValues.put(note.getName(), note.getValue());
+        });
+        assertThat(noteValues).hasSize(3);
+        assertEquals("RUN1", noteValues.get("run"));
+        assertEquals("LOT1", noteValues.get("decoding reagent lot"));
+        assertEquals("left", noteValues.get("cassette position"));
     }
 }

@@ -12,6 +12,8 @@ import javax.transaction.Transactional;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Test {@link LabwareNoteRepo}
@@ -50,5 +52,22 @@ public class TestLabwareNoteRepo {
         assertThat(labwareNoteRepo.findAllByOperationIdIn(List.of(op1id))).containsExactlyInAnyOrder(note1, note2, note3);
         assertThat(labwareNoteRepo.findAllByOperationIdIn(List.of(op2id))).containsExactly(note4);
         assertThat(labwareNoteRepo.findAllByOperationIdIn(List.of(op1id, op2id))).containsExactlyInAnyOrder(note1, note2, note3, note4);
+    }
+
+    @Test
+    @Transactional
+    public void testExistsByNameAndValue() {
+        OperationType opType = entityCreator.createOpType("Stir", null, OperationTypeFlag.IN_PLACE);
+        User user = entityCreator.createUser("user1");
+        Integer op1id = opRepo.save(new Operation(null, opType, null, null, user)).getId();
+
+        final LabwareType lt1 = entityCreator.createLabwareType("lt1", 1, 1);
+        Integer lwId = entityCreator.createLabware("STAN-A1", lt1).getId();
+
+        assertFalse(labwareNoteRepo.existsByNameAndValue("A", "Alpha"));
+        labwareNoteRepo.save(new LabwareNote(null, lwId, op1id, "A", "Alpha"));
+        assertFalse(labwareNoteRepo.existsByNameAndValue("A", "Beta"));
+        assertFalse(labwareNoteRepo.existsByNameAndValue("B", "Alpha"));
+        assertTrue(labwareNoteRepo.existsByNameAndValue("A", "Alpha"));
     }
 }

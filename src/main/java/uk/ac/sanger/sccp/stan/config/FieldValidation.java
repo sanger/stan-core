@@ -298,6 +298,30 @@ public class FieldValidation {
     }
 
     @Bean
+    public Validator<String> decodingReagentLotValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA, CharacterType.DIGIT);
+        return new StringValidator("Decoding reagent lot", 1, 20, charTypes);
+    }
+
+    @Bean
+    public Validator<String> runNameValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN,
+                CharacterType.UNDERSCORE, CharacterType.SPACE, CharacterType.SLASH, CharacterType.BACKSLASH,
+                CharacterType.PAREN, CharacterType.FULL_STOP, CharacterType.APOSTROPHE, CharacterType.PERCENT,
+                CharacterType.COMMA, CharacterType.COLON, CharacterType.SEMICOLON);
+        return new StringValidator("Run name", 1, 255, charTypes);
+    }
+
+    @Bean
+    public Validator<String> roiValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN,
+                CharacterType.UNDERSCORE, CharacterType.SPACE, CharacterType.SLASH, CharacterType.BACKSLASH,
+                CharacterType.PAREN, CharacterType.FULL_STOP, CharacterType.APOSTROPHE, CharacterType.PERCENT,
+                CharacterType.COMMA, CharacterType.COLON, CharacterType.SEMICOLON);
+        return new StringValidator("ROI", 1, 64, charTypes);
+    }
+
+    @Bean
     public Clock clock() {
         return Clock.systemUTC();
     }
