@@ -5,11 +5,11 @@
 
     <changeSet id="2.26.0" author="dr6">
         <createTable tableName="roi">
-            <column name="sample_id" type="INT">
-                <constraints nullable="false" foreignKeyName="fk_roi_sample" referencedTableName="sample" referencedColumnNames="id"/>
-            </column>
             <column name="slot_id" type="INT">
                 <constraints nullable="false" foreignKeyName="fk_roi_slot" referencedTableName="slot" referencedColumnNames="id"/>
+            </column>
+            <column name="sample_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_roi_sample" referencedTableName="sample" referencedColumnNames="id"/>
             </column>
             <column name="operation_id" type="INT">
                 <constraints nullable="false" foreignKeyName="fk_roi_operation" referencedTableName="operation" referencedColumnNames="id"/>
@@ -24,7 +24,7 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
-        <addPrimaryKey tableName="roi" columnNames="sample_id,slot_id,operation_id"/>
+        <addPrimaryKey tableName="roi" columnNames="slot_id,sample_id,operation_id"/>
         <rollback>
             <dropAllForeignKeyConstraints baseTableName="roi"/>
             <dropTable tableName="roi"/>

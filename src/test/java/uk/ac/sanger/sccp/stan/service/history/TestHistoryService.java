@@ -7,9 +7,7 @@ import org.junit.jupiter.params.provider.*;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.History;
-import uk.ac.sanger.sccp.stan.request.HistoryEntry;
-import uk.ac.sanger.sccp.stan.request.SamplePositionResult;
+import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.service.SlotRegionService;
 import uk.ac.sanger.sccp.stan.service.history.ReagentActionDetailService.ReagentActionDetail;
 import uk.ac.sanger.sccp.utils.BasicUtils;
@@ -39,6 +37,7 @@ public class TestHistoryService {
     private ReleaseRepo mockReleaseRepo;
     private DestructionRepo mockDestructionRepo;
     private OperationCommentRepo mockOpCommentRepo;
+    private RoiRepo mockRoiRepo;
     private SnapshotRepo mockSnapshotRepo;
     private WorkRepo mockWorkRepo;
     private MeasurementRepo mockMeasurementRepo;
@@ -65,6 +64,7 @@ public class TestHistoryService {
         mockReleaseRepo = mock(ReleaseRepo.class);
         mockDestructionRepo = mock(DestructionRepo.class);
         mockOpCommentRepo = mock(OperationCommentRepo.class);
+        mockRoiRepo = mock(RoiRepo.class);
         mockSnapshotRepo = mock(SnapshotRepo.class);
         mockWorkRepo = mock(WorkRepo.class);
         mockMeasurementRepo = mock(MeasurementRepo.class);
@@ -76,7 +76,7 @@ public class TestHistoryService {
         mockLwProbeRepo = mock(LabwareProbeRepo.class);
 
         service = spy(new HistoryServiceImp(mockOpRepo, mockLwRepo, mockSampleRepo, mockTissueRepo, mockDonorRepo,
-                mockReleaseRepo, mockDestructionRepo, mockOpCommentRepo, mockSnapshotRepo, mockWorkRepo,
+                mockReleaseRepo, mockDestructionRepo, mockOpCommentRepo, mockRoiRepo, mockSnapshotRepo, mockWorkRepo,
                 mockMeasurementRepo, mockLwNoteRepo, mockResultOpRepo, mockStainTypeRepo, mockLwProbeRepo,
                 mockRadService, mockSlotRegionService));
     }
@@ -447,6 +447,21 @@ public class TestHistoryService {
     }
 
     @Test
+    public void testLoadOpRois() {
+        List<Roi> rois = List.of(
+                new Roi(1, 11, 21, "roi1"),
+                new Roi(2, 12, 21, "roi2"),
+                new Roi(3, 13, 22, "roi3")
+        );
+        List<Integer> opIds = List.of(21,22);
+        when(mockRoiRepo.findAllByOperationIdIn(opIds)).thenReturn(rois);
+        var map = service.loadOpRois(opIds);
+        assertThat(map).hasSize(2);
+        assertThat(map.get(21)).containsExactlyElementsOf(rois.subList(0,2));
+        assertThat(map.get(22)).containsExactly(rois.get(2));
+    }
+
+    @Test
     public void testGetLabwareProbeDetails() {
         LabwareProbe lwp = new LabwareProbe(1, new ProbePanel(1, "probe1"), 5, 6, "LOT1", 21);
         assertThat(service.getLabwareProbeDetails(lwp)).containsExactly(
@@ -511,6 +526,16 @@ public class TestHistoryService {
         assertEquals(expected, service.describeSeconds(value));
     }
 
+    @Test
+    public void testRoiDetail() {
+        final int slotId = 4;
+        Slot slot = new Slot();
+        slot.setAddress(new Address(2,3));
+        Roi roi = new Roi(slotId, 6, 7, "roi1");
+        String detail = service.roiDetail(roi, Map.of(slotId, slot));
+        assertEquals("ROI (6, B3): roi1", detail);
+    }
+
     @ParameterizedTest
     @CsvSource(value={
             "Thickness, 14,, Thickness: 14\u00a0μm",
@@ -558,6 +583,21 @@ public class TestHistoryService {
                 Arguments.of(new OperationComment(1, com, 1, null, 100, null), 1, 20, slot, false), // slot belongs to wrong labware
                 Arguments.of(new OperationComment(1, com, 1, null, null, 20), 1, 10, null, false) // wrong labware id
         );
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "11,30,30,1,true",
+            "11,30,30,2,false",
+            "11,30,40,1,false",
+    })
+    public void testDoesRoiApply(int roiSlotId, int roiSampleId, int sampleId, int labwareId, boolean expected) {
+        Roi roi = new Roi(roiSlotId, roiSampleId, 100, "roi1");
+        Slot slot = new Slot();
+        slot.setId(roiSlotId);
+        slot.setLabwareId(roiSlotId/10);
+        Map<Integer, Slot> slotIdMap = Map.of(roiSlotId, slot);
+        assertEquals(expected, service.doesRoiApply(roi, sampleId, labwareId, slotIdMap));
     }
 
     @ParameterizedTest
@@ -656,6 +696,12 @@ public class TestHistoryService {
 
         doReturn(opMeasurements).when(service).loadOpMeasurements(any());
 
+        Map<Integer, List<Roi>> opRois = Map.of(
+                opIds[0], List.of(new Roi(labware[1].getFirstSlot().getId(), samples[0].getId(), opIds[0], "roi1"))
+        );
+
+        doReturn(opRois).when(service).loadOpRois(any());
+
         Map<Integer, List<OperationComment>> opComMap = Map.of(
                 opIds[0], List.of(opComs[0], opComs[1]),
                 opIds[1], List.of(opComs[2], opComs[3])
@@ -690,7 +736,8 @@ public class TestHistoryService {
         List<HistoryEntry> expectedEntries = List.of(
                 new HistoryEntry(opIds[0], opTypeName0, ops.get(0).getPerformed(), labware[0].getId(),
                         labware[1].getId(), samples[0].getId(), username, "SGP5000",
-                        List.of("123 : A2 -> B3", "456 : C4 -> E6", "Alpha: Beta", "Gamma: Delta", "Equipment: Feeniks", "A1: pass", "Alabama", "A1: Alaska", "Thickness: 4\u00a0μm")),
+                        List.of("123 : A2 -> B3", "456 : C4 -> E6", "Alpha: Beta", "Gamma: Delta", "Equipment: Feeniks",
+                                "A1: pass", "Alabama", "A1: Alaska", "Thickness: 4\u00a0μm", "ROI (90, A1): roi1")),
                 new HistoryEntry(opIds[1], opTypeName1, ops.get(1).getPerformed(), labware[0].getId(),
                         labware[3].getId(), samples[2].getId(), username, null,
                         List.of("Stain type: Coffee, Blood", "Epsilon: Zeta", "Probe panel: probe1", "Lot: LOT1", "Plex: 5", "Arizona"))

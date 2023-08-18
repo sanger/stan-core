@@ -4,9 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.History;
-import uk.ac.sanger.sccp.stan.request.HistoryEntry;
-import uk.ac.sanger.sccp.stan.request.SamplePositionResult;
+import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.service.SlotRegionService;
 import uk.ac.sanger.sccp.stan.service.history.ReagentActionDetailService.ReagentActionDetail;
 import uk.ac.sanger.sccp.utils.BasicUtils;
@@ -32,6 +30,7 @@ public class HistoryServiceImp implements HistoryService {
     private final ReleaseRepo releaseRepo;
     private final DestructionRepo destructionRepo;
     private final OperationCommentRepo opCommentRepo;
+    private final RoiRepo roiRepo;
     private final SnapshotRepo snapshotRepo;
     private final WorkRepo workRepo;
     private final MeasurementRepo measurementRepo;
@@ -45,7 +44,7 @@ public class HistoryServiceImp implements HistoryService {
     @Autowired
     public HistoryServiceImp(OperationRepo opRepo, LabwareRepo lwRepo, SampleRepo sampleRepo, TissueRepo tissueRepo,
                              DonorRepo donorRepo, ReleaseRepo releaseRepo,
-                             DestructionRepo destructionRepo, OperationCommentRepo opCommentRepo,
+                             DestructionRepo destructionRepo, OperationCommentRepo opCommentRepo, RoiRepo roiRepo,
                              SnapshotRepo snapshotRepo, WorkRepo workRepo, MeasurementRepo measurementRepo,
                              LabwareNoteRepo labwareNoteRepo, ResultOpRepo resultOpRepo,
                              StainTypeRepo stainTypeRepo, LabwareProbeRepo lwProbeRepo,
@@ -59,6 +58,7 @@ public class HistoryServiceImp implements HistoryService {
         this.releaseRepo = releaseRepo;
         this.destructionRepo = destructionRepo;
         this.opCommentRepo = opCommentRepo;
+        this.roiRepo = roiRepo;
         this.snapshotRepo = snapshotRepo;
         this.workRepo = workRepo;
         this.measurementRepo = measurementRepo;
@@ -252,6 +252,19 @@ public class HistoryServiceImp implements HistoryService {
     }
 
     /**
+     * Gets all rois on specified ops
+     * @param opIds ids of ops
+     * @return map of operation id to list of rois
+     */
+    public Map<Integer, List<Roi>> loadOpRois(Collection<Integer> opIds) {
+        List<Roi> rois = roiRepo.findAllByOperationIdIn(opIds);
+        if (rois.isEmpty()) {
+            return Map.of();
+        }
+        return rois.stream().collect(Collectors.groupingBy(Roi::getOperationId));
+    }
+
+    /**
      * Should the given operation-comment be added as a detail to the history entry under construction?
      * It should, unless it has a field that indicates it is not relevant.
      * @param com the operation comment to be checked
@@ -292,6 +305,23 @@ public class HistoryServiceImp implements HistoryService {
             return (slot!=null && slot.getLabwareId()==labwareId);
         }
         return true;
+    }
+
+    /**
+     * Should the given ROI be added as a detail to the history entry under construction?
+     * It should if its slot id and sample id are applicable.
+     * @param roi the ROI to be checked
+     * @param sampleId the sample id of the entry
+     * @param labwareId the relevant labware id of the entry
+     * @param slotIdMap a map to look up slots from their id
+     * @return true if the ROI is applicable; false if not
+     */
+    public boolean doesRoiApply(Roi roi, int sampleId, int labwareId, Map<Integer, Slot> slotIdMap) {
+        if (roi.getSampleId()!=sampleId) {
+            return false;
+        }
+        Slot slot = slotIdMap.get(roi.getSlotId());
+        return (slot != null && slot.getLabwareId()==labwareId);
     }
 
     /**
@@ -397,6 +427,11 @@ public class HistoryServiceImp implements HistoryService {
         return detail;
     }
 
+    public String roiDetail(Roi roi, Map<Integer, Slot> slotIdMap) {
+        Address address = slotIdMap.get(roi.getSlotId()).getAddress();
+        return String.format("ROI (%s, %s): %s", roi.getSampleId(), address, roi.getRoi());
+    }
+
     /**
      * Converts a labware note into a string to go into the details of a history entry.
      * Since entries are specific to an operation and labware, the only information that needs
@@ -488,17 +523,18 @@ public class HistoryServiceImp implements HistoryService {
         var opComments = loadOpComments(opIds);
         var opMeasurements = loadOpMeasurements(opIds);
         var opLabwareNotes = loadOpLabwareNotes(opIds);
+        var opRois = loadOpRois(opIds);
         var opStainTypes = stainTypeRepo.loadOperationStainTypes(opIds);
         var opReagentActions = reagentActionDetailService.loadReagentTransfers(opIds);
         var opResults = loadOpResults(operations);
         var opProbes = loadOpProbes(operations);
         final Map<Integer, Slot> slotIdMap;
-        if (!opComments.isEmpty() || !opMeasurements.isEmpty()) {
+        if (opComments.isEmpty() && opMeasurements.isEmpty() && opRois.isEmpty() && opResults.isEmpty()) {
+            slotIdMap = null; // not needed
+        } else {
             slotIdMap = labware.stream()
                     .flatMap(lw -> lw.getSlots().stream())
                     .collect(toMap(Slot::getId, Function.identity()));
-        } else {
-            slotIdMap = null; // not needed
         }
         List<HistoryEntry> entries = new ArrayList<>();
         for (Operation op : operations) {
@@ -521,6 +557,7 @@ public class HistoryServiceImp implements HistoryService {
             List<OperationComment> comments = opComments.getOrDefault(op.getId(), List.of());
             List<Measurement> measurements = opMeasurements.getOrDefault(op.getId(), List.of());
             List<LabwareNote> lwNotes = opLabwareNotes.getOrDefault(op.getId(), List.of());
+            List<Roi> rois = opRois.getOrDefault(op.getId(), List.of());
             List<ReagentActionDetail> reagentActions = opReagentActions.getOrDefault(op.getId(), List.of());
             List<LabwareProbe> lwProbes = opProbes.getOrDefault(op.getId(), List.of());
             String workNumber;
@@ -590,6 +627,13 @@ public class HistoryServiceImp implements HistoryService {
                 measurements.forEach(measurement -> {
                     if (doesMeasurementApply(measurement, item.sampleId, item.destId, slotIdMap)) {
                         String detail = measurementDetail(measurement, slotIdMap);
+                        entry.addDetail(detail);
+                    }
+                });
+                rois.forEach(roi -> {
+                    assert slotIdMap != null;
+                    if (doesRoiApply(roi, item.sampleId, item.destId, slotIdMap)) {
+                        String detail = roiDetail(roi, slotIdMap);
                         entry.addDetail(detail);
                     }
                 });
