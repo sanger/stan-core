@@ -79,6 +79,12 @@ public class SectionRegisterFileReaderImp extends BaseRegisterFileReader<Section
         } else if (lwType.equalsIgnoreCase("xenium") && nullOrEmpty(prebarcode)) {
             problems.add("A prebarcode is expected for Xenium labware.");
         }
+        String workNumber = group.stream().map(row -> (String) row.get(Column.Work_number))
+                .filter(Objects::nonNull)
+                .findFirst().orElse(null);
+        if(nullOrEmpty(workNumber)) {
+            problems.add("No work number specified for external ID "+externalName+".");
+        }
 
         List<SectionRegisterContent> srcs = group.stream()
                 .map(row -> createRequestContent(problems, row))
