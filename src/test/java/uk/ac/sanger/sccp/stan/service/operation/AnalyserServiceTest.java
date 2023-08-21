@@ -226,7 +226,7 @@ public class AnalyserServiceTest {
 
     @ParameterizedTest
     @CsvSource({
-            "xenium Analyser,Probe hybridisation QC",
+            "xenium Analyser,Probe hybridisation Xenium",
             ",",
             "Foozle,"
     })

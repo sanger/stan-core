@@ -27,7 +27,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
  */
 @Service
 public class AnalyserServiceImp extends BaseResultService implements AnalyserService {
-    public static final String PROBE_QC_NAME = CompletionServiceImp.PROBE_QC_NAME;
+    public static final String PROBE_HYBRIDISATION_NAME = CompletionServiceImp.PROBE_HYBRIDISATION_NAME;
     public static final String ANALYSER_OP_NAME = "Xenium analyser";
 
     public static final String RUN_NAME = "run", LOT_NAME = "decoding reagent lot", POSITION_NAME = "cassette position";
@@ -139,7 +139,7 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
      */
     public String precedingOpTypeName(OperationType opType) {
         if (opType!=null && opType.getName().equalsIgnoreCase(ANALYSER_OP_NAME)) {
-            return PROBE_QC_NAME;
+            return PROBE_HYBRIDISATION_NAME;
         }
         return null;
     }
