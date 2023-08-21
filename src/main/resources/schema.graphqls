@@ -1731,6 +1731,8 @@ type Query {
     listFiles(workNumbers: [String!]!): [StanFile!]!
     """Get the existing costing (if any) for an item of labware."""
     labwareCosting(barcode: String!): SlideCosting
+    """Look up the latest operation of some specified type whose destinations included a given labware barcode."""
+    findLatestOp(barcode: String!, operationType: String!): Operation
 
     """Get the history containing a given sample id."""
     historyForSampleId(sampleId: Int!): History!
