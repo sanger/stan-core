@@ -57,6 +57,12 @@ enum SlideCosting {
     Faculty, SGP
 }
 
+"""Position of a cassette in an analyser."""
+enum CassettePosition {
+    left
+    right
+}
+
 """A user, who is associated with performing actions in the application."""
 type User {
     username: String!
@@ -1640,6 +1646,43 @@ input ProbeLot {
     plex: Int!
 }
 
+"""Specifies a region of interest for a sample in a slot address."""
+input SampleROI {
+    """The address of the slot."""
+    address: Address!
+    """The id of the sample."""
+    sampleId: Int!
+    """The region of interest of the sample."""
+    roi: String!
+}
+
+"""The information about a particular item of labware in an analyser request."""
+input AnalyserLabware {
+    """The barcode of the labware."""
+    barcode: String!
+    """The work number for the labware."""
+    workNumber: String!
+    """The cassette position for the labware."""
+    position: CassettePosition!
+    """The sample regions of interest in this labware."""
+    samples: [SampleROI!]!
+}
+
+"""A request to record an analyser operation."""
+input AnalyserRequest {
+    """The name of the operation type to record."""
+    operationType: String!
+    """The lot number for the decoding reagents."""
+    lotNumber: String!
+    """The run name."""
+    runName: String!
+    """The time at which this operation was performed."""
+    performed: Timestamp
+    """The labware involved in this request."""
+    labware: [AnalyserLabware!]!
+}
+
+
 """Info about the app version."""
 type VersionInfo {
     """The output of git describe."""
@@ -1931,6 +1974,8 @@ type Mutation {
     recordProbeOperation(request: ProbeOperationRequest!): OperationResult!
     """Record a process being completed."""
     recordCompletion(request: CompletionRequest!): OperationResult!
+    """Record analyser operation."""
+    recordAnalyser(request: AnalyserRequest!): OperationResult!
 
     """Create a new user for the application."""
     addUser(username: String!): User!

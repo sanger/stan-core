@@ -183,7 +183,7 @@ public class EntityFactory {
             for (Sample sample : samples) {
                 Slot slot = slotIterator.next();
                 if (sample!=null) {
-                    slot.getSamples().add(sample);
+                    slot.addSample(sample);
                 }
             }
         }
