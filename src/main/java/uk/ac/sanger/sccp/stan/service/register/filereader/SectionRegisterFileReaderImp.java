@@ -39,6 +39,9 @@ public class SectionRegisterFileReaderImp extends BaseRegisterFileReader<Section
         String groupx = null;
         String workNumber = getUniqueString(rows.stream().map(row -> (String) row.get(Column.Work_number)),
                 () -> problems.add("Multiple work numbers specified."));
+        if(nullOrEmpty(workNumber)) {
+            problems.add("Missing work number.");
+        }
 
         for (var row : rows) {
             String rowx = (String) row.get(Column.External_slide_ID);
@@ -78,12 +81,6 @@ public class SectionRegisterFileReaderImp extends BaseRegisterFileReader<Section
             problems.add("No labware type specified for external ID "+externalName+".");
         } else if (lwType.equalsIgnoreCase("xenium") && nullOrEmpty(prebarcode)) {
             problems.add("A prebarcode is expected for Xenium labware.");
-        }
-        String workNumber = group.stream().map(row -> (String) row.get(Column.Work_number))
-                .filter(Objects::nonNull)
-                .findFirst().orElse(null);
-        if(nullOrEmpty(workNumber)) {
-            problems.add("No work number specified for external ID "+externalName+".");
         }
 
         List<SectionRegisterContent> srcs = group.stream()

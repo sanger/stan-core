@@ -303,11 +303,23 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
                 "Missing external barcode.",
                 "Bad stuff.");
     }
+    @Test
+    void testCreateRequest_withEmptyWorkNumber_validationShouldFail() {
+        List<Map<Column, Object>> rows = List.of(
+                rowMap("", "X1", 1),
+                rowMap(null, null, 2)
+        );
+        SectionRegisterLabware srl =  new SectionRegisterLabware("X1", null, null);
+        doReturn(srl).when(reader).createRequestLabware(any(), eq(rows));
+
+        assertValidationError(() -> reader.createRequest(new ArrayList<>(), rows),
+                "Missing work number.");
+    }
 
     @Test
     void testCreateRequestLabware() {
         List<Map<Column, Object>> rows = List.of(
-                rowMap("SGP101", "X1", "Bowl"),
+                rowMap("X1", "Bowl"),
                 rowMap("X1", null),
                 rowMap("X1", "bowl")
         );
@@ -331,7 +343,7 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
     @ValueSource(ints={0,1,2})
     void testCreateRequestLabwareXenium(int numPrebarcodes) {
         List<Map<Column, Object>> rows = List.of(
-                rowMap("SGP101", "X1", "Xenium"),
+                rowMap("X1", "Xenium"),
                 rowMap("X1", null),
                 rowMap("X1", "xenium")
         );
@@ -365,7 +377,7 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
     @ValueSource(booleans={false,true})
     void testCreateRequestLabware_problems(boolean anyLwType) {
         List<Map<Column, Object>> rows = List.of(
-                rowMap("SGP101", "X1", anyLwType ? "Bowl" : null),
+                rowMap("X1", anyLwType ? "Bowl" : null),
                 rowMap("X1", null),
                 rowMap("X1", anyLwType ? "pipe" : null)
         );
@@ -385,16 +397,6 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
                 anyLwType ? "Multiple different labware types specified for external ID X1."
                         : "No labware type specified for external ID X1.");
         assertEquals(srl, new SectionRegisterLabware("X1", anyLwType ? "Bowl" : null, srcs));
-    }
-
-    @Test
-    void testCreateRequestLabware_withNoWorkNumber_validationShouldFail() {
-        List<Map<Column, Object>> rows = List.of(
-                rowMap("", "X1",  "Bowl")
-        );
-        final List<String> problems = new ArrayList<>(1);
-        reader.createRequestLabware(problems, rows);
-        assertThat(problems).containsExactly("No work number specified for external ID X1.");
     }
 
     @Test
@@ -473,7 +475,7 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
         return map;
     }
 
-    static Map<Column, Object> rowMap(String workNumber, String externalName, Integer sectionNumber) {
+    static Map<Column, Object> rowMap(Object workNumber, Object externalName, Integer sectionNumber) {
         Map<Column, Object> map = new EnumMap<>(Column.class);
         map.put(Column.Work_number, workNumber);
         map.put(Column.External_slide_ID, externalName);
@@ -483,14 +485,6 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
 
     static Map<Column, Object> rowMap(String externalName, String lwType) {
         Map<Column, Object> map = new EnumMap<>(Column.class);
-        map.put(Column.External_slide_ID, externalName);
-        map.put(Column.Slide_type, lwType);
-        return map;
-    }
-
-    static Map<Column, Object> rowMap(String workNumber, String externalName, String lwType) {
-        Map<Column, Object> map = new EnumMap<>(Column.class);
-        map.put(Column.Work_number, workNumber);
         map.put(Column.External_slide_ID, externalName);
         map.put(Column.Slide_type, lwType);
         return map;
