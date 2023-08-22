@@ -17,7 +17,7 @@
             <column name="name" type="VARCHAR(32)">
                 <constraints nullable="false"/>
             </column>
-            <column name="value" type="VARCHAR(16)">
+            <column name="value" type="VARCHAR(255)">
                 <constraints nullable="false"/>
             </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">

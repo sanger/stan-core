@@ -1,0 +1,5 @@
+query {
+    findLatestOp(barcode: "STAN-A1", operationType: "Register") {
+        id
+    }
+}

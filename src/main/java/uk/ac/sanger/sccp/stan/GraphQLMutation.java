@@ -22,8 +22,7 @@ import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.analysis.RNAAnalysisService;
 import uk.ac.sanger.sccp.stan.service.extract.ExtractService;
 import uk.ac.sanger.sccp.stan.service.label.print.LabelPrintService;
-import uk.ac.sanger.sccp.stan.service.operation.AliquotService;
-import uk.ac.sanger.sccp.stan.service.operation.InPlaceOpService;
+import uk.ac.sanger.sccp.stan.service.operation.*;
 import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmOperationService;
 import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmSectionService;
 import uk.ac.sanger.sccp.stan.service.operation.plan.PlanService;
@@ -96,6 +95,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final OpWithSlotCommentsService opWithSlotCommentsService;
     final ProbeService probeService;
     final CompletionService completionService;
+    final AnalyserService analyserService;
     final UserAdminService userAdminService;
 
     @Autowired
@@ -125,7 +125,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            InPlaceOpCommentService inPlaceOpCommentService,
                            SampleProcessingService sampleProcessingService, SolutionTransferService solutionTransferService,
                            FFPEProcessingService ffpeProcessingService, OpWithSlotCommentsService opWithSlotCommentsService,
-                           ProbeService probeService, CompletionService completionService,
+                           ProbeService probeService, CompletionService completionService, AnalyserService analyserService,
                            UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
@@ -180,6 +180,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.opWithSlotCommentsService = opWithSlotCommentsService;
         this.probeService = probeService;
         this.completionService = completionService;
+        this.analyserService = analyserService;
         this.userAdminService = userAdminService;
     }
 
@@ -802,6 +803,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             CompletionRequest request = arg(dfe, "request", CompletionRequest.class);
             logRequest("Record completion", user, request);
             return completionService.perform(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> recordAnalyser() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            AnalyserRequest request = arg(dfe, "request", AnalyserRequest.class);
+            logRequest("Record analyser", user, request);
+            return analyserService.perform(user, request);
         };
     }
 

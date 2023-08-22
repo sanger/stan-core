@@ -107,6 +107,7 @@ public class GraphQLProvider {
                         .dataFetcher("labwareCosting", graphQLDataFetchers.getLabwareCosting())
                         .dataFetcher("suggestedWorkForLabware", graphQLDataFetchers.getSuggestedWorkForLabwareBarcodes())
                         .dataFetcher("suggestedLabwareForWork", graphQLDataFetchers.getSuggestedLabwareForWork())
+                        .dataFetcher("findLatestOp", graphQLDataFetchers.findLatestOperation())
 
                         .dataFetcher("users", graphQLDataFetchers.getUsers())
                         .dataFetcher("planData", graphQLDataFetchers.getPlanData())
@@ -204,6 +205,7 @@ public class GraphQLProvider {
                         .dataFetcher("recordOpWithSlotComments", transact(graphQLMutation.performOpWithSlotComments()))
                         .dataFetcher("recordProbeOperation", transact(graphQLMutation.recordProbeOperation()))
                         .dataFetcher("recordCompletion", transact(graphQLMutation.recordCompletion()))
+                        .dataFetcher("recordAnalyser", transact(graphQLMutation.recordAnalyser()))
 
                         .dataFetcher("addUser", transact(graphQLMutation.addUser()))
                         .dataFetcher("setUserRole", transact(graphQLMutation.setUserRole()))

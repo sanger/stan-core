@@ -1,0 +1,21 @@
+mutation {
+    recordAnalyser(request: {
+        operationType: "Xenium Analyser"
+        lotNumber: "LOT1"
+        runName: "RUN1"
+        labware: [{
+            barcode: "STAN-1"
+            workNumber: "SGP1"
+            position: left
+            samples: [{
+                address: "A1"
+                roi: "roi1"
+                sampleId: 555
+            }]
+        }]
+    }) {
+        operations {
+            id
+        }
+    }
+}
