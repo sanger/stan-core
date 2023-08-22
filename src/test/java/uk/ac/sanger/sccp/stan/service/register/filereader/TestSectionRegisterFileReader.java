@@ -303,6 +303,18 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
                 "Missing external barcode.",
                 "Bad stuff.");
     }
+    @Test
+    void testCreateRequest_withEmptyWorkNumber_validationShouldFail() {
+        List<Map<Column, Object>> rows = List.of(
+                rowMap("", "X1", 1),
+                rowMap(null, null, 2)
+        );
+        SectionRegisterLabware srl =  new SectionRegisterLabware("X1", null, null);
+        doReturn(srl).when(reader).createRequestLabware(any(), eq(rows));
+
+        assertValidationError(() -> reader.createRequest(new ArrayList<>(), rows),
+                "Missing work number.");
+    }
 
     @Test
     void testCreateRequestLabware() {

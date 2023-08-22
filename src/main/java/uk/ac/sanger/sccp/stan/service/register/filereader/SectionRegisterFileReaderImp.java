@@ -39,6 +39,9 @@ public class SectionRegisterFileReaderImp extends BaseRegisterFileReader<Section
         String groupx = null;
         String workNumber = getUniqueString(rows.stream().map(row -> (String) row.get(Column.Work_number)),
                 () -> problems.add("Multiple work numbers specified."));
+        if(nullOrEmpty(workNumber)) {
+            problems.add("Missing work number.");
+        }
 
         for (var row : rows) {
             String rowx = (String) row.get(Column.External_slide_ID);
