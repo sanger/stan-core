@@ -96,6 +96,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final ProbeService probeService;
     final CompletionService completionService;
     final AnalyserService analyserService;
+    final QCLabwareService qcLabwareService;
     final UserAdminService userAdminService;
 
     @Autowired
@@ -126,6 +127,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            SampleProcessingService sampleProcessingService, SolutionTransferService solutionTransferService,
                            FFPEProcessingService ffpeProcessingService, OpWithSlotCommentsService opWithSlotCommentsService,
                            ProbeService probeService, CompletionService completionService, AnalyserService analyserService,
+                           QCLabwareService qcLabwareService,
                            UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
@@ -181,6 +183,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.probeService = probeService;
         this.completionService = completionService;
         this.analyserService = analyserService;
+        this.qcLabwareService = qcLabwareService;
         this.userAdminService = userAdminService;
     }
 
@@ -812,6 +815,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             AnalyserRequest request = arg(dfe, "request", AnalyserRequest.class);
             logRequest("Record analyser", user, request);
             return analyserService.perform(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> recordQcLabware() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            QCLabwareRequest request = arg(dfe, "request", QCLabwareRequest.class);
+            logRequest("QC labware", user, request);
+            return qcLabwareService.perform(user, request);
         };
     }
 

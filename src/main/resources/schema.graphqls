@@ -1682,6 +1682,25 @@ input AnalyserRequest {
     labware: [AnalyserLabware!]!
 }
 
+"""Labware to be QC'd with comments and a completion time."""
+input QCLabware {
+    """The barcode of the labware."""
+    barcode: String!
+    """The work number to link to the operation."""
+    workNumber: String!
+    """The time at which the process was completed."""
+    completion: Timestamp
+    """Zero or more comments applied to this labware in this operation."""
+    comments: [Int!]!
+}
+
+"""Request to record QC and completion time for one or more labware."""
+input QCLabwareRequest {
+    """The name of the operation to record."""
+    operationType: String!
+    """The specifications of labware to QC."""
+    labware: [QCLabware!]!
+}
 
 """Info about the app version."""
 type VersionInfo {
@@ -1976,6 +1995,8 @@ type Mutation {
     recordCompletion(request: CompletionRequest!): OperationResult!
     """Record analyser operation."""
     recordAnalyser(request: AnalyserRequest!): OperationResult!
+    """Record QC labware request."""
+    recordQCLabware(request: QCLabwareRequest!): OperationResult!
 
     """Create a new user for the application."""
     addUser(username: String!): User!
