@@ -3,14 +3,16 @@ package uk.ac.sanger.sccp.stan.service;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.*;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.repo.OperationCommentRepo;
+import uk.ac.sanger.sccp.stan.repo.OperationRepo;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.request.QCLabwareRequest;
 import uk.ac.sanger.sccp.stan.request.QCLabwareRequest.QCLabware;
+import uk.ac.sanger.sccp.stan.service.validation.ValidationHelper;
+import uk.ac.sanger.sccp.stan.service.validation.ValidationHelperFactory;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
@@ -35,21 +37,19 @@ public class TestQCLabwareService {
     @Mock
     private Clock mockClock;
     @Mock
-    private OperationTypeRepo mockOpTypeRepo;
-    @Mock
-    private LabwareRepo mockLwRepo;
+    private ValidationHelperFactory mockValFactory;
     @Mock
     private OperationRepo mockOpRepo;
     @Mock
     private OperationCommentRepo mockOpComRepo;
     @Mock
-    private LabwareValidatorFactory mockLwValFactory;
-    @Mock
     private WorkService mockWorkService;
     @Mock
     private OperationService mockOpService;
     @Mock
-    private CommentValidationService mockCommentValidationService;
+    private ValidationHelper mockVal;
+    private Set<String> problems;
+
     @InjectMocks
     private QCLabwareServiceImp service;
 
@@ -58,6 +58,9 @@ public class TestQCLabwareService {
     @BeforeEach
     void setup() {
         mocking = MockitoAnnotations.openMocks(this);
+        problems = new LinkedHashSet<>();
+        when(mockValFactory.getHelper()).thenReturn(mockVal);
+        when(mockVal.getProblems()).thenReturn(problems);
         service = spy(service);
     }
 
@@ -78,19 +81,19 @@ public class TestQCLabwareService {
         QCLabwareRequest request = new QCLabwareRequest(opType.getName(), List.of(qcl));
         List<QCLabware> qcls = request.getLabware();
 
-        doReturn(opType).when(service).checkOpType(any(), any());
-        doReturn(lwMap).when(service).checkLabware(any(), any());
-        doReturn(workMap).when(service).checkWork(any(), any());
+        doReturn(opType).when(mockVal).checkOpType(anyString(), any(OperationTypeFlag.class));
+        doReturn(lwMap).when(mockVal).checkLabware(any());
+        doReturn(workMap).when(mockVal).checkWork(any());
         doNothing().when(service).checkTimestamps(any(), any(), any(), any());
-        doReturn(commentMap).when(service).checkComments(any(), any());
+        doReturn(commentMap).when(mockVal).checkCommentIds(any());
 
         OperationResult opres = new OperationResult(List.of(new Operation()), List.of(lw));
         doReturn(opres).when(service).record(any(), any(), any(), any(), any(), any());
 
         assertSame(opres, service.perform(user, request));
-        verify(service).checkOpType(any(), eq(request.getOperationType()));
-        verify(service).checkLabware(any(), same(qcls));
-        verify(service).checkWork(any(), same(qcls));
+        verify(mockVal).checkOpType(request.getOperationType(), OperationTypeFlag.IN_PLACE);
+        verify(mockVal).checkLabware(qcls.stream().map(QCLabware::getBarcode).collect(toList()));
+        verify(mockVal).checkWork(qcls.stream().map(QCLabware::getWorkNumber).collect(toList()));
         verify(service).checkTimestamps(any(), same(qcls), same(lwMap), same(mockClock));
         verify(service).checkComments(any(), same(qcls));
 
@@ -103,14 +106,13 @@ public class TestQCLabwareService {
         User user = EntityFactory.getUser();
         OperationType opType = EntityFactory.makeOperationType("opname", null);
         QCLabwareRequest request = new QCLabwareRequest(opType.getName(), null);
-
-        doReturn(opType).when(service).checkOpType(any(), any());
+        when(mockVal.checkOpType(any(), any(OperationTypeFlag.class))).thenReturn(opType);
 
         assertValidationException(() -> service.perform(user, request), List.of("No labware specified."));
 
-        verify(service).checkOpType(any(), eq(request.getOperationType()));
-        verify(service, never()).checkLabware(any(), any());
-        verify(service, never()).checkWork(any(), any());
+        verify(mockVal).checkOpType(request.getOperationType(), OperationTypeFlag.IN_PLACE);
+        verify(mockVal, never()).checkLabware(any());
+        verify(mockVal, never()).checkWork(any());
         verify(service, never()).checkTimestamps(any(), any(), any(), any());
         verify(service, never()).checkComments(any(), any());
         verify(service, never()).record(any(), any(), any(), any(), any(), any());
@@ -124,99 +126,29 @@ public class TestQCLabwareService {
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lw);
         UCMap<Work> workMap = UCMap.from(Work::getWorkNumber, EntityFactory.makeWork("SGP1"));
         Map<Integer, Comment> commentMap = Map.of(5, new Comment(5, "A", "B"));
-        QCLabware qcl = new QCLabware(lw.getBarcode(), null, null, null);
+        QCLabware qcl = new QCLabware(lw.getBarcode(), "SGP1", null, null);
         QCLabwareRequest request = new QCLabwareRequest(opType.getName(), List.of(qcl));
         List<QCLabware> qcls = request.getLabware();
+        problems.add("Problem A.");
+        problems.add("Problem B.");
 
-        doAnswer(addProblem("Bad op type", opType)).when(service).checkOpType(any(), any());
-        doAnswer(addProblem("Bad lw", lwMap)).when(service).checkLabware(any(), any());
-        doAnswer(addProblem("Bad work", workMap)).when(service).checkWork(any(), any());
+        when(mockVal.checkOpType(any(), any(OperationTypeFlag.class))).thenReturn(opType);
+        when(mockVal.checkLabware(any())).thenReturn(lwMap);
+        when(mockVal.checkWork(any())).thenReturn(workMap);
+
         doAnswer(addProblem("Bad time")).when(service).checkTimestamps(any(), any(), any(), any());
         doAnswer(addProblem("Bad comment", commentMap)).when(service).checkComments(any(), any());
 
         assertValidationException(() -> service.perform(user, request),
-                List.of("Bad op type", "Bad lw", "Bad work", "Bad time", "Bad comment"));
+                List.of("Problem A.", "Problem B.", "Bad time", "Bad comment"));
 
-        verify(service).checkOpType(any(), eq(request.getOperationType()));
-        verify(service).checkLabware(any(), same(qcls));
-        verify(service).checkWork(any(), same(qcls));
+        verify(mockVal).checkOpType(request.getOperationType(), OperationTypeFlag.IN_PLACE);
+        verify(mockVal).checkLabware(List.of(lw.getBarcode()));
+        verify(mockVal).checkWork(List.of("SGP1"));
         verify(service).checkTimestamps(any(), same(qcls), same(lwMap), same(mockClock));
         verify(service).checkComments(any(), same(qcls));
 
         verify(service, never()).record(any(), any(), any(), any(), any(), any());
-    }
-
-    @ParameterizedTest
-    @CsvSource({
-            "boop, true, ",
-            ",,No operation type specified.",
-            "boop,,Unknown operation type: \"boop\"",
-            "boop, false, Operation type boop cannot be used in this request.",
-    })
-    public void testCheckOpType(String opName, Boolean inPlace, String expectedProblem) {
-        OperationType opType;
-        if (inPlace==null) {
-            opType = null;
-        } else if (inPlace) {
-            opType = EntityFactory.makeOperationType(opName, null, OperationTypeFlag.IN_PLACE);
-        } else {
-            opType = EntityFactory.makeOperationType(opName, null);
-        }
-        when(mockOpTypeRepo.findByName(opName)).thenReturn(Optional.ofNullable(opType));
-        List<String> problems = new ArrayList<>(expectedProblem==null ? 0 : 1);
-        assertSame(opType, service.checkOpType(problems, opName));
-        assertProblem(problems, expectedProblem);
-    }
-
-    @ParameterizedTest
-    @CsvSource({
-            "STAN-1,,",
-            "STAN-1,Bad barcode,Bad barcode",
-            "STAN-1 null STAN-2,,Missing labware barcode.",
-            "null,,Missing labware barcode.",
-    })
-    public void testCheckLabware(String barcodesJoined, String validationError, String expectedProblem) {
-        String[] barcodesSplit = barcodesJoined.split(" ");
-        List<QCLabware> qcls = Arrays.stream(barcodesSplit)
-                .map(s -> "null".equals(s) ? null : s)
-                .map(bc -> new QCLabware(bc, null, null, null))
-                .collect(toList());
-        List<String> nonNullBarcodes = qcls.stream()
-                .map(QCLabware::getBarcode)
-                .filter(Objects::nonNull)
-                .collect(toList());
-        LabwareValidator val = mock(LabwareValidator.class);
-        when(mockLwValFactory.getValidator()).thenReturn(val);
-        when(val.getErrors()).thenReturn(validationError==null ? List.of() : List.of(validationError));
-        Labware lw = EntityFactory.getTube();
-        when(val.getLabware()).thenReturn(List.of(lw));
-        final List<String> problems = new ArrayList<>(expectedProblem==null ? 0 : 1);
-        UCMap<Labware> lwMap = service.checkLabware(problems, qcls);
-        assertProblem(problems, expectedProblem);
-        if (nonNullBarcodes.isEmpty()) {
-            assertThat(lwMap).isEmpty();
-            verifyNoInteractions(val);
-        } else {
-            assertThat(lwMap).containsExactly(Map.entry(lw.getBarcode(), lw));
-            verify(val).loadLabware(mockLwRepo, nonNullBarcodes);
-            verify(val).validateSources();
-        }
-    }
-
-    @ParameterizedTest
-    @ValueSource(booleans = {false,true})
-    public void testCheckWork(boolean anyProblem) {
-        List<String> workNumbers = List.of("SGP1", "SGP2");
-        List<QCLabware> qcls = workNumbers.stream()
-                .map(wn -> new QCLabware(null, wn, null, null))
-                .collect(toList());
-        UCMap<Work> workMap = UCMap.from(Work::getWorkNumber, EntityFactory.makeWork("SGP1"));
-        String expectedProblem = anyProblem ? "Bad work" : null;
-        mayAddProblem(expectedProblem, workMap).when(mockWorkService).validateUsableWorks(any(), any());
-        List<String> problems = new ArrayList<>(anyProblem ? 1 : 0);
-        assertSame(workMap, service.checkWork(problems, qcls));
-        assertProblem(problems, expectedProblem);
-        verify(mockWorkService).validateUsableWorks(any(), eq(workNumbers));
     }
 
     @Test
@@ -235,44 +167,16 @@ public class TestQCLabwareService {
         List<QCLabware> qcls = IntStream.range(0, lws.length)
                 .mapToObj(i -> new QCLabware(lws[i].getBarcode(), null, times[i], null))
                 .collect(toList());
-        final List<String> problems = new ArrayList<>(0);
 
-        doNothing().when(service).checkTimestamp(any(), any(), any(), any());
+        doNothing().when(mockVal).checkTimestamp(any(), any(), any());
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lws);
 
-        service.checkTimestamps(problems, qcls, lwMap, clock);
+        service.checkTimestamps(mockVal, qcls, lwMap, clock);
+
         LocalDate today = LocalDate.of(2023,1,2);
         for (int i = 0; i < lws.length; ++i) {
-            verify(service).checkTimestamp(same(problems), same(qcls.get(i).getCompletion()), eq(today), eq(lws[i]));
+            verify(mockVal).checkTimestamp(times[i], today, lws[i]);
         }
-    }
-
-    @ParameterizedTest
-    @CsvSource({
-            "1,2,3,",
-            "1,2,2,",
-            ",2,3,",
-            "1,,1,",
-            "2,1,3,Specified time is before labware STAN-1 was created.",
-            "1,3,2,Specified time is in the future.",
-    })
-    public void testCheckTimestamp(Integer lwDay, Integer givenDay, int nowDay, String expectedProblem) {
-        Labware lw;
-        if (lwDay==null) {
-            lw = null;
-        } else {
-            lw = EntityFactory.makeEmptyLabware(EntityFactory.getTubeType(), "STAN-1");
-            lw.setCreated(ldt(lwDay));
-        }
-
-        LocalDate today = LocalDate.of(2023,1,nowDay);
-        LocalDateTime time = (givenDay==null ? null : ldt(givenDay));
-
-        List<String> problems = new ArrayList<>(expectedProblem==null ? 0 : 1);
-
-        service.checkTimestamp(problems, time, today, lw);
-
-        assertProblem(problems, expectedProblem);
     }
 
     @ParameterizedTest
@@ -282,19 +186,23 @@ public class TestQCLabwareService {
         List<Integer> commentIds = anyRepeat ? List.of(1,2,3,2) : List.of(1,2,3);
         QCLabware qcl = new QCLabware("STAN-1", null, null, commentIds);
         var qcls = List.of(qcl);
-        List<Comment> comments = List.of(new Comment(1, "A", "B"), new Comment(2, "C", "D"));
-        mayAddProblem(expectedProblem, comments).when(mockCommentValidationService).validateCommentIds(any(), any());
+        Map<Integer, Comment> commentMap = Map.of(
+                1, new Comment(1, "A", "B"),
+                2, new Comment(2, "C", "D")
+        );
+        when(mockVal.checkCommentIds(any())).thenReturn(commentMap);
+        if (anyProblem) {
+            problems.add(expectedProblem);
+        }
 
-        List<String> problems = new ArrayList<>(anyRepeat || anyProblem ? 1 : 0);
-        var commentMap = service.checkComments(problems, qcls);
-        assertThat(commentMap).containsExactly(Map.entry(1, comments.get(0)), Map.entry(2, comments.get(1)));
+        assertSame(commentMap, service.checkComments(mockVal, qcls));
         if (anyRepeat) {
             assertProblem(problems, "Duplicate comments specified for barcode STAN-1.");
         } else {
             assertProblem(problems, expectedProblem);
         }
         ArgumentCaptor<Stream<Integer>> idStreamCaptor = streamCaptor();
-        verify(mockCommentValidationService).validateCommentIds(same(problems), idStreamCaptor.capture());
+        verify(mockVal).checkCommentIds(idStreamCaptor.capture());
         assertThat(idStreamCaptor.getValue()).containsExactlyElementsOf(commentIds);
     }
 
