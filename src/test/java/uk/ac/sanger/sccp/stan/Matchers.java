@@ -25,7 +25,7 @@ import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.utils.BasicUtils.sameContents;
 
 /**
- * Matchers to use with mockito
+ * Functions to help with tests; matchers to use with mockito
  * @author dr6
  */
 public class Matchers {
@@ -38,6 +38,12 @@ public class Matchers {
         return argThat(new CaseInsensitiveStringMatcher(string));
     }
 
+    /**
+     * Match with a DisorderedStringMatcher for the given regular expression.
+     * @param regex regular expression
+     * @param parts strings to look for in the matched string
+     * @return a string arg matcher
+     */
     public static String disorderedMatch(String regex, List<String> parts) {
         return argThat(new DisorderedStringMatcher(regex, parts));
     }
@@ -55,6 +61,11 @@ public class Matchers {
         return argThat(new OrderInsensitiveCollectionMatcher<>(collection, checkSize));
     }
 
+    /**
+     * An argument captor for a stream of some generic type.
+     * @return a stream captor
+     * @param <E> the element type of the stream
+     */
     @SuppressWarnings("unchecked")
     public static <E> ArgumentCaptor<Stream<E>> streamCaptor() {
         return ArgumentCaptor.forClass(Stream.class);
@@ -109,14 +120,34 @@ public class Matchers {
         assertThat((Collection<Object>) ex.getProblems()).containsExactlyInAnyOrderElementsOf(problems);
     }
 
+    /**
+     * An answer that returns the first argument the function is called with.
+     * @return an answer
+     * @param <T> the return type of the method being mocked
+     */
     public static <T> Answer<T> returnArgument() {
         return invocation -> invocation.getArgument(0);
     }
 
+    /**
+     * An answer that will add a problem to the {@code Collection<String>} expected to be the first
+     * argument of the mocked method. Returns null/void.
+     * @param problem the problem to add to the problem collection
+     * @return an answer used for mocking
+     * @param <X> the unspecified return type of the mocked method (typically void)
+     */
     public static <X> Answer<X> addProblem(final String problem) {
         return addProblem(problem, null);
     }
 
+    /**
+     * An answer that will add a problem to the {@code Collection<String>} expected to be the first
+     * argument of the mocked method, and return the given return value.
+     * @param problem the problem to add to the problem collection
+     * @param returnValue the value the mocked method will return
+     * @return an answer used for mocking
+     * @param <X> the return type of the mocked method
+     */
     public static <X> Answer<X> addProblem(final String problem, X returnValue) {
         return invocation -> {
             Collection<String> problems = invocation.getArgument(0);
@@ -125,14 +156,34 @@ public class Matchers {
         };
     }
 
+    /**
+     * A stub that will add the given problem (see {@link #addProblem}) if it is non-null; and
+     * will return the given return value.
+     * @param problem the problem to add, or null
+     * @param returnValue the value the mocked method will return
+     * @return a stub for ongoing mocking
+     * @param <X> the return type of the mocked method
+     */
     public static <X> Stubber mayAddProblem(final String problem, X returnValue) {
         return (problem == null ? doReturn(returnValue) : doAnswer(addProblem(problem, returnValue)));
     }
 
+    /**
+     * A stub that will add the given problem (see {@link #addProblem}) if it is non-null; and
+     * will return null/void
+     * @param problem the problem to add, or null
+     * @return a stub for ongoing mocking
+     */
     public static Stubber mayAddProblem(final String problem) {
         return (problem==null ? doNothing() : doAnswer(addProblem(problem)));
     }
 
+    /**
+     * Asserts that the given collection of problems contains the given expected problem, and nothing else.
+     * If the given expected problem is null, asserts that the collection is empty.
+     * @param problems collection of accumulated problems
+     * @param expectedProblem the expected problem, or null
+     */
     public static void assertProblem(Collection<String> problems, String expectedProblem) {
         if (expectedProblem==null) {
             assertThat(problems).isEmpty();
@@ -141,6 +192,12 @@ public class Matchers {
         }
     }
 
+    /**
+     * Sets up the given mock Transactor instance so that it will return the result of whatever supplier function
+     * is passed into it.
+     * @param mockTransactor a mock Transactor instance
+     * @return the same mock Transactor instance
+     */
     public static Transactor mockTransactor(final Transactor mockTransactor) {
         when(mockTransactor.transact(any(), any())).then(invocation -> {
             Supplier<?> sup = invocation.getArgument(1);
@@ -149,12 +206,21 @@ public class Matchers {
         return mockTransactor;
     }
 
+    /**
+     * Stubs a mock Clock instance so that it will produce the specified time.
+     * @param mockClock a mock Clock instance
+     * @param time the time to make the clock produce
+     * @return the same mock Clock instance
+     */
     public static Clock setMockClock(Clock mockClock, LocalDateTime time) {
         when(mockClock.getZone()).thenReturn(ZoneId.systemDefault());
         when(mockClock.instant()).thenReturn(time.toInstant(ZoneId.systemDefault().getRules().getOffset(time)));
         return mockClock;
     }
 
+    /**
+     * An argument matcher that matches a string case-insensitively.
+     */
     private static class CaseInsensitiveStringMatcher implements ArgumentMatcher<String> {
         String string;
 
@@ -168,6 +234,11 @@ public class Matchers {
         }
     }
 
+    /**
+     * An argument matcher that matches a collection of items that are not in a guaranteed order.
+     * @param <E> the type of the contents of the collection
+     * @param <C> the type of the collection
+     */
     private static class OrderInsensitiveCollectionMatcher<E, C extends Collection<E>> implements ArgumentMatcher<C> {
         C collection;
         boolean checkSize;
@@ -188,6 +259,7 @@ public class Matchers {
         }
     }
 
+    /** Matchers for a function. Checks that the function received produces the given output for the given input. */
     private static class FunctionMatcher<T, R> implements ArgumentMatcher<Function<T,R>> {
         T input;
         R output;
@@ -208,6 +280,11 @@ public class Matchers {
         }
     }
 
+    /**
+     * Matcher for a list of items in some kind of string, in any order.
+     * The regular expression captures the groups that the string lists;
+     * the list of parts must match the contents of those groups.
+     **/
     public static class DisorderedStringMatcher implements ArgumentMatcher<String> {
         private final Pattern pattern;
         private final List<String> parts;
