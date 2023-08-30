@@ -6,6 +6,7 @@ import org.mockito.ArgumentMatcher;
 import org.mockito.stubbing.Answer;
 import org.mockito.stubbing.Stubber;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
+import uk.ac.sanger.sccp.stan.service.validation.ValidationHelper;
 
 import java.time.*;
 import java.util.*;
@@ -150,7 +151,14 @@ public class Matchers {
      */
     public static <X> Answer<X> addProblem(final String problem, X returnValue) {
         return invocation -> {
-            Collection<String> problems = invocation.getArgument(0);
+            Object pArg = invocation.getArgument(0);
+            Collection<String> problems;
+            if (pArg instanceof ValidationHelper) {
+                problems = ((ValidationHelper) pArg).getProblems();
+            } else {
+                //noinspection unchecked
+                problems = (Collection<String>) pArg;
+            }
             problems.add(problem);
             return returnValue;
         };

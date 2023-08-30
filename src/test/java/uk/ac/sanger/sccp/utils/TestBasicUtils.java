@@ -169,7 +169,6 @@ public class TestBasicUtils {
         assertEquals("MONDAY", dayMap.get(DayOfWeek.MONDAY));
         assertEquals("TUESDAY", dayMap.get(DayOfWeek.TUESDAY));
 
-        //noinspection ResultOfMethodCallIgnored
         assertThrows(IllegalStateException.class,
                 () -> Stream.of("Alpha", "Beta", "Gamma", "Beta")
                         .collect(inMap(String::toUpperCase, LinkedHashMap::new))
@@ -182,7 +181,6 @@ public class TestBasicUtils {
                 .collect(inMap(String::toUpperCase));
         assertEquals(map, Map.of("ALPHA", "Alpha", "BETA", "Beta", "GAMMA", "Gamma"));
 
-        //noinspection ResultOfMethodCallIgnored
         assertThrows(IllegalStateException.class,
                 () -> Stream.of("Alpha", "Beta", "Gamma", "Gamma")
                         .collect(inMap(String::toUpperCase))
@@ -254,5 +252,11 @@ public class TestBasicUtils {
             assertEquals(value, expected.next());
         }
         assertFalse(expected.hasNext());
+    }
+
+    @Test
+    public void testContainsDupes() {
+        assertTrue(containsDupes(List.of(1,2,3,2)));
+        assertFalse(containsDupes(List.of(1,3,5,2)));
     }
 }

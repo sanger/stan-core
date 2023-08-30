@@ -1,0 +1,14 @@
+mutation {
+    recordQCLabware(request: {
+        operationType: "fizzle"
+        labware: {
+            barcode: "STAN-1"
+            workNumber: "SGP1"
+            comments: [1]
+        }
+    }) {
+        operations {
+            id
+        }
+    }
+}

@@ -4,15 +4,9 @@ import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 
 import java.util.*;
-import java.util.function.BinaryOperator;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
+import java.util.function.*;
 import java.util.regex.Pattern;
-import java.util.stream.Collector;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
+import java.util.stream.*;
 
 /**
  * Much copied from the corresponding class in CGAP lims
@@ -499,5 +493,22 @@ public class BasicUtils {
             return ((Collection<E>) iterable).stream();
         }
         return StreamSupport.stream(iterable.spliterator(), false);
+    }
+
+    /**
+     * Does the given iterable contain any duplicates?
+     * Duplication is checked using a hashset.
+     * @param items iterable items
+     * @return true if any dupe is found; otherwise false
+     * @param <E> the type of object iterated
+     */
+    public static <E> boolean containsDupes(Iterable<E> items) {
+        final Set<E> seen = new HashSet<>();
+        for (E item : items) {
+            if (!seen.add(item)) {
+                return true;
+            }
+        }
+        return false;
     }
 }
