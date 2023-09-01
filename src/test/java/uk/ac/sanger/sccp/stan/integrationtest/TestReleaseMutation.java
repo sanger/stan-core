@@ -72,6 +72,10 @@ public class TestReleaseMutation {
     @Test
     @Transactional
     public void testRelease() throws Exception {
+        entityCreator.createOpType("Probe hybridisation Xenium", null, OperationTypeFlag.IN_PLACE);
+        entityCreator.createOpType("Probe hybridisation QC", null, OperationTypeFlag.IN_PLACE);
+        entityCreator.createOpType("Xenium analyser", null, OperationTypeFlag.IN_PLACE);
+        entityCreator.createOpType("Xenium QC", null, OperationTypeFlag.IN_PLACE);
         Work work1 = entityCreator.createWork(null, null, null, null, null);
         Donor donor = entityCreator.createDonor("DONOR1");
         Tissue tissue = entityCreator.createTissue(donor, "TISSUE1");
@@ -147,7 +151,11 @@ public class TestReleaseMutation {
                 "Sample position", "Section comment", "Last section number", "Source barcode", "Section thickness", "Released from box location",
                 "Stain type", "Bond barcode", "Tissue coverage", "Cq value", "Visium concentration (pg/uL)", "Visium concentration type",
                 "Dual index plate type", "Dual index plate name", "RNAscope plex", "IHC plex",
-                "Date sectioned", "Permeabilisation time");
+                "Date sectioned", "Permeabilisation time",
+                "Xenium probe lot", "Xenium probe panel", "Xenium ROI", "Xenium cassette position",
+                "Xenium completion", "Xenium run name", "Probe hybridisation start", "Probe comments",
+                "Xenium start", "Probe hybridisation end", "Xenium decoding reagent lot",
+                "Xenium plex number", "Xenium comments");
         var row0 = tsvMaps.get(0);
         assertEquals(block.getBarcode(), row0.get("Barcode"));
         assertEquals(block.getLabwareType().getName(), row0.get("Labware type"));

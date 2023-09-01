@@ -15,7 +15,7 @@ import java.util.Date;
  * @author dr6
  */
 public class GraphQLCustomTypes {
-    private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss").withResolverStyle(ResolverStyle.STRICT);
+    public static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss").withResolverStyle(ResolverStyle.STRICT);
 
     public static final GraphQLScalarType ADDRESS = GraphQLScalarType.newScalar()
             .name("Address")

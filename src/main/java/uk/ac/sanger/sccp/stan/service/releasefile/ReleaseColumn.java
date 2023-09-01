@@ -1,8 +1,10 @@
 package uk.ac.sanger.sccp.stan.service.releasefile;
 
+import uk.ac.sanger.sccp.stan.GraphQLCustomTypes;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.utils.tsv.TsvColumn;
 
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
@@ -39,6 +41,19 @@ public enum ReleaseColumn implements TsvColumn<ReleaseEntry> {
     RNAscope_plex(ReleaseEntry::getRnascopePlex),
     IHC_plex(ReleaseEntry::getIhcPlex),
     Date_sectioned(ReleaseEntry::getSectionDate),
+    Probe_hybridisation_start(ReleaseEntry::getHybridStart, Compose.formatTime),
+    Probe_hybridisation_end(ReleaseEntry::getHybridEnd, Compose.formatTime),
+    Probe_comments(ReleaseEntry::getHybridComment),
+    Xenium_plex_number(ReleaseEntry::getXeniumPlex),
+    Xenium_probe_panel(ReleaseEntry::getXeniumProbe),
+    Xenium_probe_lot(ReleaseEntry::getXeniumProbeLot),
+    Xenium_start(ReleaseEntry::getXeniumStart, Compose.formatTime),
+    Xenium_decoding_reagent_lot(ReleaseEntry::getXeniumReagentLot),
+    Xenium_run_name(ReleaseEntry::getXeniumRun),
+    Xenium_cassette_position(ReleaseEntry::getXeniumCassettePosition),
+    Xenium_ROI(ReleaseEntry::getXeniumRoi),
+    Xenium_completion(ReleaseEntry::getXeniumEnd, Compose.formatTime),
+    Xenium_comments(ReleaseEntry::getXeniumComment),
     ;
 
     private final Function<ReleaseEntry, ?> function;
@@ -91,6 +106,7 @@ public enum ReleaseColumn implements TsvColumn<ReleaseEntry> {
         private static final Function<ReleaseEntry, Slot> slot = ReleaseEntry::getSlot;
         private static final Function<ReleaseEntry, Tissue> tissue = r -> r.getSample().getTissue();
         private static final Function<ReleaseEntry, Donor> donor = r -> r.getSample().getTissue().getDonor();
+        private static final Function<LocalDateTime, String> formatTime = t -> t.format(GraphQLCustomTypes.DATE_TIME_FORMAT);
 
         private static <A, B> Function<A, B> skipNull(Function<A, B> func) {
             return a -> (a==null ? null : func.apply(a));
