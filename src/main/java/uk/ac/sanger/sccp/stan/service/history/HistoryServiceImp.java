@@ -79,6 +79,96 @@ public class HistoryServiceImp implements HistoryService {
     }
 
     @Override
+    public History getHistory(String workNumber, String barcode, String externalName, String donorName){
+        //If Work number given, get history data from work
+        if(workNumber != null) {
+            return getHistoryForWorkNumberWithMatchingParams(workNumber, barcode, externalName, donorName);
+        }
+
+        List<Sample> samples = new ArrayList<>();
+        //If barcode given,get all samples from the labware
+        if (barcode!=null) {
+            Labware lw = lwRepo.getByBarcode(barcode);
+            Set<Integer> tissueIds = lw.getSlots().stream()
+                    .flatMap(slot -> slot.getSamples().stream())
+                    .map(sam -> sam.getTissue().getId())
+                    .collect(toSet());
+             samples = sampleRepo.findAllByTissueIdIn(tissueIds);
+        }
+        //If externalName given, either get samples from the tissue for given externalNmae or filter the samples from labware
+        if (externalName!=null) {
+            if(samples.isEmpty()) {
+                List<Tissue> tissues;
+                if (externalName.indexOf('*') >= 0) {
+                    tissues = tissueRepo.findAllByExternalNameLike(BasicUtils.wildcardToLikeSql(externalName));
+                } else {
+                    tissues = tissueRepo.getAllByExternalName(externalName);
+                }
+                List<Integer> tissueIds = tissues.stream().map(Tissue::getId).collect(toList());
+                samples.addAll(sampleRepo.findAllByTissueIdIn(tissueIds));
+            } else {
+                samples = samples.stream().filter(sample->sample.getTissue().getExternalName().equals(externalName)).collect(Collectors.toList());
+            }
+        }
+        //If donorName given, either get all samples from the tissue for given donorNmae or filter the samples from labware
+        if (donorName!=null) {
+            if(samples.isEmpty()) {
+                Donor donor = donorRepo.getByDonorName(donorName);
+                List<Tissue> tissues = tissueRepo.findByDonorId(donor.getId());
+                samples.addAll(sampleRepo.findAllByTissueIdIn(tissues.stream().map(Tissue::getId).collect(toList())));
+            }
+            else {
+                samples = samples.stream().filter(sample->sample.getTissue().getDonor().getDonorName().equals(donorName)).collect(Collectors.toList());
+            }
+        }
+       return getHistoryForSamples(samples);
+
+    }
+
+    /**
+     * Get history for given workNumber with matching values for given paramerters
+     * @param workNumber - workNumber
+     * @param barcode - barcode if any
+     * @param externalName - external name if any
+     * @param donorName - donor name if any
+     * @return History object that contains all the history data corresponding to the given workNumber, barcode, externalName and donorName
+     */
+    public History getHistoryForWorkNumberWithMatchingParams(String workNumber, String barcode,String externalName, String donorName) {
+        Work work = workRepo.getByWorkNumber(workNumber);
+        List<Integer> opIds = work.getOperationIds();
+        List<Integer> releaseIds = work.getReleaseIds();
+        if (opIds.isEmpty() && releaseIds.isEmpty()) {
+            return new History(List.of(), List.of(), List.of(), List.of());
+        }
+        Collection<Operation> ops = opIds.isEmpty() ? List.of() : BasicUtils.asCollection(opRepo.findAllById(opIds));
+        List<Release> releases = releaseIds.isEmpty() ? List.of() : releaseRepo.findAllByIdIn(releaseIds);
+        Set<Integer> labwareIds = labwareIdsFromOps(ops);
+        List<Labware> opLabware = lwRepo.findAllByIdIn(labwareIds);
+        if(barcode!=null) {
+            releases = releases.stream().filter(release->release.getLabware().getBarcode().equals(barcode)).collect(Collectors.toList());
+            opLabware = opLabware.stream().filter(lw->lw.getBarcode().equals(barcode)).collect(Collectors.toList());
+        }
+        List<HistoryEntry> opEntries = createEntriesForOps(ops, null, opLabware, null, work.getWorkNumber());
+        final List<HistoryEntry> releaseEntries = createEntriesForReleases(releases, null, null, work.getWorkNumber());
+        List<HistoryEntry> entries = BasicUtils.concat(opEntries, releaseEntries);
+        List<Labware> allLabware = new ArrayList<>(opLabware);
+        if (!releases.isEmpty()) {
+            labwareIds = new HashSet<>(labwareIds);
+            for (Release rel : releases) {
+                Labware lw = rel.getLabware();
+                if (labwareIds.add(lw.getId())) {
+                    allLabware.add(lw);
+                }
+            }
+        }
+        List<Sample> samples = referencedSamples(entries, allLabware,externalName,donorName);
+        entries.sort(Comparator.comparing(HistoryEntry::getTime));
+        List<SamplePositionResult> samplePositionResults = slotRegionService.loadSamplePositionResultsForLabware(allLabware);
+        return new History(entries, samples, allLabware, samplePositionResults);
+    }
+
+
+    @Override
     public History getHistoryForExternalName(String externalName) {
         List<Tissue> tissues;
         if (externalName!=null && externalName.indexOf('*') >= 0) {
@@ -135,7 +225,7 @@ public class HistoryServiceImp implements HistoryService {
                 }
             }
         }
-        List<Sample> samples = referencedSamples(entries, allLabware);
+        List<Sample> samples = referencedSamples(entries, allLabware,null,null);
         entries.sort(Comparator.comparing(HistoryEntry::getTime));
         List<SamplePositionResult> samplePositionResults = slotRegionService.loadSamplePositionResultsForLabware(allLabware);
         return new History(entries, samples, allLabware, samplePositionResults);
@@ -161,7 +251,7 @@ public class HistoryServiceImp implements HistoryService {
      * @param labware labware
      * @return a list of all distinct samples references in the history entries
      */
-    public List<Sample> referencedSamples(Collection<HistoryEntry> entries, Collection<Labware> labware) {
+    public List<Sample> referencedSamples(Collection<HistoryEntry> entries, Collection<Labware> labware, String externalName,String donorName) {
         Map<Integer, Sample> sampleCache = new HashMap<>();
         for (Labware lw : labware) {
             for (Slot slot : lw.getSlots()) {
@@ -187,8 +277,18 @@ public class HistoryServiceImp implements HistoryService {
         if (!toLookUp.isEmpty()) {
             samples.addAll(sampleRepo.findAllByIdIn(toLookUp));
         }
-        return samples;
+        return samples.stream().filter(sam -> {
+            if (donorName!=null && !donorName.equals(sam.getTissue().getDonor().getDonorName())) {
+                return false;
+            }
+            if (externalName!=null && !externalName.equals(sam.getTissue().getExternalName())) {
+                return false;
+            }
+            return true;
+        }).collect(toList());
     }
+
+
 
     /**
      * Gets the history for the specifically supplied samples (which are commonly all related).

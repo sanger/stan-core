@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
+import org.mockito.Matchers;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
@@ -187,21 +188,22 @@ public class TestHistoryService {
         entries.add(new HistoryEntry(200, "Release", makeTime(1), lw1.getId(), lw2.getId(),
                 sam1.getId(), "", workNumber));
         entries.add(new HistoryEntry(20, "Bananas", makeTime(2), lw1.getId(), lw2.getId(),
-                sam1.getId(), "", workNumber));
+                sam2.getId(), "", workNumber));
         doReturn(entries.subList(1,2)).when(service).createEntriesForOps(ops, null, lws, null, work.getWorkNumber());
 
         doReturn(entries.subList(0,1)).when(service).createEntriesForReleases(releases, null, null, work.getWorkNumber());
 
-        List<Sample> samples = List.of(sam1, sam2);
+        List<Sample> samples = List.of(sam1,sam2);
         List<Labware> allLabware = BasicUtils.concat(lws, List.of(rlw1, rlw2));
-        doReturn(samples).when(service).referencedSamples(sameElements(entries, true), sameElements(allLabware, true));
+        doReturn(samples).when(service).referencedSamples(sameElements(entries, true), sameElements(allLabware, true), Matchers.isNull(),
+                Matchers.isNull());
 
         SamplePositionResult samplePositionResult = new SamplePositionResult(lw1.getFirstSlot(), sam1.getId(), "Top", ops.get(0).getId());
         when(mockSlotRegionService.loadSamplePositionResultsForLabware(allLabware)).thenReturn(List.of(samplePositionResult));
 
         History history = service.getHistoryForWorkNumber(workNumber);
         assertEquals(entries, history.getEntries());
-        assertSame(samples, history.getSamples());
+        assertEquals(samples, history.getSamples());
         assertEquals(allLabware, history.getLabware());
         assertEquals(List.of(samplePositionResult), history.getSamplePositionResults());
     }
@@ -218,6 +220,72 @@ public class TestHistoryService {
         assertThat(history.getSamples()).isEmpty();
         assertThat(history.getSamplePositionResults()).isEmpty();
     }
+
+    @Test
+    public void testGetHistoryForWorkNumberWithMatchingParams() {
+        Work work = new Work(10, "SGP10", null, null, null, null, null, Work.Status.active);
+        List<Operation> ops = List.of(
+                new Operation(20, null, null, null, null),
+                new Operation(21, null, null, null, null)
+        );
+        final List<Integer> opIds = List.of(20, 21);
+        work.setOperationIds(opIds);
+        final List<Integer> releaseIds = List.of(30,31);
+        Sample sam1 = EntityFactory.getSample();
+        Sample sam2 = new Sample(sam1.getId()+1, sam1.getSection()+1, sam1.getTissue(), sam1.getBioState());
+        Labware lw1 = EntityFactory.getTube();
+        Labware lw2 = EntityFactory.makeLabware(lw1.getLabwareType(), sam1);
+
+         List<Release> releases = List.of(
+                new Release(30, lw1, null, null, null, null, null)
+        );
+        work.setReleaseIds(releaseIds);
+        String workNumber = "sgp10";
+        when(mockWorkRepo.getByWorkNumber(workNumber)).thenReturn(work);
+        when(mockOpRepo.findAllById(opIds)).thenReturn(ops);
+        when(mockReleaseRepo.findAllByIdIn(releaseIds)).thenReturn(releases);
+        when(mockLwRepo.findByBarcode(lw1.getBarcode())).thenReturn(Optional.of(lw1));
+        List<Labware> lws = List.of(lw1);
+        Set<Integer> labwareIds = Set.of(lw1.getId());
+        doReturn(labwareIds).when(service).labwareIdsFromOps(ops);
+        when(mockLwRepo.findAllByIdIn(labwareIds)).thenReturn(lws);
+        // use a mutable list for this because it will be sorted
+        List<HistoryEntry> entries = new ArrayList<>(2);
+        entries.add(new HistoryEntry(200, "Release", makeTime(1), lw1.getId(), lw2.getId(),
+                sam1.getId(), "", workNumber));
+        entries.add(new HistoryEntry(20, "Bananas", makeTime(2), lw1.getId(), lw2.getId(),
+                sam2.getId(), "", workNumber));
+        doReturn(entries.subList(0,1)).when(service).createEntriesForOps(ops, null, lws, null, work.getWorkNumber());
+
+        doReturn(entries.subList(1,2)).when(service).createEntriesForReleases(releases, null, null, work.getWorkNumber());
+
+        List<Sample> samples = List.of(sam1);
+        List<Labware> allLabware =  List.of(lw1);
+        doReturn(samples).when(service).referencedSamples(sameElements(entries, true), sameElements(allLabware, true),Matchers.isNull(),Matchers.isNull());
+
+        SamplePositionResult samplePositionResult = new SamplePositionResult(lw1.getFirstSlot(), sam1.getId(), "Top", ops.get(0).getId());
+        when(mockSlotRegionService.loadSamplePositionResultsForLabware(allLabware)).thenReturn(List.of(samplePositionResult));
+
+        History history = service.getHistoryForWorkNumberWithMatchingParams(workNumber,lw1.getBarcode(),sam1.getTissue().getExternalName(),sam1.getTissue().getDonor().getDonorName());
+        assertEquals(entries, history.getEntries());
+        assertEquals(samples, history.getSamples());
+        assertEquals(allLabware, history.getLabware());
+        assertEquals(List.of(samplePositionResult), history.getSamplePositionResults());
+
+        doReturn(new ArrayList()).when(service).createEntriesForOps(ops, null, lws, null, work.getWorkNumber());
+        doReturn(new ArrayList()).when(service).createEntriesForReleases(releases, null, null, work.getWorkNumber());
+
+        history = service.getHistoryForWorkNumberWithMatchingParams(workNumber,lw1.getBarcode(),"test",sam1.getTissue().getDonor().getDonorName());
+        assertThat(history.getEntries()).isEmpty();
+        assertThat(history.getSamples()).isEmpty();
+        assertEquals(allLabware,history.getLabware());
+
+        history = service.getHistoryForWorkNumberWithMatchingParams(workNumber,lw1.getBarcode(),sam1.getTissue().getExternalName(),"test");
+        assertThat(history.getEntries()).isEmpty();
+        assertThat(history.getSamples()).isEmpty();
+        assertEquals(allLabware,history.getLabware());
+    }
+
 
     @Test
     public void testLabwareIdsFromOps() {
@@ -246,11 +314,75 @@ public class TestHistoryService {
                 .mapToObj(i -> new HistoryEntry(40+i, null, null, lw1.getId(), lw2.getId(), i,
                         null, null))
                 .collect(toList());
-
         when(mockSampleRepo.findAllByIdIn(Set.of(5,6))).thenReturn(List.of(samples[4], samples[5]));
+        assertThat(service.referencedSamples(entries, List.of(lw1, lw2),tissue.getExternalName(),tissue.getDonor().getDonorName())).containsExactlyInAnyOrder(samples);
+        assertThat(service.referencedSamples(entries, List.of(lw1, lw2),"test",tissue.getDonor().getDonorName())).isEmpty();
+        assertThat(service.referencedSamples(entries, List.of(lw1, lw2),tissue.getExternalName(),"test")).isEmpty();
 
-        assertThat(service.referencedSamples(entries, List.of(lw1, lw2))).containsExactlyInAnyOrder(samples);
     }
+
+    @Test
+    public void testGetHistory() {
+        Work work = new Work(10, "SGP10", null, null, null, null, null, Work.Status.active);
+        List<Operation> ops = List.of(
+                new Operation(20, null, null, null, null),
+                new Operation(21, null, null, null, null)
+        );
+        Sample sam1 = EntityFactory.getSample();
+        Sample sam2 = new Sample(sam1.getId()+1, sam1.getSection()+1, sam1.getTissue(), sam1.getBioState());
+        Labware lw1 = EntityFactory.getTube();
+        Labware lw2 = EntityFactory.makeLabware(lw1.getLabwareType(), sam1);
+
+        List<Release> releases = List.of(
+                new Release(30, lw1, null, null, null, null, null)
+        );
+        String workNumber = "sgp10";
+        when(mockWorkRepo.getByWorkNumber(workNumber)).thenReturn(work);
+        when(mockLwRepo.findByBarcode(lw1.getBarcode())).thenReturn(Optional.of(lw1));
+        List<Labware> lws = List.of(lw1);
+
+        // use a mutable list for this because it will be sorted
+        List<HistoryEntry> entries = new ArrayList<>(2);
+        entries.add(new HistoryEntry(200, "Release", makeTime(1), lw1.getId(), lw2.getId(),
+                sam1.getId(), "", workNumber));
+        entries.add(new HistoryEntry(20, "Bananas", makeTime(2), lw1.getId(), lw2.getId(),
+                sam2.getId(), "", workNumber));
+        List<Sample> samples = List.of(sam1);
+        List<Labware> allLabware =  List.of(lw1);
+        SamplePositionResult samplePositionResult = new SamplePositionResult(lw1.getFirstSlot(), sam1.getId(), "Top", ops.get(0).getId());
+        when(mockSlotRegionService.loadSamplePositionResultsForLabware(allLabware)).thenReturn(List.of(samplePositionResult));
+
+        //Work number, Barcode, External name, Donor name*
+        Tissue tissue = sam1.getTissue();
+        History history = new History(entries, samples, allLabware, List.of(samplePositionResult));
+        doReturn(history).when(service).getHistoryForWorkNumberWithMatchingParams(workNumber,lw1.getBarcode(),tissue.getExternalName(),tissue.getDonor().getDonorName());
+        assertSame(history,service.getHistory(workNumber,lw1.getBarcode(),tissue.getExternalName(),tissue.getDonor().getDonorName()));
+
+        //Barcode
+        when(mockLwRepo.getByBarcode(lw1.getBarcode())).thenReturn(lw1);
+        when(mockSampleRepo.findAllByTissueIdIn(Set.of(tissue.getId()))).thenReturn(samples);
+        doReturn(history).when(service).getHistoryForSamples(samples);
+        assertSame(history, service.getHistory(null,lw1.getBarcode(),null,null));
+
+        //Donor name
+        final Donor donor = tissue.getDonor();
+        when(mockTissueRepo.findByDonorId(donor.getId())).thenReturn(List.of(tissue));
+        when(mockDonorRepo.getByDonorName(donor.getDonorName())).thenReturn(donor);
+        when(mockSampleRepo.findAllByTissueIdIn(List.of(tissue.getId()))).thenReturn(samples);
+        assertSame(history,service.getHistory(null,lw1.getBarcode(),null,tissue.getDonor().getDonorName()));
+        assertSame(history,service.getHistory(null,null,null,tissue.getDonor().getDonorName()));
+
+        //External name
+        when(mockLwRepo.getByBarcode(lw1.getBarcode())).thenReturn(lw1);
+        when(mockSampleRepo.findAllByTissueIdIn(Set.of(tissue.getId()))).thenReturn(samples);
+        doReturn(history).when(service).getHistoryForSamples(samples);
+        assertSame(history,service.getHistory(null,lw1.getBarcode(),tissue.getExternalName(),null));
+        when(mockTissueRepo.findAllByExternalNameLike("TIS%")).thenReturn(List.of(tissue));
+        assertSame(history, service.getHistory(null,null,"TIS*",null));
+        when(mockTissueRepo.getAllByExternalName(tissue.getExternalName())).thenReturn(List.of(tissue));
+        assertSame(history,service.getHistory(null,null,tissue.getExternalName(),null));
+    }
+
 
     @Test
     public void testGetHistoryForSamples() {

@@ -43,4 +43,14 @@ public interface HistoryService {
      */
     History getHistoryForWorkNumber(String workNumber);
 
+    /**
+     * Gets the applicable history
+     * @param workNumber the specific work number (if any) to look up, or null
+     * @param barcode the barcode of the labware (if any) to look up, or null
+     * @param externalName the external name of the tissue (if any) to look up, or null
+     * @param donorName the name of the donor (if any) to look up, or null
+     * @return
+     */
+    History getHistory(String workNumber,String barcode, String externalName, String donorName);
+
 }

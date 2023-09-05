@@ -349,6 +349,16 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         };
     }
 
+    public DataFetcher<History> history() {
+        return dfe -> {
+            String workNumber = dfe.getArgument("workNumber");
+            String barcode = dfe.getArgument("barcode");
+            String externalName = dfe.getArgument("externalName");
+            String donorName = dfe.getArgument("donorName");
+            return historyService.getHistory(workNumber, barcode, externalName,donorName);
+        };
+    }
+
     public DataFetcher<History> historyForDonorName() {
         return dfe -> {
             String donorName = dfe.getArgument("donorName");
