@@ -509,11 +509,8 @@ public class ReleaseFileService {
             }
             entry.setHybridEnd(op.getPerformed());
             if (!nullOrEmpty(opIdComs)) {
-                String comment = opIdComs.get(op.getId()).stream()
-                        .filter(oc -> lwId.equals(oc.getLabwareId()))
-                        .map(oc -> oc.getComment().getText())
-                        .map(s -> (s.endsWith(".") ? s : (s + ".")))
-                        .collect(Collectors.joining(" "));
+                String comment = joinComments(opIdComs.get(op.getId()).stream()
+                        .filter(oc -> lwId.equals(oc.getLabwareId())));
                 if (!nullOrEmpty(comment)) {
                     entry.setHybridComment(comment);
                 }
@@ -593,13 +590,23 @@ public class ReleaseFileService {
             if (nullOrEmpty(opcoms)) {
                 return;
             }
-            String commentText = opcoms.stream()
-                    .filter(oc -> lwId.equals(oc.getLabwareId()))
-                    .map(oc -> oc.getComment().getText())
-                    .map(s -> s.endsWith(".") ? s : (s + "."))
-                    .collect(joining(" "));
+            String commentText = joinComments(opcoms.stream()
+                    .filter(oc -> lwId.equals(oc.getLabwareId())));
             entry.setXeniumComment(commentText);
         }
+    }
+
+    /**
+     * Join the distinct opcoms texts as sentences, adding a full stop where missing.
+     * @param opcoms the operation comments to join
+     * @return a string combining the textx of the given comments
+     */
+    private static String joinComments(Stream<OperationComment> opcoms) {
+        return opcoms.map(OperationComment::getComment)
+                .distinct()
+                .map(Comment::getText)
+                .map(s -> s.endsWith(".") ? s : (s + "."))
+                .collect(joining(" "));
     }
 
     /**
