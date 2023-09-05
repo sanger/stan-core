@@ -148,6 +148,7 @@ public class TestReleaseMutation {
         assertEquals(tsvMaps.size(), 4);
         assertThat(tsvMaps.get(0).keySet()).containsOnly("Barcode", "Labware type", "Address", "Donor name",
                 "Life stage", "External identifier", "Tissue type", "Spatial location", "Replicate number", "Section number",
+                "Bio state",
                 "Sample position", "Section comment", "Last section number", "Source barcode", "Section thickness", "Released from box location",
                 "Stain type", "Bond barcode", "Tissue coverage", "Cq value", "Visium concentration (pg/uL)", "Visium concentration type",
                 "Dual index plate type", "Dual index plate name", "RNAscope plex", "IHC plex",
@@ -161,6 +162,7 @@ public class TestReleaseMutation {
         assertEquals(block.getLabwareType().getName(), row0.get("Labware type"));
         assertEquals("6", row0.get("Last section number"));
         assertEquals("A2", row0.get("Released from box location"));
+        String bsName = sample.getBioState().getName();
         for (int i = 1; i < 4; ++i) {
             var row = tsvMaps.get(i);
             assertEquals(lw.getBarcode(), row.get("Barcode"));
@@ -168,6 +170,7 @@ public class TestReleaseMutation {
             assertEquals("C4", row.get("Released from box location"));
             assertEquals(st.getName(), row.get("Stain type"));
             assertEquals(bondBarcode, row.get("Bond barcode"));
+            assertEquals(bsName, row.get("Bio state"));
             assertEquals(String.valueOf(ihcPlex), row.get("IHC plex"));
             assertEquals(String.valueOf(rnaPlex), row.get("RNAscope plex"));
         }
