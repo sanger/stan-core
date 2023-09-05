@@ -49,7 +49,7 @@ public interface HistoryService {
      * @param barcode the barcode of the labware (if any) to look up, or null
      * @param externalName the external name of the tissue (if any) to look up, or null
      * @param donorName the name of the donor (if any) to look up, or null
-     * @return
+     * @return the history for the specified identifier(s)
      */
     History getHistory(String workNumber,String barcode, String externalName, String donorName);
 
