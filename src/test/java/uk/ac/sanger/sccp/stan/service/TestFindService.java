@@ -531,18 +531,6 @@ public class TestFindService {
         );
     }
 
-    @ParameterizedTest
-    @CsvSource({
-            "TIS*, \\QTIS\\E.*",
-            "*TI%?\\*, .*\\QTI%?\\\\E.*",
-    })
-    public void testMakeWildcardPattern(String input, String expected) {
-        Pattern p = FindService.makeWildcardPattern(input);
-        assertEquals(expected, p.pattern());
-        assertThat(input).matches(p);
-        assertThat(p.flags() & Pattern.CASE_INSENSITIVE).isNotZero();
-    }
-
     private static FindResult result(int numResults, Object... data) {
         List<FindEntry> entries = new ArrayList<>();
         List<Sample> samples = new ArrayList<>();

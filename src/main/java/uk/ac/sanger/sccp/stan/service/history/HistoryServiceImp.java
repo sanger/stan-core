@@ -12,6 +12,8 @@ import uk.ac.sanger.sccp.utils.BasicUtils;
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -84,7 +86,6 @@ public class HistoryServiceImp implements HistoryService {
         if(workNumber != null) {
             return getHistoryForWorkNumberWithMatchingParams(workNumber, barcode, externalName, donorName);
         }
-
         List<Sample> samples = null;
         //If barcode given,get all samples from the labware
         if (barcode!=null) {
@@ -101,20 +102,6 @@ public class HistoryServiceImp implements HistoryService {
 
     public List<Sample> getFilteredSamples(String externalName, String donorName, List<Sample> samples) {
         List<Sample> retSamples = samples;
-        if (externalName != null) {
-            if(retSamples==null || retSamples.isEmpty()) {
-                List<Tissue> tissues;
-                if (externalName.indexOf('*') >= 0) {
-                    tissues = tissueRepo.findAllByExternalNameLike(BasicUtils.wildcardToLikeSql(externalName));
-                } else {
-                    tissues = tissueRepo.getAllByExternalName(externalName);
-                }
-                List<Integer> tissueIds = tissues.stream().map(Tissue::getId).collect(toList());
-                retSamples = sampleRepo.findAllByTissueIdIn(tissueIds);
-            } else {
-                retSamples = retSamples.stream().filter(sample->sample.getTissue().getExternalName().equalsIgnoreCase(externalName)).collect(Collectors.toList());
-            }
-        }
         if (donorName != null) {
             if(retSamples==null || retSamples.isEmpty()) {
                 Donor donor = donorRepo.getByDonorName(donorName);
@@ -124,7 +111,31 @@ public class HistoryServiceImp implements HistoryService {
             else {
                 retSamples = retSamples.stream().filter(sample->sample.getTissue().getDonor().getDonorName().equalsIgnoreCase(donorName)).collect(Collectors.toList());
             }
-           }
+        }
+        if (externalName != null) {
+            if(retSamples==null || retSamples.isEmpty()) {
+                List<Tissue> tissues;
+                // If the externalName contains a wildcard, check if it is a wildcard or * contained in the externalName.
+                if (externalName.indexOf('*') >= 0) {
+                    // Create a regex pattern from the wildcard pattern.
+                    Pattern pattern = BasicUtils.makeWildcardPattern(externalName);
+                    // Use the pattern to create a matcher for the externalName.
+                    Matcher matcher = pattern.matcher(externalName);
+                    if(matcher.matches() ) {
+                        tissues = tissueRepo.findAllByExternalNameLike(BasicUtils.wildcardToLikeSql(externalName));
+                    } else {
+                        tissues = tissueRepo.getAllByExternalName(externalName);
+                    }
+                 } else {
+                    tissues = tissueRepo.getAllByExternalName(externalName);
+                }
+                List<Integer> tissueIds = tissues.stream().map(Tissue::getId).collect(toList());
+                retSamples = sampleRepo.findAllByTissueIdIn(tissueIds);
+            } else {
+                retSamples = retSamples.stream().filter(sample->sample.getTissue().getExternalName().equalsIgnoreCase(externalName)).collect(Collectors.toList());
+            }
+        }
+
         return retSamples;
     }
 
@@ -153,10 +164,12 @@ public class HistoryServiceImp implements HistoryService {
             opLabware = opLabware.stream().filter(lw->lw.getBarcode().equals(barcode)).collect(Collectors.toList());
         }
         //If externalName or donorName given, filter the samples by externalName or donorName
-        List<Sample> filteredSamples = getFilteredSamples(externalName, donorName, null);
         Set<Integer> sampleIds = null;
-        if(filteredSamples !=null) {
-            sampleIds = filteredSamples.stream().map(Sample::getId).collect(toSet());
+        if(externalName!=null || donorName!=null) {
+            List<Sample> filteredSamples = getFilteredSamples(externalName, donorName, null);
+            if (filteredSamples != null) {
+                sampleIds = filteredSamples.stream().map(Sample::getId).collect(toSet());
+            }
         }
         List<HistoryEntry> opEntries = createEntriesForOps(ops, sampleIds, opLabware, null, work.getWorkNumber());
         final List<HistoryEntry> releaseEntries = createEntriesForReleases(releases, sampleIds, null, work.getWorkNumber());
@@ -181,8 +194,17 @@ public class HistoryServiceImp implements HistoryService {
     @Override
     public History getHistoryForExternalName(String externalName) {
         List<Tissue> tissues;
-        if (externalName!=null && externalName.indexOf('*') >= 0) {
-            tissues = tissueRepo.findAllByExternalNameLike(BasicUtils.wildcardToLikeSql(externalName));
+        // If the externalName contains a wildcard, check if it is a wildcard or * contained in the externalName.
+       if (externalName!=null && externalName.indexOf('*') >= 0) {
+            // Create a regex pattern from the wildcard pattern.
+            Pattern pattern = BasicUtils.makeWildcardPattern(externalName);
+            // Use the pattern to create a matcher for the externalName.
+            Matcher matcher = pattern.matcher(externalName);
+            if(matcher.matches() ) {
+                tissues = tissueRepo.findAllByExternalNameLike(BasicUtils.wildcardToLikeSql(externalName));
+            } else {
+                tissues = tissueRepo.getAllByExternalName(externalName);
+            }
         } else {
             tissues = tissueRepo.getAllByExternalName(externalName);
         }
