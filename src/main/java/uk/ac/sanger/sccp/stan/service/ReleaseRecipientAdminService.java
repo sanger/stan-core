@@ -30,9 +30,6 @@ public class ReleaseRecipientAdminService extends BaseAdminService<ReleaseRecipi
     }
 
     public ReleaseRecipient updateUserFullName(String username, String userFullName) {
-        if(nullOrEmpty(userFullName)) {
-            throw new IllegalArgumentException("User full name not supplied.");
-        }
         validateIdentifier(username);
         ReleaseRecipient recipient = repo.findByUsername(username).orElseThrow(() -> new EntityExistsException("Release recipient does not exist: "+username));
         if(StringUtils.equals(recipient.getUserFullName(), userFullName)) {

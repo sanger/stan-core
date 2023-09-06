@@ -1,8 +1,8 @@
 package uk.ac.sanger.sccp.stan.service;
 
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import uk.ac.sanger.sccp.stan.model.ReleaseRecipient;
 import uk.ac.sanger.sccp.stan.repo.ReleaseRecipientRepo;
@@ -10,12 +10,11 @@ import uk.ac.sanger.sccp.stan.repo.ReleaseRecipientRepo;
 import javax.persistence.EntityExistsException;
 
 import java.util.Optional;
+import java.util.stream.Stream;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 /**
  * Tests {@link ReleaseRecipientAdminService}
@@ -33,10 +32,33 @@ public class TestReleaseRecipientAdminService extends AdminServiceTestUtils<Rele
     }
 
     @ParameterizedTest
-    @MethodSource("addNewArgs")
-    public void testAddNew(String string, String existingString, Exception expectedException, String expectedResultString) {
-        genericTestAddNew(ReleaseRecipientAdminService::addNew,
-                string, existingString, expectedException, expectedResultString);
+    @MethodSource("addReleaseRecipientArgs")
+    public void testAddNew(String userName,  String userFullName, String expectedUserName, Exception expectedException) {
+        when(mockRepo.findByUsername(userName)).thenReturn(Optional.of(new ReleaseRecipient()));
+        if (expectedException != null) {
+            assertException(expectedException, () -> service.addNew(userName, userFullName));
+            verify(mockRepo, never()).save(any());
+            return;
+        }
+        ReleaseRecipient expectedResult = new ReleaseRecipient(20, expectedUserName, userFullName);
+        when(mockRepo.save(any())).thenReturn(expectedResult);
+        when(mockRepo.findByUsername(userName)).thenReturn(Optional.empty());
+        assertSame(expectedResult, service.addNew(userName, userFullName));
+        verify(mockRepo).save( new ReleaseRecipient(null, userName, userFullName));
+    }
+
+
+    protected static Stream<Arguments> addReleaseRecipientArgs() {
+        Exception missingStringException = new IllegalArgumentException(MISSING_STRING_MESSAGE);
+        return Stream.of(
+                Arguments.of("Alpha", "Beta", "Alpha", null),
+                Arguments.of("Alpha", "Beta ? 7 contains @ $ different ! characters\t\n", "Alpha", null),
+                Arguments.of("   Alpha\t\n", "", "Alpha", null),
+                Arguments.of("!Alpha", null, null, new IllegalArgumentException("string \"!Alpha\" contains invalid characters \"!\".")),
+                Arguments.of(null, null, null, missingStringException),
+                Arguments.of("   \n", null, null, missingStringException),
+                Arguments.of("Alpha", "Alpha", "Alpha", new EntityExistsException("<ENTITY> already exists: Alpha"))
+        );
     }
 
     @ParameterizedTest
@@ -45,36 +67,32 @@ public class TestReleaseRecipientAdminService extends AdminServiceTestUtils<Rele
         genericTestSetEnabled(ReleaseRecipientAdminService::setEnabled,
                 string, newValue, oldValue, expectedException);
     }
-    @Test
-    public void testUpdateUserFullName_withEmptyFullName_shouldThrowException() {
-        assertThat(assertThrows(IllegalArgumentException.class, () ->
-                service.updateUserFullName("us1", "")))
-                .hasMessage("User full name not supplied.");
+
+    @ParameterizedTest
+    @MethodSource("updateReleaseRecipientArgs")
+    public void testUpdateUserFullName(String userName,  String userFullName, String expectedUserName, Exception expectedException) {
+        when(mockRepo.findByUsername(userName)).thenReturn(Optional.empty());
+        if (expectedException != null) {
+            assertException(expectedException, () -> service.updateUserFullName(userName, userFullName));
+            verify(mockRepo, never()).save(any());
+            return;
+        }
+        ReleaseRecipient expectedResult = new ReleaseRecipient(20, userName, expectedUserName);
+        when(mockRepo.findByUsername(userName)).thenReturn(Optional.of(new ReleaseRecipient(20, userName, null)));
+        when(mockRepo.save(any())).thenReturn(expectedResult);
+        assertSame(expectedResult, service.updateUserFullName(userName, userFullName));
+        verify(mockRepo).save( new ReleaseRecipient(20, userName, userFullName));
     }
 
-    @Test
-    public void testUpdateUserFullName_withEmptyName_shouldThrowException() {
-        assertThat(assertThrows(IllegalArgumentException.class, () ->
-                service.updateUserFullName("", "User 1")))
-                .hasMessage("Username not supplied.");
-    }
-
-    @Test
-    public void testUpdateUserFullName_withUserNameDoesNotExist_shouldThrowException() {
-        when(mockRepo.findByUsername(any())).thenReturn(Optional.empty());
-        assertThat(assertThrows(EntityExistsException.class, () ->
-                service.updateUserFullName("us", "Uriel South")))
-                .hasMessage("Release recipient does not exist: us");
-
-    }
-
-    @Test
-    public void testUpdateUserFullName() {
-        ReleaseRecipient recipient = new ReleaseRecipient(1, "us", "user");
-        when(mockRepo.findByUsername("us")).thenReturn(Optional.of(recipient));
-        when(mockRepo.save(any())).thenReturn(recipient);
-        ReleaseRecipient updatedRecipient = service.updateUserFullName("us", "Uriel South");
-        assertThat(updatedRecipient.getUserFullName()).isEqualTo("Uriel South");
-
+    protected static Stream<Arguments> updateReleaseRecipientArgs() {
+        Exception missingStringException = new IllegalArgumentException(MISSING_STRING_MESSAGE);
+        return Stream.of(
+                Arguments.of("Alpha", "Beta", "Beta", new EntityExistsException("Release recipient does not exist: Alpha")),
+                Arguments.of("Alpha", "Beta\t\n", "Beta",null),
+                Arguments.of("Alpha\t\n", "", "", null),
+                Arguments.of("!Alpha", "Beta", "Beta", new IllegalArgumentException("string \"!Alpha\" contains invalid characters \"!\".")),
+                Arguments.of(null, null, null, missingStringException),
+                Arguments.of("Alpha", "\n", "", null)
+        );
     }
 }
