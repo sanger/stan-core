@@ -152,6 +152,7 @@ public class GraphQLProvider {
                         .dataFetcher("addReleaseDestination", transact(graphQLMutation.addReleaseDestination()))
                         .dataFetcher("setReleaseDestinationEnabled", transact(graphQLMutation.setReleaseDestinationEnabled()))
                         .dataFetcher("addReleaseRecipient", transact(graphQLMutation.addReleaseRecipient()))
+                        .dataFetcher("updateReleaseRecipientFullName", transact(graphQLMutation.updateReleaseRecipientFullName()))
                         .dataFetcher("setReleaseRecipientEnabled", transact(graphQLMutation.setReleaseRecipientEnabled()))
                         .dataFetcher("addSpecies", transact(graphQLMutation.addSpecies()))
                         .dataFetcher("setSpeciesEnabled", transact(graphQLMutation.setSpeciesEnabled()))

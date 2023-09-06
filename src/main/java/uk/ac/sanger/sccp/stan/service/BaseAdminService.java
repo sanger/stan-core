@@ -34,15 +34,27 @@ public abstract class BaseAdminService<E extends HasEnabled, R extends CrudRepos
      * @exception EntityExistsException A matching item already exists
      */
     public E addNew(String string) {
-        string = trimAndRequire(string, missingFieldMessage);
-        if (this.stringValidator!=null) {
-            this.stringValidator.checkArgument(string);
-        }
-        Optional<E> entity = findEntity(repo, string);
-        if (entity.isPresent()) {
-            throw new EntityExistsException(entityTypeName+" already exists: "+string);
-        }
+        validateEntity(string);
         return repo.save(newEntity(string));
+    }
+
+    public void validateEntity(String identifier) {
+        validateIdentifier(identifier);
+        validateUniqueness(identifier);
+    }
+
+    public void validateIdentifier(String identifier) {
+        identifier = trimAndRequire(identifier, missingFieldMessage);
+        if (this.stringValidator!=null) {
+            this.stringValidator.checkArgument(identifier);
+        }
+    }
+
+    private void validateUniqueness(String identifier) {
+        Optional<E> entity = findEntity(repo, identifier);
+        if (entity.isPresent()) {
+            throw new EntityExistsException(entityTypeName+" already exists: "+identifier);
+        }
     }
 
     /**

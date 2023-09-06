@@ -15,6 +15,7 @@ public class ReleaseRecipient implements HasEnabled {
     private Integer id;
 
     private String username;
+    private String userFullName;
     private boolean enabled = true;
 
     public ReleaseRecipient() {}
@@ -22,6 +23,10 @@ public class ReleaseRecipient implements HasEnabled {
     public ReleaseRecipient(Integer id, String username) {
         this.id = id;
         this.username = username;
+    }
+    public ReleaseRecipient(Integer id, String username, String userFullName) {
+      this(id, username);
+      this.userFullName = userFullName;
     }
 
     public Integer getId() {
@@ -38,6 +43,14 @@ public class ReleaseRecipient implements HasEnabled {
 
     public void setUsername(String username) {
         this.username = username;
+    }
+
+    public String getUserFullName() {
+        return userFullName;
+    }
+
+    public void setUserFullName(String userFullName) {
+        this.userFullName = userFullName;
     }
 
     @Override
