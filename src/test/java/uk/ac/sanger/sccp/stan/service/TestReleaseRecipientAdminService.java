@@ -8,7 +8,6 @@ import uk.ac.sanger.sccp.stan.model.ReleaseRecipient;
 import uk.ac.sanger.sccp.stan.repo.ReleaseRecipientRepo;
 
 import javax.persistence.EntityExistsException;
-
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -32,33 +31,10 @@ public class TestReleaseRecipientAdminService extends AdminServiceTestUtils<Rele
     }
 
     @ParameterizedTest
-    @MethodSource("addReleaseRecipientArgs")
-    public void testAddNew(String userName,  String userFullName, String expectedUserName, Exception expectedException) {
-        when(mockRepo.findByUsername(userName)).thenReturn(Optional.of(new ReleaseRecipient()));
-        if (expectedException != null) {
-            assertException(expectedException, () -> service.addNew(userName, userFullName));
-            verify(mockRepo, never()).save(any());
-            return;
-        }
-        ReleaseRecipient expectedResult = new ReleaseRecipient(20, expectedUserName, userFullName);
-        when(mockRepo.save(any())).thenReturn(expectedResult);
-        when(mockRepo.findByUsername(userName)).thenReturn(Optional.empty());
-        assertSame(expectedResult, service.addNew(userName, userFullName));
-        verify(mockRepo).save( new ReleaseRecipient(null, userName, userFullName));
-    }
-
-
-    protected static Stream<Arguments> addReleaseRecipientArgs() {
-        Exception missingStringException = new IllegalArgumentException(MISSING_STRING_MESSAGE);
-        return Stream.of(
-                Arguments.of("Alpha", "Beta", "Alpha", null),
-                Arguments.of("Alpha", "Beta ? 7 contains @ $ different ! characters\t\n", "Alpha", null),
-                Arguments.of("   Alpha\t\n", "", "Alpha", null),
-                Arguments.of("!Alpha", null, null, new IllegalArgumentException("string \"!Alpha\" contains invalid characters \"!\".")),
-                Arguments.of(null, null, null, missingStringException),
-                Arguments.of("   \n", null, null, missingStringException),
-                Arguments.of("Alpha", "Alpha", "Alpha", new EntityExistsException("<ENTITY> already exists: Alpha"))
-        );
+    @MethodSource("addNewArgs")
+    public void testAddNew(String string, String existingString, Exception expectedException, String expectedResultString) {
+        genericTestAddNew(ReleaseRecipientAdminService::addNew,
+                string, existingString, expectedException, expectedResultString);
     }
 
     @ParameterizedTest
@@ -84,12 +60,12 @@ public class TestReleaseRecipientAdminService extends AdminServiceTestUtils<Rele
         verify(mockRepo).save( new ReleaseRecipient(20, userName, userFullName));
     }
 
-    protected static Stream<Arguments> updateReleaseRecipientArgs() {
+    private static Stream<Arguments> updateReleaseRecipientArgs() {
         Exception missingStringException = new IllegalArgumentException(MISSING_STRING_MESSAGE);
         return Stream.of(
                 Arguments.of("Alpha", "Beta", "Beta", new EntityExistsException("Release recipient does not exist: Alpha")),
                 Arguments.of("Alpha", "Beta\t\n", "Beta",null),
-                Arguments.of("Alpha\t\n", "", "", null),
+                Arguments.of("Alpha", "", "", null),
                 Arguments.of("!Alpha", "Beta", "Beta", new IllegalArgumentException("string \"!Alpha\" contains invalid characters \"!\".")),
                 Arguments.of(null, null, null, missingStringException),
                 Arguments.of("Alpha", "\n", "", null)

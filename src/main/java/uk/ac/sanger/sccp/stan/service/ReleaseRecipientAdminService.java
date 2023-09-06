@@ -25,13 +25,13 @@ public class ReleaseRecipientAdminService extends BaseAdminService<ReleaseRecipi
     }
 
     public ReleaseRecipient addNew(String username, String userFullName) {
-        validateEntity(username);
+        username = validateEntity(username);
         return repo.save(new ReleaseRecipient(null, username, userFullName));
     }
 
     public ReleaseRecipient updateUserFullName(String username, String userFullName) {
-        validateIdentifier(username);
-        ReleaseRecipient recipient = repo.findByUsername(username).orElseThrow(() -> new EntityExistsException("Release recipient does not exist: "+username));
+        String validatedUserName = validateIdentifier(username);
+        ReleaseRecipient recipient = repo.findByUsername(validatedUserName).orElseThrow(() -> new EntityExistsException("Release recipient does not exist: "+validatedUserName));
         if(StringUtils.equals(recipient.getUserFullName(), userFullName)) {
             return recipient;
         }
