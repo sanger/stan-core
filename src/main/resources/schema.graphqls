@@ -941,6 +941,8 @@ type HistoryEntry {
     workNumber: String
     """Extra details (such as measurements and comments) included in this entry."""
     details: [String!]!
+    """The address of the destination slot involved in the event."""
+    address: String
 }
 
 """History as returned for a history query."""

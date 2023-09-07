@@ -577,13 +577,13 @@ public class HistoryServiceImp implements HistoryService {
                 if (sampleIds==null || sampleIds.contains(sampleId)) {
                     final Integer sourceId = action.getSource().getLabwareId();
                     final Integer destId = action.getDestination().getLabwareId();
-                    items.add(new SampleAndLabwareIds(sampleId, sourceId, destId));
+                    items.add(new SampleAndLabwareIds(sampleId, sourceId, destId, action.getDestination().getAddress().toString()));
                 }
             }
             String username = op.getUser().getUsername();
             for (var item : items) {
                 HistoryEntry entry = new HistoryEntry(op.getId(), op.getOperationType().getName(),
-                        op.getPerformed(), item.sourceId, item.destId, item.sampleId, username, workNumber);
+                        op.getPerformed(), item.sourceId, item.destId, item.sampleId, username, workNumber, null, item.address);
                 if (stainDetail!=null) {
                     entry.addDetail(stainDetail);
                 }
@@ -737,11 +737,13 @@ public class HistoryServiceImp implements HistoryService {
     // region support class
     private static class SampleAndLabwareIds {
         final int sampleId, sourceId, destId;
+        final String address;
 
-        public SampleAndLabwareIds(int sampleId, int sourceId, int destId) {
+        public SampleAndLabwareIds(int sampleId, int sourceId, int destId, String address) {
             this.sampleId = sampleId;
             this.sourceId = sourceId;
             this.destId = destId;
+            this.address = address;
         }
 
         @Override
