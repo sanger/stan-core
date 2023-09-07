@@ -1807,7 +1807,9 @@ type Query {
     historyForWorkNumber(workNumber: String!): History!
     """Get the history containing a given labware barcode."""
     historyForLabwareBarcode(barcode: String!): History!
-    """Get the work progress (some particular timestamps) associated with a specified work number, and/or
+    """Get the history associated with a specified work number, and/or barcode, external name, donor name."""
+    history(workNumber: String,barcode: String, externalName: String, donorName: String): History!
+   """Get the work progress (some particular timestamps) associated with a specified work number, and/or
     work types, programs, statuses."""
     workProgress(workNumber: String, workTypes: [String!], programs: [String!], statuses: [WorkStatus!], requesters: [String!]): [WorkProgress!]!
     """Get a reagent plate, if it exists. May return null."""

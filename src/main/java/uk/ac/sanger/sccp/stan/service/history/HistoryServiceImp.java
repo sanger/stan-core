@@ -12,10 +12,14 @@ import uk.ac.sanger.sccp.utils.BasicUtils;
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
 import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.*;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
+import static uk.ac.sanger.sccp.utils.BasicUtils.wildcardToLikeSql;
 
 /**
  * @author dr6
@@ -76,6 +80,98 @@ public class HistoryServiceImp implements HistoryService {
         Tissue tissue = sample.getTissue();
         List<Sample> samples = sampleRepo.findAllByTissueIdIn(List.of(tissue.getId()));
         return getHistoryForSamples(samples);
+    }
+
+    @Override
+    public History getHistory(String workNumber, String barcode, String externalName, String donorName) {
+        if (donorName==null && externalName==null && barcode==null) {
+            return getHistoryForWorkNumber(workNumber);
+        }
+        List<Sample> samples;
+        if (barcode!=null) {
+            samples = samplesForBarcode(barcode, externalName, donorName);
+        } else {
+            samples = samplesForTissues(externalName, donorName);
+        }
+        return getHistoryForSamples(samples, workNumber);
+    }
+
+    /**
+     * Gets samples related to those in the specified labware, filtered additionally by external name and donor name
+     * @param barcode the labware barcode
+     * @param externalName the required external name of the tissues, or a wildcard pattern, or null
+     * @param donorName the required donor name, or null
+     * @return the matching samples
+     */
+    public List<Sample> samplesForBarcode(String barcode, String externalName, String donorName) {
+        Labware lw = lwRepo.getByBarcode(barcode);
+        Predicate<Tissue> filter = tissuePredicate(donorName, externalName);
+        Set<Integer> tissueIds = lw.getSlots().stream()
+                .flatMap(slot -> slot.getSamples().stream().map(Sample::getTissue))
+                .filter(filter)
+                .map(Tissue::getId)
+                .collect(toSet());
+        if (tissueIds.isEmpty()) {
+            return List.of();
+        }
+        return sampleRepo.findAllByTissueIdIn(tissueIds);
+    }
+
+    /**
+     * Gets samples for the specified tissues, specified by external name, donor name, or both
+     * @param externalName the required external name of the tissues, or a wildcard pattern, or null
+     * @param donorName the required donor name, or null
+     * @return the matching samples
+     */
+    public List<Sample> samplesForTissues(String externalName, String donorName) {
+        List<Tissue> tissues;
+        if (externalName!=null) {
+            if (externalName.indexOf('*') >= 0) {
+                tissues = tissueRepo.findAllByExternalNameLike(wildcardToLikeSql(externalName));
+            } else {
+                tissues = tissueRepo.getAllByExternalName(externalName);
+            }
+            if (donorName!=null) {
+                tissues = tissues.stream()
+                        .filter(t -> t.getDonor().getDonorName().equalsIgnoreCase(donorName))
+                        .collect(toList());
+            }
+        } else {
+            Donor donor = donorRepo.getByDonorName(donorName);
+            tissues = tissueRepo.findByDonorId(donor.getId());
+        }
+        if (tissues.isEmpty()) {
+            return List.of();
+        }
+
+        List<Integer> tissueIds = tissues.stream().map(Tissue::getId).collect(toList());
+        return sampleRepo.findAllByTissueIdIn(tissueIds);
+    }
+
+    /**
+     * Makes a predicate for tissues using the given donorname and external name
+     * @param donorName the name of the required donor, or null
+     * @param externalName the required external name of the tissue, or a wildcard pattern, or null
+     * @return a predicate, or null if both input fields are null
+     */
+    public Predicate<Tissue> tissuePredicate(String donorName, String externalName) {
+        Predicate<Tissue> filter;
+        if (externalName==null) {
+            filter = null;
+        } else if (externalName.indexOf('*') >= 0) {
+            Pattern p = BasicUtils.makeWildcardPattern(externalName);
+            filter = t -> p.matcher(t.getExternalName()).matches();
+        } else {
+            filter = t -> t.getExternalName().equalsIgnoreCase(externalName);
+        }
+        if (donorName!=null) {
+            Predicate<Tissue> donorFilter = t -> t.getDonor().getDonorName().equalsIgnoreCase(donorName);
+            filter = (filter==null ? donorFilter : filter.and(donorFilter));
+        }
+        if (filter==null) {
+            return t -> true;
+        }
+        return filter;
     }
 
     @Override
@@ -196,6 +292,19 @@ public class HistoryServiceImp implements HistoryService {
      * @return the history involving those samples
      */
     public History getHistoryForSamples(List<Sample> samples) {
+        return getHistoryForSamples(samples, null);
+    }
+
+    /**
+     * Gets the history for the specifically supplied samples (which are commonly all related).
+     * @param samples the samples to get the history for
+     * @param requiredWorkNumber the required work number (if any)
+     * @return the history involving those samples
+     */
+    public History getHistoryForSamples(List<Sample> samples, String requiredWorkNumber) {
+        if (nullOrEmpty(samples)) {
+            return new History(List.of(), List.of(), List.of(), List.of());
+        }
         Set<Integer> sampleIds = samples.stream().map(Sample::getId).collect(toSet());
         List<Operation> ops = opRepo.findAllBySampleIdIn(sampleIds);
         Set<Integer> labwareIds = loadLabwareIdsForOpsAndSampleIds(ops, sampleIds);
@@ -208,8 +317,21 @@ public class HistoryServiceImp implements HistoryService {
         List<Integer> releaseIds = releases.stream().map(Release::getId).collect(toList());
         Map<Integer, String> releaseWork = workRepo.findWorkNumbersForReleaseIds(releaseIds);
 
-        List<HistoryEntry> opEntries = createEntriesForOps(ops, sampleIds, labware, opWork, null);
-        List<HistoryEntry> releaseEntries = createEntriesForReleases(releases, sampleIds, releaseWork, null);
+        if (requiredWorkNumber!=null) {
+            final String wnUpper = requiredWorkNumber.toUpperCase();
+            ops = ops.stream()
+                    .filter(op -> {
+                        var workNumbers = opWork.get(op.getId());
+                        return (workNumbers!=null && workNumbers.contains(wnUpper));
+                    })
+                    .collect(toList());
+            releases = releases.stream()
+                    .filter(r -> wnUpper.equalsIgnoreCase(releaseWork.get(r.getId())))
+                    .collect(toList());
+        }
+
+        List<HistoryEntry> opEntries = createEntriesForOps(ops, sampleIds, labware, opWork, requiredWorkNumber);
+        List<HistoryEntry> releaseEntries = createEntriesForReleases(releases, sampleIds, releaseWork, requiredWorkNumber);
         List<HistoryEntry> destructionEntries = createEntriesForDestructions(destructions, sampleIds);
 
         List<HistoryEntry> entries = assembleEntries(List.of(opEntries, releaseEntries, destructionEntries));

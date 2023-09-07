@@ -253,7 +253,7 @@ public class FindService {
         final String externalName = request.getTissueExternalName();
         if (externalName!=null) {
             if (externalName.indexOf('*') >= 0) {
-                final Pattern pattern = makeWildcardPattern(externalName);
+                final Pattern pattern = BasicUtils.makeWildcardPattern(externalName);
                 predicate = andPredicate(predicate,
                         ls -> pattern.matcher(ls.getSample().getTissue().getExternalName()).matches());
             } else {
@@ -276,19 +276,6 @@ public class FindService {
         }
         predicate = andPredicate(predicate, datePredicate(request.getCreatedMin(), request.getCreatedMax()));
         return predicate;
-    }
-
-    /**
-     * Makes a case-insensitive regular expression pattern to match the given string reading <tt>*</tt> as a wildcard.
-     * @param wildcardString a string containing `*` as wildcards
-     * @return the regular expression pattern object
-     */
-    public static Pattern makeWildcardPattern(String wildcardString) {
-        String[] parts = wildcardString.split("\\*+", -1);
-        String regex = Arrays.stream(parts)
-                .map(part -> part.isEmpty() ? part : Pattern.quote(part))
-                .collect(joining(".*"));
-        return Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
     }
 
     /**

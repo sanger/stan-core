@@ -8,6 +8,8 @@ import java.util.function.*;
 import java.util.regex.Pattern;
 import java.util.stream.*;
 
+import static java.util.stream.Collectors.joining;
+
 /**
  * Much copied from the corresponding class in CGAP lims
  * @author dr6
@@ -419,6 +421,19 @@ public class BasicUtils {
      */
     public static String wildcardToLikeSql(String string) {
         return escapeLikeSql(string).replaceAll("\\*+", "%");
+    }
+
+    /**
+     * Makes a case-insensitive regular expression pattern to match the given string reading <tt>*</tt> as a wildcard.
+     * @param wildcardString a string containing `*` as wildcards
+     * @return the regular expression pattern object
+     */
+    public static Pattern makeWildcardPattern(String wildcardString) {
+        String[] parts = wildcardString.split("\\*+", -1);
+        String regex = Arrays.stream(parts)
+                .map(part -> part.isEmpty() ? part : Pattern.quote(part))
+                .collect(joining(".*"));
+        return Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
     }
 
     /**
