@@ -4,6 +4,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Objects;
 
@@ -37,6 +38,13 @@ public class ReleaseEntry {
     private String samplePosition;
     private String sectionComment;
     private Map<String, String> tagData = Map.of();
+
+    private LocalDateTime hybridStart, hybridEnd;
+    private String xeniumPlex, xeniumProbe, xeniumProbeLot;
+    private String hybridComment;
+
+    private LocalDateTime xeniumStart, xeniumEnd;
+    private String xeniumRoi, xeniumReagentLot, xeniumCassettePosition, xeniumRun, xeniumComment;
 
     public ReleaseEntry(Labware labware, Slot slot, Sample sample) {
         this(labware, slot, sample, null);
@@ -223,6 +231,110 @@ public class ReleaseEntry {
         this.tagData = nullToEmpty(tagData);
     }
 
+    public LocalDateTime getHybridStart() {
+        return this.hybridStart;
+    }
+
+    public void setHybridStart(LocalDateTime hybridStart) {
+        this.hybridStart = hybridStart;
+    }
+
+    public LocalDateTime getHybridEnd() {
+        return this.hybridEnd;
+    }
+
+    public void setHybridEnd(LocalDateTime hybridEnd) {
+        this.hybridEnd = hybridEnd;
+    }
+
+    public String getXeniumPlex() {
+        return this.xeniumPlex;
+    }
+
+    public void setXeniumPlex(String xeniumPlex) {
+        this.xeniumPlex = xeniumPlex;
+    }
+
+    public String getXeniumProbe() {
+        return this.xeniumProbe;
+    }
+
+    public void setXeniumProbe(String xeniumProbe) {
+        this.xeniumProbe = xeniumProbe;
+    }
+
+    public String getXeniumProbeLot() {
+        return this.xeniumProbeLot;
+    }
+
+    public void setXeniumProbeLot(String xeniumProbeLot) {
+        this.xeniumProbeLot = xeniumProbeLot;
+    }
+
+    public String getHybridComment() {
+        return this.hybridComment;
+    }
+
+    public void setHybridComment(String hybridComment) {
+        this.hybridComment = hybridComment;
+    }
+
+    public LocalDateTime getXeniumStart() {
+        return this.xeniumStart;
+    }
+
+    public void setXeniumStart(LocalDateTime xeniumStart) {
+        this.xeniumStart = xeniumStart;
+    }
+
+    public LocalDateTime getXeniumEnd() {
+        return this.xeniumEnd;
+    }
+
+    public void setXeniumEnd(LocalDateTime xeniumEnd) {
+        this.xeniumEnd = xeniumEnd;
+    }
+
+    public String getXeniumRoi() {
+        return this.xeniumRoi;
+    }
+
+    public void setXeniumRoi(String xeniumRoi) {
+        this.xeniumRoi = xeniumRoi;
+    }
+
+    public String getXeniumReagentLot() {
+        return this.xeniumReagentLot;
+    }
+
+    public void setXeniumReagentLot(String xeniumReagentLot) {
+        this.xeniumReagentLot = xeniumReagentLot;
+    }
+
+    public String getXeniumCassettePosition() {
+        return this.xeniumCassettePosition;
+    }
+
+    public void setXeniumCassettePosition(String xeniumCassettePosition) {
+        this.xeniumCassettePosition = xeniumCassettePosition;
+    }
+
+    public String getXeniumRun() {
+        return this.xeniumRun;
+    }
+
+    public void setXeniumRun(String xeniumRun) {
+        this.xeniumRun = xeniumRun;
+    }
+
+    public String getXeniumComment() {
+        return this.xeniumComment;
+    }
+
+    public void setXeniumComment(String xeniumComment) {
+        this.xeniumComment = xeniumComment;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -233,24 +345,37 @@ public class ReleaseEntry {
                 && Objects.equals(this.sample, that.sample)
                 && Objects.equals(this.lastSection, that.lastSection)
                 && Objects.equals(this.sourceBarcode, that.sourceBarcode)
-                && Objects.equals(this.sourceAddress, that.sourceAddress)
                 && Objects.equals(this.sectionThickness, that.sectionThickness)
+                && Objects.equals(this.sourceAddress, that.sourceAddress)
                 && Objects.equals(this.storageAddress, that.storageAddress)
                 && Objects.equals(this.stainType, that.stainType)
                 && Objects.equals(this.bondBarcode, that.bondBarcode)
                 && Objects.equals(this.coverage, that.coverage)
+                && Objects.equals(this.reagentPlateType, that.reagentPlateType)
                 && Objects.equals(this.reagentSource, that.reagentSource)
                 && Objects.equals(this.cq, that.cq)
-                && Objects.equals(this.permTime, that.permTime)
                 && Objects.equals(this.visiumConcentration, that.visiumConcentration)
                 && Objects.equals(this.visiumConcentrationType, that.visiumConcentrationType)
                 && Objects.equals(this.rnascopePlex, that.rnascopePlex)
                 && Objects.equals(this.ihcPlex, that.ihcPlex)
                 && Objects.equals(this.sectionDate, that.sectionDate)
+                && Objects.equals(this.permTime, that.permTime)
                 && Objects.equals(this.samplePosition, that.samplePosition)
                 && Objects.equals(this.sectionComment, that.sectionComment)
                 && Objects.equals(this.tagData, that.tagData)
-        );
+                && Objects.equals(this.hybridStart, that.hybridStart)
+                && Objects.equals(this.hybridEnd, that.hybridEnd)
+                && Objects.equals(this.xeniumPlex, that.xeniumPlex)
+                && Objects.equals(this.xeniumProbe, that.xeniumProbe)
+                && Objects.equals(this.xeniumProbeLot, that.xeniumProbeLot)
+                && Objects.equals(this.hybridComment, that.hybridComment)
+                && Objects.equals(this.xeniumStart, that.xeniumStart)
+                && Objects.equals(this.xeniumEnd, that.xeniumEnd)
+                && Objects.equals(this.xeniumRoi, that.xeniumRoi)
+                && Objects.equals(this.xeniumReagentLot, that.xeniumReagentLot)
+                && Objects.equals(this.xeniumCassettePosition, that.xeniumCassettePosition)
+                && Objects.equals(this.xeniumRun, that.xeniumRun)
+                && Objects.equals(this.xeniumComment, that.xeniumComment));
     }
 
     @Override
@@ -262,15 +387,17 @@ public class ReleaseEntry {
     public String toString() {
         return BasicUtils.describe("ReleaseEntry")
                 .add("labware", labware==null ? null : labware.getBarcode())
+                .add("slot", slot)
                 .add("sample", sample==null ? null : sample.getId())
                 .add("lastSection", lastSection)
                 .add("sourceBarcode", sourceBarcode)
-                .add("sourceAddress", sourceAddress)
                 .add("sectionThickness", sectionThickness)
+                .add("sourceAddress", sourceAddress)
                 .add("storageAddress", storageAddress)
                 .add("stainType", stainType)
                 .add("bondBarcode", bondBarcode)
                 .add("coverage", coverage)
+                .add("reagentPlateType", reagentPlateType)
                 .add("reagentSource", reagentSource)
                 .add("cq", cq)
                 .add("visiumConcentration", visiumConcentration)
@@ -282,8 +409,21 @@ public class ReleaseEntry {
                 .add("samplePosition", samplePosition)
                 .add("sectionComment", sectionComment)
                 .addIfNotEmpty("tagData", tagData)
-                .omitNullValues()
+                .add("hybridStart", hybridStart)
+                .add("hybridEnd", hybridEnd)
+                .add("xeniumPlex", xeniumPlex)
+                .add("xeniumProbe", xeniumProbe)
+                .add("xeniumProbeLot", xeniumProbeLot)
+                .add("hybridComment", hybridComment)
+                .add("xeniumStart", xeniumStart)
+                .add("xeniumEnd", xeniumEnd)
+                .add("xeniumRoi", xeniumRoi)
+                .add("xeniumReagentLot", xeniumReagentLot)
+                .add("xeniumCassettePosition", xeniumCassettePosition)
+                .add("xeniumRun", xeniumRun)
+                .add("xeniumComment", xeniumComment)
                 .reprStringValues()
+                .omitNullValues()
                 .toString();
     }
 }
