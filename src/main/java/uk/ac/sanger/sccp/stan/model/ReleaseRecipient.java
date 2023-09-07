@@ -21,12 +21,13 @@ public class ReleaseRecipient implements HasEnabled {
     public ReleaseRecipient() {}
 
     public ReleaseRecipient(Integer id, String username) {
+        this(id, username, null);
+    }
+
+    public ReleaseRecipient(Integer id, String username, String fullName) {
         this.id = id;
         this.username = username;
-    }
-    public ReleaseRecipient(Integer id, String username, String fullName) {
-      this(id, username);
-      this.fullName = fullName;
+        this.fullName = fullName;
     }
 
     public Integer getId() {
@@ -46,7 +47,7 @@ public class ReleaseRecipient implements HasEnabled {
     }
 
     public String getFullName() {
-        return fullName;
+        return this.fullName;
     }
 
     public void setFullName(String fullName) {
@@ -81,6 +82,6 @@ public class ReleaseRecipient implements HasEnabled {
 
     @Override
     public String toString() {
-        return String.format("ReleaseRecipient(%s, %s %s%s)", id, repr(username), repr(fullName), enabled?"":" (disabled)");
+        return String.format("ReleaseRecipient(%s, %s, %s%s)", id, repr(username), repr(fullName), enabled?"":" (disabled)");
     }
 }
