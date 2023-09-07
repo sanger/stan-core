@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.ReleaseRecipient;
 import uk.ac.sanger.sccp.stan.repo.ReleaseRecipientRepo;
 
-import javax.persistence.EntityExistsException;
+import javax.persistence.EntityNotFoundException;
 import java.util.Optional;
 
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
@@ -37,7 +37,7 @@ public class ReleaseRecipientAdminService extends BaseAdminService<ReleaseRecipi
      */
     public ReleaseRecipient updateFullName(String username, String fullName) throws EntityNotFoundException {
         requireNonNull(username, "Username not specified.");
-        ReleaseRecipient recipient = repo.findByUsername(username).orElseThrow(() -> new EntityExistsException("Release recipient does not exist: "+repr(username)));
+        ReleaseRecipient recipient = repo.findByUsername(username).orElseThrow(() -> new EntityNotFoundException("Release recipient does not exist: "+repr(username)));
         if (Objects.equals(recipient.getFullName(), fullName)) {
             return recipient;
         }
