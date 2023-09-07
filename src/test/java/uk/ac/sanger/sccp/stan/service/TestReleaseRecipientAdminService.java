@@ -46,18 +46,18 @@ public class TestReleaseRecipientAdminService extends AdminServiceTestUtils<Rele
 
     @ParameterizedTest
     @MethodSource("updateReleaseRecipientArgs")
-    public void testUpdateUserFullName(String userName,  String userFullName, String expectedUserName, Exception expectedException) {
+    public void testUpdateFullName(String userName,  String fullName, String expectedUserName, Exception expectedException) {
         when(mockRepo.findByUsername(userName)).thenReturn(Optional.empty());
         if (expectedException != null) {
-            assertException(expectedException, () -> service.updateUserFullName(userName, userFullName));
+            assertException(expectedException, () -> service.updateFullName(userName, fullName));
             verify(mockRepo, never()).save(any());
             return;
         }
         ReleaseRecipient expectedResult = new ReleaseRecipient(20, userName, expectedUserName);
         when(mockRepo.findByUsername(userName)).thenReturn(Optional.of(new ReleaseRecipient(20, userName, null)));
         when(mockRepo.save(any())).thenReturn(expectedResult);
-        assertSame(expectedResult, service.updateUserFullName(userName, userFullName));
-        verify(mockRepo).save( new ReleaseRecipient(20, userName, userFullName));
+        assertSame(expectedResult, service.updateFullName(userName, fullName));
+        verify(mockRepo).save( new ReleaseRecipient(20, userName, fullName));
     }
 
     private static Stream<Arguments> updateReleaseRecipientArgs() {

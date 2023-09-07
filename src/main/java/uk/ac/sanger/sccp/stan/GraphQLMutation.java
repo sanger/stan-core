@@ -413,16 +413,16 @@ public class GraphQLMutation extends BaseGraphQLResource {
         return dfe -> {
             User user = checkUser(dfe, User.Role.admin);
             String username = dfe.getArgument("username");
-            String userFullName = dfe.getArgument("userFullName");
+            String fullName = dfe.getArgument("fullName");
             requireNonNull(username, "userName not specified");
 
-            String action = isUpdate ? "UpdateUserFullName" : "AddNewReleaseRecipient";
-            logRequest(action, user, String.format("(username=%s, user full name=%s)", username, userFullName));
+            String action = isUpdate ? "UpdateFullName" : "AddNewReleaseRecipient";
+            logRequest(action, user, String.format("(username=%s, user full name=%s)", username, fullName));
 
             if (isUpdate) {
-                return releaseRecipientAdminService.updateUserFullName(username, userFullName);
+                return releaseRecipientAdminService.updateFullName(username, fullName);
             } else {
-                return releaseRecipientAdminService.addNew(username, userFullName);
+                return releaseRecipientAdminService.addNew(username, fullName);
             }
         };
     }

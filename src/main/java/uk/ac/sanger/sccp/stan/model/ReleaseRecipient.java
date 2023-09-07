@@ -15,7 +15,7 @@ public class ReleaseRecipient implements HasEnabled {
     private Integer id;
 
     private String username;
-    private String userFullName;
+    private String fullName;
     private boolean enabled = true;
 
     public ReleaseRecipient() {}
@@ -24,9 +24,9 @@ public class ReleaseRecipient implements HasEnabled {
         this.id = id;
         this.username = username;
     }
-    public ReleaseRecipient(Integer id, String username, String userFullName) {
+    public ReleaseRecipient(Integer id, String username, String fullName) {
       this(id, username);
-      this.userFullName = userFullName;
+      this.fullName = fullName;
     }
 
     public Integer getId() {
@@ -45,12 +45,12 @@ public class ReleaseRecipient implements HasEnabled {
         this.username = username;
     }
 
-    public String getUserFullName() {
-        return userFullName;
+    public String getFullName() {
+        return fullName;
     }
 
-    public void setUserFullName(String userFullName) {
-        this.userFullName = userFullName;
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
     }
 
     @Override
@@ -70,7 +70,8 @@ public class ReleaseRecipient implements HasEnabled {
         ReleaseRecipient that = (ReleaseRecipient) o;
         return (this.enabled == that.enabled
                 && Objects.equals(this.id, that.id)
-                && Objects.equals(this.username, that.username));
+                && Objects.equals(this.username, that.username)
+                && Objects.equals(this.fullName, that.fullName));
     }
 
     @Override
@@ -78,9 +79,8 @@ public class ReleaseRecipient implements HasEnabled {
         return (id!=null ? id.hashCode() : username!=null ? username.hashCode() : 0);
     }
 
-
     @Override
     public String toString() {
-        return String.format("ReleaseRecipient(%s, %s%s)", id, repr(username), enabled?"":" (disabled)");
+        return String.format("ReleaseRecipient(%s, %s %s%s)", id, repr(username), repr(fullName), enabled?"":" (disabled)");
     }
 }
