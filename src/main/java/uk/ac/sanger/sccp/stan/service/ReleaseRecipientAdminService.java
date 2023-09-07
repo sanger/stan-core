@@ -1,6 +1,5 @@
 package uk.ac.sanger.sccp.stan.service;
 
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -10,7 +9,7 @@ import uk.ac.sanger.sccp.stan.repo.ReleaseRecipientRepo;
 import javax.persistence.EntityExistsException;
 import java.util.Optional;
 
-import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
+import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
  * Service for admin of release destinations
@@ -29,15 +28,23 @@ public class ReleaseRecipientAdminService extends BaseAdminService<ReleaseRecipi
         return repo.save(new ReleaseRecipient(null, username, fullName));
     }
 
-    public ReleaseRecipient updateFullName(String username, String fullName) {
-        String validatedUserName = validateIdentifier(username);
-        ReleaseRecipient recipient = repo.findByUsername(validatedUserName).orElseThrow(() -> new EntityExistsException("Release recipient does not exist: "+validatedUserName));
-        if(StringUtils.equals(recipient.getFullName(), fullName)) {
+    /**
+     * Update the fullname field of an existing recipient
+     * @param username username of the recipient
+     * @fullName new fullname of recipient
+     * @return updated recipient, if it has been updated
+     * @exception EntityNotFoundException if there is no such recipient
+     */
+    public ReleaseRecipient updateFullName(String username, String fullName) throws EntityNotFoundException {
+        requireNonNull(username, "Username not specified.");
+        ReleaseRecipient recipient = repo.findByUsername(username).orElseThrow(() -> new EntityExistsException("Release recipient does not exist: "+repr(username)));
+        if (Objects.equals(recipient.getFullName(), fullName)) {
             return recipient;
         }
         recipient.setFullName(fullName);
         return repo.save(recipient);
     }
+    
     @Override
     protected ReleaseRecipient newEntity(String string) {
         return new ReleaseRecipient(null, string);
