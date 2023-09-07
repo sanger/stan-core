@@ -7,7 +7,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import uk.ac.sanger.sccp.stan.model.ReleaseRecipient;
 import uk.ac.sanger.sccp.stan.repo.ReleaseRecipientRepo;
 
-import javax.persistence.EntityExistsException;
+import javax.persistence.EntityNotFoundException;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -61,13 +61,12 @@ public class TestReleaseRecipientAdminService extends AdminServiceTestUtils<Rele
     }
 
     private static Stream<Arguments> updateReleaseRecipientArgs() {
-        Exception missingStringException = new IllegalArgumentException(MISSING_STRING_MESSAGE);
         return Stream.of(
-                Arguments.of("Alpha", "Beta", "Beta", new EntityExistsException("Release recipient does not exist: Alpha")),
+                Arguments.of("Alpha", "Beta", "Beta", new EntityNotFoundException("Release recipient does not exist: \"Alpha\"")),
                 Arguments.of("Alpha", "Beta\t\n", "Beta",null),
                 Arguments.of("Alpha", "", "", null),
-                Arguments.of("!Alpha", "Beta", "Beta", new IllegalArgumentException("string \"!Alpha\" contains invalid characters \"!\".")),
-                Arguments.of(null, null, null, missingStringException),
+                Arguments.of(null, null, null, new IllegalArgumentException("Username not specified.")),
+                Arguments.of("", null, null, new IllegalArgumentException("Username not specified.")),
                 Arguments.of("Alpha", "\n", "", null)
         );
     }

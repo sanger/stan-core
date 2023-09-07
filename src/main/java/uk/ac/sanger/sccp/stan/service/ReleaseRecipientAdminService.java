@@ -7,8 +7,10 @@ import uk.ac.sanger.sccp.stan.model.ReleaseRecipient;
 import uk.ac.sanger.sccp.stan.repo.ReleaseRecipientRepo;
 
 import javax.persistence.EntityNotFoundException;
+import java.util.Objects;
 import java.util.Optional;
 
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
@@ -31,12 +33,14 @@ public class ReleaseRecipientAdminService extends BaseAdminService<ReleaseRecipi
     /**
      * Update the fullname field of an existing recipient
      * @param username username of the recipient
-     * @fullName new fullname of recipient
+     * @param fullName new fullname of recipient
      * @return updated recipient, if it has been updated
      * @exception EntityNotFoundException if there is no such recipient
      */
     public ReleaseRecipient updateFullName(String username, String fullName) throws EntityNotFoundException {
-        requireNonNull(username, "Username not specified.");
+        if (nullOrEmpty(username)) {
+            throw new IllegalArgumentException("Username not specified.");
+        }
         ReleaseRecipient recipient = repo.findByUsername(username).orElseThrow(() -> new EntityNotFoundException("Release recipient does not exist: "+repr(username)));
         if (Objects.equals(recipient.getFullName(), fullName)) {
             return recipient;
