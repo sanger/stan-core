@@ -15,13 +15,19 @@ public class ReleaseRecipient implements HasEnabled {
     private Integer id;
 
     private String username;
+    private String fullName;
     private boolean enabled = true;
 
     public ReleaseRecipient() {}
 
     public ReleaseRecipient(Integer id, String username) {
+        this(id, username, null);
+    }
+
+    public ReleaseRecipient(Integer id, String username, String fullName) {
         this.id = id;
         this.username = username;
+        this.fullName = fullName;
     }
 
     public Integer getId() {
@@ -38,6 +44,14 @@ public class ReleaseRecipient implements HasEnabled {
 
     public void setUsername(String username) {
         this.username = username;
+    }
+
+    public String getFullName() {
+        return this.fullName;
+    }
+
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
     }
 
     @Override
@@ -57,7 +71,8 @@ public class ReleaseRecipient implements HasEnabled {
         ReleaseRecipient that = (ReleaseRecipient) o;
         return (this.enabled == that.enabled
                 && Objects.equals(this.id, that.id)
-                && Objects.equals(this.username, that.username));
+                && Objects.equals(this.username, that.username)
+                && Objects.equals(this.fullName, that.fullName));
     }
 
     @Override
@@ -65,9 +80,8 @@ public class ReleaseRecipient implements HasEnabled {
         return (id!=null ? id.hashCode() : username!=null ? username.hashCode() : 0);
     }
 
-
     @Override
     public String toString() {
-        return String.format("ReleaseRecipient(%s, %s%s)", id, repr(username), enabled?"":" (disabled)");
+        return String.format("ReleaseRecipient(%s, %s, %s%s)", id, repr(username), repr(fullName), enabled?"":" (disabled)");
     }
 }

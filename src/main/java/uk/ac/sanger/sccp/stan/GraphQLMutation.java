@@ -409,11 +409,31 @@ public class GraphQLMutation extends BaseGraphQLResource {
     public DataFetcher<ReleaseDestination> setReleaseDestinationEnabled() {
         return adminSetEnabled(releaseDestinationAdminService::setEnabled, "SetReleaseDestinationEnabled", "name");
     }
+    private DataFetcher<ReleaseRecipient> createOrUpdateReleaseRecipient(boolean isUpdate) {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.admin);
+            String username = dfe.getArgument("username");
+            String fullName = dfe.getArgument("fullName");
+            requireNonNull(username, "userName not specified");
 
-    public DataFetcher<ReleaseRecipient> addReleaseRecipient() {
-        return adminAdd(releaseRecipientAdminService::addNew, "AddReleaseRecipient", "username");
+            String action = isUpdate ? "UpdateFullName" : "AddNewReleaseRecipient";
+            logRequest(action, user, String.format("(username=%s, user full name=%s)", username, fullName));
+
+            if (isUpdate) {
+                return releaseRecipientAdminService.updateFullName(username, fullName);
+            } else {
+                return releaseRecipientAdminService.addNew(username, fullName);
+            }
+        };
     }
 
+    public DataFetcher<ReleaseRecipient> addReleaseRecipient() {
+        return createOrUpdateReleaseRecipient(false);
+    }
+
+    public DataFetcher<ReleaseRecipient> updateReleaseRecipientFullName() {
+        return createOrUpdateReleaseRecipient(true);
+    }
     public DataFetcher<ReleaseRecipient> setReleaseRecipientEnabled() {
         return adminSetEnabled(releaseRecipientAdminService::setEnabled, "SetReleaseRecipientEnabled", "username");
     }

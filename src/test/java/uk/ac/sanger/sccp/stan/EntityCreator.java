@@ -263,7 +263,7 @@ public class EntityCreator {
     }
 
     public ReleaseRecipient createReleaseRecipient(String username) {
-        ReleaseRecipient rec = new ReleaseRecipient(null, username);
+        ReleaseRecipient rec = new ReleaseRecipient(null, username, null);
         return releaseRecipientRepo.save(rec);
     }
 

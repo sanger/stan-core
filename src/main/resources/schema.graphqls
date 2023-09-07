@@ -686,7 +686,8 @@ type ReleaseDestination {
 
 """A username for someone responsible for receiving released labware."""
 type ReleaseRecipient {
-    username: String!
+    username: String!,
+    fullName: String,
     enabled: Boolean!
 }
 
@@ -1882,7 +1883,9 @@ type Mutation {
     """Enable or disable a release destination."""
     setReleaseDestinationEnabled(name: String!, enabled: Boolean!): ReleaseDestination!
     """Create a new release recipient that can be associated with labware releases."""
-    addReleaseRecipient(username: String!): ReleaseRecipient!
+    addReleaseRecipient(username: String!, fullName: String): ReleaseRecipient!
+    """Update a release recipient fullName."""
+    updateReleaseRecipientFullName(username: String!, fullName: String): ReleaseRecipient!
     """Enable or disable a release recipient."""
     setReleaseRecipientEnabled(username: String!, enabled: Boolean!): ReleaseRecipient!
     """Create a new species that can be associated with donors in tissue registration."""
