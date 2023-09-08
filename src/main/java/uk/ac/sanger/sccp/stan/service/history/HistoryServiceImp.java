@@ -676,7 +676,7 @@ public class HistoryServiceImp implements HistoryService {
             }
             List<ResultOp> results = opResults.get(op.getId());
             Equipment equipment = op.getEquipment();
-            Set<SampleTransferInfo> items = new LinkedHashSet<>();
+            Map<SampleTransferInfo, List<String>> itemAddresses = new LinkedHashMap<>();
             List<OperationComment> comments = opComments.getOrDefault(op.getId(), List.of());
             List<Measurement> measurements = opMeasurements.getOrDefault(op.getId(), List.of());
             List<LabwareNote> lwNotes = opLabwareNotes.getOrDefault(op.getId(), List.of());
@@ -700,14 +700,20 @@ public class HistoryServiceImp implements HistoryService {
                 if (sampleIds==null || sampleIds.contains(sampleId)) {
                     final Integer sourceId = action.getSource().getLabwareId();
                     final Integer destId = action.getDestination().getLabwareId();
-                    items.add(new SampleTransferInfo(sampleId, sourceId, destId, action.getDestination().getAddress().toString(),
-                            samplePositionResultsMap.get(new SlotIdSampleId(action.getDestination().getId(), sampleId))));
+                    final String region = samplePositionResultsMap.get(new SlotIdSampleId(action.getDestination().getId(), sampleId));
+                    final SampleTransferInfo key = new SampleTransferInfo(sampleId, sourceId, destId, region);
+                    itemAddresses.computeIfAbsent(key, k -> new ArrayList<>())
+                            .add(action.getDestination().getAddress().toString());
                 }
             }
             String username = op.getUser().getUsername();
-            for (var item : items) {
+            for (var e : itemAddresses.entrySet()) {
+                var item = e.getKey();
+                var addresses = e.getValue();
+                String addressString = String.join(", ", addresses);
                 HistoryEntry entry = new HistoryEntry(op.getId(), op.getOperationType().getName(),
-                        op.getPerformed(), item.sourceId, item.destId, item.sampleId, username, workNumber, null, item.address, item.region);
+                        op.getPerformed(), item.sourceId, item.destId, item.sampleId, username, workNumber, null,
+                        addressString, item.region);
                 if (stainDetail!=null) {
                     entry.addDetail(stainDetail);
                 }
@@ -861,13 +867,12 @@ public class HistoryServiceImp implements HistoryService {
     // region support class
     private static class SampleTransferInfo {
         final int sampleId, sourceId, destId;
-        final String address, region;
+        final String region;
 
-        public SampleTransferInfo(int sampleId, int sourceId, int destId, String address, String region) {
+        public SampleTransferInfo(int sampleId, int sourceId, int destId, String region) {
             this.sampleId = sampleId;
             this.sourceId = sourceId;
             this.destId = destId;
-            this.address = address;
             this.region = region;
         }
 
@@ -878,7 +883,9 @@ public class HistoryServiceImp implements HistoryService {
             SampleTransferInfo that = (SampleTransferInfo) o;
             return (this.sampleId == that.sampleId
                     && this.sourceId == that.sourceId
-                    && this.destId == that.destId);
+                    && this.destId == that.destId
+                    && Objects.equals(this.region, that.region)
+            );
         }
 
         @Override
