@@ -15,6 +15,7 @@ import uk.ac.sanger.sccp.utils.BasicUtils;
 import javax.persistence.EntityNotFoundException;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -23,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.Matchers.sameElements;
+import static uk.ac.sanger.sccp.utils.BasicUtils.wildcardToLikeSql;
 
 /**
  * Tests {@link HistoryServiceImp}
@@ -187,12 +189,12 @@ public class TestHistoryService {
         entries.add(new HistoryEntry(200, "Release", makeTime(1), lw1.getId(), lw2.getId(),
                 sam1.getId(), "", workNumber));
         entries.add(new HistoryEntry(20, "Bananas", makeTime(2), lw1.getId(), lw2.getId(),
-                sam1.getId(), "", workNumber));
+                sam2.getId(), "", workNumber));
         doReturn(entries.subList(1,2)).when(service).createEntriesForOps(ops, null, lws, null, work.getWorkNumber());
 
         doReturn(entries.subList(0,1)).when(service).createEntriesForReleases(releases, null, null, work.getWorkNumber());
 
-        List<Sample> samples = List.of(sam1, sam2);
+        List<Sample> samples = List.of(sam1,sam2);
         List<Labware> allLabware = BasicUtils.concat(lws, List.of(rlw1, rlw2));
         doReturn(samples).when(service).referencedSamples(sameElements(entries, true), sameElements(allLabware, true));
 
@@ -201,7 +203,7 @@ public class TestHistoryService {
 
         History history = service.getHistoryForWorkNumber(workNumber);
         assertEquals(entries, history.getEntries());
-        assertSame(samples, history.getSamples());
+        assertEquals(samples, history.getSamples());
         assertEquals(allLabware, history.getLabware());
         assertEquals(List.of(samplePositionResult), history.getSamplePositionResults());
     }
@@ -248,8 +250,127 @@ public class TestHistoryService {
                 .collect(toList());
 
         when(mockSampleRepo.findAllByIdIn(Set.of(5,6))).thenReturn(List.of(samples[4], samples[5]));
-
         assertThat(service.referencedSamples(entries, List.of(lw1, lw2))).containsExactlyInAnyOrder(samples);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "by work number,SGP5,,,",
+            "by barcode,SGP5,STAN-1,EXT1,DONOR1",
+            "by tissues,SGP5,,EXT1,DONOR1",
+    })
+    public void testGetHistory(String mode, String workNumber, String barcode, String externalName, String donorName) {
+        List<Sample> samples = List.of(EntityFactory.getSample());
+        History history = new History(null, samples, null, null);
+        if (mode.equalsIgnoreCase("by work number")) {
+            doReturn(history).when(service).getHistoryForWorkNumber(workNumber);
+        } else {
+            if (mode.equalsIgnoreCase("by barcode")) {
+                doReturn(samples).when(service).samplesForBarcode(barcode, externalName, donorName);
+            } else {
+                doReturn(samples).when(service).samplesForTissues(externalName, donorName);
+            }
+            doReturn(history).when(service).getHistoryForSamples(samples, workNumber);
+        }
+
+        assertSame(history, service.getHistory(workNumber, barcode, externalName, donorName));
+    }
+
+    @Test
+    public void testSamplesForBarcode() {
+        String barcode = "STAN-1";
+        String externalName = "EXT1";
+        String donorName = "donor1";
+        Sample[] lwSamples = IntStream.rangeClosed(1,2)
+                .mapToObj(i -> {
+                    Donor donor = new Donor(i, "donor"+i, null, null);
+                    Tissue tissue = EntityFactory.makeTissue(donor, null);
+                    tissue.setId(10+i);
+                    return new Sample(100+i, i, tissue, null);
+                })
+                .toArray(Sample[]::new);
+        LabwareType lt = EntityFactory.makeLabwareType(1, 2);
+        Labware lw = EntityFactory.makeLabware(lt, lwSamples);
+        lw.setBarcode(barcode);
+        when(mockLwRepo.getByBarcode(barcode)).thenReturn(lw);
+        Predicate<Tissue> filter = t -> t.getDonor().getDonorName().equals("donor1");
+        doReturn(filter).when(service).tissuePredicate(donorName, externalName);
+        List<Sample> returnSamples = List.of(lwSamples[0], EntityFactory.getSample());
+        when(mockSampleRepo.findAllByTissueIdIn(any())).thenReturn(returnSamples);
+
+        assertSame(returnSamples, service.samplesForBarcode(barcode, externalName, donorName));
+        verify(mockSampleRepo).findAllByTissueIdIn(Set.of(lwSamples[0].getTissue().getId()));
+    }
+
+    @ParameterizedTest
+    @MethodSource("samplesForTissuesArgs")
+    public void testSamplesForTissues(String externalName, String donorName, List<Integer> expectedTissueIds,
+                                      List<Sample> samples, List<Tissue> foundTissues) {
+        if (externalName == null) {
+            Donor donor = EntityFactory.getDonor();
+            when(mockDonorRepo.getByDonorName(donorName)).thenReturn(donor);
+            when(mockTissueRepo.findByDonorId(donor.getId())).thenReturn(foundTissues);
+        } else if (externalName.indexOf('*') >= 0) {
+            when(mockTissueRepo.findAllByExternalNameLike(wildcardToLikeSql(externalName)))
+                    .thenReturn(foundTissues);
+        } else {
+            when(mockTissueRepo.getAllByExternalName(externalName))
+                    .thenReturn(foundTissues);
+        }
+
+        when(mockSampleRepo.findAllByTissueIdIn(any())).thenReturn(samples);
+
+        assertSame(samples, service.samplesForTissues(externalName, donorName));
+
+        verify(mockSampleRepo).findAllByTissueIdIn(expectedTissueIds);
+    }
+
+    static Stream<Arguments> samplesForTissuesArgs() {
+        Donor[] donors = IntStream.rangeClosed(1,2)
+                .mapToObj(i -> new Donor(i, "donor"+i, null, null))
+                .toArray(Donor[]::new);
+        List<Tissue> tissues = Arrays.stream(donors)
+                .map(d -> EntityFactory.makeTissue(d, null))
+                .collect(toList());
+        List<Integer> tissueIds = tissues.stream().map(Tissue::getId).collect(toList());
+
+        List<Sample> samples = List.of(EntityFactory.getSample());
+
+        return Arrays.stream(new Object[][] {
+                {null, "donor1", tissueIds},
+                {"ext1", null, tissueIds},
+                {"ext1", "donor1", tissueIds.subList(0,1)},
+                {"ex*", "donor1", tissueIds.subList(0,1)},
+                {"ext1", "donor2", tissueIds.subList(1,2)},
+        }).map(arr -> Arguments.of(arr[0], arr[1], arr[2], samples, tissues));
+    }
+
+    @ParameterizedTest
+    @MethodSource("tissuePredicateArgs")
+    public void testTissuePredicate(Tissue tissue, String donorName, String extName, boolean expected) {
+        Predicate<Tissue> predicate = service.tissuePredicate(donorName, extName);
+        assertEquals(expected, predicate.test(tissue));
+    }
+
+    static Stream<Arguments> tissuePredicateArgs() {
+        Donor d = new Donor(1, "DONOR1", null, null);
+        Tissue tissue = EntityFactory.makeTissue(d, null);
+        tissue.setExternalName("EXT1");
+        return Arrays.stream(new Object[][] {
+                { null, null, true },
+                { "donor1", null, true },
+                { "donor2", null, false },
+                { null, "ext1", true },
+                { null, "ext2", false },
+                { "donor1", "ext1", true },
+                { "donor1", "ext2", false },
+                { "donor2", "ext1", false },
+                { null, "ext*", true },
+                { "donor1", "ext*", true },
+                { "donor2", "ext*", false },
+                { null, "abc*", false },
+                { "donor1", "abc*", false },
+        }).map(arr -> Arguments.of(tissue, arr[0], arr[1], arr[2]));
     }
 
     @Test

@@ -686,7 +686,8 @@ type ReleaseDestination {
 
 """A username for someone responsible for receiving released labware."""
 type ReleaseRecipient {
-    username: String!
+    username: String!,
+    fullName: String,
     enabled: Boolean!
 }
 
@@ -1808,7 +1809,9 @@ type Query {
     historyForWorkNumber(workNumber: String!): History!
     """Get the history containing a given labware barcode."""
     historyForLabwareBarcode(barcode: String!): History!
-    """Get the work progress (some particular timestamps) associated with a specified work number, and/or
+    """Get the history associated with a specified work number, and/or barcode, external name, donor name."""
+    history(workNumber: String,barcode: String, externalName: String, donorName: String): History!
+   """Get the work progress (some particular timestamps) associated with a specified work number, and/or
     work types, programs, statuses."""
     workProgress(workNumber: String, workTypes: [String!], programs: [String!], statuses: [WorkStatus!], requesters: [String!]): [WorkProgress!]!
     """Get a reagent plate, if it exists. May return null."""
@@ -1884,7 +1887,9 @@ type Mutation {
     """Enable or disable a release destination."""
     setReleaseDestinationEnabled(name: String!, enabled: Boolean!): ReleaseDestination!
     """Create a new release recipient that can be associated with labware releases."""
-    addReleaseRecipient(username: String!): ReleaseRecipient!
+    addReleaseRecipient(username: String!, fullName: String): ReleaseRecipient!
+    """Update a release recipient fullName."""
+    updateReleaseRecipientFullName(username: String!, fullName: String): ReleaseRecipient!
     """Enable or disable a release recipient."""
     setReleaseRecipientEnabled(username: String!, enabled: Boolean!): ReleaseRecipient!
     """Create a new species that can be associated with donors in tissue registration."""

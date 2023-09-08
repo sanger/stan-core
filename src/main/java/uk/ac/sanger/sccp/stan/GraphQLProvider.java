@@ -117,6 +117,7 @@ public class GraphQLProvider {
                         .dataFetcher("historyForDonorName", graphQLDataFetchers.historyForDonorName())
                         .dataFetcher("historyForLabwareBarcode", graphQLDataFetchers.historyForLabwareBarcode())
                         .dataFetcher("historyForWorkNumber", graphQLDataFetchers.historyForWorkNumber())
+                        .dataFetcher("history", graphQLDataFetchers.history())
                         .dataFetcher("workProgress", graphQLDataFetchers.workProgress())
 
                         .dataFetcher("location", graphQLStore.getLocation())
@@ -152,6 +153,7 @@ public class GraphQLProvider {
                         .dataFetcher("addReleaseDestination", transact(graphQLMutation.addReleaseDestination()))
                         .dataFetcher("setReleaseDestinationEnabled", transact(graphQLMutation.setReleaseDestinationEnabled()))
                         .dataFetcher("addReleaseRecipient", transact(graphQLMutation.addReleaseRecipient()))
+                        .dataFetcher("updateReleaseRecipientFullName", transact(graphQLMutation.updateReleaseRecipientFullName()))
                         .dataFetcher("setReleaseRecipientEnabled", transact(graphQLMutation.setReleaseRecipientEnabled()))
                         .dataFetcher("addSpecies", transact(graphQLMutation.addSpecies()))
                         .dataFetcher("setSpeciesEnabled", transact(graphQLMutation.setSpeciesEnabled()))

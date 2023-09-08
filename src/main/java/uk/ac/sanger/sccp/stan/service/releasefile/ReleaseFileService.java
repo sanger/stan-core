@@ -8,6 +8,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.service.ComplexStainServiceImp;
 import uk.ac.sanger.sccp.stan.service.history.ReagentActionDetailService;
+import uk.ac.sanger.sccp.stan.service.operation.AnalyserServiceImp;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.Ancestry;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
 import uk.ac.sanger.sccp.utils.tsv.TsvColumn;
@@ -42,6 +43,8 @@ public class ReleaseFileService {
     private final StainTypeRepo stainTypeRepo;
     private final SamplePositionRepo samplePositionRepo;
     private final OperationCommentRepo opComRepo;
+    private final LabwareProbeRepo lwProbeRepo;
+    private final RoiRepo roiRepo;
     private final ReagentActionDetailService reagentActionDetailService;
 
     @Autowired
@@ -51,7 +54,7 @@ public class ReleaseFileService {
                               OperationRepo opRepo, LabwareNoteRepo lwNoteRepo,
                               StainTypeRepo stainTypeRepo, SamplePositionRepo samplePositionRepo,
                               OperationCommentRepo opComRepo,
-                              ReagentActionDetailService reagentActionDetailService) {
+                              LabwareProbeRepo lwProbeRepo, RoiRepo roiRepo, ReagentActionDetailService reagentActionDetailService) {
         this.releaseRepo = releaseRepo;
         this.sampleRepo = sampleRepo;
         this.labwareRepo = labwareRepo;
@@ -64,6 +67,8 @@ public class ReleaseFileService {
         this.stainTypeRepo = stainTypeRepo;
         this.samplePositionRepo = samplePositionRepo;
         this.opComRepo = opComRepo;
+        this.lwProbeRepo = lwProbeRepo;
+        this.roiRepo = roiRepo;
         this.reagentActionDetailService = reagentActionDetailService;
     }
 
@@ -91,6 +96,11 @@ public class ReleaseFileService {
 
         loadLastSection(entries);
         Ancestry ancestry = findAncestry(entries);
+        Set<Integer> slotIds = entries.stream()
+                .map(ReleaseEntry::getSlot)
+                .map(s -> s==null ? null : s.getId())
+                .filter(Objects::nonNull)
+                .collect(toSet());
         loadSources(entries, ancestry, mode);
         loadMeasurements(entries, ancestry);
         loadSectionDate(entries, ancestry);
@@ -98,6 +108,8 @@ public class ReleaseFileService {
         loadReagentSources(entries);
         loadSamplePositions(entries);
         loadSectionComments(entries);
+
+        loadXeniumFields(entries, slotIds);
         return new ReleaseFileContent(mode, entries);
     }
 
@@ -320,7 +332,6 @@ public class ReleaseFileService {
     }
 
 
-
     /**
      * The source for cdna is the first sample found in the ancestry that does not have biostate cDNA.
      * @param entry the release entry to find the source for
@@ -346,7 +357,9 @@ public class ReleaseFileService {
     public Map<Integer, Operation> labwareIdToOp(Collection<Operation> ops) {
         Map<Integer, Operation> labwareOps = new HashMap<>(); // Map of labware id to the latest stain op on that labware
         for (Operation op : ops) {
-            Set<Integer> labwareIds = op.getActions().stream().map(a -> a.getDestination().getLabwareId()).collect(toSet());
+            Set<Integer> labwareIds = op.getActions().stream()
+                    .map(a -> a.getDestination().getLabwareId())
+                    .collect(toSet());
             for (Integer labwareId : labwareIds) {
                 if (opSupplants(op, labwareOps.get(labwareId))) {
                     labwareOps.put(labwareId, op);
@@ -412,6 +425,188 @@ public class ReleaseFileService {
                 }
             });
         }
+    }
+
+    /**
+     * Loads the various fields associated with xenium ops
+     * @param entries the release entries under construction
+     * @param slotIds the ids of slots for these entries
+     */
+    public void loadXeniumFields(Collection<ReleaseEntry> entries, Set<Integer> slotIds) {
+        loadProbeHybridisation(entries, slotIds);
+        loadProbeHybridisationQC(entries, slotIds);
+        loadXeniumAnalyser(entries, slotIds);
+        loadXeniumQC(entries, slotIds);
+    }
+
+    /**
+     * Loads timestamps and probe info for probe hybridisation ops
+     */
+    public void loadProbeHybridisation(Collection<ReleaseEntry> entries, Set<Integer> slotIds) {
+        OperationType opType = opTypeRepo.getByName("Probe hybridisation Xenium");
+        List<Operation> ops = opRepo.findAllByOperationTypeAndDestinationSlotIdIn(opType, slotIds);
+        if (ops.isEmpty()) {
+            return;
+        }
+        List<Integer> opIds = ops.stream().map(Operation::getId).collect(toList());
+        List<LabwareProbe> lwProbes = lwProbeRepo.findAllByOperationIdIn(opIds);
+        Map<Integer, List<LabwareProbe>> opIdProbes = lwProbes.stream()
+                .collect(groupingBy(LabwareProbe::getOperationId));
+        Map<Integer, Operation> labwareProbeOp = labwareIdToOp(ops);
+        for (ReleaseEntry entry : entries) {
+            final Integer lwId = entry.getLabware().getId();
+            Operation op = labwareProbeOp.get(lwId);
+            if (op==null) {
+                continue;
+            }
+            entry.setHybridStart(op.getPerformed());
+            List<LabwareProbe> probes = opIdProbes.get(op.getId());
+            if (nullOrEmpty(probes)) {
+                continue;
+            }
+            probes = probes.stream().filter(p -> p.getLabwareId().equals(lwId))
+                    .collect(toList());
+            if (!probes.isEmpty()) {
+                String plex = probes.stream()
+                        .map(LabwareProbe::getPlex)
+                        .distinct()
+                        .map(String::valueOf)
+                        .collect(joining(", "));
+                String probeName = probes.stream()
+                        .map(lp -> lp.getProbePanel().getName())
+                        .distinct()
+                        .collect(joining(", "));
+                String lot = probes.stream()
+                        .map(LabwareProbe::getLotNumber)
+                        .distinct()
+                        .collect(joining(", "));
+                entry.setXeniumPlex(plex);
+                entry.setXeniumProbe(probeName);
+                entry.setXeniumProbeLot(lot);
+            }
+        }
+    }
+
+    /**
+     * Loads timestamps and comments for probe hybridisation qc
+     */
+    public void loadProbeHybridisationQC(Collection<ReleaseEntry> entries, Set<Integer> slotIds) {
+        OperationType opType = opTypeRepo.getByName("Probe hybridisation QC");
+        List<Operation> ops = opRepo.findAllByOperationTypeAndDestinationSlotIdIn(opType, slotIds);
+        if (ops.isEmpty()) {
+            return;
+        }
+        List<Integer> opIds = ops.stream().map(Operation::getId).collect(toList());
+        List<OperationComment> opcoms = opComRepo.findAllByOperationIdIn(opIds);
+        Map<Integer, List<OperationComment>> opIdComs = opcoms.stream()
+                .collect(groupingBy(OperationComment::getOperationId));
+        Map<Integer, Operation> lwOp = labwareIdToOp(ops);
+        for (ReleaseEntry entry : entries) {
+            final Integer lwId = entry.getLabware().getId();
+            Operation op = lwOp.get(lwId);
+            if (op==null) {
+                continue;
+            }
+            entry.setHybridEnd(op.getPerformed());
+            if (!nullOrEmpty(opIdComs)) {
+                String comment = joinComments(opIdComs.get(op.getId()).stream()
+                        .filter(oc -> lwId.equals(oc.getLabwareId())));
+                if (!nullOrEmpty(comment)) {
+                    entry.setHybridComment(comment);
+                }
+            }
+        }
+    }
+
+    /**
+     * Loads timestamps, ROI and labware notes from Xenium analyser ops.
+     */
+    public void loadXeniumAnalyser(Collection<ReleaseEntry> entries, Set<Integer> slotIds) {
+        OperationType opType = opTypeRepo.getByName("Xenium analyser");
+        List<Operation> ops = opRepo.findAllByOperationTypeAndDestinationSlotIdIn(opType, slotIds);
+        if (ops.isEmpty()) {
+            return;
+        }
+        List<Integer> opIds = ops.stream().map(Operation::getId).collect(toList());
+        Map<Integer, Operation> lwOp = labwareIdToOp(ops);
+        Map<Integer, List<LabwareNote>> opIdNotes = lwNoteRepo.findAllByOperationIdIn(opIds).stream()
+                .collect(groupingBy(LabwareNote::getOperationId));
+        Map<Integer, List<Roi>> opIdRoi = roiRepo.findAllByOperationIdIn(opIds).stream()
+                .collect(groupingBy(Roi::getOperationId));
+        for (ReleaseEntry entry : entries) {
+            final Integer lwId = entry.getLabware().getId();
+            Operation op = lwOp.get(lwId);
+            if (op==null) {
+                continue;
+            }
+            entry.setXeniumStart(op.getPerformed());
+            List<Roi> rois = opIdRoi.get(op.getId());
+            if (!nullOrEmpty(rois) && entry.getSlot()!=null && entry.getSample()!=null) {
+                rois.stream()
+                        .filter(roi -> roi.getSampleId().equals(entry.getSample().getId()) && roi.getSlotId().equals(entry.getSlot().getId()))
+                        .findAny()
+                        .ifPresent(roi -> entry.setXeniumRoi(roi.getRoi()));
+            }
+            List<LabwareNote> notes = opIdNotes.get(op.getId());
+            if (nullOrEmpty(notes)) {
+                continue;
+            }
+            for (LabwareNote note : notes) {
+                if (!lwId.equals(note.getLabwareId())) {
+                    continue;
+                }
+                if (note.getName().equalsIgnoreCase(AnalyserServiceImp.LOT_NAME)) {
+                    entry.setXeniumReagentLot(note.getValue());
+                } else if (note.getName().equalsIgnoreCase(AnalyserServiceImp.POSITION_NAME)) {
+                    entry.setXeniumCassettePosition(note.getValue());
+                } else if (note.getName().equalsIgnoreCase(AnalyserServiceImp.RUN_NAME)) {
+                    entry.setXeniumRun(note.getValue());
+                }
+            }
+        }
+    }
+
+    /**
+     * Loads timestamps and comments from Xenium QC ops.
+     */
+    public void loadXeniumQC(Collection<ReleaseEntry> entries, Set<Integer> slotIds) {
+        OperationType opType = opTypeRepo.getByName("Xenium QC");
+        List<Operation> ops = opRepo.findAllByOperationTypeAndDestinationSlotIdIn(opType, slotIds);
+        if (ops.isEmpty()) {
+            return;
+        }
+        List<Integer> opIds = ops.stream().map(Operation::getId).collect(toList());
+        Map<Integer, List<OperationComment>> opIdComs = opComRepo.findAllByOperationIdIn(opIds).stream()
+                .collect(groupingBy(OperationComment::getOperationId));
+        Map<Integer, Operation> lwIdOps = labwareIdToOp(ops);
+        for (ReleaseEntry entry : entries) {
+            Integer lwId = entry.getLabware().getId();
+            Operation op = lwIdOps.get(lwId);
+            if (op==null) {
+                return;
+            }
+            entry.setXeniumEnd(op.getPerformed());
+            List<OperationComment> opcoms = opIdComs.get(op.getId());
+            if (nullOrEmpty(opcoms)) {
+                return;
+            }
+            String commentText = joinComments(opcoms.stream()
+                    .filter(oc -> lwId.equals(oc.getLabwareId())));
+            entry.setXeniumComment(commentText);
+        }
+    }
+
+    /**
+     * Join the distinct opcoms texts as sentences, adding a full stop where missing.
+     * @param opcoms the operation comments to join
+     * @return a string combining the textx of the given comments
+     */
+    private static String joinComments(Stream<OperationComment> opcoms) {
+        return opcoms.map(OperationComment::getComment)
+                .distinct()
+                .map(Comment::getText)
+                .map(s -> s.endsWith(".") ? s : (s + "."))
+                .collect(joining(" "));
     }
 
     /**

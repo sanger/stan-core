@@ -4,9 +4,11 @@ package uk.ac.sanger.sccp.utils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
+import uk.ac.sanger.sccp.stan.service.FindService;
 
 import java.time.DayOfWeek;
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -258,5 +260,18 @@ public class TestBasicUtils {
     public void testContainsDupes() {
         assertTrue(containsDupes(List.of(1,2,3,2)));
         assertFalse(containsDupes(List.of(1,3,5,2)));
+    }
+
+
+    @ParameterizedTest
+    @CsvSource({
+            "TIS*, \\QTIS\\E.*",
+            "*TI%?\\*, .*\\QTI%?\\\\E.*",
+    })
+    public void testMakeWildcardPattern(String input, String expected) {
+        Pattern p = makeWildcardPattern(input);
+        assertEquals(expected, p.pattern());
+        assertThat(input).matches(p);
+        assertThat(p.flags() & Pattern.CASE_INSENSITIVE).isNotZero();
     }
 }

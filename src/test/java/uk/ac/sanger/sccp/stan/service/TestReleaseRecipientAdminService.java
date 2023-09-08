@@ -2,11 +2,18 @@ package uk.ac.sanger.sccp.stan.service;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import uk.ac.sanger.sccp.stan.model.ReleaseRecipient;
 import uk.ac.sanger.sccp.stan.repo.ReleaseRecipientRepo;
 
-import static org.mockito.Mockito.mock;
+import javax.persistence.EntityNotFoundException;
+import java.util.Optional;
+import java.util.stream.Stream;
+
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 /**
  * Tests {@link ReleaseRecipientAdminService}
@@ -35,5 +42,32 @@ public class TestReleaseRecipientAdminService extends AdminServiceTestUtils<Rele
     public void testSetEnabled(String string, boolean newValue, Boolean oldValue, Exception expectedException) {
         genericTestSetEnabled(ReleaseRecipientAdminService::setEnabled,
                 string, newValue, oldValue, expectedException);
+    }
+
+    @ParameterizedTest
+    @MethodSource("updateReleaseRecipientArgs")
+    public void testUpdateFullName(String userName,  String fullName, String expectedUserName, Exception expectedException) {
+        when(mockRepo.findByUsername(userName)).thenReturn(Optional.empty());
+        if (expectedException != null) {
+            assertException(expectedException, () -> service.updateFullName(userName, fullName));
+            verify(mockRepo, never()).save(any());
+            return;
+        }
+        ReleaseRecipient expectedResult = new ReleaseRecipient(20, userName, expectedUserName);
+        when(mockRepo.findByUsername(userName)).thenReturn(Optional.of(new ReleaseRecipient(20, userName, null)));
+        when(mockRepo.save(any())).thenReturn(expectedResult);
+        assertSame(expectedResult, service.updateFullName(userName, fullName));
+        verify(mockRepo).save( new ReleaseRecipient(20, userName, fullName));
+    }
+
+    private static Stream<Arguments> updateReleaseRecipientArgs() {
+        return Stream.of(
+                Arguments.of("Alpha", "Beta", "Beta", new EntityNotFoundException("Release recipient does not exist: \"Alpha\"")),
+                Arguments.of("Alpha", "Beta\t\n", "Beta",null),
+                Arguments.of("Alpha", "", "", null),
+                Arguments.of(null, null, null, new IllegalArgumentException("Username not specified.")),
+                Arguments.of("", null, null, new IllegalArgumentException("Username not specified.")),
+                Arguments.of("Alpha", "\n", "", null)
+        );
     }
 }

@@ -9,6 +9,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.service.history.ReagentActionDetailService;
 import uk.ac.sanger.sccp.stan.service.history.ReagentActionDetailService.ReagentActionDetail;
+import uk.ac.sanger.sccp.stan.service.operation.AnalyserServiceImp;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.Ancestry;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
 import uk.ac.sanger.sccp.utils.tsv.TsvColumn;
@@ -42,6 +43,8 @@ public class TestReleaseFileService {
     StainTypeRepo mockStainTypeRepo;
     SamplePositionRepo mockSamplePositionRepo;
     OperationCommentRepo mockOpComRepo;
+    LabwareProbeRepo mockLwProbeRepo;
+    RoiRepo mockRoiRepo;
 
     ReagentActionDetailService mockRadService;
 
@@ -71,10 +74,12 @@ public class TestReleaseFileService {
         mockStainTypeRepo = mock(StainTypeRepo.class);
         mockSamplePositionRepo = mock(SamplePositionRepo.class);
         mockOpComRepo = mock(OperationCommentRepo.class);
+        mockLwProbeRepo = mock(LabwareProbeRepo.class);
+        mockRoiRepo = mock(RoiRepo.class);
 
         service = spy(new ReleaseFileService(mockAncestoriser, mockSampleRepo, mockLabwareRepo, mockMeasurementRepo,
                 mockSnapshotRepo, mockReleaseRepo, mockOpTypeRepo, mockOpRepo, mockLwNoteRepo, mockStainTypeRepo,
-                mockSamplePositionRepo, mockOpComRepo, mockRadService));
+                mockSamplePositionRepo, mockOpComRepo, mockLwProbeRepo, mockRoiRepo, mockRadService));
 
         user = EntityFactory.getUser();
         destination = new ReleaseDestination(50, "Venus");
@@ -151,6 +156,9 @@ public class TestReleaseFileService {
                 entries.get(i).setStorageAddress(new Address(1, 1+i));
             }
         }
+        Set<Integer> slotIds = entries.stream()
+                .map(re -> re.getSlot().getId())
+                .collect(toSet());
         Map<Integer, Sample> sampleMap = Map.of(sample.getId(), sample, sample1.getId(), sample1);
         doReturn(sampleMap).when(service).loadSamples(anyCollection(), any());
         doReturn(entries.subList(0,2).stream()).when(service).toReleaseEntries(this.release1, sampleMap, snapshots, includeStorageAddresses);
@@ -165,6 +173,7 @@ public class TestReleaseFileService {
         doNothing().when(service).loadStains(any(), any());
         doNothing().when(service).loadSamplePositions(any());
         doNothing().when(service).loadSectionComments(any());
+        doNothing().when(service).loadXeniumFields(any(), any());
 
         List<Integer> releaseIds = List.of(this.release1.getId(), release2.getId());
         ReleaseFileContent rfc = service.getReleaseFileContent(releaseIds);
@@ -183,6 +192,7 @@ public class TestReleaseFileService {
         verify(service).loadReagentSources(entries);
         verify(service).loadSamplePositions(entries);
         verify(service).loadSectionComments(entries);
+        verify(service).loadXeniumFields(entries, slotIds);
     }
 
     @ParameterizedTest
@@ -984,6 +994,196 @@ public class TestReleaseFileService {
         ).containsExactly("Alpha", "Beta", "Gamma");
     }
 
+    @Test
+    public void testLoadXeniumFields() {
+        Collection<ReleaseEntry> entries = List.of(new ReleaseEntry(null, null, null));
+        Set<Integer> slotIds = Set.of(17);
+
+        List<TriConsumer<ReleaseFileService, Collection<ReleaseEntry>, Set<Integer>>> methods = List.of(
+                ReleaseFileService::loadProbeHybridisation,
+                ReleaseFileService::loadProbeHybridisationQC,
+                ReleaseFileService::loadXeniumAnalyser,
+                ReleaseFileService::loadXeniumQC
+        );
+        methods.forEach(method -> method.accept(doNothing().when(service), any(), any()));
+
+        service.loadXeniumFields(entries, slotIds);
+
+        methods.forEach(method -> method.accept(verify(service), entries, slotIds));
+    }
+
+    @Test
+    public void testLoadProbeHybridisation() {
+        OperationType opType = EntityFactory.makeOperationType("Probe hybridisation Xenium", null);
+        when(mockOpTypeRepo.getByName(any())).thenReturn(opType);
+        Sample sample = EntityFactory.getSample();
+        final LabwareType lt = EntityFactory.getTubeType();
+        Labware[] lws = IntStream.range(0,2)
+                .mapToObj(i -> EntityFactory.makeLabware(lt, sample))
+                .toArray(Labware[]::new);
+        List<ReleaseEntry> entries = Arrays.stream(lws)
+                .map(lw -> new ReleaseEntry(lw, lw.getFirstSlot(), lw.getFirstSlot().getSamples().get(0)))
+                .collect(toList());
+        Set<Integer> slotIds = Arrays.stream(lws).map(lw -> lw.getFirstSlot().getId()).collect(toSet());
+        Operation op = EntityFactory.makeOpForLabware(opType, List.of(lws[0]), List.of(lws[0]));
+        List<Operation> ops = List.of(op);
+        when(mockOpRepo.findAllByOperationTypeAndDestinationSlotIdIn(any(), any())).thenReturn(ops);
+        List<LabwareProbe> probes = List.of(
+                new LabwareProbe(10, new ProbePanel(1, "Alpha"), op.getId(), lws[0].getId(), "lot1", 8),
+                new LabwareProbe(11, new ProbePanel(2, "Beta"), op.getId(), lws[0].getId(), "lot2", 9)
+        );
+        when(mockLwProbeRepo.findAllByOperationIdIn(any())).thenReturn(probes);
+
+        service.loadProbeHybridisation(entries, slotIds);
+        verify(mockOpTypeRepo).getByName(opType.getName());
+        verify(mockOpRepo).findAllByOperationTypeAndDestinationSlotIdIn(opType, slotIds);
+        verify(mockLwProbeRepo).findAllByOperationIdIn(List.of(op.getId()));
+
+        ReleaseEntry entry = entries.get(0);
+        assertEquals(op.getPerformed(), entry.getHybridStart());
+        assertEquals("8, 9", entry.getXeniumPlex());
+        assertEquals("Alpha, Beta", entry.getXeniumProbe());
+        assertEquals("lot1, lot2", entry.getXeniumProbeLot());
+        entry = entries.get(1);
+        assertNull(entry.getHybridStart());
+        assertNull(entry.getXeniumPlex());
+        assertNull(entry.getXeniumProbe());
+        assertNull(entry.getXeniumProbeLot());
+    }
+
+    @Test
+    public void testLoadProbeHybridisationQC() {
+        OperationType opType = EntityFactory.makeOperationType("Probe hybridisation QC", null);
+        when(mockOpTypeRepo.getByName(any())).thenReturn(opType);
+        Sample sample = EntityFactory.getSample();
+        final LabwareType lt = EntityFactory.getTubeType();
+        Labware[] lws = IntStream.range(0, 2)
+                .mapToObj(i -> EntityFactory.makeLabware(lt, sample))
+                .toArray(Labware[]::new);
+        List<ReleaseEntry> entries = Arrays.stream(lws)
+                .map(lw -> new ReleaseEntry(lw, lw.getFirstSlot(), lw.getFirstSlot().getSamples().get(0)))
+                .collect(toList());
+        Set<Integer> slotIds = Arrays.stream(lws).map(lw -> lw.getFirstSlot().getId()).collect(toSet());
+        Operation op = EntityFactory.makeOpForLabware(opType, List.of(lws[0]), List.of(lws[0]));
+        List<Operation> ops = List.of(op);
+        when(mockOpRepo.findAllByOperationTypeAndDestinationSlotIdIn(any(), any())).thenReturn(ops);
+
+        Integer opId = op.getId();
+        Integer lwId = lws[0].getId();
+        List<OperationComment> opcoms = List.of(
+                new OperationComment(20, new Comment(1, "California", null), opId, null, null, lwId),
+                new OperationComment(21, new Comment(2, "Colorado", null), opId, null, null, lwId)
+        );
+        when(mockOpComRepo.findAllByOperationIdIn(any())).thenReturn(opcoms);
+
+        service.loadProbeHybridisationQC(entries, slotIds);
+        verify(mockOpTypeRepo).getByName(opType.getName());
+        verify(mockOpRepo).findAllByOperationTypeAndDestinationSlotIdIn(opType, slotIds);
+        verify(mockOpComRepo).findAllByOperationIdIn(List.of(op.getId()));
+
+        ReleaseEntry entry = entries.get(0);
+        assertEquals(op.getPerformed(), entry.getHybridEnd());
+        assertEquals("California. Colorado.", entry.getHybridComment());
+        entry = entries.get(1);
+        assertNull(entry.getHybridEnd());
+        assertNull(entry.getHybridComment());
+    }
+
+    @Test
+    public void testLoadXeniumAnalyser() {
+        OperationType opType = EntityFactory.makeOperationType("Xenium analyser", null);
+        when(mockOpTypeRepo.getByName(any())).thenReturn(opType);
+        Sample sample = EntityFactory.getSample();
+        final LabwareType lt = EntityFactory.getTubeType();
+        Labware[] lws = IntStream.range(0, 2)
+                .mapToObj(i -> EntityFactory.makeLabware(lt, sample))
+                .toArray(Labware[]::new);
+        List<ReleaseEntry> entries = Arrays.stream(lws)
+                .map(lw -> new ReleaseEntry(lw, lw.getFirstSlot(), lw.getFirstSlot().getSamples().get(0)))
+                .collect(toList());
+        Set<Integer> slotIds = Arrays.stream(lws).map(lw -> lw.getFirstSlot().getId()).collect(toSet());
+        Operation op = EntityFactory.makeOpForLabware(opType, List.of(lws[0]), List.of(lws[0]));
+        List<Operation> ops = List.of(op);
+        when(mockOpRepo.findAllByOperationTypeAndDestinationSlotIdIn(any(), any())).thenReturn(ops);
+
+        Integer opId = op.getId();
+        Integer lwId = lws[0].getId();
+        List<Integer> opIds = List.of(opId);
+
+        List<Roi> rois = List.of(
+                new Roi(lws[0].getFirstSlot().getId(), sample.getId(), opId, "leng")
+        );
+        when(mockRoiRepo.findAllByOperationIdIn(any())).thenReturn(rois);
+
+        List<LabwareNote> notes = List.of(
+                new LabwareNote(1, lwId, opId, AnalyserServiceImp.LOT_NAME, "lot B"),
+                new LabwareNote(2, lwId, opId, AnalyserServiceImp.POSITION_NAME, "left"),
+                new LabwareNote(3, lwId, opId, AnalyserServiceImp.RUN_NAME, "run1")
+        );
+        when(mockLwNoteRepo.findAllByOperationIdIn(any())).thenReturn(notes);
+
+        service.loadXeniumAnalyser(entries, slotIds);
+        verify(mockOpTypeRepo).getByName(opType.getName());
+        verify(mockOpRepo).findAllByOperationTypeAndDestinationSlotIdIn(opType, slotIds);
+        verify(mockRoiRepo).findAllByOperationIdIn(opIds);
+        verify(mockLwNoteRepo).findAllByOperationIdIn(opIds);
+
+        ReleaseEntry entry = entries.get(0);
+        assertEquals(op.getPerformed(), entry.getXeniumStart());
+        assertEquals("lot B", entry.getXeniumReagentLot());
+        assertEquals("left", entry.getXeniumCassettePosition());
+        assertEquals("run1", entry.getXeniumRun());
+        assertEquals("leng", entry.getXeniumRoi());
+
+        entry = entries.get(1);
+        assertNull(entry.getXeniumStart());
+        assertNull(entry.getXeniumReagentLot());
+        assertNull(entry.getXeniumCassettePosition());
+        assertNull(entry.getXeniumRun());
+        assertNull(entry.getXeniumRoi());
+    }
+
+
+    @Test
+    public void testLoadXeniumQC() {
+        OperationType opType = EntityFactory.makeOperationType("Xenium QC", null);
+        when(mockOpTypeRepo.getByName(any())).thenReturn(opType);
+        Sample sample = EntityFactory.getSample();
+        final LabwareType lt = EntityFactory.getTubeType();
+        Labware[] lws = IntStream.range(0, 2)
+                .mapToObj(i -> EntityFactory.makeLabware(lt, sample))
+                .toArray(Labware[]::new);
+        List<ReleaseEntry> entries = Arrays.stream(lws)
+                .map(lw -> new ReleaseEntry(lw, lw.getFirstSlot(), lw.getFirstSlot().getSamples().get(0)))
+                .collect(toList());
+        Set<Integer> slotIds = Arrays.stream(lws).map(lw -> lw.getFirstSlot().getId()).collect(toSet());
+        Operation op = EntityFactory.makeOpForLabware(opType, List.of(lws[0]), List.of(lws[0]));
+        List<Operation> ops = List.of(op);
+        when(mockOpRepo.findAllByOperationTypeAndDestinationSlotIdIn(any(), any())).thenReturn(ops);
+
+        Integer opId = op.getId();
+        Integer lwId = lws[0].getId();
+
+        List<OperationComment> opcoms = List.of(
+                new OperationComment(20, new Comment(1, "Connecticut", null), opId, null, null, lwId),
+                new OperationComment(21, new Comment(2, "Delaware", null), opId, null, null, lwId)
+        );
+        when(mockOpComRepo.findAllByOperationIdIn(any())).thenReturn(opcoms);
+
+        service.loadXeniumQC(entries, slotIds);
+        verify(mockOpTypeRepo).getByName(opType.getName());
+        verify(mockOpRepo).findAllByOperationTypeAndDestinationSlotIdIn(opType, slotIds);
+        verify(mockOpComRepo).findAllByOperationIdIn(List.of(opId));
+
+        ReleaseEntry entry = entries.get(0);
+        assertEquals(op.getPerformed(), entry.getXeniumEnd());
+        assertEquals("Connecticut. Delaware.", entry.getXeniumComment());
+
+        entry = entries.get(1);
+        assertNull(entry.getXeniumEnd());
+        assertNull(entry.getXeniumComment());
+    }
+
     private LocalDateTime time(int day) {
         return LocalDateTime.of(2021,12,1+day, 12,0,0);
     }
@@ -1012,5 +1212,10 @@ public class TestReleaseFileService {
             return ((Labware) arg).getFirstSlot();
         }
         return (Slot) arg;
+    }
+
+    @FunctionalInterface
+    private interface TriConsumer<A, B, C> {
+        void accept(A a, B b, C c);
     }
 }
