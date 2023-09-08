@@ -17,14 +17,16 @@ public class HistoryEntry {
     private int destinationLabwareId;
     private Integer sampleId;
     private String address;
+    private String region;
     private String username;
     private String workNumber;
     private final List<String> details = new ArrayList<>();
 
     public HistoryEntry(int eventId, String type, LocalDateTime time, int sourceLabwareId, int destinationLabwareId,
-                        Integer sampleId, String username, String workNumber, Collection<String> details, String address) {
+                        Integer sampleId, String username, String workNumber, Collection<String> details, String address, String region) {
         this(eventId, type, time, sourceLabwareId, destinationLabwareId, sampleId, username, workNumber, details);
         setAddress(address);
+        setRegion(region);
     }
 
     public HistoryEntry(int eventId, String type, LocalDateTime time, int sourceLabwareId, int destinationLabwareId,
@@ -138,6 +140,15 @@ public class HistoryEntry {
 
     public void setAddress(String address) {
         this.address = address;
+    }
+
+
+    public String getRegion() {
+        return region;
+    }
+
+    public void setRegion(String region) {
+        this.region = region;
     }
 
     @Override

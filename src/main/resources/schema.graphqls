@@ -944,6 +944,8 @@ type HistoryEntry {
     details: [String!]!
     """The address of the destination slot involved in the event."""
     address: String
+    """The region of the destination slot involved in the event."""
+    region: String
 }
 
 """History as returned for a history query."""
@@ -954,8 +956,6 @@ type History {
     labware: [Labware!]!
     """The samples referenced by the entries."""
     samples: [Sample!]!
-    """The region of a sample in a particular slot  references by the entries"""
-    samplePositionResults : [SamplePosition!]!
 }
 
 """Information about a plan previously recorded, now being looked up."""

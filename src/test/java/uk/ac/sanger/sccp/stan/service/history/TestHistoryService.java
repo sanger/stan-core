@@ -189,7 +189,7 @@ public class TestHistoryService {
         entries.add(new HistoryEntry(200, "Release", makeTime(1), lw1.getId(), lw2.getId(),
                 sam1.getId(), "", workNumber));
         entries.add(new HistoryEntry(20, "Bananas", makeTime(2), lw1.getId(), lw2.getId(),
-                sam2.getId(), "", workNumber));
+                sam2.getId(), "", workNumber, null, "A1", "Top Right"));
         doReturn(entries.subList(1,2)).when(service).createEntriesForOps(ops, null, lws, null, work.getWorkNumber());
 
         doReturn(entries.subList(0,1)).when(service).createEntriesForReleases(releases, null, null, work.getWorkNumber());
@@ -198,14 +198,10 @@ public class TestHistoryService {
         List<Labware> allLabware = BasicUtils.concat(lws, List.of(rlw1, rlw2));
         doReturn(samples).when(service).referencedSamples(sameElements(entries, true), sameElements(allLabware, true));
 
-        SamplePositionResult samplePositionResult = new SamplePositionResult(lw1.getFirstSlot(), sam1.getId(), "Top", ops.get(0).getId());
-        when(mockSlotRegionService.loadSamplePositionResultsForLabware(allLabware)).thenReturn(List.of(samplePositionResult));
-
         History history = service.getHistoryForWorkNumber(workNumber);
         assertEquals(entries, history.getEntries());
         assertEquals(samples, history.getSamples());
         assertEquals(allLabware, history.getLabware());
-        assertEquals(List.of(samplePositionResult), history.getSamplePositionResults());
     }
 
     @Test
@@ -218,7 +214,6 @@ public class TestHistoryService {
         assertThat(history.getEntries()).isEmpty();
         assertThat(history.getLabware()).isEmpty();
         assertThat(history.getSamples()).isEmpty();
-        assertThat(history.getSamplePositionResults()).isEmpty();
     }
 
     @Test
@@ -261,7 +256,7 @@ public class TestHistoryService {
     })
     public void testGetHistory(String mode, String workNumber, String barcode, String externalName, String donorName) {
         List<Sample> samples = List.of(EntityFactory.getSample());
-        History history = new History(null, samples, null, null);
+        History history = new History(null, samples, null);
         if (mode.equalsIgnoreCase("by work number")) {
             doReturn(history).when(service).getHistoryForWorkNumber(workNumber);
         } else {
@@ -411,14 +406,10 @@ public class TestHistoryService {
 
         doReturn(entries).when(service).assembleEntries(List.of(opEntries, releaseEntries, destructionEntries));
 
-        SamplePositionResult samplePositionResult = new SamplePositionResult(labware.get(0).getFirstSlot(), samples.get(0).getId(), "Top", ops.get(0).getId());
-        when(mockSlotRegionService.loadSamplePositionResultsForLabware(labware)).thenReturn(List.of(samplePositionResult));
-
         History history = service.getHistoryForSamples(samples);
         assertEquals(history.getEntries(), entries);
         assertEquals(history.getSamples(), samples);
         assertEquals(history.getLabware(), labware);
-        assertEquals(List.of(samplePositionResult), history.getSamplePositionResults());
     }
 
     private static Stream<Slot> streamSlots(Labware lw, Address... addresses) {

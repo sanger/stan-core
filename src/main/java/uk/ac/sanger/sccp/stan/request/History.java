@@ -14,13 +14,10 @@ public class History {
     private List<HistoryEntry> entries;
     private List<Sample> samples;
     private List<Labware> labware;
-    private List<SamplePositionResult> samplePositionResults;
-
-    public History(List<HistoryEntry> entries, List<Sample> samples, List<Labware> labware, List<SamplePositionResult> samplePositionResults) {
+    public History(List<HistoryEntry> entries, List<Sample> samples, List<Labware> labware) {
         setEntries(entries);
         setSamples(samples);
         setLabware(labware);
-        setSamplePositionResults(samplePositionResults);
     }
 
     public History() {}
@@ -49,14 +46,6 @@ public class History {
         this.labware = labware;
     }
 
-    public List<SamplePositionResult> getSamplePositionResults() {
-        return samplePositionResults;
-    }
-
-    public void setSamplePositionResults(List<SamplePositionResult> samplePositionResults) {
-        this.samplePositionResults = samplePositionResults;
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -64,13 +53,12 @@ public class History {
         History that = (History) o;
         return (Objects.equals(this.entries, that.entries)
                 && Objects.equals(this.samples, that.samples)
-                && Objects.equals(this.labware, that.labware)
-                && Objects.equals(this.samplePositionResults, that.samplePositionResults));
+                && Objects.equals(this.labware, that.labware));
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(entries, samples, labware, samplePositionResults);
+        return Objects.hash(entries, samples, labware);
     }
 
     @Override
@@ -79,7 +67,6 @@ public class History {
                 .add("entries", entries)
                 .add("samples", samples)
                 .add("labware", labware)
-                .add("samplePositionResults", samplePositionResults)
                 .toString();
     }
 }
