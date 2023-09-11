@@ -9,6 +9,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.History;
 import uk.ac.sanger.sccp.stan.request.HistoryEntry;
+import uk.ac.sanger.sccp.stan.request.SamplePositionResult;
 import uk.ac.sanger.sccp.stan.service.SlotRegionService;
 import uk.ac.sanger.sccp.stan.service.history.ReagentActionDetailService.ReagentActionDetail;
 import uk.ac.sanger.sccp.utils.BasicUtils;
@@ -860,6 +861,59 @@ public class TestHistoryService {
         verify(service).loadOpMeasurements(opIdSet);
         verify(mockStainTypeRepo).loadOperationStainTypes(opIdSet);
         verify(mockRadService).loadReagentTransfers(opIdSet);
+    }
+
+    @ParameterizedTest
+    @MethodSource("slotDestinationAddressAndRegion")
+    public void testCreateEntriesForOps_forDestinationSlotAddressAndRegions(int sampleIndex1,  int sampleIndex2,
+                                                                            Address address1,Address address2,
+                                                                            String region1, String region2,
+                                                                            String expectedAddress1, String  expectedAddress2,
+                                                                            String expectedRegion1, String expectedRegion2) {
+        createLabware();
+        final Address A1 = new Address(1,1);
+        final Address B1 = new Address(2,1);
+        Action action1 = new Action(1, 100, labware[0].getSlot(A1), labware[3].getSlot(address1), samples[sampleIndex1], samples[0]);
+        Action action2 = new Action(2, 100, labware[0].getSlot(B1), labware[3].getSlot(address2), samples[sampleIndex2], samples[0]);
+        Operation op1 = new Operation(100, EntityFactory.makeOperationType("Type 1", null), makeTime(0), List.of(action1, action2), getUser(), null);
+
+        op1.setActions(List.of(action1, action2));
+        doReturn(List.of(
+                new SamplePositionResult(labware[3].getSlot(address1), samples[sampleIndex1].getId(), region1, op1.getId()),
+                new SamplePositionResult(labware[3].getSlot(address2), samples[sampleIndex2].getId(), region2, op1.getId())))
+                .when(mockSlotRegionService).loadSamplePositionResultsForLabware(List.of(labware));
+
+        List<HistoryEntry> expectedEntries = new ArrayList<>(List.of(
+                new HistoryEntry(op1.getId(), op1.getOperationType().getName(), op1.getPerformed(), labware[0].getId(),
+                        labware[3].getId(), samples[sampleIndex1].getId(), getUser().getUsername(), null,
+                        null, expectedAddress1, expectedRegion1)
+
+        ));
+        if(expectedAddress2 != null) {
+            expectedEntries.add(new HistoryEntry(op1.getId(), op1.getOperationType().getName(), op1.getPerformed(), labware[0].getId(),
+                    labware[3].getId(), samples[sampleIndex2].getId(), getUser().getUsername(), null,
+                    null, expectedAddress2, expectedRegion2));
+
+        }
+
+
+        assertThat(service.createEntriesForOps(List.of(op1), Set.of(samples[0].getId(), samples[2].getId()), Arrays.asList(labware), Map.of(
+                op1.getId(), Set.of()
+        ), null)).containsExactlyElementsOf(expectedEntries);
+
+    }
+
+    static Stream<Arguments> slotDestinationAddressAndRegion() {
+        final Address A1 = new Address(1,1);
+        final Address B1 = new Address(2,1);
+
+        return Arrays.stream(new Object[][] {
+                {0, 2, B1, A1, "Left", "Right", "B1", "A1", "Left", "Right"},
+                {0, 2, B1, B1, "Top Right", "Top Bottom", "B1", "B1", "Top Right", "Top Bottom"},
+                {2, 2, B1, A1, "", "", "B1, A1", null, "", ""},
+                {2, 2, B1, A1, "Top Right", "", "B1", "A1", "Top Right", ""},
+
+        }).map(Arguments::of);
     }
 
     @Test
