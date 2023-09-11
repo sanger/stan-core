@@ -16,12 +16,14 @@ public class HistoryEntry {
     private int sourceLabwareId;
     private int destinationLabwareId;
     private Integer sampleId;
+    private String address;
+    private String region;
     private String username;
     private String workNumber;
     private final List<String> details = new ArrayList<>();
 
     public HistoryEntry(int eventId, String type, LocalDateTime time, int sourceLabwareId, int destinationLabwareId,
-                        Integer sampleId, String username, String workNumber, Collection<String> details) {
+                        Integer sampleId, String username, String workNumber, Collection<String> details, String address, String region) {
         this.eventId = eventId;
         this.type = type;
         this.time = time;
@@ -31,11 +33,18 @@ public class HistoryEntry {
         this.username = username;
         this.workNumber = workNumber;
         setDetails(details);
+        setAddress(address);
+        setRegion(region);
+    }
+
+    public HistoryEntry(int eventId, String type, LocalDateTime time, int sourceLabwareId, int destinationLabwareId,
+                        Integer sampleId, String username, String workNumber, Collection<String> details) {
+        this(eventId, type, time, sourceLabwareId, destinationLabwareId, sampleId, username, workNumber, details, null, null);
     }
 
     public HistoryEntry(int eventId, String type, LocalDateTime time, int sourceLabwareId, int destinationLabwareId,
                         Integer sampleId, String username, String workNumber) {
-        this(eventId, type, time, sourceLabwareId, destinationLabwareId, sampleId, username, workNumber, null);
+        this(eventId, type, time, sourceLabwareId, destinationLabwareId, sampleId, username, workNumber, null, null, null);
     }
 
     public HistoryEntry() {}
@@ -125,6 +134,23 @@ public class HistoryEntry {
         this.workNumber = workNumber;
     }
 
+    public String getAddress() {
+        return this.address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
+
+    public String getRegion() {
+        return this.region;
+    }
+
+    public void setRegion(String region) {
+        this.region = region;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -138,7 +164,10 @@ public class HistoryEntry {
                 && Objects.equals(this.time, that.time)
                 && Objects.equals(this.details, that.details)
                 && Objects.equals(this.username, that.username)
-                && Objects.equals(this.workNumber, that.workNumber));
+                && Objects.equals(this.workNumber, that.workNumber)
+                && Objects.equals(this.address, that.address)
+                && Objects.equals(this.region, that.region)
+        );
     }
 
     @Override
@@ -159,6 +188,8 @@ public class HistoryEntry {
                 .add("details", details)
                 .addRepr("username", username)
                 .addRepr("workNumber", workNumber)
+                .addRepr("address", address)
+                .addReprIfNotNull("region", region)
                 .toString();
     }
 }

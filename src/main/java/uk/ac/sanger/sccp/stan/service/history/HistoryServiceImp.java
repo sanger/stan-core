@@ -212,7 +212,7 @@ public class HistoryServiceImp implements HistoryService {
         List<Integer> opIds = work.getOperationIds();
         List<Integer> releaseIds = work.getReleaseIds();
         if (opIds.isEmpty() && releaseIds.isEmpty()) {
-            return new History(List.of(), List.of(), List.of(), List.of());
+            return new History(List.of(), List.of(), List.of());
         }
         Collection<Operation> ops = opIds.isEmpty() ? List.of() : BasicUtils.asCollection(opRepo.findAllById(opIds));
         List<Release> releases = releaseIds.isEmpty() ? List.of() : releaseRepo.findAllByIdIn(releaseIds);
@@ -233,8 +233,7 @@ public class HistoryServiceImp implements HistoryService {
         }
         List<Sample> samples = referencedSamples(entries, allLabware);
         entries.sort(Comparator.comparing(HistoryEntry::getTime));
-        List<SamplePositionResult> samplePositionResults = slotRegionService.loadSamplePositionResultsForLabware(allLabware);
-        return new History(entries, samples, allLabware, samplePositionResults);
+        return new History(entries, samples, allLabware);
     }
 
     /**
@@ -303,7 +302,7 @@ public class HistoryServiceImp implements HistoryService {
      */
     public History getHistoryForSamples(List<Sample> samples, String requiredWorkNumber) {
         if (nullOrEmpty(samples)) {
-            return new History(List.of(), List.of(), List.of(), List.of());
+            return new History(List.of(), List.of(), List.of());
         }
         Set<Integer> sampleIds = samples.stream().map(Sample::getId).collect(toSet());
         List<Operation> ops = opRepo.findAllBySampleIdIn(sampleIds);
@@ -335,8 +334,7 @@ public class HistoryServiceImp implements HistoryService {
         List<HistoryEntry> destructionEntries = createEntriesForDestructions(destructions, sampleIds);
 
         List<HistoryEntry> entries = assembleEntries(List.of(opEntries, releaseEntries, destructionEntries));
-        List<SamplePositionResult> samplePositionResults = slotRegionService.loadSamplePositionResultsForLabware(labware);
-        return new History(entries, samples, labware, samplePositionResults);
+        return new History(entries, samples, labware);
     }
 
 
@@ -651,6 +649,9 @@ public class HistoryServiceImp implements HistoryService {
         var opResults = loadOpResults(operations);
         var opProbes = loadOpProbes(operations);
         final Map<Integer, Slot> slotIdMap;
+        Map<SlotIdSampleId, String> samplePositionResultsMap = slotRegionService.loadSamplePositionResultsForLabware(labware)
+                .stream()
+                .collect(toMap(spr -> new SlotIdSampleId(spr.getSlotId(), spr.getSampleId()), SamplePositionResult::getRegion));
         if (opComments.isEmpty() && opMeasurements.isEmpty() && opRois.isEmpty() && opResults.isEmpty()) {
             slotIdMap = null; // not needed
         } else {
@@ -675,7 +676,7 @@ public class HistoryServiceImp implements HistoryService {
             }
             List<ResultOp> results = opResults.get(op.getId());
             Equipment equipment = op.getEquipment();
-            Set<SampleAndLabwareIds> items = new LinkedHashSet<>();
+            Map<SampleTransferInfo, List<String>> itemAddresses = new LinkedHashMap<>();
             List<OperationComment> comments = opComments.getOrDefault(op.getId(), List.of());
             List<Measurement> measurements = opMeasurements.getOrDefault(op.getId(), List.of());
             List<LabwareNote> lwNotes = opLabwareNotes.getOrDefault(op.getId(), List.of());
@@ -699,13 +700,20 @@ public class HistoryServiceImp implements HistoryService {
                 if (sampleIds==null || sampleIds.contains(sampleId)) {
                     final Integer sourceId = action.getSource().getLabwareId();
                     final Integer destId = action.getDestination().getLabwareId();
-                    items.add(new SampleAndLabwareIds(sampleId, sourceId, destId));
+                    final String region = samplePositionResultsMap.get(new SlotIdSampleId(action.getDestination().getId(), sampleId));
+                    final SampleTransferInfo key = new SampleTransferInfo(sampleId, sourceId, destId, region);
+                    itemAddresses.computeIfAbsent(key, k -> new ArrayList<>())
+                            .add(action.getDestination().getAddress().toString());
                 }
             }
             String username = op.getUser().getUsername();
-            for (var item : items) {
+            for (var e : itemAddresses.entrySet()) {
+                var item = e.getKey();
+                var addresses = e.getValue();
+                String addressString = String.join(", ", addresses);
                 HistoryEntry entry = new HistoryEntry(op.getId(), op.getOperationType().getName(),
-                        op.getPerformed(), item.sourceId, item.destId, item.sampleId, username, workNumber);
+                        op.getPerformed(), item.sourceId, item.destId, item.sampleId, username, workNumber, null,
+                        addressString, item.region);
                 if (stainDetail!=null) {
                     entry.addDetail(stainDetail);
                 }
@@ -857,23 +865,27 @@ public class HistoryServiceImp implements HistoryService {
     }
 
     // region support class
-    private static class SampleAndLabwareIds {
+    private static class SampleTransferInfo {
         final int sampleId, sourceId, destId;
+        final String region;
 
-        public SampleAndLabwareIds(int sampleId, int sourceId, int destId) {
+        public SampleTransferInfo(int sampleId, int sourceId, int destId, String region) {
             this.sampleId = sampleId;
             this.sourceId = sourceId;
             this.destId = destId;
+            this.region = region;
         }
 
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
-            SampleAndLabwareIds that = (SampleAndLabwareIds) o;
+            SampleTransferInfo that = (SampleTransferInfo) o;
             return (this.sampleId == that.sampleId
                     && this.sourceId == that.sourceId
-                    && this.destId == that.destId);
+                    && this.destId == that.destId
+                    && Objects.equals(this.region, that.region)
+            );
         }
 
         @Override
