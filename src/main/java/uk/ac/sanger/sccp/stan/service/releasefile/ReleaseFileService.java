@@ -583,12 +583,12 @@ public class ReleaseFileService {
             Integer lwId = entry.getLabware().getId();
             Operation op = lwIdOps.get(lwId);
             if (op==null) {
-                return;
+                continue;
             }
             entry.setXeniumEnd(op.getPerformed());
             List<OperationComment> opcoms = opIdComs.get(op.getId());
             if (nullOrEmpty(opcoms)) {
-                return;
+                continue;
             }
             String commentText = joinComments(opcoms.stream()
                     .filter(oc -> lwId.equals(oc.getLabwareId())));
