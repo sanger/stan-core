@@ -6,8 +6,13 @@ mutation {
         slotMeasurements: [
             {
                 address: "A1"
-                name: "MEAS-NAME"
-                value: "MEAS-VALUE"
+                name: "MEAS-NAME-0"
+                value: "MEAS-VALUE-0"
+            }
+            {
+                address: "A1"
+                name: "MEAS-NAME-1"
+                value: "MEAS-VALUE-1"
             }
         ]
     }) {

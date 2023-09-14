@@ -21,9 +21,9 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
  */
 @Service
 public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsService {
-    public static final String OP_CDNA_AMP = "cDNA amplification", OP_VISIUM_CONC = "Visium concentration";
+    public static final String OP_AMP = "Amplification", OP_VISIUM_CONC = "Visium concentration";
     public static final String MEAS_CQ = "Cq value", MEAS_CDNA = "cDNA concentration",
-            MEAS_LIBR = "Library concentration";
+            MEAS_LIBR = "Library concentration", MEAS_CYC = "Cycles";
 
     private final OperationTypeRepo opTypeRepo;
     private final MeasurementRepo measurementRepo;
@@ -31,8 +31,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
     private final OperationCommentRepo opComRepo;
 
     private final LabwareValidatorFactory labwareValidatorFactory;
-    private final Sanitiser<String> cqSanitiser;
-    private final Sanitiser<String> concentrationSanitiser;
+    private final Sanitiser<String> cqSanitiser,  concentrationSanitiser, cycleSanitiser;
     private final WorkService workService;
     private final OperationService opService;
     private final CommentValidationService commentValidationService;
@@ -42,6 +41,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
                                             LabwareValidatorFactory labwareValidatorFactory,
                                             @Qualifier("cqSanitiser") Sanitiser<String> cqSanitiser,
                                             @Qualifier("concentrationSanitiser") Sanitiser<String> concentrationSanitiser,
+                                            @Qualifier("cycleSanitiser") Sanitiser<String> cycleSanitiser,
                                             WorkService workService, OperationService opService,
                                             CommentValidationService commentValidationService) {
         this.opTypeRepo = opTypeRepo;
@@ -51,6 +51,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
         this.labwareValidatorFactory = labwareValidatorFactory;
         this.cqSanitiser = cqSanitiser;
         this.concentrationSanitiser = concentrationSanitiser;
+        this.cycleSanitiser = cycleSanitiser;
         this.workService = workService;
         this.opService = opService;
         this.commentValidationService = commentValidationService;
@@ -121,7 +122,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
         OperationType opType = optOpType.get();
         if (!opType.inPlace()) {
             problems.add("Operation cannot be recorded in place: "+opType.getName());
-        } else if (!opType.getName().equalsIgnoreCase(OP_CDNA_AMP) && !opType.getName().equalsIgnoreCase(OP_VISIUM_CONC)) {
+        } else if (!opType.getName().equalsIgnoreCase(OP_AMP) && !opType.getName().equalsIgnoreCase(OP_VISIUM_CONC)) {
             problems.add("Operation not expected for this request: "+opType.getName());
         }
         return opType;
@@ -254,9 +255,12 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
         if (name==null || opType==null) {
             return null;
         }
-        if (opType.getName().equalsIgnoreCase(OP_CDNA_AMP)) {
+        if (opType.getName().equalsIgnoreCase(OP_AMP)) {
             if (name.equalsIgnoreCase(MEAS_CQ)) {
                 return MEAS_CQ;
+            }
+            if (name.equalsIgnoreCase(MEAS_CYC)) {
+                return MEAS_CYC;
             }
         } else if (opType.getName().equalsIgnoreCase(OP_VISIUM_CONC)) {
             if (name.equalsIgnoreCase(MEAS_CDNA)) {
@@ -282,6 +286,8 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
                 return concentrationSanitiser.sanitise(problems, value);
             case MEAS_CQ:
                 return cqSanitiser.sanitise(problems, value);
+            case MEAS_CYC:
+                return cycleSanitiser.sanitise(problems, value);
         }
         return null;
     }

@@ -254,7 +254,12 @@ public class FieldValidation {
 
     @Bean
     public Sanitiser<String> cqSanitiser() {
-        return new IntSanitiser("Cq value", null, null);
+        return new DecimalSanitiser("Cq value", 2, null, null);
+    }
+
+    @Bean
+    public Sanitiser<String> cycleSanitiser() {
+        return new IntSanitiser("Cycles", 0, null);
     }
 
     @Bean
