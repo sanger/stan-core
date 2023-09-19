@@ -928,10 +928,7 @@
             <column name="location_barcode" type="VARCHAR(16)">
                 <constraints nullable="true"/>
             </column>
-            <column name="storage_row" type="INT">
-                <constraints nullable="true"/>
-            </column>
-            <column name="storage_col" type="INT">
+            <column name="storage_address" type="VARCHAR(6)">
                 <constraints nullable="true"/>
             </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">

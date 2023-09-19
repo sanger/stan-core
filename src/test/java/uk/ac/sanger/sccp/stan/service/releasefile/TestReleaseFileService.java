@@ -45,6 +45,8 @@ public class TestReleaseFileService {
     OperationCommentRepo mockOpComRepo;
     LabwareProbeRepo mockLwProbeRepo;
     RoiRepo mockRoiRepo;
+    SolutionRepo mockSolutionRepo;
+    OperationSolutionRepo mockOpSolRepo;
 
     ReagentActionDetailService mockRadService;
 
@@ -76,10 +78,12 @@ public class TestReleaseFileService {
         mockOpComRepo = mock(OperationCommentRepo.class);
         mockLwProbeRepo = mock(LabwareProbeRepo.class);
         mockRoiRepo = mock(RoiRepo.class);
+        mockSolutionRepo = mock(SolutionRepo.class);
+        mockOpSolRepo = mock(OperationSolutionRepo.class);
 
         service = spy(new ReleaseFileService(mockAncestoriser, mockSampleRepo, mockLabwareRepo, mockMeasurementRepo,
                 mockSnapshotRepo, mockReleaseRepo, mockOpTypeRepo, mockOpRepo, mockLwNoteRepo, mockStainTypeRepo,
-                mockSamplePositionRepo, mockOpComRepo, mockLwProbeRepo, mockRoiRepo, mockRadService));
+                mockSamplePositionRepo, mockOpComRepo, mockLwProbeRepo, mockRoiRepo, mockRadService, mockSolutionRepo, mockOpSolRepo));
 
         user = EntityFactory.getUser();
         destination = new ReleaseDestination(50, "Venus");
@@ -137,9 +141,9 @@ public class TestReleaseFileService {
         setupReleases();
         if (includeStorageAddresses) {
             release1.setLocationBarcode("STO-A1");
-            release1.setStorageAddress(new Address(1,1));
+            release1.setStorageAddress("A1");
             release2.setLocationBarcode("STO-A1");
-            release2.setStorageAddress(new Address(1,2));
+            release2.setStorageAddress("42");
         }
         final Map<Integer, Snapshot> snapshots = snapMap();
         doReturn(snapshots).when(service).loadSnapshots(any());
@@ -153,7 +157,7 @@ public class TestReleaseFileService {
         );
         if (includeStorageAddresses) {
             for (int i = 0; i < entries.size(); ++i) {
-                entries.get(i).setStorageAddress(new Address(1, 1+i));
+                entries.get(i).setStorageAddress(i==0 ? "A1" : "42");
             }
         }
         Set<Integer> slotIds = entries.stream()
@@ -197,8 +201,8 @@ public class TestReleaseFileService {
 
     @ParameterizedTest
     @MethodSource("shouldIncludeStorageAddressArgs")
-    public void testShouldIncludeStorageAddresses(List<String> locationBarcodes, List<Address> addresses, boolean expected) {
-        Iterator<Address> addressIter = addresses.iterator();
+    public void testShouldIncludeStorageAddresses(List<String> locationBarcodes, List<String> addresses, boolean expected) {
+        Iterator<String> addressIter = addresses.iterator();
         Labware lw = EntityFactory.getTube();
         List<Release> releases = locationBarcodes.stream()
                 .map(bc -> new Release(100, lw, user, destination, recipient, 120, null, bc, addressIter.next(), null))
@@ -207,7 +211,7 @@ public class TestReleaseFileService {
     }
 
     static Stream<Arguments> shouldIncludeStorageAddressArgs() {
-        final Address A1 = new Address(1,1), A2 = new Address(1,2);
+        final String A1 = "A1", A2 = "42";
         return Arrays.stream(new Object[][] {
                 {List.of(), List.of(), false},
                 {List.of("STO-1"), List.of(A1), true},
@@ -344,17 +348,16 @@ public class TestReleaseFileService {
     @ValueSource(booleans={false,true})
     public void testToReleaseEntries(boolean includeStorageAddresses) {
         setupReleases();
-        final Address A2 = new Address(1, 2);
         release1.setLocationBarcode("STO-1");
-        release1.setStorageAddress(A2);
+        release1.setStorageAddress("42");
         Map<Integer, Sample> sampleMap = Stream.of(sample, sample1)
                 .collect(toMap(Sample::getId, s -> s));
 
         List<ReleaseEntry> entries = service.toReleaseEntries(release1, sampleMap, snapMap(), includeStorageAddresses).collect(toList());
         assertThat(entries).containsOnly(
-                new ReleaseEntry(lw1, lw1.getFirstSlot(), sample, includeStorageAddresses ? A2 : null),
-                new ReleaseEntry(lw1, lw1.getFirstSlot(), sample1, includeStorageAddresses ? A2 : null),
-                new ReleaseEntry(lw1, lw1.getSlots().get(1), sample, includeStorageAddresses ? A2 : null)
+                new ReleaseEntry(lw1, lw1.getFirstSlot(), sample, includeStorageAddresses ? "42" : null),
+                new ReleaseEntry(lw1, lw1.getFirstSlot(), sample1, includeStorageAddresses ? "42" : null),
+                new ReleaseEntry(lw1, lw1.getSlots().get(1), sample, includeStorageAddresses ? "42" : null)
         );
     }
 
@@ -749,7 +752,7 @@ public class TestReleaseFileService {
         assertNull(entries.get(1).getVisiumConcentrationType());
         assertEquals("3.3", entries.get(2).getVisiumConcentration());
         assertEquals("Library", entries.get(2).getVisiumConcentrationType());
-        assertEquals(400, entries.get(0).getCq());
+        assertEquals("400", entries.get(0).getCq());
         assertEquals("10 sec", entries.get(2).getPermTime());
         assertEquals("2 min", entries.get(3).getPermTime());
         assertNull(entries.get(1).getCq());

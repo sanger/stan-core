@@ -790,6 +790,8 @@ type StoredItem {
     location: Location!
     """The row/column address (if any) of the item in its location."""
     address: Address
+    """The index of the address (if any) in the location."""
+    addressIndex: Int
 }
 
 """An item no longer in storage."""

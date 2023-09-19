@@ -11,6 +11,7 @@ import uk.ac.sanger.sccp.stan.service.history.ReagentActionDetailService;
 import uk.ac.sanger.sccp.stan.service.operation.AnalyserServiceImp;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.Ancestry;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
+import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.tsv.TsvColumn;
 
 import javax.persistence.EntityNotFoundException;
@@ -46,6 +47,8 @@ public class ReleaseFileService {
     private final LabwareProbeRepo lwProbeRepo;
     private final RoiRepo roiRepo;
     private final ReagentActionDetailService reagentActionDetailService;
+    private final SolutionRepo solutionRepo;
+    private final OperationSolutionRepo opSolRepo;
 
     @Autowired
     public ReleaseFileService(Ancestoriser ancestoriser,
@@ -54,7 +57,7 @@ public class ReleaseFileService {
                               OperationRepo opRepo, LabwareNoteRepo lwNoteRepo,
                               StainTypeRepo stainTypeRepo, SamplePositionRepo samplePositionRepo,
                               OperationCommentRepo opComRepo,
-                              LabwareProbeRepo lwProbeRepo, RoiRepo roiRepo, ReagentActionDetailService reagentActionDetailService) {
+                              LabwareProbeRepo lwProbeRepo, RoiRepo roiRepo, ReagentActionDetailService reagentActionDetailService, SolutionRepo solutionRepo, OperationSolutionRepo opSolRepo) {
         this.releaseRepo = releaseRepo;
         this.sampleRepo = sampleRepo;
         this.labwareRepo = labwareRepo;
@@ -70,6 +73,8 @@ public class ReleaseFileService {
         this.lwProbeRepo = lwProbeRepo;
         this.roiRepo = roiRepo;
         this.reagentActionDetailService = reagentActionDetailService;
+        this.solutionRepo = solutionRepo;
+        this.opSolRepo = opSolRepo;
     }
 
     /**
@@ -250,7 +255,7 @@ public class ReleaseFileService {
         final Labware labware = release.getLabware();
         final Map<Integer, Slot> slotIdMap = labware.getSlots().stream()
                 .collect(toMap(Slot::getId, slot -> slot));
-        final Address storageAddress = (includeStorageAddress ? release.getStorageAddress() : null);
+        final String storageAddress = (includeStorageAddress ? release.getStorageAddress() : null);
         return snapshots.get(release.getSnapshotId()).getElements().stream()
                 .map(el -> new ReleaseEntry(release.getLabware(), slotIdMap.get(el.getSlotId()),
                         sampleIdMap.get(el.getSampleId()), storageAddress));
@@ -327,6 +332,41 @@ public class ReleaseFileService {
                 }
                 entry.setSourceBarcode(barcode);
                 entry.setSourceAddress(slot.getAddress());
+            }
+        }
+    }
+
+    public void loadSolutions(Collection<ReleaseEntry> entries) {
+        Set<Integer> lwIds = entries.stream()
+                .map(re -> re.getLabware().getId())
+                .collect(toSet());
+        final List<OperationSolution> allOpSols = opSolRepo.findAllByLabwareIdIn(lwIds);
+        if (allOpSols.isEmpty()) {
+            return;
+        }
+        final Set<Integer> solutionIds = allOpSols.stream().map(OperationSolution::getSolutionId).collect(toSet());
+        Map<Integer, Solution> idSolutions = BasicUtils.stream(solutionRepo.findAllById(solutionIds))
+                .collect(BasicUtils.inMap(Solution::getId));
+
+        Map<Integer, List<OperationSolution>> lwSols = allOpSols.stream()
+                .collect(groupingBy(OperationSolution::getLabwareId));
+        for (ReleaseEntry entry : entries) {
+            List<OperationSolution> opSols = lwSols.get(entry.getLabware().getId());
+            if (nullOrEmpty(opSols)) {
+                continue;
+            }
+            OperationSolution opSol;
+            if (entry.getSample()==null) {
+                opSol = opSols.get(0);
+            } else {
+                Integer sampleId = entry.getSample().getId();
+                opSol = opSols.stream()
+                        .filter(os -> sampleId.equals(os.getSampleId()))
+                        .findFirst()
+                        .orElse(null);
+            }
+            if (opSol != null) {
+                entry.setSolution(idSolutions.get(opSol.getSolutionId()).getName());
             }
         }
     }
@@ -682,11 +722,13 @@ public class ReleaseFileService {
         Map<Integer, List<Measurement>> slotIdToCq = new HashMap<>();
         Map<Integer, List<Measurement>> slotIdToVisiumConc = new HashMap<>();
         Map<Integer, List<Measurement>> slotIdToPermTimes = new HashMap<>();
+        Map<Integer, List<Measurement>> slotIdToCycles = new HashMap<>();
         final String THICKNESS = MeasurementType.Thickness.friendlyName();
         final String COVERAGE = MeasurementType.Tissue_coverage.friendlyName();
         final String CQ = MeasurementType.Cq_value.friendlyName();
         final String CDNA_CONC = MeasurementType.cDNA_concentration.friendlyName();
         final String LIBRARY_CONC = MeasurementType.Library_concentration.friendlyName();
+        final String CYCLES = MeasurementType.Cycles.friendlyName();
         final String VISIUM_CONCENTRATION = "Visium Concentration";
         final String PERM_TIME= MeasurementType.Permeabilisation_time.friendlyName();
         final String VISIUM_TO = "Visium TO", VISIUM_LP = "Visium LP", PLATE_96 = "96 well plate";
@@ -704,6 +746,9 @@ public class ReleaseFileService {
                 slotIdMeasurements.add(measurement);
             } else if (measurement.getName().equalsIgnoreCase(CQ)) {
                 List<Measurement> slotIdMeasurements = slotIdToCq.computeIfAbsent(measurement.getSlotId(), k -> new ArrayList<>());
+                slotIdMeasurements.add(measurement);
+            } else if (measurement.getName().equalsIgnoreCase(CYCLES)) {
+                List<Measurement> slotIdMeasurements = slotIdToCycles.computeIfAbsent(measurement.getSlotId(), k -> new ArrayList<>());
                 slotIdMeasurements.add(measurement);
             } else if (measurement.getName().equalsIgnoreCase(CDNA_CONC) || measurement.getName().equalsIgnoreCase(LIBRARY_CONC)) {
                 final Integer opId = measurement.getOperationId();
@@ -737,11 +782,11 @@ public class ReleaseFileService {
             }
             Measurement cqMeasurement = selectMeasurement(entry, slotIdToCq, ancestry);
             if (cqMeasurement != null) {
-                try {
-                    entry.setCq(Integer.valueOf(cqMeasurement.getValue()));
-                } catch (NumberFormatException e) {
-                    log.error("Cq measurement is not an integer: {}", cqMeasurement);
-                }
+                entry.setCq(cqMeasurement.getValue());
+            }
+            Measurement cyclesMeasurement = selectMeasurement(entry, slotIdToCycles, ancestry);
+            if (cyclesMeasurement!=null) {
+                entry.setAmplificationCycles(cyclesMeasurement.getValue());
             }
             Measurement concMeasurement = selectMeasurement(entry, slotIdToVisiumConc, ancestry);
             if (concMeasurement != null) {

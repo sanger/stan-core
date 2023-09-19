@@ -12,21 +12,21 @@ import java.util.function.Function;
 import static java.util.stream.Collectors.toList;
 
 public enum ReleaseColumn implements TsvColumn<ReleaseEntry> {
-    Barcode(Compose.labware, Labware::getBarcode),
+    Released_labware_barcode(Compose.labware, Labware::getBarcode),
     Labware_type(Compose.labware, Labware::getLabwareType, LabwareType::getName),
-    Address(Compose.slot, Slot::getAddress),
+    Slot_of_labware(Compose.slot, Slot::getAddress),
     Donor_name(Compose.donor, Donor::getDonorName),
     Life_stage(Compose.donor, Donor::getLifeStage),
     External_identifier(Compose.tissue, Tissue::getExternalName),
-    Tissue_type(Compose.tissue, Tissue::getTissueType, TissueType::getCode),
+    Tissue_type_code(Compose.tissue, Tissue::getTissueType, TissueType::getCode),
     Spatial_location(Compose.tissue, Tissue::getSpatialLocation, SpatialLocation::getCode),
     Replicate_number(Compose.tissue, Tissue::getReplicate),
     Section_number(Compose.sample, Sample::getSection),
     Bio_state(Compose.sample, Sample::getBioState),
-    Sample_position(ReleaseEntry::getSamplePosition),
+    Section_position_in_slot(ReleaseEntry::getSamplePosition),
     Section_comment(ReleaseEntry::getSectionComment),
     Last_section_number(ReleaseEntry::getLastSection, ReleaseFileMode.NORMAL),
-    Source_barcode(ReleaseEntry::getSourceBarcode),
+    Source_barcode(ReleaseEntry::getSourceBarcode, ReleaseFileMode.CDNA),
     Source_address(ReleaseEntry::getSourceAddress, ReleaseFileMode.CDNA),
     Section_thickness(ReleaseEntry::getSectionThickness),
     Released_from_box_location(ReleaseEntry::getStorageAddress),
@@ -55,6 +55,12 @@ public enum ReleaseColumn implements TsvColumn<ReleaseEntry> {
     Xenium_ROI(ReleaseEntry::getXeniumRoi),
     Xenium_completion(ReleaseEntry::getXeniumEnd, Compose.formatTime),
     Xenium_comments(ReleaseEntry::getXeniumComment),
+
+    Fixative(Compose.tissue, Tissue::getFixative, HasName::getName),
+    Solution(ReleaseEntry::getSolution),
+    Embedding_medium(Compose.tissue, Tissue::getMedium, Medium::getName),
+    Stain_QC_comment(ReleaseEntry::getStainQcComment),
+    Number_of_amplification_cycles(ReleaseEntry::getAmplificationCycles),
     ;
 
     private final Function<ReleaseEntry, ?> function;
@@ -91,7 +97,6 @@ public enum ReleaseColumn implements TsvColumn<ReleaseEntry> {
     @Override
     public String toString() {
         if (this == Visium_concentration) {
-            // Since we want to include invalid chars we can't use the enum name
             return "Visium concentration (pg/uL)";
         }
         return this.name().replace('_',' ');

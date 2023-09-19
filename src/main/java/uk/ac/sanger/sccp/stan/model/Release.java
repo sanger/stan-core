@@ -48,12 +48,7 @@ public class Release {
 
     private String locationBarcode;
 
-    @AttributeOverrides({
-            @AttributeOverride(name = "row", column = @Column(name = "storage_row")),
-            @AttributeOverride(name = "column", column = @Column(name = "storage_col"))
-    })
-    @Embedded
-    private Address storageAddress;
+    private String storageAddress;
 
     public Release() {}
 
@@ -64,7 +59,7 @@ public class Release {
         this(id, labware, user, destination, recipient, snapshotId, released, null, null, null);
     }
     public Release(Integer id, Labware labware, User user, ReleaseDestination destination, ReleaseRecipient recipient,
-                   Integer snapshotId, LocalDateTime released, String locationBarcode, Address storageAddress,
+                   Integer snapshotId, LocalDateTime released, String locationBarcode, String storageAddress,
                    List<ReleaseRecipient> otherRecipients) {
         this.id = id;
         this.labware = labware;
@@ -142,11 +137,11 @@ public class Release {
         this.locationBarcode = locationBarcode;
     }
 
-    public Address getStorageAddress() {
+    public String getStorageAddress() {
         return this.storageAddress;
     }
 
-    public void setStorageAddress(Address storageAddress) {
+    public void setStorageAddress(String storageAddress) {
         this.storageAddress = storageAddress;
     }
 

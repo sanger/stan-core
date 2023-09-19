@@ -22,13 +22,13 @@ public class ReleaseEntry {
     private String sourceBarcode;
     private String sectionThickness;
     private Address sourceAddress;
-    private Address storageAddress;
+    private String storageAddress;
     private String stainType;
     private String bondBarcode;
     private Integer coverage;
     private String reagentPlateType;
     private String reagentSource;
-    private Integer cq;
+    private String cq;
     private String visiumConcentration;
     private String visiumConcentrationType;
     private Integer rnascopePlex;
@@ -46,11 +46,15 @@ public class ReleaseEntry {
     private LocalDateTime xeniumStart, xeniumEnd;
     private String xeniumRoi, xeniumReagentLot, xeniumCassettePosition, xeniumRun, xeniumComment;
 
+    private String solution;
+    private String stainQcComment;
+    private String amplificationCycles;
+
     public ReleaseEntry(Labware labware, Slot slot, Sample sample) {
         this(labware, slot, sample, null);
     }
 
-    public ReleaseEntry(Labware labware, Slot slot, Sample sample, Address storageAddress) {
+    public ReleaseEntry(Labware labware, Slot slot, Sample sample, String storageAddress) {
         this.labware = labware;
         this.slot = slot;
         this.sample = sample;
@@ -101,11 +105,11 @@ public class ReleaseEntry {
         this.sourceAddress = sourceAddress;
     }
 
-    public Address getStorageAddress() {
+    public String getStorageAddress() {
         return this.storageAddress;
     }
 
-    public void setStorageAddress(Address storageAddress) {
+    public void setStorageAddress(String storageAddress) {
         this.storageAddress = storageAddress;
     }
 
@@ -149,11 +153,11 @@ public class ReleaseEntry {
         this.reagentSource = reagentSource;
     }
 
-    public Integer getCq() {
+    public String getCq() {
         return this.cq;
     }
 
-    public void setCq(Integer cq) {
+    public void setCq(String cq) {
         this.cq = cq;
     }
 
@@ -335,6 +339,30 @@ public class ReleaseEntry {
         this.xeniumComment = xeniumComment;
     }
 
+    public String getSolution() {
+        return this.solution;
+    }
+
+    public void setSolution(String solution) {
+        this.solution = solution;
+    }
+
+    public String getStainQcComment() {
+        return this.stainQcComment;
+    }
+
+    public void setStainQcComment(String stainQcComment) {
+        this.stainQcComment = stainQcComment;
+    }
+
+    public String getAmplificationCycles() {
+        return this.amplificationCycles;
+    }
+
+    public void setAmplificationCycles(String amplificationCycles) {
+        this.amplificationCycles = amplificationCycles;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -375,7 +403,11 @@ public class ReleaseEntry {
                 && Objects.equals(this.xeniumReagentLot, that.xeniumReagentLot)
                 && Objects.equals(this.xeniumCassettePosition, that.xeniumCassettePosition)
                 && Objects.equals(this.xeniumRun, that.xeniumRun)
-                && Objects.equals(this.xeniumComment, that.xeniumComment));
+                && Objects.equals(this.xeniumComment, that.xeniumComment)
+                && Objects.equals(this.solution, that.solution)
+                && Objects.equals(this.stainQcComment, that.stainQcComment)
+                && Objects.equals(this.amplificationCycles, that.amplificationCycles)
+        );
     }
 
     @Override
@@ -422,6 +454,9 @@ public class ReleaseEntry {
                 .add("xeniumCassettePosition", xeniumCassettePosition)
                 .add("xeniumRun", xeniumRun)
                 .add("xeniumComment", xeniumComment)
+                .add("solution", solution)
+                .add("stainQcComment", stainQcComment)
+                .add("amplificationCycles", amplificationCycles)
                 .reprStringValues()
                 .omitNullValues()
                 .toString();
