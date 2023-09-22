@@ -23,7 +23,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.EntityFactory.objToCollection;
-import static uk.ac.sanger.sccp.stan.service.OpWithSlotMeasurementsServiceImp.*;
+import static uk.ac.sanger.sccp.stan.Matchers.assertProblem;
+import static uk.ac.sanger.sccp.stan.Matchers.mayAddProblem;
+import static uk.ac.sanger.sccp.stan.service.OpWithSlotMeasurementsServiceImp.OP_AMP;
+import static uk.ac.sanger.sccp.stan.service.OpWithSlotMeasurementsServiceImp.OP_VISIUM_CONC;
 import static uk.ac.sanger.sccp.utils.BasicUtils.coalesce;
 
 /**
@@ -35,8 +38,7 @@ public class TestOpWithSlotMeasurementsService {
     private LabwareRepo mockLwRepo;
     private OperationCommentRepo mockOpComRepo;
     private LabwareValidatorFactory mockLwValFactory;
-    private Sanitiser<String> mockCqSan;
-    private Sanitiser<String> mockConcSan;
+    private Sanitiser<String> mockCqSan, mockConcSan, mockCycSan;
     private WorkService mockWorkService;
     private OperationService mockOpService;
     private CommentValidationService mockCommentValidationService;
@@ -53,12 +55,13 @@ public class TestOpWithSlotMeasurementsService {
         mockLwValFactory = mock(LabwareValidatorFactory.class);
         mockCqSan = mock(Sanitiser.class);
         mockConcSan = mock(Sanitiser.class);
+        mockCycSan = mock(Sanitiser.class);
         mockWorkService = mock(WorkService.class);
         mockOpService = mock(OperationService.class);
         mockCommentValidationService = mock(CommentValidationService.class);
 
         service = spy(new OpWithSlotMeasurementsServiceImp(mockOpTypeRepo, mockMeasRepo, mockLwRepo, mockOpComRepo,
-                mockLwValFactory, mockCqSan, mockConcSan, mockWorkService, mockOpService, mockCommentValidationService));
+                mockLwValFactory, mockCqSan, mockConcSan, mockCycSan, mockWorkService, mockOpService, mockCommentValidationService));
     }
 
     @Test
@@ -193,7 +196,7 @@ public class TestOpWithSlotMeasurementsService {
 
     @ParameterizedTest
     @CsvSource({
-            "cDNA amplification,",
+            "Amplification,",
             "Visium concentration,",
             "Bake, Operation not expected for this request: Bake",
             "'', No operation type specified.",
@@ -204,7 +207,7 @@ public class TestOpWithSlotMeasurementsService {
     public void testLoadOpType(String opName, String expectedProblem) {
         OperationType opType;
         switch (coalesce(opName, "")) {
-            case OP_VISIUM_CONC: case OP_CDNA_AMP: case "Bake":
+            case OP_VISIUM_CONC: case OP_AMP: case "Bake":
                 opType = EntityFactory.makeOperationType(opName, null, OperationTypeFlag.IN_PLACE);
                 break;
             case "Transfer":
@@ -299,7 +302,7 @@ public class TestOpWithSlotMeasurementsService {
             return null;
         };
 
-        OperationType opType = EntityFactory.makeOperationType(OP_CDNA_AMP, null, OperationTypeFlag.IN_PLACE);
+        OperationType opType = EntityFactory.makeOperationType(OP_AMP, null, OperationTypeFlag.IN_PLACE);
         final Address A1 = new Address(1,1);
         final Address A2 = new Address(1,2);
         return Arrays.stream(new Object[][] {
@@ -319,7 +322,7 @@ public class TestOpWithSlotMeasurementsService {
                 {opType, new SlotMeasurementRequest(A1, "Alpha", null, null), null, "Missing value for measurement."},
                 {opType, new SlotMeasurementRequest(A1, null, "10", null), null, "Missing name for measurement."},
                 {opType, new SlotMeasurementRequest(A1, "Alpha", "10!", null), null, "Invalid value: 10!"},
-                {opType, new SlotMeasurementRequest(A1, "Alpha!", "10", null), null, "Unexpected measurements given for operation "+OP_CDNA_AMP+": [Alpha!]"},
+                {opType, new SlotMeasurementRequest(A1, "Alpha!", "10", null), null, "Unexpected measurements given for operation "+ OP_AMP +": [Alpha!]"},
                 {opType, List.of(
                         new SlotMeasurementRequest(A1, "Alpha", "10", null),
                         new SlotMeasurementRequest(A1, "Alpha!", "20", null),
@@ -334,7 +337,7 @@ public class TestOpWithSlotMeasurementsService {
                         new SlotMeasurementRequest(A1, "Alphasan", "10san", null),
                         new SlotMeasurementRequest(A2, "Epsilonsan", "50san", null)
                         ),
-                    List.of("Unexpected measurements given for operation "+OP_CDNA_AMP+": [Alpha!, Beta!]", "Invalid value: 40!",
+                    List.of("Unexpected measurements given for operation "+ OP_AMP +": [Alpha!, Beta!]", "Invalid value: 40!",
                             "Missing name for measurement.", "Missing value for measurement.")
                 },
         }).map(arr -> Arguments.of(sanSmrMock, arr[0], objToCollection(arr[1]), objToCollection(arr[2]), objToCollection(arr[3])));
@@ -379,7 +382,7 @@ public class TestOpWithSlotMeasurementsService {
     static Stream<Arguments> sanitiseMeasurementArgs() {
         final Address A1 = new Address(1,1);
         final String BAD_VALUE = "Bad value!";
-        OperationType opType = EntityFactory.makeOperationType(OP_CDNA_AMP, null, OperationTypeFlag.IN_PLACE);
+        OperationType opType = EntityFactory.makeOperationType(OP_AMP, null, OperationTypeFlag.IN_PLACE);
         return Arrays.stream(new Object[][] {
                 {new SlotMeasurementRequest(A1, null, "10", null), opType, null, false, "10", null, "Missing name for measurement.", null},
                 {new SlotMeasurementRequest(A1, "", "10", null), opType, null, false, "10", null, "Missing name for measurement.", null},
@@ -398,14 +401,15 @@ public class TestOpWithSlotMeasurementsService {
 
     @ParameterizedTest
     @CsvSource({
-            OP_CDNA_AMP+",Cq value,Cq value",
-            OP_CDNA_AMP+",CQ VALUE,Cq value",
+            OP_AMP +",Cq value,Cq value",
+            OP_AMP +",CQ VALUE,Cq value",
             OP_VISIUM_CONC+",cDNA concentration,cDNA concentration",
             OP_VISIUM_CONC+",CDNA CONCENTRATION,cDNA concentration",
             OP_VISIUM_CONC+",library concentration,Library concentration",
             OP_VISIUM_CONC+",LIBRARY CONCENTRATION,Library concentration",
-            OP_CDNA_AMP+",cDNA concentration,",
+            OP_AMP +",cDNA concentration,",
             OP_VISIUM_CONC+",Cq value,",
+            OP_AMP +", CYCLES, Cycles",
             ",Cq value,",
             ",cDNA concentration,",
             "Bananas,Cq value,",
@@ -447,47 +451,42 @@ public class TestOpWithSlotMeasurementsService {
             "Library concentration,10,10,",
             "Library concentration,10,10.0,",
             "Cq value,20,20,",
-            "Cq value,20,20.0,",
+            "Cq value,20,20.00,",
             "Sploop,20,,",
             "Cq value,20,x!,,Bad value",
+            "Cycles,024,24,",
     })
     public void testSanitiseMeasurementValue(String name, String value, String sanValue, String problem) {
-        Sanitiser<String> san, otherSan;
-        if (name.equals("cDNA concentration") || name.equals("Library concentration")) {
-            san = mockConcSan;
-            otherSan = mockCqSan;
-        } else if (name.equals("Cq value")) {
-            san = mockCqSan;
-            otherSan = mockConcSan;
-        } else {
-            san = null;
-            otherSan = null;
+        Sanitiser<String> san;
+        List<Sanitiser<String>> sans = List.of(mockConcSan, mockCqSan, mockCycSan);
+        switch (name) {
+            case "cDNA concentration":
+            case "Library concentration":
+                san = mockConcSan;
+                break;
+            case "Cq value":
+                san = mockCqSan;
+                break;
+            case "Cycles":
+                san = mockCycSan;
+                break;
+            default:
+                san = null;
+                break;
         }
         if (san!=null) {
-            if (problem!=null) {
-                when(san.sanitise(any(), any())).then(invocation -> {
-                    Collection<String> problems = invocation.getArgument(0);
-                    problems.add(problem);
-                    return sanValue;
-                });
-            } else if (sanValue!=null) {
-                when(san.sanitise(any(), any())).thenReturn(sanValue);
-            }
+            mayAddProblem(problem, sanValue).when(san).sanitise(any(), any());
         }
         final List<String> problems = new ArrayList<>(problem==null ? 0 : 1);
         assertEquals(sanValue, service.sanitiseMeasurementValue(problems, name, value));
-        if (san==null) {
-            verifyNoInteractions(mockConcSan);
-            verifyNoInteractions(mockCqSan);
-        } else {
-            verify(san).sanitise(problems, value);
-            verifyNoInteractions(otherSan);
+        for (Sanitiser<String> otherSan : sans) {
+            if (otherSan==san) {
+                verify(san).sanitise(problems, value);
+            } else {
+                verifyNoInteractions(otherSan);
+            }
         }
-        if (problem==null) {
-            assertThat(problems).isEmpty();
-        } else {
-            assertThat(problems).containsExactly(problem);
-        }
+        assertProblem(problems, problem);
     }
 
     @ParameterizedTest
@@ -531,7 +530,7 @@ public class TestOpWithSlotMeasurementsService {
     @ValueSource(booleans={false,true})
     public void testExecute(boolean withWork) {
         Work work = (withWork ? new Work(100, "SGP100", null, null, null, null, null, Work.Status.active) : null);
-        OperationType opType = EntityFactory.makeOperationType(OP_CDNA_AMP, null, OperationTypeFlag.IN_PLACE);
+        OperationType opType = EntityFactory.makeOperationType(OP_AMP, null, OperationTypeFlag.IN_PLACE);
         User user = EntityFactory.getUser();
         Operation op = new Operation(2, opType, null, null, user);
         Labware lw = EntityFactory.getTube();

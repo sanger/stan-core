@@ -11,6 +11,7 @@ import java.util.Objects;
 public class BasicLocation {
     private String barcode;
     private Address address;
+    private Integer addressIndex;
 
     public BasicLocation() {}
 
@@ -35,22 +36,31 @@ public class BasicLocation {
         this.address = address;
     }
 
+    public Integer getAddressIndex() {
+        return this.addressIndex;
+    }
+
+    public void setAddressIndex(Integer addressIndex) {
+        this.addressIndex = addressIndex;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         BasicLocation that = (BasicLocation) o;
         return (Objects.equals(this.barcode, that.barcode)
-                && Objects.equals(this.address, that.address));
+                && Objects.equals(this.address, that.address)
+                && Objects.equals(this.addressIndex, that.addressIndex));
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(barcode, address);
+        return Objects.hash(barcode, address, addressIndex);
     }
 
     @Override
     public String toString() {
-        return String.format("(%s:%s)", barcode, address);
+        return String.format("(%s:%s:%s)", barcode, address, addressIndex);
     }
 }

@@ -40,7 +40,7 @@ public class TestRecordOpWithSlotMeasurementsMutation {
 
     @Transactional
     @ParameterizedTest
-    @ValueSource(strings={"cDNA amplification", "Visium concentration"})
+    @ValueSource(strings={"Amplification", "Visium concentration"})
     public void testRecordOpWithSlotMeasurements(String opName) throws Exception {
         OperationType opType = entityCreator.createOpType(opName, null, OperationTypeFlag.IN_PLACE);
         Sample sam = entityCreator.createSample(entityCreator.createTissue(entityCreator.createDonor("DONOR1"), "TISSUE1"), 1);
@@ -48,23 +48,25 @@ public class TestRecordOpWithSlotMeasurementsMutation {
         Labware lw = entityCreator.createLabware("STAN-A", lt, sam);
         Work work = entityCreator.createWork(null, null, null, null, null);
         User user = entityCreator.createUser("user1");
-        String measName, measValue, sanMeasName, sanMeasValue;
+        String[] measNames, sanMeasNames, measValues, sanMeasValues;
         if (opName.equalsIgnoreCase("Visium concentration")) {
-            measName = "CDNA CONCENTRATION";
-            sanMeasName = "cDNA concentration";
-            measValue = "0123.5";
-            sanMeasValue = "123.50";
+            measNames = new String[] { "CDNA CONCENTRATION", "library CONCENTRATION" };
+            sanMeasNames = new String[] { "cDNA concentration", "Library concentration"};
+            measValues = new String[] { "0123.5", "4" };
+            sanMeasValues = new String[] { "123.50", "4.00"};
         } else {
-            measName = "CQ VALUE";
-            sanMeasName = "Cq value";
-            measValue = "050";
-            sanMeasValue = "50";
+            measNames = new String[] { "CQ VALUE", "CYCLES"};
+            sanMeasNames = new String[] { "Cq value", "Cycles"};
+            measValues = new String[] { "05.5", "023" };
+            sanMeasValues = new String[] { "5.50", "23"};
         }
         String mutation = tester.readGraphQL("opwithslotmeasurements.graphql")
                 .replace("OP-TYPE", opType.getName())
-                .replace("WORK-NUM", work.getWorkNumber())
-                .replace("MEAS-NAME", measName)
-                .replace("MEAS-VALUE", measValue);
+                .replace("WORK-NUM", work.getWorkNumber());
+        for (int i = 0; i < measNames.length; ++i) {
+            mutation = mutation.replace("MEAS-NAME-"+i, measNames[i])
+                    .replace("MEAS-VALUE-"+i, measValues[i]);
+        }
 
         tester.setUser(user);
         Object result = tester.post(mutation);
@@ -75,11 +77,15 @@ public class TestRecordOpWithSlotMeasurementsMutation {
         assertEquals(opName, chainGet(opsData, 0, "operationType", "name"));
 
         List<Measurement> measurements = measurementRepo.findAllByOperationIdIn(List.of(opId));
-        assertThat(measurements).hasSize(1);
-        Measurement measurement = measurements.get(0);
-        assertEquals(sanMeasName, measurement.getName());
-        assertEquals(sanMeasValue, measurement.getValue());
-        assertEquals(sam.getId(), measurement.getSampleId());
-        assertEquals(lw.getFirstSlot().getId(), measurement.getSlotId());
+        assertThat(measurements).hasSize(sanMeasNames.length);
+        if (measurements.get(0).getName().equalsIgnoreCase(sanMeasNames[1])) {
+            measurements = List.of(measurements.get(1), measurements.get(0));
+        }
+        for (int i = 0; i < sanMeasNames.length; ++i) {
+            Measurement measurement = measurements.get(i);
+            assertEquals(sanMeasNames[i], measurement.getName());
+            assertEquals(sanMeasValues[i], measurement.getValue());
+            assertEquals(lw.getFirstSlot().getId(), measurement.getSlotId());
+        }
     }
 }

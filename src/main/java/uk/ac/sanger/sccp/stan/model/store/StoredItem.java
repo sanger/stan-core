@@ -17,6 +17,7 @@ public class StoredItem {
     private String barcode;
     private Location location;
     private Address address;
+    private Integer addressIndex;
 
     public StoredItem() {}
 
@@ -59,12 +60,21 @@ public class StoredItem {
         this.location = location;
     }
 
+    public Integer getAddressIndex() {
+        return this.addressIndex;
+    }
+
+    public void setAddressIndex(Integer addressIndex) {
+        this.addressIndex = addressIndex;
+    }
+
     @Override
     public String toString() {
         return MoreObjects.toStringHelper(this)
                 .add("barcode", repr(barcode))
                 .add("location", repr(getLocationBarcode()))
                 .add("address", address)
+                .add("addressIndex", addressIndex)
                 .omitNullValues()
                 .toString();
     }
@@ -76,7 +86,9 @@ public class StoredItem {
         StoredItem that = (StoredItem) o;
         return (Objects.equals(this.barcode, that.barcode)
                 && Objects.equals(this.address, that.address)
-                && Objects.equals(this.getLocationBarcode(), that.getLocationBarcode()));
+                && Objects.equals(this.getLocationBarcode(), that.getLocationBarcode())
+                && Objects.equals(this.addressIndex, that.addressIndex)
+        );
     }
 
     public StoredItem fixInternalLinks() {

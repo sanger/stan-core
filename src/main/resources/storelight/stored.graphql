@@ -2,6 +2,7 @@
     stored(barcodes: []) {
         barcode
         address
+        addressIndex
         location {
             id
             barcode

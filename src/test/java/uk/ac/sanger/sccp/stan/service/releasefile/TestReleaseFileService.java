@@ -12,7 +12,6 @@ import uk.ac.sanger.sccp.stan.service.history.ReagentActionDetailService.Reagent
 import uk.ac.sanger.sccp.stan.service.operation.AnalyserServiceImp;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.Ancestry;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
-import uk.ac.sanger.sccp.utils.tsv.TsvColumn;
 
 import javax.persistence.EntityNotFoundException;
 import java.time.LocalDateTime;
@@ -45,6 +44,9 @@ public class TestReleaseFileService {
     OperationCommentRepo mockOpComRepo;
     LabwareProbeRepo mockLwProbeRepo;
     RoiRepo mockRoiRepo;
+    SolutionRepo mockSolutionRepo;
+    OperationSolutionRepo mockOpSolRepo;
+    ResultOpRepo mockRoRepo;
 
     ReagentActionDetailService mockRadService;
 
@@ -76,10 +78,13 @@ public class TestReleaseFileService {
         mockOpComRepo = mock(OperationCommentRepo.class);
         mockLwProbeRepo = mock(LabwareProbeRepo.class);
         mockRoiRepo = mock(RoiRepo.class);
+        mockSolutionRepo = mock(SolutionRepo.class);
+        mockOpSolRepo = mock(OperationSolutionRepo.class);
+        mockRoRepo = mock(ResultOpRepo.class);
 
         service = spy(new ReleaseFileService(mockAncestoriser, mockSampleRepo, mockLabwareRepo, mockMeasurementRepo,
                 mockSnapshotRepo, mockReleaseRepo, mockOpTypeRepo, mockOpRepo, mockLwNoteRepo, mockStainTypeRepo,
-                mockSamplePositionRepo, mockOpComRepo, mockLwProbeRepo, mockRoiRepo, mockRadService));
+                mockSamplePositionRepo, mockOpComRepo, mockLwProbeRepo, mockRoiRepo, mockRadService, mockSolutionRepo, mockOpSolRepo, mockRoRepo));
 
         user = EntityFactory.getUser();
         destination = new ReleaseDestination(50, "Venus");
@@ -137,9 +142,9 @@ public class TestReleaseFileService {
         setupReleases();
         if (includeStorageAddresses) {
             release1.setLocationBarcode("STO-A1");
-            release1.setStorageAddress(new Address(1,1));
+            release1.setStorageAddress("A1");
             release2.setLocationBarcode("STO-A1");
-            release2.setStorageAddress(new Address(1,2));
+            release2.setStorageAddress("42");
         }
         final Map<Integer, Snapshot> snapshots = snapMap();
         doReturn(snapshots).when(service).loadSnapshots(any());
@@ -153,7 +158,7 @@ public class TestReleaseFileService {
         );
         if (includeStorageAddresses) {
             for (int i = 0; i < entries.size(); ++i) {
-                entries.get(i).setStorageAddress(new Address(1, 1+i));
+                entries.get(i).setStorageAddress(i==0 ? "A1" : "42");
             }
         }
         Set<Integer> slotIds = entries.stream()
@@ -174,6 +179,7 @@ public class TestReleaseFileService {
         doNothing().when(service).loadSamplePositions(any());
         doNothing().when(service).loadSectionComments(any());
         doNothing().when(service).loadXeniumFields(any(), any());
+        doNothing().when(service).loadSolutions(any());
 
         List<Integer> releaseIds = List.of(this.release1.getId(), release2.getId());
         ReleaseFileContent rfc = service.getReleaseFileContent(releaseIds);
@@ -193,12 +199,13 @@ public class TestReleaseFileService {
         verify(service).loadSamplePositions(entries);
         verify(service).loadSectionComments(entries);
         verify(service).loadXeniumFields(entries, slotIds);
+        verify(service).loadSolutions(entries);
     }
 
     @ParameterizedTest
     @MethodSource("shouldIncludeStorageAddressArgs")
-    public void testShouldIncludeStorageAddresses(List<String> locationBarcodes, List<Address> addresses, boolean expected) {
-        Iterator<Address> addressIter = addresses.iterator();
+    public void testShouldIncludeStorageAddresses(List<String> locationBarcodes, List<String> addresses, boolean expected) {
+        Iterator<String> addressIter = addresses.iterator();
         Labware lw = EntityFactory.getTube();
         List<Release> releases = locationBarcodes.stream()
                 .map(bc -> new Release(100, lw, user, destination, recipient, 120, null, bc, addressIter.next(), null))
@@ -207,7 +214,7 @@ public class TestReleaseFileService {
     }
 
     static Stream<Arguments> shouldIncludeStorageAddressArgs() {
-        final Address A1 = new Address(1,1), A2 = new Address(1,2);
+        final String A1 = "A1", A2 = "42";
         return Arrays.stream(new Object[][] {
                 {List.of(), List.of(), false},
                 {List.of("STO-1"), List.of(A1), true},
@@ -344,17 +351,16 @@ public class TestReleaseFileService {
     @ValueSource(booleans={false,true})
     public void testToReleaseEntries(boolean includeStorageAddresses) {
         setupReleases();
-        final Address A2 = new Address(1, 2);
         release1.setLocationBarcode("STO-1");
-        release1.setStorageAddress(A2);
+        release1.setStorageAddress("42");
         Map<Integer, Sample> sampleMap = Stream.of(sample, sample1)
                 .collect(toMap(Sample::getId, s -> s));
 
         List<ReleaseEntry> entries = service.toReleaseEntries(release1, sampleMap, snapMap(), includeStorageAddresses).collect(toList());
         assertThat(entries).containsOnly(
-                new ReleaseEntry(lw1, lw1.getFirstSlot(), sample, includeStorageAddresses ? A2 : null),
-                new ReleaseEntry(lw1, lw1.getFirstSlot(), sample1, includeStorageAddresses ? A2 : null),
-                new ReleaseEntry(lw1, lw1.getSlots().get(1), sample, includeStorageAddresses ? A2 : null)
+                new ReleaseEntry(lw1, lw1.getFirstSlot(), sample, includeStorageAddresses ? "42" : null),
+                new ReleaseEntry(lw1, lw1.getFirstSlot(), sample1, includeStorageAddresses ? "42" : null),
+                new ReleaseEntry(lw1, lw1.getSlots().get(1), sample, includeStorageAddresses ? "42" : null)
         );
     }
 
@@ -591,12 +597,13 @@ public class TestReleaseFileService {
         Ancestry ancestry = makeAncestry(lw, sample, lw, sample);
         ReleaseEntry entry = new ReleaseEntry(lw, lw.getFirstSlot(), sample);
         when(mockOpRepo.findAllByOperationTypeAndDestinationSlotIdIn(any(), any())).thenReturn(List.of());
-        
+        doNothing().when(service).loadStainQcComments(any(), any(), any());
         service.loadStains(List.of(entry), ancestry);
         verify(mockOpTypeRepo).getByName("Stain");
         verify(mockOpRepo).findAllByOperationTypeAndDestinationSlotIdIn(opType, Set.of(lw.getFirstSlot().getId()));
         verify(service, never()).labwareIdToOp(any());
         verify(service, never()).findEntryOps(any(), any(), any());
+        verify(service, never()).loadStainQcComments(any(), any(), any());
         verifyNoInteractions(mockStainTypeRepo);
         verifyNoInteractions(mockLwNoteRepo);
     }
@@ -615,13 +622,14 @@ public class TestReleaseFileService {
         Map<Integer, Operation> labwareStainOp = Map.of(lw.getId(), op);
         doReturn(labwareStainOp).when(service).labwareIdToOp(any());
         doReturn(Map.of()).when(service).findEntryOps(any(), any(), any());
-
+        doNothing().when(service).loadStainQcComments(any(), any(), any());
         final List<ReleaseEntry> entries = List.of(entry);
         service.loadStains(entries, ancestry);
         verify(mockOpTypeRepo).getByName("Stain");
         verify(mockOpRepo).findAllByOperationTypeAndDestinationSlotIdIn(opType, Set.of(lw.getFirstSlot().getId()));
         verify(service).labwareIdToOp(ops);
         verify(service).findEntryOps(entries, labwareStainOp, ancestry);
+        verify(service, never()).loadStainQcComments(any(), any(), any());
 
         verifyNoInteractions(mockStainTypeRepo);
         verifyNoInteractions(mockLwNoteRepo);
@@ -648,6 +656,8 @@ public class TestReleaseFileService {
                 new ReleaseEntry(labware[1], labware[1].getFirstSlot(), sample),
                 new ReleaseEntry(labware[2], labware[2].getFirstSlot(), sample)
         );
+
+        doNothing().when(service).loadStainQcComments(any(), any(), any());
 
         Ancestry ancestry = makeAncestry(labware[1], sample, labware[0], sample);
 
@@ -692,6 +702,47 @@ public class TestReleaseFileService {
         final Set<Integer> opIds = Set.of(ops[0].getId(), ops[1].getId());
         verify(mockStainTypeRepo).loadOperationStainTypes(opIds);
         verify(mockLwNoteRepo).findAllByOperationIdIn(opIds);
+        verify(service).loadStainQcComments(entries, ancestry, Set.of(100,101));
+    }
+
+    @Test
+    public void testLoadStainQcComments() {
+        setupLabware();
+        Labware lw3 = EntityFactory.makeLabware(EntityFactory.getTubeType(), sample);
+        Ancestry ancestry = makeAncestry(lw3, sample, lw2, sample, lw2, sample, lw1, sample);
+
+        Set<Integer> stainOpIds = Set.of(3,4);
+
+        Set<Integer> resultOpIds = Set.of(13,14);
+
+        List<ResultOp> rops = List.of(new ResultOp(), new ResultOp());
+        rops.get(0).setOperationId(13);
+        rops.get(1).setOperationId(14);
+        when(mockRoRepo.findAllByRefersToOpIdIn(any())).thenReturn(rops);
+
+        Comment[] comments = {
+                new Comment(1, "Banana.", "cat"),
+                new Comment(2, "Custard.", "cat")
+        };
+
+        final Integer sampleId = sample.getId();
+        List<OperationComment> opcoms = List.of(
+                new OperationComment(1, comments[0], 13, sampleId, lw1.getFirstSlot().getId(), null),
+                new OperationComment(2, comments[0], 14, sampleId, lw3.getFirstSlot().getId(), null),
+                new OperationComment(3, comments[1], 14, sampleId, lw3.getFirstSlot().getId(), null)
+        );
+        when(mockOpComRepo.findAllByOperationIdIn(any())).thenReturn(opcoms);
+
+        List<ReleaseEntry> entries = List.of(new ReleaseEntry(lw2, lw2.getFirstSlot(), sample),
+                new ReleaseEntry(lw3, lw3.getFirstSlot(), sample));
+
+        service.loadStainQcComments(entries, ancestry, stainOpIds);
+
+        verify(mockRoRepo).findAllByRefersToOpIdIn(stainOpIds);
+        verify(mockOpComRepo).findAllByOperationIdIn(resultOpIds);
+
+        assertEquals("Banana.", entries.get(0).getStainQcComment());
+        assertEquals("Banana. Custard.", entries.get(1).getStainQcComment());
     }
 
     @Test
@@ -749,7 +800,7 @@ public class TestReleaseFileService {
         assertNull(entries.get(1).getVisiumConcentrationType());
         assertEquals("3.3", entries.get(2).getVisiumConcentration());
         assertEquals("Library", entries.get(2).getVisiumConcentrationType());
-        assertEquals(400, entries.get(0).getCq());
+        assertEquals("400", entries.get(0).getCq());
         assertEquals("10 sec", entries.get(2).getPermTime());
         assertEquals("2 min", entries.get(3).getPermTime());
         assertNull(entries.get(1).getCq());
@@ -988,10 +1039,10 @@ public class TestReleaseFileService {
             assertThat(columns).containsExactlyElementsOf(modeColumns);
             return;
         }
-        assertThat(columns.subList(0, modeColumns.size())).containsExactlyElementsOf(modeColumns);
-        assertThat(columns.subList(modeColumns.size(), columns.size()).stream()
-                .map(TsvColumn::toString)
-        ).containsExactly("Alpha", "Beta", "Gamma");
+        List<String> tagColumnNames = List.of("Alpha", "Beta", "Gamma");
+        var partition = columns.stream().collect(partitioningBy(c -> tagColumnNames.contains(c.toString())));
+        assertThat(partition.get(true).stream().map(Object::toString)).containsExactlyElementsOf(tagColumnNames);
+        assertThat(partition.get(false)).containsExactlyElementsOf(modeColumns);
     }
 
     @Test

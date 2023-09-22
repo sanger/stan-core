@@ -11,6 +11,7 @@ import uk.ac.sanger.sccp.stan.service.history.ReagentActionDetailService;
 import uk.ac.sanger.sccp.stan.service.operation.AnalyserServiceImp;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.Ancestry;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
+import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.tsv.TsvColumn;
 
 import javax.persistence.EntityNotFoundException;
@@ -46,6 +47,9 @@ public class ReleaseFileService {
     private final LabwareProbeRepo lwProbeRepo;
     private final RoiRepo roiRepo;
     private final ReagentActionDetailService reagentActionDetailService;
+    private final SolutionRepo solutionRepo;
+    private final OperationSolutionRepo opSolRepo;
+    private final ResultOpRepo roRepo;
 
     @Autowired
     public ReleaseFileService(Ancestoriser ancestoriser,
@@ -54,7 +58,7 @@ public class ReleaseFileService {
                               OperationRepo opRepo, LabwareNoteRepo lwNoteRepo,
                               StainTypeRepo stainTypeRepo, SamplePositionRepo samplePositionRepo,
                               OperationCommentRepo opComRepo,
-                              LabwareProbeRepo lwProbeRepo, RoiRepo roiRepo, ReagentActionDetailService reagentActionDetailService) {
+                              LabwareProbeRepo lwProbeRepo, RoiRepo roiRepo, ReagentActionDetailService reagentActionDetailService, SolutionRepo solutionRepo, OperationSolutionRepo opSolRepo, ResultOpRepo roRepo) {
         this.releaseRepo = releaseRepo;
         this.sampleRepo = sampleRepo;
         this.labwareRepo = labwareRepo;
@@ -70,6 +74,9 @@ public class ReleaseFileService {
         this.lwProbeRepo = lwProbeRepo;
         this.roiRepo = roiRepo;
         this.reagentActionDetailService = reagentActionDetailService;
+        this.solutionRepo = solutionRepo;
+        this.opSolRepo = opSolRepo;
+        this.roRepo = roRepo;
     }
 
     /**
@@ -108,6 +115,7 @@ public class ReleaseFileService {
         loadReagentSources(entries);
         loadSamplePositions(entries);
         loadSectionComments(entries);
+        loadSolutions(entries);
 
         loadXeniumFields(entries, slotIds);
         return new ReleaseFileContent(mode, entries);
@@ -250,7 +258,7 @@ public class ReleaseFileService {
         final Labware labware = release.getLabware();
         final Map<Integer, Slot> slotIdMap = labware.getSlots().stream()
                 .collect(toMap(Slot::getId, slot -> slot));
-        final Address storageAddress = (includeStorageAddress ? release.getStorageAddress() : null);
+        final String storageAddress = (includeStorageAddress ? release.getStorageAddress() : null);
         return snapshots.get(release.getSnapshotId()).getElements().stream()
                 .map(el -> new ReleaseEntry(release.getLabware(), slotIdMap.get(el.getSlotId()),
                         sampleIdMap.get(el.getSampleId()), storageAddress));
@@ -327,6 +335,41 @@ public class ReleaseFileService {
                 }
                 entry.setSourceBarcode(barcode);
                 entry.setSourceAddress(slot.getAddress());
+            }
+        }
+    }
+
+    public void loadSolutions(Collection<ReleaseEntry> entries) {
+        Set<Integer> lwIds = entries.stream()
+                .map(re -> re.getLabware().getId())
+                .collect(toSet());
+        final List<OperationSolution> allOpSols = opSolRepo.findAllByLabwareIdIn(lwIds);
+        if (allOpSols.isEmpty()) {
+            return;
+        }
+        final Set<Integer> solutionIds = allOpSols.stream().map(OperationSolution::getSolutionId).collect(toSet());
+        Map<Integer, Solution> idSolutions = BasicUtils.stream(solutionRepo.findAllById(solutionIds))
+                .collect(BasicUtils.inMap(Solution::getId));
+
+        Map<Integer, List<OperationSolution>> lwSols = allOpSols.stream()
+                .collect(groupingBy(OperationSolution::getLabwareId));
+        for (ReleaseEntry entry : entries) {
+            List<OperationSolution> opSols = lwSols.get(entry.getLabware().getId());
+            if (nullOrEmpty(opSols)) {
+                continue;
+            }
+            OperationSolution opSol;
+            if (entry.getSample()==null) {
+                opSol = opSols.get(0);
+            } else {
+                Integer sampleId = entry.getSample().getId();
+                opSol = opSols.stream()
+                        .filter(os -> sampleId.equals(os.getSampleId()))
+                        .findFirst()
+                        .orElse(null);
+            }
+            if (opSol != null) {
+                entry.setSolution(idSolutions.get(opSol.getSolutionId()).getName());
             }
         }
     }
@@ -665,6 +708,49 @@ public class ReleaseFileService {
                 entry.setIhcPlex(opIhcPlex.get(op.getId()));
             }
         }
+        Set<Integer> stainOpIds = entryStainOp.values().stream().map(Operation::getId).collect(toSet());
+        loadStainQcComments(entries, ancestry, stainOpIds);
+    }
+
+    /**
+     * Loads comments from the result-ops for the given stain op ids. Puts them into the stainQcComment field in the
+     * ReleaseEntries. Follows the ancestry to see which operations are relevant to which entries.
+     * @param entries the release entries under construction
+     * @param ancestry the ancestry of the entities referred to in the entries
+     * @param stainOpIds the stain operation ids that we look up the results for
+     */
+    public void loadStainQcComments(Collection<ReleaseEntry> entries, Ancestry ancestry, Collection<Integer> stainOpIds) {
+        List<ResultOp> rops = roRepo.findAllByRefersToOpIdIn(stainOpIds);
+        if (rops.isEmpty()) {
+            return;
+        }
+        Set<Integer> resultOpIds = rops.stream().map(ResultOp::getOperationId).collect(toSet());
+        List<OperationComment> opcoms = opComRepo.findAllByOperationIdIn(resultOpIds);
+        Map<SlotIdSampleId, List<OperationComment>> opComMap = opcoms.stream()
+                .collect(groupingBy(oc -> new SlotIdSampleId(oc.getSlotId(), oc.getSampleId())));
+        if (opComMap.isEmpty()) {
+            return;
+        }
+        Map<SlotIdSampleId, String> joinedComments = new HashMap<>(opComMap.size());
+        for (var e : opComMap.entrySet()) {
+            String commentString = joinComments(e.getValue().stream());
+            joinedComments.put(e.getKey(), commentString);
+        }
+
+        for (ReleaseEntry entry : entries) {
+            if (entry.getSample()==null || entry.getSlot()==null) {
+                continue;
+            }
+            SlotSample key = new SlotSample(entry.getSlot(), entry.getSample());
+            String commentText = null;
+            for (SlotSample ancestor : ancestry.ancestors(key)) {
+                commentText = joinedComments.get(new SlotIdSampleId(ancestor.getSlot().getId(), ancestor.getSample().getId()));
+                if (commentText != null) {
+                    break;
+                }
+            }
+            entry.setStainQcComment(commentText);
+        }
     }
 
     /**
@@ -682,11 +768,13 @@ public class ReleaseFileService {
         Map<Integer, List<Measurement>> slotIdToCq = new HashMap<>();
         Map<Integer, List<Measurement>> slotIdToVisiumConc = new HashMap<>();
         Map<Integer, List<Measurement>> slotIdToPermTimes = new HashMap<>();
+        Map<Integer, List<Measurement>> slotIdToCycles = new HashMap<>();
         final String THICKNESS = MeasurementType.Thickness.friendlyName();
         final String COVERAGE = MeasurementType.Tissue_coverage.friendlyName();
         final String CQ = MeasurementType.Cq_value.friendlyName();
         final String CDNA_CONC = MeasurementType.cDNA_concentration.friendlyName();
         final String LIBRARY_CONC = MeasurementType.Library_concentration.friendlyName();
+        final String CYCLES = MeasurementType.Cycles.friendlyName();
         final String VISIUM_CONCENTRATION = "Visium Concentration";
         final String PERM_TIME= MeasurementType.Permeabilisation_time.friendlyName();
         final String VISIUM_TO = "Visium TO", VISIUM_LP = "Visium LP", PLATE_96 = "96 well plate";
@@ -704,6 +792,9 @@ public class ReleaseFileService {
                 slotIdMeasurements.add(measurement);
             } else if (measurement.getName().equalsIgnoreCase(CQ)) {
                 List<Measurement> slotIdMeasurements = slotIdToCq.computeIfAbsent(measurement.getSlotId(), k -> new ArrayList<>());
+                slotIdMeasurements.add(measurement);
+            } else if (measurement.getName().equalsIgnoreCase(CYCLES)) {
+                List<Measurement> slotIdMeasurements = slotIdToCycles.computeIfAbsent(measurement.getSlotId(), k -> new ArrayList<>());
                 slotIdMeasurements.add(measurement);
             } else if (measurement.getName().equalsIgnoreCase(CDNA_CONC) || measurement.getName().equalsIgnoreCase(LIBRARY_CONC)) {
                 final Integer opId = measurement.getOperationId();
@@ -737,11 +828,11 @@ public class ReleaseFileService {
             }
             Measurement cqMeasurement = selectMeasurement(entry, slotIdToCq, ancestry);
             if (cqMeasurement != null) {
-                try {
-                    entry.setCq(Integer.valueOf(cqMeasurement.getValue()));
-                } catch (NumberFormatException e) {
-                    log.error("Cq measurement is not an integer: {}", cqMeasurement);
-                }
+                entry.setCq(cqMeasurement.getValue());
+            }
+            Measurement cyclesMeasurement = selectMeasurement(entry, slotIdToCycles, ancestry);
+            if (cyclesMeasurement!=null) {
+                entry.setAmplificationCycles(cyclesMeasurement.getValue());
             }
             Measurement concMeasurement = selectMeasurement(entry, slotIdToVisiumConc, ancestry);
             if (concMeasurement != null) {
@@ -786,16 +877,13 @@ public class ReleaseFileService {
 
     public static String toMinutes(String secondsValue) {
         int sec = Integer.parseInt(secondsValue);
-        if (sec==0) {
-            return "0 min";
-        }
         int min = sec / 60;
         sec %= 60;
-        if (min==0) {
-            return sec+" sec";
-        }
         if (sec==0) {
             return min+" min";
+        }
+        if (min==0) {
+            return sec+" sec";
         }
         return String.format("%d min, %d sec", min, sec);
     }
@@ -968,7 +1056,19 @@ public class ReleaseFileService {
                 .filter(e -> !nullOrEmpty(e))
                 .flatMap(e -> e.keySet().stream())
                 .collect(toLinkedHashSet());
-        return Stream.concat(modeColumns.stream(), tagDataColumnNames.stream().map(TagDataColumn::new))
-                .collect(toList());
+        if (tagDataColumnNames.isEmpty()) {
+            return modeColumns;
+        }
+
+        int dualColumnIndex = modeColumns.indexOf(ReleaseColumn.Dual_index_plate_name);
+        if (dualColumnIndex < 0) {
+            return modeColumns;
+        }
+        List<TsvColumn<ReleaseEntry>> combinedList = new ArrayList<>(modeColumns.size() + tagDataColumnNames.size());
+
+        combinedList.addAll(modeColumns.subList(0, dualColumnIndex+1));
+        tagDataColumnNames.stream().map(TagDataColumn::new).forEach(combinedList::add);
+        combinedList.addAll(modeColumns.subList(dualColumnIndex+1, modeColumns.size()));
+        return combinedList;
     }
 }

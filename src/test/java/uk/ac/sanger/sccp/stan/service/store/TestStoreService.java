@@ -486,6 +486,7 @@ public class TestStoreService {
                 "    stored(barcodes: [\"ITEM-1\", \"ITEM-2\", \"ITEM-3\"]) {" +
                 "        barcode" +
                 "        address" +
+                "        addressIndex" +
                 "        location {" +
                 "            id" +
                 "            barcode" +
@@ -545,6 +546,7 @@ public class TestStoreService {
                 " stored(barcodes: [\"STAN-1\", \"STAN-2\", \"STAN-3\"]) {" +
                 "  barcode" +
                 "  address" +
+                "  addressIndex" +
                 "  location { barcode }" +
                 "}}", null);
     }

@@ -516,17 +516,28 @@ public class TestReleaseService {
     }
 
     @ParameterizedTest
-    @ValueSource(booleans={false,true})
-    public void testRecordRelease(boolean withLocation) {
+    @CsvSource({
+            ",,,",
+            "STO-A1,,,",
+            "STO-A1,D2,,D2",
+            "STO-A1,D2,6,6",
+    })
+    public void testRecordRelease(String locBarcode, Address address, Integer addressIndex, String expectedAddressDesc) {
         Labware lw = EntityFactory.makeEmptyLabware(labwareType);
         lw.getSlots().get(0).getSamples().add(sample);
         lw.getSlots().get(0).getSamples().add(sample1);
         lw.getSlots().get(1).getSamples().add(sample1);
-        BasicLocation loc = (withLocation ? new BasicLocation("STO-A1", new Address(1,2)) : null);
+        BasicLocation loc;
+        if (locBarcode==null) {
+            loc = null;
+        } else {
+            loc = new BasicLocation(locBarcode, address);
+            loc.setAddressIndex(addressIndex);
+        }
 
         final int releaseId = 10;
         Release release = new Release(releaseId, lw, user, destination, recipient, 1, LocalDateTime.now(),
-                withLocation ? loc.getBarcode() : null, withLocation ? loc.getAddress() : null, otherRecs);
+                locBarcode, expectedAddressDesc, otherRecs);
 
         when(mockReleaseRepo.save(any())).thenReturn(release);
 
@@ -539,7 +550,7 @@ public class TestReleaseService {
         final Release expectedNewRelease = new Release(lw, user, destination, recipient, snap.getId());
         if (loc!=null) {
             expectedNewRelease.setLocationBarcode(loc.getBarcode());
-            expectedNewRelease.setStorageAddress(loc.getAddress());
+            expectedNewRelease.setStorageAddress(expectedAddressDesc);
         }
         expectedNewRelease.setOtherRecipients(otherRecs);
         verify(mockReleaseRepo).save(expectedNewRelease);

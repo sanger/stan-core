@@ -18,16 +18,16 @@ import uk.ac.sanger.sccp.stan.GraphQLTester;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.store.BasicLocation;
 import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.service.releasefile.ReleaseColumn;
+import uk.ac.sanger.sccp.stan.service.releasefile.ReleaseFileMode;
 import uk.ac.sanger.sccp.stan.service.store.StorelightClient;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import javax.persistence.EntityManager;
 import javax.transaction.Transactional;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
-import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.verify;
@@ -146,33 +146,27 @@ public class TestReleaseMutation {
         String tsvString = getReleaseFile(releaseIds);
         var tsvMaps = tsvToMap(tsvString);
         assertEquals(tsvMaps.size(), 4);
-        assertThat(tsvMaps.get(0).keySet()).containsOnly("Barcode", "Labware type", "Address", "Donor name",
-                "Life stage", "External identifier", "Tissue type", "Spatial location", "Replicate number", "Section number",
-                "Bio state",
-                "Sample position", "Section comment", "Last section number", "Source barcode", "Section thickness", "Released from box location",
-                "Stain type", "Bond barcode", "Tissue coverage", "Cq value", "Visium concentration (pg/uL)", "Visium concentration type",
-                "Dual index plate type", "Dual index plate name", "RNAscope plex", "IHC plex",
-                "Date sectioned", "Permeabilisation time",
-                "Xenium probe lot", "Xenium probe panel", "Xenium ROI", "Xenium cassette position",
-                "Xenium completion", "Xenium run name", "Probe hybridisation start", "Probe comments",
-                "Xenium start", "Probe hybridisation end", "Xenium decoding reagent lot",
-                "Xenium plex number", "Xenium comments");
+        Set<String> expectedColumns = Arrays.stream(ReleaseColumn.values())
+                .filter(c -> c.getMode()!=ReleaseFileMode.CDNA)
+                .map(ReleaseColumn::toString)
+                .collect(toSet());
+        assertThat(tsvMaps.get(0).keySet()).containsExactlyInAnyOrderElementsOf(expectedColumns);
         var row0 = tsvMaps.get(0);
-        assertEquals(block.getBarcode(), row0.get("Barcode"));
-        assertEquals(block.getLabwareType().getName(), row0.get("Labware type"));
-        assertEquals("6", row0.get("Last section number"));
-        assertEquals("A2", row0.get("Released from box location"));
+        assertMapValue(row0, ReleaseColumn.Released_labware_barcode, block.getBarcode());
+        assertMapValue(row0, ReleaseColumn.Labware_type, block.getLabwareType().getName());
+        assertMapValue(row0, ReleaseColumn.Last_section_number, "6");
+        assertMapValue(row0, ReleaseColumn.Released_from_box_location, "A2");
         String bsName = sample.getBioState().getName();
         for (int i = 1; i < 4; ++i) {
             var row = tsvMaps.get(i);
-            assertEquals(lw.getBarcode(), row.get("Barcode"));
-            assertEquals(lw.getLabwareType().getName(), row.get("Labware type"));
-            assertEquals("C4", row.get("Released from box location"));
-            assertEquals(st.getName(), row.get("Stain type"));
-            assertEquals(bondBarcode, row.get("Bond barcode"));
-            assertEquals(bsName, row.get("Bio state"));
-            assertEquals(String.valueOf(ihcPlex), row.get("IHC plex"));
-            assertEquals(String.valueOf(rnaPlex), row.get("RNAscope plex"));
+            assertMapValue(row, ReleaseColumn.Released_labware_barcode, lw.getBarcode());
+            assertMapValue(row, ReleaseColumn.Labware_type, lw.getLabwareType().getName());
+            assertMapValue(row, ReleaseColumn.Released_from_box_location, "C4");
+            assertMapValue(row, ReleaseColumn.Stain_type, st.getName());
+            assertMapValue(row, ReleaseColumn.Bond_barcode, bondBarcode);
+            assertMapValue(row, ReleaseColumn.Biological_state,bsName);
+            assertMapValue(row, ReleaseColumn.IHC_plex, String.valueOf(ihcPlex));
+            assertMapValue(row, ReleaseColumn.RNAscope_plex, String.valueOf(rnaPlex));
         }
 
         entityManager.refresh(work1);
@@ -197,6 +191,11 @@ public class TestReleaseMutation {
         entityManager.flush();
         entityManager.refresh(work2);
         assertThat(work2.getOperationIds()).containsExactly(opId);
+    }
+
+    private static <V> void assertMapValue(Map<? super String, V> map, Object column, V expected) {
+        String key = column.toString();
+        assertEquals(expected, map.get(key), key);
     }
 
     private void recordStain(Labware lw, StainType st, String bondBarcode, Integer rnaPlex, Integer ihcPlex, User user) {

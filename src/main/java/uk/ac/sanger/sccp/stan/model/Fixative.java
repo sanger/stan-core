@@ -7,7 +7,7 @@ import java.util.Objects;
  * @author dr6
  */
 @Entity
-public class Fixative implements HasEnabled {
+public class Fixative implements HasEnabled, HasName {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
@@ -29,6 +29,7 @@ public class Fixative implements HasEnabled {
         this.id = id;
     }
 
+    @Override
     public String getName() {
         return this.name;
     }

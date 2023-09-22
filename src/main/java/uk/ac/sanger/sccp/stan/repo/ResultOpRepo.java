@@ -8,4 +8,6 @@ import java.util.List;
 
 public interface ResultOpRepo extends CrudRepository<ResultOp, Integer> {
     List<ResultOp> findAllByOperationIdIn(Collection<Integer> opIds);
+
+    List<ResultOp> findAllByRefersToOpIdIn(Collection<Integer> opIds);
 }
