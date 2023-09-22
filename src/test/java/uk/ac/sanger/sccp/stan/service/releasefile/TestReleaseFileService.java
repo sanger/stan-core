@@ -137,7 +137,7 @@ public class TestReleaseFileService {
     @ParameterizedTest
     @ValueSource(booleans={false, true})
     public void testGetReleaseFileContent(boolean includeStorageAddresses) {
-        assertThat(service.getReleaseFileContent(List.of()).getEntries()).isEmpty();
+        assertThat(service.getReleaseFileContent(List.of(), Set.of()).getEntries()).isEmpty();
 
         setupReleases();
         if (includeStorageAddresses) {
@@ -181,10 +181,13 @@ public class TestReleaseFileService {
         doNothing().when(service).loadXeniumFields(any(), any());
         doNothing().when(service).loadSolutions(any());
 
+        Set<ReleaseFileOption> options = EnumSet.allOf(ReleaseFileOption.class);
+
         List<Integer> releaseIds = List.of(this.release1.getId(), release2.getId());
-        ReleaseFileContent rfc = service.getReleaseFileContent(releaseIds);
+        ReleaseFileContent rfc = service.getReleaseFileContent(releaseIds, options);
         assertEquals(entries, rfc.getEntries());
         assertEquals(mode, rfc.getMode());
+        assertSame(options, rfc.getOptions());
 
         verify(service).getReleases(releaseIds);
         verify(service).loadSamples(releases, snapshots);
@@ -1021,8 +1024,22 @@ public class TestReleaseFileService {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     @ParameterizedTest
-    @ValueSource(booleans={false,true})
-    public void testComputeColumns(boolean anyTagData) {
+    @CsvSource({
+            "true,",
+            "false,",
+            "true,sample_processing&histology",
+            "true,visium&xenium"
+    })
+    public void testComputeColumns(boolean anyTagData, String joinedOptions) {
+        Set<ReleaseFileOption> options;
+        if (joinedOptions==null) {
+            options = Set.of();
+        } else {
+            options = EnumSet.noneOf(ReleaseFileOption.class);
+            for (String s : joinedOptions.split("&")) {
+                options.add(ReleaseFileOption.forParameterName(s));
+            }
+        }
         List<ReleaseEntry> entries = List.of(
                 new ReleaseEntry(null, null, null),
                 new ReleaseEntry(null, null, null),
@@ -1033,9 +1050,9 @@ public class TestReleaseFileService {
             entries.get(1).setTagData(orderedMap("Alpha", "A", "Beta", "B"));
             entries.get(2).setTagData(orderedMap("Beta", "8", "Gamma", "9"));
         }
-        var columns = service.computeColumns(new ReleaseFileContent(mode, entries));
-        List modeColumns = ReleaseColumn.forMode(mode);
-        if (!anyTagData) {
+        var columns = service.computeColumns(new ReleaseFileContent(mode, entries, options));
+        List modeColumns = ReleaseColumn.forModeAndOptions(mode, options);
+        if (!anyTagData || !options.contains(ReleaseFileOption.Visium)) {
             assertThat(columns).containsExactlyElementsOf(modeColumns);
             return;
         }

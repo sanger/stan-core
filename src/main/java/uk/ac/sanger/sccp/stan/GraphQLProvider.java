@@ -79,6 +79,7 @@ public class GraphQLProvider {
                         .dataFetcher("equipments", graphQLDataFetchers.getEquipments())
                         .dataFetcher("releaseDestinations", graphQLDataFetchers.getReleaseDestinations())
                         .dataFetcher("releaseRecipients", graphQLDataFetchers.getReleaseRecipients())
+                        .dataFetcher("releaseColumnOptions", graphQLDataFetchers.getReleaseColumnOptions())
                         .dataFetcher("find", graphQLDataFetchers.find())
                         .dataFetcher("destructionReasons", graphQLDataFetchers.getDestructionReasons())
                         .dataFetcher("projects", graphQLDataFetchers.getProjects())

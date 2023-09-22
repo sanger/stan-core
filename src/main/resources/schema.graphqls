@@ -729,6 +729,14 @@ input ReleaseRequest {
     otherRecipients: [String!]
 }
 
+"""An option for customising the columns in a release file."""
+type ReleaseFileOption {
+    """The name that is displayed to the user."""
+    displayName: String!
+    """The option name that is used as a query parameter."""
+    queryParamName: String!
+}
+
 """A request to record an extract operation."""
 input ExtractRequest {
     """The barcodes of the source labware."""
@@ -1750,6 +1758,8 @@ type Query {
     releaseDestinations(includeDisabled: Boolean): [ReleaseDestination!]!
     """Get all the release recipients that are enabled, or get all including those that are disabled."""
     releaseRecipients(includeDisabled: Boolean): [ReleaseRecipient!]!
+    """Get the available release file groups."""
+    releaseColumnOptions: [ReleaseFileOption!]!
     """Get all the destruction reasons that are enabled, or get all including those that are disabled."""
     destructionReasons(includeDisabled: Boolean): [DestructionReason!]!
     """Get all the projects that are enabled, or get all including those that are disabled."""
