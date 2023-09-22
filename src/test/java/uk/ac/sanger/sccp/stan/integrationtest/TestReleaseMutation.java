@@ -139,7 +139,7 @@ public class TestReleaseMutation {
         assertEquals("Stan test<no-reply@sanger.ac.uk>", message.getFrom());
         assertThat(message.getTo()).containsExactly(recipient.getUsername()+"@sanger.ac.uk");
         assertThat(message.getCc()).containsExactly("beagledev@sanger.ac.uk");
-        String releaseUrl = "stantestroot/release?id=" + releaseIds.stream().map(Object::toString).collect(joining(","));
+        String releaseUrl = "stantestroot/releaseOptions?id=" + releaseIds.stream().map(Object::toString).collect(joining(","));
         assertEquals("Release to "+recipient.getUsername()+"@sanger.ac.uk for work number "+work1.getWorkNumber()+
                 ".\nThe details of the release are available at "+releaseUrl, message.getText());
 

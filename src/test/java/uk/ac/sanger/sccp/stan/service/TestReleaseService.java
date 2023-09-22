@@ -270,7 +270,7 @@ public class TestReleaseService {
         for (int i = 0; i < 3; ++i) {
             releases.get(i).setId(10+i);
         }
-        assertEquals("stanroot/release?id=10,11,12", service.releaseFileLink(releases));
+        assertEquals("stanroot/releaseOptions?id=10,11,12", service.releaseFileLink(releases));
     }
 
     @ParameterizedTest
