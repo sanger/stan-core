@@ -7,10 +7,12 @@ mutation {
                 name: "probe1"
                 lot: "lot1"
                 plex: 1
+                cost: Faculty
             }, {
                 name: "probe2"
                 lot: "lot2"
                 plex: 2
+                cost: SGP
             }]
             workNumber: "SGP1"
         }]

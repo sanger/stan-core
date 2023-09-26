@@ -1657,6 +1657,8 @@ input ProbeLot {
     lot: String!
     """The plex number."""
     plex: Int!
+    """The cost of the probe panel."""
+    cost: SlideCosting!
 }
 
 """Specifies a region of interest for a sample in a slot address."""

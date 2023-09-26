@@ -235,11 +235,11 @@ public class ProbeServiceTest {
     public void testValidateProbes() {
         List<ProbeOperationLabware> pols = List.of(
                 new ProbeOperationLabware("BC1", "SGP1",
-                        List.of(new ProbeLot("p1", "lot1", 1),
-                                new ProbeLot("p2", "lot2", 2))),
+                        List.of(new ProbeLot("p1", "lot1", 1, SlideCosting.SGP),
+                                new ProbeLot("p2", "lot2", 2, SlideCosting.SGP))),
                 new ProbeOperationLabware("BC2", "SGP2",
-                        List.of(new ProbeLot("p2", "lot3", 3),
-                                new ProbeLot("p3", "lot4", 4)))
+                        List.of(new ProbeLot("p2", "lot3", 3, SlideCosting.Faculty),
+                                new ProbeLot("p3", "lot4", 4, SlideCosting.SGP)))
         );
         List<ProbePanel> probes = IntStream.range(1, 4)
                 .mapToObj(i -> new ProbePanel(i, "p"+i))
@@ -259,7 +259,7 @@ public class ProbeServiceTest {
     public void testValidateNoProbes() {
         List<ProbeOperationLabware> pols = List.of(
                 new ProbeOperationLabware("BC1", "SGP1",
-                        List.of(new ProbeLot("p1", "lot1", 1))),
+                        List.of(new ProbeLot("p1", "lot1", 1, SlideCosting.Faculty))),
                 new ProbeOperationLabware("BC2", "SGP2",
                         List.of())
         );
@@ -275,17 +275,18 @@ public class ProbeServiceTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"p1, lot2, 3,",
-            ", lot2, 3, Probe panel name missing.",
-            "p!, lot2, 3, Unknown probe panels: [\"p!\"]",
-            "p1, , 3, Probe lot number missing.",
-            "p1, lot!, 3, Bad lot.",
-            "p1, lot2,,Probe plex missing.",
-            "p1, lot2, 0, Probe plex should be a positive number.",
+    @CsvSource({"p1, lot2, 3, SGP,",
+            ", lot2, 3, Faculty, Probe panel name missing.",
+            "p!, lot2, 3, Faculty, Unknown probe panels: [\"p!\"]",
+            "p1, , 3, Faculty, Probe lot number missing.",
+            "p1, lot!, 3, SGP, Bad lot.",
+            "p1, lot2,,SGP, Probe plex missing.",
+            "p1, lot2, 0, SGP, Probe plex should be a positive number.",
+            "p1, lot2, 2, , Probe cost is missing.",
     })
-    public void testValidateProbes_problems(String probeName, String lot, Integer plex, String expectedProblem) {
+    public void testValidateProbes_problems(String probeName, String lot, Integer plex, SlideCosting cost, String expectedProblem) {
         ProbeOperationLabware pol = new ProbeOperationLabware("BC", "SGP1",
-                List.of(new ProbeLot(probeName, lot, plex)));
+                List.of(new ProbeLot(probeName, lot, plex, cost)));
         when(mockProbeLotValidator.validate(any(), any())).then(invocation -> {
             String lotArg = invocation.getArgument(0);
             if (lotArg.indexOf('!')<0) {
@@ -426,11 +427,11 @@ public class ProbeServiceTest {
     public void testSaveProbes() {
         List<ProbeOperationLabware> pols = List.of(
                 new ProbeOperationLabware("STAN-1", null, List.of(
-                        new ProbeLot("probe1", "lot1", 1),
-                        new ProbeLot("probe2", "lot2", 2)
+                        new ProbeLot("probe1", "lot1", 1, SlideCosting.SGP),
+                        new ProbeLot("probe2", "lot2", 2, SlideCosting.SGP)
                 )),
                 new ProbeOperationLabware("STAN-2", null, List.of(
-                        new ProbeLot("probe1", "lot3", 3)
+                        new ProbeLot("probe1", "lot3", 3, SlideCosting.Faculty)
                 ))
         );
         LabwareType lt = EntityFactory.getTubeType();
@@ -453,9 +454,9 @@ public class ProbeServiceTest {
         service.saveProbes(pols, lwOps, lwMap, ppMap);
 
         verify(mockLwProbeRepo).saveAll(List.of(
-                new LabwareProbe(null, pp1, op1.getId(), lw1.getId(), "LOT1", 1),
-                new LabwareProbe(null, pp2, op1.getId(), lw1.getId(), "LOT2", 2),
-                new LabwareProbe(null, pp1, op2.getId(), lw2.getId(), "LOT3", 3)
+                new LabwareProbe(null, pp1, op1.getId(), lw1.getId(), "LOT1", 1, SlideCosting.SGP),
+                new LabwareProbe(null, pp2, op1.getId(), lw1.getId(), "LOT2", 2, SlideCosting.SGP),
+                new LabwareProbe(null, pp1, op2.getId(), lw2.getId(), "LOT3", 3, SlideCosting.Faculty)
         ));
     }
 

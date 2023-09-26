@@ -21,17 +21,24 @@ public class LabwareProbe {
     private Integer labwareId;
     private String lotNumber;
     private Integer plex;
+    private  SlideCosting cost;
 
     public LabwareProbe() {}
 
     public LabwareProbe(Integer id, ProbePanel probePanel, Integer operationId, Integer labwareId,
                         String lotNumber, Integer plex) {
+        this(id, probePanel, operationId, labwareId, lotNumber, plex, null);
+    }
+
+    public LabwareProbe(Integer id, ProbePanel probePanel, Integer operationId, Integer labwareId,
+                        String lotNumber, Integer plex, SlideCosting cost) {
         this.id = id;
         this.probePanel = probePanel;
         this.operationId = operationId;
         this.labwareId = labwareId;
         this.lotNumber = lotNumber;
         this.plex = plex;
+        this.cost = cost;
     }
 
     public Integer getId() {
@@ -82,6 +89,14 @@ public class LabwareProbe {
         this.plex = plex;
     }
 
+    public SlideCosting getCost() {
+        return cost;
+    }
+
+    public void setCost(SlideCosting cost) {
+        this.cost = cost;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -91,13 +106,14 @@ public class LabwareProbe {
                 && Objects.equals(this.probePanel, that.probePanel)
                 && Objects.equals(this.operationId, that.operationId)
                 && Objects.equals(this.labwareId, that.labwareId)
-        && Objects.equals(this.lotNumber, that.lotNumber)
-                && Objects.equals(this.plex, that.plex));
+                && Objects.equals(this.lotNumber, that.lotNumber)
+                && Objects.equals(this.plex, that.plex)
+                && Objects.equals(this.cost, that.cost));
     }
 
     @Override
     public int hashCode() {
-        return (id!=null ? id.hashCode() : Objects.hash(probePanel, operationId, labwareId));
+        return (id!=null ? id.hashCode() : Objects.hash(probePanel, operationId, labwareId, cost));
     }
 
     @Override
@@ -109,6 +125,7 @@ public class LabwareProbe {
                 .add("labwareId", labwareId)
                 .addRepr("lotNumber", lotNumber)
                 .add("plex", plex)
+                .add("cost", cost.name())
                 .toString();
     }
 }
