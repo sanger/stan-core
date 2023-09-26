@@ -24,8 +24,7 @@ import uk.ac.sanger.sccp.stan.service.work.WorkSummaryService;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import javax.persistence.EntityNotFoundException;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 import java.util.function.Supplier;
 
 import static java.util.stream.Collectors.toList;
@@ -209,6 +208,10 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
 
     public DataFetcher<Iterable<ReleaseRecipient>> getReleaseRecipients() {
         return allOrEnabled(releaseRecipientRepo::findAll, releaseRecipientRepo::findAllByEnabled);
+    }
+
+    public DataFetcher<Iterable<ReleaseFileOption>> getReleaseColumnOptions() {
+        return dfe -> Arrays.asList(ReleaseFileOption.values());
     }
 
     public DataFetcher<Iterable<DestructionReason>> getDestructionReasons() {

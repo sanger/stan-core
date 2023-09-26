@@ -1,0 +1,6 @@
+query {
+    releaseColumnOptions {
+        displayName
+        queryParamName
+    }
+}

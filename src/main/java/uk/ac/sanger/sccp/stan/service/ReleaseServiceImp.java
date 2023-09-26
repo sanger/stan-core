@@ -142,7 +142,7 @@ public class ReleaseServiceImp implements ReleaseService {
      */
     public String releaseFileLink(Collection<Release> releases) {
         String joinedIds = releases.stream().map(r -> r.getId().toString()).collect(joining(","));
-        return stanConfig.getRoot() + "release?id=" + joinedIds;
+        return stanConfig.getRoot() + "releaseOptions?id=" + joinedIds;
     }
 
     /**

@@ -139,11 +139,11 @@ public class TestReleaseMutation {
         assertEquals("Stan test<no-reply@sanger.ac.uk>", message.getFrom());
         assertThat(message.getTo()).containsExactly(recipient.getUsername()+"@sanger.ac.uk");
         assertThat(message.getCc()).containsExactly("beagledev@sanger.ac.uk");
-        String releaseUrl = "stantestroot/release?id=" + releaseIds.stream().map(Object::toString).collect(joining(","));
+        String releaseUrl = "stantestroot/releaseOptions?id=" + releaseIds.stream().map(Object::toString).collect(joining(","));
         assertEquals("Release to "+recipient.getUsername()+"@sanger.ac.uk for work number "+work1.getWorkNumber()+
                 ".\nThe details of the release are available at "+releaseUrl, message.getText());
 
-        String tsvString = getReleaseFile(releaseIds);
+        String tsvString = getReleaseFile(releaseIds, EnumSet.allOf(ReleaseFileOption.class));
         var tsvMaps = tsvToMap(tsvString);
         assertEquals(tsvMaps.size(), 4);
         Set<String> expectedColumns = Arrays.stream(ReleaseColumn.values())
@@ -219,14 +219,30 @@ public class TestReleaseMutation {
     }
 
 
-    private String getReleaseFile(List<Integer> releaseIds) throws Exception {
+    private String getReleaseFile(List<Integer> releaseIds, Set<ReleaseFileOption> options) throws Exception {
         MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
         releaseIds.forEach(id -> params.add("id", id.toString()));
+        options.forEach(rfo -> params.add("groups", rfo.getQueryParamName()));
         return tester.getMockMvc().perform(MockMvcRequestBuilders.get("/release")
                         .queryParams(params)).andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
+    }
+
+    @Test
+    @Transactional
+    public void testReleaseFileOptionsQuery() throws Exception {
+        String query = tester.readGraphQL("releasecolumnoptions.graphql");
+        List<Map<String, String>> maps = chainGet(tester.post(query), "data", "releaseColumnOptions");
+        ReleaseFileOption[] options = ReleaseFileOption.values();
+        assertThat(maps).hasSize(options.length);
+        for (int i = 0; i < options.length; ++i) {
+            ReleaseFileOption option = options[i];
+            Map<String, String> map = maps.get(i);
+            assertEquals(option.getDisplayName(), map.get("displayName"));
+            assertEquals(option.getQueryParamName(), map.get("queryParamName"));
+        }
     }
 
 }

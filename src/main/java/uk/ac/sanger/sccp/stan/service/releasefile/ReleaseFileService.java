@@ -85,9 +85,9 @@ public class ReleaseFileService {
      * @param releaseIds the ids of the releases
      * @return the release entries from the specified releases
      */
-    public ReleaseFileContent getReleaseFileContent(Collection<Integer> releaseIds) {
+    public ReleaseFileContent getReleaseFileContent(Collection<Integer> releaseIds, Set<ReleaseFileOption> options) {
         if (releaseIds.isEmpty()) {
-            return new ReleaseFileContent(ReleaseFileMode.NORMAL, List.of());
+            return new ReleaseFileContent(ReleaseFileMode.NORMAL, List.of(), options);
         }
         List<Release> releases = getReleases(releaseIds);
 
@@ -118,7 +118,7 @@ public class ReleaseFileService {
         loadSolutions(entries);
 
         loadXeniumFields(entries, slotIds);
-        return new ReleaseFileContent(mode, entries);
+        return new ReleaseFileContent(mode, entries, options);
     }
 
     public boolean shouldIncludeStorageAddress(Collection<Release> releases) {
@@ -1047,10 +1047,12 @@ public class ReleaseFileService {
     }
 
     public List<? extends TsvColumn<ReleaseEntry>> computeColumns(ReleaseFileContent rfc) {
-        List<ReleaseColumn> modeColumns = ReleaseColumn.forMode(rfc.getMode());
-        if (rfc.getEntries().stream().allMatch(e -> nullOrEmpty(e.getTagData()))) {
+        List<ReleaseColumn> modeColumns = ReleaseColumn.forModeAndOptions(rfc.getMode(), rfc.getOptions());
+        int dualColumnIndex = modeColumns.indexOf(ReleaseColumn.Dual_index_plate_name);
+        if (dualColumnIndex < 0 || rfc.getEntries().stream().allMatch(e -> nullOrEmpty(e.getTagData()))) {
             return modeColumns;
         }
+
         LinkedHashSet<String> tagDataColumnNames = rfc.getEntries().stream()
                 .map(ReleaseEntry::getTagData)
                 .filter(e -> !nullOrEmpty(e))
@@ -1060,10 +1062,6 @@ public class ReleaseFileService {
             return modeColumns;
         }
 
-        int dualColumnIndex = modeColumns.indexOf(ReleaseColumn.Dual_index_plate_name);
-        if (dualColumnIndex < 0) {
-            return modeColumns;
-        }
         List<TsvColumn<ReleaseEntry>> combinedList = new ArrayList<>(modeColumns.size() + tagDataColumnNames.size());
 
         combinedList.addAll(modeColumns.subList(0, dualColumnIndex+1));

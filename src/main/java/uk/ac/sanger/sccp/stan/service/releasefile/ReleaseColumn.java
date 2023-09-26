@@ -1,12 +1,12 @@
 package uk.ac.sanger.sccp.stan.service.releasefile;
 
+import org.jetbrains.annotations.NotNull;
 import uk.ac.sanger.sccp.stan.GraphQLCustomTypes;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.utils.tsv.TsvColumn;
 
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.function.Function;
 
 import static java.util.stream.Collectors.toList;
@@ -24,64 +24,73 @@ public enum ReleaseColumn implements TsvColumn<ReleaseEntry> {
     Spatial_location(Compose.tissue, Tissue::getSpatialLocation, SpatialLocation::getCode),
     Replicate_number(Compose.tissue, Tissue::getReplicate),
     Section_number(Compose.sample, Sample::getSection),
-    Section_position_in_slot(ReleaseEntry::getSamplePosition),
-    Section_thickness(ReleaseEntry::getSectionThickness),
-    Date_sectioned(ReleaseEntry::getSectionDate),
-    Section_comment(ReleaseEntry::getSectionComment),
-    Last_section_number(ReleaseEntry::getLastSection, ReleaseFileMode.NORMAL),
-    Fixative(Compose.tissue, Tissue::getFixative, HasName::getName),
-    Solution_currently_in(ReleaseEntry::getSolution),
-    Embedding_medium(Compose.tissue, Tissue::getMedium, Medium::getName),
-    Source_barcode(ReleaseEntry::getSourceBarcode, ReleaseFileMode.CDNA),
-    Source_address(ReleaseEntry::getSourceAddress, ReleaseFileMode.CDNA),
-    Stain_type(ReleaseEntry::getStainType),
-    Stain_QC_comment(ReleaseEntry::getStainQcComment),
-    Bond_barcode(ReleaseEntry::getBondBarcode),
-    RNAscope_plex(ReleaseEntry::getRnascopePlex),
-    IHC_plex(ReleaseEntry::getIhcPlex),
-    Tissue_coverage(ReleaseEntry::getCoverage),
-    Permeabilisation_time(ReleaseEntry::getPermTime),
-    Cq_value(ReleaseEntry::getCq),
-    Number_of_amplification_cycles(ReleaseEntry::getAmplificationCycles),
-    Visium_concentration(ReleaseEntry::getVisiumConcentration),
-    Visium_concentration_type(ReleaseEntry::getVisiumConcentrationType),
-    Dual_index_plate_type(ReleaseEntry::getReagentPlateType),
-    Dual_index_plate_name(ReleaseEntry::getReagentSource),
-    // tag columns go here
-    Probe_hybridisation_start(ReleaseEntry::getHybridStart, Compose.formatTime),
-    Xenium_plex_number(ReleaseEntry::getXeniumPlex),
-    Xenium_probe_panel(ReleaseEntry::getXeniumProbe),
-    Xenium_probe_lot(ReleaseEntry::getXeniumProbeLot),
-    Probe_hybridisation_end(ReleaseEntry::getHybridEnd, Compose.formatTime),
-    Probe_comments(ReleaseEntry::getHybridComment),
-    Xenium_decoding_reagent_lot(ReleaseEntry::getXeniumReagentLot),
-    Xenium_run_name(ReleaseEntry::getXeniumRun),
-    Xenium_cassette_position(ReleaseEntry::getXeniumCassettePosition),
-    Xenium_ROI(ReleaseEntry::getXeniumRoi),
-    Xenium_start(ReleaseEntry::getXeniumStart, Compose.formatTime),
-    Xenium_completion(ReleaseEntry::getXeniumEnd, Compose.formatTime),
-    Xenium_comments(ReleaseEntry::getXeniumComment),
+    Section_position_in_slot(ReleaseEntry::getSamplePosition, ReleaseFileOption.Histology, ReleaseFileOption.RNAscope_IHC, ReleaseFileOption.Visium, ReleaseFileOption.Xenium),
+    Section_thickness(ReleaseEntry::getSectionThickness, ReleaseFileOption.Histology, ReleaseFileOption.RNAscope_IHC, ReleaseFileOption.Visium, ReleaseFileOption.Xenium),
+    Date_sectioned(ReleaseEntry::getSectionDate, ReleaseFileOption.Histology, ReleaseFileOption.RNAscope_IHC, ReleaseFileOption.Visium, ReleaseFileOption.Xenium),
+    Section_comment(ReleaseEntry::getSectionComment, ReleaseFileOption.Histology, ReleaseFileOption.RNAscope_IHC, ReleaseFileOption.Visium, ReleaseFileOption.Xenium),
+    Last_section_number(ReleaseEntry::getLastSection, ReleaseFileMode.NORMAL, ReleaseFileOption.Sample_processing, ReleaseFileOption.Histology),
+    Fixative(Compose.tissue, Tissue::getFixative, HasName::getName, ReleaseFileOption.Sample_processing),
+    Solution_currently_in(ReleaseEntry::getSolution, ReleaseFileOption.Sample_processing),
+    Embedding_medium(Compose.tissue, Tissue::getMedium, Medium::getName, ReleaseFileOption.Sample_processing),
+    Source_barcode(ReleaseEntry::getSourceBarcode, ReleaseFileMode.CDNA, ReleaseFileOption.Visium),
+    Source_address(ReleaseEntry::getSourceAddress, ReleaseFileMode.CDNA, ReleaseFileOption.Visium),
+    Stain_type(ReleaseEntry::getStainType, ReleaseFileOption.Histology, ReleaseFileOption.RNAscope_IHC, ReleaseFileOption.Visium, ReleaseFileOption.Xenium),
+    Stain_QC_comment(ReleaseEntry::getStainQcComment, ReleaseFileOption.Histology, ReleaseFileOption.RNAscope_IHC, ReleaseFileOption.Visium, ReleaseFileOption.Xenium),
+    Bond_barcode(ReleaseEntry::getBondBarcode, ReleaseFileOption.RNAscope_IHC),
+    RNAscope_plex(ReleaseEntry::getRnascopePlex, ReleaseFileOption.RNAscope_IHC),
+    IHC_plex(ReleaseEntry::getIhcPlex, ReleaseFileOption.RNAscope_IHC),
+    Tissue_coverage(ReleaseEntry::getCoverage, ReleaseFileOption.Visium),
+    Permeabilisation_time(ReleaseEntry::getPermTime, ReleaseFileOption.Visium),
+    Cq_value(ReleaseEntry::getCq, ReleaseFileOption.Visium),
+    Number_of_amplification_cycles(ReleaseEntry::getAmplificationCycles, ReleaseFileOption.Visium),
+    Visium_concentration(ReleaseEntry::getVisiumConcentration, ReleaseFileOption.Visium),
+    Visium_concentration_type(ReleaseEntry::getVisiumConcentrationType, ReleaseFileOption.Visium),
+    Dual_index_plate_type(ReleaseEntry::getReagentPlateType, ReleaseFileOption.Visium),
+    Dual_index_plate_name(ReleaseEntry::getReagentSource, ReleaseFileOption.Visium),
+    // tag columns go here for visium
+    Probe_hybridisation_start(ReleaseEntry::getHybridStart, Compose.formatTime, ReleaseFileOption.Xenium),
+    Xenium_plex_number(ReleaseEntry::getXeniumPlex, ReleaseFileOption.Xenium),
+    Xenium_probe_panel(ReleaseEntry::getXeniumProbe, ReleaseFileOption.Xenium),
+    Xenium_probe_lot(ReleaseEntry::getXeniumProbeLot, ReleaseFileOption.Xenium),
+    Probe_hybridisation_end(ReleaseEntry::getHybridEnd, Compose.formatTime, ReleaseFileOption.Xenium),
+    Probe_comments(ReleaseEntry::getHybridComment, ReleaseFileOption.Xenium, ReleaseFileOption.Xenium),
+    Xenium_decoding_reagent_lot(ReleaseEntry::getXeniumReagentLot, ReleaseFileOption.Xenium),
+    Xenium_run_name(ReleaseEntry::getXeniumRun, ReleaseFileOption.Xenium),
+    Xenium_cassette_position(ReleaseEntry::getXeniumCassettePosition, ReleaseFileOption.Xenium),
+    Xenium_ROI(ReleaseEntry::getXeniumRoi, ReleaseFileOption.Xenium),
+    Xenium_start(ReleaseEntry::getXeniumStart, Compose.formatTime, ReleaseFileOption.Xenium),
+    Xenium_completion(ReleaseEntry::getXeniumEnd, Compose.formatTime, ReleaseFileOption.Xenium),
+    Xenium_comments(ReleaseEntry::getXeniumComment, ReleaseFileOption.Xenium),
     ;
 
     private final Function<ReleaseEntry, ?> function;
     private final ReleaseFileMode mode;
+    private final Set<ReleaseFileOption> options;
 
-    ReleaseColumn(Function<ReleaseEntry, ?> function, ReleaseFileMode mode) {
+    ReleaseColumn(Function<ReleaseEntry, ?> function, ReleaseFileMode mode, ReleaseFileOption... options) {
         this.function = function;
         this.mode = mode;
+        if (options.length==0) {
+            this.options = null;
+        } else {
+            this.options = EnumSet.copyOf(Arrays.asList(options));
+        }
     }
 
     ReleaseColumn(Function<ReleaseEntry, ?> function) {
         this(function, (ReleaseFileMode) null);
     }
 
-
-    <E> ReleaseColumn(Function<ReleaseEntry, E> composition, Function<E, ?> function) {
-        this(composition.andThen(Compose.skipNull(function)));
+    ReleaseColumn(Function<ReleaseEntry, ?> function, ReleaseFileOption... options) {
+        this(function, (ReleaseFileMode) null, options);
     }
 
-    <E, F> ReleaseColumn(Function<ReleaseEntry, E> composition, Function<E, F> func1, Function<F, ?> func2) {
-        this(composition.andThen(Compose.skipNull(func1)).andThen(Compose.skipNull(func2)));
+    <E> ReleaseColumn(Function<ReleaseEntry, E> composition, Function<E, ?> function, ReleaseFileOption... options) {
+        this(composition.andThen(Compose.skipNull(function)), options);
+    }
+
+    <E,F> ReleaseColumn(Function<ReleaseEntry, E> composition, Function<E, F> func1, Function<F, ?> func2, ReleaseFileOption... options) {
+        this(composition.andThen(Compose.skipNull(func1)).andThen(Compose.skipNull(func2)), options);
     }
 
     public ReleaseFileMode getMode() {
@@ -102,8 +111,20 @@ public enum ReleaseColumn implements TsvColumn<ReleaseEntry> {
         return this.name().replace('_',' ');
     }
 
-    public static List<ReleaseColumn> forMode(ReleaseFileMode mode) {
-        return Arrays.stream(values()).filter(rc -> rc.mode==null || rc.mode==mode).collect(toList());
+    public static List<ReleaseColumn> forModeAndOptions(ReleaseFileMode mode, @NotNull Collection<ReleaseFileOption> options) {
+        return Arrays.stream(values()).filter(rc -> rc.include(mode, options)).collect(toList());
+    }
+
+    public boolean modeFilter(ReleaseFileMode mode) {
+        return (this.mode==null || this.mode==mode);
+    }
+
+    public boolean optionFilter(@NotNull Collection<ReleaseFileOption> selectedOptions) {
+        return (this.options==null || selectedOptions.stream().anyMatch(this.options::contains));
+    }
+
+    public boolean include(ReleaseFileMode mode, @NotNull Collection<ReleaseFileOption> selectedOptions) {
+        return this.modeFilter(mode) && this.optionFilter(selectedOptions);
     }
 
     private static class Compose {
