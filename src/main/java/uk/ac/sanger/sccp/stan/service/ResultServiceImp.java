@@ -103,7 +103,8 @@ public class ResultServiceImp extends BaseResultService implements ResultService
             problems.add("The operation type "+opType.getName()+" cannot be used in this operation.");
         }
         UCMap<Labware> labware = validateLabware(problems, request.getLabwareResults());
-        validateLabwareContents(problems, labware, request.getLabwareResults());
+        boolean resultsRequired = (opType != null && !opType.getName().equalsIgnoreCase("Tissue coverage"));
+        validateLabwareContents(problems, labware, request.getLabwareResults(), resultsRequired);
         validateLotNumbers(problems, request.getLabwareResults());
         UCMap<List<SlotMeasurementRequest>> measurementMap = validateMeasurements(problems, labware, request.getLabwareResults());
         Map<Integer, Comment> commentMap = validateComments(problems, request.getLabwareResults());
@@ -139,14 +140,17 @@ public class ResultServiceImp extends BaseResultService implements ResultService
      * @param labwareResults the labware results to validate
      */
     public void validateLabwareContents(Collection<String> problems, UCMap<Labware> labware,
-                                                        Collection<LabwareResult> labwareResults) {
+                                        Collection<LabwareResult> labwareResults,
+                                        boolean resultsRequired) {
         for (LabwareResult lr : labwareResults) {
             Labware lw = labware.get(lr.getBarcode());
             if (lw==null) {
                 continue;
             }
             if (lr.getSampleResults().isEmpty()) {
-                problems.add("No results specified for labware "+lw.getBarcode()+".");
+                if (resultsRequired) {
+                    problems.add("No results specified for labware " + lw.getBarcode() + ".");
+                }
                 continue;
             }
             Set<Integer> slotIds = new HashSet<>(lr.getSampleResults().size());
@@ -388,8 +392,12 @@ public class ResultServiceImp extends BaseResultService implements ResultService
             }
         }
 
-        opCommentRepo.saveAll(opComments);
-        resOpRepo.saveAll(resultOps);
+        if (!opComments.isEmpty()) {
+            opCommentRepo.saveAll(opComments);
+        }
+        if (!resultOps.isEmpty()) {
+            resOpRepo.saveAll(resultOps);
+        }
 
         if (!measurements.isEmpty()) {
             measurementRepo.saveAll(measurements);

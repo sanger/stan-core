@@ -1,5 +1,6 @@
 mutation {
     recordStainResult(request: {
+        operationType: "Stain QC"
         workNumber: "SGP500"
         labwareResults: [
             {
@@ -10,13 +11,6 @@ mutation {
                         result: pass
                         commentId: 1
                         sampleComments: [{ sampleId: 999, commentId: 2 }]
-                    }
-                ]
-                slotMeasurements: [
-                    {
-                        address: "A1"
-                        name: "tissue coverage"
-                        value: "50"
                     }
                 ]
             }

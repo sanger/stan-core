@@ -6,7 +6,7 @@ import uk.ac.sanger.sccp.stan.request.ResultRequest;
 
 public interface ResultService {
     /**
-     * Records the given stain QC.
+     * Records the given stain QC/tissue coverage
      * @param user the user responsible for the request
      * @param request the request to record
      * @return an operation result (operations and labware)

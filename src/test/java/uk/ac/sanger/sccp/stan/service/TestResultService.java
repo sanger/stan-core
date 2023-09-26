@@ -125,7 +125,7 @@ public class TestResultService {
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lw);
         doReturn(lwMap).when(service).validateLabware(any(), any());
         doNothing().when(service).validateLotNumbers(any(), any());
-        doNothing().when(service).validateLabwareContents(any(), any(), any());
+        doNothing().when(service).validateLabwareContents(any(), any(), any(), anyBoolean());
         Work work = new Work(200, "SGP200", null, null, null, null, null, Work.Status.active);
         doReturn(work).when(mockWorkService).validateUsableWork(any(), any());
         Map<Integer, Integer> lwStainMap = Map.of(100,200);
@@ -173,7 +173,7 @@ public class TestResultService {
         verify(service).loadOpType(anyCollection(), eq(resultOpType.getName()));
         verify(service).loadOpType(anyCollection(), eq(setupOpType.getName()));
         verify(service).validateLabware(anyCollection(), eq(lrs));
-        verify(service).validateLabwareContents(anyCollection(), eq(lwMap), eq(lrs));
+        verify(service).validateLabwareContents(anyCollection(), eq(lwMap), eq(lrs), eq(true));
         verify(service).validateLotNumbers(anyCollection(), same(lrs));
         verify(service).validateComments(anyCollection(), eq(lrs));
         verify(service).validateSampleIdsInSampleComments(anyCollection(), same(lwMap), same(lrs));
@@ -285,7 +285,7 @@ public class TestResultService {
         }).when(service).validateSampleResult(anyCollection(), any(), any(), any());
 
         final List<String> problems = new ArrayList<>();
-        service.validateLabwareContents(problems, lwMap, lrs);
+        service.validateLabwareContents(problems, lwMap, lrs, true);
         assertThat(problems).containsExactlyInAnyOrder(slotSampleProblem, "No results specified for labware "+lw0.getBarcode()+".");
 
         //noinspection unchecked
