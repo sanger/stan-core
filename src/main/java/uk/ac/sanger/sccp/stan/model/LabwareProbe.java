@@ -21,6 +21,9 @@ public class LabwareProbe {
     private Integer labwareId;
     private String lotNumber;
     private Integer plex;
+
+    @Column(columnDefinition = "enum('SGP', 'Faculty')")
+    @Enumerated(EnumType.STRING)
     private  SlideCosting costing;
 
     public LabwareProbe() {}
