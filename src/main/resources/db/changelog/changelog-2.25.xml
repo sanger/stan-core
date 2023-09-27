@@ -49,7 +49,7 @@
             <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
             </column>
-            <column name="cost" type="VARCHAR(255)">
+            <column name="costing" type="ENUM('Faculty', 'SGP')">
                 <constraints nullable="false"/>
             </column>
         </createTable>

@@ -21,7 +21,7 @@ public class LabwareProbe {
     private Integer labwareId;
     private String lotNumber;
     private Integer plex;
-    private  SlideCosting cost;
+    private  SlideCosting costing;
 
     public LabwareProbe() {}
 
@@ -31,14 +31,14 @@ public class LabwareProbe {
     }
 
     public LabwareProbe(Integer id, ProbePanel probePanel, Integer operationId, Integer labwareId,
-                        String lotNumber, Integer plex, SlideCosting cost) {
+                        String lotNumber, Integer plex, SlideCosting costing) {
         this.id = id;
         this.probePanel = probePanel;
         this.operationId = operationId;
         this.labwareId = labwareId;
         this.lotNumber = lotNumber;
         this.plex = plex;
-        this.cost = cost;
+        this.costing = costing;
     }
 
     public Integer getId() {
@@ -89,12 +89,12 @@ public class LabwareProbe {
         this.plex = plex;
     }
 
-    public SlideCosting getCost() {
-        return cost;
+    public SlideCosting getCosting() {
+        return costing;
     }
 
-    public void setCost(SlideCosting cost) {
-        this.cost = cost;
+    public void setCosting(SlideCosting cost) {
+        this.costing = cost;
     }
 
     @Override
@@ -108,12 +108,12 @@ public class LabwareProbe {
                 && Objects.equals(this.labwareId, that.labwareId)
                 && Objects.equals(this.lotNumber, that.lotNumber)
                 && Objects.equals(this.plex, that.plex)
-                && Objects.equals(this.cost, that.cost));
+                && Objects.equals(this.costing, that.costing));
     }
 
     @Override
     public int hashCode() {
-        return (id!=null ? id.hashCode() : Objects.hash(probePanel, operationId, labwareId, cost));
+        return (id!=null ? id.hashCode() : Objects.hash(probePanel, operationId, labwareId, costing));
     }
 
     @Override
@@ -125,7 +125,7 @@ public class LabwareProbe {
                 .add("labwareId", labwareId)
                 .addRepr("lotNumber", lotNumber)
                 .add("plex", plex)
-                .add("cost", cost.name())
+                .add("cost", costing.name())
                 .toString();
     }
 }

@@ -282,11 +282,11 @@ public class ProbeServiceTest {
             "p1, lot!, 3, SGP, Bad lot.",
             "p1, lot2,,SGP, Probe plex missing.",
             "p1, lot2, 0, SGP, Probe plex should be a positive number.",
-            "p1, lot2, 2, , Probe cost is missing.",
+            "p1, lot2, 2, , Probe costing is missing.",
     })
-    public void testValidateProbes_problems(String probeName, String lot, Integer plex, SlideCosting cost, String expectedProblem) {
+    public void testValidateProbes_problems(String probeName, String lot, Integer plex, SlideCosting costing, String expectedProblem) {
         ProbeOperationLabware pol = new ProbeOperationLabware("BC", "SGP1",
-                List.of(new ProbeLot(probeName, lot, plex, cost)));
+                List.of(new ProbeLot(probeName, lot, plex, costing)));
         when(mockProbeLotValidator.validate(any(), any())).then(invocation -> {
             String lotArg = invocation.getArgument(0);
             if (lotArg.indexOf('!')<0) {

@@ -97,15 +97,15 @@ public class ProbeOperationRequest {
         private String lot;
         private Integer plex;
 
-        private SlideCosting cost;
+        private SlideCosting costing;
 
         public ProbeLot() {}
 
-        public ProbeLot(String name, String lot, Integer plex, SlideCosting cost) {
+        public ProbeLot(String name, String lot, Integer plex, SlideCosting costing) {
             this.name = name;
             this.lot = lot;
             this.plex = plex;
-            this.cost = cost;
+            this.costing = costing;
         }
 
         /**
@@ -141,8 +141,8 @@ public class ProbeOperationRequest {
             this.plex = plex;
         }
 
-        public SlideCosting getCost() {
-            return cost;
+        public SlideCosting getCosting() {
+            return costing;
         }
 
         @Override
@@ -153,17 +153,17 @@ public class ProbeOperationRequest {
             return (Objects.equals(this.name, that.name)
                     && Objects.equals(this.lot, that.lot)
                     && Objects.equals(this.plex, that.plex)
-                    && Objects.equals(this.cost, that.cost));
+                    && Objects.equals(this.costing, that.costing));
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(name, lot, plex, cost);
+            return Objects.hash(name, lot, plex, costing);
         }
 
         @Override
         public String toString() {
-            return String.format("(%s, %s, %s, %s)", repr(name), repr(lot), plex, repr(cost.name()));
+            return String.format("(%s, %s, %s, %s)", repr(name), repr(lot), plex, repr(costing.name()));
         }
     }
     // endregion

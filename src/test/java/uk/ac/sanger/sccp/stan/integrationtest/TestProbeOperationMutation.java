@@ -83,12 +83,12 @@ public class TestProbeOperationMutation {
         assertEquals("probe1", lwp.getProbePanel().getName());
         assertEquals(1, lwp.getPlex());
         assertEquals("LOT1", lwp.getLotNumber());
-        assertEquals(SlideCosting.Faculty, lwp.getCost());
+        assertEquals(SlideCosting.Faculty, lwp.getCosting());
         lwp = lwProbes.get(1);
         assertEquals("probe2", lwp.getProbePanel().getName());
         assertEquals(2, lwp.getPlex());
         assertEquals("LOT2", lwp.getLotNumber());
-        assertEquals(SlideCosting.SGP, lwp.getCost());
+        assertEquals(SlideCosting.SGP, lwp.getCosting());
 
         testCompletion(lw, work, sample);
         testAnalyser(lw, work, sample);
