@@ -159,12 +159,15 @@ public class TestReleaseService {
         if (recEmail.indexOf('@') < 0) {
             recEmail += "@sanger.ac.uk";
         }
-        doReturn(releaseFilePath).when(service).releaseFileLink(any());
+        doReturn(releaseFilePath).when(service).releaseFileLink(any(), any());
 
         ReleaseResult result = service.releaseAndUnstore(user, request);
         List<String> expectedBarcodes = request.getReleaseLabware().stream()
                 .map(ReleaseLabware::getBarcode)
                 .collect(toList());
+
+        Set<ReleaseFileOption> expectedOptions = nullOrEmpty(request.getColumnOptions()) ? Set.of()
+                : EnumSet.of(ReleaseFileOption.Visium, ReleaseFileOption.Xenium);
 
         verify(service).loadLabware(sameElements(expectedBarcodes, true));
         verify(service).validateLabware(labware);
@@ -175,6 +178,7 @@ public class TestReleaseService {
         verify(mockStoreService).loadBasicLocationsOfItems(labware.stream().map(Labware::getBarcode).collect(toList()));
         verify(service).transactRelease(user, recipient, otherRecs, destination, labware, locations, workMap);
         verify(mockStoreService).discardStorage(same(user), sameElements(expectedBarcodes, true));
+        verify(service).releaseFileLink(releases, expectedOptions);
         assertEquals(result, new ReleaseResult(releases));
     }
 
@@ -188,8 +192,12 @@ public class TestReleaseService {
         List<Labware> lws = List.of(EntityFactory.getTube());
         ReleaseRequest request = new ReleaseRequest(List.of(new ReleaseLabware(lws.get(0).getBarcode())), dest.getName(), rec.getUsername());
         request.setOtherRecipients(List.of("ford"));
+        ReleaseRequest requestWithOptions = new ReleaseRequest(request.getReleaseLabware(), request.getDestination(),
+                request.getRecipient(), request.getOtherRecipients());
+        requestWithOptions.setColumnOptions(List.of("visium", "xenium"));
         return Arrays.stream(new Object[][] {
                 {request, rec, dest, lws, null, null, null, null},
+                {requestWithOptions, rec, dest, lws, null, null, null, null},
                 {request, null, dest, null, null, null, null, "Recipient not found."},
                 {request, rec, null, null, null, null, null, "Destination not found."},
                 {new ReleaseRequest(List.of(), dest.getName(), rec.getUsername()),
@@ -263,14 +271,20 @@ public class TestReleaseService {
         assertEquals(expected, service.canonicaliseEmail(input));
     }
 
-    @Test
-    public void testReleaseFileLink() {
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testReleaseFileLink(boolean withGroups) {
         when(mockStanConfig.getRoot()).thenReturn("stanroot/");
         List<Release> releases = List.of(new Release(), new Release(), new Release());
         for (int i = 0; i < 3; ++i) {
             releases.get(i).setId(10+i);
         }
-        assertEquals("stanroot/releaseOptions?id=10,11,12", service.releaseFileLink(releases));
+        Set<ReleaseFileOption> options = (withGroups ? EnumSet.of(ReleaseFileOption.Visium, ReleaseFileOption.Xenium) : null);
+        String expected = "stanroot/releaseOptions?id=10,11,12";
+        if (withGroups) {
+            expected += "&groups=Visium,Xenium";
+        }
+        assertEquals(expected, service.releaseFileLink(releases, options));
     }
 
     @ParameterizedTest

@@ -78,6 +78,7 @@ public class ReleaseRequest {
     private String destination;
     private String recipient;
     private List<String> otherRecipients = List.of();
+    private List<String> columnOptions = List.of();
 
     public ReleaseRequest() {}
 
@@ -125,6 +126,14 @@ public class ReleaseRequest {
         this.otherRecipients = nullToEmpty(otherRecipients);
     }
 
+    public List<String> getColumnOptions() {
+        return this.columnOptions;
+    }
+
+    public void setColumnOptions(List<String> columnOptions) {
+        this.columnOptions = columnOptions;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -133,7 +142,9 @@ public class ReleaseRequest {
         return (Objects.equals(this.releaseLabware, that.releaseLabware)
                 && Objects.equals(this.destination, that.destination)
                 && Objects.equals(this.recipient, that.recipient)
-                && this.otherRecipients.equals(that.otherRecipients));
+                && this.otherRecipients.equals(that.otherRecipients)
+                && this.columnOptions.equals(that.columnOptions)
+        );
     }
 
     @Override
@@ -148,6 +159,7 @@ public class ReleaseRequest {
                 .add("destination", repr(destination))
                 .add("recipient", repr(recipient))
                 .addIfNotEmpty("otherRecipients", otherRecipients)
+                .addIfNotEmpty("columnOptions", columnOptions)
                 .toString();
     }
 }

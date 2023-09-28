@@ -2,6 +2,8 @@ package uk.ac.sanger.sccp.stan.model;
 
 import uk.ac.sanger.sccp.utils.UCMap;
 
+import java.util.Optional;
+
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
@@ -47,6 +49,10 @@ public enum ReleaseFileOption {
             throw new IllegalArgumentException("Unknown release file option: "+repr(name));
         }
         return option;
+    }
+
+    public static Optional<ReleaseFileOption> optForParameterName(String name) {
+        return Optional.ofNullable(NAME_OPTIONS.get(name));
     }
 
 }
