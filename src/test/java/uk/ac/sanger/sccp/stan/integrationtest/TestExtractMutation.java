@@ -1,6 +1,8 @@
 package uk.ac.sanger.sccp.stan.integrationtest;
 
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -11,12 +13,14 @@ import uk.ac.sanger.sccp.stan.EntityCreator;
 import uk.ac.sanger.sccp.stan.GraphQLTester;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.request.EquipmentCategory;
 import uk.ac.sanger.sccp.stan.service.store.StorelightClient;
 
 import javax.persistence.EntityManager;
 import javax.transaction.Transactional;
 import java.util.*;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
@@ -56,13 +60,16 @@ public class TestExtractMutation {
     private ResultOpRepo resultOpRepo;
     @Autowired
     private OperationCommentRepo opCommentRepo;
+    @Autowired
+    private EquipmentRepo equipmentRepo;
 
     @MockBean
     StorelightClient mockStorelightClient;
 
-    @Test
+    @ParameterizedTest
     @Transactional
-    public void testExtract() throws Exception {
+   @MethodSource("equipments")
+    public void testExtract(String expectedEquipmentName, Equipment equipment) throws Exception {
         Donor donor = entityCreator.createDonor("DONOR1");
         Tissue tissue = entityCreator.createTissue(donor, "TISSUE");
         BioState tissueBs = bioStateRepo.getByName("Tissue");
@@ -84,10 +91,11 @@ public class TestExtractMutation {
         CostCode cc = entityCreator.createCostCode("4");
         ReleaseRecipient wr = entityCreator.createReleaseRecipient("test1");
         Work work = entityCreator.createWork(wt, pr, null, cc, wr);
-
+        Integer equipmentId = equipment != null ? equipmentRepo.save(equipment).getId() : null;
         String mutation = tester.readGraphQL("extract.graphql")
                 .replace("[]", "[\"STAN-A1\", \"STAN-A2\"]")
                 .replace("LWTYPE", lwType.getName())
+                .replace("999", String.valueOf(equipmentId))
                 .replace("SGP4000", work.getWorkNumber());
         User user = entityCreator.createUser("user1");
         tester.setUser(user);
@@ -160,6 +168,12 @@ public class TestExtractMutation {
             assertEquals(sources[i].getId(), action.getSource().getLabwareId());
             assertEquals(dest.getFirstSlot(), action.getDestination());
             assertNotNull(op.getPerformed());
+            if(op.getEquipment() != null) {
+                assertEquals(expectedEquipmentName, op.getEquipment().getName());
+            } else {
+                assertNull(expectedEquipmentName);
+            }
+
         }
 
         verifyStorelightQuery(mockStorelightClient, List.of(sources[0].getBarcode(), sources[1].getBarcode()), user.getUsername());
@@ -232,5 +246,12 @@ public class TestExtractMutation {
         assertEquals(dests[0].getFirstSlot().getId(), meas.getSlotId());
         assertEquals("RIN", meas.getName());
         assertEquals("55.0", meas.getValue());
+    }
+
+    static Stream<Arguments> equipments() {
+        return Arrays.stream(new Object[][] {
+                {"Robot X", new Equipment( "Robot X", EquipmentCategory.extract.name())},
+                {null, null}
+        }).map(Arguments::of);
     }
 }

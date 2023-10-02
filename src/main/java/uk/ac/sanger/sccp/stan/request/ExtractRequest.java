@@ -15,15 +15,13 @@ public class ExtractRequest {
     private List<String> barcodes;
     private String labwareType;
     private String workNumber;
+    private Integer equipmentId;
 
-    public ExtractRequest() {
-        this(null, null, null);
-    }
-
-    public ExtractRequest(List<String> barcodes, String labwareType, String workNumber) {
+    public ExtractRequest(List<String> barcodes, String labwareType, String workNumber, Integer equipmentId) {
         setBarcodes(barcodes);
         this.labwareType = labwareType;
         this.workNumber = workNumber;
+        this.equipmentId = equipmentId;
     }
 
     public List<String> getBarcodes() {
@@ -48,6 +46,10 @@ public class ExtractRequest {
 
     public void setWorkNumber(String workNumber) {
         this.workNumber = workNumber;
+    }
+
+    public Integer getEquipmentId() {
+        return equipmentId;
     }
 
     @Override

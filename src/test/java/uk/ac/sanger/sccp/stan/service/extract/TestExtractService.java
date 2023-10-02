@@ -3,11 +3,14 @@ package uk.ac.sanger.sccp.stan.service.extract;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InOrder;
 import uk.ac.sanger.sccp.stan.*;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.request.EquipmentCategory;
 import uk.ac.sanger.sccp.stan.request.ExtractRequest;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.service.*;
@@ -17,6 +20,7 @@ import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -39,6 +43,7 @@ public class TestExtractService {
     private OperationTypeRepo mockOpTypeRepo;
     private SampleRepo mockSampleRepo;
     private SlotRepo mockSlotRepo;
+    private EquipmentRepo mockEquipmentRepo;
 
     private ExtractServiceImp service;
 
@@ -63,19 +68,20 @@ public class TestExtractService {
         mockOpTypeRepo = mock(OperationTypeRepo.class);
         mockSampleRepo = mock(SampleRepo.class);
         mockSlotRepo = mock(SlotRepo.class);
+        mockEquipmentRepo = mock(EquipmentRepo.class);
 
         rnaBioState = new BioState(2, "RNA");
         opType = EntityFactory.makeOperationType("Extract", rnaBioState, OperationTypeFlag.DISCARD_SOURCE);
         lwType = new LabwareType(6, "lwtype", 1, 1, EntityFactory.getLabelType(), false);
 
         service = spy(new ExtractServiceImp(mockTransactor, mockLabwareValidatorFactory, mockLwService, mockOpService,
-                mockStoreService, mockWorkService, mockLwRepo, mockLtRepo, mockOpTypeRepo, mockSampleRepo, mockSlotRepo));
+                mockStoreService, mockWorkService, mockLwRepo, mockLtRepo, mockOpTypeRepo, mockSampleRepo, mockSlotRepo, mockEquipmentRepo));
     }
 
     @Test
     public void testExtractAndUnstore() {
         User user = EntityFactory.getUser();
-        ExtractRequest request = new ExtractRequest(List.of("STAN-A1"), "lt", "SGP5000");
+        ExtractRequest request = new ExtractRequest(List.of("STAN-A1"), "lt", "SGP5000", 1);
         OperationResult result = new OperationResult();
         doReturn(result).when(service).transactExtract(any(), any());
 
@@ -90,7 +96,7 @@ public class TestExtractService {
     @ValueSource(booleans={false, true})
     public void testTransactExtract(boolean successful) {
         User user = EntityFactory.getUser();
-        ExtractRequest request = new ExtractRequest(List.of("STAN-A1"), "lt", "SGP5000");
+        ExtractRequest request = new ExtractRequest(List.of("STAN-A1"), "lt", "SGP5000", 1);
         OperationResult opResult;
         IllegalArgumentException exception;
         if (successful) {
@@ -137,25 +143,27 @@ public class TestExtractService {
         doReturn(lwMap).when(service).createNewLabware(any(), any());
         Map<Integer, Sample> sampleMap = Map.of(400, src.getFirstSlot().getSamples().get(0));
         doReturn(sampleMap).when(service).createSamples(any(), any());
-        doReturn(ops).when(service).createOperations(any(), any(), any(), any());
+        doReturn(ops).when(service).createOperations(any(), any(), any(), any(), any());
+        Equipment equipment = new Equipment(1, "robot 1", EquipmentCategory.extract.name(), true);
+        doReturn(equipment).when(service).validateEquipment(any());
 
-        assertThrowsMsg(IllegalArgumentException.class, "No barcodes specified.", () -> service.extract(user, new ExtractRequest(List.of(), ltName, "SGP5000")));
-        assertThrowsMsg(IllegalArgumentException.class, "No labware type specified.", () -> service.extract(user, new ExtractRequest(bcs, null, "SGP5000")));
+        assertThrowsMsg(IllegalArgumentException.class, "No barcodes specified.", () -> service.extract(user, new ExtractRequest(List.of(), ltName, "SGP5000", equipment.getId())));
+        assertThrowsMsg(IllegalArgumentException.class, "No labware type specified.", () -> service.extract(user, new ExtractRequest(bcs, null, "SGP5000", equipment.getId())));
 
         verify(service, never()).loadAndValidateLabware(any());
         verify(service, never()).discardSources(any());
         verify(service, never()).markSourcesUsed(any());
         verify(service, never()).createNewLabware(any(), any());
         verify(service, never()).createSamples(any(), any());
-        verify(service, never()).createOperations(any(), any(), any(), any());
+        verify(service, never()).createOperations(any(), any(), any(), any(), any());
 
-        assertEquals(new OperationResult(ops, List.of(dst)), service.extract(user, new ExtractRequest(bcs, ltName, work.getWorkNumber())));
+        assertEquals(new OperationResult(ops, List.of(dst)), service.extract(user, new ExtractRequest(bcs, ltName, work.getWorkNumber(), equipment.getId())));
 
         verify(service).loadAndValidateLabware(bcs);
         verify(service).discardSources(sources);
         verify(service).createNewLabware(lwType, sources);
         verify(service).createSamples(lwMap, rnaBioState);
-        verify(service).createOperations(user, opType, lwMap, sampleMap);
+        verify(service).createOperations(user, opType, lwMap, sampleMap, equipment);
         verify(mockWorkService).link(work, ops);
     }
 
@@ -322,7 +330,7 @@ public class TestExtractService {
                 .collect(toMap(i -> srcSamples[i].getId(), i -> dstSamples[i]));
 
         final User user = EntityFactory.getUser();
-        List<Operation> returnedOps = service.createOperations(user, opType, labwareMap, sampleMap);
+        List<Operation> returnedOps = service.createOperations(user, opType, labwareMap, sampleMap, new Equipment(" robot x", EquipmentCategory.extract.name()));
         assertEquals(createdOps, returnedOps);
 
         // make sure the ops are in the order corresponding to the labware
@@ -342,5 +350,29 @@ public class TestExtractService {
             assertSame(opType, op.getOperationType());
             assertNull(op.getPlanOperationId());
         }
+    }
+
+    @ParameterizedTest
+    @MethodSource("equipmentsAndValidations")
+    public void testValidateEquipment(Integer requestEquipmentId, Equipment expectedEquipment, Exception expectedException) {
+        if(expectedEquipment != null) {
+            when(mockEquipmentRepo.findById(requestEquipmentId)).thenReturn(Optional.of(expectedEquipment));
+        }
+        if (expectedException == null) {
+            assertEquals(expectedEquipment, service.validateEquipment(requestEquipmentId));
+        } else {
+            Exception exception = assertThrows(expectedException.getClass(), () -> service.validateEquipment(requestEquipmentId));
+            assertEquals(expectedException.getMessage(), exception.getMessage());
+        }
+    }
+
+    static Stream<Arguments> equipmentsAndValidations() {
+        return Arrays.stream(new Object[][] {
+                {1, new Equipment(1, "robot 1", EquipmentCategory.extract.name(), true), null},
+                {1, new Equipment(1, "robot 1",  EquipmentCategory.extract.name(), false), new IllegalArgumentException("Equipment id: 1 is disabled.")},
+                {1, new Equipment(1, "robot 1", "scanner", false), new IllegalArgumentException("Equipment id: 1 is not an extraction machine.")},
+                {null, null, null},
+                {1, null, new IllegalArgumentException("Unknown equipment id: 1.")},
+        }).map(Arguments::of);
     }
 }
