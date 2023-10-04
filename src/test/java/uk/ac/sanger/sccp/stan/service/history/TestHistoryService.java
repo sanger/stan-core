@@ -774,7 +774,7 @@ public class TestHistoryService {
         ops.get(0).setEquipment(new Equipment("Feeniks", "scanner"));
         int[] opIds = ops.stream().mapToInt(Operation::getId).toArray();
         final Set<Integer> opIdSet = Set.of(opIds[0], opIds[1]);
-        LabwareProbe lwp = new LabwareProbe(1, new ProbePanel("probe1"), opIds[1], labware[3].getId(), "LOT1", 5);
+        LabwareProbe lwp = new LabwareProbe(1, new ProbePanel("probe1"), opIds[1], labware[3].getId(), "LOT1", 5, SlideCosting.SGP);
 
         StainType st1 = new StainType(1, "Coffee");
         StainType st2 = new StainType(2, "Blood");
@@ -855,7 +855,7 @@ public class TestHistoryService {
                                 "A1: pass", "Alabama", "A1: Alaska", "Thickness: 4\u00a0μm", "ROI (90, A1): roi1"), "A1", null),
                 new HistoryEntry(opIds[1], opTypeName1, ops.get(1).getPerformed(), labware[0].getId(),
                         labware[3].getId(), samples[2].getId(), username, null,
-                        List.of("Stain type: Coffee, Blood", "Epsilon: Zeta", "Probe panel: probe1", "Lot: LOT1", "Plex: 5", "Arizona"), "A1", null)
+                        List.of("Stain type: Coffee, Blood", "Epsilon: Zeta", "Probe panel: probe1", "Lot: LOT1", "Plex: 5", "Costing: SGP", "Arizona"), "A1", null)
         );
         assertThat(service.createEntriesForOps(ops, sampleIds, labwareList, opWork, null)).containsExactlyElementsOf(expectedEntries);
 
