@@ -577,11 +577,12 @@ public class TestHistoryService {
 
     @Test
     public void testGetLabwareProbeDetails() {
-        LabwareProbe lwp = new LabwareProbe(1, new ProbePanel(1, "probe1"), 5, 6, "LOT1", 21);
+        LabwareProbe lwp = new LabwareProbe(1, new ProbePanel(1, "probe1"), 5, 6, "LOT1", 21, SlideCosting.SGP);
         assertThat(service.getLabwareProbeDetails(lwp)).containsExactly(
                 "Probe panel: probe1",
                 "Lot: LOT1",
-                "Plex: 21"
+                "Plex: 21",
+                "Costing: SGP"
         );
     }
 

@@ -128,7 +128,7 @@ public class LabwareProbe {
                 .add("labwareId", labwareId)
                 .addRepr("lotNumber", lotNumber)
                 .add("plex", plex)
-                .add("cost", costing.name())
+                .add("costing", costing)
                 .toString();
     }
 }
