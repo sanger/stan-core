@@ -13,7 +13,7 @@ import uk.ac.sanger.sccp.stan.EntityCreator;
 import uk.ac.sanger.sccp.stan.GraphQLTester;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.EquipmentCategory;
+import uk.ac.sanger.sccp.stan.service.extract.ExtractServiceImp;
 import uk.ac.sanger.sccp.stan.service.store.StorelightClient;
 
 import javax.persistence.EntityManager;
@@ -250,7 +250,7 @@ public class TestExtractMutation {
 
     static Stream<Arguments> equipments() {
         return Arrays.stream(new Object[][] {
-                {"Robot X", new Equipment( "Robot X", EquipmentCategory.extract.name())},
+                {"Robot X", new Equipment( "Robot X", ExtractServiceImp.EXTRACT_OP_TYPE_NAME)},
                 {null, null}
         }).map(Arguments::of);
     }

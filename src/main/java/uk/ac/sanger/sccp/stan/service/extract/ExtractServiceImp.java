@@ -5,7 +5,6 @@ import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.Transactor;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.EquipmentCategory;
 import uk.ac.sanger.sccp.stan.request.ExtractRequest;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.service.*;
@@ -13,6 +12,7 @@ import uk.ac.sanger.sccp.stan.service.store.StoreService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 
 import java.util.*;
+import java.util.function.Consumer;
 
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
@@ -36,6 +36,8 @@ public class ExtractServiceImp implements ExtractService {
     private final SampleRepo sampleRepo;
     private final SlotRepo slotRepo;
     private final EquipmentRepo equipmentRepo;
+
+    public static String EXTRACT_OP_TYPE_NAME = "extract";
 
     @Autowired
     public ExtractServiceImp(Transactor transactor, LabwareValidatorFactory labwareValidatorFactory,
@@ -97,7 +99,8 @@ public class ExtractServiceImp implements ExtractService {
         }
         Map<Labware, Labware> labwareMap = createNewLabware(labwareType, sources);
         Map<Integer, Sample> sampleMap = createSamples(labwareMap, bioState);
-        List<Operation> ops = createOperations(user, opType, labwareMap, sampleMap, equipment);
+        Consumer<Operation> opModifier = (equipment==null ? null : (op -> op.setEquipment(equipment)));
+        List<Operation> ops = createOperations(user, opType, labwareMap, sampleMap, opModifier);
         if (work!=null) {
             workService.link(work, ops);
         }
@@ -113,7 +116,7 @@ public class ExtractServiceImp implements ExtractService {
             throw new IllegalArgumentException("Unknown equipment id: "+equipmentId+".");
         }
         Equipment equipment = opt.get();
-        if (EquipmentCategory.valueOf(opt.get().getCategory()) != EquipmentCategory.extract) {
+        if (opt.get().getCategory() != EXTRACT_OP_TYPE_NAME) {
             throw new IllegalArgumentException("Equipment id: "+equipmentId + " is not an extraction machine.");
         }
         if (!equipment.isEnabled()) {
@@ -223,10 +226,11 @@ public class ExtractServiceImp implements ExtractService {
      * @param opType the type of operation
      * @param labwareMap the map of source to destination labware
      * @param sampleMap the map of source sample id to destination sample
+     * @param opModifier function to run on the operation as it is being created
      * @return a list of newly created operations.
      */
     public List<Operation> createOperations(User user, OperationType opType, Map<Labware, Labware> labwareMap,
-                                            Map<Integer, Sample> sampleMap, Equipment equipment) {
+                                            Map<Integer, Sample> sampleMap, Consumer<Operation> opModifier) {
         List<Operation> ops = new ArrayList<>(labwareMap.size());
         for (var entry : labwareMap.entrySet()) {
             Slot src = sourceSlot(entry.getKey());
@@ -234,10 +238,7 @@ public class ExtractServiceImp implements ExtractService {
             List<Action> actions = src.getSamples().stream()
                     .map(srcSam -> new Action(null, null, src, dst, sampleMap.get(srcSam.getId()), srcSam))
                     .collect(toList());
-            Operation op = opService.createOperation(opType, user, actions, null);
-            if(equipment != null) {
-                op.setEquipment(equipment);
-            }
+            Operation op = opService.createOperation(opType, user, actions, null, opModifier);
             ops.add(op);
         }
         return ops;
