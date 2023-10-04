@@ -727,6 +727,8 @@ input ReleaseRequest {
     recipient: String!
     """Additional recipients."""
     otherRecipients: [String!]
+    """Release column groups for the release file."""
+    columnOptions: [String!]
 }
 
 """An option for customising the columns in a release file."""

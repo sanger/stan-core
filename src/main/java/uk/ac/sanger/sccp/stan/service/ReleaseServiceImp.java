@@ -82,6 +82,7 @@ public class ReleaseServiceImp implements ReleaseService {
         validateLabware(labware);
         validateContents(labware);
         List<ReleaseRecipient> otherRecs = loadOtherRecipients(request.getOtherRecipients());
+        Set<ReleaseFileOption> options = loadFileOptions(request.getColumnOptions());
 
         // Looks valid, so load storage locations before the transaction
         UCMap<BasicLocation> locations = storeService.loadBasicLocationsOfItems(labware.stream().map(Labware::getBarcode).collect(toList()));
@@ -103,7 +104,7 @@ public class ReleaseServiceImp implements ReleaseService {
                 .sorted()
                 .collect(toList());
 
-        emailService.tryReleaseEmail(recipientEmail, otherEmails, workNumbers, releaseFileLink(releases));
+        emailService.tryReleaseEmail(recipientEmail, otherEmails, workNumbers, releaseFileLink(releases, options));
 
         return new ReleaseResult(releases);
     }
@@ -138,11 +139,18 @@ public class ReleaseServiceImp implements ReleaseService {
     /**
      * Path to the release file for the given releases
      * @param releases the releases
+     * @param options the options for the release file
      * @return the path to the release file, as a string
      */
-    public String releaseFileLink(Collection<Release> releases) {
+    public String releaseFileLink(Collection<Release> releases, Collection<ReleaseFileOption> options) {
         String joinedIds = releases.stream().map(r -> r.getId().toString()).collect(joining(","));
-        return stanConfig.getRoot() + "releaseOptions?id=" + joinedIds;
+        String joinedOptions;
+        if (nullOrEmpty(options)) {
+            joinedOptions = "";
+        } else {
+            joinedOptions = "&groups=" + options.stream().map(ReleaseFileOption::getQueryParamName).collect(joining(","));
+        }
+        return stanConfig.getRoot() + "releaseOptions?id=" + joinedIds + joinedOptions;
     }
 
     /**
@@ -316,6 +324,36 @@ public class ReleaseServiceImp implements ReleaseService {
                 throw new IllegalArgumentException("Cannot release a mix of cDNA and other bio states.");
             }
         }
+    }
+
+    /**
+     * Loads options for the given option names.
+     * @param optionNames the param names of options
+     * @return a set of options
+     * @exception IllegalArgumentException if any name is invalid
+     */
+    public Set<ReleaseFileOption> loadFileOptions(Collection<String> optionNames) {
+        if (nullOrEmpty(optionNames)) {
+            return Set.of();
+        }
+        LinkedHashSet<String> unknown = new LinkedHashSet<>();
+        Set<ReleaseFileOption> options = EnumSet.noneOf(ReleaseFileOption.class);
+        for (String name : optionNames) {
+            if (nullOrEmpty(name)) {
+                throw new IllegalArgumentException("Missing file option name.");
+            } else {
+                var optOption = ReleaseFileOption.optForParameterName(name);
+                if (optOption.isPresent()) {
+                    options.add(optOption.get());
+                } else {
+                    unknown.add(name);
+                }
+            }
+        }
+        if (!unknown.isEmpty()) {
+            throw new IllegalArgumentException("Unknown file option: "+unknown);
+        }
+        return options;
     }
 
     /**
