@@ -747,6 +747,8 @@ input ExtractRequest {
     labwareType: String!
     """An optional work number to associate with these operations."""
     workNumber: String
+    """The id of the equipment being used in the extraction. If manual equipmentId is undefined"""
+    equipmentId: Int
 }
 
 """The result of a request to record operations."""

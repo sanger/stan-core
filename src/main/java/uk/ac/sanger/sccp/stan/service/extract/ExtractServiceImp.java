@@ -12,6 +12,7 @@ import uk.ac.sanger.sccp.stan.service.store.StoreService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 
 import java.util.*;
+import java.util.function.Consumer;
 
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
@@ -34,13 +35,16 @@ public class ExtractServiceImp implements ExtractService {
     private final OperationTypeRepo opTypeRepo;
     private final SampleRepo sampleRepo;
     private final SlotRepo slotRepo;
+    private final EquipmentRepo equipmentRepo;
+
+    public static String EXTRACT_OP_TYPE_NAME = "extract";
 
     @Autowired
     public ExtractServiceImp(Transactor transactor, LabwareValidatorFactory labwareValidatorFactory,
                              LabwareService labwareService, OperationService opService,
                              StoreService storeService, WorkService workService,
                              LabwareRepo labwareRepo, LabwareTypeRepo lwTypeRepo, OperationTypeRepo opTypeRepo,
-                             SampleRepo sampleRepo, SlotRepo slotRepo) {
+                             SampleRepo sampleRepo, SlotRepo slotRepo, EquipmentRepo equipmentRepo) {
         this.transactor = transactor;
         this.labwareValidatorFactory = labwareValidatorFactory;
         this.labwareService = labwareService;
@@ -52,6 +56,7 @@ public class ExtractServiceImp implements ExtractService {
         this.opTypeRepo = opTypeRepo;
         this.sampleRepo = sampleRepo;
         this.slotRepo = slotRepo;
+        this.equipmentRepo = equipmentRepo;
     }
 
     @Override
@@ -80,6 +85,7 @@ public class ExtractServiceImp implements ExtractService {
         if (request.getLabwareType()==null || request.getLabwareType().isEmpty()) {
             throw new IllegalArgumentException("No labware type specified.");
         }
+        Equipment equipment = validateEquipment(request.getEquipmentId());
         LabwareType labwareType = lwTypeRepo.getByName(request.getLabwareType());
         OperationType opType = opTypeRepo.getByName("Extract");
         Work work = (request.getWorkNumber()==null ? null : workService.getUsableWork(request.getWorkNumber()));
@@ -93,11 +99,30 @@ public class ExtractServiceImp implements ExtractService {
         }
         Map<Labware, Labware> labwareMap = createNewLabware(labwareType, sources);
         Map<Integer, Sample> sampleMap = createSamples(labwareMap, bioState);
-        List<Operation> ops = createOperations(user, opType, labwareMap, sampleMap);
+        Consumer<Operation> opModifier = (equipment==null ? null : (op -> op.setEquipment(equipment)));
+        List<Operation> ops = createOperations(user, opType, labwareMap, sampleMap, opModifier);
         if (work!=null) {
             workService.link(work, ops);
         }
         return new OperationResult(ops, labwareMap.values());
+    }
+
+    public Equipment validateEquipment(Integer equipmentId) {
+        if (equipmentId==null) {
+            return null;
+        }
+        Optional<Equipment> opt = equipmentRepo.findById(equipmentId);
+        if (opt.isEmpty()) {
+            throw new IllegalArgumentException("Unknown equipment id: "+equipmentId+".");
+        }
+        Equipment equipment = opt.get();
+        if (!opt.get().getCategory().equalsIgnoreCase(EXTRACT_OP_TYPE_NAME)) {
+            throw new IllegalArgumentException("Equipment id: "+equipmentId + " is not an extraction machine.");
+        }
+        if (!equipment.isEnabled()) {
+            throw new IllegalArgumentException("Equipment id: "+equipmentId + " is disabled.");
+        }
+        return equipment;
     }
 
     /**
@@ -201,10 +226,11 @@ public class ExtractServiceImp implements ExtractService {
      * @param opType the type of operation
      * @param labwareMap the map of source to destination labware
      * @param sampleMap the map of source sample id to destination sample
+     * @param opModifier function to run on the operation as it is being created
      * @return a list of newly created operations.
      */
     public List<Operation> createOperations(User user, OperationType opType, Map<Labware, Labware> labwareMap,
-                                            Map<Integer, Sample> sampleMap) {
+                                            Map<Integer, Sample> sampleMap, Consumer<Operation> opModifier) {
         List<Operation> ops = new ArrayList<>(labwareMap.size());
         for (var entry : labwareMap.entrySet()) {
             Slot src = sourceSlot(entry.getKey());
@@ -212,7 +238,7 @@ public class ExtractServiceImp implements ExtractService {
             List<Action> actions = src.getSamples().stream()
                     .map(srcSam -> new Action(null, null, src, dst, sampleMap.get(srcSam.getId()), srcSam))
                     .collect(toList());
-            Operation op = opService.createOperation(opType, user, actions, null);
+            Operation op = opService.createOperation(opType, user, actions, null, opModifier);
             ops.add(op);
         }
         return ops;

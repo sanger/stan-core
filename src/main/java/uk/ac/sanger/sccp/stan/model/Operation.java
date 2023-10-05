@@ -43,18 +43,23 @@ public class Operation implements Comparable<Operation> {
 
     public Operation() {}
 
+    public Operation(Integer id, OperationType operationType, LocalDateTime performed, List<Action> actions, User user) {
+        this(id, operationType, performed, actions, user, null);
+    }
+
+    public Operation(Integer id, OperationType operationType, LocalDateTime performed, List<Action> actions, User user, Integer planOperationId) {
+        this(id, operationType, performed, actions, user, planOperationId, null);
+    }
+
     public Operation(Integer id, OperationType operationType, LocalDateTime performed, List<Action> actions, User user,
-                     Integer planOperationId) {
+                     Integer planOperationId, Equipment equipment) {
         this.id = id;
         this.operationType = operationType;
         this.performed = performed;
         this.actions = actions;
         this.user = user;
         this.planOperationId = planOperationId;
-    }
-
-    public Operation(Integer id, OperationType operationType, LocalDateTime performed, List<Action> actions, User user) {
-        this(id, operationType, performed, actions, user, null);
+        this.equipment = equipment;
     }
 
     public Integer getId() {

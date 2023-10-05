@@ -3,6 +3,8 @@ package uk.ac.sanger.sccp.stan.service.extract;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InOrder;
 import uk.ac.sanger.sccp.stan.*;
@@ -16,7 +18,9 @@ import uk.ac.sanger.sccp.stan.service.work.WorkService;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -39,6 +43,7 @@ public class TestExtractService {
     private OperationTypeRepo mockOpTypeRepo;
     private SampleRepo mockSampleRepo;
     private SlotRepo mockSlotRepo;
+    private EquipmentRepo mockEquipmentRepo;
 
     private ExtractServiceImp service;
 
@@ -63,19 +68,20 @@ public class TestExtractService {
         mockOpTypeRepo = mock(OperationTypeRepo.class);
         mockSampleRepo = mock(SampleRepo.class);
         mockSlotRepo = mock(SlotRepo.class);
+        mockEquipmentRepo = mock(EquipmentRepo.class);
 
         rnaBioState = new BioState(2, "RNA");
         opType = EntityFactory.makeOperationType("Extract", rnaBioState, OperationTypeFlag.DISCARD_SOURCE);
         lwType = new LabwareType(6, "lwtype", 1, 1, EntityFactory.getLabelType(), false);
 
         service = spy(new ExtractServiceImp(mockTransactor, mockLabwareValidatorFactory, mockLwService, mockOpService,
-                mockStoreService, mockWorkService, mockLwRepo, mockLtRepo, mockOpTypeRepo, mockSampleRepo, mockSlotRepo));
+                mockStoreService, mockWorkService, mockLwRepo, mockLtRepo, mockOpTypeRepo, mockSampleRepo, mockSlotRepo, mockEquipmentRepo));
     }
 
     @Test
     public void testExtractAndUnstore() {
         User user = EntityFactory.getUser();
-        ExtractRequest request = new ExtractRequest(List.of("STAN-A1"), "lt", "SGP5000");
+        ExtractRequest request = new ExtractRequest(List.of("STAN-A1"), "lt", "SGP5000", 1);
         OperationResult result = new OperationResult();
         doReturn(result).when(service).transactExtract(any(), any());
 
@@ -90,7 +96,7 @@ public class TestExtractService {
     @ValueSource(booleans={false, true})
     public void testTransactExtract(boolean successful) {
         User user = EntityFactory.getUser();
-        ExtractRequest request = new ExtractRequest(List.of("STAN-A1"), "lt", "SGP5000");
+        ExtractRequest request = new ExtractRequest(List.of("STAN-A1"), "lt", "SGP5000", 1);
         OperationResult opResult;
         IllegalArgumentException exception;
         if (successful) {
@@ -137,25 +143,26 @@ public class TestExtractService {
         doReturn(lwMap).when(service).createNewLabware(any(), any());
         Map<Integer, Sample> sampleMap = Map.of(400, src.getFirstSlot().getSamples().get(0));
         doReturn(sampleMap).when(service).createSamples(any(), any());
-        doReturn(ops).when(service).createOperations(any(), any(), any(), any());
+        doReturn(ops).when(service).createOperations(any(), any(), any(), any(), any());
+        doReturn(null).when(service).validateEquipment(any());
 
-        assertThrowsMsg(IllegalArgumentException.class, "No barcodes specified.", () -> service.extract(user, new ExtractRequest(List.of(), ltName, "SGP5000")));
-        assertThrowsMsg(IllegalArgumentException.class, "No labware type specified.", () -> service.extract(user, new ExtractRequest(bcs, null, "SGP5000")));
+        assertThrowsMsg(IllegalArgumentException.class, "No barcodes specified.", () -> service.extract(user, new ExtractRequest(List.of(), ltName, "SGP5000", null)));
+        assertThrowsMsg(IllegalArgumentException.class, "No labware type specified.", () -> service.extract(user, new ExtractRequest(bcs, null, "SGP5000", null)));
 
         verify(service, never()).loadAndValidateLabware(any());
         verify(service, never()).discardSources(any());
         verify(service, never()).markSourcesUsed(any());
         verify(service, never()).createNewLabware(any(), any());
         verify(service, never()).createSamples(any(), any());
-        verify(service, never()).createOperations(any(), any(), any(), any());
+        verify(service, never()).createOperations(any(), any(), any(), any(), any());
 
-        assertEquals(new OperationResult(ops, List.of(dst)), service.extract(user, new ExtractRequest(bcs, ltName, work.getWorkNumber())));
+        assertEquals(new OperationResult(ops, List.of(dst)), service.extract(user, new ExtractRequest(bcs, ltName, work.getWorkNumber(), null)));
 
         verify(service).loadAndValidateLabware(bcs);
         verify(service).discardSources(sources);
         verify(service).createNewLabware(lwType, sources);
         verify(service).createSamples(lwMap, rnaBioState);
-        verify(service).createOperations(user, opType, lwMap, sampleMap);
+        verify(service).createOperations(user, opType, lwMap, sampleMap, null);
         verify(mockWorkService).link(work, ops);
     }
 
@@ -307,13 +314,18 @@ public class TestExtractService {
         IntStream.range(0, srcSamples.length)
                 .forEach(i -> labwareMap.put(srcLabware[i], dstLabware[i]));
         final List<Operation> createdOps = new ArrayList<>();
-        when(mockOpService.createOperation(any(), any(), any(), any())).then(invocation -> {
+        Equipment equipment = new Equipment("robot 1", opType.getName());
+        when(mockOpService.createOperation(any(), any(), any(), any(), any())).then(invocation -> {
             OperationType opType = invocation.getArgument(0);
             User user = invocation.getArgument(1);
             List<Action> actions = invocation.getArgument(2);
             Integer planId = invocation.getArgument(3);
+            Consumer<Operation> opModifier = invocation.getArgument(4);
             int opId = 100 + createdOps.size();
             Operation op = new Operation(opId, opType, LocalDateTime.now(), actions, user, planId);
+            if (opModifier!=null) {
+                opModifier.accept(op);
+            }
             createdOps.add(op);
             return op;
         });
@@ -322,7 +334,7 @@ public class TestExtractService {
                 .collect(toMap(i -> srcSamples[i].getId(), i -> dstSamples[i]));
 
         final User user = EntityFactory.getUser();
-        List<Operation> returnedOps = service.createOperations(user, opType, labwareMap, sampleMap);
+        List<Operation> returnedOps = service.createOperations(user, opType, labwareMap, sampleMap, op -> op.setEquipment(equipment));
         assertEquals(createdOps, returnedOps);
 
         // make sure the ops are in the order corresponding to the labware
@@ -337,10 +349,35 @@ public class TestExtractService {
             assertSame(dstLabware[i].getFirstSlot(), action.getDestination());
             assertSame(srcSamples[i], action.getSourceSample());
             assertSame(dstSamples[i], action.getSample());
+            assertEquals(equipment.getName(), op.getEquipment().getName());
 
             assertSame(user, op.getUser());
             assertSame(opType, op.getOperationType());
             assertNull(op.getPlanOperationId());
         }
+    }
+
+    @ParameterizedTest
+    @MethodSource("equipmentsAndValidations")
+    public void testValidateEquipment(Integer requestEquipmentId, Equipment expectedEquipment, Exception expectedException) {
+        if(expectedEquipment != null) {
+            when(mockEquipmentRepo.findById(requestEquipmentId)).thenReturn(Optional.of(expectedEquipment));
+        }
+        if (expectedException == null) {
+            assertEquals(expectedEquipment, service.validateEquipment(requestEquipmentId));
+        } else {
+            Exception exception = assertThrows(expectedException.getClass(), () -> service.validateEquipment(requestEquipmentId));
+            assertEquals(expectedException.getMessage(), exception.getMessage());
+        }
+    }
+
+    static Stream<Arguments> equipmentsAndValidations() {
+        return Arrays.stream(new Object[][] {
+                {1, new Equipment(1, "robot 1",  ExtractServiceImp.EXTRACT_OP_TYPE_NAME, true), null},
+                {1, new Equipment(1, "robot 1",   ExtractServiceImp.EXTRACT_OP_TYPE_NAME, false), new IllegalArgumentException("Equipment id: 1 is disabled.")},
+                {1, new Equipment(1, "robot 1", "scanner", false), new IllegalArgumentException("Equipment id: 1 is not an extraction machine.")},
+                {null, null, null},
+                {1, null, new IllegalArgumentException("Unknown equipment id: 1.")},
+        }).map(Arguments::of);
     }
 }
