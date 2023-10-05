@@ -2,7 +2,7 @@ mutation {
     plan(request:{
         operationType: "Section",
         labware:[{
-            labwareType:"Slide",
+            labwareType:"6 slot slide",
             actions:[
                 {
                     source:{ barcode:"BARCODE0" }
