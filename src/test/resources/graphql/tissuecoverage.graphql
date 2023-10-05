@@ -1,0 +1,23 @@
+mutation {
+    recordStainResult(request: {
+        operationType: "Tissue coverage"
+        workNumber: "SGP500"
+        labwareResults: [
+            {
+                barcode: "STAN-50"
+                slotMeasurements: [
+                    {
+                        address: "A1"
+                        name: "tissue coverage"
+                        value: "50"
+                    }
+                ]
+            }
+        ]
+    }) {
+        operations {
+            id
+            operationType { name }
+        }
+    }
+}

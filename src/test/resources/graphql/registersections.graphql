@@ -2,7 +2,7 @@ mutation {
     registerSections(request: {
         labware: [
             {
-                labwareType: "slide"
+                labwareType: "6 slot slide"
                 externalBarcode: "EXT1"
                 contents: [
                     {
