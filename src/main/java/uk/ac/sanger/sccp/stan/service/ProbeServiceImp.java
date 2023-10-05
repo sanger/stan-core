@@ -173,6 +173,9 @@ public class ProbeServiceImp implements ProbeService {
                     } else if (pl.getPlex() < 1) {
                         problems.add("Probe plex should be a positive number.");
                     }
+                    if(pl.getCosting() == null){
+                        problems.add("Probe costing is missing.");
+                    }
                 }
             }
         }
@@ -283,7 +286,7 @@ public class ProbeServiceImp implements ProbeService {
             Labware lw = lwMap.get(pol.getBarcode());
             for (ProbeLot pl : pol.getProbes()) {
                 ProbePanel pp = probeMap.get(pl.getName());
-                lwProbes.add(new LabwareProbe(null, pp, op.getId(), lw.getId(), pl.getLot().toUpperCase(), pl.getPlex()));
+                lwProbes.add(new LabwareProbe(null, pp, op.getId(), lw.getId(), pl.getLot().toUpperCase(), pl.getPlex(), pl.getCosting()));
             }
         }
         lwProbeRepo.saveAll(lwProbes);

@@ -22,16 +22,26 @@ public class LabwareProbe {
     private String lotNumber;
     private Integer plex;
 
+    @Column(columnDefinition = "enum('SGP', 'Faculty')")
+    @Enumerated(EnumType.STRING)
+    private  SlideCosting costing;
+
     public LabwareProbe() {}
 
     public LabwareProbe(Integer id, ProbePanel probePanel, Integer operationId, Integer labwareId,
                         String lotNumber, Integer plex) {
+        this(id, probePanel, operationId, labwareId, lotNumber, plex, null);
+    }
+
+    public LabwareProbe(Integer id, ProbePanel probePanel, Integer operationId, Integer labwareId,
+                        String lotNumber, Integer plex, SlideCosting costing) {
         this.id = id;
         this.probePanel = probePanel;
         this.operationId = operationId;
         this.labwareId = labwareId;
         this.lotNumber = lotNumber;
         this.plex = plex;
+        this.costing = costing;
     }
 
     public Integer getId() {
@@ -82,6 +92,14 @@ public class LabwareProbe {
         this.plex = plex;
     }
 
+    public SlideCosting getCosting() {
+        return costing;
+    }
+
+    public void setCosting(SlideCosting cost) {
+        this.costing = cost;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -91,13 +109,14 @@ public class LabwareProbe {
                 && Objects.equals(this.probePanel, that.probePanel)
                 && Objects.equals(this.operationId, that.operationId)
                 && Objects.equals(this.labwareId, that.labwareId)
-        && Objects.equals(this.lotNumber, that.lotNumber)
-                && Objects.equals(this.plex, that.plex));
+                && Objects.equals(this.lotNumber, that.lotNumber)
+                && Objects.equals(this.plex, that.plex)
+                && Objects.equals(this.costing, that.costing));
     }
 
     @Override
     public int hashCode() {
-        return (id!=null ? id.hashCode() : Objects.hash(probePanel, operationId, labwareId));
+        return (id!=null ? id.hashCode() : Objects.hash(probePanel, operationId, labwareId, costing));
     }
 
     @Override
@@ -109,6 +128,7 @@ public class LabwareProbe {
                 .add("labwareId", labwareId)
                 .addRepr("lotNumber", lotNumber)
                 .add("plex", plex)
+                .add("costing", costing)
                 .toString();
     }
 }

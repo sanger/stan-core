@@ -49,6 +49,9 @@
             <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
             </column>
+            <column name="costing" type="ENUM('Faculty', 'SGP')">
+                <constraints nullable="false"/>
+            </column>
         </createTable>
         <createIndex tableName="labware_probe" indexName="ix_labware_probe_lot_number" unique="false">
             <column name="lot_number"/>

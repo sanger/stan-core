@@ -1,5 +1,6 @@
 package uk.ac.sanger.sccp.stan.request;
 
+import uk.ac.sanger.sccp.stan.model.SlideCosting;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import java.time.LocalDateTime;
@@ -96,12 +97,15 @@ public class ProbeOperationRequest {
         private String lot;
         private Integer plex;
 
+        private SlideCosting costing;
+
         public ProbeLot() {}
 
-        public ProbeLot(String name, String lot, Integer plex) {
+        public ProbeLot(String name, String lot, Integer plex, SlideCosting costing) {
             this.name = name;
             this.lot = lot;
             this.plex = plex;
+            this.costing = costing;
         }
 
         /**
@@ -137,6 +141,10 @@ public class ProbeOperationRequest {
             this.plex = plex;
         }
 
+        public SlideCosting getCosting() {
+            return costing;
+        }
+
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
@@ -144,17 +152,18 @@ public class ProbeOperationRequest {
             ProbeLot that = (ProbeLot) o;
             return (Objects.equals(this.name, that.name)
                     && Objects.equals(this.lot, that.lot)
-                    && Objects.equals(this.plex, that.plex));
+                    && Objects.equals(this.plex, that.plex)
+                    && Objects.equals(this.costing, that.costing));
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(name, lot, plex);
+            return Objects.hash(name, lot, plex, costing);
         }
 
         @Override
         public String toString() {
-            return String.format("(%s, %s, %s)", repr(name), repr(lot), plex);
+            return String.format("(%s, %s, %s, %s)", repr(name), repr(lot), plex, costing==null ? null : repr(costing.name()));
         }
     }
     // endregion
