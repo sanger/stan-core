@@ -116,7 +116,7 @@ public class ExtractServiceImp implements ExtractService {
             throw new IllegalArgumentException("Unknown equipment id: "+equipmentId+".");
         }
         Equipment equipment = opt.get();
-        if (opt.get().getCategory() != EXTRACT_OP_TYPE_NAME) {
+        if (!opt.get().getCategory().equalsIgnoreCase(EXTRACT_OP_TYPE_NAME)) {
             throw new IllegalArgumentException("Equipment id: "+equipmentId + " is not an extraction machine.");
         }
         if (!equipment.isEnabled()) {
