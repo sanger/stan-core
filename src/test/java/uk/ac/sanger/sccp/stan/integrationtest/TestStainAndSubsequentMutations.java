@@ -53,7 +53,8 @@ public class TestStainAndSubsequentMutations {
     @Transactional
     @Test
     public void testStainAndWorkProgressAndRecordResult() throws Exception {
-        entityCreator.createOpType("Record result", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.RESULT);
+        entityCreator.createOpType("Stain QC", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.RESULT);
+        entityCreator.createOpType("Tissue coverage", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.RESULT);
         WorkType wt = entityCreator.createWorkType("Rocks");
         Project pr = entityCreator.createProject("Stargate");
         CostCode cc = entityCreator.createCostCode("4");
@@ -89,14 +90,14 @@ public class TestStainAndSubsequentMutations {
         var timeEntry = timeEntries.get(0);
         assertEquals("Stain", timeEntry.get("type"));
         Assertions.assertEquals(GraphQLCustomTypes.TIMESTAMP.getCoercing().serialize(op.getPerformed()), timeEntry.get("timestamp"));
-        String resultGraphql = tester.readGraphQL("stainresult.graphql")
+        String resultGraphql = tester.readGraphQL("stainqc.graphql")
                 .replace("SGP500", work.getWorkNumber())
                 .replace("999", sam.getId().toString());
         data = tester.post(resultGraphql);
 
         opData = chainGet(data, "data", "recordStainResult", "operations", 0);
         Integer resultOpId = (Integer) opData.get("id");
-        assertEquals("Record result", chainGet(opData, "operationType", "name"));
+        assertEquals("Stain QC", chainGet(opData, "operationType", "name"));
         assertNotNull(resultOpId);
         List<ResultOp> results = resultOpRepo.findAllByOperationIdIn(List.of(resultOpId));
         assertThat(results).hasSize(1);
@@ -116,7 +117,14 @@ public class TestStainAndSubsequentMutations {
         assertEquals(opId, result.getRefersToOpId());
         assertEquals(lw.getFirstSlot().getId(), result.getSlotId());
 
-        List<Measurement> measurements = measurementRepo.findAllByOperationIdIn(List.of(resultOpId));
+        String coverageMutation = tester.readGraphQL("tissuecoverage.graphql")
+                .replace("SGP500", work.getWorkNumber())
+                .replace("999", sam.getId().toString());
+        data = tester.post(coverageMutation);
+        opData = chainGet(data, "data", "recordStainResult", "operations", 0);
+        Integer coverageOpId = (Integer) opData.get("id");
+
+        List<Measurement> measurements = measurementRepo.findAllByOperationIdIn(List.of(coverageOpId));
         assertThat(measurements).hasSize(1);
         Measurement measurement = measurements.get(0);
         assertEquals(lw.getFirstSlot().getId(), measurement.getSlotId());
