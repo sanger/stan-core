@@ -1189,7 +1189,7 @@ input LabwareResult {
     """The barcode of the labware."""
     barcode: String!
     """The individual results."""
-    sampleResults: [SampleResult!]!
+    sampleResults: [SampleResult!]
     """Measurements to record in this labware."""
     slotMeasurements: [SlotMeasurementRequest!]
     """An optional costing for the labware."""
