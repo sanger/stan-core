@@ -163,7 +163,7 @@ public class ProbeOperationRequest {
 
         @Override
         public String toString() {
-            return String.format("(%s, %s, %s, %s)", repr(name), repr(lot), plex, repr(costing==null ? null : repr(costing.name())));
+            return String.format("(%s, %s, %s, %s)", repr(name), repr(lot), plex, costing==null ? null : repr(costing.name()));
         }
     }
     // endregion
