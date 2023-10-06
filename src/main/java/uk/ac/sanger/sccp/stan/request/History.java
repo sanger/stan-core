@@ -7,6 +7,8 @@ import uk.ac.sanger.sccp.utils.BasicUtils;
 import java.util.List;
 import java.util.Objects;
 
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullToEmpty;
+
 /**
  * @author dr6
  */
@@ -14,20 +16,23 @@ public class History {
     private List<HistoryEntry> entries;
     private List<Sample> samples;
     private List<Labware> labware;
+
     public History(List<HistoryEntry> entries, List<Sample> samples, List<Labware> labware) {
         setEntries(entries);
         setSamples(samples);
         setLabware(labware);
     }
 
-    public History() {}
+    public History() {
+        this(null, null, null);
+    }
 
     public List<HistoryEntry> getEntries() {
         return this.entries;
     }
 
     public void setEntries(List<HistoryEntry> entries) {
-        this.entries = entries;
+        this.entries = nullToEmpty(entries);
     }
 
     public List<Sample> getSamples() {
@@ -35,7 +40,7 @@ public class History {
     }
 
     public void setSamples(List<Sample> samples) {
-        this.samples = samples;
+        this.samples = nullToEmpty(samples);
     }
 
     public List<Labware> getLabware() {
@@ -43,7 +48,7 @@ public class History {
     }
 
     public void setLabware(List<Labware> labware) {
-        this.labware = labware;
+        this.labware = nullToEmpty(labware);
     }
 
     @Override

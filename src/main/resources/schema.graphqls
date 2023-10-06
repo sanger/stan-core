@@ -1800,6 +1800,8 @@ type Query {
     planData(barcode: String!): PlanData!
     """Get the available stain types."""
     stainTypes: [StainType!]!
+    """Event types."""
+    eventTypes: [String!]!
     """Get an item of labware and the visium permeabilisation data recorded on it, if any."""
     visiumPermData(barcode: String!): VisiumPermData!
     """Get a previously recorded extract result for a given labware barcode."""
@@ -1824,7 +1826,7 @@ type Query {
     """Get the history containing a given labware barcode."""
     historyForLabwareBarcode(barcode: String!): History!
     """Get the history associated with a specified work number, and/or barcode, external name, donor name."""
-    history(workNumber: String,barcode: String, externalName: String, donorName: String): History!
+    history(workNumber: String, barcode: String, externalName: String, donorName: String, eventType: String): History!
    """Get the work progress (some particular timestamps) associated with a specified work number, and/or
     work types, programs, statuses."""
     workProgress(workNumber: String, workTypes: [String!], programs: [String!], statuses: [WorkStatus!], requesters: [String!]): [WorkProgress!]!

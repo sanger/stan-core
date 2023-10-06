@@ -3,9 +3,10 @@ package uk.ac.sanger.sccp.stan.repo;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
-import uk.ac.sanger.sccp.stan.model.Labware;
-import uk.ac.sanger.sccp.stan.model.LabwareType;
+import uk.ac.sanger.sccp.stan.EntityCreator;
+import uk.ac.sanger.sccp.stan.model.*;
 
 import javax.persistence.EntityNotFoundException;
 import javax.transaction.Transactional;
@@ -26,15 +27,14 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @SpringBootTest
 @ActiveProfiles(profiles = "test")
+@Import(EntityCreator.class)
 public class TestLabwareRepo {
-    private final LabwareRepo labwareRepo;
-    private final LabwareTypeRepo labwareTypeRepo;
-
     @Autowired
-    public TestLabwareRepo(LabwareRepo labwareRepo, LabwareTypeRepo labwareTypeRepo) {
-        this.labwareRepo = labwareRepo;
-        this.labwareTypeRepo = labwareTypeRepo;
-    }
+    LabwareRepo labwareRepo;
+    @Autowired
+    LabwareTypeRepo labwareTypeRepo;
+    @Autowired
+    EntityCreator entityCreator;
 
     @Test
     @Transactional
@@ -95,5 +95,26 @@ public class TestLabwareRepo {
 
         assertThat(labwareRepo.findBarcodesByBarcodeIn(List.of("STAN-A1", "stan-A2", "STAN-a0", "STAN-A1", "STAN-A5")))
                 .containsExactlyInAnyOrder("STAN-A0", "STAN-A1", "STAN-A2");
+    }
+
+    @Test
+    @Transactional
+    public void testFindAllContainingSampleIds() {
+        Sample sample1 = entityCreator.createSample(null, null);
+        Sample sample2 = entityCreator.createSample(sample1.getTissue(), null, sample1.getBioState());
+        int[] sampleIds = { sample1.getId(), sample2.getId() };
+
+        Labware lw1 = entityCreator.createTube("STAN-E");
+        LabwareType lt = lw1.getLabwareType();
+        int[] lwIds = {
+                entityCreator.createLabware("STAN-0", lt, sample1).getId(),
+                entityCreator.createLabware("STAN-1", lt, sample2).getId(),
+                entityCreator.createLabware("STAN-2", lt, sample1, sample2).getId(),
+        };
+
+        assertThat(labwareRepo.findAllLabwareIdsContainingSampleIds(List.of(-17))).isEmpty();
+        assertThat(labwareRepo.findAllLabwareIdsContainingSampleIds(List.of(sampleIds[0]))).containsExactlyInAnyOrder(lwIds[0], lwIds[2]);
+        assertThat(labwareRepo.findAllLabwareIdsContainingSampleIds(List.of(sampleIds[1]))).containsExactlyInAnyOrder(lwIds[1], lwIds[2]);
+        assertThat(labwareRepo.findAllLabwareIdsContainingSampleIds(List.of(sampleIds[0], sampleIds[1]))).containsExactlyInAnyOrder(lwIds[0], lwIds[1], lwIds[2]);
     }
 }

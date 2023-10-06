@@ -1,5 +1,6 @@
 package uk.ac.sanger.sccp.stan.service.history;
 
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
@@ -18,15 +19,17 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.*;
-import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
-import static uk.ac.sanger.sccp.utils.BasicUtils.wildcardToLikeSql;
+import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 /**
  * @author dr6
  */
 @Service
 public class HistoryServiceImp implements HistoryService {
+    static final String RELEASE_EVENT_TYPE = "Release", DESTRUCTION_EVENT_TYPE = "Destruction";
+
     private final OperationRepo opRepo;
+    private final OperationTypeRepo opTypeRepo;
     private final LabwareRepo lwRepo;
     private final SampleRepo sampleRepo;
     private final TissueRepo tissueRepo;
@@ -46,7 +49,7 @@ public class HistoryServiceImp implements HistoryService {
     private final SlotRegionService slotRegionService;
 
     @Autowired
-    public HistoryServiceImp(OperationRepo opRepo, LabwareRepo lwRepo, SampleRepo sampleRepo, TissueRepo tissueRepo,
+    public HistoryServiceImp(OperationRepo opRepo, OperationTypeRepo opTypeRepo, LabwareRepo lwRepo, SampleRepo sampleRepo, TissueRepo tissueRepo,
                              DonorRepo donorRepo, ReleaseRepo releaseRepo,
                              DestructionRepo destructionRepo, OperationCommentRepo opCommentRepo, RoiRepo roiRepo,
                              SnapshotRepo snapshotRepo, WorkRepo workRepo, MeasurementRepo measurementRepo,
@@ -55,6 +58,7 @@ public class HistoryServiceImp implements HistoryService {
                              ReagentActionDetailService reagentActionDetailService,
                              SlotRegionService slotRegionService) {
         this.opRepo = opRepo;
+        this.opTypeRepo = opTypeRepo;
         this.lwRepo = lwRepo;
         this.sampleRepo = sampleRepo;
         this.tissueRepo = tissueRepo;
@@ -83,9 +87,12 @@ public class HistoryServiceImp implements HistoryService {
     }
 
     @Override
-    public History getHistory(String workNumber, String barcode, String externalName, String donorName) {
+    public History getHistory(String workNumber, String barcode, String externalName, String donorName, String eventType) {
         if (donorName==null && externalName==null && barcode==null) {
-            return getHistoryForWorkNumber(workNumber);
+            if (workNumber==null && eventType!=null) {
+                return getHistoryForEventType(eventType);
+            }
+            return getHistoryForWorkNumber(workNumber, eventTypeFilter(eventType));
         }
         List<Sample> samples;
         if (barcode!=null) {
@@ -93,7 +100,74 @@ public class HistoryServiceImp implements HistoryService {
         } else {
             samples = samplesForTissues(externalName, donorName);
         }
-        return getHistoryForSamples(samples, workNumber);
+        return getHistoryForSamples(samples, workNumber, eventTypeFilter(eventType));
+    }
+
+    /**
+     * Gets history with the given event type.
+     * @param eventType a string identifying an event type
+     * @return the history comprising the event type
+     */
+    public History getHistoryForEventType(String eventType) {
+        if (eventType.equalsIgnoreCase(RELEASE_EVENT_TYPE)) {
+            return getHistoryOfReleases();
+        }
+        if (eventType.equalsIgnoreCase(DESTRUCTION_EVENT_TYPE)) {
+            return getHistoryOfDestructions();
+        }
+        return getHistoryForOpType(opTypeRepo.getByName(eventType));
+    }
+
+    /**
+     * Gets a history listing all releases and nothing else.
+     * @return a history of releases
+     */
+    public History getHistoryOfReleases() {
+        List<Release> releases = asList(releaseRepo.findAll());
+        if (releases.isEmpty()) {
+            return new History();
+        }
+        List<HistoryEntry> entries = createEntriesForReleases(releases, null, null, null);
+        List<Labware> labware = releases.stream().map(Release::getLabware).distinct().collect(toList());
+        List<Sample> samples = referencedSamples(entries, labware);
+        entries.sort(Comparator.comparing(HistoryEntry::getTime));
+        return new History(entries, samples, labware);
+    }
+
+    /**
+     * Gets a history listing all destructions and nothing else.
+     * @return a history of destructions
+     */
+    public History getHistoryOfDestructions() {
+        List<Destruction> destructions = asList(destructionRepo.findAll());
+        if (destructions.isEmpty()) {
+            return new History();
+        }
+        List<HistoryEntry> entries = createEntriesForDestructions(destructions, null);
+        List<Labware> labware = destructions.stream().map(Destruction::getLabware).distinct().collect(toList());
+        List<Sample> samples = referencedSamples(entries, labware);
+        entries.sort(Comparator.comparing(HistoryEntry::getTime));
+        return new History(entries, samples, labware);
+    }
+
+    /**
+     * Gets a history listing all operations of the given type.
+     * @param opType the type of operation to list
+     * @return a history of operations of the given type
+     */
+    public History getHistoryForOpType(@NotNull OperationType opType) {
+        List<Operation> ops = opRepo.findAllByOperationType(opType);
+        if (ops.isEmpty()) {
+            return new History();
+        }
+
+        Set<Integer> labwareIds = labwareIdsFromOps(ops);
+
+        List<Labware> labware = lwRepo.findAllByIdIn(labwareIds);
+        List<HistoryEntry> entries = createEntriesForOps(ops, null, labware, null, null);
+        List<Sample> samples = referencedSamples(entries, labware);
+        entries.sort(Comparator.comparing(HistoryEntry::getTime));
+        return new History(entries, samples, labware);
     }
 
     /**
@@ -208,13 +282,26 @@ public class HistoryServiceImp implements HistoryService {
 
     @Override
     public History getHistoryForWorkNumber(String workNumber) {
+        return getHistoryForWorkNumber(workNumber, EventTypeFilter.NO_FILTER);
+    }
+
+    public History getHistoryForWorkNumber(String workNumber, @NotNull EventTypeFilter etFilter) {
         Work work = workRepo.getByWorkNumber(workNumber);
-        List<Integer> opIds = work.getOperationIds();
-        List<Integer> releaseIds = work.getReleaseIds();
+        List<Integer> opIds = etFilter.ops ? work.getOperationIds() : List.of();
+        List<Integer> releaseIds = etFilter.releases ? work.getReleaseIds() : List.of();
         if (opIds.isEmpty() && releaseIds.isEmpty()) {
-            return new History(List.of(), List.of(), List.of());
+            return new History();
         }
-        Collection<Operation> ops = opIds.isEmpty() ? List.of() : BasicUtils.asCollection(opRepo.findAllById(opIds));
+        Collection<Operation> ops;
+        if (opIds.isEmpty()) {
+            ops = List.of();
+        } else if (etFilter.opType != null) {
+            ops = stream(opRepo.findAllById(opIds))
+                    .filter(op -> op.getOperationType().equals(etFilter.opType))
+                    .collect(toList());
+        } else {
+            ops = asCollection(opRepo.findAllById(opIds));
+        }
         List<Release> releases = releaseIds.isEmpty() ? List.of() : releaseRepo.findAllByIdIn(releaseIds);
         Set<Integer> labwareIds = labwareIdsFromOps(ops);
         List<Labware> opLabware = lwRepo.findAllByIdIn(labwareIds);
@@ -291,25 +378,42 @@ public class HistoryServiceImp implements HistoryService {
      * @return the history involving those samples
      */
     public History getHistoryForSamples(List<Sample> samples) {
-        return getHistoryForSamples(samples, null);
+        return getHistoryForSamples(samples, null, EventTypeFilter.NO_FILTER);
     }
 
     /**
      * Gets the history for the specifically supplied samples (which are commonly all related).
      * @param samples the samples to get the history for
      * @param requiredWorkNumber the required work number (if any)
+     * @param etFilter a filter for event types
      * @return the history involving those samples
      */
-    public History getHistoryForSamples(List<Sample> samples, String requiredWorkNumber) {
+    public History getHistoryForSamples(List<Sample> samples, String requiredWorkNumber, @NotNull EventTypeFilter etFilter) {
         if (nullOrEmpty(samples)) {
-            return new History(List.of(), List.of(), List.of());
+            return new History();
         }
+
         Set<Integer> sampleIds = samples.stream().map(Sample::getId).collect(toSet());
-        List<Operation> ops = opRepo.findAllBySampleIdIn(sampleIds);
-        Set<Integer> labwareIds = loadLabwareIdsForOpsAndSampleIds(ops, sampleIds);
-        List<Destruction> destructions = destructionRepo.findAllByLabwareIdIn(labwareIds);
-        List<Release> releases = releaseRepo.findAllByLabwareIdIn(labwareIds);
+
+        List<Operation> ops;
+        if (etFilter.opType!=null) {
+            ops = opRepo.findAllByOperationTypeAndSampleIdIn(etFilter.opType, sampleIds);
+        } else if (etFilter.ops) {
+            ops = opRepo.findAllBySampleIdIn(sampleIds);
+        } else {
+            ops = List.of();
+        }
+
+        Set<Integer> labwareIds;
+
+        if (!ops.isEmpty()) {
+            labwareIds = loadLabwareIdsForOpsAndSampleIds(ops, sampleIds);
+        } else {
+            labwareIds = lwRepo.findAllLabwareIdsContainingSampleIds(sampleIds);
+        }
         List<Labware> labware = lwRepo.findAllByIdIn(labwareIds);
+        List<Destruction> destructions = etFilter.destructions ? destructionRepo.findAllByLabwareIdIn(labwareIds) : List.of();
+        List<Release> releases = etFilter.releases ? releaseRepo.findAllByLabwareIdIn(labwareIds) : List.of();
 
         Set<Integer> opIds = ops.stream().map(Operation::getId).collect(toSet());
         Map<Integer, Set<String>> opWork = workRepo.findWorkNumbersForOpIds(opIds);
@@ -801,7 +905,7 @@ public class HistoryServiceImp implements HistoryService {
                     "Recipient: "+release.getRecipient().getUsername());
             String username = release.getUser().getUsername();
             if (release.getSnapshotId()==null) {
-                entries.add(new HistoryEntry(release.getId(), "Release", release.getReleased(),
+                entries.add(new HistoryEntry(release.getId(), RELEASE_EVENT_TYPE, release.getReleased(),
                         labwareId, labwareId,null, username, workNum, details));
             } else {
                 Snapshot snap = snapshotMap.get(release.getSnapshotId());
@@ -814,7 +918,7 @@ public class HistoryServiceImp implements HistoryService {
                 Set<Integer> releaseSampleIds = sampleIdStream
                         .collect(BasicUtils.toLinkedHashSet());
                 for (Integer sampleId : releaseSampleIds) {
-                    entries.add(new HistoryEntry(release.getId(), "Release", release.getReleased(),
+                    entries.add(new HistoryEntry(release.getId(), RELEASE_EVENT_TYPE, release.getReleased(),
                             labwareId, labwareId, sampleId, username, workNum, details));
                 }
             }
@@ -841,7 +945,7 @@ public class HistoryServiceImp implements HistoryService {
                 int labwareId = labware.getId();
                 List<String> details = List.of("Reason: "+destruction.getReason().getText());
                 for (Integer sampleId : destructionSampleIds) {
-                    entries.add(new HistoryEntry(destruction.getId(), "Destruction", destruction.getDestroyed(),
+                    entries.add(new HistoryEntry(destruction.getId(), DESTRUCTION_EVENT_TYPE, destruction.getDestroyed(),
                             labwareId, labwareId, sampleId, username, null, details));
                 }
             }
@@ -862,6 +966,34 @@ public class HistoryServiceImp implements HistoryService {
         }
         entries.sort(Comparator.comparing(HistoryEntry::getTime));
         return entries;
+    }
+
+    @Override
+    public List<String> getEventTypes() {
+        List<String> eventTypes = new ArrayList<>();
+        for (OperationType opType : opTypeRepo.findAll()) {
+            eventTypes.add(opType.getName());
+        }
+        eventTypes.add(RELEASE_EVENT_TYPE);
+        eventTypes.add(DESTRUCTION_EVENT_TYPE);
+        return eventTypes;
+    }
+
+    EventTypeFilter eventTypeFilter(String eventType) {
+        if (eventType==null) {
+            return EventTypeFilter.NO_FILTER;
+        }
+        if (eventType.equalsIgnoreCase(RELEASE_EVENT_TYPE)) {
+            return new EventTypeFilter(true, false, false, null);
+        }
+        if (eventType.equalsIgnoreCase(DESTRUCTION_EVENT_TYPE)) {
+            return new EventTypeFilter(false, true, false, null);
+        }
+        Optional<OperationType> optOpType = opTypeRepo.findByName(eventType);
+        if (optOpType.isPresent()) {
+            return new EventTypeFilter(false, false, true, optOpType.get());
+        }
+        throw new IllegalArgumentException("Unknown event type: "+repr(eventType));
     }
 
     // region support class
@@ -891,6 +1023,46 @@ public class HistoryServiceImp implements HistoryService {
         @Override
         public int hashCode() {
             return sampleId + 31 * (sourceId + 31 * destId);
+        }
+    }
+
+    public static class EventTypeFilter {
+        public static final EventTypeFilter NO_FILTER = new EventTypeFilter(true, true, true, null);
+
+        public final boolean releases, destructions, ops;
+        public final OperationType opType;
+
+        EventTypeFilter(boolean releases, boolean destructions, boolean ops, OperationType opType) {
+            this.releases = releases;
+            this.destructions = destructions;
+            this.ops = ops;
+            this.opType = opType;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            EventTypeFilter that = (EventTypeFilter) o;
+            return (this.releases == that.releases
+                    && this.destructions == that.destructions
+                    && this.ops == that.ops
+                    && Objects.equals(this.opType, that.opType));
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(releases, destructions, ops, opType);
+        }
+
+        @Override
+        public String toString() {
+            return describe(this)
+                    .add("releases", releases)
+                    .add("destructions", destructions)
+                    .add("ops", ops)
+                    .add("opType", opType)
+                    .toString();
         }
     }
     // endregion

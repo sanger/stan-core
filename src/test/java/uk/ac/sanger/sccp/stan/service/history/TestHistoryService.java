@@ -7,10 +7,9 @@ import org.junit.jupiter.params.provider.*;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.History;
-import uk.ac.sanger.sccp.stan.request.HistoryEntry;
-import uk.ac.sanger.sccp.stan.request.SamplePositionResult;
+import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.service.SlotRegionService;
+import uk.ac.sanger.sccp.stan.service.history.HistoryServiceImp.EventTypeFilter;
 import uk.ac.sanger.sccp.stan.service.history.ReagentActionDetailService.ReagentActionDetail;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
@@ -22,10 +21,12 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.Matchers.sameElements;
+import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 import static uk.ac.sanger.sccp.utils.BasicUtils.wildcardToLikeSql;
 
 /**
@@ -34,6 +35,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.wildcardToLikeSql;
  */
 public class TestHistoryService {
     private OperationRepo mockOpRepo;
+    private OperationTypeRepo mockOpTypeRepo;
     private LabwareRepo mockLwRepo;
     private SampleRepo mockSampleRepo;
     private TissueRepo mockTissueRepo;
@@ -61,6 +63,7 @@ public class TestHistoryService {
     @BeforeEach
     public void setup() {
         mockOpRepo = mock(OperationRepo.class);
+        mockOpTypeRepo = mock(OperationTypeRepo.class);
         mockLwRepo = mock(LabwareRepo.class);
         mockSampleRepo = mock(SampleRepo.class);
         mockTissueRepo = mock(TissueRepo.class);
@@ -79,7 +82,7 @@ public class TestHistoryService {
         mockSlotRegionService = mock(SlotRegionService.class);
         mockLwProbeRepo = mock(LabwareProbeRepo.class);
 
-        service = spy(new HistoryServiceImp(mockOpRepo, mockLwRepo, mockSampleRepo, mockTissueRepo, mockDonorRepo,
+        service = spy(new HistoryServiceImp(mockOpRepo, mockOpTypeRepo, mockLwRepo, mockSampleRepo, mockTissueRepo, mockDonorRepo,
                 mockReleaseRepo, mockDestructionRepo, mockOpCommentRepo, mockRoiRepo, mockSnapshotRepo, mockWorkRepo,
                 mockMeasurementRepo, mockLwNoteRepo, mockResultOpRepo, mockStainTypeRepo, mockLwProbeRepo,
                 mockRadService, mockSlotRegionService));
@@ -206,6 +209,89 @@ public class TestHistoryService {
         assertEquals(allLabware, history.getLabware());
     }
 
+    @ParameterizedTest
+    @CsvSource({"true,false,false,",
+            "false,true,false,",
+            "false,false,true,",
+            "false,false,true,Baking",
+    })
+    public void testGetHistoryForWorkNumber_withEventTypeFilter(boolean includeReleases, boolean includeDestroys,
+                                                                boolean includeOps, String opTypeName) {
+        OperationType requiredOpType = (opTypeName==null ? null : EntityFactory.makeOperationType(opTypeName, null));
+        EventTypeFilter etFilter = new EventTypeFilter(includeReleases, includeDestroys, includeOps, requiredOpType);
+        String workNumber = "SGP1";
+        Work work = EntityFactory.makeWork(workNumber);
+        when(mockWorkRepo.getByWorkNumber(workNumber)).thenReturn(work);
+        work.setOperationIds(includeOps ? List.of(2, 3, 4) : List.of());
+        Set<Integer> opLwIds = includeOps ? Set.of(10,11) : Set.of();
+        doReturn(opLwIds).when(service).labwareIdsFromOps(any());
+        LabwareType lt = EntityFactory.getTubeType();
+        List<Operation> workOps;
+        if (requiredOpType!=null) {
+            OperationType otherOpType = EntityFactory.makeOperationType("other", null);
+            Operation op1 = new Operation(1, otherOpType, null, null, null);
+            Operation op2 = new Operation(2, requiredOpType, null, null, null);
+            workOps = List.of(op1, op2);
+            when(mockOpRepo.findAllById(work.getOperationIds())).thenReturn(workOps);
+        } else if (includeOps) {
+            OperationType opType = EntityFactory.makeOperationType("opname", null);
+            workOps = Stream.of(1,2).map(i -> new Operation(i, opType, null, null, null))
+                    .collect(toList());
+            when(mockOpRepo.findAllById(work.getOperationIds())).thenReturn(workOps);
+        } else {
+            workOps = List.of();
+        }
+
+        List<Labware> opLw = (includeOps ? List.of(new Labware(2, "STAN-2", lt, null)) : List.of());
+        doReturn(opLw).when(mockLwRepo).findAllByIdIn(opLwIds);
+
+        work.setReleaseIds(includeReleases ? List.of(5,6,7) : List.of());
+        List<Release> releases;
+        List<Labware> releaseLw;
+        if (includeReleases) {
+            Labware lw1 = EntityFactory.getTube();
+            Labware lw2 = EntityFactory.makeEmptyLabware(lw1.getLabwareType());
+            releaseLw = List.of(lw1, lw2);
+            releases = List.of(new Release(), new Release());
+            for (int i = 0; i < releaseLw.size(); ++i) {
+                releases.get(i).setLabware(releaseLw.get(i));
+            }
+        } else {
+            releaseLw = List.of();
+            releases = List.of();
+        }
+
+        doReturn(releases).when(mockReleaseRepo).findAllByIdIn(work.getReleaseIds());
+
+        List<Sample> samples = includeOps || includeReleases ? List.of(EntityFactory.getSample()) : List.of();
+        doReturn(samples).when(service).referencedSamples(any(), any());
+
+        List<HistoryEntry> opEntries = includeOps ? new ArrayList<>(List.of(entryAtTime(1))) : new ArrayList<>();
+        List<HistoryEntry> releaseEntries = includeReleases ? new ArrayList<>(List.of(entryAtTime(2))) : new ArrayList<>();
+
+        doReturn(opEntries).when(service).createEntriesForOps(any(), any(), any(), any(), any());
+        doReturn(releaseEntries).when(service).createEntriesForReleases(any(), any(), any(), any());
+
+        List<HistoryEntry> allEntries = new ArrayList<>(opEntries.size() + releaseEntries.size());
+        allEntries.addAll(opEntries);
+        allEntries.addAll(releaseEntries);
+
+        List<Labware> allLabware = BasicUtils.concat(opLw, releaseLw);
+        assertEquals(new History(allEntries, samples, allLabware), service.getHistoryForWorkNumber(workNumber, etFilter));
+
+        if (includeOps) {
+            List<Operation> relevantOps = requiredOpType==null ? workOps : workOps.subList(1,2);
+            verify(service).labwareIdsFromOps(relevantOps);
+            verify(service).createEntriesForOps(relevantOps, null, opLw, null, work.getWorkNumber());
+        }
+        if (includeReleases) {
+            verify(service).createEntriesForReleases(releases, null, null, work.getWorkNumber());
+        }
+        if (!samples.isEmpty()) {
+            verify(service).referencedSamples(allEntries, allLabware);
+        }
+    }
+
     @Test
     public void testGetHistoryForWorkNumber_noOps() {
         Work work = new Work(10, "SGP10", null, null, null, null, null, Work.Status.active);
@@ -252,25 +338,140 @@ public class TestHistoryService {
 
     @ParameterizedTest
     @CsvSource({
-            "by work number,SGP5,,,",
-            "by barcode,SGP5,STAN-1,EXT1,DONOR1",
-            "by tissues,SGP5,,EXT1,DONOR1",
+            "by event type,,,,,myevent",
+            "by work number,SGP5,,,,",
+            "by barcode,SGP5,STAN-1,EXT1,DONOR1,",
+            "by tissues,SGP5,,EXT1,DONOR1,",
     })
-    public void testGetHistory(String mode, String workNumber, String barcode, String externalName, String donorName) {
+    public void testGetHistory(String mode, String workNumber, String barcode, String externalName, String donorName,
+                               String eventType) {
         List<Sample> samples = List.of(EntityFactory.getSample());
         History history = new History(null, samples, null);
+        EventTypeFilter etFilter = mock(EventTypeFilter.class);
+        doReturn(etFilter).when(service).eventTypeFilter(eventType);
         if (mode.equalsIgnoreCase("by work number")) {
-            doReturn(history).when(service).getHistoryForWorkNumber(workNumber);
+            doReturn(history).when(service).getHistoryForWorkNumber(workNumber, etFilter);
+        } else if (mode.equalsIgnoreCase("by event type")) {
+            doReturn(history).when(service).getHistoryForEventType(eventType);
         } else {
             if (mode.equalsIgnoreCase("by barcode")) {
                 doReturn(samples).when(service).samplesForBarcode(barcode, externalName, donorName);
             } else {
                 doReturn(samples).when(service).samplesForTissues(externalName, donorName);
             }
-            doReturn(history).when(service).getHistoryForSamples(samples, workNumber);
+            doReturn(history).when(service).getHistoryForSamples(samples, workNumber, etFilter);
         }
 
-        assertSame(history, service.getHistory(workNumber, barcode, externalName, donorName));
+        assertSame(history, service.getHistory(workNumber, barcode, externalName, donorName, eventType));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings={"release", "destruction", "baking", "unicorn"})
+    public void testGetHistoryForEventType(String eventTypeName) {
+        History history = new History(null, List.of(EntityFactory.getSample()), null);
+        boolean expectException = false;
+        if (eventTypeName.equalsIgnoreCase("release")) {
+            doReturn(history).when(service).getHistoryOfReleases();
+        } else if (eventTypeName.equalsIgnoreCase("destruction")) {
+            doReturn(history).when(service).getHistoryOfDestructions();
+        } else if (eventTypeName.equalsIgnoreCase("unicorn")) {
+            doThrow(EntityNotFoundException.class).when(mockOpTypeRepo).getByName(eventTypeName);
+            expectException = true;
+        } else {
+            OperationType opType = EntityFactory.makeOperationType("Baking", null);
+            doReturn(opType).when(mockOpTypeRepo).getByName(eventTypeName);
+            doReturn(history).when(service).getHistoryForOpType(opType);
+        }
+
+        if (expectException) {
+            assertThrows(EntityNotFoundException.class, () -> service.getHistoryForEventType(eventTypeName));
+        } else {
+            assertSame(history, service.getHistoryForEventType(eventTypeName));
+        }
+    }
+
+
+    private static HistoryEntry entryAtTime(int day) {
+        LocalDateTime time = LocalDateTime.of(2023,1,day,12,0);
+        HistoryEntry entry = new HistoryEntry();
+        entry.setTime(time);
+        return entry;
+    }
+
+    @Test
+    public void testGetHistoryOfReleases() {
+        Labware lw1 = EntityFactory.getTube();
+        Labware lw2 = EntityFactory.makeEmptyLabware(lw1.getLabwareType());
+        List<Labware> labware = List.of(lw1, lw2);
+        List<Release> releases = labware.stream()
+                .map(lw -> {
+                    Release rel = new Release();
+                    rel.setLabware(lw);
+                    return rel;
+                }).collect(toList());
+        when(mockReleaseRepo.findAll()).thenReturn(releases);
+
+        List<HistoryEntry> entries = new ArrayList<>(Arrays.asList(entryAtTime(1), entryAtTime(2)));
+        doReturn(entries).when(service).createEntriesForReleases(releases, null, null, null);
+        List<Sample> samples = List.of(EntityFactory.getSample());
+        doReturn(samples).when(service).referencedSamples(entries, labware);
+        assertEquals(new History(entries, samples, labware), service.getHistoryOfReleases());
+    }
+
+    @Test
+    public void testGetHistoryOfReleases_none() {
+        when(mockReleaseRepo.findAll()).thenReturn(List.of());
+        assertEquals(new History(), service.getHistoryOfReleases());
+    }
+
+    @Test
+    public void testGetHistoryOfDestructions() {
+        Labware lw1 = EntityFactory.getTube();
+        Labware lw2 = EntityFactory.makeEmptyLabware(lw1.getLabwareType());
+        List<Labware> labware = List.of(lw1, lw2);
+        List<Destruction> destructions = labware.stream()
+                .map(lw -> {
+                    Destruction d = new Destruction();
+                    d.setLabware(lw);
+                    return d;
+                }).collect(toList());
+        when(mockDestructionRepo.findAll()).thenReturn(destructions);
+
+        List<HistoryEntry> entries = new ArrayList<>(Arrays.asList(entryAtTime(1), entryAtTime(2)));
+        doReturn(entries).when(service).createEntriesForDestructions(destructions, null);
+        List<Sample> samples = List.of(EntityFactory.getSample());
+        doReturn(samples).when(service).referencedSamples(entries, labware);
+        assertEquals(new History(entries, samples, labware), service.getHistoryOfDestructions());
+    }
+
+    @Test
+    public void testGetHistoryForOpType() {
+        OperationType opType = EntityFactory.makeOperationType("Baking", null);
+        List<Operation> ops = List.of(new Operation(), new Operation());
+        when(mockOpRepo.findAllByOperationType(opType)).thenReturn(ops);
+        Set<Integer> lwIds = Set.of(4,5);
+        doReturn(lwIds).when(service).labwareIdsFromOps(ops);
+        List<Labware> labware = List.of(EntityFactory.getTube());
+        when(mockLwRepo.findAllByIdIn(lwIds)).thenReturn(labware);
+        List<HistoryEntry> entries = new ArrayList<>(Arrays.asList(entryAtTime(1), entryAtTime(2)));
+        doReturn(entries).when(service).createEntriesForOps(ops, null, labware, null, null);
+        List<Sample> samples = List.of(EntityFactory.getSample());
+        doReturn(samples).when(service).referencedSamples(entries, labware);
+
+        assertEquals(new History(entries, samples, labware), service.getHistoryForOpType(opType));
+    }
+
+    @Test
+    public void testGetHistoryForOpType_none() {
+        OperationType opType = EntityFactory.makeOperationType("Baking", null);
+        when(mockOpRepo.findAllByOperationType(opType)).thenReturn(List.of());
+        assertEquals(new History(), service.getHistoryForOpType(opType));
+    }
+
+    @Test
+    public void testGetHistoryOfDestructions_none() {
+        when(mockDestructionRepo.findAll()).thenReturn(List.of());
+        assertEquals(new History(), service.getHistoryOfDestructions());
     }
 
     @Test
@@ -412,6 +613,69 @@ public class TestHistoryService {
         assertEquals(history.getEntries(), entries);
         assertEquals(history.getSamples(), samples);
         assertEquals(history.getLabware(), labware);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "true,false,false,",
+            "false,true,false,",
+            "false,false,true,Baking",
+            "true,true,true,",
+    })
+    public void testGetHistoryForSamples_filter(boolean includeReleases, boolean includeDestructions,
+                                                boolean includeOps, String requiredOpName) {
+        final String requiredWorkNumber = null;
+        OperationType requiredOpType = (requiredOpName==null ? null : EntityFactory.makeOperationType(requiredOpName, null));
+        List<Operation> ops = includeOps ? List.of(new Operation(), new Operation()) : List.of();
+        IntStream.range(0, ops.size()).forEach(i -> ops.get(i).setId(20+i));
+        Sample s1 = EntityFactory.getSample();
+        List<Sample> samples = List.of(s1, new Sample(s1.getId()+1, null, s1.getTissue(), s1.getBioState()));
+        Set<Integer> sampleIds = Set.of(s1.getId(), samples.get(1).getId());
+        if (includeOps) {
+            when(requiredOpType==null ? mockOpRepo.findAllBySampleIdIn(sampleIds) : mockOpRepo.findAllByOperationTypeAndSampleIdIn(requiredOpType, sampleIds))
+                    .thenReturn(ops);
+        }
+        Set<Integer> labwareIds = Set.of(4,5);
+        if (ops.isEmpty()) {
+            when(mockLwRepo.findAllLabwareIdsContainingSampleIds(sampleIds)).thenReturn(labwareIds);
+        } else {
+            doReturn(labwareIds).when(service).loadLabwareIdsForOpsAndSampleIds(ops, sampleIds);
+        }
+        LabwareType lt = EntityFactory.getTubeType();
+        List<Labware> labware = List.of(EntityFactory.getTube(), EntityFactory.makeEmptyLabware(lt));
+        when(mockLwRepo.findAllByIdIn(labwareIds)).thenReturn(labware);
+        Set<Integer> opIds = ops.stream().map(Operation::getId).collect(toSet());
+        Map<Integer, Set<String>> opWork = Map.of(20, Set.of("SGP12"));
+        when(mockWorkRepo.findWorkNumbersForOpIds(opIds)).thenReturn(opWork);
+        List<Release> releases = includeReleases ? List.of(new Release(), new Release()) : List.of();
+        IntStream.range(0, releases.size()).forEach(i -> releases.get(i).setId(30+i));
+        List<Integer> releaseIds = releases.stream().map(Release::getId).collect(toList());
+        Map<Integer, String> releaseWork = Map.of(30, "SGP13");
+        when(mockWorkRepo.findWorkNumbersForReleaseIds(releaseIds)).thenReturn(releaseWork);
+        List<Destruction> destructions = includeDestructions ? List.of(new Destruction(), new Destruction()) : List.of();
+        IntStream.range(0, destructions.size()).forEach(i -> destructions.get(i).setId(40+i));
+        if (includeReleases) {
+            when(mockReleaseRepo.findAllByLabwareIdIn(labwareIds)).thenReturn(releases);
+        }
+        if (includeDestructions) {
+            when(mockDestructionRepo.findAllByLabwareIdIn(labwareIds)).thenReturn(destructions);
+        }
+
+        List<HistoryEntry> opEntries = includeOps ? List.of(entryAtTime(1), entryAtTime(2)) : List.of();
+        List<HistoryEntry> relEntries = includeReleases ? List.of(entryAtTime(3)) : List.of();
+        List<HistoryEntry> desEntries = includeDestructions ? List.of(entryAtTime(4)) : List.of();
+
+        doReturn(opEntries).when(service).createEntriesForOps(ops, sampleIds, labware, opWork, requiredWorkNumber);
+        doReturn(relEntries).when(service).createEntriesForReleases(releases, sampleIds, releaseWork, requiredWorkNumber);
+        doReturn(desEntries).when(service).createEntriesForDestructions(destructions, sampleIds);
+
+        List<HistoryEntry> expectedEntries = Stream.of(opEntries, relEntries, desEntries)
+                .flatMap(Collection::stream)
+                .collect(toList());
+
+        assertEquals(new History(expectedEntries, samples, labware),
+                service.getHistoryForSamples(samples, requiredWorkNumber,
+                        new EventTypeFilter(includeReleases, includeDestructions, includeOps, requiredOpType)));
     }
 
     private static Stream<Slot> streamSlots(Labware lw, Address... addresses) {
@@ -1035,5 +1299,39 @@ public class TestHistoryService {
         );
 
         assertEquals(expectedEntries, service.assembleEntries(List.of(e1, e2, e3)));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings={"Release", "Destruction", "null", "Unicorn", "Baking"})
+    public void testEventTypeFilter(String string) {
+        if (string==null || string.equals("null")) {
+            assertEquals(EventTypeFilter.NO_FILTER, service.eventTypeFilter(null));
+            return;
+        }
+        if (string.equalsIgnoreCase("release")) {
+            assertEquals(new EventTypeFilter(true,false,false,null), service.eventTypeFilter(string));
+            return;
+        }
+        if (string.equalsIgnoreCase("destruction")) {
+            assertEquals(new EventTypeFilter(false, true, false, null), service.eventTypeFilter(string));
+            return;
+        }
+        OperationType opType = string.equalsIgnoreCase("unicorn") ? null : EntityFactory.makeOperationType(string, null);
+        when(mockOpTypeRepo.findByName(string)).thenReturn(Optional.ofNullable(opType));
+
+        if (opType!=null) {
+            assertEquals(new EventTypeFilter(false, false, true, opType), service.eventTypeFilter(string));
+            return;
+        }
+
+        assertThat(assertThrows(IllegalArgumentException.class, () -> service.eventTypeFilter(string)))
+                .hasMessage("Unknown event type: "+repr(string));
+    }
+
+    @Test
+    public void testGetEventTypes() {
+        List<OperationType> opTypes = Stream.of("Alpha", "Beta").map(s -> EntityFactory.makeOperationType(s, null)).collect(toList());
+        when(mockOpTypeRepo.findAll()).thenReturn(opTypes);
+        assertThat(service.getEventTypes()).containsExactly("Alpha", "Beta", "Release", "Destruction");
     }
 }
