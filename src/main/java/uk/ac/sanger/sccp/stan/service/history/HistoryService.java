@@ -2,6 +2,8 @@ package uk.ac.sanger.sccp.stan.service.history;
 
 import uk.ac.sanger.sccp.stan.request.History;
 
+import java.util.List;
+
 /**
  * Service for getting the history from some kind of identifier.
  * The history typically includes all related samples.
@@ -49,8 +51,14 @@ public interface HistoryService {
      * @param barcode the barcode of the labware (if any) to look up, or null
      * @param externalName the external name of the tissue (if any) to look up, or null
      * @param donorName the name of the donor (if any) to look up, or null
+     * @param eventType the name of the event type (if any) you are interested in
      * @return the history for the specified identifier(s)
      */
-    History getHistory(String workNumber,String barcode, String externalName, String donorName);
+    History getHistory(String workNumber, String barcode, String externalName, String donorName, String eventType);
 
+    /**
+     * Gets a list of the different event types used in history
+     * @return the different event types
+     */
+    List<String> getEventTypes();
 }

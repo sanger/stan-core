@@ -119,6 +119,7 @@ public class GraphQLProvider {
                         .dataFetcher("historyForLabwareBarcode", graphQLDataFetchers.historyForLabwareBarcode())
                         .dataFetcher("historyForWorkNumber", graphQLDataFetchers.historyForWorkNumber())
                         .dataFetcher("history", graphQLDataFetchers.history())
+                        .dataFetcher("eventTypes", graphQLDataFetchers.eventTypes())
                         .dataFetcher("workProgress", graphQLDataFetchers.workProgress())
 
                         .dataFetcher("location", graphQLStore.getLocation())

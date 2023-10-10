@@ -56,4 +56,7 @@ public interface LabwareRepo extends CrudRepository<Labware, Integer> {
                 "No labware found with barcode{s}: ");
     }
 
+    @Query(value = "SELECT DISTINCT slot.labware_id FROM slot_sample ss JOIN slot ON (ss.slot_id=slot.id) " +
+            "WHERE ss.sample_id IN (?1)", nativeQuery = true)
+    Set<Integer> findAllLabwareIdsContainingSampleIds(Collection<Integer> sampleIds);
 }

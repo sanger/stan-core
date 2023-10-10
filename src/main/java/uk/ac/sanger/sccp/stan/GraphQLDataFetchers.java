@@ -358,7 +358,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
             String barcode = dfe.getArgument("barcode");
             String externalName = dfe.getArgument("externalName");
             String donorName = dfe.getArgument("donorName");
-            return historyService.getHistory(workNumber, barcode, externalName,donorName);
+            String eventType = dfe.getArgument("eventType");
+            return historyService.getHistory(workNumber, barcode, externalName, donorName, eventType);
         };
     }
 
@@ -381,6 +382,10 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
             String barcode = dfe.getArgument("barcode");
             return historyService.getHistoryForLabwareBarcode(barcode);
         };
+    }
+
+    public DataFetcher<List<String>> eventTypes() {
+        return dfe -> historyService.getEventTypes();
     }
 
     public DataFetcher<List<WorkProgress>> workProgress() {
