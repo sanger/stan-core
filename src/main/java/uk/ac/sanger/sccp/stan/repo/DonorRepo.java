@@ -18,4 +18,9 @@ public interface DonorRepo extends CrudRepository<Donor, Integer> {
     }
 
     List<Donor> findAllByDonorNameIn(Collection<String> donorNames);
+
+    default List<Donor> getAllByDonorNameIn(Collection<String> donorNames) throws EntityNotFoundException {
+        return RepoUtils.getAllByField(this::findAllByDonorNameIn, donorNames, Donor::getDonorName,
+                "Unknown donor name{s}: ", String::toUpperCase);
+    }
 }

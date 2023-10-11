@@ -4,7 +4,6 @@ package uk.ac.sanger.sccp.utils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
-import uk.ac.sanger.sccp.stan.service.FindService;
 
 import java.time.DayOfWeek;
 import java.util.*;
@@ -273,5 +272,22 @@ public class TestBasicUtils {
         assertEquals(expected, p.pattern());
         assertThat(input).matches(p);
         assertThat(p.flags() & Pattern.CASE_INSENSITIVE).isNotZero();
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "TIS*, TIS1 TIS2 tisXYZ tis, STI tizzy",
+            "ALPHA beta GAMMA, alpha beta gamma, alphabet gamm lpha alpha|beta",
+            "ALP* *eta gamma, alpha beta gamma zeta eta, etafoo gammafoo gamm",
+    })
+    public void testMakeWildcardPattern(String inputs, String goods, String bads) {
+        List<String> wildcardStrings = Arrays.asList(inputs.split("\\s+"));
+        Pattern pattern = makeWildcardPattern(wildcardStrings);
+        for (String good : goods.split("\\s+")) {
+            assertThat(good).matches(pattern);
+        }
+        for (String bad : bads.split("\\s+")) {
+            assertThat(bad).doesNotMatch(pattern);
+        }
     }
 }

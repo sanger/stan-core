@@ -41,6 +41,8 @@ public interface TissueRepo extends CrudRepository<Tissue, Integer> {
 
     List<Tissue> findByDonorId(int donorId);
 
+    List<Tissue> findAllByDonorIdIn(Collection<Integer> donorIds);
+
     List<Tissue> findAllByExternalNameIn(Collection<String> externalNames);
 
     @Query("select t from Tissue t join SpatialLocation sl on (t.spatialLocation=sl) where sl.tissueType.id=?1")

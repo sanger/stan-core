@@ -87,8 +87,8 @@ public class HistoryServiceImp implements HistoryService {
     }
 
     @Override
-    public History getHistory(String workNumber, String barcode, String externalName, String donorName, String eventType) {
-        if (donorName==null && externalName==null && barcode==null) {
+    public History getHistory(String workNumber, String barcode, List<String> externalNames, List<String> donorNames, String eventType) {
+        if (donorNames==null && externalNames==null && barcode==null) {
             if (workNumber==null && eventType!=null) {
                 return getHistoryForEventType(eventType);
             }
@@ -96,9 +96,9 @@ public class HistoryServiceImp implements HistoryService {
         }
         List<Sample> samples;
         if (barcode!=null) {
-            samples = samplesForBarcode(barcode, externalName, donorName);
+            samples = samplesForBarcode(barcode, externalNames, donorNames);
         } else {
-            samples = samplesForTissues(externalName, donorName);
+            samples = samplesForTissues(externalNames, donorNames);
         }
         return getHistoryForSamples(samples, workNumber, eventTypeFilter(eventType));
     }
@@ -173,13 +173,13 @@ public class HistoryServiceImp implements HistoryService {
     /**
      * Gets samples related to those in the specified labware, filtered additionally by external name and donor name
      * @param barcode the labware barcode
-     * @param externalName the required external name of the tissues, or a wildcard pattern, or null
-     * @param donorName the required donor name, or null
+     * @param externalNames the required external name of the tissues, or a wildcard pattern, or null
+     * @param donorNames the required donor name, or null
      * @return the matching samples
      */
-    public List<Sample> samplesForBarcode(String barcode, String externalName, String donorName) {
+    public List<Sample> samplesForBarcode(String barcode, List<String> externalNames, List<String> donorNames) {
         Labware lw = lwRepo.getByBarcode(barcode);
-        Predicate<Tissue> filter = tissuePredicate(donorName, externalName);
+        Predicate<Tissue> filter = tissuePredicate(donorNames, externalNames);
         Set<Integer> tissueIds = lw.getSlots().stream()
                 .flatMap(slot -> slot.getSamples().stream().map(Sample::getTissue))
                 .filter(filter)
@@ -193,26 +193,34 @@ public class HistoryServiceImp implements HistoryService {
 
     /**
      * Gets samples for the specified tissues, specified by external name, donor name, or both
-     * @param externalName the required external name of the tissues, or a wildcard pattern, or null
-     * @param donorName the required donor name, or null
+     * @param externalNames the required external names of the tissues, or wildcard patterns, or null
+     * @param donorNames the required donor names, or null
      * @return the matching samples
      */
-    public List<Sample> samplesForTissues(String externalName, String donorName) {
+    public List<Sample> samplesForTissues(List<String> externalNames, List<String> donorNames) {
+        if (donorNames!=null && donorNames.isEmpty() || externalNames!=null && externalNames.isEmpty()) {
+            return List.of();
+        }
         List<Tissue> tissues;
-        if (externalName!=null) {
-            if (externalName.indexOf('*') >= 0) {
-                tissues = tissueRepo.findAllByExternalNameLike(wildcardToLikeSql(externalName));
-            } else {
-                tissues = tissueRepo.getAllByExternalName(externalName);
+        if (externalNames!=null) {
+            tissues = new ArrayList<>();
+            for (String externalName : externalNames) {
+                if (externalName.indexOf('*') >= 0) {
+                    tissues.addAll(tissueRepo.findAllByExternalNameLike(wildcardToLikeSql(externalName)));
+                } else {
+                    tissues.addAll(tissueRepo.getAllByExternalName(externalName));
+                }
             }
-            if (donorName!=null) {
+            if (donorNames!=null) {
+                Predicate<Tissue> donorTissuePredicate = donorNameTissuePredicate(donorNames);
                 tissues = tissues.stream()
-                        .filter(t -> t.getDonor().getDonorName().equalsIgnoreCase(donorName))
+                        .filter(donorTissuePredicate)
                         .collect(toList());
             }
         } else {
-            Donor donor = donorRepo.getByDonorName(donorName);
-            tissues = tissueRepo.findByDonorId(donor.getId());
+            List<Donor> donors = donorRepo.getAllByDonorNameIn(donorNames);
+            List<Integer> donorIds = donors.stream().map(Donor::getId).collect(toList());
+            tissues = tissueRepo.findAllByDonorIdIn(donorIds);
         }
         if (tissues.isEmpty()) {
             return List.of();
@@ -224,28 +232,49 @@ public class HistoryServiceImp implements HistoryService {
 
     /**
      * Makes a predicate for tissues using the given donorname and external name
-     * @param donorName the name of the required donor, or null
-     * @param externalName the required external name of the tissue, or a wildcard pattern, or null
+     * @param donorNames the name of the required donor, or null
+     * @param externalNames the required external name of the tissue, or a wildcard pattern, or null
      * @return a predicate, or null if both input fields are null
      */
-    public Predicate<Tissue> tissuePredicate(String donorName, String externalName) {
-        Predicate<Tissue> filter;
-        if (externalName==null) {
-            filter = null;
-        } else if (externalName.indexOf('*') >= 0) {
-            Pattern p = BasicUtils.makeWildcardPattern(externalName);
-            filter = t -> p.matcher(t.getExternalName()).matches();
-        } else {
-            filter = t -> t.getExternalName().equalsIgnoreCase(externalName);
+    public Predicate<Tissue> tissuePredicate(List<String> donorNames, List<String> externalNames) {
+        if (donorNames!=null && donorNames.isEmpty() || externalNames!=null && externalNames.isEmpty()) {
+            return t -> false;
         }
-        if (donorName!=null) {
-            Predicate<Tissue> donorFilter = t -> t.getDonor().getDonorName().equalsIgnoreCase(donorName);
-            filter = (filter==null ? donorFilter : filter.and(donorFilter));
+        Predicate<Tissue> xnFilter = externalNameTissuePredicate(externalNames);
+        Predicate<Tissue> dnFilter = donorNameTissuePredicate(donorNames);
+        return (xnFilter==null ? dnFilter : dnFilter==null ? xnFilter : xnFilter.and(dnFilter));
+    }
+
+    public Predicate<Tissue> externalNameTissuePredicate(List<String> externalNames) {
+        if (externalNames == null) {
+            return null;
         }
-        if (filter==null) {
-            return t -> true;
+        if (externalNames.isEmpty()) {
+            return t -> false; // can't possibly match an empty list
         }
-        return filter;
+        if (externalNames.size() == 1 && externalNames.get(0).indexOf('*') < 0) {
+            String xn = externalNames.get(0);
+            return t -> t.getExternalName().equalsIgnoreCase(xn);
+        }
+        Pattern p = BasicUtils.makeWildcardPattern(externalNames);
+        return t -> p.matcher(t.getExternalName()).matches();
+    }
+
+    public Predicate<Tissue> donorNameTissuePredicate(List<String> donorNames) {
+        if (donorNames==null) {
+            return null;
+        }
+        if (donorNames.isEmpty()) {
+            return t -> false;
+        }
+        if (donorNames.size()==1) {
+            String dn = donorNames.get(0);
+            return t -> t.getDonor().getDonorName().equalsIgnoreCase(dn);
+        }
+        final Set<String> dnUpper = donorNames.stream()
+                .map(String::toUpperCase)
+                .collect(toSet());
+        return t -> dnUpper.contains(t.getDonor().getDonorName().toUpperCase());
     }
 
     @Override
