@@ -425,7 +425,7 @@ public class BasicUtils {
 
     /**
      * Makes a case-insensitive regular expression pattern to match the given string reading <tt>*</tt> as a wildcard.
-     * @param wildcardString a string containing `*` as wildcards
+     * @param wildcardString a string containing <tt>*</tt> as wildcards
      * @return the regular expression pattern object
      */
     public static Pattern makeWildcardPattern(String wildcardString) {
@@ -433,6 +433,32 @@ public class BasicUtils {
         String regex = Arrays.stream(parts)
                 .map(part -> part.isEmpty() ? part : Pattern.quote(part))
                 .collect(joining(".*"));
+        return Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
+    }
+
+    /**
+     * Makes a case-insensitive regular expression pattern to match any of the given strings,
+     * reading <tt>*</tt> as a wildcard.
+     * @param wildcardStrings a collection of strings that may contain <tt>*</tt>  as a wildcard.
+     * @return the regular expression pattern object
+     */
+    public static Pattern makeWildcardPattern(Collection<String> wildcardStrings) {
+        if (wildcardStrings.size()==1) {
+            return makeWildcardPattern(wildcardStrings.iterator().next());
+        }
+        List<String> options = new ArrayList<>();
+        for (String string : wildcardStrings) {
+            String option;
+            if (string.indexOf('*') < 0) {
+                option = Pattern.quote(string);
+            } else {
+                option = Arrays.stream(string.split("\\*+", -1))
+                        .map(part -> part.isEmpty() ? part : Pattern.quote(part))
+                        .collect(joining(".*"));
+            }
+            options.add(option);
+        }
+        String regex = StringUtils.join("|", options);
         return Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
     }
 

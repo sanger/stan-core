@@ -49,12 +49,12 @@ public interface HistoryService {
      * Gets the applicable history
      * @param workNumber the specific work number (if any) to look up, or null
      * @param barcode the barcode of the labware (if any) to look up, or null
-     * @param externalName the external name of the tissue (if any) to look up, or null
-     * @param donorName the name of the donor (if any) to look up, or null
+     * @param externalNames the external names of the tissue (if any) to look up, or null
+     * @param donorNames the names of the donors (if any) to look up, or null
      * @param eventType the name of the event type (if any) you are interested in
      * @return the history for the specified identifier(s)
      */
-    History getHistory(String workNumber, String barcode, String externalName, String donorName, String eventType);
+    History getHistory(String workNumber, String barcode, List<String> externalNames, List<String> donorNames, String eventType);
 
     /**
      * Gets a list of the different event types used in history

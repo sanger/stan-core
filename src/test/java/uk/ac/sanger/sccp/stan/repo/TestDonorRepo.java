@@ -48,5 +48,11 @@ public class TestDonorRepo {
         donorRepo.save(new Donor(null, "DONOR3", LifeStage.adult, species));
 
         assertThat(donorRepo.findAllByDonorNameIn(List.of("donor1", "Donor2"))).containsExactlyInAnyOrder(donor1, donor2);
+
+        assertThat(donorRepo.getAllByDonorNameIn(List.of("DONOR1", "donor2"))).containsExactlyInAnyOrder(donor1, donor2);
+
+        assertThat(assertThrows(EntityNotFoundException.class, () -> donorRepo.getAllByDonorNameIn(List.of("donor1", "donory", "donorz"))))
+                .hasMessage("Unknown donor names: [donory, donorz]");
+
     }
 }

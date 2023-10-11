@@ -26,8 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.Matchers.sameElements;
-import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
-import static uk.ac.sanger.sccp.utils.BasicUtils.wildcardToLikeSql;
+import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 /**
  * Tests {@link HistoryServiceImp}
@@ -349,20 +348,22 @@ public class TestHistoryService {
         History history = new History(null, samples, null);
         EventTypeFilter etFilter = mock(EventTypeFilter.class);
         doReturn(etFilter).when(service).eventTypeFilter(eventType);
+        List<String> externalNames = (externalName==null ? null : List.of(externalName));
+        List<String> donorNames = (donorName==null ? null : List.of(donorName));
         if (mode.equalsIgnoreCase("by work number")) {
             doReturn(history).when(service).getHistoryForWorkNumber(workNumber, etFilter);
         } else if (mode.equalsIgnoreCase("by event type")) {
             doReturn(history).when(service).getHistoryForEventType(eventType);
         } else {
             if (mode.equalsIgnoreCase("by barcode")) {
-                doReturn(samples).when(service).samplesForBarcode(barcode, externalName, donorName);
+                doReturn(samples).when(service).samplesForBarcode(barcode, externalNames, donorNames);
             } else {
-                doReturn(samples).when(service).samplesForTissues(externalName, donorName);
+                doReturn(samples).when(service).samplesForTissues(externalNames, donorNames);
             }
             doReturn(history).when(service).getHistoryForSamples(samples, workNumber, etFilter);
         }
 
-        assertSame(history, service.getHistory(workNumber, barcode, externalName, donorName, eventType));
+        assertSame(history, service.getHistory(workNumber, barcode, externalNames, donorNames, eventType));
     }
 
     @ParameterizedTest
@@ -477,8 +478,8 @@ public class TestHistoryService {
     @Test
     public void testSamplesForBarcode() {
         String barcode = "STAN-1";
-        String externalName = "EXT1";
-        String donorName = "donor1";
+        List<String> externalNames = List.of("EXT1");
+        List<String> donorNames = List.of("donor1");
         Sample[] lwSamples = IntStream.rangeClosed(1,2)
                 .mapToObj(i -> {
                     Donor donor = new Donor(i, "donor"+i, null, null);
@@ -492,84 +493,218 @@ public class TestHistoryService {
         lw.setBarcode(barcode);
         when(mockLwRepo.getByBarcode(barcode)).thenReturn(lw);
         Predicate<Tissue> filter = t -> t.getDonor().getDonorName().equals("donor1");
-        doReturn(filter).when(service).tissuePredicate(donorName, externalName);
+        doReturn(filter).when(service).tissuePredicate(donorNames, externalNames);
         List<Sample> returnSamples = List.of(lwSamples[0], EntityFactory.getSample());
         when(mockSampleRepo.findAllByTissueIdIn(any())).thenReturn(returnSamples);
 
-        assertSame(returnSamples, service.samplesForBarcode(barcode, externalName, donorName));
+        assertSame(returnSamples, service.samplesForBarcode(barcode, externalNames, donorNames));
         verify(mockSampleRepo).findAllByTissueIdIn(Set.of(lwSamples[0].getTissue().getId()));
     }
 
     @ParameterizedTest
-    @MethodSource("samplesForTissuesArgs")
-    public void testSamplesForTissues(String externalName, String donorName, List<Integer> expectedTissueIds,
-                                      List<Sample> samples, List<Tissue> foundTissues) {
-        if (externalName == null) {
-            Donor donor = EntityFactory.getDonor();
-            when(mockDonorRepo.getByDonorName(donorName)).thenReturn(donor);
-            when(mockTissueRepo.findByDonorId(donor.getId())).thenReturn(foundTissues);
-        } else if (externalName.indexOf('*') >= 0) {
-            when(mockTissueRepo.findAllByExternalNameLike(wildcardToLikeSql(externalName)))
-                    .thenReturn(foundTissues);
-        } else {
-            when(mockTissueRepo.getAllByExternalName(externalName))
-                    .thenReturn(foundTissues);
-        }
-
-        when(mockSampleRepo.findAllByTissueIdIn(any())).thenReturn(samples);
-
-        assertSame(samples, service.samplesForTissues(externalName, donorName));
-
-        verify(mockSampleRepo).findAllByTissueIdIn(expectedTissueIds);
-    }
-
-    static Stream<Arguments> samplesForTissuesArgs() {
-        Donor[] donors = IntStream.rangeClosed(1,2)
-                .mapToObj(i -> new Donor(i, "donor"+i, null, null))
-                .toArray(Donor[]::new);
-        List<Tissue> tissues = Arrays.stream(donors)
-                .map(d -> EntityFactory.makeTissue(d, null))
-                .collect(toList());
-        List<Integer> tissueIds = tissues.stream().map(Tissue::getId).collect(toList());
-
-        List<Sample> samples = List.of(EntityFactory.getSample());
-
-        return Arrays.stream(new Object[][] {
-                {null, "donor1", tissueIds},
-                {"ext1", null, tissueIds},
-                {"ext1", "donor1", tissueIds.subList(0,1)},
-                {"ex*", "donor1", tissueIds.subList(0,1)},
-                {"ext1", "donor2", tissueIds.subList(1,2)},
-        }).map(arr -> Arguments.of(arr[0], arr[1], arr[2], samples, tissues));
+    @CsvSource({
+            "'',",
+            ",''",
+            "'', a b",
+            "a b, ''",
+    })
+    public void testSamplesForTissues_empty(String xnJoined, String dnJoined) {
+        List<String> externalNames = stringToList(xnJoined);
+        List<String> donorNames = stringToList(dnJoined);
+        assertThat(service.samplesForTissues(externalNames, donorNames)).isEmpty();
+        verifyNoInteractions(mockTissueRepo);
+        verifyNoInteractions(mockDonorRepo);
+        verifyNoInteractions(mockSampleRepo);
     }
 
     @ParameterizedTest
-    @MethodSource("tissuePredicateArgs")
-    public void testTissuePredicate(Tissue tissue, String donorName, String extName, boolean expected) {
-        Predicate<Tissue> predicate = service.tissuePredicate(donorName, extName);
-        assertEquals(expected, predicate.test(tissue));
+    @CsvSource({
+            "alpha beta, Alabama Alaska",
+            "alpha beta,",
+            ", Alabama Alaska",
+            "alpha*,",
+            "alpha*, Alabama",
+            "alpha* beta, Alabama",
+    })
+    public void testSamplesForTissues(String xnJoined, String dnJoined) {
+        List<String> externalNames = stringToList(xnJoined);
+        List<String> donorNames = stringToList(dnJoined);
+        Predicate<Tissue> donorTissuePredicate = null;
+        List<Tissue> tissues;
+        if (externalNames!=null) {
+            tissues = IntStream.range(0, externalNames.size())
+                    .mapToObj(i -> {
+                        Tissue t = new Tissue();
+                        t.setId(10+i);
+                        return t;
+                    })
+                    .collect(toList());
+            for (int i = 0; i < externalNames.size(); ++i) {
+                String xn = externalNames.get(i);
+                if (xn.indexOf('*') >= 0) {
+                    when(mockTissueRepo.findAllByExternalNameLike(wildcardToLikeSql(xn))).thenReturn(List.of(tissues.get(i)));
+                } else {
+                    when(mockTissueRepo.getAllByExternalName(xn)).thenReturn(List.of(tissues.get(i)));
+                }
+            }
+            if (donorNames!=null) {
+                donorTissuePredicate = t -> t.getId()!=10;
+                doReturn(donorTissuePredicate).when(service).donorNameTissuePredicate(donorNames);
+            }
+        } else {
+            tissues = List.of(EntityFactory.getTissue());
+            List<Donor> donors = List.of(new Donor(21, null, null, null), new Donor(22, null, null, null));
+            when(mockDonorRepo.getAllByDonorNameIn(donorNames)).thenReturn(donors);
+            when(mockTissueRepo.findAllByDonorIdIn(List.of(21,22))).thenReturn(tissues);
+        }
+        List<Integer> tissueIds;
+        if (donorTissuePredicate!=null) {
+            tissueIds = tissues.subList(1, tissues.size()).stream().map(Tissue::getId).collect(toList());
+        } else {
+            tissueIds = tissues.stream().map(Tissue::getId).collect(toList());
+        }
+        if (tissueIds.isEmpty()) {
+            assertThat(service.samplesForTissues(externalNames, donorNames)).isEmpty();
+            verifyNoInteractions(mockSampleRepo);
+        } else {
+            List<Sample> samples = List.of(EntityFactory.getSample());
+            when(mockSampleRepo.findAllByTissueIdIn(any())).thenReturn(samples);
+            assertSame(samples, service.samplesForTissues(externalNames, donorNames));
+            verify(mockSampleRepo).findAllByTissueIdIn(tissueIds);
+        }
     }
 
-    static Stream<Arguments> tissuePredicateArgs() {
-        Donor d = new Donor(1, "DONOR1", null, null);
-        Tissue tissue = EntityFactory.makeTissue(d, null);
-        tissue.setExternalName("EXT1");
-        return Arrays.stream(new Object[][] {
-                { null, null, true },
-                { "donor1", null, true },
-                { "donor2", null, false },
-                { null, "ext1", true },
-                { null, "ext2", false },
-                { "donor1", "ext1", true },
-                { "donor1", "ext2", false },
-                { "donor2", "ext1", false },
-                { null, "ext*", true },
-                { "donor1", "ext*", true },
-                { "donor2", "ext*", false },
-                { null, "abc*", false },
-                { "donor1", "abc*", false },
-        }).map(arr -> Arguments.of(tissue, arr[0], arr[1], arr[2]));
+    /**
+     * Splits a string by whitespace into a list.
+     * Returns null if the input is null. Returns an empty list if the input is empty.
+     * @param joinedString a string
+     * @return list of substrings
+     */
+    private static List<String> stringToList(String joinedString) {
+        if (joinedString==null) {
+            return null;
+        }
+        if (joinedString.isEmpty()) {
+            return List.of();
+        }
+        return Arrays.asList(joinedString.split("\\s+"));
     }
+
+    @ParameterizedTest
+    @MethodSource("tissuePredicateAllFalseArgs")
+    public void testTissuePredicate_allfalse(List<String> donorNames, List<String> externalNames) {
+        doReturn(null).when(service).externalNameTissuePredicate(any());
+        doReturn(null).when(service).donorNameTissuePredicate(any());
+        Predicate<Tissue> predicate = service.tissuePredicate(donorNames, externalNames);
+        assertNotNull(predicate);
+        assertFalse(predicate.test(null));
+        verify(service, never()).externalNameTissuePredicate(any());
+        verify(service, never()).donorNameTissuePredicate(any());
+    }
+
+    static Stream<Arguments> tissuePredicateAllFalseArgs() {
+        return Arrays.stream(new Object[][] {
+                {List.of("Alpha"), List.of()},
+                {List.of(), List.of("Beta")},
+                {List.of(), null},
+                {null, List.of()},
+        }).map(Arguments::of);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"true,true",
+            "true,false",
+            "false,true",
+            "false,false"
+    })
+    @SuppressWarnings("unchecked")
+    public void testTissuePredicate(boolean hasXnFilter, boolean hasDnFilter) {
+        List<String> externalNames = List.of("xn");
+        List<String> donorNames = List.of("dn");
+        Predicate<Tissue> xnFilter, dnFilter, expectedFilter;
+        xnFilter = hasXnFilter ? mock(Predicate.class) : null;
+        dnFilter = hasDnFilter ? mock(Predicate.class) : null;
+        if (hasXnFilter && hasDnFilter) {
+            Predicate<Tissue> combinedFilter = mock(Predicate.class);
+            when(xnFilter.and(dnFilter)).thenReturn(combinedFilter);
+            expectedFilter = combinedFilter;
+        } else {
+            expectedFilter = coalesce(xnFilter, dnFilter);
+        }
+        doReturn(xnFilter).when(service).externalNameTissuePredicate(externalNames);
+        doReturn(dnFilter).when(service).donorNameTissuePredicate(donorNames);
+        assertSame(expectedFilter, service.tissuePredicate(donorNames, externalNames));
+    }
+
+    @ParameterizedTest
+    @MethodSource("donorNameTissuePredicateArgs")
+    public void testDonorNameTissuePredicate(List<String> donorNames, List<String> unmatching) {
+        Predicate<Tissue> predicate = service.donorNameTissuePredicate(donorNames);
+        if (donorNames==null) {
+            assertNull(predicate);
+            return;
+        }
+        Donor donor = new Donor();
+        Tissue tissue = new Tissue();
+        tissue.setDonor(donor);
+        for (String donorName: donorNames) {
+            donor.setDonorName(donorName);
+            assertTrue(predicate.test(tissue));
+            donor.setDonorName(donorName.toUpperCase());
+            assertTrue(predicate.test(tissue));
+        }
+        for (String donorName: unmatching) {
+            donor.setDonorName(donorName);
+            assertFalse(predicate.test(tissue));
+        }
+    }
+
+    static Stream<Arguments> donorNameTissuePredicateArgs() {
+        return Arrays.stream(new Object[][] {
+                {null, null},
+                {List.of(), List.of("anything")},
+                {List.of("alpha"), List.of("alpha1", "alph", "")},
+                {List.of("alpha", "beta"), List.of("gamma")},
+        }).map(Arguments::of);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            ",,",
+            "'',,'' a alpha",
+            "alp*,alp alpha ALPHA, al bapl",
+            "beta gamma,BETA Gamma,beta|gam gam bet gammarays",
+            "alpha *eta, Alpha Beta Zeta Eta Theta, gamma"
+    })
+    public void testExternalNameTissuePredicate(String inputs, String goods, String bads) {
+        List<String> externalNames;
+        if (inputs==null)  {
+            externalNames = null;
+        } else if (inputs.isEmpty()) {
+            externalNames = List.of();
+        } else {
+            externalNames = Arrays.asList(inputs.split("\\s+"));
+        }
+        Predicate<Tissue> predicate = service.externalNameTissuePredicate(externalNames);
+        if (externalNames==null) {
+            assertNull(predicate);
+            return;
+        }
+        Tissue tissue = new Tissue();
+        if (goods != null) {
+            for (String good : goods.split("\\s+")) {
+                tissue.setExternalName(good);
+                assertTrue(predicate.test(tissue));
+            }
+        }
+        if (bads != null) {
+            for (String bad : bads.split("\\s+")) {
+                tissue.setExternalName(bad);
+                assertFalse(predicate.test(tissue));
+            }
+        }
+    }
+
 
     @Test
     public void testGetHistoryForSamples() {
