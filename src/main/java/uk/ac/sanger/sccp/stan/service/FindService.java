@@ -11,7 +11,6 @@ import uk.ac.sanger.sccp.stan.request.FindResult;
 import uk.ac.sanger.sccp.stan.request.FindResult.FindEntry;
 import uk.ac.sanger.sccp.stan.request.FindResult.LabwareLocation;
 import uk.ac.sanger.sccp.stan.service.store.StoreService;
-import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -20,6 +19,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.*;
+import static uk.ac.sanger.sccp.utils.BasicUtils.makeWildcardPattern;
+import static uk.ac.sanger.sccp.utils.BasicUtils.wildcardToLikeSql;
 
 /**
  * Service for finding stored labware
@@ -62,14 +63,10 @@ public class FindService {
         List<LabwareSample> labwareSamples;
         if (request.getLabwareBarcode()!=null) {
             labwareSamples = findByLabwareBarcode(request.getLabwareBarcode());
-        } else if (request.getTissueExternalName()!=null) {
-            if (request.getTissueExternalName().indexOf('*') >= 0) {
-                labwareSamples = findByTissueExternalNameWildcard(request.getTissueExternalName());
-            } else {
-                labwareSamples = findByTissueExternalName(request.getTissueExternalName());
-            }
-        } else if (request.getDonorName()!=null) {
-            labwareSamples = findByDonorName(request.getDonorName());
+        } else if (request.getTissueExternalNames()!=null) {
+            labwareSamples = findByTissueExternalNames(request.getTissueExternalNames());
+        } else if (request.getDonorNames()!=null) {
+            labwareSamples = findByDonorNames(request.getDonorNames());
         } else if (request.getTissueTypeName()!=null) {
             labwareSamples = findByTissueType(request.getTissueTypeName());
         } else {
@@ -88,7 +85,7 @@ public class FindService {
      * @exception IllegalArgumentException if the request is invalid
      */
     public void validateRequest(FindRequest request) {
-        if (request.getDonorName()==null && request.getTissueExternalName()==null && request.getLabwareBarcode()==null
+        if (request.getDonorNames()==null && request.getTissueExternalNames()==null && request.getLabwareBarcode()==null
                 && request.getTissueTypeName()==null && request.getWorkNumber()==null) {
             throw new IllegalArgumentException("Donor name or external name or labware barcode or tissue type or work number must be specified.");
         }
@@ -112,34 +109,39 @@ public class FindService {
     }
 
     /**
-     * Finds LabwareSamples whose tissue external name matches the given wildcard string.
-     * @param string a string containing {@code *} wildcards
+     * Finds LabwareSamples whose tissue external name matches the given strings which may contain wildcards.
+     * @param strings external names that may use wildcards.
      * @return the LabwareSamples for tissues with matching external names
      */
-    public List<LabwareSample> findByTissueExternalNameWildcard(String string) {
-        String likeString = BasicUtils.wildcardToLikeSql(string);
-        List<Tissue> tissues = tissueRepo.findAllByExternalNameLike(likeString);
-        return findByTissueIds(tissues.stream().map(Tissue::getId).collect(toList()));
+    public List<LabwareSample> findByTissueExternalNames(List<String> strings) {
+        if (strings.isEmpty()) {
+            return List.of();
+        }
+        Set<Integer> tissueIds = new HashSet<>();
+        for (String string: strings) {
+            List<Tissue> tissues;
+            if (string.indexOf('*') >= 0) {
+                tissues = tissueRepo.findAllByExternalNameLike(wildcardToLikeSql(string));
+            } else {
+                tissues = tissueRepo.getAllByExternalName(string);
+            }
+            tissues.forEach(tissue -> tissueIds.add(tissue.getId()));
+        }
+        return findByTissueIds(tissueIds);
     }
 
     /**
-     * Finds LabwareSamples given a tissue external name
-     * @param externalName the external name of a tissue
-     * @return LabwareSamples for each labware containing samples for the specified tissue
+     * Finds LabwareSamples given donor names
+     * @param strings the names of a donors
+     * @return LabwareSamples for each labware containing samples for the specified donors
      */
-    public List<LabwareSample> findByTissueExternalName(String externalName) {
-        List<Tissue> tissues = tissueRepo.getAllByExternalName(externalName);
-        return findByTissueIds(tissues.stream().map(Tissue::getId).collect(toList()));
-    }
-
-    /**
-     * Finds LabwareSamples given a donor name
-     * @param donorName the name of a donor
-     * @return LabwareSamples for each labware containing samples for the specified donor
-     */
-    public List<LabwareSample> findByDonorName(String donorName) {
-        Donor donor = donorRepo.getByDonorName(donorName);
-        List<Tissue> tissues = tissueRepo.findByDonorId(donor.getId());
+    public List<LabwareSample> findByDonorNames(List<String> strings) {
+        if (strings.isEmpty()) {
+            return List.of();
+        }
+        List<Donor> donors = donorRepo.getAllByDonorNameIn(strings);
+        Set<Integer> donorIds = donors.stream().map(Donor::getId).collect(toSet());
+        List<Tissue> tissues = tissueRepo.findAllByDonorIdIn(donorIds);
         return findByTissueIds(tissues.stream().map(Tissue::getId).collect(toList()));
     }
 
@@ -244,21 +246,24 @@ public class FindService {
         if (labwareBarcode!=null) {
             predicate = ls -> labwareBarcode.equalsIgnoreCase(ls.labware.getBarcode());
         }
-        final String donorName = request.getDonorName();
-        if (donorName!=null) {
+        final List<String> donorNames = request.getDonorNames();
+        if (donorNames!=null) {
+            final Set<String> ucDonorNames = donorNames.stream().map(String::toUpperCase).collect(toSet());
             predicate = andPredicate(predicate,
-                    ls -> donorName.equalsIgnoreCase(ls.sample.getTissue().getDonor().getDonorName())
+                    ls -> ucDonorNames.contains(ls.sample.getTissue().getDonor().getDonorName().toUpperCase())
             );
         }
-        final String externalName = request.getTissueExternalName();
-        if (externalName!=null) {
-            if (externalName.indexOf('*') >= 0) {
-                final Pattern pattern = BasicUtils.makeWildcardPattern(externalName);
-                predicate = andPredicate(predicate,
-                        ls -> pattern.matcher(ls.getSample().getTissue().getExternalName()).matches());
-            } else {
+        final List<String> externalNames = request.getTissueExternalNames();
+        if (externalNames!=null) {
+            if (externalNames.size()==1 && externalNames.get(0).indexOf('*') < 0) {
+                String externalName = externalNames.get(0);
                 predicate = andPredicate(predicate,
                         ls -> externalName.equalsIgnoreCase(ls.getSample().getTissue().getExternalName())
+                );
+            } else {
+                final Pattern pattern = makeWildcardPattern(externalNames);
+                predicate = andPredicate(predicate,
+                        ls -> pattern.matcher(ls.getSample().getTissue().getExternalName()).matches()
                 );
             }
         }
@@ -404,12 +409,12 @@ public class FindService {
     /**
      * A labware, sample and set of work numbers used as an intermediate in finding results.
      */
-    static class LabwareSample {
+    public static class LabwareSample {
         Labware labware;
         Sample sample;
         Set<String> workNumbers;
 
-        public LabwareSample(Labware labware, Sample sample, Set<String> workNumbers) {
+        LabwareSample(Labware labware, Sample sample, Set<String> workNumbers) {
             this.labware = labware;
             this.sample = sample;
             this.workNumbers = workNumbers;

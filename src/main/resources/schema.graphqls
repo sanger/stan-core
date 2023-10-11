@@ -920,10 +920,10 @@ type FindResult {
 input FindRequest {
     """The barcode of a specific piece of labware to find."""
     labwareBarcode: String
-    """The name of a donor to find stored samples of."""
-    donorName: String
-    """The name of a tissue to find stored samples of."""
-    tissueExternalName: String
+    """The names of donors to find stored samples of."""
+    donorNames: [String!]
+    """The names of tissues to find stored samples of. Maybe include * wildcards."""
+    tissueExternalNames: [String!]
     """The name of a tissue type to find stored samples of."""
     tissueTypeName: String
     """The maximum number of records to return. Use a negative value to indicate no limit."""

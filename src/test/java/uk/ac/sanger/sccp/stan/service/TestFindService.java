@@ -18,9 +18,7 @@ import uk.ac.sanger.sccp.stan.service.store.StoreService;
 
 import javax.persistence.EntityNotFoundException;
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.regex.Pattern;
 import java.util.stream.*;
 
 import static java.util.stream.Collectors.toList;
@@ -28,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.utils.BasicUtils.wildcardToLikeSql;
 
 /**
  * Tests {@link FindService}
@@ -81,9 +80,9 @@ public class TestFindService {
         final int mode;
         if (request.getLabwareBarcode()!=null) {
             mode = 0;
-        } else if (request.getTissueExternalName()!=null) {
-            mode = (request.getTissueExternalName().indexOf('*') >= 0) ? 5 : 1;
-        } else if (request.getDonorName()!=null) {
+        } else if (request.getTissueExternalNames()!=null) {
+            mode = 1;
+        } else if (request.getDonorNames()!=null) {
             mode = 2;
         } else if (request.getTissueTypeName()!=null){
             mode = 3;
@@ -96,19 +95,16 @@ public class TestFindService {
                 doReturn(ls1).when(findService).findByLabwareBarcode(request.getLabwareBarcode());
                 break;
             case 1:
-                doReturn(ls1).when(findService).findByTissueExternalName(request.getTissueExternalName());
+                doReturn(ls1).when(findService).findByTissueExternalNames(request.getTissueExternalNames());
                 break;
             case 2:
-                doReturn(ls1).when(findService).findByDonorName(request.getDonorName());
+                doReturn(ls1).when(findService).findByDonorNames(request.getDonorNames());
                 break;
             case 3:
                 doReturn(ls1).when(findService).findByTissueType(request.getTissueTypeName());
                 break;
             case 4:
                 doReturn(ls1).when(findService).findByWorkNumber(request.getWorkNumber());
-                break;
-            case 5:
-                doReturn(ls1).when(findService).findByTissueExternalNameWildcard(request.getTissueExternalName());
                 break;
         }
 
@@ -121,19 +117,16 @@ public class TestFindService {
                 verify(findService).findByLabwareBarcode(request.getLabwareBarcode());
                 break;
             case 1:
-                verify(findService).findByTissueExternalName(request.getTissueExternalName());
+                verify(findService).findByTissueExternalNames(request.getTissueExternalNames());
                 break;
             case 2:
-                verify(findService).findByDonorName(request.getDonorName());
+                verify(findService).findByDonorNames(request.getDonorNames());
                 break;
             case 3:
                 verify(findService).findByTissueType(request.getTissueTypeName());
                 break;
             case 4:
                 verify(findService).findByWorkNumber(request.getWorkNumber());
-                break;
-            case 5:
-                verify(findService).findByTissueExternalNameWildcard(request.getTissueExternalName());
                 break;
         }
         verify(findService).filter(ls1, request);
@@ -144,22 +137,21 @@ public class TestFindService {
     static Stream<FindRequest> findArgs() {
         return Stream.of(
                 new FindRequest("STAN-A1", null, null, null, -1, null, null, null),
-                new FindRequest(null, null, "TISSUE1", null, -1, null, null, null),
-                new FindRequest(null, "DONOR1", null, null, -1, null,  null, null),
+                new FindRequest(null, null, List.of("TISSUE1"), null, -1, null, null, null),
+                new FindRequest(null, List.of("DONOR1"), null, null, -1, null,  null, null),
                 new FindRequest(null, null, null, "Heart", -1, null, null, null),
-                new FindRequest(null, null, null, "Heart", -1, "SGP-1", null, null),
-                new FindRequest(null, null, "TIS*", null, -1, null, null, null)
+                new FindRequest(null, null, null, "Heart", -1, "SGP-1", null, null)
         );
     }
 
     @Test
     public void testValidateRequest() {
         findService.validateRequest(new FindRequest("STAN-A1", null, null, null, 50, null, null, null));
-        findService.validateRequest(new FindRequest(null, "DONOR1", null, null, 50, null, null, null));
-        findService.validateRequest(new FindRequest(null, null, "TISSUE1", null, 50, null, null, null));
+        findService.validateRequest(new FindRequest(null, List.of("DONOR1"), null, null, 50, null, null, null));
+        findService.validateRequest(new FindRequest(null, null, List.of("TISSUE1"), null, 50, null, null, null));
         findService.validateRequest(new FindRequest(null, null, null, "TTYPE", 50, null, null, null));
         findService.validateRequest(new FindRequest(null, null, null, null, 50, "SGP-1", null, null));
-        findService.validateRequest(new FindRequest("STAN-A1", "DONOR1", "TISSUE1", "TTYPE", 50, "SGP-1", null, null));
+        findService.validateRequest(new FindRequest("STAN-A1", List.of("DONOR1"), List.of("TISSUE1"), "TTYPE", 50, "SGP-1", null, null));
 
         assertThat(assertThrows(IllegalArgumentException.class, () ->
                 findService.validateRequest(new FindRequest(null, null, null, null, 50, null, null, null))))
@@ -278,50 +270,57 @@ public class TestFindService {
     }
 
     @Test
-    public void testFindByTissueExternalName() {
-        String invalidName = "TISSUE_X";
-        doThrow(EntityNotFoundException.class).when(mockTissueRepo).getAllByExternalName(invalidName);
-        assertThrows(EntityNotFoundException.class, () -> findService.findByTissueExternalName(invalidName));
-        verify(findService, never()).findByTissueIds(any());
-
-        Tissue tissue = EntityFactory.getTissue();
-        when(mockTissueRepo.getAllByExternalName(tissue.getExternalName())).thenReturn(List.of(tissue));
-        Labware lw = EntityFactory.getTube();
-        Sample sample = EntityFactory.getSample();
-        List<LabwareSample> lss = List.of(new LabwareSample(lw, sample, Set.of()));
-        doReturn(lss).when(findService).findByTissueIds(List.of(tissue.getId()));
-        assertEquals(lss, findService.findByTissueExternalName(tissue.getExternalName()));
-        verify(findService).findByTissueIds(List.of(tissue.getId()));
+    public void testFindTissueByExternalNames_none() {
+        assertThat(findService.findByTissueExternalNames(List.of())).isEmpty();
+        verifyNoInteractions(mockTissueRepo);
     }
 
     @Test
-    public void testFindByExternalNameLike() {
-        String string = "T%_IS*";
-        Tissue tissue = EntityFactory.getTissue();
-        Tissue tissue2 = EntityFactory.makeTissue(tissue.getDonor(), tissue.getSpatialLocation());
-        when(mockTissueRepo.findAllByExternalNameLike(any())).thenReturn(List.of(tissue, tissue2));
-        Labware lw = EntityFactory.getTube();
-        Sample sample = EntityFactory.getSample();
-        List<LabwareSample> lss = List.of(new LabwareSample(lw, sample, Set.of()));
+    public void testFindByTissueExternalNames() {
+        List<String> xns = List.of("Alpha", "Beta*", "Gamma");
+        List<Tissue> tissues = IntStream.rangeClosed(0,6)
+                .mapToObj(i -> {
+                    Tissue t = new Tissue();
+                    t.setId(100+i);
+                    return t;
+                }).collect(toList());
+        for (int i = 0; i < xns.size(); ++i) {
+            String xn = xns.get(i);
+            List<Tissue> subs = tissues.subList(2*i, 2*i+2);
+            if (xn.indexOf('*') >= 0) {
+                when(mockTissueRepo.findAllByExternalNameLike(wildcardToLikeSql(xn))).thenReturn(subs);
+            } else {
+                when(mockTissueRepo.getAllByExternalName(xn)).thenReturn(subs);
+            }
+        }
+        List<LabwareSample> lss = List.of(new LabwareSample(null, null, null));
         doReturn(lss).when(findService).findByTissueIds(any());
-        assertEquals(lss, findService.findByTissueExternalNameWildcard(string));
-        verify(mockTissueRepo).findAllByExternalNameLike("T\\%\\_IS%");
-        verify(findService).findByTissueIds(List.of(tissue.getId(), tissue2.getId()));
+        assertSame(lss, findService.findByTissueExternalNames(xns));
+        verify(findService).findByTissueIds(Set.of(100,101,102,103,104,105));
     }
 
-    @Test
-    public void testFindByDonorName() {
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testFindByDonorNames(boolean anyNames) {
+        if (!anyNames) {
+            assertThat(findService.findByDonorNames(List.of())).isEmpty();
+            verifyNoInteractions(mockDonorRepo);
+            verifyNoInteractions(mockTissueRepo);
+            return;
+        }
         Sample sample = EntityFactory.getSample();
         Tissue tissue = sample.getTissue();
-        Donor donor = tissue.getDonor();
+        Donor donor1 = tissue.getDonor();
+        Donor donor2 = new Donor(donor1.getId()+1, "donor2", null, null);
+        List<Donor> donors = List.of(donor1, donor2);
         Labware lw = EntityFactory.getTube();
-
-        when(mockDonorRepo.getByDonorName(donor.getDonorName())).thenReturn(donor);
-        when(mockTissueRepo.findByDonorId(donor.getId())).thenReturn(List.of(tissue));
+        List<String> names = List.of("donor1", "donor2");
+        when(mockDonorRepo.getAllByDonorNameIn(names)).thenReturn(donors);
+        Set<Integer> donorIds = Set.of(donor1.getId(), donor2.getId());
+        when(mockTissueRepo.findAllByDonorIdIn(donorIds)).thenReturn(List.of(tissue));
         List<LabwareSample> lss = List.of(new LabwareSample(lw, sample, Set.of()));
         doReturn(lss).when(findService).findByTissueIds(List.of(tissue.getId()));
-
-        assertEquals(lss, findService.findByDonorName(donor.getDonorName()));
+        assertEquals(lss, findService.findByDonorNames(names));
     }
 
     @Test
@@ -375,9 +374,9 @@ public class TestFindService {
 
         LabwareType lt = EntityFactory.getTubeType();
         Labware lw1 = EntityFactory.makeEmptyLabware(lt);
-        lw1.setCreated(tuesday.atStartOfDay().plus(12, ChronoUnit.HOURS));
+        lw1.setCreated(tuesday.atStartOfDay().plusHours(12));
         Labware lw2 = EntityFactory.makeEmptyLabware(lt);
-        lw2.setCreated(thursday.atStartOfDay().plus(12, ChronoUnit.HOURS));
+        lw2.setCreated(thursday.atStartOfDay().plusHours(12));
         Sample sample1 = EntityFactory.getSample();
         Tissue tissue1 = sample1.getTissue();
         Donor donor1 = tissue1.getDonor();
@@ -409,19 +408,19 @@ public class TestFindService {
         return Stream.of(
                 Arguments.of(lss, new FindRequest(null, null, null, null, 0, null, null, null), lss),
                 Arguments.of(lss, new FindRequest(lw1.getBarcode().toLowerCase(), null, null, null, 0, null, null, null), lss.subList(0,2)),
-                Arguments.of(lss, new FindRequest(null, donor1.getDonorName(), null, null, 0, null, null, null),
+                Arguments.of(lss, new FindRequest(null, List.of(donor1.getDonorName()), null, null, 0, null, null, null),
                         List.of(lss.get(0), lss.get(2))),
-                Arguments.of(lss, new FindRequest(null, null, tissue2.getExternalName(), null, 0, null, null, null),
+                Arguments.of(lss, new FindRequest(null, null, List.of(tissue2.getExternalName()), null, 0, null, null, null),
                         List.of(lss.get(1), lss.get(3))),
                 Arguments.of(lss, new FindRequest(null, null, null, tt1.getName().toLowerCase(), 0, null, null, null),
                         List.of(lss.get(0), lss.get(2))),
                 Arguments.of(lss, new FindRequest(null, null, null, null, 0, work.getWorkNumber(), null, null),
                         List.of(lss.get(0))),
-                Arguments.of(lss, new FindRequest(null, null, "*UE2", null, 0, null, null, null),
+                Arguments.of(lss, new FindRequest(null, null, List.of("*UE2"), null, 0, null, null, null),
                         List.of(lss.get(1), lss.get(3))),
-                Arguments.of(lss, new FindRequest(null, null, "tiss*", null, 0, null, null, null),
+                Arguments.of(lss, new FindRequest(null, null, List.of("tiss*"), null, 0, null, null, null),
                         lss),
-                Arguments.of(lss, new FindRequest(lw1.getBarcode(), donor1.getDonorName(), tissue1.getExternalName(), tt2.getName(), 0, null, null, null), List.of()),
+                Arguments.of(lss, new FindRequest(lw1.getBarcode(), List.of(donor1.getDonorName()), List.of(tissue1.getExternalName()), tt2.getName(), 0, null, null, null), List.of()),
                 // Date filtering:
                 Arguments.of(lss, new FindRequest(null, null, null, tt1.getName(), 0, null, wednesday, null), List.of(lss.get(2))),
                 Arguments.of(lss, requestDate(null, null), lss),
