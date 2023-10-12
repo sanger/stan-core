@@ -154,7 +154,7 @@ public class TestPlanService {
         verify(planService).createActions(request.getLabware().get(1), plans[1].getId(), sources, destinations.get(1), opBs);
         verify(mockLwNoteRepo).saveAll(List.of(
                 LabwareNote.noteForPlan(destinations.get(0).getId(), plans[0].getId(), "costing", "SGP"),
-                LabwareNote.noteForPlan(destinations.get(0).getId(), plans[0].getId(), "lot", "lot1"),
+                LabwareNote.noteForPlan(destinations.get(0).getId(), plans[0].getId(), "lot", "LOT1"),
                 LabwareNote.noteForPlan(destinations.get(1).getId(), plans[1].getId(), "costing", "Faculty")
         ));
     }

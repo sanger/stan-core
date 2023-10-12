@@ -283,7 +283,9 @@ public class FieldValidation {
 
     @Bean
     public Validator<String> lotNumberValidator() {
-        return new StringValidator("Lot number", 6, 7, EnumSet.of(CharacterType.DIGIT));
+        return new StringValidator("Lot number", 6, 7,
+                EnumSet.of(CharacterType.DIGIT, CharacterType.HYPHEN, CharacterType.ALPHA), false,
+                Pattern.compile("\\d+|\\d-\\d{4}[A-Z]", Pattern.CASE_INSENSITIVE));
     }
 
     @Bean
