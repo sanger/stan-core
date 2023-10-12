@@ -598,8 +598,10 @@ public class ReleaseFileService {
                 if (!lwId.equals(note.getLabwareId())) {
                     continue;
                 }
-                if (note.getName().equalsIgnoreCase(AnalyserServiceImp.LOT_NAME)) {
-                    entry.setXeniumReagentLot(note.getValue());
+                if (note.getName().equalsIgnoreCase(AnalyserServiceImp.LOT_A_NAME)) {
+                    entry.setXeniumReagentALot(note.getValue());
+                } else if (note.getName().equalsIgnoreCase(AnalyserServiceImp.LOT_B_NAME)) {
+                    entry.setXeniumReagentBLot(note.getValue());
                 } else if (note.getName().equalsIgnoreCase(AnalyserServiceImp.POSITION_NAME)) {
                     entry.setXeniumCassettePosition(note.getValue());
                 } else if (note.getName().equalsIgnoreCase(AnalyserServiceImp.RUN_NAME)) {
