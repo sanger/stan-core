@@ -1,6 +1,7 @@
 package uk.ac.sanger.sccp.stan.service.validation;
 
 import uk.ac.sanger.sccp.stan.model.*;
+import uk.ac.sanger.sccp.stan.repo.EquipmentRepo;
 import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
 import uk.ac.sanger.sccp.stan.repo.OperationTypeRepo;
 import uk.ac.sanger.sccp.stan.service.*;
@@ -24,16 +25,18 @@ public class ValidationHelperImp implements ValidationHelper {
     private final LabwareValidatorFactory lwValFactory;
     private final OperationTypeRepo opTypeRepo;
     private final LabwareRepo lwRepo;
+    private final EquipmentRepo equipmentRepo;
     private final WorkService workService;
     private final CommentValidationService commentValidationService;
 
     private final Set<String> problems = new LinkedHashSet<>();
 
     public ValidationHelperImp(LabwareValidatorFactory lwValFactory,
-                               OperationTypeRepo opTypeRepo, LabwareRepo lwRepo,
+                               OperationTypeRepo opTypeRepo, LabwareRepo lwRepo, EquipmentRepo equipmentRepo,
                                WorkService workService, CommentValidationService commentValidationService) {
         this.lwValFactory = lwValFactory;
         this.opTypeRepo = opTypeRepo;
+        this.equipmentRepo = equipmentRepo;
         this.lwRepo = lwRepo;
         this.workService = workService;
         this.commentValidationService = commentValidationService;
@@ -112,6 +115,32 @@ public class ValidationHelperImp implements ValidationHelper {
             }
         }
     }
+
+    @Override
+    public Equipment checkEquipment(Integer equipmentId, String category){
+        return checkEquipment(equipmentId, category, false);
+    }
+    @Override
+    public Equipment checkEquipment(Integer equipmentId, String category, boolean required){
+        if (equipmentId == null) {
+           if(required) problems.add("No equipment id specified.");
+            return null;
+        }
+        Optional<Equipment> opt = equipmentRepo.findById(equipmentId);
+        if (opt.isEmpty()) {
+            problems.add("Unknown equipment id: "+equipmentId+".");
+            return null;
+        }
+        Equipment equipment = opt.get();
+        if (!opt.get().getCategory().equalsIgnoreCase(category)) {
+            problems.add("Equipment id: "+equipmentId + " is not an extraction machine.");
+        }
+        if (!equipment.isEnabled()) {
+            problems.add("Equipment id: "+equipmentId + " is disabled.");
+        }
+        return equipment;
+    }
+
 
     public void addProblem(String problem) {
         this.problems.add(problem);

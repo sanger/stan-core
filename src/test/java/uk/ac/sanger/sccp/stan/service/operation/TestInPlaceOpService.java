@@ -10,6 +10,8 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.InPlaceOpRequest;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.service.*;
+import uk.ac.sanger.sccp.stan.service.validation.ValidationHelper;
+import uk.ac.sanger.sccp.stan.service.validation.ValidationHelperFactory;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 
 import java.util.*;
@@ -31,9 +33,10 @@ public class TestInPlaceOpService {
     private OperationService mockOpService;
     private WorkService mockWorkService;
     private BioStateReplacer mockBioStateReplacer;
-    private EquipmentRepo mockEquipmentRepo;
     private OperationTypeRepo mockOpTypeRepo;
     private LabwareRepo mockLwRepo;
+    private ValidationHelperFactory valFactory;
+    private ValidationHelper mockVal;
 
     @BeforeEach
     void setup() {
@@ -41,12 +44,13 @@ public class TestInPlaceOpService {
         mockOpService = mock(OperationService.class);
         mockWorkService = mock(WorkService.class);
         mockBioStateReplacer = mock(BioStateReplacer.class);
-        mockEquipmentRepo = mock(EquipmentRepo.class);
         mockOpTypeRepo = mock(OperationTypeRepo.class);
         mockLwRepo = mock(LabwareRepo.class);
+        valFactory = mock(ValidationHelperFactory.class);
+        mockVal = mock(ValidationHelper.class);
 
         service = spy(new InPlaceOpServiceImp(mockLabwareValidatorFactory, mockOpService, mockWorkService,
-                mockBioStateReplacer, mockEquipmentRepo, mockOpTypeRepo, mockLwRepo));
+                mockBioStateReplacer, mockOpTypeRepo, mockLwRepo, valFactory));
     }
 
     @ParameterizedTest
@@ -62,7 +66,9 @@ public class TestInPlaceOpService {
 
         doReturn(labware).when(service).validateLabware(any(), any());
         doReturn(opType).when(service).validateOpType(any(), any(), any());
-        doReturn(equipment).when(service).validateEquipment(any(), any());
+        doReturn(mockVal).when(valFactory).getHelper();
+        doReturn(new HashSet<>()).when(mockVal).getProblems();
+        doReturn(equipment).when(mockVal).checkEquipment(any(), any());
         final String problem = "Everything is bad.";
         if (successful) {
             when(mockWorkService.validateUsableWork(any(), any())).thenReturn(work);
@@ -87,7 +93,6 @@ public class TestInPlaceOpService {
 
         verify(service).validateLabware(any(), eq(request.getBarcodes()));
         verify(service).validateOpType(any(), eq(request.getOperationType()), eq(labware));
-        verify(service).validateEquipment(any(), eq(request.getEquipmentId()));
         verify(mockWorkService).validateUsableWork(any(), eq(request.getWorkNumber()));
         verify(service, times(successful ? 1 : 0)).createOperations(user, labware, opType, equipment, work);
     }
@@ -154,39 +159,6 @@ public class TestInPlaceOpService {
                 {ot3, tube, "Operation type Blodge can only be recorded on a block."},
         }).map(Arguments::of);
     }
-
-    @ParameterizedTest
-    @MethodSource("validateEquipmentArgs")
-    public void testValidateEquipment(Object arg, String expectedProblem) {
-        Integer id;
-        Equipment equipment;
-        if (arg instanceof Equipment) {
-            equipment = (Equipment) arg;
-            id = equipment.getId();
-        } else {
-            equipment = null;
-            id = (Integer) arg;
-        }
-        when(mockEquipmentRepo.findById(id)).thenReturn(Optional.ofNullable(equipment));
-
-        List<String> problems = new ArrayList<>(1);
-        assertSame(service.validateEquipment(problems, id), equipment);
-        if (expectedProblem==null) {
-            assertThat(problems).isEmpty();
-        } else {
-            assertThat(problems).containsExactly(expectedProblem);
-        }
-    }
-
-    static Stream<Arguments> validateEquipmentArgs() {
-        Equipment eq = new Equipment(20, "Feeniks", "scanner", true);
-        return Stream.of(
-                Arguments.of(eq, null),
-                Arguments.of(null, null),
-                Arguments.of(404, "Unknown equipment id: 404")
-        );
-    }
-
     @Test
     public void testMakeActions_nobs() {
         Sample sam1 = EntityFactory.getSample();

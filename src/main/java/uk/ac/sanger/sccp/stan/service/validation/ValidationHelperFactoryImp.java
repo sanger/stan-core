@@ -1,6 +1,7 @@
 package uk.ac.sanger.sccp.stan.service.validation;
 
 import org.springframework.stereotype.Service;
+import uk.ac.sanger.sccp.stan.repo.EquipmentRepo;
 import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
 import uk.ac.sanger.sccp.stan.repo.OperationTypeRepo;
 import uk.ac.sanger.sccp.stan.service.CommentValidationService;
@@ -15,21 +16,23 @@ public class ValidationHelperFactoryImp implements ValidationHelperFactory {
     private final LabwareValidatorFactory lwValFactory;
     private final OperationTypeRepo opTypeRepo;
     private final LabwareRepo lwRepo;
+    private final EquipmentRepo equipmentRepo;
     private final WorkService workService;
     private final CommentValidationService commentValidationService;
 
     public ValidationHelperFactoryImp(LabwareValidatorFactory lwValFactory,
-                                      OperationTypeRepo opTypeRepo, LabwareRepo lwRepo,
+                                      OperationTypeRepo opTypeRepo, LabwareRepo lwRepo, EquipmentRepo equipmentRepo,
                                       WorkService workService, CommentValidationService commentValidationService) {
         this.lwValFactory = lwValFactory;
         this.opTypeRepo = opTypeRepo;
         this.lwRepo = lwRepo;
+        this.equipmentRepo = equipmentRepo;
         this.workService = workService;
         this.commentValidationService = commentValidationService;
     }
 
     @Override
     public ValidationHelper getHelper() {
-        return new ValidationHelperImp(lwValFactory, opTypeRepo, lwRepo, workService, commentValidationService);
+        return new ValidationHelperImp(lwValFactory, opTypeRepo, lwRepo, equipmentRepo, workService, commentValidationService);
     }
 }

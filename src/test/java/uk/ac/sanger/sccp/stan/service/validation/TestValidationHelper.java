@@ -2,11 +2,14 @@ package uk.ac.sanger.sccp.stan.service.validation;
 
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.*;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
+import uk.ac.sanger.sccp.stan.repo.EquipmentRepo;
 import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
 import uk.ac.sanger.sccp.stan.repo.OperationTypeRepo;
 import uk.ac.sanger.sccp.stan.service.*;
@@ -22,7 +25,8 @@ import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.Matchers.assertProblem;
@@ -38,6 +42,9 @@ class TestValidationHelper {
     private OperationTypeRepo mockOpTypeRepo;
     @Mock
     private LabwareRepo mockLwRepo;
+
+    @Mock
+    private EquipmentRepo equipmentRepo;
     @Mock
     private WorkService mockWorkService;
     @Mock
@@ -234,4 +241,31 @@ class TestValidationHelper {
                 .map(s -> s.equals("null") ? null : s)
                 .collect(toList());
     }
+
+    @ParameterizedTest
+    @MethodSource("equipmentsAndValidations")
+    public void testCheckEquipment_whenNoRequired(Integer requestEquipmentId, Equipment expectedEquipment, String expectedProblem, boolean isRequired) {
+        if(expectedEquipment != null) {
+            when(equipmentRepo.findById(requestEquipmentId)).thenReturn(Optional.of(expectedEquipment));
+        }
+        Equipment equipment  = val.checkEquipment(requestEquipmentId, "CATEGORY X", isRequired);
+        if (expectedProblem == null) {
+            assertEquals(expectedEquipment, equipment);
+            assertTrue(val.getProblems().isEmpty());
+        } else {
+            assertProblem(val.getProblems(), expectedProblem);
+        }
+    }
+
+    static Stream<Arguments> equipmentsAndValidations() {
+        return Arrays.stream(new Object[][] {
+                {1, new Equipment(1, "robot 1",  "CATEGORY X", true), null, false},
+                {1, new Equipment(1, "robot 1",   "CATEGORY X", false), "Equipment id: 1 is disabled.", false},
+                {1, new Equipment(1, "robot 1", "CATEGORY Y", true), "Equipment id: 1 is not an extraction machine.", false},
+                {null, null, null, false},
+                {null, null, "No equipment id specified.", true},
+                {1, null,  "Unknown equipment id: 1.", false},
+        }).map(Arguments::of);
+    }
+
 }

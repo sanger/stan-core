@@ -92,4 +92,8 @@ public interface ValidationHelper {
         checkTimestamp(timestamp, today, labware, null);
     }
 
+    Equipment checkEquipment(Integer equipmentId, String category);
+
+    Equipment checkEquipment(Integer equipmentId, String category, boolean required);
+
 }

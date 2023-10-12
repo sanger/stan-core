@@ -9,6 +9,7 @@ import uk.ac.sanger.sccp.stan.request.ExtractRequest;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.store.StoreService;
+import uk.ac.sanger.sccp.stan.service.validation.ValidationHelperFactory;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 
 import java.util.*;
@@ -23,6 +24,8 @@ import static java.util.stream.Collectors.toList;
  */
 @Service
 public class ExtractServiceImp implements ExtractService {
+
+    public final static String EXTRACT_OP_TYPE_NAME = "extract";
     private final Transactor transactor;
     private final LabwareValidatorFactory labwareValidatorFactory;
     private final LabwareService labwareService;
@@ -35,16 +38,16 @@ public class ExtractServiceImp implements ExtractService {
     private final OperationTypeRepo opTypeRepo;
     private final SampleRepo sampleRepo;
     private final SlotRepo slotRepo;
-    private final EquipmentRepo equipmentRepo;
+    private final ValidationHelperFactory valFactory;
 
-    public static String EXTRACT_OP_TYPE_NAME = "extract";
+
 
     @Autowired
     public ExtractServiceImp(Transactor transactor, LabwareValidatorFactory labwareValidatorFactory,
                              LabwareService labwareService, OperationService opService,
                              StoreService storeService, WorkService workService,
                              LabwareRepo labwareRepo, LabwareTypeRepo lwTypeRepo, OperationTypeRepo opTypeRepo,
-                             SampleRepo sampleRepo, SlotRepo slotRepo, EquipmentRepo equipmentRepo) {
+                             SampleRepo sampleRepo, SlotRepo slotRepo, ValidationHelperFactory valFactory) {
         this.transactor = transactor;
         this.labwareValidatorFactory = labwareValidatorFactory;
         this.labwareService = labwareService;
@@ -56,7 +59,7 @@ public class ExtractServiceImp implements ExtractService {
         this.opTypeRepo = opTypeRepo;
         this.sampleRepo = sampleRepo;
         this.slotRepo = slotRepo;
-        this.equipmentRepo = equipmentRepo;
+        this.valFactory = valFactory;
     }
 
     @Override
@@ -85,7 +88,11 @@ public class ExtractServiceImp implements ExtractService {
         if (request.getLabwareType()==null || request.getLabwareType().isEmpty()) {
             throw new IllegalArgumentException("No labware type specified.");
         }
-        Equipment equipment = validateEquipment(request.getEquipmentId());
+        Equipment equipment = valFactory.getHelper().checkEquipment(request.getEquipmentId(), EXTRACT_OP_TYPE_NAME);
+        if (!valFactory.getHelper().getProblems().isEmpty() ) {
+            throw new ValidationException(valFactory.getHelper().getProblems());
+        }
+
         LabwareType labwareType = lwTypeRepo.getByName(request.getLabwareType());
         OperationType opType = opTypeRepo.getByName("Extract");
         Work work = (request.getWorkNumber()==null ? null : workService.getUsableWork(request.getWorkNumber()));
@@ -105,24 +112,6 @@ public class ExtractServiceImp implements ExtractService {
             workService.link(work, ops);
         }
         return new OperationResult(ops, labwareMap.values());
-    }
-
-    public Equipment validateEquipment(Integer equipmentId) {
-        if (equipmentId==null) {
-            return null;
-        }
-        Optional<Equipment> opt = equipmentRepo.findById(equipmentId);
-        if (opt.isEmpty()) {
-            throw new IllegalArgumentException("Unknown equipment id: "+equipmentId+".");
-        }
-        Equipment equipment = opt.get();
-        if (!opt.get().getCategory().equalsIgnoreCase(EXTRACT_OP_TYPE_NAME)) {
-            throw new IllegalArgumentException("Equipment id: "+equipmentId + " is not an extraction machine.");
-        }
-        if (!equipment.isEnabled()) {
-            throw new IllegalArgumentException("Equipment id: "+equipmentId + " is disabled.");
-        }
-        return equipment;
     }
 
     /**
