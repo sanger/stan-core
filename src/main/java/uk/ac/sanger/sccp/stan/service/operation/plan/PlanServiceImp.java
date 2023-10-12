@@ -90,7 +90,7 @@ public class PlanServiceImp implements PlanService {
                 lwNotes.add(LabwareNote.noteForPlan(lw.getId(), plan.getId(), "costing", pl.getCosting().name()));
             }
             if (!nullOrEmpty(pl.getLotNumber())) {
-                lwNotes.add(LabwareNote.noteForPlan(lw.getId(), plan.getId(), "lot", pl.getLotNumber()));
+                lwNotes.add(LabwareNote.noteForPlan(lw.getId(), plan.getId(), "lot", pl.getLotNumber().toUpperCase()));
             }
         }
         if (!lwNotes.isEmpty()) {

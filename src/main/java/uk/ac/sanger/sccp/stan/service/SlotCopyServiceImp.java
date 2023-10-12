@@ -512,10 +512,10 @@ public class SlotCopyServiceImp implements SlotCopyService {
             lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), "costing", costing.name()));
         }
         if (!nullOrEmpty(lotNumber)) {
-            lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), "lot", lotNumber));
+            lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), "lot", lotNumber.toUpperCase()));
         }
         if (!nullOrEmpty(probeLotNumber)) {
-            lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), "probe lot", probeLotNumber));
+            lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), "probe lot", probeLotNumber.toUpperCase()));
         }
         return new OperationResult(List.of(op), List.of(filledLabware));
     }
