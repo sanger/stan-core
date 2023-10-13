@@ -3,8 +3,6 @@ package uk.ac.sanger.sccp.stan.service.extract;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InOrder;
 import uk.ac.sanger.sccp.stan.*;
@@ -22,7 +20,6 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -45,7 +42,6 @@ public class TestExtractService {
     private OperationTypeRepo mockOpTypeRepo;
     private SampleRepo mockSampleRepo;
     private SlotRepo mockSlotRepo;
-    private EquipmentRepo mockEquipmentRepo;
 
     private ExtractServiceImp service;
 
@@ -72,7 +68,6 @@ public class TestExtractService {
         mockOpTypeRepo = mock(OperationTypeRepo.class);
         mockSampleRepo = mock(SampleRepo.class);
         mockSlotRepo = mock(SlotRepo.class);
-        mockEquipmentRepo = mock(EquipmentRepo.class);
         valFactory =  mock(ValidationHelperFactory.class);
         mockVal =  mock(ValidationHelper.class);
 
@@ -150,9 +145,14 @@ public class TestExtractService {
         Map<Integer, Sample> sampleMap = Map.of(400, src.getFirstSlot().getSamples().get(0));
         doReturn(sampleMap).when(service).createSamples(any(), any());
         doReturn(ops).when(service).createOperations(any(), any(), any(), any(), any());
+        doReturn(mockVal).when(valFactory).getHelper();
 
         assertThrowsMsg(IllegalArgumentException.class, "No barcodes specified.", () -> service.extract(user, new ExtractRequest(List.of(), ltName, "SGP5000", null)));
         assertThrowsMsg(IllegalArgumentException.class, "No labware type specified.", () -> service.extract(user, new ExtractRequest(bcs, null, "SGP5000", null)));
+        doReturn(Set.of("Bad equipment.")).when(mockVal).getProblems();
+        Matchers.assertValidationException(() -> service.extract(user, new ExtractRequest(bcs, ltName, "SGP5000", 17)),
+                List.of("Bad equipment."));
+        doReturn(Set.of()).when(mockVal).getProblems();
 
         verify(service, never()).loadAndValidateLabware(any());
         verify(service, never()).discardSources(any());
@@ -161,15 +161,17 @@ public class TestExtractService {
         verify(service, never()).createSamples(any(), any());
         verify(service, never()).createOperations(any(), any(), any(), any(), any());
 
-        doReturn(mockVal).when(valFactory).getHelper();
+        Equipment eq = new Equipment(1, "alpha", "beta", true);
+        doReturn(eq).when(mockVal).checkEquipment(any(), any());
 
-        assertEquals(new OperationResult(ops, List.of(dst)), service.extract(user, new ExtractRequest(bcs, ltName, work.getWorkNumber(), null)));
+        assertEquals(new OperationResult(ops, List.of(dst)), service.extract(user, new ExtractRequest(bcs, ltName, work.getWorkNumber(), 23)));
 
         verify(service).loadAndValidateLabware(bcs);
         verify(service).discardSources(sources);
+        verify(mockVal).checkEquipment(23, ExtractServiceImp.EQUIPMENT_CATEGORY);
         verify(service).createNewLabware(lwType, sources);
         verify(service).createSamples(lwMap, rnaBioState);
-        verify(service).createOperations(user, opType, lwMap, sampleMap, null);
+        verify(service).createOperations(same(user), same(opType), same(lwMap), same(sampleMap), isNotNull());
         verify(mockWorkService).link(work, ops);
     }
 

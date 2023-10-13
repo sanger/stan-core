@@ -8,6 +8,7 @@ import uk.ac.sanger.sccp.stan.request.RNAAnalysisRequest.RNAAnalysisLabware;
 import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.analysis.AnalysisMeasurementValidator.AnalysisType;
 import uk.ac.sanger.sccp.stan.service.operation.OpSearcher;
+import uk.ac.sanger.sccp.stan.service.validation.ValidationHelper;
 import uk.ac.sanger.sccp.stan.service.validation.ValidationHelperFactory;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.BasicUtils;
@@ -28,7 +29,7 @@ import static java.util.stream.Collectors.toSet;
 public class RNAAnalysisServiceImp extends BaseResultService implements RNAAnalysisService {
     public static final String RIN_OP_NAME = "RIN analysis";
     public static final String DV200_OP_NAME = "DV200 analysis";
-    private static final  String EQUIPMENT_CATEGORY = "RNA analysis";
+    static final  String EQUIPMENT_CATEGORY = "RNA analysis";
 
     private final AnalysisMeasurementValidatorFactory measurementValidatorFactory;
     private final WorkService workService;
@@ -66,12 +67,12 @@ public class RNAAnalysisServiceImp extends BaseResultService implements RNAAnaly
         Map<Integer, Comment> commentMap = validateComments(problems, request.getLabware());
         UCMap<Work> workMap = validateWork(problems, request.getLabware());
 
+        ValidationHelper val = valFactory.getHelper();
+        Equipment equipment = val.checkEquipment(request.getEquipmentId(), EQUIPMENT_CATEGORY, true);
+        problems.addAll(val.getProblems());
+
         if (!problems.isEmpty()) {
             throw new ValidationException("The request could not be validated.", problems);
-        }
-        Equipment equipment = valFactory.getHelper().checkEquipment(request.getEquipmentId(), EQUIPMENT_CATEGORY, true);
-        if (!valFactory.getHelper().getProblems().isEmpty() ) {
-            throw new ValidationException("The request could not be validated.", valFactory.getHelper().getProblems());
         }
 
         return recordAnalysis(user, request, opType, lwMap, measurementMap, commentMap, workMap, equipment);

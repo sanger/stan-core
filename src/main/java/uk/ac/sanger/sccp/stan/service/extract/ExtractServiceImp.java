@@ -9,6 +9,7 @@ import uk.ac.sanger.sccp.stan.request.ExtractRequest;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.store.StoreService;
+import uk.ac.sanger.sccp.stan.service.validation.ValidationHelper;
 import uk.ac.sanger.sccp.stan.service.validation.ValidationHelperFactory;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 
@@ -25,7 +26,7 @@ import static java.util.stream.Collectors.toList;
 @Service
 public class ExtractServiceImp implements ExtractService {
 
-    public final static String EXTRACT_OP_TYPE_NAME = "extract";
+    public final static String EQUIPMENT_CATEGORY = "extract";
     private final Transactor transactor;
     private final LabwareValidatorFactory labwareValidatorFactory;
     private final LabwareService labwareService;
@@ -88,9 +89,10 @@ public class ExtractServiceImp implements ExtractService {
         if (request.getLabwareType()==null || request.getLabwareType().isEmpty()) {
             throw new IllegalArgumentException("No labware type specified.");
         }
-        Equipment equipment = valFactory.getHelper().checkEquipment(request.getEquipmentId(), EXTRACT_OP_TYPE_NAME);
-        if (!valFactory.getHelper().getProblems().isEmpty() ) {
-            throw new ValidationException(valFactory.getHelper().getProblems());
+        final ValidationHelper val = valFactory.getHelper();
+        Equipment equipment = val.checkEquipment(request.getEquipmentId(), EQUIPMENT_CATEGORY);
+        if (!val.getProblems().isEmpty() ) {
+            throw new ValidationException(val.getProblems());
         }
 
         LabwareType labwareType = lwTypeRepo.getByName(request.getLabwareType());

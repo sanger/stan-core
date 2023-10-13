@@ -19,7 +19,6 @@ import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
-import java.util.function.Consumer;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -69,8 +68,6 @@ public class TestRnaAnalysisService {
         service = spy(new RNAAnalysisServiceImp(mockLabwareValidatorFactory, mockMeasurementValidatorFactory,
                 mockWorkService, mockOpService, mockCommentValidationService, mockOpTypeRepo, mockOpRepo,
                 mockLwRepo, mockMeasurementRepo, mockOpComRepo, mockOpSearcher, valFactory));
-
-
     }
 
     @ParameterizedTest
@@ -108,7 +105,7 @@ public class TestRnaAnalysisService {
         doReturn(workMap).when(service).validateWork(any(), any());
 
         doReturn(mockVal).when(valFactory).getHelper();
-        doReturn(new HashSet<>()).when(mockVal).getProblems();
+        doReturn(valid ? Set.of() : Set.of("Bad equipment.")).when(mockVal).getProblems();
         doReturn(equipment).when(mockVal).checkEquipment(any(), any(), anyBoolean());
 
         if (valid) {
@@ -121,7 +118,7 @@ public class TestRnaAnalysisService {
             var ex = assertThrows(ValidationException.class, () -> service.perform(user, request));
             assertThat(ex).hasMessage("The request could not be validated.");
             //noinspection unchecked
-            assertThat((Collection<Object>) ex.getProblems()).contains(problemMessage);
+            assertThat((Collection<Object>) ex.getProblems()).containsExactlyInAnyOrder(problemMessage, "Bad equipment.");
 
             verify(service, never()).recordAnalysis(any(), any(), any(), any(), any(), any(), any(), any());
         }
@@ -135,6 +132,8 @@ public class TestRnaAnalysisService {
         verify(service).validateMeasurements(same(problems), same(opType), same(requestLabware));
         verify(service).validateComments(same(problems), same(requestLabware));
         verify(service).validateWork(same(problems), same(requestLabware));
+        verify(valFactory, times(1)).getHelper();
+        verify(mockVal).checkEquipment(equipment.getId(), RNAAnalysisServiceImp.EQUIPMENT_CATEGORY, true);
     }
 
     @ParameterizedTest
@@ -317,7 +316,7 @@ public class TestRnaAnalysisService {
         assertThat(result.getOperations()).containsExactly(op);
         assertThat(result.getLabware()).containsExactly(lw);
 
-        verify(mockOpService).createOperationInPlace(eq(opType), eq(user), eq(lw), eq(null), any(Consumer.class));
+        verify(mockOpService).createOperationInPlace(eq(opType), eq(user), eq(lw), isNull(), any());
         verify(mockWorkService).link(work1,List.of(op));
 
         verify(service, never()).addMeasurements(any(), any(), any(), any());
@@ -369,10 +368,10 @@ public class TestRnaAnalysisService {
         assertThat(result.getOperations()).containsExactlyInAnyOrderElementsOf(ops);
         assertThat(result.getLabware()).containsExactlyInAnyOrder(lw1, lw2, lw3, lw4);
 
-        verify(mockOpService).createOperationInPlace(eq(opType), eq(user), eq(lw1), eq(null), any(Consumer.class));
-        verify(mockOpService).createOperationInPlace(eq(opType), eq(user), eq(lw2), eq(null), any(Consumer.class));
-        verify(mockOpService).createOperationInPlace(eq(opType), eq(user), eq(lw3), eq(null), any(Consumer.class));
-        verify(mockOpService).createOperationInPlace(eq(opType), eq(user), eq(lw4), eq(null), any(Consumer.class));
+        verify(mockOpService).createOperationInPlace(eq(opType), eq(user), eq(lw1), isNull(), any());
+        verify(mockOpService).createOperationInPlace(eq(opType), eq(user), eq(lw2), isNull(), any());
+        verify(mockOpService).createOperationInPlace(eq(opType), eq(user), eq(lw3), isNull(), any());
+        verify(mockOpService).createOperationInPlace(eq(opType), eq(user), eq(lw4), isNull(), any());
 
         verify(service).addMeasurements(any(), eq(opIds[0]), same(lw1), same(smMap.get(lw1.getBarcode())));
         verify(service).addMeasurements(any(), eq(opIds[1]), same(lw2), same(smMap.get(lw2.getBarcode())));

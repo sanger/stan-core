@@ -92,8 +92,23 @@ public interface ValidationHelper {
         checkTimestamp(timestamp, today, labware, null);
     }
 
-    Equipment checkEquipment(Integer equipmentId, String category);
+    /**
+     * Loads and checks equipment. If the id is null, returns null.
+     * @param equipmentId the id of the equipment
+     * @param category the required category of the equipment
+     * @return the loaded equipment, or null
+     */
+    default Equipment checkEquipment(Integer equipmentId, String category) {
+        return checkEquipment(equipmentId, category, false);
+    }
 
+    /**
+     * Loads and checks equipment. If the id is null, returns null. If {@code required} is true, and
+     * the id is null, a problem will be added.
+     * @param equipmentId the id of the equipment
+     * @param category the required category of the equipment
+     * @return the loaded equipment
+     */
     Equipment checkEquipment(Integer equipmentId, String category, boolean required);
 
 }

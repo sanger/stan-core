@@ -18,6 +18,10 @@ public class RNAAnalysisRequest {
         private Integer commentId;
         private List<StringMeasurement> measurements;
 
+        public RNAAnalysisLabware() {
+            this(null, null, null, null);
+        }
+
         public RNAAnalysisLabware(String barcode, String workNumber, Integer commentId, List<StringMeasurement> measurements) {
             this.barcode = barcode;
             this.workNumber = workNumber;
@@ -97,6 +101,9 @@ public class RNAAnalysisRequest {
     /** The equipment used for the analysis of the scanned labware(s) */
     private Integer equipmentId;
 
+    public RNAAnalysisRequest() {
+        this(null, null, null);
+    }
 
     /**
      * Creates a new RNA analysis request with the given labware specifications.
@@ -145,8 +152,9 @@ public class RNAAnalysisRequest {
         if (o == null || getClass() != o.getClass()) return false;
         RNAAnalysisRequest that = (RNAAnalysisRequest) o;
         return (Objects.equals(this.operationType, that.operationType)
-                && Objects.equals(this.labware, that.labware))
-                && this.equipmentId == that.equipmentId;
+                && Objects.equals(this.labware, that.labware)
+                && Objects.equals(this.equipmentId, that.equipmentId)
+        );
     }
 
     @Override

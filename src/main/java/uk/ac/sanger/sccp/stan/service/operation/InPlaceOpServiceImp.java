@@ -2,10 +2,12 @@ package uk.ac.sanger.sccp.stan.service.operation;
 
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
+import uk.ac.sanger.sccp.stan.repo.OperationTypeRepo;
 import uk.ac.sanger.sccp.stan.request.InPlaceOpRequest;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.service.*;
+import uk.ac.sanger.sccp.stan.service.validation.ValidationHelper;
 import uk.ac.sanger.sccp.stan.service.validation.ValidationHelperFactory;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 
@@ -20,8 +22,6 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
  */
 @Service
 public class InPlaceOpServiceImp implements InPlaceOpService {
-
-    private final static String EQUIPMENT_CATEGORY = "scanner";
     private final LabwareValidatorFactory labwareValidatorFactory;
     private final OperationService opService;
     private final WorkService workService;
@@ -48,10 +48,9 @@ public class InPlaceOpServiceImp implements InPlaceOpService {
         final Set<String> problems = new LinkedHashSet<>();
         Collection<Labware> labware = validateLabware(problems, request.getBarcodes());
         OperationType opType = validateOpType(problems, request.getOperationType(), labware);
-        Equipment eq = valFactory.getHelper().checkEquipment(request.getEquipmentId(), EQUIPMENT_CATEGORY);
-        if (!valFactory.getHelper().getProblems().isEmpty() ) {
-            throw new ValidationException("The request could not be validated.", valFactory.getHelper().getProblems());
-        }
+        ValidationHelper val = valFactory.getHelper();
+        Equipment eq = val.checkEquipment(request.getEquipmentId(), null);
+        problems.addAll(val.getProblems());
         Work work = workService.validateUsableWork(problems, request.getWorkNumber());
 
         if (!problems.isEmpty()) {

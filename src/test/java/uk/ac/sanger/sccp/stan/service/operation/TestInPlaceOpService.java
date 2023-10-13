@@ -6,7 +6,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
+import uk.ac.sanger.sccp.stan.repo.OperationTypeRepo;
 import uk.ac.sanger.sccp.stan.request.InPlaceOpRequest;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.service.*;
@@ -67,17 +68,18 @@ public class TestInPlaceOpService {
         doReturn(labware).when(service).validateLabware(any(), any());
         doReturn(opType).when(service).validateOpType(any(), any(), any());
         doReturn(mockVal).when(valFactory).getHelper();
-        doReturn(new HashSet<>()).when(mockVal).getProblems();
         doReturn(equipment).when(mockVal).checkEquipment(any(), any());
         final String problem = "Everything is bad.";
         if (successful) {
             when(mockWorkService.validateUsableWork(any(), any())).thenReturn(work);
+            doReturn(Set.of()).when(mockVal).getProblems();
         } else {
             when(mockWorkService.validateUsableWork(any(), any())).then(invocation -> {
                 Collection<String> problems = invocation.getArgument(0);
                 problems.add(problem);
                 return work;
             });
+            doReturn(Set.of("Bad equipment.")).when(mockVal).getProblems();
         }
         OperationResult result = new OperationResult();
         doReturn(result).when(service).createOperations(any(), any(), any(), any(), any());
@@ -88,12 +90,13 @@ public class TestInPlaceOpService {
         } else {
             ValidationException exception = assertThrows(ValidationException.class, () -> service.record(user, request));
             //noinspection unchecked
-            assertThat((Collection<String>) exception.getProblems()).containsExactly(problem);
+            assertThat((Collection<String>) exception.getProblems()).containsExactlyInAnyOrder(problem, "Bad equipment.");
         }
 
         verify(service).validateLabware(any(), eq(request.getBarcodes()));
         verify(service).validateOpType(any(), eq(request.getOperationType()), eq(labware));
         verify(mockWorkService).validateUsableWork(any(), eq(request.getWorkNumber()));
+        verify(mockVal).checkEquipment(request.getEquipmentId(), null);
         verify(service, times(successful ? 1 : 0)).createOperations(user, labware, opType, equipment, work);
     }
 

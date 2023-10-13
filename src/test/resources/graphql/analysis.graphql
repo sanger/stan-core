@@ -1,7 +1,7 @@
 mutation {
     recordRNAAnalysis(request: {
         operationType: "RIN analysis"
-        equipmentId: 1
+        equipmentId: 999
         labware: [{
             barcode: "$BARCODE"
             commentId: 1
