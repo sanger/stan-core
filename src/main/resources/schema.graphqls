@@ -1544,8 +1544,6 @@ input TissueBlockLabware {
     commentId: Int
     """The replicate number for the new block."""
     replicate: String!
-    """The medium for the new block."""
-    medium: String!
 }
 
 """A request to transfer original sample into pots."""

@@ -93,20 +93,18 @@ public class TissueBlockRequest {
         private String preBarcode;
         private Integer commentId;
         private String replicate;
-        private String medium;
 
         public TissueBlockLabware() {}
 
-        public TissueBlockLabware(String sourceBarcode, String labwareType, String replicate, String medium) {
-            this(sourceBarcode, labwareType, replicate, medium, null, null);
+        public TissueBlockLabware(String sourceBarcode, String labwareType, String replicate) {
+            this(sourceBarcode, labwareType, replicate, null, null);
         }
 
-        public TissueBlockLabware(String sourceBarcode, String labwareType, String replicate, String medium,
+        public TissueBlockLabware(String sourceBarcode, String labwareType, String replicate,
                                   String preBarcode, Integer commentId) {
             this.sourceBarcode = sourceBarcode;
             this.labwareType = labwareType;
             this.replicate = replicate;
-            this.medium = medium;
             this.preBarcode = preBarcode;
             this.commentId = commentId;
         }
@@ -166,17 +164,6 @@ public class TissueBlockRequest {
             this.replicate = replicate;
         }
 
-        /**
-         * The medium for the new block.
-         */
-        public String getMedium() {
-            return this.medium;
-        }
-
-        public void setMedium(String medium) {
-            this.medium = medium;
-        }
-
         @Override
         public String toString() {
             return BasicUtils.describe("TissueBlockLabware")
@@ -185,7 +172,6 @@ public class TissueBlockRequest {
                     .add("preBarcode", preBarcode)
                     .add("commentId", commentId)
                     .add("replicate", replicate)
-                    .add("medium", medium)
                     .reprStringValues()
                     .omitNullValues()
                     .toString();
@@ -201,7 +187,7 @@ public class TissueBlockRequest {
                     && Objects.equals(this.preBarcode, that.preBarcode)
                     && Objects.equals(this.commentId, that.commentId)
                     && Objects.equals(this.replicate, that.replicate)
-                    && Objects.equals(this.medium, that.medium));
+            );
         }
 
         @Override
