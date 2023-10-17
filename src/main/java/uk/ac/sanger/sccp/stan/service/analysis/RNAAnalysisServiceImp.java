@@ -8,11 +8,14 @@ import uk.ac.sanger.sccp.stan.request.RNAAnalysisRequest.RNAAnalysisLabware;
 import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.analysis.AnalysisMeasurementValidator.AnalysisType;
 import uk.ac.sanger.sccp.stan.service.operation.OpSearcher;
+import uk.ac.sanger.sccp.stan.service.validation.ValidationHelper;
+import uk.ac.sanger.sccp.stan.service.validation.ValidationHelperFactory;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import static java.util.Objects.requireNonNull;
@@ -26,6 +29,7 @@ import static java.util.stream.Collectors.toSet;
 public class RNAAnalysisServiceImp extends BaseResultService implements RNAAnalysisService {
     public static final String RIN_OP_NAME = "RIN analysis";
     public static final String DV200_OP_NAME = "DV200 analysis";
+    static final  String EQUIPMENT_CATEGORY = "RNA analysis";
 
     private final AnalysisMeasurementValidatorFactory measurementValidatorFactory;
     private final WorkService workService;
@@ -33,6 +37,7 @@ public class RNAAnalysisServiceImp extends BaseResultService implements RNAAnaly
     private final CommentValidationService commentValidationService;
     private final MeasurementRepo measurementRepo;
     private final OperationCommentRepo opComRepo;
+    private final ValidationHelperFactory valFactory;
 
     protected RNAAnalysisServiceImp(LabwareValidatorFactory labwareValidatorFactory,
                                     AnalysisMeasurementValidatorFactory measurementValidatorFactory,
@@ -40,7 +45,7 @@ public class RNAAnalysisServiceImp extends BaseResultService implements RNAAnaly
                                     CommentValidationService commentValidationService,
                                     OperationTypeRepo opTypeRepo, OperationRepo opRepo, LabwareRepo lwRepo,
                                     MeasurementRepo measurementRepo, OperationCommentRepo opComRepo,
-                                    OpSearcher opSearcher) {
+                                    OpSearcher opSearcher, ValidationHelperFactory valFactory) {
         super(labwareValidatorFactory, opTypeRepo, opRepo, lwRepo, opSearcher);
         this.measurementValidatorFactory = measurementValidatorFactory;
         this.workService = workService;
@@ -48,6 +53,7 @@ public class RNAAnalysisServiceImp extends BaseResultService implements RNAAnaly
         this.commentValidationService = commentValidationService;
         this.measurementRepo = measurementRepo;
         this.opComRepo = opComRepo;
+        this.valFactory = valFactory;
     }
 
     @Override
@@ -61,11 +67,15 @@ public class RNAAnalysisServiceImp extends BaseResultService implements RNAAnaly
         Map<Integer, Comment> commentMap = validateComments(problems, request.getLabware());
         UCMap<Work> workMap = validateWork(problems, request.getLabware());
 
+        ValidationHelper val = valFactory.getHelper();
+        Equipment equipment = val.checkEquipment(request.getEquipmentId(), EQUIPMENT_CATEGORY, true);
+        problems.addAll(val.getProblems());
+
         if (!problems.isEmpty()) {
             throw new ValidationException("The request could not be validated.", problems);
         }
 
-        return recordAnalysis(user, request, opType, lwMap, measurementMap, commentMap, workMap);
+        return recordAnalysis(user, request, opType, lwMap, measurementMap, commentMap, workMap, equipment);
     }
 
     /**
@@ -179,21 +189,24 @@ public class RNAAnalysisServiceImp extends BaseResultService implements RNAAnaly
      * @param smMap a map from barcode to the measurement names and values that need to be recorded
      * @param commentMap a map to look up comments from their id
      * @param workMap a map to look up work from its work number
+     * @param equipment the equipment used to perform the RNA analysis
      * @return the labware and the operations recorded
      */
     public OperationResult recordAnalysis(User user, RNAAnalysisRequest request, OperationType opType,
                                           UCMap<Labware> lwMap, UCMap<List<StringMeasurement>> smMap,
-                                          Map<Integer, Comment> commentMap, UCMap<Work> workMap) {
+                                          Map<Integer, Comment> commentMap, UCMap<Work> workMap,
+                                          Equipment equipment) {
         int numLabware = request.getLabware().size();
         List<Operation> ops = new ArrayList<>(numLabware);
         List<Labware> labware = new ArrayList<>(numLabware);
         Map<Work, List<Operation>> workOps = new HashMap<>();
         List<Measurement> measurements = new ArrayList<>();
         List<OperationComment> opComs = new ArrayList<>();
+        Consumer<Operation> opModifier =  op -> op.setEquipment(equipment);
         for (var requestLw : request.getLabware()) {
             Labware lw = lwMap.get(requestLw.getBarcode());
             labware.add(lw);
-            Operation op = opService.createOperationInPlace(opType, user, lw, null, null);
+            Operation op = opService.createOperationInPlace(opType, user, lw, null, opModifier);
             ops.add(op);
             Work work = workMap.get(requestLw.getWorkNumber());
             workOps.computeIfAbsent(work, k -> new ArrayList<>()).add(op);

@@ -1,8 +1,7 @@
 package uk.ac.sanger.sccp.stan.integrationtest;
 
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -20,7 +19,6 @@ import javax.persistence.EntityManager;
 import javax.transaction.Transactional;
 import java.util.*;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
@@ -68,8 +66,9 @@ public class TestExtractMutation {
 
     @ParameterizedTest
     @Transactional
-   @MethodSource("equipments")
-    public void testExtract(String expectedEquipmentName, Equipment equipment) throws Exception {
+    @ValueSource(booleans={false,true})
+    public void testExtract(boolean withEquipment) throws Exception {
+        Equipment equipment = withEquipment ? equipmentRepo.save(new Equipment("Alpha", ExtractServiceImp.EQUIPMENT_CATEGORY)) : null;
         Donor donor = entityCreator.createDonor("DONOR1");
         Tissue tissue = entityCreator.createTissue(donor, "TISSUE");
         BioState tissueBs = bioStateRepo.getByName("Tissue");
@@ -91,7 +90,7 @@ public class TestExtractMutation {
         CostCode cc = entityCreator.createCostCode("4");
         ReleaseRecipient wr = entityCreator.createReleaseRecipient("test1");
         Work work = entityCreator.createWork(wt, pr, null, cc, wr);
-        Integer equipmentId = equipment != null ? equipmentRepo.save(equipment).getId() : null;
+        Integer equipmentId = equipment != null ? equipment.getId() : null;
         String mutation = tester.readGraphQL("extract.graphql")
                 .replace("[]", "[\"STAN-A1\", \"STAN-A2\"]")
                 .replace("LWTYPE", lwType.getName())
@@ -168,12 +167,7 @@ public class TestExtractMutation {
             assertEquals(sources[i].getId(), action.getSource().getLabwareId());
             assertEquals(dest.getFirstSlot(), action.getDestination());
             assertNotNull(op.getPerformed());
-            if(op.getEquipment() != null) {
-                assertEquals(expectedEquipmentName, op.getEquipment().getName());
-            } else {
-                assertNull(expectedEquipmentName);
-            }
-
+            assertEquals(equipment, op.getEquipment());
         }
 
         verifyStorelightQuery(mockStorelightClient, List.of(sources[0].getBarcode(), sources[1].getBarcode()), user.getUsername());
@@ -228,6 +222,7 @@ public class TestExtractMutation {
             assertEquals(dests[1].getFirstSlot().getId(), opCom.getSlotId());
         }
 
+
         result = tester.post(tester.readGraphQL("extractresult.graphql").replace("$BARCODE", dests[0].getBarcode()));
         extractData = chainGet(result, "data", "extractResult");
         assertEquals(dests[0].getBarcode(), chainGet(extractData, "labware", "barcode"));
@@ -236,8 +231,13 @@ public class TestExtractMutation {
 
         entityCreator.createOpType("RIN analysis", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.ANALYSIS);
 
+        Equipment analysisEquipment = equipmentRepo.save(new Equipment("Alpha", "RNA analysis"));
         result = tester.post(tester.readGraphQL("analysis.graphql")
-                .replace("$BARCODE", dests[0].getBarcode()).replace("SGP4000", work.getWorkNumber()));
+                .replace("$BARCODE", dests[0].getBarcode())
+                .replace("SGP4000", work.getWorkNumber())
+                .replace("999", analysisEquipment.getId().toString())
+        );
+
 
         Integer opId = chainGet(result, "data", "recordRNAAnalysis", "operations", 0, "id");
         measurements = measurementRepo.findAllByOperationIdIn(List.of(opId));
@@ -246,12 +246,7 @@ public class TestExtractMutation {
         assertEquals(dests[0].getFirstSlot().getId(), meas.getSlotId());
         assertEquals("RIN", meas.getName());
         assertEquals("55.0", meas.getValue());
-    }
-
-    static Stream<Arguments> equipments() {
-        return Arrays.stream(new Object[][] {
-                {"Robot X", new Equipment( "Robot X", ExtractServiceImp.EXTRACT_OP_TYPE_NAME)},
-                {null, null}
-        }).map(Arguments::of);
+        Operation op = opRepo.findById(opId).orElseThrow();
+        assertEquals(analysisEquipment, op.getEquipment());
     }
 }

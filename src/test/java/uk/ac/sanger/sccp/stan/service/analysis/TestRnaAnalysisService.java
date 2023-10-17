@@ -13,6 +13,8 @@ import uk.ac.sanger.sccp.stan.request.RNAAnalysisRequest.RNAAnalysisLabware;
 import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.analysis.AnalysisMeasurementValidator.AnalysisType;
 import uk.ac.sanger.sccp.stan.service.operation.OpSearcher;
+import uk.ac.sanger.sccp.stan.service.validation.ValidationHelper;
+import uk.ac.sanger.sccp.stan.service.validation.ValidationHelperFactory;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
@@ -44,6 +46,8 @@ public class TestRnaAnalysisService {
     private LabwareRepo mockLwRepo;
 
     private RNAAnalysisServiceImp service;
+    private ValidationHelperFactory valFactory;
+    private ValidationHelper mockVal;
 
     @BeforeEach
     void setup() {
@@ -58,19 +62,22 @@ public class TestRnaAnalysisService {
         OperationRepo mockOpRepo = mock(OperationRepo.class);
         mockLwRepo = mock(LabwareRepo.class);
         OpSearcher mockOpSearcher = mock(OpSearcher.class);
+        valFactory = mock(ValidationHelperFactory.class);
+        mockVal = mock(ValidationHelper.class) ;
 
         service = spy(new RNAAnalysisServiceImp(mockLabwareValidatorFactory, mockMeasurementValidatorFactory,
                 mockWorkService, mockOpService, mockCommentValidationService, mockOpTypeRepo, mockOpRepo,
-                mockLwRepo, mockMeasurementRepo, mockOpComRepo, mockOpSearcher));
+                mockLwRepo, mockMeasurementRepo, mockOpComRepo, mockOpSearcher, valFactory));
     }
 
     @ParameterizedTest
     @ValueSource(booleans={false, true})
     public void testPerform(boolean valid) {
         User user = EntityFactory.getUser();
+        Equipment equipment = new Equipment(1, "Machine x","category 1", true);
         RNAAnalysisRequest request = new RNAAnalysisRequest("RIN", List.of(
                 new RNAAnalysisLabware("STAN-A1", "SGP11", 4, List.of())
-        ));
+        ), equipment.getId());
         var requestLabware = request.getLabware();
         OperationType opType = EntityFactory.makeOperationType("RIN", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.ANALYSIS);
         Labware lw = EntityFactory.getTube();
@@ -97,19 +104,23 @@ public class TestRnaAnalysisService {
         doReturn(commentMap).when(service).validateComments(any(), any());
         doReturn(workMap).when(service).validateWork(any(), any());
 
+        doReturn(mockVal).when(valFactory).getHelper();
+        doReturn(valid ? Set.of() : Set.of("Bad equipment.")).when(mockVal).getProblems();
+        doReturn(equipment).when(mockVal).checkEquipment(any(), any(), anyBoolean());
+
         if (valid) {
             OperationResult opRes = new OperationResult(List.of(new Operation()), List.of(lw));
-            doReturn(opRes).when(service).recordAnalysis(any(), any(), any(), any(), any(), any(), any());
+            doReturn(opRes).when(service).recordAnalysis(any(), any(), any(), any(), any(), any(), any(), any());
             assertSame(opRes, service.perform(user, request));
 
-            verify(service).recordAnalysis(user, request, opType, lwMap, measMap, commentMap, workMap);
+            verify(service).recordAnalysis(user, request, opType, lwMap, measMap, commentMap, workMap, equipment);
         } else {
             var ex = assertThrows(ValidationException.class, () -> service.perform(user, request));
             assertThat(ex).hasMessage("The request could not be validated.");
             //noinspection unchecked
-            assertThat((Collection<Object>) ex.getProblems()).contains(problemMessage);
+            assertThat((Collection<Object>) ex.getProblems()).containsExactlyInAnyOrder(problemMessage, "Bad equipment.");
 
-            verify(service, never()).recordAnalysis(any(), any(), any(), any(), any(), any(), any());
+            verify(service, never()).recordAnalysis(any(), any(), any(), any(), any(), any(), any(), any());
         }
 
         //noinspection unchecked
@@ -121,6 +132,8 @@ public class TestRnaAnalysisService {
         verify(service).validateMeasurements(same(problems), same(opType), same(requestLabware));
         verify(service).validateComments(same(problems), same(requestLabware));
         verify(service).validateWork(same(problems), same(requestLabware));
+        verify(valFactory, times(1)).getHelper();
+        verify(mockVal).checkEquipment(equipment.getId(), RNAAnalysisServiceImp.EQUIPMENT_CATEGORY, true);
     }
 
     @ParameterizedTest
@@ -286,10 +299,10 @@ public class TestRnaAnalysisService {
         Labware lw = EntityFactory.getTube();
         Work work1 = new Work(50, "SGP50", null, null, null, null, null, Work.Status.active);
         RNAAnalysisRequest request = new RNAAnalysisRequest(RIN_OP_NAME,
-                List.of(new RNAAnalysisLabware(lw.getBarcode(), work1.getWorkNumber(), null, null))
-        );
+                List.of(new RNAAnalysisLabware(lw.getBarcode(), work1.getWorkNumber(), null, null)), 1);
         OperationType opType = new OperationType(4, RIN_OP_NAME);
-        Operation op = new Operation(17, opType, null, null, null);
+        Equipment equipment = new Equipment("Machine x", "category 1");
+        Operation op = new Operation(17, opType, null, null, null, null, equipment);
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lw);
         User user = EntityFactory.getUser();
         UCMap<List<StringMeasurement>> smMap = new UCMap<>(0);
@@ -299,11 +312,11 @@ public class TestRnaAnalysisService {
         when(mockOpService.createOperationInPlace(any(), any(), any(), any(), any())).thenReturn(op);
         when(mockWorkService.validateUsableWorks(any(), any())).thenReturn(workMap);
 
-        OperationResult result = service.recordAnalysis(user, request, opType, lwMap, smMap, commentMap, workMap);
+        OperationResult result = service.recordAnalysis(user, request, opType, lwMap, smMap, commentMap, workMap, equipment);
         assertThat(result.getOperations()).containsExactly(op);
         assertThat(result.getLabware()).containsExactly(lw);
 
-        verify(mockOpService).createOperationInPlace(opType, user, lw, null, null);
+        verify(mockOpService).createOperationInPlace(eq(opType), eq(user), eq(lw), isNull(), any());
         verify(mockWorkService).link(work1,List.of(op));
 
         verify(service, never()).addMeasurements(any(), any(), any(), any());
@@ -333,9 +346,10 @@ public class TestRnaAnalysisService {
         Comment com1 = new Comment(5, "Custard", "curtains");
         Comment com2 = new Comment(6, "Rhubarb", "curtains");
         Map<Integer, Comment> commentMap = Map.of(com1.getId(), com1, com2.getId(), com2);
+        Equipment equipment = new Equipment("Machine x", "category 1");
 
         List<Operation> ops = IntStream.range(0, lwMap.size())
-                .mapToObj(i -> new Operation(100+i, opType, null, null, null))
+                .mapToObj(i -> new Operation(100+i, opType, null, null, null, null, equipment))
                 .collect(toList());
         Integer[] opIds = ops.stream().map(Operation::getId).toArray(Integer[]::new);
 
@@ -347,17 +361,17 @@ public class TestRnaAnalysisService {
                 new RNAAnalysisLabware(lw2.getBarcode(), work2.getWorkNumber(), null, null),
                 new RNAAnalysisLabware(lw3.getBarcode(), null, com2.getId(), null),
                 new RNAAnalysisLabware(lw4.getBarcode(), work1.getWorkNumber(), null, null)
-        ));
+        ), 1);
 
-        OperationResult result = service.recordAnalysis(user, request, opType, lwMap, smMap, commentMap, workMap);
+        OperationResult result = service.recordAnalysis(user, request, opType, lwMap, smMap, commentMap, workMap, equipment);
 
         assertThat(result.getOperations()).containsExactlyInAnyOrderElementsOf(ops);
         assertThat(result.getLabware()).containsExactlyInAnyOrder(lw1, lw2, lw3, lw4);
 
-        verify(mockOpService).createOperationInPlace(opType, user, lw1, null, null);
-        verify(mockOpService).createOperationInPlace(opType, user, lw2, null, null);
-        verify(mockOpService).createOperationInPlace(opType, user, lw3, null, null);
-        verify(mockOpService).createOperationInPlace(opType, user, lw4, null, null);
+        verify(mockOpService).createOperationInPlace(eq(opType), eq(user), eq(lw1), isNull(), any());
+        verify(mockOpService).createOperationInPlace(eq(opType), eq(user), eq(lw2), isNull(), any());
+        verify(mockOpService).createOperationInPlace(eq(opType), eq(user), eq(lw3), isNull(), any());
+        verify(mockOpService).createOperationInPlace(eq(opType), eq(user), eq(lw4), isNull(), any());
 
         verify(service).addMeasurements(any(), eq(opIds[0]), same(lw1), same(smMap.get(lw1.getBarcode())));
         verify(service).addMeasurements(any(), eq(opIds[1]), same(lw2), same(smMap.get(lw2.getBarcode())));

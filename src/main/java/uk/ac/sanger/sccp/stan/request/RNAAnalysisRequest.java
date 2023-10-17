@@ -98,20 +98,21 @@ public class RNAAnalysisRequest {
     /** The specification of the request on individual labware. */
     private List<RNAAnalysisLabware> labware;
 
-    /**
-     * Creates a new RNA analysis request with no labware.
-     */
+    /** The equipment used for the analysis of the scanned labware(s) */
+    private Integer equipmentId;
+
     public RNAAnalysisRequest() {
-        this(null, null);
+        this(null, null, null);
     }
 
     /**
      * Creates a new RNA analysis request with the given labware specifications.
      * If you pass null for the labware, it will be replaced by an empty list.
      */
-    public RNAAnalysisRequest(String operationType, List<RNAAnalysisLabware> labware) {
+    public RNAAnalysisRequest(String operationType, List<RNAAnalysisLabware> labware, Integer equipmentId) {
         this.operationType = operationType;
         setLabware(labware);
+        this.equipmentId = equipmentId;
     }
 
     /** The type of analysis op being recorded. */
@@ -137,22 +138,32 @@ public class RNAAnalysisRequest {
         this.labware = (labware==null ? new ArrayList<>() : labware);
     }
 
+    public Integer getEquipmentId() {
+        return equipmentId;
+    }
+
+    public void setEquipmentId(Integer equipmentId) {
+        this.equipmentId = equipmentId;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         RNAAnalysisRequest that = (RNAAnalysisRequest) o;
         return (Objects.equals(this.operationType, that.operationType)
-                && Objects.equals(this.labware, that.labware));
+                && Objects.equals(this.labware, that.labware)
+                && Objects.equals(this.equipmentId, that.equipmentId)
+        );
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(operationType, labware);
+        return Objects.hash(operationType, labware, equipmentId);
     }
 
     @Override
     public String toString() {
-        return String.format("RNAAnalysisRequest(%s, %s)", repr(this.operationType), this.labware);
+        return String.format("RNAAnalysisRequest(%s, %s, %s)", repr(this.operationType), this.labware, this.equipmentId);
     }
 }

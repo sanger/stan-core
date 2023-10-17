@@ -2,10 +2,13 @@ package uk.ac.sanger.sccp.stan.service.operation;
 
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
+import uk.ac.sanger.sccp.stan.repo.OperationTypeRepo;
 import uk.ac.sanger.sccp.stan.request.InPlaceOpRequest;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.service.*;
+import uk.ac.sanger.sccp.stan.service.validation.ValidationHelper;
+import uk.ac.sanger.sccp.stan.service.validation.ValidationHelperFactory;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 
 import java.util.*;
@@ -24,20 +27,20 @@ public class InPlaceOpServiceImp implements InPlaceOpService {
     private final WorkService workService;
     private final BioStateReplacer bioStateReplacer;
 
-    private final EquipmentRepo equipmentRepo;
     private final OperationTypeRepo opTypeRepo;
     private final LabwareRepo lwRepo;
+    private final ValidationHelperFactory valFactory;
 
     public InPlaceOpServiceImp(LabwareValidatorFactory labwareValidatorFactory,
                                OperationService opService, WorkService workService, BioStateReplacer bioStateReplacer,
-                               EquipmentRepo equipmentRepo, OperationTypeRepo opTypeRepo, LabwareRepo lwRepo) {
+                               OperationTypeRepo opTypeRepo, LabwareRepo lwRepo, ValidationHelperFactory valFactory) {
         this.labwareValidatorFactory = labwareValidatorFactory;
         this.opService = opService;
         this.workService = workService;
         this.bioStateReplacer = bioStateReplacer;
-        this.equipmentRepo = equipmentRepo;
         this.opTypeRepo = opTypeRepo;
         this.lwRepo = lwRepo;
+        this.valFactory = valFactory;
     }
 
     @Override
@@ -45,7 +48,9 @@ public class InPlaceOpServiceImp implements InPlaceOpService {
         final Set<String> problems = new LinkedHashSet<>();
         Collection<Labware> labware = validateLabware(problems, request.getBarcodes());
         OperationType opType = validateOpType(problems, request.getOperationType(), labware);
-        Equipment eq = validateEquipment(problems, request.getEquipmentId());
+        ValidationHelper val = valFactory.getHelper();
+        Equipment eq = val.checkEquipment(request.getEquipmentId(), null);
+        problems.addAll(val.getProblems());
         Work work = workService.validateUsableWork(problems, request.getWorkNumber());
 
         if (!problems.isEmpty()) {
@@ -92,24 +97,6 @@ public class InPlaceOpServiceImp implements InPlaceOpService {
         }
         if (opType.sourceMustBeBlock() && labware!=null && !labware.stream().allMatch(lw -> lw.getFirstSlot().isBlock())) {
             problems.add("Operation type "+opType.getName()+" can only be recorded on a block.");
-        }
-        return opt.get();
-    }
-
-    /**
-     * Looks up the equipment and checks for problems
-     * @param problems the receptacle for problems found
-     * @param equipmentId the id of the equipment to look up, if any
-     * @return the equipment found, if any
-     */
-    public Equipment validateEquipment(Collection<String> problems, Integer equipmentId) {
-        if (equipmentId==null) {
-            return null;
-        }
-        Optional<Equipment> opt = equipmentRepo.findById(equipmentId);
-        if (opt.isEmpty()) {
-            problems.add("Unknown equipment id: "+equipmentId);
-            return null;
         }
         return opt.get();
     }
