@@ -3,7 +3,7 @@ package uk.ac.sanger.sccp.stan.request;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import java.time.LocalDate;
-import java.time.LocalDate;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -14,8 +14,8 @@ import java.util.Objects;
  */
 public class FindRequest {
     private String labwareBarcode;
-    private String donorName;
-    private String tissueExternalName;
+    private List<String> donorNames;
+    private List<String> tissueExternalNames;
     private String tissueTypeName;
     private String workNumber;
     private LocalDate createdMin;
@@ -25,11 +25,11 @@ public class FindRequest {
 
     public FindRequest() {}
 
-    public FindRequest(String labwareBarcode, String donorName, String tissueExternalName, String tissueTypeName,
+    public FindRequest(String labwareBarcode, List<String> donorNames, List<String> tissueExternalNames, String tissueTypeName,
                        int maxRecords, String workNumber, LocalDate createdMin, LocalDate createdMax) {
         this.labwareBarcode = labwareBarcode;
-        this.donorName = donorName;
-        this.tissueExternalName = tissueExternalName;
+        this.donorNames = donorNames;
+        this.tissueExternalNames = tissueExternalNames;
         this.tissueTypeName = tissueTypeName;
         this.maxRecords = maxRecords;
         this.workNumber = workNumber;
@@ -54,29 +54,29 @@ public class FindRequest {
     /**
      * The name of a donor to find
      */
-    public String getDonorName() {
-        return this.donorName;
+    public List<String> getDonorNames() {
+        return this.donorNames;
     }
 
     /**
      * Sets the name of a donor to find
      */
-    public void setDonorName(String donorName) {
-        this.donorName = donorName;
+    public void setDonorNames(List<String> donorNames) {
+        this.donorNames = donorNames;
     }
 
     /**
      * A tissue external name to find
      */
-    public String getTissueExternalName() {
-        return this.tissueExternalName;
+    public List<String> getTissueExternalNames() {
+        return this.tissueExternalNames;
     }
 
     /**
      * Sets the tissue external name to find
      */
-    public void setTissueExternalName(String tissueExternalName) {
-        this.tissueExternalName = tissueExternalName;
+    public void setTissueExternalNames(List<String> tissueExternalNames) {
+        this.tissueExternalNames = tissueExternalNames;
     }
 
     /**
@@ -148,8 +148,8 @@ public class FindRequest {
         if (o == null || getClass() != o.getClass()) return false;
         FindRequest that = (FindRequest) o;
         return (Objects.equals(this.labwareBarcode, that.labwareBarcode)
-                && Objects.equals(this.donorName, that.donorName)
-                && Objects.equals(this.tissueExternalName, that.tissueExternalName)
+                && Objects.equals(this.donorNames, that.donorNames)
+                && Objects.equals(this.tissueExternalNames, that.tissueExternalNames)
                 && Objects.equals(this.tissueTypeName, that.tissueTypeName)
                 && this.maxRecords==that.maxRecords)
                 && Objects.equals(this.workNumber, that.workNumber);
@@ -157,15 +157,15 @@ public class FindRequest {
 
     @Override
     public int hashCode() {
-        return Objects.hash(labwareBarcode, donorName, tissueExternalName, tissueTypeName, maxRecords);
+        return Objects.hash(labwareBarcode, donorNames, tissueExternalNames, tissueTypeName, maxRecords);
     }
 
     @Override
     public String toString() {
         return BasicUtils.describe(this)
                 .add("labwareBarcode", labwareBarcode)
-                .add("donorName", donorName)
-                .add("tissueExternalName", tissueExternalName)
+                .add("donorName", donorNames)
+                .add("tissueExternalName", tissueExternalNames)
                 .add("tissueTypeName", tissueTypeName)
                 .add("maxRecords", maxRecords)
                 .add("workNumber", workNumber)

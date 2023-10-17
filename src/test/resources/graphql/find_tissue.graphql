@@ -1,5 +1,5 @@
 query {
-    find(request: { tissueExternalName: "TISSUE_NAME" }) {
+    find(request: { tissueExternalNames: ["TISSUE_NAME"] }) {
         entries { labwareId sampleId workNumbers }
         labware { id barcode }
         labwareLocations { labwareId locationId address }
