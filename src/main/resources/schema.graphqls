@@ -1693,8 +1693,10 @@ input AnalyserLabware {
 input AnalyserRequest {
     """The name of the operation type to record."""
     operationType: String!
-    """The lot number for the decoding reagents."""
-    lotNumber: String!
+    """The lot number for the decoding reagents A."""
+    lotNumberA: String!
+    """The lot number for the decoding reagents B."""
+    lotNumberB: String!
     """The run name."""
     runName: String!
     """The time at which this operation was performed."""

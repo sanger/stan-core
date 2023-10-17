@@ -159,17 +159,18 @@ public class AnalyserRequest {
     // endregion
 
     private String operationType;
-    private String lotNumber;
+    private String lotNumberA, lotNumberB;
     private String runName;
     private LocalDateTime performed;
     private List<AnalyserLabware> labware = List.of();
 
     public AnalyserRequest() {}
 
-    public AnalyserRequest(String operationType, String lotNumber, String runName, LocalDateTime performed,
-                           List<AnalyserLabware> labware) {
+    public AnalyserRequest(String operationType, String lotNumberA, String lotNumberB, String runName,
+                           LocalDateTime performed, List<AnalyserLabware> labware) {
         this.operationType = operationType;
-        this.lotNumber = lotNumber;
+        this.lotNumberA = lotNumberA;
+        this.lotNumberB = lotNumberB;
         this.runName = runName;
         this.performed = performed;
         setLabware(labware);
@@ -187,14 +188,25 @@ public class AnalyserRequest {
     }
 
     /**
-     * The lot number for the decoding reagents.
+     * The lot number for the decoding reagents A.
      */
-    public String getLotNumber() {
-        return this.lotNumber;
+    public String getLotNumberA() {
+        return this.lotNumberA;
     }
 
-    public void setLotNumber(String lotNumber) {
-        this.lotNumber = lotNumber;
+    public void setLotNumberA(String lotNumberA) {
+        this.lotNumberA = lotNumberA;
+    }
+
+    /**
+     * The lot number for the decoding reagents B.
+     */
+    public String getLotNumberB() {
+        return this.lotNumberB;
+    }
+
+    public void setLotNumberB(String lotNumberB) {
+        this.lotNumberB = lotNumberB;
     }
 
     /**
@@ -234,7 +246,8 @@ public class AnalyserRequest {
     public String toString() {
         return BasicUtils.describe("AnalyserRequest")
                 .add("operationType", operationType)
-                .add("lotNumber", lotNumber)
+                .add("lotNumberA", lotNumberA)
+                .add("lotNumberB", lotNumberB)
                 .add("runName", runName)
                 .add("performed", performed)
                 .add("labware", labware)
@@ -248,7 +261,8 @@ public class AnalyserRequest {
         if (o == null || getClass() != o.getClass()) return false;
         AnalyserRequest that = (AnalyserRequest) o;
         return (Objects.equals(this.operationType, that.operationType)
-                && Objects.equals(this.lotNumber, that.lotNumber)
+                && Objects.equals(this.lotNumberA, that.lotNumberA)
+                && Objects.equals(this.lotNumberB, that.lotNumberB)
                 && Objects.equals(this.runName, that.runName)
                 && Objects.equals(this.performed, that.performed)
                 && Objects.equals(this.labware, that.labware));
@@ -256,6 +270,6 @@ public class AnalyserRequest {
 
     @Override
     public int hashCode() {
-        return Objects.hash(operationType, lotNumber, runName, performed, labware);
+        return Objects.hash(operationType, lotNumberA, lotNumberB, runName, performed, labware);
     }
 }

@@ -1184,7 +1184,8 @@ public class TestReleaseFileService {
         when(mockRoiRepo.findAllByOperationIdIn(any())).thenReturn(rois);
 
         List<LabwareNote> notes = List.of(
-                new LabwareNote(1, lwId, opId, AnalyserServiceImp.LOT_NAME, "lot B"),
+                new LabwareNote(1, lwId, opId, AnalyserServiceImp.LOT_A_NAME, "lot Alpha"),
+                new LabwareNote(1, lwId, opId, AnalyserServiceImp.LOT_B_NAME, "lot Beta"),
                 new LabwareNote(2, lwId, opId, AnalyserServiceImp.POSITION_NAME, "left"),
                 new LabwareNote(3, lwId, opId, AnalyserServiceImp.RUN_NAME, "run1")
         );
@@ -1198,14 +1199,16 @@ public class TestReleaseFileService {
 
         ReleaseEntry entry = entries.get(0);
         assertEquals(op.getPerformed(), entry.getXeniumStart());
-        assertEquals("lot B", entry.getXeniumReagentLot());
+        assertEquals("lot Alpha", entry.getXeniumReagentALot());
+        assertEquals("lot Beta", entry.getXeniumReagentBLot());
         assertEquals("left", entry.getXeniumCassettePosition());
         assertEquals("run1", entry.getXeniumRun());
         assertEquals("leng", entry.getXeniumRoi());
 
         entry = entries.get(1);
         assertNull(entry.getXeniumStart());
-        assertNull(entry.getXeniumReagentLot());
+        assertNull(entry.getXeniumReagentALot());
+        assertNull(entry.getXeniumReagentBLot());
         assertNull(entry.getXeniumCassettePosition());
         assertNull(entry.getXeniumRun());
         assertNull(entry.getXeniumRoi());

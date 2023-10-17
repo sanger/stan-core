@@ -44,8 +44,7 @@ public class ReleaseEntry {
     private String hybridComment;
 
     private LocalDateTime xeniumStart, xeniumEnd;
-    private String xeniumRoi, xeniumReagentLot, xeniumCassettePosition, xeniumRun, xeniumComment;
-
+    private String xeniumRoi, xeniumReagentALot, xeniumReagentBLot, xeniumCassettePosition, xeniumRun, xeniumComment;
     private String solution;
     private String stainQcComment;
     private String amplificationCycles;
@@ -307,12 +306,20 @@ public class ReleaseEntry {
         this.xeniumRoi = xeniumRoi;
     }
 
-    public String getXeniumReagentLot() {
-        return this.xeniumReagentLot;
+    public String getXeniumReagentALot() {
+        return this.xeniumReagentALot;
     }
 
-    public void setXeniumReagentLot(String xeniumReagentLot) {
-        this.xeniumReagentLot = xeniumReagentLot;
+    public void setXeniumReagentALot(String xeniumReagentALot) {
+        this.xeniumReagentALot = xeniumReagentALot;
+    }
+
+    public String getXeniumReagentBLot() {
+        return this.xeniumReagentBLot;
+    }
+
+    public void setXeniumReagentBLot(String xeniumReagentBLot) {
+        this.xeniumReagentBLot = xeniumReagentBLot;
     }
 
     public String getXeniumCassettePosition() {
@@ -400,7 +407,8 @@ public class ReleaseEntry {
                 && Objects.equals(this.xeniumStart, that.xeniumStart)
                 && Objects.equals(this.xeniumEnd, that.xeniumEnd)
                 && Objects.equals(this.xeniumRoi, that.xeniumRoi)
-                && Objects.equals(this.xeniumReagentLot, that.xeniumReagentLot)
+                && Objects.equals(this.xeniumReagentALot, that.xeniumReagentALot)
+                && Objects.equals(this.xeniumReagentBLot, that.xeniumReagentBLot)
                 && Objects.equals(this.xeniumCassettePosition, that.xeniumCassettePosition)
                 && Objects.equals(this.xeniumRun, that.xeniumRun)
                 && Objects.equals(this.xeniumComment, that.xeniumComment)
@@ -450,7 +458,8 @@ public class ReleaseEntry {
                 .add("xeniumStart", xeniumStart)
                 .add("xeniumEnd", xeniumEnd)
                 .add("xeniumRoi", xeniumRoi)
-                .add("xeniumReagentLot", xeniumReagentLot)
+                .add("xeniumReagentALot", xeniumReagentALot)
+                .add("xeniumReagentBLot", xeniumReagentBLot)
                 .add("xeniumCassettePosition", xeniumCassettePosition)
                 .add("xeniumRun", xeniumRun)
                 .add("xeniumComment", xeniumComment)

@@ -103,7 +103,7 @@ public class AnalyserServiceTest {
 
         doReturn(opres).when(service).record(any(), any(), any(), any(), any());
 
-        AnalyserRequest request = new AnalyserRequest("opname", "lot", "run", LocalDateTime.now(), List.of(new AnalyserLabware()));
+        AnalyserRequest request = new AnalyserRequest("opname", "lotA", "lotB", "run", LocalDateTime.now(), List.of(new AnalyserLabware()));
 
         assertSame(opres, service.perform(user, request));
 
@@ -131,7 +131,7 @@ public class AnalyserServiceTest {
         doAnswer(addProblem("bad lot")).when(service).validateLot(any(), any());
         doAnswer(addProblem("bad run")).when(service).validateRunName(any(), any());
 
-        AnalyserRequest request = new AnalyserRequest("opname", "lot", "run", LocalDateTime.now(), List.of(new AnalyserLabware()));
+        AnalyserRequest request = new AnalyserRequest("opname", "lotA", "lotB", "run", LocalDateTime.now(), List.of(new AnalyserLabware()));
 
         assertValidationException(() -> service.perform(user, request), List.of(
                         "bad lw", "bad optype", "bad prior ops", "bad time", "bad work",
@@ -152,7 +152,8 @@ public class AnalyserServiceTest {
         verify(service).checkCassettePositions(any(), same(request.getLabware()));
         verify(service).checkRois(any(), same(request.getLabware()));
         verify(service).checkSamples(any(), same(request.getLabware()), same(lwMap));
-        verify(service).validateLot(any(), eq(request.getLotNumber()));
+        verify(service).validateLot(any(), eq(request.getLotNumberA()));
+        verify(service).validateLot(any(), eq(request.getLotNumberB()));
         verify(service).validateRunName(any(), eq(request.getRunName()));
     }
 
@@ -534,7 +535,7 @@ public class AnalyserServiceTest {
         List<SampleROI> srs2 = List.of(new SampleROI(A1, 2, "roi2"));
         AnalyserLabware al1 = new AnalyserLabware("STAN-1", "SGP1", CassettePosition.left, srs1);
         AnalyserLabware al2 = new AnalyserLabware("STAN-2", "SGP2", CassettePosition.right, srs2);
-        AnalyserRequest request = new AnalyserRequest(opType.getName(), "lot1", "run1",
+        AnalyserRequest request = new AnalyserRequest(opType.getName(), "lot1", "lot2", "run1",
                 LocalDateTime.of(2023,1,1,12,0), List.of(al1, al2));
         Operation op1 = new Operation();
         op1.setId(11);
@@ -551,8 +552,10 @@ public class AnalyserServiceTest {
         verify(mockLwNoteRepo).saveAll(sameElements(List.of(
                 new LabwareNote(null, lw1.getId(), op1.getId(), "run", "run1"),
                 new LabwareNote(null, lw2.getId(), op2.getId(), "run", "run1"),
-                new LabwareNote(null, lw1.getId(), op1.getId(), "decoding reagent lot", "lot1"),
-                new LabwareNote(null, lw2.getId(), op2.getId(), "decoding reagent lot", "lot1"),
+                new LabwareNote(null, lw1.getId(), op1.getId(), "decoding reagent A lot", "lot1"),
+                new LabwareNote(null, lw2.getId(), op2.getId(), "decoding reagent A lot", "lot1"),
+                new LabwareNote(null, lw1.getId(), op1.getId(), "decoding reagent B lot", "lot2"),
+                new LabwareNote(null, lw2.getId(), op2.getId(), "decoding reagent B lot", "lot2"),
                 new LabwareNote(null, lw1.getId(), op1.getId(), "cassette position", "left"),
                 new LabwareNote(null, lw2.getId(), op2.getId(), "cassette position", "right")
         ), true));

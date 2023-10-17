@@ -1,7 +1,8 @@
 mutation {
     recordAnalyser(request: {
         operationType: "Xenium Analyser"
-        lotNumber: "LOT1"
+        lotNumberA: "LOT1"
+        lotNumberB: "LOT2"
         runName: "RUN1"
         labware: [{
             barcode: "STAN-1"

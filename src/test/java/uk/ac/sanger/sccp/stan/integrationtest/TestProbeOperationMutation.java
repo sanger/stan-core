@@ -131,9 +131,10 @@ public class TestProbeOperationMutation {
             assertEquals(opId, note.getOperationId());
             noteValues.put(note.getName(), note.getValue());
         });
-        assertThat(noteValues).hasSize(3);
+        assertThat(noteValues).hasSize(4);
         assertEquals("RUN1", noteValues.get("run"));
-        assertEquals("LOT1", noteValues.get("decoding reagent lot"));
+        assertEquals("LOT1", noteValues.get("decoding reagent A lot"));
+        assertEquals("LOT2", noteValues.get("decoding reagent B lot"));
         assertEquals("left", noteValues.get("cassette position"));
     }
 }

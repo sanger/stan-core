@@ -30,7 +30,8 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
     public static final String PROBE_HYBRIDISATION_NAME = CompletionServiceImp.PROBE_HYBRIDISATION_NAME;
     public static final String ANALYSER_OP_NAME = "Xenium analyser";
 
-    public static final String RUN_NAME = "run", LOT_NAME = "decoding reagent lot", POSITION_NAME = "cassette position";
+    public static final String LOT_A_NAME = "decoding reagent A lot", LOT_B_NAME = "decoding reagent B lot",
+            RUN_NAME = "run", POSITION_NAME = "cassette position";
 
     private final Clock clock;
     private final OperationService opService;
@@ -75,7 +76,8 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
         checkCassettePositions(problems, request.getLabware());
         checkRois(problems, request.getLabware());
         checkSamples(problems, request.getLabware(), lwMap);
-        validateLot(problems, request.getLotNumber());
+        validateLot(problems, request.getLotNumberA());
+        validateLot(problems, request.getLotNumberB());
         validateRunName(problems, request.getRunName());
 
         if (!problems.isEmpty()) {
@@ -361,7 +363,8 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
      */
     public OperationResult record(User user, AnalyserRequest request, OperationType opType,
                                   UCMap<Labware> lwMap, UCMap<Work> workMap) {
-        String lot = request.getLotNumber().trim();
+        String lotA = request.getLotNumberA().trim();
+        String lotB = request.getLotNumberB().trim();
         String run = request.getRunName().trim();
         final int numLw = request.getLabware().size();
         List<Labware> labware = new ArrayList<>(numLw);
@@ -376,7 +379,8 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
             Operation op = opService.createOperationInPlace(opType, user, lw, null, null);
             workOps.computeIfAbsent(work.getWorkNumber(), k -> new ArrayList<>(numLw)).add(op);
             lwNotes.add(new LabwareNote(null, lw.getId(), op.getId(), RUN_NAME, run));
-            lwNotes.add(new LabwareNote(null, lw.getId(), op.getId(), LOT_NAME, lot));
+            lwNotes.add(new LabwareNote(null, lw.getId(), op.getId(), LOT_A_NAME, lotA));
+            lwNotes.add(new LabwareNote(null, lw.getId(), op.getId(), LOT_B_NAME, lotB));
             lwNotes.add(new LabwareNote(null, lw.getId(), op.getId(), POSITION_NAME, al.getPosition().toString()));
             addRois(rois, op.getId(), lw, al.getSamples());
             labware.add(lw);
