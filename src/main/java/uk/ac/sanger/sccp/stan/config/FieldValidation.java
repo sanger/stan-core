@@ -129,8 +129,8 @@ public class FieldValidation {
 
     @Bean
     public Validator<String> hmdmcValidator() {
-        Set<CharacterType> charTypes = EnumSet.of(CharacterType.DIGIT, CharacterType.SLASH);
-        Pattern pattern = Pattern.compile("\\d{2}/\\d{2,}");
+        Set<CharacterType> charTypes = EnumSet.of(CharacterType.DIGIT, CharacterType.SLASH, CharacterType.HYPHEN);
+        Pattern pattern = Pattern.compile("\\d{2}/\\d{2,}|\\d{2}/\\d{4}-\\d{3}");
         return new StringValidator("HuMFre", 1, 16, charTypes, false, pattern);
     }
 
