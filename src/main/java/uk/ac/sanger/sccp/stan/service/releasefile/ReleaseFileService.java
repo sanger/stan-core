@@ -608,6 +608,9 @@ public class ReleaseFileService {
                     entry.setXeniumRun(note.getValue());
                 }
             }
+            if(op.getEquipment() != null) {
+                entry.setEquipment(op.getEquipment().getName());
+            }
         }
     }
 

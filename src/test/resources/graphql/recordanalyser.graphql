@@ -4,6 +4,7 @@ mutation {
         lotNumberA: "LOT1"
         lotNumberB: "LOT2"
         runName: "RUN1"
+        equipmentId: 999
         labware: [{
             barcode: "STAN-1"
             workNumber: "SGP1"

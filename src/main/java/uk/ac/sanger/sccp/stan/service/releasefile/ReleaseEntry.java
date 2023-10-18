@@ -49,6 +49,8 @@ public class ReleaseEntry {
     private String stainQcComment;
     private String amplificationCycles;
 
+    private String equipment;
+
     public ReleaseEntry(Labware labware, Slot slot, Sample sample) {
         this(labware, slot, sample, null);
     }
@@ -370,6 +372,14 @@ public class ReleaseEntry {
         this.amplificationCycles = amplificationCycles;
     }
 
+    public String getEquipment() {
+        return equipment;
+    }
+
+    public void setEquipment(String equipment) {
+        this.equipment = equipment;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -415,6 +425,7 @@ public class ReleaseEntry {
                 && Objects.equals(this.solution, that.solution)
                 && Objects.equals(this.stainQcComment, that.stainQcComment)
                 && Objects.equals(this.amplificationCycles, that.amplificationCycles)
+                && Objects.equals(this.equipment, that.equipment)
         );
     }
 
@@ -466,6 +477,7 @@ public class ReleaseEntry {
                 .add("solution", solution)
                 .add("stainQcComment", stainQcComment)
                 .add("amplificationCycles", amplificationCycles)
+                .add("equipment", equipment)
                 .reprStringValues()
                 .omitNullValues()
                 .toString();

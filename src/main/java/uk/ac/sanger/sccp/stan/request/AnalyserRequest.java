@@ -162,17 +162,19 @@ public class AnalyserRequest {
     private String lotNumberA, lotNumberB;
     private String runName;
     private LocalDateTime performed;
+    private Integer equipmentId;
     private List<AnalyserLabware> labware = List.of();
 
     public AnalyserRequest() {}
 
     public AnalyserRequest(String operationType, String lotNumberA, String lotNumberB, String runName,
-                           LocalDateTime performed, List<AnalyserLabware> labware) {
+                           LocalDateTime performed, List<AnalyserLabware> labware, Integer equipmentId) {
         this.operationType = operationType;
         this.lotNumberA = lotNumberA;
         this.lotNumberB = lotNumberB;
         this.runName = runName;
         this.performed = performed;
+        this.equipmentId = equipmentId;
         setLabware(labware);
     }
 
@@ -229,6 +231,17 @@ public class AnalyserRequest {
 
     public void setPerformed(LocalDateTime performed) {
         this.performed = performed;
+    }
+
+    /**
+     * The id of the equipment used for this operation.
+     */
+    public Integer getEquipmentId() {
+        return equipmentId;
+    }
+
+    public void setEquipmentId(Integer equipmentId) {
+        this.equipmentId = equipmentId;
     }
 
     /**
