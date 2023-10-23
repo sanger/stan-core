@@ -1703,6 +1703,8 @@ input AnalyserRequest {
     performed: Timestamp
     """The labware involved in this request."""
     labware: [AnalyserLabware!]!
+    """The id of the equipment used in this operation."""
+    equipmentId: Int!
 }
 
 """Labware to be QC'd with comments and a completion time."""
