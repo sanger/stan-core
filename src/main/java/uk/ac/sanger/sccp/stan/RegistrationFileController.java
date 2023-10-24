@@ -14,16 +14,17 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 import uk.ac.sanger.sccp.stan.model.Labware;
 import uk.ac.sanger.sccp.stan.model.User;
+import uk.ac.sanger.sccp.stan.request.register.LabwareSolutionName;
 import uk.ac.sanger.sccp.stan.request.register.RegisterResult;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
 import uk.ac.sanger.sccp.stan.service.register.FileRegisterService;
 
 import java.net.URISyntaxException;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.BiFunction;
 
 import static java.util.stream.Collectors.toList;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 
 /**
  * Controller for accepting excel files for registration
@@ -53,6 +54,11 @@ public class RegistrationFileController {
         return receiveFile("block", file, fileRegisterService::registerBlocks);
     }
 
+    @PostMapping(value="/register/original", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> receiveOriginalFile(@RequestParam("file") MultipartFile file) throws URISyntaxException {
+        return receiveFile("original sample", file, fileRegisterService::registerOriginal);
+    }
+
     public ResponseEntity<?> receiveFile(String desc, MultipartFile file,
                                          BiFunction<User, MultipartFile, RegisterResult> serviceFunction)
             throws URISyntaxException {
@@ -68,8 +74,19 @@ public class RegistrationFileController {
         }
         log.info("{} {} file registration: {}", user.getUsername(), desc, result);
         List<String> barcodes = result.getLabware().stream().map(Labware::getBarcode).collect(toList());
-        Map<String, List<String>> output = Map.of("barcodes", barcodes);
+        final Map<String, List<?>> output;
+        if (nullOrEmpty(result.getLabwareSolutions())) {
+            output = Map.of("barcodes", barcodes);
+        } else {
+            output = Map.of("barcodes", barcodes, "labwareSolutions", barcodeSolutions(result.getLabwareSolutions()));
+        }
         return ResponseEntity.ok().body(output);
+    }
+
+    protected List<Map<String, String>> barcodeSolutions(Collection<LabwareSolutionName> labwareSolutions) {
+        return labwareSolutions.stream()
+                .map(lsn -> Map.of("barcode", lsn.getBarcode(), "solution", lsn.getSolutionName()))
+                .collect(toList());
     }
 
     protected User getUser() {

@@ -356,6 +356,8 @@ input OriginalSampleData {
     species: String!
     """The date the original sample was collected, if known."""
     sampleCollectionDate: Date
+    """The optional work number to link to the registration."""
+    workNumber: String
 }
 
 """A request to register one or more original samples of tissue."""
