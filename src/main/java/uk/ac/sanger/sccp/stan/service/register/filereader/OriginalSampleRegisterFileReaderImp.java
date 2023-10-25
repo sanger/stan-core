@@ -22,7 +22,10 @@ public class OriginalSampleRegisterFileReaderImp extends BaseRegisterFileReader<
 
     @Override
     protected OriginalSampleRegisterRequest createRequest(Collection<String> problems, List<Map<Column, Object>> rows) {
-        List<OriginalSampleData> data = rows.stream().map(row -> createSampleData(problems, row)).collect(toList());
+        List<OriginalSampleData> data = rows.stream()
+                .map(row -> createSampleData(problems, row))
+                .filter(Objects::nonNull)
+                .collect(toList());
         if (!problems.isEmpty()) {
             throw new ValidationException("The file contents are invalid.", problems);
         }
@@ -30,6 +33,10 @@ public class OriginalSampleRegisterFileReaderImp extends BaseRegisterFileReader<
     }
 
     public OriginalSampleData createSampleData(Collection<String> problems, Map<Column, ?> row) {
+        if (row.entrySet().stream().allMatch(e -> e.getKey()==Column.Labware_type || e.getValue()==null)) {
+            return null;
+            // If every value is null (except the labware type), then it's an empty row
+        }
         OriginalSampleData data = new OriginalSampleData();
         data.setWorkNumber((String) row.get(Column.Work_number));
         data.setDonorIdentifier((String) row.get(Column.Donor_identifier));

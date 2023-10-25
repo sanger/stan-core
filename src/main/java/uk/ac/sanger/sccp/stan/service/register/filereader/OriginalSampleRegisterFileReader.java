@@ -33,7 +33,7 @@ public interface OriginalSampleRegisterFileReader extends MultipartFileReader<Or
         Labware_type,
         Fixative,
         Solution(Pattern.compile("solution.*", Pattern.CASE_INSENSITIVE)),
-        _postramble(Void.class, Pattern.compile("info.*", Pattern.CASE_INSENSITIVE), false),
+        _postramble(Void.class, Pattern.compile("info.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL), false),
         ;
 
         private final Pattern pattern;
