@@ -6,19 +6,19 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * A request to record FFPE processing.
+ * A request to record paraffin processing.
  * @author dr6
  */
-public class FFPEProcessingRequest {
+public class ParaffinProcessingRequest {
     private String workNumber;
     private List<String> barcodes;
     private Integer commentId;
 
-    public FFPEProcessingRequest() {
+    public ParaffinProcessingRequest() {
         this(null, null, null);
     }
 
-    public FFPEProcessingRequest(String workNumber, List<String> barcodes, Integer commentId) {
+    public ParaffinProcessingRequest(String workNumber, List<String> barcodes, Integer commentId) {
         setWorkNumber(workNumber);
         setBarcodes(barcodes);
         setCommentId(commentId);
@@ -61,7 +61,7 @@ public class FFPEProcessingRequest {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        FFPEProcessingRequest that = (FFPEProcessingRequest) o;
+        ParaffinProcessingRequest that = (ParaffinProcessingRequest) o;
         return (Objects.equals(this.workNumber, that.workNumber)
                 && Objects.equals(this.barcodes, that.barcodes)
                 && Objects.equals(this.commentId, that.commentId));
@@ -74,7 +74,7 @@ public class FFPEProcessingRequest {
 
     @Override
     public String toString() {
-        return BasicUtils.describe("FFPEProcessingRequest")
+        return BasicUtils.describe(this)
                 .addRepr("workNumber", workNumber)
                 .add("barcodes", barcodes)
                 .add("commentId", commentId)

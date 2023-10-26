@@ -1607,8 +1607,8 @@ input SolutionTransferLabware {
     solution: String!
 }
 
-"""A request to record FFPE processing."""
-input FFPEProcessingRequest {
+"""A request to record paraffin processing."""
+input ParaffinProcessingRequest {
     """The work number."""
     workNumber: String!
     """The labware barcodes."""
@@ -2016,8 +2016,8 @@ type Mutation {
     recordSampleProcessingComments(request: SampleProcessingCommentRequest!): OperationResult!
     """Add solutions to labware."""
     performSolutionTransfer(request: SolutionTransferRequest!): OperationResult!
-    """Perform FFPE processing."""
-    performFFPEProcessing(request: FFPEProcessingRequest!): OperationResult!
+    """Perform paraffin processing."""
+    performParaffinProcessing(request: ParaffinProcessingRequest!): OperationResult!
     """Record an operation adding a external ID to a sample."""
     addExternalID(request: AddExternalIDRequest!): OperationResult!
     """Record an operation in-place with comments on slots."""

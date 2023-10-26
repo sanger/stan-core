@@ -21,14 +21,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGet;
 
 /**
- * Tests the mutation performFFPEProcessing
+ * Tests the mutation performParaffinProcessing
  * @author dr6
  */
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
 @ActiveProfiles("test")
 @Import({GraphQLTester.class, EntityCreator.class})
-public class TestFFPEProcessingMutation {
+public class TestParaffinProcessingMutation {
     @Autowired
     private GraphQLTester tester;
     @Autowired
@@ -41,18 +41,18 @@ public class TestFFPEProcessingMutation {
 
     @Test
     @Transactional
-    public void testFFPEProcessing() throws Exception {
-        OperationType opType = entityCreator.createOpType("FFPE processing", null, OperationTypeFlag.IN_PLACE);
+    public void testParaffinProcessing() throws Exception {
+        OperationType opType = entityCreator.createOpType("Paraffin processing", null, OperationTypeFlag.IN_PLACE);
         Sample sample = entityCreator.createSample(null, null);
         LabwareType lt = entityCreator.getTubeType();
         Labware lw = entityCreator.createLabware("STAN-A1", lt, sample);
         User user = entityCreator.createUser("user1");
         Work work = entityCreator.createWork(null, null, null, null, null);
         tester.setUser(user);
-        String mutation = tester.readGraphQL("ffpeprocessing.graphql")
+        String mutation = tester.readGraphQL("paraffinprocessing.graphql")
                 .replace("WORK", work.getWorkNumber());
         Object result = tester.post(mutation);
-        Object data = chainGet(result, "data", "performFFPEProcessing");
+        Object data = chainGet(result, "data", "performParaffinProcessing");
         assertEquals(lw.getBarcode(), chainGet(data, "labware", 0, "barcode"));
         Map<String, ?> opData = chainGet(data, "operations", 0);
         assertEquals(opType.getName(), chainGet(opData, "operationType", "name"));
