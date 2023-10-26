@@ -11,10 +11,11 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.register.*;
 import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.register.OriginalSampleRegisterServiceImp.DataStruct;
+import uk.ac.sanger.sccp.stan.service.work.WorkService;
+import uk.ac.sanger.sccp.stan.service.work.WorkService.WorkOp;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
@@ -26,7 +27,7 @@ import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
-import static uk.ac.sanger.sccp.stan.Matchers.assertValidationException;
+import static uk.ac.sanger.sccp.stan.Matchers.*;
 
 /**
  * Tests {@link OriginalSampleRegisterServiceImp}
@@ -53,6 +54,7 @@ public class TestOriginalSampleRegisterService {
     private Validator<String> mockReplicateValidator;
     private LabwareService mockLabwareService;
     private OperationService mockOpService;
+    private WorkService mockWorkService;
 
     OriginalSampleRegisterServiceImp service;
 
@@ -79,11 +81,13 @@ public class TestOriginalSampleRegisterService {
         mockReplicateValidator = mock(Validator.class);
         mockLabwareService = mock(LabwareService.class);
         mockOpService = mock(OperationService.class);
+        mockWorkService = mock(WorkService.class);
 
         service = spy(new OriginalSampleRegisterServiceImp(mockDonorRepo, mockTissueRepo, mockTissueTypeRepo,
                 mockSampleRepo, mockBsRepo, mockSlotRepo, mockHmdmcRepo, mockSpeciesRepo, mockFixativeRepo,
-                mockMediumRepo, mockSolutionRepo, mockLtRepo, mockOpTypeRepo, mockOpSolRepo, mockDonorNameValidator, mockExternalNameValidator,
-                mockHmdmcValidator, mockReplicateValidator, mockLabwareService, mockOpService));
+                mockMediumRepo, mockSolutionRepo, mockLtRepo, mockOpTypeRepo, mockOpSolRepo, mockDonorNameValidator,
+                mockExternalNameValidator,
+                mockHmdmcValidator, mockReplicateValidator, mockLabwareService, mockOpService, mockWorkService));
     }
 
     @Test
@@ -102,7 +106,7 @@ public class TestOriginalSampleRegisterService {
     @Test
     public void testRegister_validationErrors() {
         OriginalSampleData data = new OriginalSampleData("DONOR1", LifeStage.adult, "HMDMC1", "TISSUE1", 5,
-                "R1", "EXT1", "LT1", "SOL1", "FIX1", "SPEC1", LocalDate.of(2022,1,1));
+                "R1", "EXT1", "LT1", "SOL1", "FIX1", "SPEC1", LocalDate.of(2022,1,1), "TODO");
         OriginalSampleRegisterRequest request = new OriginalSampleRegisterRequest(List.of(data));
 
         doAnswer(invocation -> {
@@ -119,6 +123,7 @@ public class TestOriginalSampleRegisterService {
         doNothing().when(service).checkCollectionDates(any(), any());
         doNothing().when(service).checkExistence(any(), any(), any(), any(), any(), any());
 
+        doNothing().when(service).checkWorks(any(), any());
         doNothing().when(service).loadDonors(any());
         doNothing().when(service).checkTissueTypesAndSpatialLocations(any(), any());
 
@@ -147,6 +152,7 @@ public class TestOriginalSampleRegisterService {
         verify(service, never()).createNewLabware(any());
         verify(service, never()).recordRegistrations(any(), any());
         verify(service, never()).recordSolutions(any());
+        verify(service, never()).linkWork(any());
         verify(service, never()).makeResult(any());
     }
 
@@ -154,7 +160,7 @@ public class TestOriginalSampleRegisterService {
     public void testRegister_valid() {
         User user = EntityFactory.getUser();
         OriginalSampleData data = new OriginalSampleData("DONOR1", LifeStage.adult, "HMDMC1", "TISSUE1", 5,
-                "R1", "EXT1", "LT1", "SOL1", "FIX1", "SPEC1", LocalDate.of(2022,1,1));
+                "R1", "EXT1", "LT1", "SOL1", "FIX1", "SPEC1", LocalDate.of(2022,1,1), "TODO");
         OriginalSampleRegisterRequest request = new OriginalSampleRegisterRequest(List.of(data));
         doNothing().when(service).checkFormat(any(), any(), any(), any(), anyBoolean(), any());
         doNothing().when(service).checkHmdmcsForSpecies(any(), any());
@@ -162,6 +168,7 @@ public class TestOriginalSampleRegisterService {
 
         doNothing().when(service).checkExistence(any(), any(), any(), any(), any(), any());
 
+        doNothing().when(service).checkWorks(any(), any());
         doNothing().when(service).loadDonors(any());
         doNothing().when(service).checkExternalNamesUnique(any(), any());
         doNothing().when(service).checkDonorFieldsAreConsistent(any(), any());
@@ -183,6 +190,7 @@ public class TestOriginalSampleRegisterService {
         verify(service).createNewLabware(same(datas));
         verify(service).recordRegistrations(same(user), same(datas));
         verify(service).recordSolutions(same(datas));
+        verify(service).linkWork(same(datas));
         verify(service).makeResult(same(datas));
     }
 
@@ -212,7 +220,7 @@ public class TestOriginalSampleRegisterService {
         verify(service).checkExistence(same(problems), same(datas), eq("fixative"), any(), any(), any());
         verify(service).checkExistence(same(problems), same(datas), eq("solution"), any(), any(), any());
         verify(service).checkExistence(same(problems), same(datas), eq("labware type"), any(), any(), any());
-
+        verify(service).checkWorks(same(problems), same(datas));
         verify(service).loadDonors(same(datas));
         verify(service).checkDonorFieldsAreConsistent(same(problems), same(datas));
 
@@ -312,8 +320,8 @@ public class TestOriginalSampleRegisterService {
     }
 
     static Stream<Arguments> checkCollectionDatesArgs() {
-        LocalDate yesterday = LocalDate.now().minus(1, ChronoUnit.DAYS);
-        LocalDate tomorrow = LocalDate.now().plus(1, ChronoUnit.DAYS);
+        LocalDate yesterday = LocalDate.now().minusDays(1);
+        LocalDate tomorrow = LocalDate.now().plusDays(1);
         return Arrays.stream(new Object[][] {
                 {
                         osd(LifeStage.fetal, "Human", yesterday),
@@ -344,7 +352,7 @@ public class TestOriginalSampleRegisterService {
 
     @ParameterizedTest
     @MethodSource("checkDonorFieldsArgs")
-    public void testCheckDonorFieldsAreConsistent(List<DataStruct> datas,
+    void testCheckDonorFieldsAreConsistent(List<DataStruct> datas,
                                                   Collection<String> expectedProblems) {
         List<String> problems = new ArrayList<>(expectedProblems.size());
         service.checkDonorFieldsAreConsistent(problems, datas);
@@ -487,7 +495,7 @@ public class TestOriginalSampleRegisterService {
 
     @ParameterizedTest
     @MethodSource("checkTissueTypesAndSpatialLocationsArgs")
-    public void testCheckTissueTypesAndSpatialLocations(List<DataStruct> datas,
+    void testCheckTissueTypesAndSpatialLocations(List<DataStruct> datas,
                                                         List<SpatialLocation> expectedSLs,
                                                         List<TissueType> allTissueTypes,
                                                         List<String> expectedProblems) {
@@ -555,6 +563,44 @@ public class TestOriginalSampleRegisterService {
             List<String> expectedProblems = typeFilterToList(arr, String.class);
             return Arguments.of(datas, expectedSLs, tissueTypes, expectedProblems);
         });
+    }
+
+    @Test
+    public void testCheckWorks_none() {
+        List<DataStruct> datas = Stream.of("", null)
+                .map(wn -> new DataStruct(osdWithWorkNumber(wn)))
+                .collect(toList());
+        final List<String> problems = new ArrayList<>(0);
+        service.checkWorks(problems, datas);
+        datas.forEach(d -> assertNull(d.work));
+        verifyNoInteractions(mockWorkService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testCheckWorks_ok(boolean errors) {
+        List<DataStruct> datas = Stream.of("", "SGP1", "SGP2", "SGP1")
+                .map(wn -> new DataStruct(osdWithWorkNumber(wn)))
+                .collect(toList());
+        final List<String> problems = new ArrayList<>(errors ? 1 : 0);
+        Work[] works = IntStream.range(1,3)
+                .mapToObj(i -> {
+                    Work work = new Work();
+                    work.setId(i);
+                    work.setWorkNumber("SGP"+i);
+                    return work;
+                })
+                .toArray(Work[]::new);
+        String expectedProblem = errors ? "Bad work stuff." : null;
+        UCMap<Work> workMap = UCMap.from(Work::getWorkNumber, works);
+        mayAddProblem(expectedProblem, workMap).when(mockWorkService).validateUsableWorks(any(), any());
+        service.checkWorks(problems, datas);
+        assertProblem(problems, expectedProblem);
+        Work[] expectedDataWork = { null, works[0], works[1], works[0] };
+        for (int i = 0; i < datas.size(); ++i) {
+            assertSame(expectedDataWork[i], datas.get(i).work);
+        }
+        verify(mockWorkService).validateUsableWorks(any(), eq(Set.of("SGP1", "SGP2")));
     }
 
     @Test
@@ -710,6 +756,39 @@ public class TestOriginalSampleRegisterService {
     }
 
     @Test
+    public void testLinkWorkOps() {
+        Work[] works = IntStream.range(1, 3)
+                .mapToObj(i -> EntityFactory.makeWork("SGP"+i))
+                .toArray(Work[]::new);
+        Operation[] ops = IntStream.range(1,5)
+                .mapToObj(i -> {
+                    Operation op = new Operation();
+                    op.setId(i);
+                    return op;
+                })
+                .toArray(Operation[]::new);
+        Work[] opWorks = {null, works[0], works[1], works[0], null};
+        List<DataStruct> datas = IntStream.range(0, ops.length)
+                .mapToObj(i -> {
+                    DataStruct data = new DataStruct(null);
+                    data.operation = ops[i];
+                    data.work = opWorks[i];
+                    return data;
+                })
+                .collect(toList());
+
+        service.linkWork(datas);
+
+        ArgumentCaptor<Stream<WorkOp>> captor = streamCaptor();
+        verify(mockWorkService).linkWorkOps(captor.capture());
+        assertThat(captor.getValue()).containsExactlyInAnyOrder(
+                new WorkOp(works[0], ops[1]),
+                new WorkOp(works[1], ops[2]),
+                new WorkOp(works[0], ops[3])
+        );
+    }
+
+    @Test
     public void testCreateNewLabware() {
         DataStruct[] datas = IntStream.range(0,2)
                 .mapToObj(i -> new DataStruct(new OriginalSampleData()))
@@ -834,6 +913,12 @@ public class TestOriginalSampleRegisterService {
     static OriginalSampleData osdWithDonor(String donorName) {
         OriginalSampleData data = new OriginalSampleData();
         data.setDonorIdentifier(donorName);
+        return data;
+    }
+
+    static OriginalSampleData osdWithWorkNumber(String workNumber) {
+        OriginalSampleData data = new OriginalSampleData();
+        data.setWorkNumber(workNumber);
         return data;
     }
 

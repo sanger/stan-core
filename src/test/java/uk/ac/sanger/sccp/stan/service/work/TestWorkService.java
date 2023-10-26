@@ -12,6 +12,7 @@ import uk.ac.sanger.sccp.stan.model.Work.Status;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.service.Validator;
+import uk.ac.sanger.sccp.stan.service.work.WorkService.WorkOp;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.UCMap;
 
@@ -742,6 +743,32 @@ public class TestWorkService {
                 new SampleSlotId(sam2.getId(), lw2.getFirstSlot().getId()),
                 new SampleSlotId(sam2.getId(), lw2.getSlot(new Address(1,2)).getId())
         );
+    }
+
+    @Test
+    public void testLinkWorkOps() {
+        OperationType opType = EntityFactory.makeOperationType("Bananas", null);
+        Sample sample = EntityFactory.getSample();
+        LabwareType lt = EntityFactory.getTubeType();
+        Labware[] lws = IntStream.range(0,4)
+                .mapToObj(i -> EntityFactory.makeLabware(lt, sample))
+                .toArray(Labware[]::new);
+        Operation[] ops = IntStream.range(0,lws.length)
+                        .mapToObj(i -> makeOp(opType, 100+i, lws[i], lws[i]))
+                .toArray(Operation[]::new);
+        Work[] works = IntStream.range(20,23).mapToObj(i -> quickWork(i, Status.active)).toArray(Work[]::new);
+
+        Stream<WorkOp> workOps = Stream.of(
+                new WorkOp(works[0], ops[0]), new WorkOp(works[0], ops[1]),
+                new WorkOp(works[1], ops[2]), new WorkOp(works[2], ops[3])
+        );
+        when(mockWorkRepo.save(any())).then(Matchers.returnArgument());
+
+        List<Work> result = workService.linkWorkOps(workOps);
+        assertThat(result).containsExactlyInAnyOrder(works);
+        verify(workService).link(works[0], List.of(ops[0], ops[1]));
+        verify(workService).link(works[1], List.of(ops[2]));
+        verify(workService).link(works[2], List.of(ops[3]));
     }
 
     static Work quickWork(Status status) {

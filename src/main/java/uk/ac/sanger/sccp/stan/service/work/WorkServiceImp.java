@@ -17,6 +17,7 @@ import uk.ac.sanger.sccp.utils.UCMap;
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
@@ -265,6 +266,23 @@ public class WorkServiceImp implements WorkService {
         work.setOperationIds(opIds);
         work.setSampleSlotIds(ssIds);
         return workRepo.save(work);
+    }
+
+    @Override
+    public List<Work> linkWorkOps(Stream<WorkOp> workOps) {
+        final Map<Integer, Work> workIdMap = new HashMap<>();
+        final Map<Integer, List<Operation>> workOpMap = new HashMap<>();
+        final List<Work> updatedWorks = new ArrayList<>();
+        workOps.forEach(workOp -> {
+            Integer workId = workOp.work.getId();
+            if (!workIdMap.containsKey(workId)) {
+                workIdMap.put(workId, workOp.work);
+                workOpMap.put(workId, new ArrayList<>());
+            }
+            workOpMap.get(workId).add(workOp.op);
+        });
+        workOpMap.forEach((workId, ops) -> updatedWorks.add(link(workIdMap.get(workId), ops)));
+        return updatedWorks;
     }
 
     @Override
