@@ -91,7 +91,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final InPlaceOpCommentService inPlaceOpCommentService;
     final SampleProcessingService sampleProcessingService;
     final SolutionTransferService solutionTransferService;
-    final FFPEProcessingService ffpeProcessingService;
+    final ParaffinProcessingService paraffinProcessingService;
     final OpWithSlotCommentsService opWithSlotCommentsService;
     final ProbeService probeService;
     final CompletionService completionService;
@@ -125,7 +125,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            BlockProcessingService blockProcessingService, PotProcessingService potProcessingService,
                            InPlaceOpCommentService inPlaceOpCommentService,
                            SampleProcessingService sampleProcessingService, SolutionTransferService solutionTransferService,
-                           FFPEProcessingService ffpeProcessingService, OpWithSlotCommentsService opWithSlotCommentsService,
+                           ParaffinProcessingService paraffinProcessingService, OpWithSlotCommentsService opWithSlotCommentsService,
                            ProbeService probeService, CompletionService completionService, AnalyserService analyserService,
                            QCLabwareService qcLabwareService,
                            UserAdminService userAdminService) {
@@ -178,7 +178,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.inPlaceOpCommentService = inPlaceOpCommentService;
         this.sampleProcessingService = sampleProcessingService;
         this.solutionTransferService = solutionTransferService;
-        this.ffpeProcessingService = ffpeProcessingService;
+        this.paraffinProcessingService = paraffinProcessingService;
         this.opWithSlotCommentsService = opWithSlotCommentsService;
         this.probeService = probeService;
         this.completionService = completionService;
@@ -793,12 +793,12 @@ public class GraphQLMutation extends BaseGraphQLResource {
         };
     }
 
-    public DataFetcher<OperationResult> performFFPEProcessing() {
+    public DataFetcher<OperationResult> performParaffinProcessing() {
         return dfe -> {
             User user = checkUser(dfe, User.Role.normal);
-            FFPEProcessingRequest request = arg(dfe, "request", FFPEProcessingRequest.class);
-            logRequest("Perform FFPE processing", user, request);
-            return ffpeProcessingService.perform(user, request);
+            ParaffinProcessingRequest request = arg(dfe, "request", ParaffinProcessingRequest.class);
+            logRequest("Perform paraffin processing", user, request);
+            return paraffinProcessingService.perform(user, request);
         };
     }
 

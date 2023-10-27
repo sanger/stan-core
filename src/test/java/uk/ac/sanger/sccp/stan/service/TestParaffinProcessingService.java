@@ -9,8 +9,8 @@ import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.FFPEProcessingRequest;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
+import uk.ac.sanger.sccp.stan.request.ParaffinProcessingRequest;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 
 import java.util.*;
@@ -25,9 +25,9 @@ import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.Matchers.assertProblem;
 
 /**
- * Tests {@link FFPEProcessingServiceImp}
+ * Tests {@link ParaffinProcessingServiceImp}
  */
-public class TestFFPEProcessingService {
+public class TestParaffinProcessingService {
     private LabwareRepo mockLwRepo;
     private OperationCommentRepo mockOpComRepo;
     private OperationTypeRepo mockOpTypeRepo;
@@ -38,7 +38,7 @@ public class TestFFPEProcessingService {
     private CommentValidationService mockCommentValidationService;
     private LabwareValidatorFactory mockLwValFactory;
 
-    private FFPEProcessingServiceImp service;
+    private ParaffinProcessingServiceImp service;
 
     @BeforeEach
     void setup() {
@@ -52,7 +52,7 @@ public class TestFFPEProcessingService {
         mockCommentValidationService = mock(CommentValidationService.class);
         mockLwValFactory = mock(LabwareValidatorFactory.class);
 
-        service = spy(new FFPEProcessingServiceImp(mockLwRepo, mockOpComRepo, mockOpTypeRepo, mockMediumRepo, mockTissueRepo,
+        service = spy(new ParaffinProcessingServiceImp(mockLwRepo, mockOpComRepo, mockOpTypeRepo, mockMediumRepo, mockTissueRepo,
                 mockWorkService, mockOpService, mockCommentValidationService, mockLwValFactory));
     }
 
@@ -60,7 +60,7 @@ public class TestFFPEProcessingService {
     @ValueSource(booleans={false,true})
     public void testPerform(boolean valid) {
         User user = EntityFactory.getUser();
-        FFPEProcessingRequest request = new FFPEProcessingRequest("SGP1", List.of("STAN-A1"), 10);
+        ParaffinProcessingRequest request = new ParaffinProcessingRequest("SGP1", List.of("STAN-A1"), 10);
         Work work = new Work(1, "SGP1", null, null, null, null, null, null);
         Comment comment = new Comment(10, "Bananas", "blue");
         List<Labware> labware = List.of(EntityFactory.getTube());
@@ -91,7 +91,7 @@ public class TestFFPEProcessingService {
         }
 
         verify(mockWorkService).validateUsableWork(anyCollection(), eq(request.getWorkNumber()));
-        verify(service).loadMedium(anyCollection(), eq(FFPEProcessingServiceImp.MEDIUM_NAME));
+        verify(service).loadMedium(anyCollection(), eq(ParaffinProcessingServiceImp.MEDIUM_NAME));
         verify(service).loadComment(anyCollection(), eq(request.getCommentId()));
         verify(service).loadLabware(anyCollection(), eq(request.getBarcodes()));
 
@@ -230,7 +230,7 @@ public class TestFFPEProcessingService {
 
     @Test
     public void testCreateOps() {
-        OperationType opType = EntityFactory.makeOperationType("FFPE processing", null);
+        OperationType opType = EntityFactory.makeOperationType("Paraffin processing", null);
         when(mockOpTypeRepo.getByName(opType.getName())).thenReturn(opType);
         User user = EntityFactory.getUser();
         LabwareType lt = EntityFactory.getTubeType();
@@ -258,7 +258,7 @@ public class TestFFPEProcessingService {
                 .map(sam -> EntityFactory.makeLabware(lt, sam))
                 .collect(toList());
 
-        final OperationType opType = EntityFactory.makeOperationType("FFPE processing", null);
+        final OperationType opType = EntityFactory.makeOperationType("Paraffin processing", null);
         List<Operation> ops = labware.stream()
                 .map(lw -> {
                     List<Labware> lwList = List.of(lw);

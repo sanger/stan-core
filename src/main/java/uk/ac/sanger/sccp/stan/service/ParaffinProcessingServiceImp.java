@@ -4,8 +4,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.FFPEProcessingRequest;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
+import uk.ac.sanger.sccp.stan.request.ParaffinProcessingRequest;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 
 import java.util.*;
@@ -18,7 +18,7 @@ import static java.util.stream.Collectors.toList;
  * @author dr6
  */
 @Service
-public class FFPEProcessingServiceImp implements FFPEProcessingService {
+public class ParaffinProcessingServiceImp implements ParaffinProcessingService {
     static final String MEDIUM_NAME = "Paraffin";
 
     private final LabwareRepo lwRepo;
@@ -32,11 +32,11 @@ public class FFPEProcessingServiceImp implements FFPEProcessingService {
     private final LabwareValidatorFactory lwValFactory;
 
     @Autowired
-    public FFPEProcessingServiceImp(LabwareRepo lwRepo, OperationCommentRepo opComRepo, OperationTypeRepo opTypeRepo,
-                                    MediumRepo mediumRepo, TissueRepo tissueRepo,
-                                    WorkService workService, OperationService opService,
-                                    CommentValidationService commentValidationService,
-                                    LabwareValidatorFactory lwValFactory) {
+    public ParaffinProcessingServiceImp(LabwareRepo lwRepo, OperationCommentRepo opComRepo, OperationTypeRepo opTypeRepo,
+                                        MediumRepo mediumRepo, TissueRepo tissueRepo,
+                                        WorkService workService, OperationService opService,
+                                        CommentValidationService commentValidationService,
+                                        LabwareValidatorFactory lwValFactory) {
         this.lwRepo = lwRepo;
         this.opComRepo = opComRepo;
         this.opTypeRepo = opTypeRepo;
@@ -49,7 +49,7 @@ public class FFPEProcessingServiceImp implements FFPEProcessingService {
     }
 
     @Override
-    public OperationResult perform(User user, FFPEProcessingRequest request) throws ValidationException {
+    public OperationResult perform(User user, ParaffinProcessingRequest request) throws ValidationException {
         requireNonNull(user, "User is null");
         requireNonNull(request, "Request is null");
         Collection<String> problems = new LinkedHashSet<>();
@@ -106,7 +106,7 @@ public class FFPEProcessingServiceImp implements FFPEProcessingService {
     }
 
     /**
-     * Records FFPE processing
+     * Records paraffin processing
      * @param user the user responsible
      * @param labware the labware for the operations
      * @param work the work to link to the operations
@@ -148,7 +148,7 @@ public class FFPEProcessingServiceImp implements FFPEProcessingService {
      * @return the operations created
      */
     public List<Operation> createOps(User user, Collection<Labware> labware) {
-        OperationType opType = opTypeRepo.getByName("FFPE processing");
+        OperationType opType = opTypeRepo.getByName("Paraffin processing");
         return labware.stream()
                 .map(lw -> opService.createOperationInPlace(opType, user, lw, null, null))
                 .collect(toList());
