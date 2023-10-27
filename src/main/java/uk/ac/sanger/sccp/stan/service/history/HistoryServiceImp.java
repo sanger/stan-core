@@ -180,9 +180,12 @@ public class HistoryServiceImp implements HistoryService {
     public List<Sample> samplesForBarcode(String barcode, List<String> externalNames, List<String> donorNames) {
         Labware lw = lwRepo.getByBarcode(barcode);
         Predicate<Tissue> filter = tissuePredicate(donorNames, externalNames);
-        Set<Integer> tissueIds = lw.getSlots().stream()
-                .flatMap(slot -> slot.getSamples().stream().map(Sample::getTissue))
-                .filter(filter)
+        Stream<Tissue> tissueStream = lw.getSlots().stream()
+                .flatMap(slot -> slot.getSamples().stream().map(Sample::getTissue));
+        if (filter!=null) {
+            tissueStream = tissueStream.filter(filter);
+        }
+        Set<Integer> tissueIds = tissueStream
                 .map(Tissue::getId)
                 .collect(toSet());
         if (tissueIds.isEmpty()) {
