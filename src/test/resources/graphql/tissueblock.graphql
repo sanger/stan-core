@@ -4,7 +4,6 @@ mutation {
         workNumber: "WORKNUMBER"
         labware: [{
             sourceBarcode: "BARCODE"
-            medium: "None"
             labwareType: "Tube"
             replicate: "5c"
         }]

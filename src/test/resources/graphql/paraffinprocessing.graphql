@@ -1,5 +1,5 @@
 mutation {
-    performFFPEProcessing(request: {
+    performParaffinProcessing(request: {
         commentId: 1
         workNumber: "WORK"
         barcodes: ["STAN-A1"]

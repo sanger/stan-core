@@ -28,4 +28,14 @@ public interface FileRegisterService {
      * @exception UncheckedIOException the file cannot be read
      */
     RegisterResult registerBlocks(User user, MultipartFile multipartFile) throws ValidationException, UncheckedIOException;
+
+    /**
+     * Registers original samples as described in the given file.
+     * @param user the user responsible
+     * @param multipartFile the file data
+     * @return the result of the registration
+     * @exception ValidationException the data received is invalid
+     * @exception UncheckedIOException the file cannot be read
+     */
+    RegisterResult registerOriginal(User user, MultipartFile multipartFile) throws ValidationException, UncheckedIOException;
 }

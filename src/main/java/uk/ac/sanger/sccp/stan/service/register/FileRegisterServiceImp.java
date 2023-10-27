@@ -20,20 +20,26 @@ import java.util.function.BiFunction;
 public class FileRegisterServiceImp implements FileRegisterService {
     private final IRegisterService<SectionRegisterRequest> sectionRegisterService;
     private final IRegisterService<RegisterRequest> blockRegisterService;
+    private final IRegisterService<OriginalSampleRegisterRequest> originalSampleRegisterService;
     private final MultipartFileReader<SectionRegisterRequest> sectionFileReader;
     private final MultipartFileReader<RegisterRequest> blockFileReader;
+    private final MultipartFileReader<OriginalSampleRegisterRequest> originalSampleFileReader;
     private final Transactor transactor;
 
     @Autowired
     public FileRegisterServiceImp(IRegisterService<SectionRegisterRequest> sectionRegisterService,
                                   IRegisterService<RegisterRequest> blockRegisterService,
+                                  IRegisterService<OriginalSampleRegisterRequest> originalSampleRegisterService,
                                   MultipartFileReader<SectionRegisterRequest> sectionFileReader,
                                   MultipartFileReader<RegisterRequest> blockFileReader,
+                                  MultipartFileReader<OriginalSampleRegisterRequest> originalSampleFileReader,
                                   Transactor transactor) {
         this.sectionRegisterService = sectionRegisterService;
         this.blockRegisterService = blockRegisterService;
+        this.originalSampleRegisterService = originalSampleRegisterService;
         this.sectionFileReader = sectionFileReader;
         this.blockFileReader = blockFileReader;
+        this.originalSampleFileReader = originalSampleFileReader;
         this.transactor = transactor;
     }
 
@@ -58,5 +64,10 @@ public class FileRegisterServiceImp implements FileRegisterService {
     @Override
     public RegisterResult registerBlocks(User user, MultipartFile multipartFile) throws ValidationException, UncheckedIOException {
         return register(user, multipartFile, blockFileReader, blockRegisterService::register);
+    }
+
+    @Override
+    public RegisterResult registerOriginal(User user, MultipartFile multipartFile) throws ValidationException, UncheckedIOException {
+        return register(user, multipartFile, originalSampleFileReader, originalSampleRegisterService::register);
     }
 }

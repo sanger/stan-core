@@ -9,8 +9,8 @@ import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.FFPEProcessingRequest;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
+import uk.ac.sanger.sccp.stan.request.ParaffinProcessingRequest;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 
 import java.util.*;
@@ -22,32 +22,37 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.stan.Matchers.assertProblem;
 
 /**
- * Tests {@link FFPEProcessingServiceImp}
+ * Tests {@link ParaffinProcessingServiceImp}
  */
-public class TestFFPEProcessingService {
+public class TestParaffinProcessingService {
     private LabwareRepo mockLwRepo;
     private OperationCommentRepo mockOpComRepo;
     private OperationTypeRepo mockOpTypeRepo;
+    private MediumRepo mockMediumRepo;
+    private TissueRepo mockTissueRepo;
     private WorkService mockWorkService;
     private OperationService mockOpService;
     private CommentValidationService mockCommentValidationService;
     private LabwareValidatorFactory mockLwValFactory;
 
-    private FFPEProcessingServiceImp service;
+    private ParaffinProcessingServiceImp service;
 
     @BeforeEach
     void setup() {
         mockLwRepo = mock(LabwareRepo.class);
         mockOpComRepo = mock(OperationCommentRepo.class);
         mockOpTypeRepo = mock(OperationTypeRepo.class);
+        mockMediumRepo = mock(MediumRepo.class);
+        mockTissueRepo = mock(TissueRepo.class);
         mockWorkService = mock(WorkService.class);
         mockOpService = mock(OperationService.class);
         mockCommentValidationService = mock(CommentValidationService.class);
         mockLwValFactory = mock(LabwareValidatorFactory.class);
 
-        service = spy(new FFPEProcessingServiceImp(mockLwRepo, mockOpComRepo, mockOpTypeRepo,
+        service = spy(new ParaffinProcessingServiceImp(mockLwRepo, mockOpComRepo, mockOpTypeRepo, mockMediumRepo, mockTissueRepo,
                 mockWorkService, mockOpService, mockCommentValidationService, mockLwValFactory));
     }
 
@@ -55,10 +60,12 @@ public class TestFFPEProcessingService {
     @ValueSource(booleans={false,true})
     public void testPerform(boolean valid) {
         User user = EntityFactory.getUser();
-        FFPEProcessingRequest request = new FFPEProcessingRequest("SGP1", List.of("STAN-A1"), 10);
+        ParaffinProcessingRequest request = new ParaffinProcessingRequest("SGP1", List.of("STAN-A1"), 10);
         Work work = new Work(1, "SGP1", null, null, null, null, null, null);
         Comment comment = new Comment(10, "Bananas", "blue");
         List<Labware> labware = List.of(EntityFactory.getTube());
+        Medium medium = EntityFactory.getMedium();
+        doReturn(medium).when(service).loadMedium(any(), any());
         OperationResult opRes;
 
         if (valid) {
@@ -67,7 +74,7 @@ public class TestFFPEProcessingService {
             doReturn(labware).when(service).loadLabware(any(), any());
 
             opRes = new OperationResult(makeOps(1), labware);
-            doReturn(opRes).when(service).record(any(), any(), any(), any());
+            doReturn(opRes).when(service).record(any(), any(), any(), any(), any());
         } else {
             when(mockWorkService.validateUsableWork(any(), any())).then(Matchers.addProblem("Bad work number.", work));
             doAnswer(Matchers.addProblem("Bad comment.", comment)).when(service).loadComment(any(), any());
@@ -84,13 +91,14 @@ public class TestFFPEProcessingService {
         }
 
         verify(mockWorkService).validateUsableWork(anyCollection(), eq(request.getWorkNumber()));
+        verify(service).loadMedium(anyCollection(), eq(ParaffinProcessingServiceImp.MEDIUM_NAME));
         verify(service).loadComment(anyCollection(), eq(request.getCommentId()));
         verify(service).loadLabware(anyCollection(), eq(request.getBarcodes()));
 
         if (valid) {
-            verify(service).record(user, labware, work, comment);
+            verify(service).record(user, labware, work, comment, medium);
         } else {
-            verify(service, never()).record(any(), any(), any(), any());
+            verify(service, never()).record(any(), any(), any(), any(), any());
         }
     }
 
@@ -148,26 +156,81 @@ public class TestFFPEProcessingService {
         assertThat(problems).containsExactlyElementsOf(expectedProblems);
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testLoadMedium(boolean exists) {
+        String name = "Sosostris";
+        Medium medium = (exists ? new Medium(15, name) : null);
+        when(mockMediumRepo.findByName(name)).thenReturn(Optional.ofNullable(medium));
+        List<String> problems = new ArrayList<>(exists ? 0 : 1);
+        assertSame(medium, service.loadMedium(problems, name));
+        assertProblem(problems, exists ? null : "Medium \"Sosostris\" not found in database.");
+    }
+
     @Test
     public void testRecord() {
         User user = EntityFactory.getUser();
         var labware = List.of(EntityFactory.getTube());
         Work work = new Work(1, "SGP1", null, null, null, null, null, null);
         Comment comment = new Comment(10, "Bananas", "blue");
+        Medium medium = EntityFactory.getMedium();
 
         List<Operation> ops = makeOps(1);
         doReturn(ops).when(service).createOps(any(), any());
         doNothing().when(service).recordComments(any(), any());
+        doNothing().when(service).updateMedium(any(), any());
 
-        assertEquals(new OperationResult(ops, labware), service.record(user, labware, work, comment));
+        assertEquals(new OperationResult(ops, labware), service.record(user, labware, work, comment, medium));
+        verify(service).updateMedium(labware, medium);
         verify(service).createOps(user, labware);
         verify(mockWorkService).link(work, ops);
         verify(service).recordComments(comment, ops);
     }
 
     @Test
+    public void testUpdateTissues() {
+        Medium medium = new Medium(1, "Sosostris");
+        Medium medium2 = new Medium(2, "Ogg");
+        Medium medium3 = new Medium(3, "Custard");
+        Donor donor = EntityFactory.getDonor();
+        SpatialLocation sl = EntityFactory.getSpatialLocation();
+        final List<Tissue> tissues = new ArrayList<>(4);
+        IntStream.range(0, 3)
+                .mapToObj(i -> EntityFactory.makeTissue(donor, sl))
+                .forEach(tissues::add);
+        tissues.get(0).setMedium(medium2);
+        tissues.get(1).setMedium(medium3);
+        tissues.get(2).setMedium(medium);
+        Tissue tissue0 = tissues.get(0);
+        // Add another representation of the same tissue record, to make sure both get updated
+        tissues.add(new Tissue(tissue0.getId(), tissue0.getExternalName(), tissue0.getReplicate(), tissue0.getSpatialLocation(),
+                tissue0.getDonor(), tissue0.getMedium(), tissue0.getFixative(), tissue0.getHmdmc(), tissue0.getCollectionDate(),
+                tissue0.getParentId()));
+        assertEquals(tissue0, tissues.get(3));
+        assertEquals(tissue0.hashCode(), tissues.get(3).hashCode());
+
+        BioState bs = EntityFactory.getBioState();
+        // Create two different samples for each tissue, to make sure all get updated
+        List<Sample> samples = IntStream.range(0,tissues.size()*2)
+                .mapToObj(i -> new Sample(10+i, null, tissues.get(i/2), bs))
+                .collect(toList());
+        LabwareType lt = EntityFactory.makeLabwareType(1,1);
+        List<Labware> labware = samples.stream()
+                .map(sam -> EntityFactory.makeLabware(lt, sam))
+                .collect(toList());
+
+        service.updateMedium(labware, medium);
+        for (int i = 0; i < labware.size(); ++i) {
+            assertSame(samples.get(i), labware.get(i).getFirstSlot().getSamples().get(0));
+            assertEquals(medium, samples.get(i).getTissue().getMedium());
+            assertEquals(samples.get(i).getTissue(), tissues.get(i/2));
+        }
+        verify(mockTissueRepo).saveAll(Set.of(tissues.get(0), tissues.get(1)));
+    }
+
+    @Test
     public void testCreateOps() {
-        OperationType opType = EntityFactory.makeOperationType("FFPE processing", null);
+        OperationType opType = EntityFactory.makeOperationType("Paraffin processing", null);
         when(mockOpTypeRepo.getByName(opType.getName())).thenReturn(opType);
         User user = EntityFactory.getUser();
         LabwareType lt = EntityFactory.getTubeType();
@@ -195,7 +258,7 @@ public class TestFFPEProcessingService {
                 .map(sam -> EntityFactory.makeLabware(lt, sam))
                 .collect(toList());
 
-        final OperationType opType = EntityFactory.makeOperationType("FFPE processing", null);
+        final OperationType opType = EntityFactory.makeOperationType("Paraffin processing", null);
         List<Operation> ops = labware.stream()
                 .map(lw -> {
                     List<Labware> lwList = List.of(lw);

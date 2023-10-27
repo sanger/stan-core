@@ -7,6 +7,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.register.*;
 import uk.ac.sanger.sccp.stan.service.*;
+import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.UCMap;
 
@@ -14,6 +15,7 @@ import java.time.LocalDate;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
@@ -46,6 +48,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
 
     private final LabwareService labwareService;
     private final OperationService opService;
+    private final WorkService workService;
 
     @Autowired
     public OriginalSampleRegisterServiceImp(DonorRepo donorRepo, TissueRepo tissueRepo,
@@ -58,7 +61,8 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
                                             @Qualifier("externalNameValidator") Validator<String> externalNameValidator,
                                             @Qualifier("hmdmcValidator") Validator<String> hmdmcValidator,
                                             @Qualifier("replicateValidator") Validator<String> replicateValidator,
-                                            LabwareService labwareService, OperationService opService) {
+                                            LabwareService labwareService, OperationService opService,
+                                            WorkService workService) {
         this.donorRepo = donorRepo;
         this.tissueRepo = tissueRepo;
         this.tissueTypeRepo = tissueTypeRepo;
@@ -79,6 +83,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
         this.sampleRepo = sampleRepo;
         this.labwareService = labwareService;
         this.opService = opService;
+        this.workService = workService;
     }
 
     @Override
@@ -113,6 +118,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
         checkExistence(problems, datas, "solution", OriginalSampleData::getSolution, solutionRepo::findByName, DataStruct::setSolution);
         checkExistence(problems, datas, "labware type", OriginalSampleData::getLabwareType, ltRepo::findByName, DataStruct::setLabwareType);
 
+        checkWorks(problems, datas);
         loadDonors(datas);
         checkExternalNamesUnique(problems, request);
         checkDonorFieldsAreConsistent(problems, datas);
@@ -127,6 +133,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
         createNewLabware(datas);
         recordRegistrations(user, datas);
         recordSolutions(datas);
+        linkWork(datas);
         return makeResult(datas);
     }
 
@@ -157,7 +164,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
         }
     }
 
-    public <T> void checkExistence(Collection<String> problems, List<DataStruct> datas, String fieldName,
+    <T> void checkExistence(Collection<String> problems, List<DataStruct> datas, String fieldName,
                                    Function<OriginalSampleData, String> function,
                                    Function<String, Optional<T>> repoFunction,
                                    BiConsumer<DataStruct, T> setter) {
@@ -216,7 +223,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
      * @param problems receptacle for problems
      * @param datas the registration data under construction
      */
-    public void checkDonorFieldsAreConsistent(Collection<String> problems, List<DataStruct> datas) {
+    void checkDonorFieldsAreConsistent(Collection<String> problems, List<DataStruct> datas) {
         for (DataStruct data : datas) {
             Donor donor = data.donor;
             if (donor==null) {
@@ -343,7 +350,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
      * @param problems receptacle for problems
      * @param datas data under construction
      */
-    public void checkTissueTypesAndSpatialLocations(Collection<String> problems, List<DataStruct> datas) {
+    void checkTissueTypesAndSpatialLocations(Collection<String> problems, List<DataStruct> datas) {
         Set<String> tissueTypeNames = datas.stream()
                 .map(data -> data.getOriginalSampleData().getTissueType())
                 .filter(name -> name!=null && !name.isEmpty())
@@ -374,12 +381,28 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
         }
     }
 
+    void checkWorks(Collection<String> problems, List<DataStruct> datas) {
+        Set<String> workNumbers = datas.stream()
+                .map(ds -> ds.originalSampleData.getWorkNumber())
+                .filter(wn -> !nullOrEmpty(wn))
+                .map(String::toUpperCase)
+                .collect(toSet());
+        if (workNumbers.isEmpty()) {
+            return;
+        }
+
+        UCMap<Work> works = workService.validateUsableWorks(problems, workNumbers);
+        for (DataStruct data : datas) {
+            data.work = works.get(data.originalSampleData.getWorkNumber());
+        }
+    }
+
     /**
      * Loads any existing donors matching given donor names.
      * The donors are placed in the appropriate field in the DataStructs.
      * @param datas the data under construction
      */
-    public void loadDonors(List<DataStruct> datas) {
+    void loadDonors(List<DataStruct> datas) {
         Set<String> donorNames = datas.stream()
                 .map(data -> data.getOriginalSampleData().getDonorIdentifier())
                 .filter(dn -> !nullOrEmpty(dn))
@@ -397,7 +420,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
      * Creates donors that do not already exist.
      * @param datas the request data under construction
      */
-    public void createNewDonors(List<DataStruct> datas) {
+    void createNewDonors(List<DataStruct> datas) {
         List<Donor> newDonors = datas.stream()
                 .filter(data -> data.donor==null)
                 .filter(BasicUtils.distinctBySerial(data -> data.getOriginalSampleData().getDonorIdentifier().toUpperCase()))
@@ -421,7 +444,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
      * Creates new tissues and samples in the database
      * @param datas the data under construction
      */
-    public void createNewSamples(List<DataStruct> datas) {
+    void createNewSamples(List<DataStruct> datas) {
         final Medium medium = mediumRepo.getByName("None");
         final BioState bs = bsRepo.getByName("Original sample");
 
@@ -441,7 +464,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
      * Records specified solutions against the given operations
      * @param datas created data
      */
-    public void recordSolutions(List<DataStruct> datas) {
+    void recordSolutions(List<DataStruct> datas) {
         Collection<OperationSolution> opSols = new LinkedHashSet<>();
         for (DataStruct data : datas) {
             if (data.solution!=null) {
@@ -458,10 +481,21 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
     }
 
     /**
+     * Link operations and labware to the indicated work.
+     * @param datas created data
+     */
+    void linkWork(List<DataStruct> datas) {
+        Stream<WorkService.WorkOp> workOps = datas.stream()
+                .filter(data -> data.work!=null && data.operation!=null)
+                .map(data -> new WorkService.WorkOp(data.work, data.operation));
+        workService.linkWorkOps(workOps);
+    }
+
+    /**
      * Creates labware for each data element
      * @param datas the data under construction
      */
-    public void createNewLabware(List<DataStruct> datas) {
+    void createNewLabware(List<DataStruct> datas) {
         for (DataStruct data : datas) {
             final Labware lw = labwareService.create(data.labwareType);
             final Slot slot = lw.getFirstSlot();
@@ -476,7 +510,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
      * @param user user responsible for operations
      * @param datas data under construction
      */
-    public void recordRegistrations(User user, List<DataStruct> datas) {
+    void recordRegistrations(User user, List<DataStruct> datas) {
         OperationType opType = opTypeRepo.getByName("Register");
         for (var data : datas) {
             data.operation = opService.createOperationInPlace(opType, user, data.labware, null, null);
@@ -488,7 +522,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
      * @param datas created data objects
      * @return a result including the labware and solution names
      */
-    public RegisterResult makeResult(List<DataStruct> datas) {
+    RegisterResult makeResult(List<DataStruct> datas) {
         List<Labware> lwList = new ArrayList<>(datas.size());
         List<LabwareSolutionName> lwSols = new ArrayList<>(datas.size());
         for (DataStruct data : datas) {
@@ -511,6 +545,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
         Solution solution;
         Fixative fixative;
         Species species;
+        Work work;
 
         Donor donor;
         Sample sample;
@@ -543,6 +578,10 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
 
         void setSpecies(Species species) {
             this.species = species;
+        }
+
+        public void setWork(Work work) {
+            this.work = work;
         }
     }
 }

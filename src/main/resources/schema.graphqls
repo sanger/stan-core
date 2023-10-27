@@ -356,6 +356,8 @@ input OriginalSampleData {
     species: String!
     """The date the original sample was collected, if known."""
     sampleCollectionDate: Date
+    """The optional work number to link to the registration."""
+    workNumber: String
 }
 
 """A request to register one or more original samples of tissue."""
@@ -1544,8 +1546,6 @@ input TissueBlockLabware {
     commentId: Int
     """The replicate number for the new block."""
     replicate: String!
-    """The medium for the new block."""
-    medium: String!
 }
 
 """A request to transfer original sample into pots."""
@@ -1607,8 +1607,8 @@ input SolutionTransferLabware {
     solution: String!
 }
 
-"""A request to record FFPE processing."""
-input FFPEProcessingRequest {
+"""A request to record paraffin processing."""
+input ParaffinProcessingRequest {
     """The work number."""
     workNumber: String!
     """The labware barcodes."""
@@ -1703,6 +1703,8 @@ input AnalyserRequest {
     performed: Timestamp
     """The labware involved in this request."""
     labware: [AnalyserLabware!]!
+    """The id of the equipment used in this operation."""
+    equipmentId: Int!
 }
 
 """Labware to be QC'd with comments and a completion time."""
@@ -2014,8 +2016,8 @@ type Mutation {
     recordSampleProcessingComments(request: SampleProcessingCommentRequest!): OperationResult!
     """Add solutions to labware."""
     performSolutionTransfer(request: SolutionTransferRequest!): OperationResult!
-    """Perform FFPE processing."""
-    performFFPEProcessing(request: FFPEProcessingRequest!): OperationResult!
+    """Perform paraffin processing."""
+    performParaffinProcessing(request: ParaffinProcessingRequest!): OperationResult!
     """Record an operation adding a external ID to a sample."""
     addExternalID(request: AddExternalIDRequest!): OperationResult!
     """Record an operation in-place with comments on slots."""

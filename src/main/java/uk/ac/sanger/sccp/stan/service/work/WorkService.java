@@ -8,6 +8,9 @@ import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Stream;
+
+import static java.util.Objects.requireNonNull;
 
 /**
  * Service for managing {@link Work work}.
@@ -121,6 +124,13 @@ public interface WorkService {
     Work link(Work work, Collection<Operation> operations);
 
     /**
+     * Links the indicated works to the indicated ops.
+     * @param workOps a stream of work and ops
+     * @return the updated works
+     */
+    List<Work> linkWorkOps(Stream<WorkOp> workOps);
+
+    /**
      * Updates the given works linking them to the given operations and samples in slots in the ops' actions
      * @param works the works
      * @param operations the operations to link
@@ -213,4 +223,30 @@ public interface WorkService {
      * @return the works created by the user
      */
     List<Work> getWorksCreatedBy(User user);
+
+    /**
+     * struct-like container for a work and an operation
+     */
+    class WorkOp {
+        public final Work work;
+        public final Operation op;
+
+        public WorkOp(Work work, Operation op) {
+            this.work = requireNonNull(work);
+            this.op = requireNonNull(op);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            WorkOp that = (WorkOp) o;
+            return (this.work.getId().equals(that.work.getId()) && this.op.getId().equals(that.op.getId()));
+        }
+
+        @Override
+        public int hashCode() {
+            return 31*work.getId() + op.getId();
+        }
+    }
 }
