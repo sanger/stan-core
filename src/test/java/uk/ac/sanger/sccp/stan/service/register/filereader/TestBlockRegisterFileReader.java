@@ -188,6 +188,57 @@ class TestBlockRegisterFileReader extends BaseTestFileReader {
         }
     }
 
+    @ParameterizedTest
+    @MethodSource("cellDateArgs")
+    public void testCellDateWithMocks(Cell cell, Object expected) {
+        if (expected==null) {
+            assertNull(reader.cellDate(cell));
+        } else if (expected instanceof Class) {
+            //noinspection unchecked
+            assertThrows((Class<? extends Exception>) expected, () -> reader.cellDate(cell));
+        } else {
+            assertEquals(expected, reader.cellDate(cell));
+        }
+    }
+
+    static Stream<Arguments> cellDateArgs() {
+        LocalDate date = LocalDate.of(2023,1,2);
+        Cell emptyCell = mockCell(CellType.BLANK);
+        Cell dateCell = mockCell(CellType.NUMERIC);
+        when(dateCell.getLocalDateTimeCellValue()).thenReturn(date.atStartOfDay());
+        Cell stringCell = mockCell(CellType.STRING);
+        when(stringCell.getStringCellValue()).thenReturn("02/01/2023");
+        Cell emptyStringCell = mockCell(CellType.STRING);
+        when(emptyStringCell.getStringCellValue()).thenReturn("");
+        Cell nonDateCell = mockCell(CellType.BOOLEAN);
+        when(nonDateCell.getLocalDateTimeCellValue()).thenThrow(IllegalStateException.class);
+        Cell nonDateStringCell = mockCell(CellType.STRING);
+        when(nonDateStringCell.getStringCellValue()).thenReturn("bananas");
+        return Arrays.stream(new Object[][] {
+                { emptyCell, null },
+                { dateCell, date },
+                { stringCell, date },
+                { emptyStringCell, null },
+                { nonDateCell, IllegalStateException.class },
+                { nonDateStringCell, RuntimeException.class },
+        }).map(Arguments::of);
+    }
+
+    @Test
+    public void testCellDateWithRealCell() throws IOException {
+        try (Workbook wb = new HSSFWorkbook()) {
+            Row row = wb.createSheet().createRow(2);
+            LocalDate date1 = LocalDate.of(2023,2,3);
+            LocalDate date2 = LocalDate.of(2023,3,4);
+            Cell cell1 = row.createCell(1, CellType.NUMERIC);
+            cell1.setCellValue(date1);
+            Cell cell2 = row.createCell(2, CellType.STRING);
+            cell2.setCellValue("04/03/2023");
+            assertEquals(date1, reader.cellDate(cell1));
+            assertEquals(date2, reader.cellDate(cell2));
+        }
+    }
+
     @Test
     void testCellValueWithRealNumericCell() throws IOException {
         try (Workbook wb = new HSSFWorkbook()) {
