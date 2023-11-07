@@ -16,5 +16,11 @@ public interface DnapStudyRepo extends CrudRepository<DnapStudy, Integer> {
         return findByName(name).orElseThrow(() -> new EntityNotFoundException("Unknown DNAP study: "+repr(name)));
     }
 
+    Optional<DnapStudy> findBySsId(Integer ssId);
+
+    default DnapStudy getBySsId(Integer ssId) throws EntityNotFoundException {
+        return findBySsId(ssId).orElseThrow(() -> new EntityNotFoundException("Unknown Sequencescape study id: "+ssId));
+    }
+
     List<DnapStudy> findAllByEnabled(boolean enabled);
 }

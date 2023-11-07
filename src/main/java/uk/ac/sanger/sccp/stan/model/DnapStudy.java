@@ -12,23 +12,21 @@ public class DnapStudy implements HasIntId, HasEnabled, HasName {
     @Id
     @GeneratedValue(strategy= GenerationType.IDENTITY)
     private Integer id;
+    private Integer ssId;
     private String name;
     private boolean enabled = true;
 
     public DnapStudy() {}
 
-    public DnapStudy(Integer id, String name, boolean enabled) {
+    public DnapStudy(Integer id, Integer ssId, String name, boolean enabled) {
         this.id = id;
+        this.ssId = ssId;
         this.name = name;
         this.enabled = enabled;
     }
 
-    public DnapStudy(String name) {
-        this(null, name, true);
-    }
-
-    public DnapStudy(Integer id, String name) {
-        this(id, name, true);
+    public DnapStudy(Integer ssId, String name) {
+        this(null, ssId, name, true);
     }
 
     @Override
@@ -38,6 +36,14 @@ public class DnapStudy implements HasIntId, HasEnabled, HasName {
 
     public void setId(Integer id) {
         this.id = id;
+    }
+
+    public Integer getSsId() {
+        return this.ssId;
+    }
+
+    public void setSsId(Integer ssId) {
+        this.ssId = ssId;
     }
 
     @Override
@@ -61,7 +67,7 @@ public class DnapStudy implements HasIntId, HasEnabled, HasName {
 
     @Override
     public String toString() {
-        return getName();
+        return getSsId()+": "+getName();
     }
 
     @Override
@@ -71,11 +77,12 @@ public class DnapStudy implements HasIntId, HasEnabled, HasName {
         DnapStudy that = (DnapStudy) o;
         return (this.enabled == that.enabled
                 && Objects.equals(this.id, that.id)
+                && Objects.equals(this.ssId, that.ssId)
                 && Objects.equals(this.name, that.name));
     }
 
     @Override
     public int hashCode() {
-        return (id!=null ? id.hashCode() : name!=null ? name.hashCode() : enabled ? 1 : 0);
+        return (id!=null ? id.hashCode() : ssId!=null ? ssId.hashCode() : enabled ? 1 : 0);
     }
 }

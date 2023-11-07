@@ -165,8 +165,6 @@ public class GraphQLProvider {
                         .dataFetcher("setProgramEnabled", transact(graphQLMutation.setProgramEnabled()))
                         .dataFetcher("addCostCode", transact(graphQLMutation.addCostCode()))
                         .dataFetcher("setCostCodeEnabled", transact(graphQLMutation.setCostCodeEnabled()))
-                        .dataFetcher("addDnapStudy", transact(graphQLMutation.addDnapStudy()))
-                        .dataFetcher("setDnapStudyEnabled", transact(graphQLMutation.setDnapStudyEnabled()))
                         .dataFetcher("addFixative", transact(graphQLMutation.addFixative()))
                         .dataFetcher("setFixativeEnabled", transact(graphQLMutation.setFixativeEnabled()))
                         .dataFetcher("addSolution", transact(graphQLMutation.addSolution()))
@@ -187,6 +185,7 @@ public class GraphQLProvider {
                         .dataFetcher("updateWorkPriority", transact(graphQLMutation.updateWorkPriority()))
                         .dataFetcher("updateWorkOmeroProject", transact(graphQLMutation.updateWorkOmeroProject()))
                         .dataFetcher("updateWorkDnapStudy", transact(graphQLMutation.updateWorkDnapStudy()))
+                        .dataFetcher("updateDnapStudies", graphQLMutation.updateDnapStudies()) // transacted internally
                         .dataFetcher("stain", transact(graphQLMutation.stain()))
                         .dataFetcher("unrelease", transact(graphQLMutation.unrelease()))
                         .dataFetcher("recordStainResult", transact(graphQLMutation.recordStainResult()))

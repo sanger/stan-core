@@ -1,0 +1,44 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <!-- Put the warehouse study table into our test schema for our tests -->
+    <changeSet id="2.30.0" author="dr6">
+        <createTable tableName="study">
+            <column name="id_study_lims" type="INT">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="id_lims" type="CHAR(5)" defaultValue="SQSCP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="2.30.1" author="dr6">
+        <insert tableName="study">
+            <column name="id_study_lims" value="1"/>
+            <column name="name" value="Study Alpha"/>
+        </insert>
+        <insert tableName="study">
+            <column name="id_study_lims" value="2"/>
+            <column name="name" value="Study Beta"/>
+        </insert>
+        <insert tableName="study">
+            <column name="id_study_lims" value="3"/>
+            <column name="name" value="Study Gamma"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="2.30.2" author="dr6">
+        <addColumn tableName="dnap_study">
+            <column name="ss_id" type="INT" afterColumn="id">
+                <constraints nullable="false" unique="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

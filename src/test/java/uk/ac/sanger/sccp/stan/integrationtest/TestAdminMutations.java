@@ -59,8 +59,6 @@ public class TestAdminMutations {
     @Autowired
     private OmeroProjectRepo omeroProjectRepo;
     @Autowired
-    private DnapStudyRepo dnapStudyRepo;
-    @Autowired
     private SlotRegionRepo slotRegionRepo;
     @Autowired
     private ProbePanelRepo probePanelRepo;
@@ -175,12 +173,6 @@ public class TestAdminMutations {
     @Transactional
     public void testAddNewOmeroProjectAndSetEnabled() throws Exception {
         testGenericAddNewAndSetEnabled("OmeroProject", "name", "Hello", omeroProjectRepo::findByName, OmeroProject::getName, "omeroProjects");
-    }
-
-    @Test
-    @Transactional
-    public void testAddNewDnapStudyAndSetEnabled() throws Exception {
-        testGenericAddNewAndSetEnabled("DnapStudy", "name", "Hello", dnapStudyRepo::findByName, DnapStudy::getName, "dnapStudies");
     }
 
     @Test

@@ -158,17 +158,17 @@ public class TestWorkService {
     @CsvSource({
             ", DNAP study not found.",
             "true,",
-            "false, DNAP study is disabled: S123",
+            "false, DNAP study is disabled: 123: S123",
     })
     public void testCreateWork_dnapStudy(Boolean enabled, String expectedErrorMessage) {
-        final String dsName = "S123";
+        final Integer ssId = 123;
         DnapStudy study;
         if (enabled==null) {
             study = null;
-            when(mockDnapStudyRepo.getByName(dsName)).thenThrow(new EntityNotFoundException(expectedErrorMessage));
+            when(mockDnapStudyRepo.getBySsId(ssId)).thenThrow(new EntityNotFoundException(expectedErrorMessage));
         } else {
-            study = new DnapStudy(20, dsName, enabled);
-            when(mockDnapStudyRepo.getByName(dsName)).thenReturn(study);
+            study = new DnapStudy(20, ssId, "S123", enabled);
+            when(mockDnapStudyRepo.getBySsId(ssId)).thenReturn(study);
         }
         String projectName = "Stargate";
         String code = "S1234";
@@ -190,10 +190,10 @@ public class TestWorkService {
 
         when(mockWorkRepo.save(any())).then(Matchers.returnArgument());
         if (expectedErrorMessage!=null) {
-            assertThat(assertThrows(RuntimeException.class, () -> workService.createWork(user, prefix, workTypeName, workRequesterName, projectName, progName, code, null, null, null, null, dsName)))
+            assertThat(assertThrows(RuntimeException.class, () -> workService.createWork(user, prefix, workTypeName, workRequesterName, projectName, progName, code, null, null, null, null, ssId)))
                     .hasMessage(expectedErrorMessage);
         } else {
-            Work result = workService.createWork(user, prefix, workTypeName, workRequesterName, projectName, progName, code, null, null, null, null, dsName);
+            Work result = workService.createWork(user, prefix, workTypeName, workRequesterName, projectName, progName, code, null, null, null, null, ssId);
             verify(mockWorkRepo).save(result);
             assertSame(study, result.getDnapStudy());
         }
@@ -223,7 +223,7 @@ public class TestWorkService {
             verify(mockWorkRepo, never()).save(any());
             return;
         }
-        Comment comment = (commentId==null ? new Comment(commentId, "Custard", "Alabama") : null);
+        Comment comment = (commentId==null ? null : new Comment(commentId, "Custard", "Alabama"));
         WorkEvent event = new WorkEvent(100, work, null, null, comment, null);
         when(mockWorkEventService.recordStatusChange(any(), any(), any(), any())).thenReturn(event);
         when(mockWorkRepo.save(any())).then(Matchers.returnArgument());
@@ -451,16 +451,16 @@ public class TestWorkService {
 
     @ParameterizedTest
     @CsvSource({
-            "true,true,Alpha,Beta,",
-            "true,true,Alpha,Alpha,",
+            "true,true,10,20,",
+            "true,true,10,10,",
             "false,,,,No such work.",
-            "true,,Alpha,Beta,No such study.",
-            "true,false,Alpha,Beta,DNAP study is disabled: Beta",
-            "true,true,Alpha,,",
+            "true,,10,20,No such study.",
+            "true,false,10,20,DNAP study is disabled: 20: Study20",
+            "true,true,10,,",
     })
     public void testUpdateWorkDnapStudy(boolean workExists, Boolean studyEnabled,
-                                           String oldStudy, String newStudy, String expectedError) {
-        boolean change = !(oldStudy==null ? newStudy==null : oldStudy.equalsIgnoreCase(newStudy));
+                                           Integer oldId, Integer newId, String expectedError) {
+        boolean change = !Objects.equals(oldId, newId);
         String workNumber = "SGP100";
         Work work;
         if (!workExists) {
@@ -471,39 +471,39 @@ public class TestWorkService {
             work = new Work(100, workNumber, null, null, null, null, null, Status.active);
             when(mockWorkRepo.getByWorkNumber(workNumber)).thenReturn(work);
             DnapStudy study;
-            if (newStudy!=null) {
+            if (newId!=null) {
                 if (studyEnabled==null) {
                     study = null;
                     EntityNotFoundException ex = new EntityNotFoundException(expectedError);
-                    when(mockDnapStudyRepo.getByName(newStudy)).thenThrow(ex);
+                    when(mockDnapStudyRepo.getBySsId(newId)).thenThrow(ex);
                 } else {
-                    study = new DnapStudy(50, newStudy, studyEnabled);
-                    when(mockDnapStudyRepo.getByName(newStudy)).thenReturn(study);
+                    study = new DnapStudy(50, newId, "Study"+newId, studyEnabled);
+                    when(mockDnapStudyRepo.getBySsId(newId)).thenReturn(study);
                 }
 
             } else {
                 study = null;
             }
-            if (oldStudy!=null) {
-                work.setDnapStudy(change ? new DnapStudy(10, oldStudy, true) : study);
+            if (oldId!=null) {
+                work.setDnapStudy(change ? new DnapStudy(10, oldId, "Custard", true) : study);
             }
         }
 
         User user = EntityFactory.getUser();
 
         if (expectedError!=null) {
-            assertThat(assertThrows(RuntimeException.class, () -> workService.updateWorkDnapStudy(user, workNumber, newStudy)))
+            assertThat(assertThrows(RuntimeException.class, () -> workService.updateWorkDnapStudy(user, workNumber, newId)))
                     .hasMessage(expectedError);
             verify(mockWorkRepo, never()).save(any());
         } else {
             assert work != null;
             when(mockWorkRepo.save(any())).thenReturn(work);
-            assertSame(work, workService.updateWorkDnapStudy(user, workNumber, newStudy));
-            if (newStudy==null) {
+            assertSame(work, workService.updateWorkDnapStudy(user, workNumber, newId));
+            if (newId==null) {
                 assertNull(work.getDnapStudy());
             } else {
                 assertNotNull(work.getDnapStudy());
-                assertEquals(newStudy, work.getDnapStudy().getName());
+                assertEquals(newId, work.getDnapStudy().getSsId());
             }
             if (change) {
                 verify(mockWorkRepo).save(work);

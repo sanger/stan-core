@@ -56,7 +56,7 @@ public class TestWorkMutation {
         User enduser = entityCreator.createUser("jeff", User.Role.enduser);
         User normaluser = entityCreator.createUser("user1", User.Role.normal);
         OmeroProject omero = omeroProjectRepo.save(new OmeroProject("om_proj"));
-        DnapStudy study = dnapStudyRepo.save(new DnapStudy("S123"));
+        DnapStudy study = dnapStudyRepo.save(new DnapStudy(123, "S123"));
 
         String worksQuery  = "query { works(status: [active]) { workNumber, workType {name}, workRequester {username}," +
                 "project {name}, program {name}, costCode {code}, status, omeroProject {name}, dnapStudy {name} } }";
