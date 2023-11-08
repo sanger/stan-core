@@ -103,8 +103,9 @@ public class ResultServiceImp extends BaseResultService implements ResultService
             problems.add("The operation type "+opType.getName()+" cannot be used in this operation.");
         }
         UCMap<Labware> labware = validateLabware(problems, request.getLabwareResults());
-        boolean resultsRequired = (opType != null && !opType.getName().equalsIgnoreCase("Tissue coverage"));
-        validateLabwareContents(problems, labware, request.getLabwareResults(), resultsRequired);
+        boolean sampleResultsRequired = (opType != null && !opType.getName().equalsIgnoreCase("Tissue coverage"));
+        boolean resultsRequired = (opType != null && !opType.getName().equalsIgnoreCase("Pretreatment QC"));
+        validateLabwareContents(problems, labware, request.getLabwareResults(), sampleResultsRequired, resultsRequired);
         validateLotNumbers(problems, request.getLabwareResults());
         UCMap<List<SlotMeasurementRequest>> measurementMap = validateMeasurements(problems, labware, request.getLabwareResults());
         Map<Integer, Comment> commentMap = validateComments(problems, request.getLabwareResults());
@@ -138,24 +139,26 @@ public class ResultServiceImp extends BaseResultService implements ResultService
      * @param problems receptacle for problems
      * @param labware map to look up labware by barcode
      * @param labwareResults the labware results to validate
+     * @param sampleResultsRequired a boolean indicating whether sample results are required for validation.
+     * @param resultsRequired a boolean indicating whether the results field within the sample results is required for validation.
      */
     public void validateLabwareContents(Collection<String> problems, UCMap<Labware> labware,
                                         Collection<LabwareResult> labwareResults,
-                                        boolean resultsRequired) {
+                                        boolean sampleResultsRequired, boolean resultsRequired) {
         for (LabwareResult lr : labwareResults) {
             Labware lw = labware.get(lr.getBarcode());
             if (lw==null) {
                 continue;
             }
             if (lr.getSampleResults().isEmpty()) {
-                if (resultsRequired) {
+                if (sampleResultsRequired) {
                     problems.add("No results specified for labware " + lw.getBarcode() + ".");
                 }
                 continue;
             }
             Set<Integer> slotIds = new HashSet<>(lr.getSampleResults().size());
             for (SampleResult sr : lr.getSampleResults()) {
-                validateSampleResult(problems, lw, slotIds, sr);
+                validateSampleResult(problems, lw, slotIds, sr, resultsRequired);
             }
         }
     }
@@ -213,10 +216,11 @@ public class ResultServiceImp extends BaseResultService implements ResultService
      * @param problems receptacle for problems
      * @param lw the labware of this result
      * @param slotIds the accumulated set of slot ids for this labware
-     * @param sr the sample result to validate`
+     * @param sr the sample result to validate
+     * @param resultsRequired a boolean indicating whether the results field within the sample results is required for validation
      */
-    public void validateSampleResult(Collection<String> problems, Labware lw, Set<Integer> slotIds, SampleResult sr) {
-        if (sr.getResult()==null) {
+    public void validateSampleResult(Collection<String> problems, Labware lw, Set<Integer> slotIds, SampleResult sr, boolean resultsRequired) {
+        if (resultsRequired && sr.getResult()==null) {
             problems.add("Sample result is missing a result.");
         }
         if (sr.getAddress()==null) {
@@ -363,8 +367,10 @@ public class ResultServiceImp extends BaseResultService implements ResultService
                 Integer refersToOpId = referredToOpIds.get(lw.getId());
                 Comment singleComment = (sr.getCommentId()!=null ? commentMap.get(sr.getCommentId()) : null);
                 for (Sample sample : slot.getSamples()) {
-                    ResultOp resOp = new ResultOp(null, sr.getResult(), op.getId(), sample.getId(), slot.getId(), refersToOpId);
-                    resultOps.add(resOp);
+                    if(sr.getResult()!=null) {
+                        ResultOp resOp = new ResultOp(null, sr.getResult(), op.getId(), sample.getId(), slot.getId(), refersToOpId);
+                        resultOps.add(resOp);
+                    }
                     if (singleComment != null) {
                         opComments.add(new OperationComment(null, singleComment, op.getId(), sample.getId(), slot.getId(), null));
                     }

@@ -125,7 +125,7 @@ public class TestResultService {
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lw);
         doReturn(lwMap).when(service).validateLabware(any(), any());
         doNothing().when(service).validateLotNumbers(any(), any());
-        doNothing().when(service).validateLabwareContents(any(), any(), any(), anyBoolean());
+        doNothing().when(service).validateLabwareContents(any(), any(), any(), anyBoolean(), anyBoolean());
         Work work = new Work(200, "SGP200", null, null, null, null, null, Work.Status.active);
         doReturn(work).when(mockWorkService).validateUsableWork(any(), any());
         Map<Integer, Integer> lwStainMap = Map.of(100,200);
@@ -173,7 +173,7 @@ public class TestResultService {
         verify(service).loadOpType(anyCollection(), eq(resultOpType.getName()));
         verify(service).loadOpType(anyCollection(), eq(setupOpType.getName()));
         verify(service).validateLabware(anyCollection(), eq(lrs));
-        verify(service).validateLabwareContents(anyCollection(), eq(lwMap), eq(lrs), eq(true));
+        verify(service).validateLabwareContents(anyCollection(), eq(lwMap), eq(lrs), eq(true), eq(true));
         verify(service).validateLotNumbers(anyCollection(), same(lrs));
         verify(service).validateComments(anyCollection(), eq(lrs));
         verify(service).validateSampleIdsInSampleComments(anyCollection(), same(lwMap), same(lrs));
@@ -282,17 +282,17 @@ public class TestResultService {
             Address ad = sr.getAddress();
             slotIds.add(10 * ad.getRow() + ad.getColumn());
             return null;
-        }).when(service).validateSampleResult(anyCollection(), any(), any(), any());
+        }).when(service).validateSampleResult(anyCollection(), any(), any(), any(), anyBoolean());
 
         final List<String> problems = new ArrayList<>();
-        service.validateLabwareContents(problems, lwMap, lrs, true);
+        service.validateLabwareContents(problems, lwMap, lrs, true, true);
         assertThat(problems).containsExactlyInAnyOrder(slotSampleProblem, "No results specified for labware "+lw0.getBarcode()+".");
 
         //noinspection unchecked
         ArgumentCaptor<Set<Integer>> argCap = ArgumentCaptor.forClass(Set.class);
         for (LabwareResult lr : lrs) {
             for (SampleResult sr : lr.getSampleResults()) {
-                verify(service).validateSampleResult(same(problems), same(lwMap.get(lr.getBarcode())), argCap.capture(), same(sr));
+                verify(service).validateSampleResult(same(problems), same(lwMap.get(lr.getBarcode())), argCap.capture(), same(sr), eq(true));
             }
         }
         // verify that the same slot/sample id sets were used for sample results on the same labware
@@ -417,7 +417,7 @@ public class TestResultService {
 
     @ParameterizedTest
     @MethodSource("validateSampleResultArgs")
-    public void testValidateSampleResult(SampleResult sr, Labware lw, Slot slot, Integer priorSlotId,
+    public void testValidateSampleResult(SampleResult sr, Labware lw, Slot slot, Integer priorSlotId, boolean resultsRequired,
                                          Object expectedProblemsObj) {
         if (slot==null) {
             doAnswer(invocation -> {
@@ -449,7 +449,7 @@ public class TestResultService {
         }
         final List<String> problems = new ArrayList<>(expectedProblems.size());
 
-        service.validateSampleResult(problems, lw, slotIds, sr);
+        service.validateSampleResult(problems, lw, slotIds, sr, resultsRequired);
 
         assertThat(problems).containsExactlyInAnyOrderElementsOf(expectedProblems);
         if (sr.getAddress()!=null) {
@@ -469,29 +469,30 @@ public class TestResultService {
 
         final SampleResult passResult = new SampleResult(A1, PassFail.pass, null);
         final SampleResult failResult = new SampleResult(A1, PassFail.fail, 6);
-        // sr, slot, sample, ssid, problems
+        // sr, slot, sample, ssid, resultsRequired, problems
         return Arrays.stream(new Object[][] {
-                {passResult, slot, null, null},
-                {failResult, slot, null, null},
-                {passResult, slot, slot.getId()+1, null},
+                {passResult, slot, null, true, null},
+                {failResult, slot, null, true, null},
+                {passResult, slot, slot.getId()+1, true, null},
 
-                {new SampleResult(A1, null, null), slot, null,
+                {new SampleResult(A1, null, null), slot, null,true,
                         "Sample result is missing a result."},
-                {new SampleResult(null, PassFail.pass, null), null, null,
+                {new SampleResult(A1, null, null), slot, null, false, null},
+                {new SampleResult(null, PassFail.pass, null), null, null, true,
                         "Sample result is missing a slot address."},
-                {new SampleResult(A2, PassFail.pass, null), emptySlot, null,
+                {new SampleResult(A2, PassFail.pass, null), emptySlot, null, true,
                         "Slot is empty."},
-                {new SampleResult(A1, PassFail.fail, null), slot, null,
+                    {new SampleResult(A1, PassFail.fail, null), slot, null, true,
                         null}, // no longer a problem
-                {new SampleResult(), null, null,
-                        List.of("Sample result is missing a result.", "Sample result is missing a slot address.")},
+                {new SampleResult(), null, null, false,
+                        List.of("Sample result is missing a slot address.")},
 
-                {passResult, null, null, "No such slot."},
+                {passResult, null, null, true, "No such slot."},
 
-                {passResult, slot, slot.getId(), "Multiple results specified for slot A1 in labware STAN-001."},
-                {new SampleResult(A1, null, null), null, null,
-                        List.of("Sample result is missing a result.", "No such slot.") },
-        }).map(arr -> Arguments.of(arr[0], lw, arr[1], arr[2], arr[3]));
+                {passResult, slot, slot.getId(), true, "Multiple results specified for slot A1 in labware STAN-001."},
+                {new SampleResult(A1, null, null), null, null, false,
+                        List.of("No such slot.") },
+        }).map(arr -> Arguments.of(arr[0], lw, arr[1], arr[2], arr[3], arr[4]));
     }
 
     @ParameterizedTest
