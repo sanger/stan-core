@@ -1178,8 +1178,8 @@ input SampleIdCommentId {
 input SampleResult {
     """The slot address that the result refers to."""
     address: Address!
-    """The result."""
-    result: PassFail!
+    """The result if any defined."""
+    result: PassFail
     """The id of a comment, if any, linked to the result."""
     commentId: Int
     """List of comments to be recorded against particular samples."""

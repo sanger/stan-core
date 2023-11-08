@@ -55,6 +55,7 @@ public class TestStainAndSubsequentMutations {
     public void testStainAndWorkProgressAndRecordResult() throws Exception {
         entityCreator.createOpType("Stain QC", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.RESULT);
         entityCreator.createOpType("Tissue coverage", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.RESULT);
+        entityCreator.createOpType("Pretreatment QC", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.RESULT);
         WorkType wt = entityCreator.createWorkType("Rocks");
         Project pr = entityCreator.createProject("Stargate");
         CostCode cc = entityCreator.createCostCode("4");
@@ -90,6 +91,25 @@ public class TestStainAndSubsequentMutations {
         var timeEntry = timeEntries.get(0);
         assertEquals("Stain", timeEntry.get("type"));
         Assertions.assertEquals(GraphQLCustomTypes.TIMESTAMP.getCoercing().serialize(op.getPerformed()), timeEntry.get("timestamp"));
+
+        String pretreatmentQcGraphql = tester.readGraphQL("pretreatmentQc.graphql")
+                .replace("SGP500", work.getWorkNumber())
+                .replace("999", sam.getId().toString());
+        data = tester.post(pretreatmentQcGraphql);
+
+        opData = chainGet(data, "data", "recordStainResult", "operations", 0);
+        Integer pretreatmentOpId = (Integer) opData.get("id");
+        assertEquals("Pretreatment QC", chainGet(opData, "operationType", "name"));
+        assertNotNull(pretreatmentOpId);
+        List<ResultOp> pretreatmentOpResults = resultOpRepo.findAllByOperationIdIn(List.of(pretreatmentOpId));
+        assertThat(pretreatmentOpResults).hasSize(0);
+        var operationComments = opCommentRepo.findAllByOperationIdIn(List.of(pretreatmentOpId));
+        assertThat(operationComments).hasSize(1);
+        OperationComment opComment = operationComments.get(0);
+        assertEquals(opComment.getComment().getId(), 2);
+        assertEquals(opComment.getSlotId(), lw.getFirstSlot().getId());
+        assertEquals(opComment.getSampleId(), sam.getId());
+
         String resultGraphql = tester.readGraphQL("stainqc.graphql")
                 .replace("SGP500", work.getWorkNumber())
                 .replace("999", sam.getId().toString());
