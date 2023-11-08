@@ -92,7 +92,7 @@ public class TestStainAndSubsequentMutations {
         assertEquals("Stain", timeEntry.get("type"));
         Assertions.assertEquals(GraphQLCustomTypes.TIMESTAMP.getCoercing().serialize(op.getPerformed()), timeEntry.get("timestamp"));
 
-        String pretreatmentQcGraphql = tester.readGraphQL("pretreatmentQc.graphql")
+        String pretreatmentQcGraphql = tester.readGraphQL("pretreatmentqc.graphql")
                 .replace("SGP500", work.getWorkNumber())
                 .replace("999", sam.getId().toString());
         data = tester.post(pretreatmentQcGraphql);
