@@ -36,6 +36,9 @@ public class SSStudyServiceImp implements SSStudyService {
     }
 
 
+    /**
+     * Updates the studies, triggered on a schedule.
+     */
     @Scheduled(cron = "${spring.mlwh.schedule:-}", zone = "GMT")
     public void scheduledUpdate() {
         updateStudies();
@@ -59,15 +62,23 @@ public class SSStudyServiceImp implements SSStudyService {
         return dnapStudyRepo.findAllByEnabled(true);
     }
 
+    /**
+     * Updates the given dnap studies with information from the given SS studies.
+     * This should be called inside a transaction.
+     * @param stanStudies dnap studies in stan
+     * @param ssStudies Sequencescape studies loaded from the mlwh
+     */
     void update(Map<Integer, DnapStudy> stanStudies, Map<Integer, SSStudy> ssStudies) {
         List<DnapStudy> toDisable = stanStudies.values().stream()
                 .filter(ds -> ds.isEnabled() && ssStudies.get(ds.getSsId())==null)
                 .collect(toList());
 
+        // Any studies in stan that are disabled but appear in the mlwh can be re-enabled
         List<DnapStudy> toEnable = stanStudies.values().stream()
                 .filter(ds -> !ds.isEnabled() && ssStudies.get(ds.getSsId())!=null)
                 .collect(toList());
 
+        // Any studies in stan that are enabled but do not appear in the mlwh should be disabled
         List<DnapStudy> toRename = stanStudies.values().stream()
                 .filter(ds -> {
                     SSStudy ss = ssStudies.get(ds.getSsId());
@@ -75,6 +86,7 @@ public class SSStudyServiceImp implements SSStudyService {
                 })
                 .collect(toList());
 
+        // Any studies in sequencescape that are not in stan should be created
         List<SSStudy> toCreate = ssStudies.values().stream()
                 .filter(ss -> stanStudies.get(ss.getId())==null)
                 .collect(toList());
@@ -84,11 +96,13 @@ public class SSStudyServiceImp implements SSStudyService {
         updated.addAll(setEnabled(toEnable, true));
         updated.addAll(rename(toRename, ssStudies));
 
+        // Update all the changed dnap studies
         if (!updated.isEmpty()) {
             log.info("{} studies updated", updated.size());
             dnapStudyRepo.saveAll(updated);
         }
 
+        // Create all the new dnap studies
         if (!toCreate.isEmpty()) {
             dnapStudyRepo.saveAll(create(toCreate));
             log.info("{} studies created", toCreate.size());
@@ -99,16 +113,33 @@ public class SSStudyServiceImp implements SSStudyService {
         }
     }
 
+    /**
+     * Sets the enabled state of the given dnap studies. Returns the changed study objects
+     * @param dss studies to update
+     * @param enable whether the studies should be enabled
+     * @return the updated study objects (unsaved)
+     */
     List<DnapStudy> setEnabled(List<DnapStudy> dss, boolean enable) {
         dss.forEach(ds -> ds.setEnabled(enable));
         return dss;
     }
 
+    /**
+     * Sets the names state of the given dnap studies according to the given SS studies
+     * @param dss studies to update
+     * @param ssStudies Sequencescape studies loaded from the mlwh
+     * @return the updated study objects (unsaved)
+     */
     List<DnapStudy> rename(List<DnapStudy> dss, Map<Integer, SSStudy> ssStudies) {
         dss.forEach(ds -> ds.setName(ssStudies.get(ds.getSsId()).getName()));
         return dss;
     }
 
+    /**
+     * Creates new (unsaved) dnap studies to be saved in Stan
+     * @param ssStudies the Sequencescape studies to represent
+     * @return the new dnap study objects
+     */
     List<DnapStudy> create(List<SSStudy> ssStudies) {
         return ssStudies.stream()
                 .map(ss -> new DnapStudy(ss.getId(), ss.getName()))
