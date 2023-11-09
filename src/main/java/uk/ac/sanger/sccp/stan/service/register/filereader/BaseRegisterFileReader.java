@@ -8,6 +8,7 @@ import uk.ac.sanger.sccp.stan.service.ValidationException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -20,6 +21,8 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.*;
  * @author dr6
  */
 public abstract class BaseRegisterFileReader<RequestType, ColumnType extends Enum<ColumnType>& IColumn> {
+
+    protected static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/uuuu");
 
     protected int headingRowIndex, dataRowIndex;
 
@@ -158,6 +161,29 @@ public abstract class BaseRegisterFileReader<RequestType, ColumnType extends Enu
         return null;
     }
 
+    /**
+     * Tries to get a date out of a cell.
+     * If the cell claims to be a string, try and parse it as day/month/year.
+     * @param cell a cell
+     * @return the date found, or null if the cell seems to be empty
+     * @exception IllegalArgumentException if the cell value can't be interpreted as a date
+     * @exception IllegalStateException may be thrown from the POI cells if they are of the wrong type
+     */
+    public LocalDate cellDate(Cell cell) {
+        if (cell.getCellType()==CellType.STRING) {
+            String string = cell.getStringCellValue();
+            if (nullOrEmpty(string)) {
+                return null;
+            }
+            return LocalDate.parse(string, DATE_FORMAT);
+        }
+        LocalDateTime ldt = cell.getLocalDateTimeCellValue();
+        if (ldt==null) {
+            return null;
+        }
+        return ldt.toLocalDate();
+    }
+
 
     /**
      * Gets a cell value, trying to make it appropriate for the indicated type.
@@ -178,11 +204,7 @@ public abstract class BaseRegisterFileReader<RequestType, ColumnType extends Enu
             return null;
         }
         if (type==LocalDate.class) {
-            LocalDateTime ldt = cell.getLocalDateTimeCellValue();
-            if (ldt==null) {
-                return null;
-            }
-            return (T) ldt.toLocalDate();
+            return (T) cellDate(cell);
         }
         if (type==Integer.class) {
             if (cellType==CellType.NUMERIC || cellType==CellType.FORMULA) {

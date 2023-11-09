@@ -23,13 +23,14 @@ public class OriginalSampleData {
     private String fixative;
     private String species;
     private LocalDate sampleCollectionDate;
+    private String workNumber;
 
     public OriginalSampleData() {}
 
     public OriginalSampleData(String donorIdentifier, LifeStage lifeStage, String hmdmc, String tissueType,
                               Integer spatialLocation, String replicateNumber, String externalIdentifier,
                               String labwareType, String solution, String fixative, String species,
-                              LocalDate sampleCollectionDate) {
+                              LocalDate sampleCollectionDate, String workNumber) {
         this.donorIdentifier = donorIdentifier;
         this.lifeStage = lifeStage;
         this.hmdmc = hmdmc;
@@ -42,6 +43,7 @@ public class OriginalSampleData {
         this.fixative = fixative;
         this.species = species;
         this.sampleCollectionDate = sampleCollectionDate;
+        this.workNumber = workNumber;
     }
 
     /**
@@ -176,6 +178,14 @@ public class OriginalSampleData {
         this.sampleCollectionDate = sampleCollectionDate;
     }
 
+    public String getWorkNumber() {
+        return this.workNumber;
+    }
+
+    public void setWorkNumber(String workNumber) {
+        this.workNumber = workNumber;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -193,13 +203,14 @@ public class OriginalSampleData {
                 && Objects.equals(this.fixative, that.fixative)
                 && Objects.equals(this.species, that.species)
                 && Objects.equals(this.sampleCollectionDate, that.sampleCollectionDate)
+                && Objects.equals(this.workNumber, that.workNumber)
         );
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(donorIdentifier, lifeStage, hmdmc, tissueType, spatialLocation, replicateNumber,
-                externalIdentifier, labwareType, solution, fixative, species, sampleCollectionDate);
+                externalIdentifier, labwareType, solution, fixative, species, sampleCollectionDate, workNumber);
     }
 
     @Override
@@ -217,6 +228,7 @@ public class OriginalSampleData {
                 .add("fixative", fixative)
                 .add("species", species)
                 .add("sampleCollectionDate", sampleCollectionDate)
+                .add("workNumber", workNumber)
                 .reprStringValues()
                 .toString();
     }

@@ -34,7 +34,6 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
     private final SlotRepo slotRepo;
     private final OperationTypeRepo opTypeRepo;
     private final OperationCommentRepo opCommentRepo;
-    private final MediumRepo mediumRepo;
     private final LabwareTypeRepo ltRepo;
     private final BioStateRepo bsRepo;
     private final TissueRepo tissueRepo;
@@ -52,7 +51,7 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
                                      @Qualifier("tubePrebarcodeValidator") Validator<String> prebarcodeValidator,
                                      @Qualifier("replicateValidator") Validator<String> replicateValidator,
                                      LabwareRepo lwRepo, SlotRepo slotRepo, OperationTypeRepo opTypeRepo,
-                                     OperationCommentRepo opCommentRepo, MediumRepo mediumRepo, LabwareTypeRepo ltRepo,
+                                     OperationCommentRepo opCommentRepo, LabwareTypeRepo ltRepo,
                                      BioStateRepo bsRepo, TissueRepo tissueRepo, SampleRepo sampleRepo,
                                      CommentValidationService commentValidationService, OperationService opService,
                                      LabwareService lwService, WorkService workService, StoreService storeService, Transactor transactor) {
@@ -63,7 +62,6 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
         this.slotRepo = slotRepo;
         this.opTypeRepo = opTypeRepo;
         this.opCommentRepo = opCommentRepo;
-        this.mediumRepo = mediumRepo;
         this.ltRepo = ltRepo;
         this.bsRepo = bsRepo;
         this.tissueRepo = tissueRepo;
@@ -99,15 +97,13 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
                 "Labware type", LabwareType::getName, true, ltRepo::findAllByNameIn);
         checkPrebarcodes(problems, request, lwTypes);
         Map<Integer, Comment> comments = loadComments(problems, request);
-        UCMap<Medium> mediums = loadEntities(problems, request, TissueBlockLabware::getMedium,
-                "Medium", Medium::getName, true, mediumRepo::findAllByNameIn);
         checkReplicates(problems, request, sources);
         checkDiscardBarcodes(problems, request);
         if (!problems.isEmpty()) {
             throw new ValidationException("The request could not be validated.", problems);
         }
 
-        List<Sample> samples = createSamples(request, sources, mediums);
+        List<Sample> samples = createSamples(request, sources);
         List<Labware> destinations = createDestinations(request, samples, lwTypes);
         List<Operation> ops = createOperations(request, user, sources, destinations, comments);
         if (work!=null) {
@@ -346,15 +342,13 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
      * Creates new samples, in a list parallel to the blocks specified in the request.
      * @param request the request
      * @param sources the source labware
-     * @param mediums the mediums to look up
      * @return a list of samples, corresponding to the respective blocks in the request
      */
-    public List<Sample> createSamples(TissueBlockRequest request, UCMap<Labware> sources, UCMap<Medium> mediums) {
+    public List<Sample> createSamples(TissueBlockRequest request, UCMap<Labware> sources) {
         final BioState bs = bsRepo.getByName("Tissue");
         return request.getLabware()
                 .stream()
-                .map(block -> createSample(block, sources.get(block.getSourceBarcode()), bs,
-                        mediums.get(block.getMedium())))
+                .map(block -> createSample(block, sources.get(block.getSourceBarcode()), bs))
                 .collect(toList());
     }
 
@@ -363,15 +357,14 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
      * @param block the specification of the block
      * @param sourceLabware the source labware for the new block
      * @param bs the bio state for the new block
-     * @param medium the medium for the new block
      * @return the newly created sample
      */
-    public Sample createSample(TissueBlockLabware block, Labware sourceLabware, BioState bs, Medium medium) {
+    public Sample createSample(TissueBlockLabware block, Labware sourceLabware, BioState bs) {
         Tissue original = getSample(sourceLabware)
                 .map(Sample::getTissue)
                 .orElseThrow();
         Tissue newTissue = new Tissue(null, original.getExternalName(), block.getReplicate().toLowerCase(),
-                original.getSpatialLocation(), original.getDonor(), medium,
+                original.getSpatialLocation(), original.getDonor(), original.getMedium(),
                 original.getFixative(), original.getHmdmc(), original.getCollectionDate(),
                 original.getId());
         Tissue tissue = tissueRepo.save(newTissue);

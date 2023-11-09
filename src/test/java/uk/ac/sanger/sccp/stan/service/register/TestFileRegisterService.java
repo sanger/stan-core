@@ -34,9 +34,13 @@ class TestFileRegisterService {
     @Mock
     private IRegisterService<RegisterRequest> mockBlockRegisterService;
     @Mock
+    private IRegisterService<OriginalSampleRegisterRequest> mockOriginalRegisterService;
+    @Mock
     private MultipartFileReader<SectionRegisterRequest> mockSectionFileReader;
     @Mock
     private MultipartFileReader<RegisterRequest> mockBlockFileReader;
+    @Mock
+    private MultipartFileReader<OriginalSampleRegisterRequest> mockOriginalFileReader;
     @Mock
     private Transactor mockTransactor;
     @Mock
@@ -48,8 +52,8 @@ class TestFileRegisterService {
     @BeforeEach
     void setup() {
         mocking = MockitoAnnotations.openMocks(this);
-        service = new FileRegisterServiceImp(mockSectionRegisterService, mockBlockRegisterService,
-                mockSectionFileReader, mockBlockFileReader, mockTransactor);
+        service = new FileRegisterServiceImp(mockSectionRegisterService, mockBlockRegisterService,mockOriginalRegisterService,
+                mockSectionFileReader, mockBlockFileReader, mockOriginalFileReader, mockTransactor);
         user = EntityFactory.getUser();
     }
 
@@ -69,6 +73,10 @@ class TestFileRegisterService {
             regService = mockSectionRegisterService;
             fileReader = mockSectionFileReader;
             functionUnderTest = service::registerSections;
+        } else if (request instanceof OriginalSampleRegisterRequest) {
+            regService = mockOriginalRegisterService;
+            fileReader = mockOriginalFileReader;
+            functionUnderTest = service::registerOriginal;
         } else {
             regService = mockBlockRegisterService;
             fileReader = mockBlockFileReader;
@@ -94,6 +102,10 @@ class TestFileRegisterService {
             regService = mockSectionRegisterService;
             fileReader = mockSectionFileReader;
             functionUnderTest = service::registerSections;
+        } else if (request instanceof OriginalSampleRegisterRequest) {
+            regService = mockOriginalRegisterService;
+            fileReader = mockOriginalFileReader;
+            functionUnderTest = service::registerOriginal;
         } else {
             regService = mockBlockRegisterService;
             fileReader = mockBlockFileReader;
@@ -112,6 +124,7 @@ class TestFileRegisterService {
         return Arrays.stream(new Object[][] {
                 {new SectionRegisterRequest()},
                 {new RegisterRequest()},
+                {new OriginalSampleRegisterRequest()},
         }).map(Arguments::of);
     }
 }

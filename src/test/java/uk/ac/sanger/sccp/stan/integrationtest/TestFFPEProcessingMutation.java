@@ -11,8 +11,8 @@ import uk.ac.sanger.sccp.stan.GraphQLTester;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.OperationCommentRepo;
 
+import javax.persistence.EntityManager;
 import javax.transaction.Transactional;
-
 import java.util.List;
 import java.util.Map;
 
@@ -33,6 +33,8 @@ public class TestFFPEProcessingMutation {
     private GraphQLTester tester;
     @Autowired
     private EntityCreator entityCreator;
+    @Autowired
+    private EntityManager entityManager;
 
     @Autowired
     private OperationCommentRepo opComRepo;
@@ -59,5 +61,9 @@ public class TestFFPEProcessingMutation {
         assertThat(opComments).hasSize(1);
         var opComment = opComments.get(0);
         assertEquals(1, opComment.getComment().getId());
+        entityManager.flush();
+        Tissue tissue = sample.getTissue();
+        entityManager.refresh(tissue);
+        assertEquals("Paraffin", tissue.getMedium().getName());
     }
 }

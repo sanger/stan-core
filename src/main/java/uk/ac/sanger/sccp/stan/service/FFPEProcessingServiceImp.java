@@ -19,9 +19,13 @@ import static java.util.stream.Collectors.toList;
  */
 @Service
 public class FFPEProcessingServiceImp implements FFPEProcessingService {
+    static final String MEDIUM_NAME = "Paraffin";
+
     private final LabwareRepo lwRepo;
     private final OperationCommentRepo opComRepo;
     private final OperationTypeRepo opTypeRepo;
+    private final MediumRepo mediumRepo;
+    private final TissueRepo tissueRepo;
     private final WorkService workService;
     private final OperationService opService;
     private final CommentValidationService commentValidationService;
@@ -29,12 +33,15 @@ public class FFPEProcessingServiceImp implements FFPEProcessingService {
 
     @Autowired
     public FFPEProcessingServiceImp(LabwareRepo lwRepo, OperationCommentRepo opComRepo, OperationTypeRepo opTypeRepo,
+                                    MediumRepo mediumRepo, TissueRepo tissueRepo,
                                     WorkService workService, OperationService opService,
                                     CommentValidationService commentValidationService,
                                     LabwareValidatorFactory lwValFactory) {
         this.lwRepo = lwRepo;
         this.opComRepo = opComRepo;
         this.opTypeRepo = opTypeRepo;
+        this.mediumRepo = mediumRepo;
+        this.tissueRepo = tissueRepo;
         this.workService = workService;
         this.opService = opService;
         this.commentValidationService = commentValidationService;
@@ -49,10 +56,11 @@ public class FFPEProcessingServiceImp implements FFPEProcessingService {
         Work work = workService.validateUsableWork(problems, request.getWorkNumber());
         Comment comment = loadComment(problems, request.getCommentId());
         List<Labware> labware = loadLabware(problems, request.getBarcodes());
+        Medium medium = loadMedium(problems, MEDIUM_NAME);
         if (!problems.isEmpty()) {
             throw new ValidationException("The request could not be validated.", problems);
         }
-        return record(user, labware, work, comment);
+        return record(user, labware, work, comment, medium);
     }
 
     /**
@@ -88,19 +96,49 @@ public class FFPEProcessingServiceImp implements FFPEProcessingService {
         return labware;
     }
 
+    public Medium loadMedium(Collection<String> problems, String mediumName) {
+        var opt = mediumRepo.findByName(mediumName);
+        if (opt.isPresent()) {
+            return opt.get();
+        }
+        problems.add("Medium \""+mediumName+"\" not found in database.");
+        return null;
+    }
+
     /**
      * Records FFPE processing
      * @param user the user responsible
      * @param labware the labware for the operations
      * @param work the work to link to the operations
      * @param comment the comment for the operations
+     * @param medium the medium to assign to the tissue
      * @return the labware and operations
      */
-    public OperationResult record(User user, Collection<Labware> labware, Work work, Comment comment) {
+    public OperationResult record(User user, Collection<Labware> labware, Work work, Comment comment, Medium medium) {
+        updateMedium(labware, medium);
         List<Operation> ops = createOps(user, labware);
         workService.link(work, ops);
         recordComments(comment, ops);
         return new OperationResult(ops, labware);
+    }
+
+    /**
+     * Updates all the tissues of the samples in the labware to have the given medium
+     * @param labware the labware involved
+     * @param medium the required medium
+     */
+    public void updateMedium(Collection<Labware> labware, Medium medium) {
+        List<Tissue> tissuesToUpdate = labware.stream()
+                .flatMap(lw -> lw.getSlots().stream())
+                .flatMap(slot -> slot.getSamples().stream())
+                .map(Sample::getTissue)
+                .filter(tis -> !medium.equals(tis.getMedium()))
+                .collect(toList());
+        if (tissuesToUpdate.isEmpty()) {
+            return;
+        }
+        tissuesToUpdate.forEach(tis -> tis.setMedium(medium));
+        tissueRepo.saveAll(new HashSet<>(tissuesToUpdate));
     }
 
     /**

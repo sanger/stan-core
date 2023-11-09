@@ -14,6 +14,8 @@ import uk.ac.sanger.sccp.stan.request.AnalyserRequest.AnalyserLabware;
 import uk.ac.sanger.sccp.stan.request.AnalyserRequest.SampleROI;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.service.*;
+import uk.ac.sanger.sccp.stan.service.validation.ValidationHelper;
+import uk.ac.sanger.sccp.stan.service.validation.ValidationHelperFactory;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
@@ -27,8 +29,10 @@ import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.Matchers.*;
+import static uk.ac.sanger.sccp.stan.service.operation.AnalyserServiceImp.EQUIPMENT_CATEGORY;
 import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 
 /**
@@ -62,6 +66,10 @@ public class AnalyserServiceTest {
     private Validator<String> mockRunNameValidator;
     @Mock(name="roiValidator")
     private Validator<String> mockRoiValidator;
+    @Mock
+    private ValidationHelperFactory mockValFactory;
+    @Mock
+    private ValidationHelper mockVal;
 
     private AnalyserServiceImp service;
 
@@ -72,7 +80,7 @@ public class AnalyserServiceTest {
         mocking = MockitoAnnotations.openMocks(this);
         service = spy(new AnalyserServiceImp(mockLwValFactory, mockOpSearcher, mockOpService, mockWorkService,
                 mockLwRepo, mockOpTypeRepo, mockOpRepo, mockClock, mockLwNoteRepo, mockRoiRepo,
-                mockDecodingReagentLotValidator, mockRunNameValidator, mockRoiValidator));
+                mockDecodingReagentLotValidator, mockRunNameValidator, mockRoiValidator, mockValFactory));
     }
 
     @AfterEach
@@ -88,6 +96,7 @@ public class AnalyserServiceTest {
         OperationType opType = EntityFactory.makeOperationType("opname", null);
         Map<Integer, Operation> priorOps = Map.of(5, new Operation());
         UCMap<Work> workMap = UCMap.from(Work::getWorkNumber, EntityFactory.makeWork("SGP1"));
+        Equipment equipment = new Equipment(1, "Xenium 1", EQUIPMENT_CATEGORY, true);
         OperationResult opres = new OperationResult(List.of(new Operation()), List.of(lw));
 
         doReturn(lwMap).when(service).checkLabware(any(), any());
@@ -100,15 +109,18 @@ public class AnalyserServiceTest {
         doNothing().when(service).checkSamples(any(), any(), any());
         doNothing().when(service).validateLot(any(), any());
         doNothing().when(service).validateRunName(any(), any());
+        doReturn(mockVal).when(mockValFactory).getHelper();
+        doReturn(new HashSet<>()).when(mockVal).getProblems();
+        doReturn(equipment).when(mockVal).checkEquipment(any(), any(), anyBoolean());
 
-        doReturn(opres).when(service).record(any(), any(), any(), any(), any());
+        doReturn(opres).when(service).record(any(), any(), any(), any(), any(), any());
 
-        AnalyserRequest request = new AnalyserRequest("opname", "lotA", "lotB", "run", LocalDateTime.now(), List.of(new AnalyserLabware()));
+        AnalyserRequest request = new AnalyserRequest("opname", "lotA", "lotB", "run", LocalDateTime.now(), List.of(new AnalyserLabware()), equipment.getId());
 
         assertSame(opres, service.perform(user, request));
 
-        verifyValidation(request, opType, lwMap, priorOps);
-        verify(service).record(user, request, opType, lwMap, workMap);
+        verifyValidation(request, opType, lwMap, priorOps, mockVal);
+        verify(service).record(user, request, opType, lwMap, workMap, equipment);
     }
 
     @Test
@@ -130,20 +142,23 @@ public class AnalyserServiceTest {
         doAnswer(addProblem("bad sample")).when(service).checkSamples(any(), any(), any());
         doAnswer(addProblem("bad lot")).when(service).validateLot(any(), any());
         doAnswer(addProblem("bad run")).when(service).validateRunName(any(), any());
+        doReturn(mockVal).when(mockValFactory).getHelper();
+        doReturn(Set.of("Bad equipment")).when(mockVal).getProblems();
 
-        AnalyserRequest request = new AnalyserRequest("opname", "lotA", "lotB", "run", LocalDateTime.now(), List.of(new AnalyserLabware()));
+        AnalyserRequest request = new AnalyserRequest("opname", "lotA", "lotB", "run", LocalDateTime.now(), List.of(new AnalyserLabware()), null);
 
         assertValidationException(() -> service.perform(user, request), List.of(
                         "bad lw", "bad optype", "bad prior ops", "bad time", "bad work",
-                        "bad position", "bad roi", "bad sample", "bad lot", "bad run"
+                        "bad position", "bad roi", "bad sample", "bad lot", "bad run", "Bad equipment"
         ));
+        verify(mockValFactory, times(1)).getHelper();
+        verifyValidation(request, opType, lwMap, priorOps, mockVal);
 
-        verifyValidation(request, opType, lwMap, priorOps);
-        verify(service, never()).record(any(), any(), any(), any(), any());
+        verify(service, never()).record(any(), any(), any(), any(), any(), any());
     }
 
     private void verifyValidation(AnalyserRequest request, OperationType opType, UCMap<Labware> lwMap,
-                                  Map<Integer, Operation> priorOps) {
+                                  Map<Integer, Operation> priorOps, ValidationHelper mockVal) {
         verify(service).checkLabware(any(), same(request.getLabware()));
         verify(service).checkOpType(any(), same(request.getOperationType()));
         verify(service).loadPriorOps(any(), same(opType), eq(lwMap.values()));
@@ -155,6 +170,7 @@ public class AnalyserServiceTest {
         verify(service).validateLot(any(), eq(request.getLotNumberA()));
         verify(service).validateLot(any(), eq(request.getLotNumberB()));
         verify(service).validateRunName(any(), eq(request.getRunName()));
+        verify(mockVal).checkEquipment(request.getEquipmentId(), EQUIPMENT_CATEGORY, true);
     }
 
     @ParameterizedTest
@@ -535,16 +551,17 @@ public class AnalyserServiceTest {
         List<SampleROI> srs2 = List.of(new SampleROI(A1, 2, "roi2"));
         AnalyserLabware al1 = new AnalyserLabware("STAN-1", "SGP1", CassettePosition.left, srs1);
         AnalyserLabware al2 = new AnalyserLabware("STAN-2", "SGP2", CassettePosition.right, srs2);
+        Equipment equipment = new Equipment(1, "Xenium 1", EQUIPMENT_CATEGORY, true);
         AnalyserRequest request = new AnalyserRequest(opType.getName(), "lot1", "lot2", "run1",
-                LocalDateTime.of(2023,1,1,12,0), List.of(al1, al2));
+                LocalDateTime.of(2023,1,1,12,0), List.of(al1, al2), equipment.getId());
         Operation op1 = new Operation();
         op1.setId(11);
         Operation op2 = new Operation();
         op2.setId(12);
-        when(mockOpService.createOperationInPlace(opType, user, lw1, null, null)).thenReturn(op1);
-        when(mockOpService.createOperationInPlace(opType, user, lw2, null, null)).thenReturn(op2);
+        when(mockOpService.createOperationInPlace(same(opType), same(user), same(lw1), isNull(), any())).thenReturn(op1);
+        when(mockOpService.createOperationInPlace(same(opType), same(user), same(lw2), isNull(), any())).thenReturn(op2);
 
-        OperationResult opres = service.record(user, request, opType, lwMap, workMap);
+        OperationResult opres = service.record(user, request, opType, lwMap, workMap, equipment);
 
         assertThat(opres.getLabware()).containsExactly(lw1, lw2);
         assertThat(opres.getOperations()).containsExactly(op1, op2);

@@ -46,6 +46,8 @@ public class TestProbeOperationMutation {
     RoiRepo roiRepo;
     @Autowired
     LabwareNoteRepo lwNoteRepo;
+    @Autowired
+    private EquipmentRepo equipmentRepo;
 
     @Test
     @Transactional
@@ -114,9 +116,11 @@ public class TestProbeOperationMutation {
 
     private void testAnalyser(Labware lw, Work work, Sample sample) throws Exception {
         entityCreator.createOpType(AnalyserServiceImp.ANALYSER_OP_NAME, null, OperationTypeFlag.IN_PLACE);
+        Equipment equipment =  equipmentRepo.save(new Equipment("Xenium 1", AnalyserServiceImp.EQUIPMENT_CATEGORY));
         String mutation = tester.readGraphQL("recordanalyser.graphql")
                 .replace("SGP1", work.getWorkNumber())
-                .replace("555", String.valueOf(sample.getId()));
+                .replace("555", String.valueOf(sample.getId()))
+                .replace("999", String.valueOf(equipment.getId()));
         Object result = tester.post(mutation);
         Integer opId = chainGet(result, "data", "recordAnalyser", "operations", 0, "id");
         assertNotNull(opId);
@@ -136,5 +140,9 @@ public class TestProbeOperationMutation {
         assertEquals("LOT1", noteValues.get("decoding reagent A lot"));
         assertEquals("LOT2", noteValues.get("decoding reagent B lot"));
         assertEquals("left", noteValues.get("cassette position"));
+
+        Operation op = opRepo.findById(opId).orElseThrow();
+        assertEquals(op.getEquipment(), equipment);
+
     }
 }

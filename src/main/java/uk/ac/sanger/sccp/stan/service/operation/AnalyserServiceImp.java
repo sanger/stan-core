@@ -11,11 +11,14 @@ import uk.ac.sanger.sccp.stan.request.AnalyserRequest.AnalyserLabware;
 import uk.ac.sanger.sccp.stan.request.AnalyserRequest.SampleROI;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.service.*;
+import uk.ac.sanger.sccp.stan.service.validation.ValidationHelper;
+import uk.ac.sanger.sccp.stan.service.validation.ValidationHelperFactory;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.time.*;
 import java.util.*;
+import java.util.function.Consumer;
 
 import static java.util.stream.Collectors.toList;
 import static org.apache.commons.lang3.StringUtils.isBlank;
@@ -33,6 +36,8 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
     public static final String LOT_A_NAME = "decoding reagent A lot", LOT_B_NAME = "decoding reagent B lot",
             RUN_NAME = "run", POSITION_NAME = "cassette position";
 
+    public static final String EQUIPMENT_CATEGORY = "xenium analyser";
+
     private final Clock clock;
     private final OperationService opService;
     private final WorkService workService;
@@ -41,6 +46,7 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
     private final Validator<String> decodingReagentLotValidator;
     private final Validator<String> runNameValidator;
     private final Validator<String> roiValidator;
+    private final ValidationHelperFactory valFactory;
     // validators
 
     @Autowired
@@ -51,7 +57,8 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
                               LabwareNoteRepo lwNoteRepo, RoiRepo roiRepo,
                               @Qualifier("decodingReagentLotValidator") Validator<String> decodingReagentLotValidator,
                               @Qualifier("runNameValidator") Validator<String> runNameValidator,
-                              @Qualifier("roiValidator") Validator<String> roiValidator) {
+                              @Qualifier("roiValidator") Validator<String> roiValidator,
+                              ValidationHelperFactory valFactory) {
         super(lwValFactory, opTypeRepo, opRepo, lwRepo, opSearcher);
         this.opService = opService;
         this.workService = workService;
@@ -61,6 +68,7 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
         this.decodingReagentLotValidator = decodingReagentLotValidator;
         this.runNameValidator = runNameValidator;
         this.roiValidator = roiValidator;
+        this.valFactory = valFactory;
     }
 
     @Override
@@ -79,12 +87,15 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
         validateLot(problems, request.getLotNumberA());
         validateLot(problems, request.getLotNumberB());
         validateRunName(problems, request.getRunName());
+        ValidationHelper val = valFactory.getHelper();
+        Equipment equipment = val.checkEquipment(request.getEquipmentId(), EQUIPMENT_CATEGORY, true);
+        problems.addAll(val.getProblems());
 
         if (!problems.isEmpty()) {
             throw new ValidationException(problems);
         }
 
-        return record(user, request, opType, lwMap, workMap);
+        return record(user, request, opType, lwMap, workMap, equipment);
     }
 
     /**
@@ -358,11 +369,12 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
      * @param request the operation request
      * @param opType the type of operation to record
      * @param lwMap the labware mapped from barcodes
+     * @param equipment the equipment used in this operation
      * @param workMap the work mapped from work numbers
      * @return the labware and operations recorded
      */
     public OperationResult record(User user, AnalyserRequest request, OperationType opType,
-                                  UCMap<Labware> lwMap, UCMap<Work> workMap) {
+                                  UCMap<Labware> lwMap, UCMap<Work> workMap, Equipment equipment) {
         String lotA = request.getLotNumberA().trim();
         String lotB = request.getLotNumberB().trim();
         String run = request.getRunName().trim();
@@ -373,10 +385,11 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
 
         List<LabwareNote> lwNotes = new ArrayList<>();
         List<Roi> rois = new ArrayList<>();
+        Consumer<Operation> opModifier = op -> op.setEquipment(equipment);
         for (AnalyserLabware al : request.getLabware()) {
             Labware lw = lwMap.get(al.getBarcode());
             Work work = workMap.get(al.getWorkNumber());
-            Operation op = opService.createOperationInPlace(opType, user, lw, null, null);
+            Operation op = opService.createOperationInPlace(opType, user, lw, null, opModifier);
             workOps.computeIfAbsent(work.getWorkNumber(), k -> new ArrayList<>(numLw)).add(op);
             lwNotes.add(new LabwareNote(null, lw.getId(), op.getId(), RUN_NAME, run));
             lwNotes.add(new LabwareNote(null, lw.getId(), op.getId(), LOT_A_NAME, lotA));
