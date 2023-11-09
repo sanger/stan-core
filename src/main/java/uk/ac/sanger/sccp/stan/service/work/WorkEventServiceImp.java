@@ -62,9 +62,6 @@ public class WorkEventServiceImp implements WorkEventService {
         if (newStatus==Status.unstarted) {
             throw new IllegalArgumentException("Cannot revert work status to unstarted.");
         }
-        if (work.isClosed()) {
-            throw new IllegalArgumentException(String.format("Cannot alter status of %s work: %s", oldStatus, work.getWorkNumber()));
-        }
         WorkEvent.Type eventType = findEventType(work.getStatus(), newStatus);
         boolean needReason = (eventType== WorkEvent.Type.pause || eventType== WorkEvent.Type.fail || eventType==WorkEvent.Type.withdraw);
         if (needReason && commentId==null) {

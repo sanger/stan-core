@@ -102,9 +102,9 @@ public class TestWorkEventService {
     static Stream<Arguments> recordStatusChangeArgs() {
         return Arrays.stream(new Object[][]{
                 {Status.paused, Status.paused, 10, "Work SGP4000 status is already paused."},
-                {Status.completed, Status.active, null, "Cannot alter status of completed work: SGP4000"},
-                {Status.failed, Status.completed, null, "Cannot alter status of failed work: SGP4000"},
-                {Status.withdrawn, Status.completed, null, "Cannot alter status of withdrawn work: SGP4000"},
+                {Status.completed, Status.active, null, null},
+                {Status.failed, Status.completed, null, null},
+                {Status.withdrawn, Status.completed, null, null},
                 {Status.active, Status.paused, null, "A reason is required to pause work."},
                 {Status.paused, Status.failed, null, "A reason is required to fail work."},
                 {Status.paused, Status.withdrawn, null, "A reason is required to withdraw work."},
