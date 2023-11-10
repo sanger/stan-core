@@ -1783,6 +1783,8 @@ type Query {
     costCodes(includeDisabled: Boolean): [CostCode!]!
     """Get all the DNAP studies that are enabled, or get all including those that are disabled."""
     dnapStudies(includeDisabled: Boolean): [DnapStudy!]!
+    """Load the study with the given Sequencescape id (if it exists)."""
+    dnapStudy(ssId: Int!): DnapStudy
     """Get all the solutions that are enabled, or get all including those that are disabled."""
     solutions(includeDisabled: Boolean): [Solution!]!
     """Get all the omero projects that are enabled, or including those that are disabled."""

@@ -86,6 +86,7 @@ public class GraphQLProvider {
                         .dataFetcher("programs", graphQLDataFetchers.getPrograms())
                         .dataFetcher("costCodes", graphQLDataFetchers.getCostCodes())
                         .dataFetcher("dnapStudies", graphQLDataFetchers.getDnapStudies())
+                        .dataFetcher("dnapStudy", graphQLDataFetchers.getDnapStudy())
                         .dataFetcher("solutions", graphQLDataFetchers.getSolutions())
                         .dataFetcher("omeroProjects", graphQLDataFetchers.getOmeroProjects())
                         .dataFetcher("slotRegions", graphQLDataFetchers.getSlotRegions())

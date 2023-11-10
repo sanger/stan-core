@@ -234,6 +234,13 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         return allOrEnabled(dnapStudyRepo::findAll, dnapStudyRepo::findAllByEnabled);
     }
 
+    public DataFetcher<DnapStudy> getDnapStudy() {
+        return dfe -> {
+            Integer ssId = dfe.getArgument("ssId");
+            return dnapStudyRepo.findBySsId(ssId).orElse(null);
+        };
+    }
+
     public DataFetcher<Iterable<Solution>> getSolutions() {
         return allOrEnabled(solutionRepo::findAll, solutionRepo::findAllByEnabled);
     }
