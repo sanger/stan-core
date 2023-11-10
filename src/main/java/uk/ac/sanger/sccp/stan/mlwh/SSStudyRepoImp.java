@@ -24,7 +24,7 @@ public class SSStudyRepoImp implements SSStudyRepo {
     public List<SSStudy> loadAllSs() throws JDBCConnectionException {
         List<SSStudy> results = new ArrayList<>();
         //noinspection SqlResolve
-        final String sql = "SELECT id_study_lims, name FROM study WHERE id_lims='SQSCP'";
+        final String sql = "SELECT id_study_lims, name FROM study WHERE id_lims='SQSCP' AND state='active'";
         try (Connection con = mlwh.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
             ResultSet rs = stmt.executeQuery();
