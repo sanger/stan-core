@@ -200,7 +200,7 @@ public class LabwareValidator {
     }
 
     /**
-     * Validates the labware for use a sources.
+     * Validates the labware for use as sources.
      * Checks:
      * <ul>
      *     <li>{@link #validateUnique}—if {@link #isUniqueRequired}</li>
@@ -219,6 +219,16 @@ public class LabwareValidator {
             validateSingleSample();
         } else if (isOneFilledSlotRequired()) {
             validateOneFilledSlot();
+        }
+        validateStates();
+    }
+
+    /**
+     * Validates the labware for use as active destinations
+     */
+    public void validateActiveDestinations() {
+        if (isUniqueRequired()) {
+            validateUnique();
         }
         validateStates();
     }

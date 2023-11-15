@@ -1,5 +1,6 @@
 package uk.ac.sanger.sccp.stan.integrationtest;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +20,7 @@ import javax.transaction.Transactional;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
@@ -168,5 +170,41 @@ public class TestSlotCopyMutation {
         entityManager.refresh(work);
         assertThat(work.getOperationIds()).containsExactly(opId);
         assertThat(work.getSampleSlotIds()).hasSize(3);
+    }
+
+    @Test
+    @Transactional
+    public void testTransferMore() throws Exception {
+        entityCreator.createOpType("Transfer", null, OperationTypeFlag.ACTIVE_DEST);
+        User user = entityCreator.createUser("user1");
+        Work work = entityCreator.createWork(null, null, null, null, null);
+        tester.setUser(user);
+        Sample sample = entityCreator.createSample(null, null);
+        LabwareType lt0 = entityCreator.getTubeType();
+        entityCreator.createLabware("STAN-01", lt0, sample);
+        String mutation0 = tester.readGraphQL("transfer.graphql")
+                .replace("SGP5000", work.getWorkNumber());
+
+        Object result = tester.post(mutation0);
+        int destId = chainGet(result, "data", "slotCopy", "labware", 0, "id");
+
+        final Address A1 = new Address(1,1);
+        final Address A2 = new Address(1,2);
+        final Address B1 = new Address(2,1);
+        final Address B2 = new Address(2,2);
+
+        Labware dest = lwRepo.getById(destId);
+        assertThat(dest.getSlot(A1).getSamples()).isNotEmpty();
+        assertThat(dest.getSlot(A2).getSamples()).isNotEmpty();
+        assertThat(dest.getSlot(B1).getSamples()).isEmpty();
+        assertThat(dest.getSlot(B2).getSamples()).isEmpty();
+
+        String mutation1 = tester.readGraphQL("transfer_more.graphql")
+                .replace("SGP5000", work.getWorkNumber())
+                .replace("[BC]", dest.getBarcode());
+
+        result = tester.post(mutation1);
+        assertNotNull(chainGet(result, "data", "slotCopy", "labware", 0));
+        Stream.of(A1, A2, B1, B2).forEach(ad -> assertThat(dest.getSlot(ad).getSamples()).isNotEmpty());
     }
 }

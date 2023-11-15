@@ -1,0 +1,34 @@
+mutation {
+    slotCopy(request: {
+        operationType: "Transfer"
+        workNumber: "SGP5000"
+        destinations: [
+            {
+                barcode: "[BC]"
+                labwareType: "96 well plate"
+                contents: [
+                    {
+                        sourceBarcode: "STAN-01"
+                        sourceAddress: "A1"
+                        destinationAddress: "B1"
+                    }
+                    {
+                        sourceBarcode: "STAN-01"
+                        sourceAddress: "A1"
+                        destinationAddress: "B2"
+                    }
+                ]
+            }
+        ]
+        sources: [{barcode: "STAN-01", labwareState: active}]
+    }) {
+        labware {
+            id
+            barcode
+            slots {
+                address
+                samples { id }
+            }
+        }
+    }
+}

@@ -17,8 +17,10 @@ public enum OperationTypeFlag {
     REAGENT_TRANSFER,
     /** The source labware will be marked <i>used</i> by the op */
     MARK_SOURCE_USED,
-    /** The op records the details of probes uesd on labware */
+    /** The op records the details of probes used on labware */
     PROBES,
+    /** The destination of the op can be an active piece of labware (i.e. not empty) */
+    ACTIVE_DEST,
 
     // Current limit: 32 flags
     ;
