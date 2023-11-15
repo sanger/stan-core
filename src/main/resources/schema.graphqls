@@ -1977,7 +1977,7 @@ type Mutation {
     """Update the omero project of a work."""
     updateWorkOmeroProject(workNumber: String!, omeroProject: String): Work!
     """Update the DNAP study of a work."""
-    updateWorkDnapProject(workNumber: String!, ssStudyId: Int): Work!
+    updateWorkDnapStudy(workNumber: String!, ssStudyId: Int): Work!
     """Updates Stan's internal list of Dnap Studies, and returns the enabled ones."""
     updateDnapStudies: [DnapStudy!]!
 
