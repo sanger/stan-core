@@ -295,7 +295,18 @@ public class EntityFactory {
         Integer workId = ++idCounter;
         return new Work(workId, workNumber, new WorkType(5, "worktype"), null,
                 new Project(6, "proj"), new Program(7, "prog"),
-                new CostCode(7, "cc"), Work.Status.active);
+                new CostCode(8, "cc"), Work.Status.active);
+    }
+
+    public static Work[] makeWorks(String... workNumbers) {
+        WorkType wt = new WorkType(5, "worktype");
+        Project proj = new Project(6, "proj");
+        Program prog = new Program(7, "prog");
+        CostCode cc = new CostCode(8, "cc");
+        Work.Status status = Work.Status.active;
+        return Arrays.stream(workNumbers)
+                .map(wn -> new Work(++idCounter, wn, wt, null, proj, prog, cc, status))
+                .toArray(Work[]::new);
     }
 
     @SuppressWarnings("unchecked")

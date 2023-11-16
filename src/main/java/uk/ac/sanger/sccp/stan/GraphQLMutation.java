@@ -1,5 +1,6 @@
 package uk.ac.sanger.sccp.stan;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import graphql.schema.DataFetcher;
 import org.slf4j.Logger;
@@ -97,6 +98,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final AnalyserService analyserService;
     final QCLabwareService qcLabwareService;
     final SSStudyService ssStudyService;
+    final ReactivateService reactivateService;
     final UserAdminService userAdminService;
 
     @Autowired
@@ -127,7 +129,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            SampleProcessingService sampleProcessingService, SolutionTransferService solutionTransferService,
                            ParaffinProcessingService paraffinProcessingService, OpWithSlotCommentsService opWithSlotCommentsService,
                            ProbeService probeService, CompletionService completionService, AnalyserService analyserService,
-                           QCLabwareService qcLabwareService, SSStudyService ssStudyService,
+                           QCLabwareService qcLabwareService, SSStudyService ssStudyService, ReactivateService reactivateService,
                            UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
@@ -184,6 +186,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.analyserService = analyserService;
         this.qcLabwareService = qcLabwareService;
         this.ssStudyService = ssStudyService;
+        this.reactivateService = reactivateService;
         this.userAdminService = userAdminService;
     }
 
@@ -845,6 +848,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             QCLabwareRequest request = arg(dfe, "request", QCLabwareRequest.class);
             logRequest("QC labware", user, request);
             return qcLabwareService.perform(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> reactivateLabware() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            List<ReactivateLabware> items = arg(dfe, "items", new TypeReference<>() {});
+            logRequest("Reactivate labware", user, items);
+            return reactivateService.reactivate(user, items);
         };
     }
 
