@@ -455,32 +455,10 @@ public class RegisterValidationImp implements RegisterValidation {
         return (key==null ? null : map.get(key.toUpperCase()));
     }
 
-    static class StringIntKey {
-        String string;
-        int number;
-
-        public StringIntKey(String string, int number) {
+    record StringIntKey(String string, int number) {
+        StringIntKey(String string, int number) {
             this.string = string.toUpperCase();
             this.number = number;
         }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            StringIntKey that = (StringIntKey) o;
-            return (this.number == that.number && this.string.equals(that.string));
-        }
-
-        @Override
-        public int hashCode() {
-            return 63*number + string.hashCode();
-        }
-
-        @Override
-        public String toString() {
-            return String.format("(%s, %s)", string, number);
-        }
     }
-
 }

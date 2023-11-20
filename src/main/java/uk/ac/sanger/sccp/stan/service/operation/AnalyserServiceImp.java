@@ -428,32 +428,8 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
                 .forEach(rois::add);
     }
 
-    /**
-     * An address and a sample id, used for deduplication
-     */
-    private static class AddressAndSampleId {
-        Address address;
-        Integer sampleId;
-
-        public AddressAndSampleId(Address address, Integer sampleId) {
-            this.address = address;
-            this.sampleId = sampleId;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            AddressAndSampleId that = (AddressAndSampleId) o;
-            return (Objects.equals(this.address, that.address)
-                    && Objects.equals(this.sampleId, that.sampleId));
-        }
-
-        @Override
-        public int hashCode() {
-            return sampleId*31 + address.hashCode();
-        }
-
+    /** An address and a sample id, used for deduplication */
+    record AddressAndSampleId(Address address, Integer sampleId) {
         @Override
         public String toString() {
             return String.format("{sampleId: %s, address: %s}", sampleId, address);

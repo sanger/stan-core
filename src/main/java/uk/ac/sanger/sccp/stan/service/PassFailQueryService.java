@@ -106,30 +106,6 @@ public class PassFailQueryService {
         return map;
     }
 
-    /**
-     * A key for {@link #getCommentMap}.
-     */
-    static class AddressSampleId {
-        final Address address;
-        final Integer sampleId;
-
-        public AddressSampleId(Address address, Integer sampleId) {
-            this.address = address;
-            this.sampleId = sampleId;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            AddressSampleId that = (AddressSampleId) o;
-            return (Objects.equals(this.address, that.address)
-                    && Objects.equals(this.sampleId, that.sampleId));
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(address, sampleId);
-        }
-    }
+    /** A key for {@link #getCommentMap}. */
+    record AddressSampleId(Address address, Integer sampleId) {}
 }

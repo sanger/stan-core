@@ -78,30 +78,6 @@ public class WorkSummaryServiceImp implements WorkSummaryService {
         return new GroupKey(work.getWorkType().getId(), work.getStatus());
     }
 
-    /**
-     * The key by which summary groups are distinguished.
-     */
-    public static class GroupKey {
-        int workTypeId;
-        Work.Status status;
-
-        GroupKey(int workTypeId, Work.Status status) {
-            this.workTypeId = workTypeId;
-            this.status = status;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            GroupKey that = (GroupKey) o;
-            return (this.workTypeId == that.workTypeId
-                    && this.status == that.status);
-        }
-
-        @Override
-        public int hashCode() {
-            return 31*workTypeId + status.hashCode();
-        }
-    }
+    /** The key by which summary groups are distinguished. */
+    public record GroupKey(int workTypeId, Work.Status status) {}
 }
