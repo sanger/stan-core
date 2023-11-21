@@ -70,7 +70,7 @@ public class WorkServiceImp implements WorkService {
     public Work createWork(User user, String prefix, String workTypeName, String workRequesterName, String projectName,
                            String programName, String costCode,
                            Integer numBlocks, Integer numSlides, Integer numOriginalSamples,
-                           String omeroProjectName, String dnapStudyName) {
+                           String omeroProjectName, Integer ssStudyId) {
         checkPrefix(prefix);
 
         Project project = projectRepo.getByName(projectName);
@@ -87,12 +87,12 @@ public class WorkServiceImp implements WorkService {
             }
         }
         DnapStudy dnapStudy;
-        if (nullOrEmpty(dnapStudyName)) {
+        if (ssStudyId==null) {
             dnapStudy = null;
         } else {
-            dnapStudy = dnapStudyRepo.getByName(dnapStudyName);
+            dnapStudy = dnapStudyRepo.getBySsId(ssStudyId);
             if (!dnapStudy.isEnabled()) {
-                throw new IllegalArgumentException("DNAP study is disabled: "+dnapStudy.getName());
+                throw new IllegalArgumentException("DNAP study is disabled: "+dnapStudy);
             }
         }
         ReleaseRecipient workRequester = recipientRepo.getByUsername(workRequesterName);
@@ -209,19 +209,19 @@ public class WorkServiceImp implements WorkService {
     }
 
     @Override
-    public Work updateWorkDnapStudy(User user, String workNumber, String dnapStudyName) {
+    public Work updateWorkDnapStudy(User user, String workNumber, Integer ssStudyId) {
         Work work = workRepo.getByWorkNumber(workNumber);
         checkAuthorisation(user, work);
-        if (dnapStudyName==null) {
+        if (ssStudyId==null) {
             if (work.getDnapStudy()!=null) {
                 work.setDnapStudy(null);
                 work = workRepo.save(work);
             }
         } else {
-            DnapStudy dnapStudy = dnapStudyRepo.getByName(dnapStudyName);
+            DnapStudy dnapStudy = dnapStudyRepo.getBySsId(ssStudyId);
             if (work.getDnapStudy()==null || !work.getDnapStudy().equals(dnapStudy)) {
                 if (!dnapStudy.isEnabled()) {
-                    throw new IllegalArgumentException("DNAP study is disabled: "+dnapStudy.getName());
+                    throw new IllegalArgumentException("DNAP study is disabled: "+dnapStudy);
                 }
                 work.setDnapStudy(dnapStudy);
                 work = workRepo.save(work);

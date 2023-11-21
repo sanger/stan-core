@@ -66,7 +66,6 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final ProjectService projectService;
     final ProgramService programService;
     final CostCodeService costCodeService;
-    final DnapStudyService dnapStudyService;
     final FixativeService fixativeService;
     final SolutionAdminService solutionAdminService;
     final OmeroProjectAdminService omeroProjectAdminService;
@@ -97,6 +96,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final CompletionService completionService;
     final AnalyserService analyserService;
     final QCLabwareService qcLabwareService;
+    final SSStudyService ssStudyService;
     final UserAdminService userAdminService;
 
     @Autowired
@@ -113,7 +113,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            HmdmcAdminService hmdmcAdminService, ReleaseDestinationAdminService releaseDestinationAdminService,
                            ReleaseRecipientAdminService releaseRecipientAdminService, SpeciesAdminService speciesAdminService,
                            ProjectService projectService, ProgramService programService, CostCodeService costCodeService,
-                           DnapStudyService dnapStudyService, FixativeService fixativeService,
+                           FixativeService fixativeService,
                            SolutionAdminService solutionAdminService, OmeroProjectAdminService omeroProjectAdminService,
                            SlotRegionAdminService slotRegionAdminService, ProbePanelService probePanelService, WorkTypeService workTypeService, WorkService workService, StainService stainService,
                            UnreleaseService unreleaseService, ResultService resultService, ExtractResultService extractResultService,
@@ -127,7 +127,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            SampleProcessingService sampleProcessingService, SolutionTransferService solutionTransferService,
                            ParaffinProcessingService paraffinProcessingService, OpWithSlotCommentsService opWithSlotCommentsService,
                            ProbeService probeService, CompletionService completionService, AnalyserService analyserService,
-                           QCLabwareService qcLabwareService,
+                           QCLabwareService qcLabwareService, SSStudyService ssStudyService,
                            UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
@@ -153,7 +153,6 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.projectService = projectService;
         this.programService = programService;
         this.costCodeService = costCodeService;
-        this.dnapStudyService = dnapStudyService;
         this.fixativeService = fixativeService;
         this.solutionAdminService = solutionAdminService;
         this.omeroProjectAdminService = omeroProjectAdminService;
@@ -184,6 +183,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.completionService = completionService;
         this.analyserService = analyserService;
         this.qcLabwareService = qcLabwareService;
+        this.ssStudyService = ssStudyService;
         this.userAdminService = userAdminService;
     }
 
@@ -470,14 +470,6 @@ public class GraphQLMutation extends BaseGraphQLResource {
         return adminSetEnabled(costCodeService::setEnabled, "SetCostCodeEnabled", "code");
     }
 
-    public DataFetcher<DnapStudy> addDnapStudy() {
-        return adminAdd(dnapStudyService::addNew, "AddDnapStudy", "name");
-    }
-
-    public DataFetcher<DnapStudy> setDnapStudyEnabled() {
-        return adminSetEnabled(dnapStudyService::setEnabled, "SetDnapStudyEnabled", "name");
-    }
-
     public DataFetcher<Fixative> addFixative() {
         return adminAdd(fixativeService::addNew, "AddFixative", "name");
     }
@@ -539,15 +531,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             Integer numSlides = dfe.getArgument("numSlides");
             Integer numOriginalSamples = dfe.getArgument("numOriginalSamples");
             String omeroProjectName = dfe.getArgument("omeroProject");
-            String dnapStudyName = dfe.getArgument("dnapStudy");
+            Integer ssStudyId = dfe.getArgument("ssStudyId");
             logRequest("Create work", user,
                     String.format("project: %s, program: %s, costCode: %s, prefix: %s, workType: %s, " +
                                     "workRequesterName: %s, numBlocks: %s, numSlides: %s, numOriginalSamples: %s, " +
-                                    "omeroProjectName: %s, dnapStudyName: %s",
+                                    "omeroProjectName: %s, ssStudyId: %s",
                     projectName, programName, code, prefix, workTypeName, workRequesterName, numBlocks, numSlides,
-                            numOriginalSamples, omeroProjectName, dnapStudyName));
+                            numOriginalSamples, omeroProjectName, ssStudyId));
             return workService.createWork(user, prefix, workTypeName, workRequesterName, projectName, programName, code,
-                    numBlocks, numSlides, numOriginalSamples, omeroProjectName, dnapStudyName);
+                    numBlocks, numSlides, numOriginalSamples, omeroProjectName, ssStudyId);
         };
     }
 
@@ -622,10 +614,19 @@ public class GraphQLMutation extends BaseGraphQLResource {
         return dfe -> {
             User user = checkUser(dfe, User.Role.enduser);
             String workNumber = dfe.getArgument("workNumber");
-            String dnapStudyName = dfe.getArgument("dnapStudy");
+            Integer ssStudyId = dfe.getArgument("ssStudyId");
             logRequest("Update work dnap study", user,
-                    String.format("Work number: %s, dnap study: %s", workNumber, dnapStudyName));
-            return workService.updateWorkDnapStudy(user, workNumber, dnapStudyName);
+                    String.format("Work number: %s, ssStudyId: %s", workNumber, ssStudyId));
+            return workService.updateWorkDnapStudy(user, workNumber, ssStudyId);
+        };
+    }
+
+    public DataFetcher<List<DnapStudy>> updateDnapStudies() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.admin);
+            logRequest("Update DNAP studies", user, null);
+            ssStudyService.updateStudies();
+            return ssStudyService.loadEnabledStudies();
         };
     }
 
