@@ -1728,6 +1728,16 @@ input QCLabwareRequest {
     labware: [QCLabware!]!
 }
 
+"""Record the orientation state of labware."""
+input OrientationRequest {
+    """The barcode of the labware."""
+    barcode: String!
+    """The work number to link to the operation."""
+    workNumber: String!
+    """Is the orientation correct?"""
+    correct: Boolean!
+}
+
 """Info about the app version."""
 type VersionInfo {
     """The output of git describe."""
@@ -2031,6 +2041,8 @@ type Mutation {
     recordAnalyser(request: AnalyserRequest!): OperationResult!
     """Record QC labware request."""
     recordQCLabware(request: QCLabwareRequest!): OperationResult!
+    """Record Orientation QC."""
+    recordOrientationQC(request: OrientationRequest!): OperationResult!
 
     """Create a new user for the application."""
     addUser(username: String!): User!

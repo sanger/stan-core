@@ -211,6 +211,7 @@ public class GraphQLProvider {
                         .dataFetcher("recordCompletion", transact(graphQLMutation.recordCompletion()))
                         .dataFetcher("recordAnalyser", transact(graphQLMutation.recordAnalyser()))
                         .dataFetcher("recordQCLabware", transact(graphQLMutation.recordQcLabware()))
+                        .dataFetcher("recordOrientationQC", transact(graphQLMutation.recordOrientationQC()))
 
                         .dataFetcher("addUser", transact(graphQLMutation.addUser()))
                         .dataFetcher("setUserRole", transact(graphQLMutation.setUserRole()))

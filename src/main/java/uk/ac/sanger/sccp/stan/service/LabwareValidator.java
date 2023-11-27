@@ -23,6 +23,7 @@ public class LabwareValidator {
     private boolean singleSample = false;
     private boolean usedAllowed = false;
     private boolean oneFilledSlotRequired = false;
+    private boolean blockRequired = false;
 
     /**
      * Creates a new validator with no labware specified
@@ -87,6 +88,14 @@ public class LabwareValidator {
      */
     public boolean isUsedAllowed() {
         return this.usedAllowed;
+    }
+
+    public boolean isBlockRequired() {
+        return this.blockRequired;
+    }
+
+    public void setBlockRequired(boolean blockRequired) {
+        this.blockRequired = blockRequired;
     }
 
     /**
@@ -219,6 +228,9 @@ public class LabwareValidator {
             validateSingleSample();
         } else if (isOneFilledSlotRequired()) {
             validateOneFilledSlot();
+        }
+        if (isBlockRequired()) {
+            validateBlock();
         }
         validateStates();
     }
@@ -411,6 +423,31 @@ public class LabwareValidator {
         }
         if (!multiSlot.isEmpty()) {
             addError("Labware contains samples in multiple slots: %s.", multiSlot);
+        }
+    }
+
+    /**
+     * Checks if any sample in any labware isn't a block.
+     * Adds errors.
+     */
+    public void validateBlock() {
+        if (labware.isEmpty()) {
+            return;
+        }
+        Set<Integer> done = new HashSet<>(labware.size());
+
+        List<String> badBarcodes = new ArrayList<>(labware.size());
+
+        for (Labware lw : labware) {
+            if (!done.add(lw.getId())) {
+                continue;
+            }
+            if (lw.getSlots().stream().anyMatch(slot -> !slot.getSamples().isEmpty() && !slot.isBlock())) {
+                badBarcodes.add(lw.getBarcode());
+            }
+        }
+        if (!badBarcodes.isEmpty()) {
+            addError("Labware contains non-block samples: %s.", badBarcodes);
         }
     }
 }
