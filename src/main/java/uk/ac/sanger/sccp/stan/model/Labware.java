@@ -136,6 +136,17 @@ public class Labware {
         return Optional.of(slot);
     }
 
+    public String getReplicate(){
+        return Optional.ofNullable(this.getFirstSlot())
+                .map(Slot::getSamples)
+                .filter(samples -> !samples.isEmpty())
+                .map(samples -> samples.get(0))
+                .map(Sample::getTissue)
+                .map(Tissue::getReplicate)
+                .orElse(null);
+
+    }
+
     public boolean isDiscarded() {
         return this.discarded;
     }

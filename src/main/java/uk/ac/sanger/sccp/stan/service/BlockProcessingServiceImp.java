@@ -271,23 +271,31 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
     }
 
     /**
-     * Checks that the replicate field is given, correctly formatted, and unique
+     * Checks the formatting of the replicate field, if provided; otherwise, assigns the same replicate as the source.
      * @param problems receptacle for problems
      * @param request the request
      * @param sources map to look up source labware from its barcode
      */
     public void checkReplicates(Collection<String> problems, TissueBlockRequest request, UCMap<Labware> sources) {
         boolean anyMissing = false;
+        boolean noConsistency = false;
         Set<RepKey> repKeys = new LinkedHashSet<>();
         Set<RepKey> repKeyDupes = new LinkedHashSet<>();
         for (var block : request.getLabware()) {
-            if (nullOrEmpty(block.getReplicate())) {
-                anyMissing = true;
-            } else if (replicateValidator.validate(block.getReplicate(), problems::add)) {
-                RepKey repKey = RepKey.from(sources.get(block.getSourceBarcode()), block.getReplicate());
-                if (repKey!=null && !repKeys.add(repKey)) {
-                    repKeyDupes.add(repKey);
+            String sourceReplicateNumber = Optional.ofNullable(sources.get(block.getSourceBarcode())).map(Labware::getReplicate).orElse(null);
+            if(nullOrEmpty(sourceReplicateNumber)) {
+                if (nullOrEmpty(block.getReplicate())) {
+                    anyMissing = true;
+                } else if (replicateValidator.validate(block.getReplicate(), problems::add)) {
+                    RepKey repKey = RepKey.from(sources.get(block.getSourceBarcode()), block.getReplicate());
+                    if (repKey != null && !repKeys.add(repKey)) {
+                        repKeyDupes.add(repKey);
+                    }
                 }
+            } else if (nullOrEmpty(block.getReplicate())) {
+                block.setReplicate(sourceReplicateNumber);
+            } else if (!block.getReplicate().equalsIgnoreCase(sourceReplicateNumber)) {
+                noConsistency = true;
             }
         }
         if (!repKeyDupes.isEmpty()) {
@@ -295,6 +303,9 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
         }
         if (anyMissing) {
             problems.add("Missing replicate for some blocks.");
+        }
+        if (noConsistency) {
+            problems.add("Replicate numbers must match the source replicate number.");
         }
         List<RepKey> alreadyExistRepKeys = repKeys.stream()
                 .filter(rp -> !tissueRepo.findByDonorIdAndSpatialLocationIdAndReplicate(

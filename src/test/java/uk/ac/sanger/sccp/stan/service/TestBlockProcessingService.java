@@ -526,7 +526,7 @@ public class TestBlockProcessingService {
         Tissue t1A = makeTissue(1, "t1A", null, sl1, d1);
         Tissue t1B = makeTissue(2, "t1B", "1b", sl1, d1);
         Tissue t1C = makeTissue(3, "t1C", "1c", sl2, d1);
-        Tissue t2A = makeTissue(4, "t2A", null, sl1, d2);
+        Tissue t2A = makeTissue(4, "t2A", "2a", sl1, d2);
         Tissue t2B = makeTissue(5, "t2B", "2b", sl2, d2);
         final List<Tissue> tissues = List.of(t1A, t1B, t1C, t2A, t2B);
         // Cases:
@@ -539,18 +539,19 @@ public class TestBlockProcessingService {
         UCMap<Labware> sources = UCMap.from(Labware::getBarcode, lw1, lw2);
 
         return Arrays.stream(new Object[][] {
-                {requestForReplicates("STAN-1", "5", "STAN-1", "6", "STAN-1", "1c")},
+                {requestForReplicates("STAN-1", "5", "STAN-1", "6", "STAN-1", "1c", "STAN-2", "2a")},
                 {requestForReplicates("STAN-1", "5", "STAN-1", "5", "STAN-2", "6", "Stan-2", "6", "STAN-2", "7"),
-                "Same replicate specified multiple times: [{Donor: DONOR1, Tissue type: Arm, Spatial location: 1, Replicate: 5}" +
-                        ", {Donor: DONOR2, Tissue type: Arm, Spatial location: 1, Replicate: 6}]"},
+                        List.of("Same replicate specified multiple times: [{Donor: DONOR1, Tissue type: Arm, Spatial location: 1, Replicate: 5}]",
+                                "Replicate numbers must match the source replicate number.")},
                 {requestForReplicates("STAN-1", null), "Missing replicate for some blocks."},
                 {requestForReplicates("STAN-1", ""), "Missing replicate for some blocks."},
                 {requestForReplicates("STAN-1", "5", "Stan-1", "1b"), "Replicate already exists in the database: " +
                         "[{Donor: DONOR1, Tissue type: Arm, Spatial location: 1, Replicate: 1b}]"},
-                {requestForReplicates(null, "1b", "STAN-2", "5F", "Stan-2", "5f", "Stan-1", null,
-                        "STAN-1", "1b"),
-                List.of("Same replicate specified multiple times: [{Donor: DONOR2, Tissue type: Arm, Spatial location: 1, Replicate: 5f}]",
+                {requestForReplicates(null, "1b", "STAN-2", "5F", "Stan-2", "5A", "Stan-1", null,
+                        "STAN-1", "1F", "STAN-1", "1f", "STAN-1", "1b"),
+                List.of("Same replicate specified multiple times: [{Donor: DONOR1, Tissue type: Arm, Spatial location: 1, Replicate: 1f}]",
                         "Missing replicate for some blocks.",
+                        "Replicate numbers must match the source replicate number.",
                         "Replicate already exists in the database: [{Donor: DONOR1, Tissue type: Arm, Spatial location: 1, Replicate: 1b}]")},
         }).map(arr -> {
             List<?> problems;
