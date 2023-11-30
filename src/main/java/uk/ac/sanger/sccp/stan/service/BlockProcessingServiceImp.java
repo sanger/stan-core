@@ -271,23 +271,34 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
     }
 
     /**
-     * Checks that the replicate field is given, correctly formatted, and unique
+     * Checks the formatting of the replicate field, if provided; otherwise, assigns the same replicate as the source.
      * @param problems receptacle for problems
      * @param request the request
      * @param sources map to look up source labware from its barcode
      */
     public void checkReplicates(Collection<String> problems, TissueBlockRequest request, UCMap<Labware> sources) {
         boolean anyMissing = false;
+        boolean differentRep = false;
         Set<RepKey> repKeys = new LinkedHashSet<>();
         Set<RepKey> repKeyDupes = new LinkedHashSet<>();
         for (var block : request.getLabware()) {
-            if (nullOrEmpty(block.getReplicate())) {
-                anyMissing = true;
-            } else if (replicateValidator.validate(block.getReplicate(), problems::add)) {
-                RepKey repKey = RepKey.from(sources.get(block.getSourceBarcode()), block.getReplicate());
-                if (repKey!=null && !repKeys.add(repKey)) {
-                    repKeyDupes.add(repKey);
+            String sourceReplicateNumber = Optional.ofNullable(sources.get(block.getSourceBarcode()))
+                    .flatMap(BlockProcessingServiceImp::getSample)
+                    .map(sam -> sam.getTissue().getReplicate())
+                    .orElse(null);
+            if (nullOrEmpty(sourceReplicateNumber)) {
+                if (nullOrEmpty(block.getReplicate())) {
+                    anyMissing = true;
+                } else if (replicateValidator.validate(block.getReplicate(), problems::add)) {
+                    RepKey repKey = RepKey.from(sources.get(block.getSourceBarcode()), block.getReplicate());
+                    if (repKey != null && !repKeys.add(repKey)) {
+                        repKeyDupes.add(repKey);
+                    }
                 }
+            } else if (nullOrEmpty(block.getReplicate())) {
+                block.setReplicate(sourceReplicateNumber);
+            } else if (!block.getReplicate().equalsIgnoreCase(sourceReplicateNumber)) {
+                differentRep = true;
             }
         }
         if (!repKeyDupes.isEmpty()) {
@@ -295,6 +306,9 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
         }
         if (anyMissing) {
             problems.add("Missing replicate for some blocks.");
+        }
+        if (differentRep) {
+            problems.add("Replicate numbers must match the source replicate number where present.");
         }
         List<RepKey> alreadyExistRepKeys = repKeys.stream()
                 .filter(rp -> !tissueRepo.findByDonorIdAndSpatialLocationIdAndReplicate(
@@ -353,7 +367,7 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
     }
 
     /**
-     * Creates a new tissue block and sample.
+     * Creates a new sample, from a new tissue if necessary.
      * @param block the specification of the block
      * @param sourceLabware the source labware for the new block
      * @param bs the bio state for the new block
@@ -363,13 +377,16 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
         Tissue original = getSample(sourceLabware)
                 .map(Sample::getTissue)
                 .orElseThrow();
-        Tissue newTissue = new Tissue(null, original.getExternalName(), block.getReplicate().toLowerCase(),
-                original.getSpatialLocation(), original.getDonor(), original.getMedium(),
-                original.getFixative(), original.getHmdmc(), original.getCollectionDate(),
-                original.getId());
-        Tissue tissue = tissueRepo.save(newTissue);
-        Sample newSample = new Sample(null, null, tissue, bs);
-        return sampleRepo.save(newSample);
+        Tissue tissue;
+        if (nullOrEmpty(block.getReplicate()) || block.getReplicate().equalsIgnoreCase(original.getReplicate())) {
+            tissue = original;
+        } else {
+            tissue = tissueRepo.save(new Tissue(null, original.getExternalName(), block.getReplicate().toLowerCase(),
+                    original.getSpatialLocation(), original.getDonor(), original.getMedium(),
+                    original.getFixative(), original.getHmdmc(), original.getCollectionDate(),
+                    original.getId()));
+        }
+        return sampleRepo.save(new Sample(null, null, tissue, bs));
     }
 
     /**

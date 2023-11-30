@@ -526,7 +526,7 @@ public class TestBlockProcessingService {
         Tissue t1A = makeTissue(1, "t1A", null, sl1, d1);
         Tissue t1B = makeTissue(2, "t1B", "1b", sl1, d1);
         Tissue t1C = makeTissue(3, "t1C", "1c", sl2, d1);
-        Tissue t2A = makeTissue(4, "t2A", null, sl1, d2);
+        Tissue t2A = makeTissue(4, "t2A", "2a", sl1, d2);
         Tissue t2B = makeTissue(5, "t2B", "2b", sl2, d2);
         final List<Tissue> tissues = List.of(t1A, t1B, t1C, t2A, t2B);
         // Cases:
@@ -539,18 +539,19 @@ public class TestBlockProcessingService {
         UCMap<Labware> sources = UCMap.from(Labware::getBarcode, lw1, lw2);
 
         return Arrays.stream(new Object[][] {
-                {requestForReplicates("STAN-1", "5", "STAN-1", "6", "STAN-1", "1c")},
+                {requestForReplicates("STAN-1", "5", "STAN-1", "6", "STAN-1", "1c", "STAN-2", "2a")},
                 {requestForReplicates("STAN-1", "5", "STAN-1", "5", "STAN-2", "6", "Stan-2", "6", "STAN-2", "7"),
-                "Same replicate specified multiple times: [{Donor: DONOR1, Tissue type: Arm, Spatial location: 1, Replicate: 5}" +
-                        ", {Donor: DONOR2, Tissue type: Arm, Spatial location: 1, Replicate: 6}]"},
+                        List.of("Same replicate specified multiple times: [{Donor: DONOR1, Tissue type: Arm, Spatial location: 1, Replicate: 5}]",
+                                "Replicate numbers must match the source replicate number where present.")},
                 {requestForReplicates("STAN-1", null), "Missing replicate for some blocks."},
                 {requestForReplicates("STAN-1", ""), "Missing replicate for some blocks."},
                 {requestForReplicates("STAN-1", "5", "Stan-1", "1b"), "Replicate already exists in the database: " +
                         "[{Donor: DONOR1, Tissue type: Arm, Spatial location: 1, Replicate: 1b}]"},
-                {requestForReplicates(null, "1b", "STAN-2", "5F", "Stan-2", "5f", "Stan-1", null,
-                        "STAN-1", "1b"),
-                List.of("Same replicate specified multiple times: [{Donor: DONOR2, Tissue type: Arm, Spatial location: 1, Replicate: 5f}]",
+                {requestForReplicates(null, "1b", "STAN-2", "5F", "Stan-2", "5A", "Stan-1", null,
+                        "STAN-1", "1F", "STAN-1", "1f", "STAN-1", "1b"),
+                List.of("Same replicate specified multiple times: [{Donor: DONOR1, Tissue type: Arm, Spatial location: 1, Replicate: 1f}]",
                         "Missing replicate for some blocks.",
+                        "Replicate numbers must match the source replicate number where present.",
                         "Replicate already exists in the database: [{Donor: DONOR1, Tissue type: Arm, Spatial location: 1, Replicate: 1b}]")},
         }).map(arr -> {
             List<?> problems;
@@ -638,11 +639,14 @@ public class TestBlockProcessingService {
         verify(service).createSample(block2, lw2, bs);
     }
 
-    @Test
-    public void testCreateSample() {
-        Labware lw = EntityFactory.getTube();
-        Medium medium = lw.getFirstSlot().getSamples().get(0).getTissue().getMedium();
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testCreateSample(boolean alreadyHasRep) {
+        Tissue originalTissue = EntityFactory.makeTissue(null, null);
         BioState bs = EntityFactory.getBioState();
+        originalTissue.setReplicate(alreadyHasRep ? "1a" : null);
+        Sample originalSample = new Sample(500, null, originalTissue, bs);
+        Labware lw = EntityFactory.makeLabware(EntityFactory.getTubeType(), originalSample);
         when(mockTissueRepo.save(any())).then(invocation -> {
             Tissue tissue = invocation.getArgument(0);
             assertNull(tissue.getId());
@@ -650,25 +654,36 @@ public class TestBlockProcessingService {
             return tissue;
         });
         when(mockSampleRepo.save(any())).then(invocation -> {
-            Sample sample = invocation.getArgument(0);
-            assertNull(sample.getId());
-            sample.setId(600);
-            return sample;
+            Sample newSample = invocation.getArgument(0);
+            assertNull(newSample.getId());
+            newSample.setId(600);
+            return newSample;
         });
 
         TissueBlockLabware block = new TissueBlockLabware();
-        block.setReplicate("2C");
+        if (alreadyHasRep) {
+            block.setReplicate(originalTissue.getReplicate());
+        } else {
+            block.setReplicate("2C");
+        }
 
         Sample sample = service.createSample(block, lw, bs);
         Tissue tissue = sample.getTissue();
-        verify(mockTissueRepo).save(tissue);
+        if (alreadyHasRep) {
+            verifyNoInteractions(mockTissueRepo);
+        } else {
+            verify(mockTissueRepo).save(tissue);
+        }
         verify(mockSampleRepo).save(sample);
-        assertEquals(500, tissue.getId());
         assertEquals(600, sample.getId());
-        Tissue original = lw.getFirstSlot().getSamples().get(0).getTissue();
-        assertEquals(new Tissue(500, tissue.getExternalName(), "2c", original.getSpatialLocation(), original.getDonor(),
-                medium, original.getFixative(), original.getHmdmc(), original.getCollectionDate(),
-                original.getId()), tissue);
+        if (alreadyHasRep) {
+            assertEquals(tissue, originalTissue);
+        } else {
+            assertEquals(500, tissue.getId());
+            assertEquals(new Tissue(500, originalTissue.getExternalName(), "2c", originalTissue.getSpatialLocation(), originalTissue.getDonor(),
+                    originalTissue.getMedium(), originalTissue.getFixative(), originalTissue.getHmdmc(), originalTissue.getCollectionDate(),
+                    originalTissue.getId()), tissue);
+        }
         assertEquals(new Sample(600, null, tissue, bs), sample);
     }
 
