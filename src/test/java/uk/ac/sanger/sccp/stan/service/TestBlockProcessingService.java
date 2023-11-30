@@ -647,7 +647,6 @@ public class TestBlockProcessingService {
         originalTissue.setReplicate(alreadyHasRep ? "1a" : null);
         Sample originalSample = new Sample(500, null, originalTissue, bs);
         Labware lw = EntityFactory.makeLabware(EntityFactory.getTubeType(), originalSample);
-        Medium medium = originalTissue.getMedium();
         when(mockTissueRepo.save(any())).then(invocation -> {
             Tissue tissue = invocation.getArgument(0);
             assertNull(tissue.getId());
@@ -681,8 +680,8 @@ public class TestBlockProcessingService {
             assertEquals(tissue, originalTissue);
         } else {
             assertEquals(500, tissue.getId());
-            assertEquals(new Tissue(500, tissue.getExternalName(), "2c", originalTissue.getSpatialLocation(), originalTissue.getDonor(),
-                    medium, originalTissue.getFixative(), originalTissue.getHmdmc(), originalTissue.getCollectionDate(),
+            assertEquals(new Tissue(500, originalTissue.getExternalName(), "2c", originalTissue.getSpatialLocation(), originalTissue.getDonor(),
+                    originalTissue.getMedium(), originalTissue.getFixative(), originalTissue.getHmdmc(), originalTissue.getCollectionDate(),
                     originalTissue.getId()), tissue);
         }
         assertEquals(new Sample(600, null, tissue, bs), sample);
