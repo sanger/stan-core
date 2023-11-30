@@ -367,7 +367,7 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
     }
 
     /**
-     * Creates a new sample, from a new tissue if neceessary.
+     * Creates a new sample, from a new tissue if necessary.
      * @param block the specification of the block
      * @param sourceLabware the source labware for the new block
      * @param bs the bio state for the new block
