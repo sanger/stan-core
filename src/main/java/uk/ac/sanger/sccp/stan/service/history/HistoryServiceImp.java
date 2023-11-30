@@ -45,6 +45,7 @@ public class HistoryServiceImp implements HistoryService {
     private final ResultOpRepo resultOpRepo;
     private final StainTypeRepo stainTypeRepo;
     private final LabwareProbeRepo lwProbeRepo;
+    private final LabwareFlagRepo flagRepo;
     private final ReagentActionDetailService reagentActionDetailService;
     private final SlotRegionService slotRegionService;
 
@@ -54,7 +55,7 @@ public class HistoryServiceImp implements HistoryService {
                              DestructionRepo destructionRepo, OperationCommentRepo opCommentRepo, RoiRepo roiRepo,
                              SnapshotRepo snapshotRepo, WorkRepo workRepo, MeasurementRepo measurementRepo,
                              LabwareNoteRepo labwareNoteRepo, ResultOpRepo resultOpRepo,
-                             StainTypeRepo stainTypeRepo, LabwareProbeRepo lwProbeRepo,
+                             StainTypeRepo stainTypeRepo, LabwareProbeRepo lwProbeRepo, LabwareFlagRepo flagRepo,
                              ReagentActionDetailService reagentActionDetailService,
                              SlotRegionService slotRegionService) {
         this.opRepo = opRepo;
@@ -74,6 +75,7 @@ public class HistoryServiceImp implements HistoryService {
         this.resultOpRepo = resultOpRepo;
         this.stainTypeRepo = stainTypeRepo;
         this.lwProbeRepo = lwProbeRepo;
+        this.flagRepo = flagRepo;
         this.reagentActionDetailService = reagentActionDetailService;
         this.slotRegionService = slotRegionService;
     }
@@ -731,6 +733,23 @@ public class HistoryServiceImp implements HistoryService {
     }
 
     /**
+     * Loads the flags for <i>Flag labware</i> ops and puts them in a map from op id.
+     * @param ops some ops that might include labware-flagging ops
+     * @return a map of op id to list of flags
+     */
+    public Map<Integer, List<LabwareFlag>> loadLabwareFlags(Collection<Operation> ops) {
+        List<Integer> flagOpIds = ops.stream()
+                .filter(op -> op.getOperationType().getName().equalsIgnoreCase("Flag labware"))
+                .map(Operation::getId)
+                .collect(toList());
+        if (flagOpIds.isEmpty()) {
+            return Map.of();
+        }
+        return flagRepo.findAllByOperationIdIn(flagOpIds).stream()
+                .collect(Collectors.groupingBy(LabwareFlag::getOperationId));
+    }
+
+    /**
      * Loads the probe panels (lots etc.) recorded against the given operations
      * @param ops some operations, some of which might involve probes
      * @return a map of op id to list of applicable labware probes
@@ -783,6 +802,7 @@ public class HistoryServiceImp implements HistoryService {
         var opRois = loadOpRois(opIds);
         var opStainTypes = stainTypeRepo.loadOperationStainTypes(opIds);
         var opReagentActions = reagentActionDetailService.loadReagentTransfers(opIds);
+        var opFlags = loadLabwareFlags(operations);
         var opResults = loadOpResults(operations);
         var opProbes = loadOpProbes(operations);
         final Map<Integer, Slot> slotIdMap;
@@ -820,6 +840,14 @@ public class HistoryServiceImp implements HistoryService {
             List<Roi> rois = opRois.getOrDefault(op.getId(), List.of());
             List<ReagentActionDetail> reagentActions = opReagentActions.getOrDefault(op.getId(), List.of());
             List<LabwareProbe> lwProbes = opProbes.getOrDefault(op.getId(), List.of());
+            List<LabwareFlag> flags = opFlags.getOrDefault(op.getId(), List.of());
+            List<String> flagInfo = List.of();
+            if (!flags.isEmpty()) {
+                // As currently written, only one labware can be involved in a flag labware op
+                flagInfo = flags.stream()
+                        .map(flag -> "Flag: "+flag.getDescription())
+                        .collect(toList());
+            }
             String workNumber;
             if (opWork!=null) {
                 Set<String> workNumbers = opWork.get(op.getId());
@@ -870,6 +898,9 @@ public class HistoryServiceImp implements HistoryService {
                         List<String> details = getLabwareProbeDetails(lwProbe);
                         entry.addDetails(details);
                     }
+                }
+                if (!flagInfo.isEmpty()) {
+                    entry.addDetails(flagInfo);
                 }
                 if (equipment!=null) {
                     entry.addDetail("Equipment: "+equipment.getName());

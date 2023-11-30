@@ -1094,6 +1094,22 @@ type WorkProgress {
     mostRecentOperation: String
 }
 
+"""Summary of a particular labware flag."""
+type FlagSummary {
+    """The labware barcode that was flagged."""
+    barcode: String!
+    """The description of the flag."""
+    description: String!
+}
+
+"""Information about flags related to some labware."""
+type FlagDetail {
+    """The barcode of the labware whose flags have been looked up."""
+    barcode: String!
+    """Summaries of the flags applicable to the specified labware."""
+    flags: [FlagSummary!]!
+}
+
 """A measurement given as a number of seconds for some particular named measure."""
 input TimeMeasurement {
     name: String!
@@ -1720,6 +1736,14 @@ input QCLabware {
     comments: [Int!]!
 }
 
+"""Raise a flag on a piece of labware."""
+input FlagLabwareRequest {
+    """The barcode of the flagged labware."""
+    barcode: String!
+    """The description of the flag."""
+    description: String!
+}
+
 """Request to record QC and completion time for one or more labware."""
 input QCLabwareRequest {
     """The name of the operation to record."""
@@ -1853,6 +1877,8 @@ type Query {
     suggestedWorkForLabware(barcodes: [String!]!, includeInactive: Boolean): SuggestedWorkResponse!
     """Get suggested labware for work."""
     suggestedLabwareForWork(workNumber: String!, forRelease: Boolean): [Labware!]!
+    """Get labware flag details applicable to the specified labware."""
+    labwareFlagDetails(barcodes: [String!]!): [FlagDetail!]!
 
     """Get the specified storage location."""
     location(locationBarcode: String!): Location!
@@ -2029,6 +2055,8 @@ type Mutation {
     recordCompletion(request: CompletionRequest!): OperationResult!
     """Record analyser operation."""
     recordAnalyser(request: AnalyserRequest!): OperationResult!
+    """Flag labware."""
+    flagLabware(request: FlagLabwareRequest!): OperationResult!
     """Record QC labware request."""
     recordQCLabware(request: QCLabwareRequest!): OperationResult!
 

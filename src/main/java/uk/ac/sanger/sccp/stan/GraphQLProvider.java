@@ -110,6 +110,7 @@ public class GraphQLProvider {
                         .dataFetcher("suggestedWorkForLabware", graphQLDataFetchers.getSuggestedWorkForLabwareBarcodes())
                         .dataFetcher("suggestedLabwareForWork", graphQLDataFetchers.getSuggestedLabwareForWork())
                         .dataFetcher("findLatestOp", graphQLDataFetchers.findLatestOperation())
+                        .dataFetcher("labwareFlagDetails", graphQLDataFetchers.getFlagDetails())
 
                         .dataFetcher("users", graphQLDataFetchers.getUsers())
                         .dataFetcher("planData", graphQLDataFetchers.getPlanData())
@@ -210,6 +211,7 @@ public class GraphQLProvider {
                         .dataFetcher("recordProbeOperation", transact(graphQLMutation.recordProbeOperation()))
                         .dataFetcher("recordCompletion", transact(graphQLMutation.recordCompletion()))
                         .dataFetcher("recordAnalyser", transact(graphQLMutation.recordAnalyser()))
+                        .dataFetcher("flagLabware", transact(graphQLMutation.flagLabware()))
                         .dataFetcher("recordQCLabware", transact(graphQLMutation.recordQcLabware()))
 
                         .dataFetcher("addUser", transact(graphQLMutation.addUser()))

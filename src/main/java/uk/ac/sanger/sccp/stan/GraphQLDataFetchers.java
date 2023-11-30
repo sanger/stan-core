@@ -15,6 +15,7 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.extract.ExtractResultQueryService;
+import uk.ac.sanger.sccp.stan.service.flag.FlagLookupService;
 import uk.ac.sanger.sccp.stan.service.history.HistoryService;
 import uk.ac.sanger.sccp.stan.service.label.print.LabelPrintService;
 import uk.ac.sanger.sccp.stan.service.operation.RecentOpService;
@@ -75,6 +76,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final FileStoreService fileStoreService;
     final SlotRegionService slotRegionService;
     final RecentOpService recentOpService;
+    final FlagLookupService flagLookupService;
 
     @Autowired
     public GraphQLDataFetchers(ObjectMapper objectMapper, AuthenticationComponent authComp, UserRepo userRepo,
@@ -96,7 +98,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                WorkService workService, VisiumPermDataService visiumPermDataService,
                                NextReplicateService nextReplicateService, WorkSummaryService workSummaryService,
                                LabwareService labwareService, FileStoreService fileStoreService,
-                               SlotRegionService slotRegionService, RecentOpService recentOpService) {
+                               SlotRegionService slotRegionService, RecentOpService recentOpService, FlagLookupService flagLookupService) {
         super(objectMapper, authComp, userRepo);
         this.sessionConfig = sessionConfig;
         this.versionInfo = versionInfo;
@@ -138,6 +140,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.fileStoreService = fileStoreService;
         this.slotRegionService = slotRegionService;
         this.recentOpService = recentOpService;
+        this.flagLookupService = flagLookupService;
     }
 
     public DataFetcher<User> getUser() {
@@ -307,6 +310,14 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
             String workNumber = dfe.getArgument("workNumber");
             boolean forRelease = argOrFalse(dfe, "forRelease");
             return workService.suggestLabwareForWorkNumber(workNumber, forRelease);
+        };
+    }
+
+    public DataFetcher<List<FlagDetail>> getFlagDetails() {
+        return dfe -> {
+            List<String> barcodes = dfe.getArgument("barcodes");
+            List<Labware> labware = labwareRepo.findByBarcodeIn(barcodes);
+            return flagLookupService.lookUpDetails(labware);
         };
     }
 

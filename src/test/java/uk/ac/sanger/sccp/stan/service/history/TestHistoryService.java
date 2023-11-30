@@ -50,6 +50,7 @@ public class TestHistoryService {
     private ResultOpRepo mockResultOpRepo;
     private StainTypeRepo mockStainTypeRepo;
     private LabwareProbeRepo mockLwProbeRepo;
+    private LabwareFlagRepo mockFlagRepo;
     private ReagentActionDetailService mockRadService;
     private SlotRegionService mockSlotRegionService;
 
@@ -77,6 +78,7 @@ public class TestHistoryService {
         mockLwNoteRepo = mock(LabwareNoteRepo.class);
         mockResultOpRepo = mock(ResultOpRepo.class);
         mockRadService = mock(ReagentActionDetailService.class);
+        mockFlagRepo = mock(LabwareFlagRepo.class);
         mockStainTypeRepo = mock(StainTypeRepo.class);
         mockSlotRegionService = mock(SlotRegionService.class);
         mockLwProbeRepo = mock(LabwareProbeRepo.class);
@@ -84,7 +86,7 @@ public class TestHistoryService {
         service = spy(new HistoryServiceImp(mockOpRepo, mockOpTypeRepo, mockLwRepo, mockSampleRepo, mockTissueRepo, mockDonorRepo,
                 mockReleaseRepo, mockDestructionRepo, mockOpCommentRepo, mockRoiRepo, mockSnapshotRepo, mockWorkRepo,
                 mockMeasurementRepo, mockLwNoteRepo, mockResultOpRepo, mockStainTypeRepo, mockLwProbeRepo,
-                mockRadService, mockSlotRegionService));
+                mockFlagRepo, mockRadService, mockSlotRegionService));
     }
 
     @Test
@@ -1008,6 +1010,28 @@ public class TestHistoryService {
         assertEquals(expected, service.loadOpResults(ops));
     }
 
+    @Test
+    public void testLoadLabwareFlags() {
+        OperationType flagOpType = EntityFactory.makeOperationType("Flag labware", null, OperationTypeFlag.IN_PLACE);
+        OperationType otherOpType = EntityFactory.makeOperationType("Splunge", null, OperationTypeFlag.IN_PLACE);
+        List<Operation> ops = List.of(
+                new Operation(1, otherOpType, null, null, null),
+                new Operation(2, flagOpType, null, null, null),
+                new Operation(3, flagOpType, null, null, null)
+        );
+        assertThat(service.loadLabwareFlags(ops.subList(0,1))).isEmpty();
+        verifyNoInteractions(mockFlagRepo);
+        Labware lw = EntityFactory.getTube();
+        List<LabwareFlag> flags = List.of(
+                new LabwareFlag(10, lw, "Alpha", null, 2),
+                new LabwareFlag(11, lw, "Beta", null, 3)
+        );
+        when(mockFlagRepo.findAllByOperationIdIn(List.of(2,3))).thenReturn(flags);
+
+        var expected = Map.of(2, flags.subList(0,1), 3, flags.subList(1,2));
+        assertEquals(expected, service.loadLabwareFlags(ops));
+    }
+
     @ParameterizedTest
     @CsvSource(value={
             "pass, A1, A1: pass",
@@ -1182,6 +1206,9 @@ public class TestHistoryService {
         );
         doReturn(opStainTypes).when(mockStainTypeRepo).loadOperationStainTypes(any());
 
+        Map<Integer, List<LabwareFlag>> opFlags = Map.of(opIds[0], List.of(new LabwareFlag(100, labware[0], "Alpha", null, opIds[0])));
+        doReturn(opFlags).when(service).loadLabwareFlags(any());
+
         Map<Integer, List<ReagentActionDetail>> radMap = Map.of(opIds[0],
                 List.of(new ReagentActionDetail("123", "type1", new Address(1,2), new Address(2,3), labware[1].getId(), null),
                         new ReagentActionDetail("456", "type2", new Address(3,4), new Address(5,6), labware[1].getId(), null)
@@ -1250,7 +1277,7 @@ public class TestHistoryService {
         List<HistoryEntry> expectedEntries = List.of(
                 new HistoryEntry(opIds[0], opTypeName0, ops.get(0).getPerformed(), labware[0].getId(),
                         labware[1].getId(), samples[0].getId(), username, "SGP5000",
-                        List.of("123 : A2 -> B3", "456 : C4 -> E6", "Alpha: Beta", "Gamma: Delta", "Equipment: Feeniks",
+                        List.of("123 : A2 -> B3", "456 : C4 -> E6", "Alpha: Beta", "Gamma: Delta", "Flag: Alpha", "Equipment: Feeniks",
                                 "A1: pass", "Alabama", "A1: Alaska", "Thickness: 4\u00a0μm", "ROI (90, A1): roi1"), "A1", null),
                 new HistoryEntry(opIds[1], opTypeName1, ops.get(1).getPerformed(), labware[0].getId(),
                         labware[3].getId(), samples[2].getId(), username, null,
@@ -1259,6 +1286,7 @@ public class TestHistoryService {
         assertThat(service.createEntriesForOps(ops, sampleIds, labwareList, opWork, null)).containsExactlyElementsOf(expectedEntries);
 
         verify(service).loadOpMeasurements(opIdSet);
+        verify(service).loadLabwareFlags(ops);
         verify(mockStainTypeRepo).loadOperationStainTypes(opIdSet);
         verify(mockRadService).loadReagentTransfers(opIdSet);
     }
