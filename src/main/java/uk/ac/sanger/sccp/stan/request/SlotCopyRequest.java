@@ -6,6 +6,7 @@ import uk.ac.sanger.sccp.utils.BasicUtils;
 import java.util.List;
 import java.util.Objects;
 
+import static uk.ac.sanger.sccp.utils.BasicUtils.describe;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
@@ -148,6 +149,7 @@ public class SlotCopyRequest {
      */
     public static class SlotCopyDestination {
         private String labwareType;
+        private String barcode;
         private String bioState;
         private SlideCosting costing;
         private String lotNumber;
@@ -179,6 +181,17 @@ public class SlotCopyRequest {
 
         public void setLabwareType(String labwareType) {
             this.labwareType = labwareType;
+        }
+
+        /**
+         * The barcode of an existing (active) destination labware to add further samples into.
+         */
+        public String getBarcode() {
+            return this.barcode;
+        }
+
+        public void setBarcode(String barcode) {
+            this.barcode = barcode;
         }
 
         /**
@@ -258,18 +271,29 @@ public class SlotCopyRequest {
                     && Objects.equals(this.lotNumber, that.lotNumber)
                     && Objects.equals(this.probeLotNumber, that.probeLotNumber)
                     && Objects.equals(this.preBarcode, that.preBarcode)
-                    && Objects.equals(this.contents, that.contents));
+                    && Objects.equals(this.contents, that.contents)
+                    && Objects.equals(this.barcode, that.barcode)
+            );
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(labwareType, bioState, costing, lotNumber, probeLotNumber, preBarcode, contents);
+            return Objects.hash(labwareType, bioState, costing, lotNumber, probeLotNumber, preBarcode, contents, barcode);
         }
 
         @Override
         public String toString() {
-            return String.format("{labwareType=%s, bioState=%s, costing=%s, lotNumber=%s, probeLotNumber=%s, preBarcode=%s, contents=%s}",
-                    labwareType, bioState, costing, lotNumber, probeLotNumber, preBarcode, contents);
+            return describe(this)
+                    .add("labwareType", labwareType)
+                    .add("barcode", barcode)
+                    .add("bioState", bioState)
+                    .add("costing", costing)
+                    .add("lotNumber", lotNumber)
+                    .add("probeLotNumber", probeLotNumber)
+                    .add("preBarcode", preBarcode)
+                    .add("contents", contents)
+                    .reprStringValues()
+                    .toString();
         }
     }
 
