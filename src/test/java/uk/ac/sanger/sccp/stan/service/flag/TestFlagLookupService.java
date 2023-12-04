@@ -1,11 +1,14 @@
 package uk.ac.sanger.sccp.stan.service.flag;
 
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.*;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.LabwareFlagRepo;
 import uk.ac.sanger.sccp.stan.repo.OperationRepo;
+import uk.ac.sanger.sccp.stan.request.LabwareFlagged;
 import uk.ac.sanger.sccp.stan.service.flag.FlagLookupServiceImp.OpIdLwId;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.Ancestry;
@@ -18,8 +21,7 @@ import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.*;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 /** Tests {@link FlagLookupServiceImp} */
@@ -209,5 +211,69 @@ class TestFlagLookupService {
         when(ancestry.ancestors(lwSs.get(1))).thenReturn(Set.of(lwSs.get(1), ss2));
 
         assertThat(service.flagsForLabware(ancestry, lw, ssFlags)).containsExactlyInAnyOrderElementsOf(flags.subList(0, 3));
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    void testGetLabwareFlagged(boolean flagged) {
+        Labware lw = EntityFactory.getTube();
+        doReturn(flagged).when(service).isFlagged(any());
+        LabwareFlagged lf = service.getLabwareFlagged(lw);
+        assertSame(lw, lf.getLabware());
+        assertEquals(flagged, lf.isFlagged());
+        verify(service).isFlagged(lw);
+    }
+
+    @Test
+    void testIsFlagged_noflags() {
+        Labware lw = EntityFactory.getTube();
+        final Sample sample = EntityFactory.getSample();
+        SlotSample lwSs = new SlotSample(lw.getFirstSlot(), sample);
+        Ancestry anc = mock(Ancestry.class);
+        when(mockAncestoriser.findAncestry(any())).thenReturn(anc);
+        Labware otherLw = EntityFactory.makeBlock(sample);
+        Set<SlotSample> ancestorSS = Set.of(lwSs, new SlotSample(otherLw.getFirstSlot(), sample));
+        when(anc.keySet()).thenReturn(ancestorSS);
+        when(mockFlagRepo.findAllByLabwareIdIn(any())).thenReturn(List.of());
+
+        assertFalse(service.isFlagged(lw));
+
+        verify(mockAncestoriser).findAncestry(Set.of(lwSs));
+        verify(mockFlagRepo).findAllByLabwareIdIn(Set.of(lw.getId(), otherLw.getId()));
+        verifyNoInteractions(mockOpRepo);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    void testIsFlagged(boolean relevant) {
+        Labware lw = EntityFactory.getTube();
+        final Sample sample = EntityFactory.getSample();
+        SlotSample lwSs = new SlotSample(lw.getFirstSlot(), sample);
+        Ancestry anc = mock(Ancestry.class);
+        when(mockAncestoriser.findAncestry(any())).thenReturn(anc);
+        Labware otherLw = EntityFactory.makeBlock(sample);
+        Set<SlotSample> ancestorSS = Set.of(lwSs, new SlotSample(otherLw.getFirstSlot(), sample));
+        when(anc.keySet()).thenReturn(ancestorSS);
+        List<LabwareFlag> flags = List.of(
+                new LabwareFlag(100, otherLw, "Alpha", null, 10),
+                new LabwareFlag(101, otherLw, "Beta", null, 11)
+        );
+        when(mockFlagRepo.findAllByLabwareIdIn(any())).thenReturn(flags);
+
+        Sample sam2 = new Sample(sample.getId()+1, null, sample.getTissue(), sample.getBioState());
+
+        Action ac1 = new Action(null, null, otherLw.getFirstSlot(), otherLw.getFirstSlot(), sam2, sam2);
+        Operation op1 = new Operation(10, null, null, List.of(ac1), null);
+
+        Action ac2 = new Action(null, null, otherLw.getFirstSlot(), otherLw.getFirstSlot(), relevant ? sample : sam2, sam2);
+        Operation op2 = new Operation(11, null, null, List.of(ac2), null);
+
+        when(mockOpRepo.findAllById(any())).thenReturn(List.of(op1, op2));
+
+        assertEquals(relevant, service.isFlagged(lw));
+
+        verify(mockAncestoriser).findAncestry(Set.of(lwSs));
+        verify(mockFlagRepo).findAllByLabwareIdIn(Set.of(lw.getId(), otherLw.getId()));
+        verify(mockOpRepo).findAllById(Set.of(10,11));
     }
 }

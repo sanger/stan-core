@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGet;
 
@@ -89,5 +90,10 @@ public class TestLabwareFlags {
                 Map.of("barcode", "STAN-1", "description", "Alpha"),
                 Map.of("barcode", "STAN-2", "description", "Beta")
         );
+
+        query = tester.readGraphQL("labwareflagged.graphql");
+        response = tester.post(query);
+        assertEquals("STAN-1", chainGet(response, "data", "labwareFlagged", "barcode"));
+        assertEquals(Boolean.TRUE, chainGet(response, "data", "labwareFlagged", "flagged"));
     }
 }

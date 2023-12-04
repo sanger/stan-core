@@ -216,6 +216,34 @@ type Labware {
     created: Timestamp!
 }
 
+"""Labware with an additional field specifying whether it is flagged."""
+type LabwareFlagged {
+    """The unique id of this labware."""
+    id: Int!
+    """The unique barcode of this labware."""
+    barcode: String!
+    """The external barcode of this labware, as input by the user."""
+    externalBarcode: String
+    """The type of labware."""
+    labwareType: LabwareType!
+    """The slots in this labware. The number of slots and their addresses are determined by the labware type."""
+    slots: [Slot!]!
+    """Has this labware been released?"""
+    released: Boolean!
+    """Has this labware been destroyed?"""
+    destroyed: Boolean!
+    """Has this labware been discarded?"""
+    discarded: Boolean!
+    """Has this labware been marked as used?"""
+    used: Boolean!
+    """The state, derived from the contents and other fields on the labware."""
+    state: LabwareState!
+    """The time when this labware was created in the application."""
+    created: Timestamp!
+    """Is there a labware flag applicable to this labware?"""
+    flagged: Boolean!
+}
+
 """A solution used in an operation."""
 type Solution {
     """The unique name of the solution."""
@@ -1785,6 +1813,8 @@ type Query {
     probePanels(includeDisabled: Boolean): [ProbePanel!]!
     """Get the labware with the given barcode."""
     labware(barcode: String!): Labware!
+    """Get the labware and check if it is flagged."""
+    labwareFlagged(barcode: String!): LabwareFlagged!
     """Get all printers available, or get all printers that support a named label type."""
     printers(labelType: String): [Printer!]!
     """Get all enabled comments in a particular category, or all enabled in any category; optionally include disabled."""

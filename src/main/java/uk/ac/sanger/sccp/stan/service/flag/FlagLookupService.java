@@ -4,6 +4,7 @@ import org.jetbrains.annotations.NotNull;
 import uk.ac.sanger.sccp.stan.model.Labware;
 import uk.ac.sanger.sccp.stan.model.LabwareFlag;
 import uk.ac.sanger.sccp.stan.request.FlagDetail;
+import uk.ac.sanger.sccp.stan.request.LabwareFlagged;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.Collection;
@@ -36,4 +37,11 @@ public interface FlagLookupService {
     default List<FlagDetail> lookUpDetails(Collection<Labware> labware) {
         return toDetails(lookUp(labware));
     }
+
+    /**
+     * Checks if the labware is flagged and returns a {@code LabwareFlagged} object.
+     * @param lw the labware to check
+     * @return an object specifying a labware and whether or not there are any applicable flags
+     */
+    LabwareFlagged getLabwareFlagged(Labware lw);
 }

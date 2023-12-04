@@ -24,11 +24,11 @@ import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.stan.service.work.WorkSummaryService;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
-import javax.persistence.EntityNotFoundException;
 import java.util.*;
 import java.util.function.Supplier;
 
 import static java.util.stream.Collectors.toList;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 
 /**
  * @author dr6
@@ -174,11 +174,24 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     public DataFetcher<Labware> findLabwareByBarcode() {
         return dfe -> {
             String barcode = dfe.getArgument("barcode");
-            if (barcode==null || barcode.isEmpty()) {
+            if (nullOrEmpty(barcode)) {
                 throw new IllegalArgumentException("No barcode supplied.");
             }
-            return labwareRepo.findByBarcode(barcode)
-                    .orElseThrow(() -> new EntityNotFoundException("No labware found with barcode: "+barcode));
+            return labwareRepo.getByBarcode(barcode);
+        };
+    }
+
+    public DataFetcher<LabwareFlagged> findLabwareFlagged() {
+        return dfe -> {
+            String barcode = dfe.getArgument("barcode");
+            if (nullOrEmpty(barcode)) {
+                throw new IllegalArgumentException("No barcode supplied.");
+            }
+            Labware lw = labwareRepo.getByBarcode(barcode);
+            if (requestsField(dfe, "flagged")) {
+                return flagLookupService.getLabwareFlagged(lw);
+            }
+            return new LabwareFlagged(lw, false);
         };
     }
 

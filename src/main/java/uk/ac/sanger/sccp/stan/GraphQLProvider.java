@@ -74,6 +74,7 @@ public class GraphQLProvider {
                         .dataFetcher("fixatives", graphQLDataFetchers.getFixatives())
                         .dataFetcher("species", graphQLDataFetchers.getSpecies())
                         .dataFetcher("labware", graphQLDataFetchers.findLabwareByBarcode())
+                        .dataFetcher("labwareFlagged", graphQLDataFetchers.findLabwareFlagged())
                         .dataFetcher("printers", graphQLDataFetchers.findPrinters())
                         .dataFetcher("comments", graphQLDataFetchers.getComments())
                         .dataFetcher("equipments", graphQLDataFetchers.getEquipments())

@@ -8,6 +8,7 @@ import uk.ac.sanger.sccp.stan.repo.LabwareFlagRepo;
 import uk.ac.sanger.sccp.stan.repo.OperationRepo;
 import uk.ac.sanger.sccp.stan.request.FlagDetail;
 import uk.ac.sanger.sccp.stan.request.FlagDetail.FlagSummary;
+import uk.ac.sanger.sccp.stan.request.LabwareFlagged;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.Ancestry;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
@@ -15,9 +16,11 @@ import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
 
+import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
+import static uk.ac.sanger.sccp.utils.BasicUtils.stream;
 
 /**
  * @author dr6
@@ -147,6 +150,28 @@ public class FlagLookupServiceImp implements FlagLookupService {
         return flagMap.entrySet().stream()
                 .map(e -> toDetail(e.getKey(), e.getValue()))
                 .collect(toList());
+    }
+
+    boolean isFlagged(Labware lw) {
+        requireNonNull(lw, "Labware is null");
+        Set<SlotSample> slotSamples = SlotSample.stream(lw).collect(toSet());
+        Ancestry ancestry = ancestoriser.findAncestry(slotSamples);
+        Set<SlotSample> ancestorSS = ancestry.keySet();
+        Set<Integer> labwareIds = ancestorSS.stream().map(ss -> ss.getSlot().getLabwareId()).collect(toSet());
+        List<LabwareFlag> flags = flagRepo.findAllByLabwareIdIn(labwareIds);
+        if (flags.isEmpty()) {
+            return false;
+        }
+        Set<Integer> opIds = flags.stream().map(LabwareFlag::getOperationId).collect(toSet());
+        Iterable<Operation> ops = opRepo.findAllById(opIds);
+        return stream(ops).flatMap(op -> op.getActions().stream())
+                .map(ac -> new SlotSample(ac.getDestination(), ac.getSample()))
+                .anyMatch(ancestorSS::contains);
+    }
+
+    @Override
+    public LabwareFlagged getLabwareFlagged(Labware lw) {
+        return new LabwareFlagged(lw, isFlagged(lw));
     }
 
     /**
