@@ -1728,6 +1728,16 @@ input QCLabwareRequest {
     labware: [QCLabware!]!
 }
 
+"""Request to undestroy/undiscard labware."""
+input ReactivateLabware {
+    """The barcode of the labware to reactivate."""
+    barcode: String!
+    """The work number to associate with the reactivation."""
+    workNumber: String!
+    """The comment id to associate with the reactivation."""
+    commentId: Int!
+}
+
 """Info about the app version."""
 type VersionInfo {
     """The output of git describe."""
@@ -2031,6 +2041,8 @@ type Mutation {
     recordAnalyser(request: AnalyserRequest!): OperationResult!
     """Record QC labware request."""
     recordQCLabware(request: QCLabwareRequest!): OperationResult!
+    """Reactivate labware."""
+    reactivateLabware(items: [ReactivateLabware!]!): OperationResult!
 
     """Create a new user for the application."""
     addUser(username: String!): User!
