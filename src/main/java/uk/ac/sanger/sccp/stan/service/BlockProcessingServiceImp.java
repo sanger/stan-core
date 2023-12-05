@@ -312,7 +312,7 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
         }
         List<RepKey> alreadyExistRepKeys = repKeys.stream()
                 .filter(rp -> !tissueRepo.findByDonorIdAndSpatialLocationIdAndReplicate(
-                        rp.getDonorId(), rp.getSpatialLocationId(), rp.getReplicate()).isEmpty()
+                        rp.donorId(), rp.spatialLocationId(), rp.replicate()).isEmpty()
                 ).collect(toList());
         if (!alreadyExistRepKeys.isEmpty()) {
             problems.add("Replicate already exists in the database: "+alreadyExistRepKeys);
@@ -485,30 +485,19 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
         }
     }
 
-    /**
-     * The unique fields associated with a block
-     */
-    static class RepKey {
-        Donor donor;
-        SpatialLocation spatialLocation;
-        String replicate;
-
-        public RepKey(Donor donor, SpatialLocation spatialLocation, String replicate) {
+    /** The unique fields associated with a block */
+    record RepKey(Donor donor, SpatialLocation spatialLocation, String replicate) {
+        RepKey(Donor donor, SpatialLocation spatialLocation, String replicate) {
             this.donor = donor;
             this.spatialLocation = spatialLocation;
             this.replicate = replicate.toLowerCase();
         }
 
-        Integer getDonorId() {
+        Integer donorId() {
             return this.donor.getId();
         }
-
-        Integer getSpatialLocationId() {
+        Integer spatialLocationId() {
             return this.spatialLocation.getId();
-        }
-
-        String getReplicate() {
-            return this.replicate;
         }
 
         static RepKey from(Labware sourceLabware, String replicate) {
@@ -524,26 +513,12 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
             return new RepKey(tissue.getDonor(), tissue.getSpatialLocation(), replicate);
         }
 
+
         @Override
         public String toString() {
             return String.format("{Donor: %s, Tissue type: %s, Spatial location: %s, Replicate: %s}",
                     donor.getDonorName(), spatialLocation.getTissueType().getName(), spatialLocation.getCode(),
                     replicate);
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj==this) return true;
-            if (obj==null || obj.getClass()!=this.getClass()) return false;
-            RepKey that = (RepKey) obj;
-            return (this.getDonorId().equals(that.getDonorId())
-                    && this.getSpatialLocationId().equals(that.getSpatialLocationId())
-                    && this.getReplicate().equals(that.getReplicate()));
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(this.donor.getId(), this.spatialLocation.getId(), this.replicate);
         }
     }
 

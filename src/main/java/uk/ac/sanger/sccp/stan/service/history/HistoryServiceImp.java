@@ -1030,34 +1030,7 @@ public class HistoryServiceImp implements HistoryService {
     }
 
     // region support class
-    private static class SampleTransferInfo {
-        final int sampleId, sourceId, destId;
-        final String region;
-
-        public SampleTransferInfo(int sampleId, int sourceId, int destId, String region) {
-            this.sampleId = sampleId;
-            this.sourceId = sourceId;
-            this.destId = destId;
-            this.region = region;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            SampleTransferInfo that = (SampleTransferInfo) o;
-            return (this.sampleId == that.sampleId
-                    && this.sourceId == that.sourceId
-                    && this.destId == that.destId
-                    && Objects.equals(this.region, that.region)
-            );
-        }
-
-        @Override
-        public int hashCode() {
-            return sampleId + 31 * (sourceId + 31 * destId);
-        }
-    }
+    record SampleTransferInfo(int sampleId, int sourceId, int destId, String region) {}
 
     public static class EventTypeFilter {
         public static final EventTypeFilter NO_FILTER = new EventTypeFilter(true, true, true, null);

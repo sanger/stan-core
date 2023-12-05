@@ -423,29 +423,6 @@ public class PotProcessingServiceImp implements PotProcessingService {
         return opService.createOperation(opType, user, List.of(action), null);
     }
 
-    /**
-     * A key indicating a tissue and bio state
-     */
-    static class TissueBSKey {
-        final int tissueId;
-        final int bsId;
-
-        TissueBSKey(Tissue tissue, BioState bs) {
-            this.tissueId = tissue.getId();
-            this.bsId = bs.getId();
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            TissueBSKey that = (TissueBSKey) o;
-            return (this.tissueId == that.tissueId && this.bsId == that.bsId);
-        }
-
-        @Override
-        public int hashCode() {
-            return tissueId * 31 + bsId;
-        }
-    }
+    /** A key indicating a tissue and a bio state */
+    record TissueBSKey(Tissue tissue, BioState bs) {}
 }

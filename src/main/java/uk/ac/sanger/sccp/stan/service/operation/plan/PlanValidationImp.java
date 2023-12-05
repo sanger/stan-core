@@ -357,12 +357,7 @@ public class PlanValidationImp implements PlanValidation {
         addProblem(String.format(format, args));
     }
 
-    static class ActionKey {
-        String sourceBarcode;
-        Address sourceAddress;
-        int sampleId;
-        Address destAddress;
-
+    record ActionKey(String sourceBarcode, Address sourceAddress, int sampleId, Address destAddress) {
         ActionKey(PlanRequestAction action) {
             this(action.getSource().getBarcode(), action.getSource().getAddress(),
                     action.getSampleId(), action.getAddress());
@@ -380,25 +375,8 @@ public class PlanValidationImp implements PlanValidation {
         }
 
         @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            ActionKey that = (ActionKey) o;
-            return (this.sampleId == that.sampleId
-                    && Objects.equals(this.sourceBarcode, that.sourceBarcode)
-                    && Objects.equals(this.sourceAddress, that.sourceAddress)
-                    && Objects.equals(this.destAddress, that.destAddress));
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(sourceBarcode, sourceAddress, sampleId, destAddress);
-        }
-
-        @Override
         public String toString() {
-            return String.format("(address=%s, sampleId=%s, source={%s, %s})",
-                    destAddress, sampleId, sourceBarcode, sourceAddress);
+            return String.format("(address=%s, sampleId=%s, source={%s, %s})", destAddress, sampleId, sourceBarcode, sourceAddress);
         }
     }
 }
