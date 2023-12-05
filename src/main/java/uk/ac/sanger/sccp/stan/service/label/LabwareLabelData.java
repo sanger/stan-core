@@ -83,13 +83,13 @@ public class LabwareLabelData {
         fields.put("external", getExternalBarcode());
         int index = 0;
         for (LabelContent content : contents) {
-            addField(fields, "donor", index, content.getDonorName());
-            addField(fields, "tissue", index, content.getTissueDesc());
-            if (content.getReplicate()!=null) {
-                addField(fields, "replicate", index, "R:"+content.getReplicate());
+            addField(fields, "donor", index, content.donorName());
+            addField(fields, "tissue", index, content.tissueDesc());
+            if (content.replicate()!=null) {
+                addField(fields, "replicate", index, "R:"+content.replicate());
             }
-            if (content.getStateDesc()!=null) {
-                addField(fields, "state", index, content.getStateDesc());
+            if (content.stateDesc()!=null) {
+                addField(fields, "state", index, content.stateDesc());
             }
             ++index;
         }
@@ -102,12 +102,7 @@ public class LabwareLabelData {
         }
     }
 
-    public static class LabelContent {
-        private final String donorName;
-        private final String tissueDesc;
-        private final String replicate;
-        private final String stateDesc;
-
+    public record LabelContent(String donorName, String tissueDesc, String replicate, String stateDesc) {
         public LabelContent(String donorName, String tissueDesc, String replicate) {
             this(donorName, tissueDesc, replicate, (String) null);
         }
@@ -121,47 +116,8 @@ public class LabwareLabelData {
                     String.format(maxSection==null || minSection.equals(maxSection) ? "S%03d" : "S%03d+", minSection));
         }
 
-        public LabelContent(String donorName, String tissueDesc, String replicate, String stateDesc) {
-            this.donorName = donorName;
-            this.tissueDesc = tissueDesc;
-            this.replicate = replicate;
-            this.stateDesc = stateDesc;
-        }
-
-        public String getDonorName() {
-            return this.donorName;
-        }
-
-        public String getTissueDesc() {
-            return this.tissueDesc;
-        }
-
-        public String getReplicate() {
-            return this.replicate;
-        }
-
-        public String getStateDesc() {
-            return this.stateDesc;
-        }
-
         public LabelContent withStateDesc(String newStateDesc) {
             return new LabelContent(this.donorName, this.tissueDesc, this.replicate, newStateDesc);
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            LabelContent that = (LabelContent) o;
-            return (Objects.equals(this.donorName, that.donorName)
-                    && Objects.equals(this.tissueDesc, that.tissueDesc)
-                    && Objects.equals(this.replicate, that.replicate)
-                    && Objects.equals(this.stateDesc, that.stateDesc));
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(donorName, tissueDesc, replicate, stateDesc);
         }
 
         @Override

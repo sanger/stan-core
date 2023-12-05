@@ -10,7 +10,8 @@ import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
 
 import java.util.*;
 
-import static java.util.stream.Collectors.*;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 
 /**
  * Service for finding the last op on given labware or its ancestors.
@@ -45,7 +46,7 @@ public class OpSearcherImp implements OpSearcher {
      */
     public Map<Integer, Operation> findLabwareOps(OperationType opType, Collection<Labware> labware, Ancestry ancestry) {
         Set<Integer> slotIds = ancestry.keySet().stream()
-                .map(ss -> ss.getSlot().getId())
+                .map(SlotSample::slotId)
                 .collect(toSet());
         List<Operation> ops = opRepo.findAllByOperationTypeAndDestinationSlotIdIn(opType, slotIds);
         if (ops.isEmpty()) {
@@ -96,7 +97,7 @@ public class OpSearcherImp implements OpSearcher {
             seenSlotSamples.addAll(sss);
             Operation foundOp = null;
             for (SlotSample ss : sss) {
-                Operation op = destOp.get(ss.getSlot().getId());
+                Operation op = destOp.get(ss.slotId());
                 foundOp = selectGreater(op, foundOp);
 
             }

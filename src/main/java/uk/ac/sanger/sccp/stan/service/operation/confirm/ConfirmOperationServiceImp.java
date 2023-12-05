@@ -4,8 +4,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.request.AddressCommentId;
+import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.service.OperationService;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
 
@@ -272,27 +272,5 @@ public class ConfirmOperationServiceImp implements ConfirmOperationService {
         return sampleRepo.save(new Sample(null, section, sourceSample.getTissue(), bioState));
     }
 
-    static class ConfirmLabwareResult {
-        Operation operation;
-        Labware labware;
-
-        public ConfirmLabwareResult(Operation operation, Labware labware) {
-            this.operation = operation;
-            this.labware = labware;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            ConfirmLabwareResult that = (ConfirmLabwareResult) o;
-            return (Objects.equals(this.operation, that.operation)
-                    && Objects.equals(this.labware, that.labware));
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(operation, labware);
-        }
-    }
+    public record ConfirmLabwareResult(Operation operation, Labware labware) {}
 }

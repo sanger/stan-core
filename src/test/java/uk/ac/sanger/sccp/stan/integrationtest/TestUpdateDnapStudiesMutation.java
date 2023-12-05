@@ -54,8 +54,8 @@ public class TestUpdateDnapStudiesMutation {
         for (int i = 0; i < sss.size(); ++i) {
             SSStudy ss = sss.get(i);
             Map<String, ?> map = studies.get(i);
-            assertEquals(ss.getId(), map.get("ssId"));
-            assertEquals(ss.getName(), map.get("name"));
+            assertEquals(ss.id(), map.get("ssId"));
+            assertEquals(ss.name(), map.get("name"));
         }
     }
 }

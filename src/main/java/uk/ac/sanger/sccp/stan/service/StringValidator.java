@@ -184,20 +184,20 @@ public class StringValidator implements Validator<String> {
     public static CharacterType characterType(char ch) {
         if (ch >= 'A' && ch <= 'Z' || ch >= 'a' && ch <= 'z') return CharacterType.ALPHA;
         if (ch >= '0' && ch <= '9') return CharacterType.DIGIT;
-        switch (ch) {
-            case '-': return CharacterType.HYPHEN;
-            case '_': return CharacterType.UNDERSCORE;
-            case ' ': return CharacterType.SPACE;
-            case '/': return CharacterType.SLASH;
-            case '\\': return CharacterType.BACKSLASH;
-            case '(': case ')': return CharacterType.PAREN;
-            case '.': return CharacterType.FULL_STOP;
-            case '\'': return CharacterType.APOSTROPHE;
-            case '%': return CharacterType.PERCENT;
-            case ',': return CharacterType.COMMA;
-            case ':': return CharacterType.COLON;
-            case ';': return CharacterType.SEMICOLON;
-        }
-        return null;
+        return switch (ch) {
+            case '-' -> CharacterType.HYPHEN;
+            case '_' -> CharacterType.UNDERSCORE;
+            case ' ' -> CharacterType.SPACE;
+            case '/' -> CharacterType.SLASH;
+            case '\\' -> CharacterType.BACKSLASH;
+            case '(', ')' -> CharacterType.PAREN;
+            case '.' -> CharacterType.FULL_STOP;
+            case '\'' -> CharacterType.APOSTROPHE;
+            case '%' -> CharacterType.PERCENT;
+            case ',' -> CharacterType.COMMA;
+            case ':' -> CharacterType.COLON;
+            case ';' -> CharacterType.SEMICOLON;
+            default -> null;
+        };
     }
 }

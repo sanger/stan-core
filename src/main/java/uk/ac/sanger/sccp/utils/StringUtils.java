@@ -208,13 +208,13 @@ class StringUtils {
     }
 
     static String htmlReplacement(char c) {
-        switch (c) {
-            case '&': return "&amp;";
-            case '"': return "&quot;";
-            case '<': return "&lt;";
-            case '>': return "&gt;";
-            default: return null;
-        }
+        return switch (c) {
+            case '&' -> "&amp;";
+            case '"' -> "&quot;";
+            case '<' -> "&lt;";
+            case '>' -> "&gt;";
+            default -> null;
+        };
     }
 
     static String htmlEscape(CharSequence input) {

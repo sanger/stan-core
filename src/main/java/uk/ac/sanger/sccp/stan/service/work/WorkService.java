@@ -10,8 +10,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static java.util.Objects.requireNonNull;
-
 /**
  * Service for managing {@link Work work}.
  * @author dr6
@@ -227,13 +225,12 @@ public interface WorkService {
     /**
      * struct-like container for a work and an operation
      */
-    class WorkOp {
-        public final Work work;
-        public final Operation op;
-
-        public WorkOp(Work work, Operation op) {
-            this.work = requireNonNull(work);
-            this.op = requireNonNull(op);
+    record WorkOp(Work work, Operation op) {
+        Integer workId() {
+            return work().getId();
+        }
+        Integer opId() {
+            return op().getId();
         }
 
         @Override
@@ -241,12 +238,12 @@ public interface WorkService {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             WorkOp that = (WorkOp) o;
-            return (this.work.getId().equals(that.work.getId()) && this.op.getId().equals(that.op.getId()));
+            return (this.workId().equals(that.workId()) && this.opId().equals(that.opId()));
         }
 
         @Override
         public int hashCode() {
-            return 31*work.getId() + op.getId();
+            return 31*workId() + opId();
         }
     }
 }

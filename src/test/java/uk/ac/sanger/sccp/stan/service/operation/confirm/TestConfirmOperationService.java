@@ -205,8 +205,8 @@ public class TestConfirmOperationService {
             verifyNoInteractions(mockMeasurementRepo);
             return;
         }
-        assertSame(op, result.operation);
-        assertEquals(labware, result.labware);
+        assertSame(op, result.operation());
+        assertEquals(labware, result.labware());
         assertFalse(labware.isDiscarded());
         verify(mockOperationService).createOperation(opType, user, expectedActions, planId);
         if (expectedMeasurements!=null && !expectedMeasurements.isEmpty()) {

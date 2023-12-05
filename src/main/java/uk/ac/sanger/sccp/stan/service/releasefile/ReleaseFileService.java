@@ -306,7 +306,7 @@ public class ReleaseFileService {
             SlotSample root = roots.stream()
                     .min(Comparator.naturalOrder())
                     .orElse(slotSample);
-            Integer lwId = root.getSlot().getLabwareId();
+            Integer lwId = root.slot().getLabwareId();
             String bc = labwareIdBarcode.get(lwId);
             if (bc==null) {
                 bc = labwareRepo.getById(lwId).getBarcode();
@@ -326,7 +326,7 @@ public class ReleaseFileService {
         for (ReleaseEntry entry : entries) {
             SlotSample ss = selectSourceForCDNA(entry, ancestry);
             if (ss!=null) {
-                Slot slot = ss.getSlot();
+                Slot slot = ss.slot();
                 final Integer labwareId = slot.getLabwareId();
                 String barcode = labwareIdBarcode.get(labwareId);
                 if (barcode==null) {
@@ -384,7 +384,7 @@ public class ReleaseFileService {
      */
     public SlotSample selectSourceForCDNA(ReleaseEntry entry, Ancestry ancestry) {
         for (SlotSample ss : ancestry.ancestors(new SlotSample(entry.getSlot(), entry.getSample()))) {
-            if (!ss.getSample().getBioState().getName().equalsIgnoreCase("cDNA")) {
+            if (!ss.sample().getBioState().getName().equalsIgnoreCase("cDNA")) {
                 return ss;
             }
         }
@@ -442,7 +442,7 @@ public class ReleaseFileService {
      */
     public Operation selectOp(ReleaseEntry entry, Map<Integer, Operation> labwareOps, Ancestry ancestry) {
         for (SlotSample ss : ancestry.ancestors(new SlotSample(entry.getSlot(), entry.getSample()))) {
-            Operation op = labwareOps.get(ss.getSlot().getLabwareId());
+            Operation op = labwareOps.get(ss.slot().getLabwareId());
             if (op!=null) {
                 return op;
             }
@@ -456,7 +456,7 @@ public class ReleaseFileService {
      * @param ancestry the ancestry map
      */
     public void loadSectionDate(Collection<ReleaseEntry> entries, Ancestry ancestry) {
-        Set<Integer> slotIds = ancestry.keySet().stream().map(ss -> ss.getSlot().getId()).collect(toSet());
+        Set<Integer> slotIds = ancestry.keySet().stream().map(SlotSample::slotId).collect(toSet());
         OperationType opType = opTypeRepo.getByName("Section");
         List<Operation> sectionOps = opRepo.findAllByOperationTypeAndDestinationSlotIdIn(opType, slotIds);
         if (!sectionOps.isEmpty()) {
@@ -663,7 +663,7 @@ public class ReleaseFileService {
      * @param ancestry the ancestry map
      */
     public void loadStains(Collection<ReleaseEntry> entries, Ancestry ancestry) {
-        Set<Integer> slotIds = ancestry.keySet().stream().map(ss -> ss.getSlot().getId()).collect(toSet());
+        Set<Integer> slotIds = ancestry.keySet().stream().map(SlotSample::slotId).collect(toSet());
         OperationType opType = opTypeRepo.getByName("Stain");
         List<Operation> stainOps = opRepo.findAllByOperationTypeAndDestinationSlotIdIn(opType, slotIds);
         if (stainOps.isEmpty()) {
@@ -749,7 +749,7 @@ public class ReleaseFileService {
             SlotSample key = new SlotSample(entry.getSlot(), entry.getSample());
             String commentText = null;
             for (SlotSample ancestor : ancestry.ancestors(key)) {
-                commentText = joinedComments.get(new SlotIdSampleId(ancestor.getSlot().getId(), ancestor.getSample().getId()));
+                commentText = joinedComments.get(new SlotIdSampleId(ancestor.slotId(), ancestor.sampleId()));
                 if (commentText != null) {
                     break;
                 }
@@ -766,7 +766,7 @@ public class ReleaseFileService {
      * @param ancestry the ancestry map
      */
     public void loadMeasurements(Collection<ReleaseEntry> entries, Ancestry ancestry) {
-        Set<Integer> slotIds = ancestry.keySet().stream().map(ss -> ss.getSlot().getId()).collect(toSet());
+        Set<Integer> slotIds = ancestry.keySet().stream().map(SlotSample::slotId).collect(toSet());
         List<Measurement> measurements = measurementRepo.findAllBySlotIdIn(slotIds);
         Map<Integer, List<Measurement>> slotIdToThickness = new HashMap<>();
         Map<Integer, List<Measurement>> slotIdToCoverage = new HashMap<>();
@@ -992,9 +992,9 @@ public class ReleaseFileService {
     public Measurement selectMeasurement(ReleaseEntry entry, Map<Integer, List<Measurement>> slotIdToMeasurement,
                                          Ancestry ancestry) {
         for (SlotSample ss : ancestry.ancestors(new SlotSample(entry.getSlot(), entry.getSample()))) {
-            List<Measurement> measurements = slotIdToMeasurement.get(ss.getSlot().getId());
+            List<Measurement> measurements = slotIdToMeasurement.get(ss.slotId());
             if (measurements!=null && !measurements.isEmpty()) {
-                final Integer sampleId = ss.getSample().getId();
+                final Integer sampleId = ss.sampleId();
                 var optMeasurement = measurements.stream()
                         .filter(m -> m.getSampleId().equals(sampleId))
                         .findAny();

@@ -274,12 +274,12 @@ public class WorkServiceImp implements WorkService {
         final Map<Integer, List<Operation>> workOpMap = new HashMap<>();
         final List<Work> updatedWorks = new ArrayList<>();
         workOps.forEach(workOp -> {
-            Integer workId = workOp.work.getId();
+            Integer workId = workOp.workId();
             if (!workIdMap.containsKey(workId)) {
-                workIdMap.put(workId, workOp.work);
+                workIdMap.put(workId, workOp.work());
                 workOpMap.put(workId, new ArrayList<>());
             }
-            workOpMap.get(workId).add(workOp.op);
+            workOpMap.get(workId).add(workOp.op());
         });
         workOpMap.forEach((workId, ops) -> updatedWorks.add(link(workIdMap.get(workId), ops)));
         return updatedWorks;
