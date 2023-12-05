@@ -187,41 +187,6 @@ public class FlagLookupServiceImp implements FlagLookupService {
         return new FlagDetail(barcode, summaries);
     }
 
-    // TODO replace this with a record after Java upgrade
     /** A hash key comprising an op id and a labware id */
-    static class OpIdLwId {
-        final Integer opId;
-        final Integer lwId;
-
-        public OpIdLwId(Integer opId, Integer lwId) {
-            this.opId = opId;
-            this.lwId = lwId;
-        }
-
-        public int opId() {
-            return this.opId;
-        }
-        public int lwId() {
-            return this.lwId;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            OpIdLwId that = (OpIdLwId) o;
-            return (Objects.equals(this.opId(), that.opId())
-                    && Objects.equals(this.lwId(), that.lwId()));
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(opId(), lwId());
-        }
-
-        @Override
-        public String toString() {
-            return String.format("[opId=%s, lwId=%s]", opId(), lwId());
-        }
-    }
+    record OpIdLwId(Integer opid, Integer lwId) {}
 }
