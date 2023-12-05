@@ -1,0 +1,22 @@
+mutation {
+    reactivateLabware(items: [
+        {
+            barcode: "STAN-DIS"
+            workNumber: "[WORK]"
+            commentId: 1
+        }
+        {
+            barcode: "STAN-DES"
+            workNumber: "[WORK]"
+            commentId: 2
+        }
+    ]) {
+        labware {
+            barcode
+            state
+        }
+        operations {
+            id
+        }
+    }
+}

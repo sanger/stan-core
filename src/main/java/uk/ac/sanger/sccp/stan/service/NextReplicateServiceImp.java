@@ -27,7 +27,7 @@ public class NextReplicateServiceImp implements NextReplicateService {
 
     @Override
     public List<NextReplicateData> getNextReplicateData(Collection<String> barcodes) {
-        if (barcodes==null || barcodes.isEmpty()) {
+        if (barcodes == null || barcodes.isEmpty()) {
             return List.of();
         }
         Map<RepKey, Set<String>> groups = groupBarcodes(barcodes);
@@ -54,66 +54,32 @@ public class NextReplicateServiceImp implements NextReplicateService {
     }
 
     public NextReplicateData toReplicateData(RepKey key, Set<String> barcodes) {
-        Integer repInteger = tissueRepo.findMaxReplicateForDonorIdAndSpatialLocationId(key.getDonorId(), key.getSpatialLocationId());
-        int nextRep = (repInteger==null ? 1 : (repInteger+1));
-        return new NextReplicateData(new ArrayList<>(barcodes), key.getDonorId(), key.getSpatialLocationId(), nextRep);
+        Integer repInteger = tissueRepo.findMaxReplicateForDonorIdAndSpatialLocationId(key.donorId(), key.spatialLocationId());
+        int nextRep = (repInteger == null ? 1 : (repInteger + 1));
+        return new NextReplicateData(new ArrayList<>(barcodes), key.donorId(), key.spatialLocationId(), nextRep);
     }
 
     public Tissue getSingleTissue(Labware lw) {
         Tissue tissue = null;
         for (Slot slot : lw.getSlots()) {
             for (Sample sample : slot.getSamples()) {
-                if (tissue==null) {
+                if (tissue == null) {
                     tissue = sample.getTissue();
                 } else if (!tissue.equals(sample.getTissue())) {
-                    throw new IllegalArgumentException("Labware "+lw.getBarcode()+" contains multiple different tissues.");
+                    throw new IllegalArgumentException("Labware " + lw.getBarcode() + " contains multiple different tissues.");
                 }
             }
         }
-        if (tissue==null) {
-            throw new IllegalArgumentException("Labware "+lw.getBarcode()+" is empty.");
+        if (tissue == null) {
+            throw new IllegalArgumentException("Labware " + lw.getBarcode() + " is empty.");
         }
         return tissue;
     }
 
-    public static class RepKey {
-        public final int donorId;
-        public final int spatialLocationId;
-
-        public RepKey(int donorId, int spatialLocationId) {
-            this.donorId = donorId;
-            this.spatialLocationId = spatialLocationId;
-        }
-
-        public RepKey(Tissue tissue) {
+    record RepKey(int donorId, int spatialLocationId) {
+        RepKey(Tissue tissue) {
             this(tissue.getDonor().getId(), tissue.getSpatialLocation().getId());
-        }
-
-        public int getDonorId() {
-            return this.donorId;
-        }
-
-        public int getSpatialLocationId() {
-            return this.spatialLocationId;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            RepKey that = (RepKey) o;
-            return (this.donorId == that.donorId
-                    && this.spatialLocationId == that.spatialLocationId);
-        }
-
-        @Override
-        public int hashCode() {
-            return 31*donorId + spatialLocationId;
-        }
-
-        @Override
-        public String toString() {
-            return String.format("(donorId=%s, spatialLocationId=%s)", donorId, spatialLocationId);
         }
     }
 }
+

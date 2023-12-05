@@ -205,33 +205,10 @@ class SlotMeasurementValidatorImp implements SlotMeasurementValidator {
         return compiledProblems;
     }
 
-    /**
-     * Struct-like representing a name and an address of a slot measurement
-     */
-    static class SlotMeasurementKey {
-        String name;
-        Address address;
-        SlotMeasurementKey(String name, Address address) {
-            this.name = name;
-            this.address = address;
-        }
-
-        public SlotMeasurementKey(SlotMeasurementRequest sanSm) {
+    /** Struct-like representing a name and an address of a slot measurement */
+    record SlotMeasurementKey(String name, Address address) {
+        SlotMeasurementKey(SlotMeasurementRequest sanSm) {
             this(sanSm.getName(), sanSm.getAddress());
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            SlotMeasurementKey that = (SlotMeasurementKey) o;
-            return (Objects.equals(this.name, that.name)
-                    && Objects.equals(this.address, that.address));
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(name, address);
         }
     }
 }

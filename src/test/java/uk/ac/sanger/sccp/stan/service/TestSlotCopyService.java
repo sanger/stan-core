@@ -28,6 +28,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.stan.Matchers.assertProblem;
+import static uk.ac.sanger.sccp.stan.Matchers.mayAddProblem;
 
 /**
  * Tests {@link SlotCopyServiceImp}
@@ -179,17 +181,16 @@ public class TestSlotCopyService {
         bcStates.put("Beta", Labware.State.discarded);
         doReturn(bcStates).when(service).checkListedSources(any(), any());
         doNothing().when(service).checkPreBarcodes(any(), any(), any());
-        doNothing().when(service).checkPreBarcodesInUse(any(), any());
+        doNothing().when(service).checkPreBarcodesInUse(any(), any(), any());
+        doNothing().when(service).checkExistingDestinations(any(), any(), any(), any(), any());
         doNothing().when(service).validateOps(any(), any(), any(), any());
         UCMap<BioState> bsMap = UCMap.from(BioState::getName, new BioState(40, "Fried"));
         doReturn(bsMap).when(service).validateBioStates(any(), any());
+        UCMap<Labware> existingDests = UCMap.from(Labware::getBarcode, EntityFactory.getTube());
+        doReturn(existingDests).when(service).loadExistingDestinations(any(), any(), any());
         OperationResult opResult = new OperationResult(List.of(), List.of());
-        doReturn(opResult).when(service).executeOps(any(), any(), any(), any(), any(), any(), any());
-        if (valid) {
-            doNothing().when(service).validateContents(any(), any(), any(), any());
-        } else {
-            doAnswer(Matchers.addProblem("Bananas")).when(service).validateContents(any(), any(), any(), any());
-        }
+        doReturn(opResult).when(service).executeOps(any(), any(), any(), any(), any(), any(), any(), any());
+        mayAddProblem(valid ? null : "Bananas").when(service).validateContents(any(), any(), any(), any(), any());
         final Set<String> barcodesToUnstore = new HashSet<>();
         if (valid) {
             assertSame(opResult, service.performInsideTransaction(user, request, barcodesToUnstore));
@@ -200,22 +201,175 @@ public class TestSlotCopyService {
         }
         verify(mockOpTypeRepo).findByName(request.getOperationType());
         verify(service).loadLabwareTypes(notNull(), same(request.getDestinations()));
+        verify(service).loadExistingDestinations(notNull(), same(opType), same(request.getDestinations()));
+        verify(service).checkExistingDestinations(notNull(), same(request.getDestinations()), same(existingDests), same(lwTypes), same(bsMap));
         verify(service).checkPreBarcodes(notNull(), same(request.getDestinations()), same(lwTypes));
-        verify(service).checkPreBarcodesInUse(notNull(), same(request.getDestinations()));
+        verify(service).checkPreBarcodesInUse(notNull(), same(request.getDestinations()), same(existingDests));
         verify(service).loadSources(notNull(), same(request));
         verify(service).validateSources(notNull(), eq(lwMap.values()));
         verify(service).validateLotNumbers(notNull(), same(request.getDestinations()));
         verify(service).checkListedSources(notNull(), same(request));
-        verify(service).validateContents(notNull(), same(lwTypes), same(lwMap), same(request));
+        verify(service).validateContents(notNull(), same(lwTypes), same(lwMap), same(existingDests), same(request));
         verify(service).validateOps(notNull(), same(request.getDestinations()), same(opType), same(lwTypes));
 
         if (valid) {
-            verify(service).executeOps(user, request.getDestinations(), opType, lwTypes, bsMap, lwMap, work);
+            verify(service).executeOps(user, request.getDestinations(), opType, lwTypes, bsMap, lwMap, work, existingDests);
             verify(service).updateSources(bcStates, lwMap.values(), Labware.State.used, barcodesToUnstore);
         } else {
-            verify(service, never()).executeOps(any(), any(), any(), any(), any(), any(), any());
+            verify(service, never()).executeOps(any(), any(), any(), any(), any(), any(), any(), any());
             verify(service, never()).updateSources(any(), any(), any(), any());
         }
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "false,false,,",
+            "false,true,,",
+            "true,true,,",
+            "true,false,,Reusing existing destinations is not supported for operation type Transfer.",
+            "true,true,Bad labware,Bad labware",
+    })
+    public void testLoadExisingDestinations(boolean anyRequested, boolean opTypeAllows, String valProblem, String expectedProblem) {
+        List<SlotCopyDestination> dests = List.of(
+                new SlotCopyDestination(), new SlotCopyDestination(), new SlotCopyDestination()
+        );
+        if (anyRequested) {
+            dests.get(0).setBarcode("STAN-1");
+            dests.get(1).setBarcode("STAN-2");
+        }
+        LabwareValidator val;
+        List<Labware> lws;
+        if (anyRequested) {
+            LabwareType lt = EntityFactory.getTubeType();
+            val = mock(LabwareValidator.class);
+            lws = List.of(EntityFactory.makeEmptyLabware(lt, "STAN-1"), EntityFactory.makeEmptyLabware(lt, "STAN-2"));
+            when(val.getLabware()).thenReturn(lws);
+            when(val.getErrors()).thenReturn(valProblem==null ? List.of() : List.of(valProblem));
+            when(mockLabwareValidatorFactory.getValidator()).thenReturn(val);
+        } else {
+            lws = null;
+            val = null;
+        }
+        List<String> problems = new ArrayList<>(expectedProblem==null ? 0 : 1);
+        OperationType opType;
+        if (opTypeAllows) {
+            opType = EntityFactory.makeOperationType("Transfer", null, OperationTypeFlag.ACTIVE_DEST);
+        } else {
+            opType = EntityFactory.makeOperationType("Transfer", null);
+        }
+        UCMap<Labware> lwMap = service.loadExistingDestinations(problems, opType, dests);
+        if (anyRequested) {
+            assertThat(lwMap.values()).containsExactlyInAnyOrderElementsOf(lws);
+            verify(val).loadLabware(mockLwRepo, List.of("STAN-1", "STAN-2"));
+            verify(val).validateActiveDestinations();
+        } else {
+            verifyNoInteractions(mockLabwareValidatorFactory);
+            assertThat(lwMap).isEmpty();
+        }
+        assertProblem(problems, expectedProblem);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testCheckExistingDestinations(boolean valid) {
+        final List<String> problems = new ArrayList<>(valid ? 0 : 2);
+        LabwareType lt = EntityFactory.getTubeType();
+        Labware[] lws = Stream.of("STAN-A", "STAN-B")
+                .map(bc -> EntityFactory.makeEmptyLabware(lt, bc))
+                .toArray(Labware[]::new);
+        mayAddProblem(valid ? null : "Wrong lt").when(service).checkExistingLabwareType(any(), same(lws[0]), any());
+        doNothing().when(service).checkExistingLabwareType(any(), same(lws[1]), any());
+        doNothing().when(service).checkExistingLabwareBioState(any(), same(lws[0]), any());
+        mayAddProblem(valid ? null : "Wrong bs").when(service).checkExistingLabwareBioState(any(), same(lws[1]), any());
+
+        List<SlotCopyDestination> dests = IntStream.range(0,3).mapToObj(i -> {
+            SlotCopyDestination dest = new SlotCopyDestination("lt"+i, null, null, null, null,
+                    List.of(), "bs"+i);
+            dest.setBarcode("STAN-"+ (char) ('A'+i));
+            return dest;
+        }).collect(toList());
+
+        UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lws);
+        BioState[] bss = IntStream.range(0,2)
+                .mapToObj(i -> new BioState(100+i, "bs"+i))
+                .toArray(BioState[]::new);
+        UCMap<BioState> bsMap = UCMap.from(BioState::getName, bss);
+        LabwareType[] lts = IntStream.range(0,2)
+                .mapToObj(i -> EntityFactory.makeLabwareType(1, 1, "lt"+i))
+                .toArray(LabwareType[]::new);
+        UCMap<LabwareType> ltMap = UCMap.from(LabwareType::getName, lts);
+
+        service.checkExistingDestinations(problems, dests, lwMap, ltMap, bsMap);
+
+        if (valid) {
+            assertThat(problems).isEmpty();
+        } else {
+            assertThat(problems).containsExactlyInAnyOrder("Wrong lt", "Wrong bs");
+        }
+
+        for (int i = 0; i < bss.length; ++i) {
+            verify(service).checkExistingLabwareBioState(problems, lws[i], bss[i]);
+            verify(service).checkExistingLabwareType(problems, lws[i], lts[i]);
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "true, true, true,",
+            "true, false, false,",
+            "false, true, false,",
+            "true, true, false, Labware type LT1 specified for labware STAN-A but it already has type LT0.",
+    })
+    public void testCheckExistingLabwareType(boolean lwExists, boolean ltExists, boolean matches, String expectedProblem) {
+        Labware lw = null;
+        LabwareType lt1 = null;
+        if (lwExists) {
+            LabwareType lt0 = EntityFactory.makeLabwareType(1, 1, "LT0");
+            lw = EntityFactory.makeEmptyLabware(lt0, "STAN-A");
+            if (matches) {
+                lt1 = lt0;
+            }
+        }
+        if (ltExists && lt1==null) {
+            lt1 = EntityFactory.makeLabwareType(1, 1, "LT1");
+        }
+        List<String> problems = new ArrayList<>(expectedProblem==null ? 0 : 1);
+        service.checkExistingLabwareType(problems, lw, lt1);
+        assertProblem(problems, expectedProblem);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "false,false,0,false,",
+            "true,true,0,false,",
+            "true,true,2,false,",
+            "true,true,1,true,",
+            "true,true,1,false, 'Bio state bs specified for labware STAN-A, which already uses bio state bs0.'",
+    })
+    public void testCheckExistingLabwareBioState(boolean lwExists, boolean bsExists, int bsCount, boolean matches,
+                                                 String expectedProblem) {
+        Labware lw = null;
+        BioState bs = null;
+        if (lwExists) {
+            Sample[] samples = IntStream.range(0, bsCount)
+                    .mapToObj(i -> {
+                        BioState bsi = new BioState(10+i, "bs"+i);
+                        return new Sample(20+i, 0, null, bsi);
+                    }).toArray(Sample[]::new);
+            LabwareType lt = bsCount <= 1 ? EntityFactory.getTubeType() : EntityFactory.makeLabwareType(1, bsCount);
+            lw = EntityFactory.makeLabware(lt, samples);
+            lw.setBarcode("STAN-A");
+            if (matches) {
+                bs = samples[0].getBioState();
+            }
+        }
+        if (bsExists && bs==null) {
+            bs = new BioState(40, "bs");
+        }
+
+        List<String> problems = new ArrayList<>(expectedProblem==null ? 0 : 1);
+        service.checkExistingLabwareBioState(problems, lw, bs);
+        assertProblem(problems, expectedProblem);
     }
 
     @ParameterizedTest
@@ -322,7 +476,7 @@ public class TestSlotCopyService {
 
     @ParameterizedTest
     @MethodSource("checkPreBarcodesInUseArgs")
-    public void testCheckPreBarcodesInUse(Collection<String> prebarcodes, String expectedProblem) {
+    public void testCheckPreBarcodesInUse(Collection<String> prebarcodes, UCMap<Labware> existingDests, String expectedProblem) {
         List<SlotCopyDestination> scds = prebarcodes.stream()
                 .map(bc -> toSCD("Pretube", bc))
                 .collect(toList());
@@ -331,19 +485,43 @@ public class TestSlotCopyService {
         doReturn(false).when(mockLwRepo).existsByExternalBarcode(any());
         doReturn(true).when(mockLwRepo).existsByExternalBarcode("USEDEXTBC");
         List<String> problems = new ArrayList<>(expectedProblem==null ? 0 : 1);
-        service.checkPreBarcodesInUse(problems, scds);
+        service.checkPreBarcodesInUse(problems, scds, existingDests);
         Matchers.assertProblem(problems, expectedProblem);
     }
 
     static Stream<Arguments> checkPreBarcodesInUseArgs() {
+        LabwareType lt = EntityFactory.getTubeType();
+        Labware destWithoutPrebc = EntityFactory.makeEmptyLabware(lt, "CGAP-PRE1");
+        Labware destWithPrebc = EntityFactory.makeEmptyLabware(lt, "CGAP-PRE1");
+        destWithPrebc.setExternalBarcode("UsedExt");
+        UCMap<Labware> existingDests = UCMap.from(Labware::getBarcode, destWithoutPrebc, destWithPrebc);
         return Arrays.stream(new Object[][] {
-                {List.of("Alpha", "Beta"), null},
-                {List.of(), null},
-                {Arrays.asList(null, null, "", "", "Alpha", "Beta"), null},
-                {List.of("Alpha", "USEDBC"), "Labware already exists with barcode USEDBC."},
-                {List.of("Beta", "USEDEXTBC"), "Labware already exists with external barcode USEDEXTBC."},
-                {List.of("Alpha", "Beta", "ALPHA"), "Destination barcode given multiple times: ALPHA"},
+                {List.of("Alpha", "Beta"), existingDests, null},
+                {List.of(), existingDests, null},
+                {Arrays.asList(null, null, "", "", "Alpha", "Beta"), existingDests, null},
+                {List.of("Alpha", "USEDBC"), existingDests, "Labware already exists with barcode USEDBC."},
+                {List.of("Beta", "USEDEXTBC"), existingDests, "Labware already exists with external barcode USEDEXTBC."},
+                {List.of("Alpha", "Beta", "ALPHA"), existingDests, "External barcode given multiple times: ALPHA"},
         }).map(Arguments::of);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "PREBC0, PREBC0, false",
+            "PREBC0,,false",
+            "PREBC0, PREBC1, true",
+            ",PREBC1,true",
+    })
+    public void testCheckPrebarcodesInUseWithExistingLabware(String oldPrebc, String newPrebc, boolean expectError) {
+        LabwareType lt = EntityFactory.getTubeType();
+        Labware destWithPrebc = EntityFactory.makeEmptyLabware(lt, "CGAP-A1");
+        destWithPrebc.setExternalBarcode(oldPrebc);
+        UCMap<Labware> existingDests = UCMap.from(Labware::getBarcode, destWithPrebc);
+        SlotCopyDestination dest = toSCD("pretube", newPrebc);
+        dest.setBarcode(destWithPrebc.getBarcode());
+        List<String> problems = new ArrayList<>(expectError ? 1 : 0);
+        service.checkPreBarcodesInUse(problems, List.of(dest), existingDests);
+        assertProblem(problems, expectError ? "External barcode \"PREBC1\" cannot be added to existing labware CGAP-A1." : null);
     }
 
     @ParameterizedTest
@@ -565,12 +743,14 @@ public class TestSlotCopyService {
 
     @ParameterizedTest
     @MethodSource("validateContentsArgs")
-    public void testValidateContents(UCMap<Labware> lwMap, UCMap<LabwareType> lwTypes, List<SlotCopyDestination> scds,
+    public void testValidateContents(UCMap<Labware> lwMap, UCMap<LabwareType> lwTypes,
+                                     UCMap<Labware> destMap,
+                                     List<SlotCopyDestination> scds,
                                      List<String> expectedProblems) {
         List<String> problems = new ArrayList<>();
         SlotCopyRequest request = new SlotCopyRequest();
         request.setDestinations(scds);
-        service.validateContents(problems, lwTypes, lwMap, request);
+        service.validateContents(problems, lwTypes, lwMap, destMap, request);
         assertThat(problems).containsExactlyInAnyOrderElementsOf(expectedProblems);
     }
 
@@ -586,6 +766,9 @@ public class TestSlotCopyService {
         Labware src = EntityFactory.makeLabware(rowLt, sample, sample);
         src.setBarcode("STAN-0");
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, src);
+        Labware dst = EntityFactory.makeLabware(rowLt, sample);
+        dst.setBarcode("STAN-1");
+        UCMap<Labware> destMap = UCMap.from(Labware::getBarcode, dst);
         return Arrays.stream(new Object[][] {
                 {
                         List.of(makeSCD("rowLt", "STAN-0", A1, A1, "STAN-0", A2, A2),
@@ -629,7 +812,7 @@ public class TestSlotCopyService {
                 {
                     List.of(makeSCD("rowLt", "STAN-404", A3, A1)), List.of()
                 },
-        }).map(arr -> Arguments.of(lwMap, lwTypes, arr[0], arr[1]));
+        }).map(arr -> Arguments.of(lwMap, lwTypes, destMap, arr[0], arr[1]));
     }
 
     private static SlotCopyDestination makeSCD(String ltName, Object... args) {
@@ -693,7 +876,8 @@ public class TestSlotCopyService {
         User user = EntityFactory.getUser();
         List<SlotCopyDestination> dests = List.of(
                 new SlotCopyDestination("lt1", "pb1", SlideCosting.SGP, "1234567", "777777", List.of(new SlotCopyContent("STAN-0", A1, A1)), "bs1"),
-                new SlotCopyDestination("lt2", null, SlideCosting.Faculty, null, null, List.of(new SlotCopyContent("STAN-1", A1, A1)), null)
+                new SlotCopyDestination("lt2", null, SlideCosting.Faculty, null, null, List.of(new SlotCopyContent("STAN-1", A1, A1)), null),
+                new SlotCopyDestination(null, null, null, null, null, List.of(new SlotCopyContent("STAN-2", A1, A1)), "bs2")
         );
         OperationType opType = EntityFactory.makeOperationType("optype", null);
         final LabwareType lt1 = EntityFactory.makeLabwareType(1, 1, "lt1");
@@ -712,25 +896,42 @@ public class TestSlotCopyService {
         op1.setId(21);
         Operation op2 = new Operation();
         op2.setId(22);
+        Operation op3 = new Operation();
+        op3.setId(23);
         Labware newLw1 = EntityFactory.makeEmptyLabware(lt1);
         Labware newLw2 = EntityFactory.makeEmptyLabware(lt2);
 
-        doReturn(new OperationResult(List.of(op1), List.of(newLw1)), new OperationResult(List.of(op2), List.of(newLw2)))
-                .when(service).executeOp(any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        Labware dest1 = EntityFactory.makeEmptyLabware(EntityFactory.getTubeType(), "STAN-D");
 
-        OperationResult result = service.executeOps(user, dests, opType, lwTypes, bsMap, sources, work);
-        assertThat(result.getOperations()).containsExactly(op1, op2);
-        assertThat(result.getLabware()).containsExactly(newLw1, newLw2);
+        UCMap<Labware> existingDests = UCMap.from(Labware::getBarcode, dest1);
 
-        verify(service).executeOp(user, dests.get(0).getContents(), opType, lt1, "pb1", sources, SlideCosting.SGP, "1234567", "777777", bs);
-        verify(service).executeOp(user, dests.get(1).getContents(), opType, lt2, null, sources, SlideCosting.Faculty, null, null, null);
+        dests.get(2).setBarcode(dest1.getBarcode());
+
+        doReturn(new OperationResult(List.of(op1), List.of(newLw1)),
+                new OperationResult(List.of(op2), List.of(newLw2)),
+                new OperationResult(List.of(op3), List.of(dest1)))
+                .when(service).executeOp(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+
+        OperationResult result = service.executeOps(user, dests, opType, lwTypes, bsMap, sources, work, existingDests);
+        assertThat(result.getOperations()).containsExactly(op1, op2, op3);
+        assertThat(result.getLabware()).containsExactly(newLw1, newLw2, dest1);
+
+        verify(service).executeOp(user, dests.get(0).getContents(), opType, lt1, "pb1", sources, SlideCosting.SGP, "1234567", "777777", bs, null);
+        verify(service).executeOp(user, dests.get(1).getContents(), opType, lt2, null, sources, SlideCosting.Faculty, null, null, null, null);
+        verify(service).executeOp(user, dests.get(2).getContents(), opType, null, null, sources, null, null, null, null, dest1);
 
         verify(mockWorkService).link(work, result.getOperations());
     }
 
     @ParameterizedTest
-    @CsvSource({"false,false", "true,false", "false,true", "true,true"})
-    public void testExecuteOp(boolean bsInRequest, boolean bsInOpType) {
+    @CsvSource({"false,false,false",
+            "false,true,false",
+            "false,false,true",
+            "false,true,true",
+            "true,false,false",
+            "true,true,true",
+    })
+    public void testExecuteOp(boolean existingDest, boolean bsInRequest, boolean bsInOpType) {
         final User user = EntityFactory.getUser();
         final BioState rbs = bsInRequest ? new BioState(5, "requestbs") : null;
         final BioState obs = bsInOpType ? new BioState(6, "opbs") : null;
@@ -741,10 +942,12 @@ public class TestSlotCopyService {
         LabwareType lt = EntityFactory.getTubeType();
         UCMap<Labware> sourceMap = UCMap.from(Labware::getBarcode, EntityFactory.getTube());
         Labware emptyLw = EntityFactory.makeEmptyLabware(lt);
+        if (!existingDest) {
+            when(mockLwService.create(any(), any(), any())).thenReturn(emptyLw);
+        }
         final String preBarcode = "pb1";
         OperationType opType = EntityFactory.makeOperationType("optype1", obs);
         Map<Integer, Sample> oldSampleIdToNewSample = Map.of(500, EntityFactory.getSample());
-        when(mockLwService.create(any(), any(), any())).thenReturn(emptyLw);
         doReturn(oldSampleIdToNewSample).when(service).createSamples(any(), any(), any());
         Labware filledLw = EntityFactory.makeLabware(lt, EntityFactory.getSample());
         doReturn(filledLw).when(service).fillLabware(any(), any(), any(), any());
@@ -752,11 +955,15 @@ public class TestSlotCopyService {
         op.setId(50);
         doReturn(op).when(service).createOperation(any(), any(), any(), any(), any(), any());
 
-        OperationResult opres = service.executeOp(user, contents, opType, lt, preBarcode, sourceMap, costing, lotNumber, probeLotNumber, rbs);
+        OperationResult opres = service.executeOp(user, contents, opType, lt, preBarcode, sourceMap, costing, lotNumber, probeLotNumber, rbs, existingDest ? emptyLw : null);
         assertThat(opres.getLabware()).containsExactly(filledLw);
         assertThat(opres.getOperations()).containsExactly(op);
 
-        verify(mockLwService).create(lt, preBarcode, preBarcode);
+        if (existingDest) {
+            verifyNoInteractions(mockLwService);
+        } else {
+            verify(mockLwService).create(lt, preBarcode, preBarcode);
+        }
         verify(service).createSamples(contents, sourceMap, bsInRequest ? rbs : obs);
         verify(service).fillLabware(emptyLw, contents, sourceMap, oldSampleIdToNewSample);
         verify(service).createOperation(user, contents, opType, sourceMap, filledLw, oldSampleIdToNewSample);
