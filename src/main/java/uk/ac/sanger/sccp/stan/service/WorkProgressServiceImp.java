@@ -36,7 +36,7 @@ public class WorkProgressServiceImp implements WorkProgressService {
     private final WorkEventService workEventService;
     // Consider for the future moving these sets to a config class and injecting them
     private final Set<String> includedOpTypes = Set.of("section", "stain", "extract", "transfer", "image",
-            "rin analysis", "dv200 analysis");
+            "rin analysis", "dv200 analysis","probe hybridisation xenium","xenium analyser");
     private final Set<String> specialStainTypes = Set.of("rnascope", "ihc");
     private final Set<String> specialLabwareTypes = Set.of("visium to", "visium lp");
     private final Map<String,Set<String>> labwareTypeToStainMap = Map.of("visium adh", Set.of("h&e"));
