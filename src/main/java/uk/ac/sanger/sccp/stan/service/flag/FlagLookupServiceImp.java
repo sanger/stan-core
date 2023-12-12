@@ -79,7 +79,7 @@ public class FlagLookupServiceImp implements FlagLookupService {
      */
     @NotNull
     Map<SlotSample, List<LabwareFlag>> loadDirectFlags(Collection<SlotSample> slotSamples) {
-        Set<Integer> labwareIds = slotSamples.stream().map(ss -> ss.getSlot().getLabwareId()).collect(toSet());
+        Set<Integer> labwareIds = slotSamples.stream().map(ss -> ss.slot().getLabwareId()).collect(toSet());
         List<LabwareFlag> flags = flagRepo.findAllByLabwareIdIn(labwareIds);
         if (flags.isEmpty()) {
             return Map.of();
@@ -157,7 +157,7 @@ public class FlagLookupServiceImp implements FlagLookupService {
         Set<SlotSample> slotSamples = SlotSample.stream(lw).collect(toSet());
         Ancestry ancestry = ancestoriser.findAncestry(slotSamples);
         Set<SlotSample> ancestorSS = ancestry.keySet();
-        Set<Integer> labwareIds = ancestorSS.stream().map(ss -> ss.getSlot().getLabwareId()).collect(toSet());
+        Set<Integer> labwareIds = ancestorSS.stream().map(ss -> ss.slot().getLabwareId()).collect(toSet());
         List<LabwareFlag> flags = flagRepo.findAllByLabwareIdIn(labwareIds);
         if (flags.isEmpty()) {
             return false;
@@ -180,7 +180,7 @@ public class FlagLookupServiceImp implements FlagLookupService {
                 .collect(toSet());
         Ancestry ancestry = ancestoriser.findAncestry(slotSamples);
         Set<SlotSample> ancestorSs = ancestry.keySet();
-        Set<Integer> labwareIds = ancestorSs.stream().map(ss -> ss.getSlot().getLabwareId()).collect(toSet());
+        Set<Integer> labwareIds = ancestorSs.stream().map(ss -> ss.slot().getLabwareId()).collect(toSet());
         List<LabwareFlag> flags = flagRepo.findAllByLabwareIdIn(labwareIds);
         if (flags.isEmpty()) {
             return labware.stream().map(lw -> new LabwareFlagged(lw, false)).toList();
