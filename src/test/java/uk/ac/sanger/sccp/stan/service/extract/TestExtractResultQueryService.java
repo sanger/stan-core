@@ -3,11 +3,14 @@ package uk.ac.sanger.sccp.stan.service.extract;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.ExtractResult;
+import uk.ac.sanger.sccp.stan.request.LabwareFlagged;
+import uk.ac.sanger.sccp.stan.service.flag.FlagLookupService;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -23,6 +26,7 @@ import static org.mockito.Mockito.*;
  * @author dr6
  */
 public class TestExtractResultQueryService {
+    private FlagLookupService mockFlagLookupService;
     private LabwareRepo mockLwRepo;
     private OperationTypeRepo mockOpTypeRepo;
     private OperationRepo mockOpRepo;
@@ -35,6 +39,7 @@ public class TestExtractResultQueryService {
 
     @BeforeEach
     void setup() {
+        mockFlagLookupService = mock(FlagLookupService.class);
         mockLwRepo = mock(LabwareRepo.class);
         mockOpTypeRepo = mock(OperationTypeRepo.class);
         mockOpRepo = mock(OperationRepo.class);
@@ -42,7 +47,8 @@ public class TestExtractResultQueryService {
         mockResultOpRepo = mock(ResultOpRepo.class);
         mockMeasurementRepo = mock(MeasurementRepo.class);
 
-        service = spy(new ExtractResultQueryService(mockLwRepo, mockOpTypeRepo, mockOpRepo, mockActionRepo, mockResultOpRepo, mockMeasurementRepo));
+        service = spy(new ExtractResultQueryService(mockFlagLookupService, mockLwRepo, mockOpTypeRepo, mockOpRepo,
+                mockActionRepo, mockResultOpRepo, mockMeasurementRepo));
     }
 
     private void setupOpTypes() {
@@ -53,31 +59,45 @@ public class TestExtractResultQueryService {
     }
 
     @ParameterizedTest
-    @ValueSource(booleans = {false, true})
-    public void testGetExtractResult(boolean resultExists) {
+    @CsvSource({"false,false", "false,true", "true,false", "true,true", "false,", "true,"})
+    public void testGetExtractResult(boolean resultExists, Boolean flagged) {
         Labware lw = EntityFactory.getTube();
+        boolean loadFlags = (flagged!=null);
+        LabwareFlagged lf;
+        if (loadFlags) {
+            lf = new LabwareFlagged(lw, flagged);
+            when(mockFlagLookupService.getLabwareFlagged(lw)).thenReturn(lf);
+        } else {
+            lf = new LabwareFlagged(lw, false);
+        }
         String barcode = lw.getBarcode();
         when(mockLwRepo.getByBarcode(barcode)).thenReturn(lw);
-        ExtractResult result = resultExists ? new ExtractResult(lw, PassFail.pass, "200") : null;
+        ExtractResult result = resultExists ? new ExtractResult(lf, PassFail.pass, "200") : null;
         doReturn(result).when(service).findExtractResult(any());
         if (resultExists) {
-            assertSame(result, service.getExtractResult(barcode));
+            assertSame(result, service.getExtractResult(barcode, loadFlags));
         } else {
-            assertEquals(new ExtractResult(lw, null, null), service.getExtractResult(barcode));
+            assertEquals(new ExtractResult(lf, null, null), service.getExtractResult(barcode, loadFlags));
+        }
+        if (loadFlags) {
+            verify(mockFlagLookupService).getLabwareFlagged(lw);
+        } else {
+            verifyNoInteractions(mockFlagLookupService);
         }
         verify(mockLwRepo).getByBarcode(barcode);
-        verify(service).findExtractResult(lw);
+        verify(service).findExtractResult(lf);
     }
 
     @Test
     public void testFindExtractResult_foundOnLabware() {
         setupOpTypes();
         Labware lw = EntityFactory.getTube();
+        LabwareFlagged lf = new LabwareFlagged(lw, false);
         ResultOp ro = new ResultOp(20, PassFail.pass, 30, 40, 50, 60);
         doReturn(ro).when(service).selectExtractResult(List.of(lw));
         String conc = "20";
         doReturn(conc).when(service).getConcentration(30, List.of(lw));
-        assertEquals(new ExtractResult(lw, PassFail.pass, conc), service.findExtractResult(lw));
+        assertEquals(new ExtractResult(lf, PassFail.pass, conc), service.findExtractResult(lf));
         verify(service).selectExtractResult(List.of(lw));
         verify(service).getConcentration(ro.getOperationId(), List.of(lw));
         verifyNoInteractions(mockActionRepo);
@@ -87,9 +107,10 @@ public class TestExtractResultQueryService {
     public void testFindExtractResult_noSources() {
         setupOpTypes();
         Labware lw = EntityFactory.getTube();
+        LabwareFlagged lf = new LabwareFlagged(lw, false);
         doReturn(null).when(service).selectExtractResult(List.of(lw));
         when(mockActionRepo.findSourceLabwareIdsForDestinationLabwareIds(any())).thenReturn(List.of());
-        assertNull(service.findExtractResult(lw));
+        assertNull(service.findExtractResult(lf));
         verify(service).selectExtractResult(List.of(lw));
         verify(service, never()).getConcentration(any(), any());
         verify(mockActionRepo).findSourceLabwareIdsForDestinationLabwareIds(List.of(lw.getId()));
@@ -100,6 +121,7 @@ public class TestExtractResultQueryService {
     public void testFindExtractResult_foundOnSources() {
         setupOpTypes();
         Labware lw = EntityFactory.getTube();
+        LabwareFlagged lf = new LabwareFlagged(lw, false);
         final LabwareType lt = lw.getLabwareType();
         doReturn(null).when(service).selectExtractResult(List.of(lw));
         List<Labware> sourceLabware = List.of(EntityFactory.makeEmptyLabware(lt), EntityFactory.makeEmptyLabware(lt));
@@ -111,7 +133,7 @@ public class TestExtractResultQueryService {
         String conc = "41";
         doReturn(conc).when(service).getConcentration(any(), any());
 
-        assertEquals(new ExtractResult(lw, PassFail.pass, conc), service.findExtractResult(lw));
+        assertEquals(new ExtractResult(lf, PassFail.pass, conc), service.findExtractResult(lf));
 
         verify(service).selectExtractResult(List.of(lw));
         verify(mockActionRepo).findSourceLabwareIdsForDestinationLabwareIds(List.of(lw.getId()));
@@ -124,6 +146,7 @@ public class TestExtractResultQueryService {
     public void testFindExtractResult_notFoundOnSources() {
         setupOpTypes();
         Labware lw = EntityFactory.getTube();
+        LabwareFlagged lf = new LabwareFlagged(lw, false);
         final LabwareType lt = lw.getLabwareType();
         doReturn(null).when(service).selectExtractResult(any());
         List<Labware> sourceLabware = List.of(EntityFactory.makeEmptyLabware(lt), EntityFactory.makeEmptyLabware(lt));
@@ -131,7 +154,7 @@ public class TestExtractResultQueryService {
         when(mockActionRepo.findSourceLabwareIdsForDestinationLabwareIds(any())).thenReturn(sourceLwIds);
         when(mockLwRepo.findAllByIdIn(any())).thenReturn(sourceLabware);
 
-        assertNull(service.findExtractResult(lw));
+        assertNull(service.findExtractResult(lf));
 
         verify(service).selectExtractResult(List.of(lw));
         verify(mockActionRepo).findSourceLabwareIdsForDestinationLabwareIds(List.of(lw.getId()));

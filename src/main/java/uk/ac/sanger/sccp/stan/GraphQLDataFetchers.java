@@ -449,7 +449,10 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     }
 
     public DataFetcher<ExtractResult> getExtractResult() {
-        return dfe -> extractResultQueryService.getExtractResult(dfe.getArgument("barcode"));
+        return dfe -> {
+            boolean loadFlags = requestsField(dfe, "**/flagged");
+            return extractResultQueryService.getExtractResult(dfe.getArgument("barcode"), loadFlags);
+        };
     }
 
     public DataFetcher<List<OpPassFail>> getPassFails() {

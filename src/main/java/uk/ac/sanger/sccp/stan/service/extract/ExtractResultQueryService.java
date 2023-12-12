@@ -6,6 +6,8 @@ import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.ExtractResult;
+import uk.ac.sanger.sccp.stan.request.LabwareFlagged;
+import uk.ac.sanger.sccp.stan.service.flag.FlagLookupService;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import javax.persistence.EntityNotFoundException;
@@ -25,6 +27,8 @@ public class ExtractResultQueryService {
             EXTRACT_OP_NAME = "Extract",
             CONCENTRATION_NAME = "RNA concentration";
 
+    private final FlagLookupService flagLookupService;
+
     private final LabwareRepo lwRepo;
     private final OperationTypeRepo opTypeRepo;
     private final OperationRepo opRepo;
@@ -33,9 +37,11 @@ public class ExtractResultQueryService {
     private final MeasurementRepo measurementRepo;
 
     @Autowired
-    public ExtractResultQueryService(LabwareRepo lwRepo, OperationTypeRepo opTypeRepo, OperationRepo opRepo,
+    public ExtractResultQueryService(FlagLookupService flagLookupService,
+                                     LabwareRepo lwRepo, OperationTypeRepo opTypeRepo, OperationRepo opRepo,
                                      ActionRepo actionRepo, ResultOpRepo resultOpRepo,
                                      MeasurementRepo measurementRepo) {
+        this.flagLookupService = flagLookupService;
         this.lwRepo = lwRepo;
         this.opTypeRepo = opTypeRepo;
         this.opRepo = opRepo;
@@ -50,24 +56,32 @@ public class ExtractResultQueryService {
      * If the labware exists but has no extract result recorded on it, the relevant fields in the
      * result will be null.
      * @param barcode the barcode of a piece of labware
+     * @param loadFlags true to check for labware flags on the labware
      * @return the labware, pass/fail result and concentration for the result (if found)
      * @exception EntityNotFoundException if the labware barcode is unknown
      */
-    public ExtractResult getExtractResult(String barcode) {
+    public ExtractResult getExtractResult(String barcode, boolean loadFlags) {
         Labware lw = lwRepo.getByBarcode(barcode);
-        ExtractResult res = findExtractResult(lw);
-        return (res==null ? new ExtractResult(lw, null, null) : res);
+        LabwareFlagged lf;
+        if (loadFlags) {
+            lf = flagLookupService.getLabwareFlagged(lw);
+        } else {
+            lf = new LabwareFlagged(lw, false);
+        }
+        ExtractResult res = findExtractResult(lf);
+        return res!=null ? res : new ExtractResult(lf, null, null);
     }
 
     /**
      * Finds the extract result recorded either on the given labware or on the source labware for the given labware
-     * @param lw the item of labware
+     * @param lf the (flagged) labware to find results for
      * @return the result op (if any) recorded on the given labware or on the sources of that labware
      */
-    public ExtractResult findExtractResult(Labware lw) {
+    public ExtractResult findExtractResult(LabwareFlagged lf) {
+        Labware lw = lf.getLabware();
         ResultOp ro = selectExtractResult(List.of(lw));
         if (ro!=null) {
-            return new ExtractResult(lw, ro.getResult(), getConcentration(ro.getOperationId(), List.of(lw)));
+            return new ExtractResult(lf, ro.getResult(), getConcentration(ro.getOperationId(), List.of(lw)));
         }
         List<Integer> sourceLwIds = actionRepo.findSourceLabwareIdsForDestinationLabwareIds(List.of(lw.getId()));
         if (sourceLwIds==null || sourceLwIds.isEmpty()) {
@@ -78,7 +92,7 @@ public class ExtractResultQueryService {
         if (ro==null) {
             return null;
         }
-        return new ExtractResult(lw, ro.getResult(), getConcentration(ro.getOperationId(), sourceLabware));
+        return new ExtractResult(lf, ro.getResult(), getConcentration(ro.getOperationId(), sourceLabware));
     }
 
     /**

@@ -1385,7 +1385,7 @@ type OpPassFail {
 """A piece of labware and an extract result, if any exists."""
 type ExtractResult {
     """The labware the result refers to."""
-    labware: Labware!
+    labware: LabwareFlagged!
     """The result, if any."""
     result: PassFail
     """The concentration recorded, if any."""
