@@ -44,4 +44,12 @@ public interface FlagLookupService {
      * @return an object specifying a labware and whether or not there are any applicable flags
      */
     LabwareFlagged getLabwareFlagged(Labware lw);
+
+    /**
+     * Looks up which labware are flagged and returns {@code LabwareFlagged} objects.
+     * Labware are returned in the same order as the labware passed in.
+     * @param labware the labware to check
+     * @return objects specifying the labware and whether there are any applicable flags
+     */
+    List<LabwareFlagged> getLabwareFlagged(Collection<Labware> labware);
 }

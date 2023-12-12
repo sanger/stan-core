@@ -276,4 +276,36 @@ class TestFlagLookupService {
         verify(mockFlagRepo).findAllByLabwareIdIn(Set.of(lw.getId(), otherLw.getId()));
         verify(mockOpRepo).findAllById(Set.of(10,11));
     }
+
+    @Test
+    void testGetLabwareFlagged_multi() {
+        Labware lw = EntityFactory.getTube();
+        Sample sample = lw.getFirstSlot().getSamples().getFirst();
+        Labware lw2 = EntityFactory.makeLabware(lw.getLabwareType(), sample);
+        SlotSample lw1Ss = new SlotSample(lw.getFirstSlot(), sample);
+        SlotSample lw2Ss = new SlotSample(lw2.getFirstSlot(), sample);
+        Ancestry anc = mock(Ancestry.class);
+        when(mockAncestoriser.findAncestry(any())).thenReturn(anc);
+        Labware otherLw = EntityFactory.makeBlock(sample);
+        SlotSample blockSs = new SlotSample(otherLw.getFirstSlot(), sample);
+        Set<SlotSample> ancSs = Set.of(lw1Ss, lw2Ss, blockSs);
+        when(anc.keySet()).thenReturn(ancSs);
+        LabwareFlag flag = new LabwareFlag(100, otherLw, "Alpha", null, 10);
+        when(mockFlagRepo.findAllByLabwareIdIn(any())).thenReturn(List.of(flag));
+
+        Action ac = new Action(200, 10, otherLw.getFirstSlot(), otherLw.getFirstSlot(), sample, sample);
+        Operation op = new Operation(10, EntityFactory.makeOperationType("flag", null), null, List.of(ac), null);
+        when(mockOpRepo.findAllById(any())).thenReturn(List.of(op));
+
+        when(anc.ancestors(lw1Ss)).thenReturn(new LinkedHashSet<>(List.of(lw1Ss, blockSs)));
+        when(anc.ancestors(lw2Ss)).thenReturn(new LinkedHashSet<>(List.of(lw2Ss)));
+
+        assertEquals(List.of(new LabwareFlagged(lw, true), new LabwareFlagged(lw2, false)),
+                service.getLabwareFlagged(List.of(lw, lw2)));
+
+        verify(mockAncestoriser).findAncestry(Set.of(lw1Ss, lw2Ss));
+        verify(mockFlagRepo).findAllByLabwareIdIn(Set.of(lw.getId(), lw2.getId(), otherLw.getId()));
+        verify(mockOpRepo).findAllById(Set.of(flag.getOperationId()));
+    }
+
 }

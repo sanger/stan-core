@@ -2,7 +2,6 @@ package uk.ac.sanger.sccp.stan;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import graphql.language.Field;
 import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -435,7 +434,10 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     }
   
     public DataFetcher<PlanData> getPlanData() {
-        return dfe -> planService.getPlanData(dfe.getArgument("barcode"));
+        return dfe -> {
+            boolean requestsFlags = requestsField(dfe, "**/flagged");
+            return planService.getPlanData(dfe.getArgument("barcode"), requestsFlags);
+        };
     }
 
     public DataFetcher<List<StainType>> getEnabledStainTypes() {
@@ -498,9 +500,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         };
     }
 
-    private boolean requestsField(DataFetchingEnvironment dfe, String childName) {
-        return dfe.getField().getSelectionSet().getChildren().stream()
-                .anyMatch(f -> ((Field) f).getName().equals(childName));
+    private boolean requestsField(DataFetchingEnvironment dfe, String glob) {
+       return dfe.getSelectionSet().contains(glob);
     }
 
     @FunctionalInterface

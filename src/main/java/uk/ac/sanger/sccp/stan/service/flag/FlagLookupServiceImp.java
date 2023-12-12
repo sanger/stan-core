@@ -170,6 +170,36 @@ public class FlagLookupServiceImp implements FlagLookupService {
     }
 
     @Override
+    public List<LabwareFlagged> getLabwareFlagged(Collection<Labware> labware) {
+        requireNonNull(labware);
+        if (labware.isEmpty()) {
+            return List.of();
+        }
+        Set<SlotSample> slotSamples = labware.stream()
+                .flatMap(SlotSample::stream)
+                .collect(toSet());
+        Ancestry ancestry = ancestoriser.findAncestry(slotSamples);
+        Set<SlotSample> ancestorSs = ancestry.keySet();
+        Set<Integer> labwareIds = ancestorSs.stream().map(ss -> ss.getSlot().getLabwareId()).collect(toSet());
+        List<LabwareFlag> flags = flagRepo.findAllByLabwareIdIn(labwareIds);
+        if (flags.isEmpty()) {
+            return labware.stream().map(lw -> new LabwareFlagged(lw, false)).toList();
+        }
+        Set<Integer> opIds = flags.stream().map(LabwareFlag::getOperationId).collect(toSet());
+        Iterable<Operation> ops = opRepo.findAllById(opIds);
+        Set<SlotSample> flaggedSlotSamples = stream(ops).flatMap(op -> op.getActions().stream())
+                .map(ac -> new SlotSample(ac.getDestination(), ac.getSample()))
+                .collect(toSet());
+        List<LabwareFlagged> lwFlagged = new ArrayList<>(labware.size());
+        for (Labware lw : labware) {
+            boolean flagged = (SlotSample.stream(lw).flatMap(ss -> ancestry.ancestors(ss).stream())
+                    .anyMatch(flaggedSlotSamples::contains));
+            lwFlagged.add(new LabwareFlagged(lw, flagged));
+        }
+        return lwFlagged;
+    }
+
+    @Override
     public LabwareFlagged getLabwareFlagged(Labware lw) {
         return new LabwareFlagged(lw, isFlagged(lw));
     }

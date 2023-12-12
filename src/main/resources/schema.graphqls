@@ -1007,11 +1007,11 @@ type History {
 """Information about a plan previously recorded, now being looked up."""
 type PlanData {
     """One or more items of source labware for the plan."""
-    sources: [Labware!]!
+    sources: [LabwareFlagged!]!
     """The planned operation."""
     plan: PlanOperation!
     """The single item of destination labware for the plan."""
-    destination: Labware!
+    destination: LabwareFlagged!
 }
 
 """A project that work can be associated with."""
