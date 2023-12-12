@@ -36,7 +36,7 @@ public class Ancestoriser {
         Set<SlotSample> newSlotSamples = new HashSet<>(slotSamples);
         Set<SlotSample> done = new HashSet<>();
         while (!newSlotSamples.isEmpty()) {
-            Set<Slot> slots = newSlotSamples.stream().map(SlotSample::getSlot).collect(toSet());
+            Set<Slot> slots = newSlotSamples.stream().map(SlotSample::slot).collect(toSet());
             List<Action> actions = actionRepo.findAllByDestinationIn(slots);
             Map<Integer, List<Action>> destSlotIdActions = new HashMap<>();
             for (Action action : actions) {
@@ -165,51 +165,42 @@ public class Ancestoriser {
         }
     }
 
-    /**
-     * A class representing just a slot and a sample, used in an ancestry map.
-     */
-    public static class SlotSample implements Comparable<SlotSample> {
-        private final Slot slot;
-        private final Sample sample;
+    /** A class representing just a slot and a sample, used in an ancestry map. */
+    public record SlotSample(Slot slot, Sample sample) implements Comparable<SlotSample> {
 
-        public SlotSample(Slot slot, Sample sample) {
-            this.slot = slot;
-            this.sample = sample;
+        public Integer slotId() {
+            return this.slot().getId();
         }
 
-        public Slot getSlot() {
-            return this.slot;
+        public Integer sampleId() {
+            return this.sample().getId();
         }
-
-        public Sample getSample() {
-            return this.sample;
-        }
-
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             SlotSample that = (SlotSample) o;
-            return (this.slot.getId().equals(that.slot.getId()) && this.sample.getId().equals(that.sample.getId()));
+            return (slotId().equals(that.slotId()) && sampleId().equals(that.sampleId()));
         }
+
 
         @Override
         public int hashCode() {
-            return 31*slot.getId() + sample.getId();
+            return 31*slotId() + sampleId();
         }
 
         @Override
         public String toString() {
-            return String.format("(Slot(%s), Sample(%s))", slot.getId(), sample.getId());
+            return String.format("(Slot(%s), Sample(%s))", slotId(), sampleId());
         }
 
         @Override
         public int compareTo(@NotNull SlotSample that) {
-            int n = Integer.compare(this.slot.getId(), that.slot.getId());
+            int n = Integer.compare(this.slotId(), that.slotId());
             if (n!=0) {
                 return n;
             }
-            return Integer.compare(this.sample.getId(), that.sample.getId());
+            return Integer.compare(this.sampleId(), that.sampleId());
         }
 
         public static Stream<SlotSample> stream(Stream<Slot> slots) {

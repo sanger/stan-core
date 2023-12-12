@@ -341,11 +341,11 @@ public class LabwareLabelDataService {
     }
 
     public String prefix(LifeStage lifeStage) {
-        switch (lifeStage) {
-            case fetal: return "F";
-            case paediatric: return "P";
-            default: return "";
-        }
+        return switch (lifeStage) {
+            case fetal -> "F";
+            case paediatric -> "P";
+            default -> "";
+        };
     }
 
     public List<LabelContent> getPlannedContent(List<PlanAction> planActions, Comparator<Slot> slotOrder) {
@@ -386,31 +386,9 @@ public class LabwareLabelDataService {
         );
     }
 
-    static class SimpleContent {
-        Tissue tissue;
-        Integer section;
-
-        public SimpleContent(Tissue tissue, Integer section) {
-            this.tissue = tissue;
-            this.section = section;
-        }
-
+    public record SimpleContent(Tissue tissue, Integer section) {
         public SimpleContent(Sample sample) {
             this(sample.getTissue(), sample.getSection());
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            SimpleContent that = (SimpleContent) o;
-            return (Objects.equals(this.tissue, that.tissue)
-                    && Objects.equals(this.section, that.section));
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(tissue, section);
         }
     }
 }

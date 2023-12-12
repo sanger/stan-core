@@ -48,7 +48,7 @@ public class SSStudyServiceImp implements SSStudyService {
     public void updateStudies() {
         log.info("Updating studies from mlwh");
         Map<Integer, SSStudy> ssStudies = ssStudyRepo.loadAllSs().stream()
-                .collect(inMap(SSStudy::getId));
+                .collect(inMap(SSStudy::id));
         transactor.transact("updateStudies", () ->
         {
             Map<Integer, DnapStudy> stanStudies = stream(dnapStudyRepo.findAll()).collect(inMap(DnapStudy::getSsId));
@@ -82,13 +82,13 @@ public class SSStudyServiceImp implements SSStudyService {
         List<DnapStudy> toRename = stanStudies.values().stream()
                 .filter(ds -> {
                     SSStudy ss = ssStudies.get(ds.getSsId());
-                    return (ss != null && !ss.getName().equals(ds.getName()));
+                    return (ss != null && !ss.name().equals(ds.getName()));
                 })
                 .collect(toList());
 
         // Any studies in sequencescape that are not in stan should be created
         List<SSStudy> toCreate = ssStudies.values().stream()
-                .filter(ss -> stanStudies.get(ss.getId())==null)
+                .filter(ss -> stanStudies.get(ss.id())==null)
                 .collect(toList());
 
         Set<DnapStudy> updated = new HashSet<>(toDisable.size() + toEnable.size() + toRename.size() + toCreate.size());
@@ -131,7 +131,7 @@ public class SSStudyServiceImp implements SSStudyService {
      * @return the updated study objects (unsaved)
      */
     List<DnapStudy> rename(List<DnapStudy> dss, Map<Integer, SSStudy> ssStudies) {
-        dss.forEach(ds -> ds.setName(ssStudies.get(ds.getSsId()).getName()));
+        dss.forEach(ds -> ds.setName(ssStudies.get(ds.getSsId()).name()));
         return dss;
     }
 
@@ -142,7 +142,7 @@ public class SSStudyServiceImp implements SSStudyService {
      */
     List<DnapStudy> create(List<SSStudy> ssStudies) {
         return ssStudies.stream()
-                .map(ss -> new DnapStudy(ss.getId(), ss.getName()))
+                .map(ss -> new DnapStudy(ss.id(), ss.name()))
                 .sorted(Comparator.comparing(DnapStudy::getSsId))
                 .collect(toList());
     }

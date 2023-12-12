@@ -356,7 +356,7 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
     }
 
     /** A key used to identify a particular plan action so we can look it up. */
-    record PlanActionKey(Address address, Integer sectionId) {
+    public record PlanActionKey(Address address, Integer sectionId) {
         PlanActionKey(PlanAction pa) {
             this(pa.getDestination().getAddress(), pa.getSample().getId());
         }
@@ -366,27 +366,5 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
      * The result on an individual piece of labware of the confirmation request.
      * If the planned operation was cancelled, then the operation included will be null.
      */
-    static class ConfirmLabwareResult {
-        Operation operation;
-        Labware labware;
-
-        public ConfirmLabwareResult(Operation operation, Labware labware) {
-            this.operation = operation;
-            this.labware = labware;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            ConfirmLabwareResult that = (ConfirmLabwareResult) o;
-            return (Objects.equals(this.operation, that.operation)
-                    && Objects.equals(this.labware, that.labware));
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(operation, labware);
-        }
-    }
+    public record ConfirmLabwareResult(Operation operation, Labware labware) {}
 }

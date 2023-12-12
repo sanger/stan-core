@@ -320,8 +320,8 @@ public class TestConfirmSectionService {
         User user = EntityFactory.getUser();
         ConfirmLabwareResult result = service.confirmLabware(user, csl, lw1, plan, regionMap, commentMap);
 
-        assertSame(lw1, result.labware);
-        assertSame(op, result.operation);
+        assertSame(lw1, result.labware());
+        assertSame(op, result.operation());
         ConfirmLabwareResult expectedResult = new ConfirmLabwareResult(op, lw1);
         assertEquals(expectedResult, result);
         assertEquals(expectedResult.hashCode(), result.hashCode());

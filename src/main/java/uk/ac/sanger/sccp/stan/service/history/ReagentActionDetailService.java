@@ -66,16 +66,16 @@ public class ReagentActionDetailService {
     public Map<Integer, List<ReagentActionDetail>> loadAncestralReagentTransfers(
             Collection<Ancestoriser.SlotSample> slotSamples) {
         Ancestoriser.Ancestry ancestry = ancestoriser.findAncestry(slotSamples);
-        Set<Integer> slotIds = ancestry.keySet().stream().map(ss -> ss.getSlot().getId()).collect(toSet());
+        Set<Integer> slotIds = ancestry.keySet().stream().map(Ancestoriser.SlotSample::slotId).collect(toSet());
         Map<Integer, List<ReagentActionDetail>> ancResults = loadReagentTransfersForSlotIds(slotIds);
         Map<Integer, List<ReagentActionDetail>> results = new HashMap<>(slotSamples.size());
 
         for (Ancestoriser.SlotSample ss : slotSamples) {
             ancestry.ancestors(ss).stream()
-                    .map(ssa -> ancResults.get(ssa.getSlot().getId()))
+                    .map(ssa -> ancResults.get(ssa.slotId()))
                     .filter(Objects::nonNull)
                     .findFirst()
-                    .ifPresent(rads -> results.put(ss.getSlot().getId(), rads));
+                    .ifPresent(rads -> results.put(ss.slotId(), rads));
         }
         return results;
     }

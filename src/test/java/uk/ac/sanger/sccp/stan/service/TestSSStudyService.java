@@ -74,7 +74,7 @@ public class TestSSStudyService {
 
         var ssMap = ssCaptor.getValue();
         assertThat(ssMap.values()).containsExactlyInAnyOrderElementsOf(sss);
-        sss.forEach(ss -> assertSame(ss, ssMap.get(ss.getId())));
+        sss.forEach(ss -> assertSame(ss, ssMap.get(ss.id())));
     }
 
     @Test
@@ -109,7 +109,7 @@ public class TestSSStudyService {
         Map<Integer, SSStudy> ssMap = Stream.of(toCreate,
                 new SSStudy(20, "Twenty"), new SSStudy(30, "Thirty"),
                 new SSStudy(40, "Forty"), new SSStudy(60, "Sixty")
-                ).collect(inMap(SSStudy::getId));
+                ).collect(inMap(SSStudy::id));
         DnapStudy newDs = new DnapStudy(50, "Fifty");
 
         doAnswer(returnArgument()).when(service).setEnabled(any(), anyBoolean());
