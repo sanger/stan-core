@@ -1913,6 +1913,8 @@ type Mutation {
     setCommentEnabled(commentId: Int!, enabled: Boolean!): Comment!
     """Create a new piece of equipment that users can record using in future operations."""
     addEquipment(category: String!, name: String!): Equipment!
+    """Rename existing equipment."""
+    renameEquipment(equipmentId: Int!, name: String!): Equipment!
     """Enable or disable a piece of equipment."""
     setEquipmentEnabled(equipmentId: Int!, enabled: Boolean!): Equipment!
     """Create a new reason that users can record when destroying labware."""

@@ -48,6 +48,17 @@ public class EquipmentAdminService {
         return equipmentRepo.save(new Equipment(name, category.toLowerCase()));
     }
 
+    public Equipment renameEquipment(int equipmentId, String newName) {
+        newName = trimAndRequire(newName, "Name not supplied.");
+        equipmentNameValidator.checkArgument(newName);
+        Equipment eq = equipmentRepo.getById(equipmentId);
+        if (newName.equals(eq.getName())) {
+            return eq;
+        }
+        eq.setName(newName);
+        return equipmentRepo.save(eq);
+    }
+
     public Equipment setEquipmentEnabled(int equipmentId, boolean enabled) {
         Equipment eq = equipmentRepo.getById(equipmentId);
         if (eq.isEnabled() != enabled) {

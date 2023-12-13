@@ -389,6 +389,17 @@ public class GraphQLMutation extends BaseGraphQLResource {
         };
     }
 
+    public DataFetcher<Equipment> renameEquipment() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.admin);
+            Integer equipmentId = dfe.getArgument("equipmentId");
+            requireNonNull(equipmentId, "equipmentId not specified");
+            String name = dfe.getArgument("name");
+            logRequest("RenameEquipment", user, String.format("(equipmentId=%s, name=%s)", equipmentId, repr(name)));
+            return equipmentAdminService.renameEquipment(equipmentId, name);
+        };
+    }
+
     public DataFetcher<DestructionReason> addDestructionReason() {
         return adminAdd(destructionReasonAdminService::addNew, "AddDestructionReason", "text");
     }
