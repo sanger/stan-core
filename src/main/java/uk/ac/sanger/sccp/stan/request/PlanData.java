@@ -1,6 +1,5 @@
 package uk.ac.sanger.sccp.stan.request;
 
-import uk.ac.sanger.sccp.stan.model.Labware;
 import uk.ac.sanger.sccp.stan.model.PlanOperation;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
@@ -15,10 +14,10 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.newArrayList;
  */
 public class PlanData {
     private PlanOperation plan;
-    private List<Labware> sources;
-    private Labware destination;
+    private List<LabwareFlagged> sources;
+    private LabwareFlagged destination;
 
-    public PlanData(PlanOperation plan, Iterable<Labware> sources, Labware destination) {
+    public PlanData(PlanOperation plan, Iterable<LabwareFlagged> sources, LabwareFlagged destination) {
         setPlan(plan);
         setSources(sources);
         setDestination(destination);
@@ -36,19 +35,19 @@ public class PlanData {
         this.plan = plan;
     }
 
-    public List<Labware> getSources() {
+    public List<LabwareFlagged> getSources() {
         return this.sources;
     }
 
-    public void setSources(Iterable<Labware> sources) {
+    public void setSources(Iterable<LabwareFlagged> sources) {
         this.sources = newArrayList(sources);
     }
 
-    public Labware getDestination() {
+    public LabwareFlagged getDestination() {
         return this.destination;
     }
 
-    public void setDestination(Labware destination) {
+    public void setDestination(LabwareFlagged destination) {
         this.destination = destination;
     }
 

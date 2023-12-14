@@ -4,10 +4,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.request.LabwareFlagged;
 import uk.ac.sanger.sccp.stan.request.PlanData;
 import uk.ac.sanger.sccp.stan.request.plan.*;
 import uk.ac.sanger.sccp.stan.service.LabwareService;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
+import uk.ac.sanger.sccp.stan.service.flag.FlagLookupService;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.UCMap;
 
@@ -26,6 +28,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 public class PlanServiceImp implements PlanService {
     private final PlanValidationFactory planValidationFactory;
     private final LabwareService lwService;
+    private final FlagLookupService flagLookupService;
     private final PlanOperationRepo planRepo;
     private final PlanActionRepo planActionRepo;
     private final OperationTypeRepo opTypeRepo;
@@ -36,12 +39,13 @@ public class PlanServiceImp implements PlanService {
 
     @Autowired
     public PlanServiceImp(PlanValidationFactory planValidationFactory,
-                          LabwareService lwService,
+                          LabwareService lwService, FlagLookupService flagLookupService,
                           PlanOperationRepo planRepo, PlanActionRepo planActionRepo,
                           OperationTypeRepo opTypeRepo, LabwareRepo lwRepo, LabwareTypeRepo ltRepo,
                           LabwareNoteRepo lwNoteRepo, BioStateRepo bsRepo) {
         this.planValidationFactory = planValidationFactory;
         this.lwService = lwService;
+        this.flagLookupService = flagLookupService;
         this.planRepo = planRepo;
         this.planActionRepo = planActionRepo;
         this.opTypeRepo = opTypeRepo;
@@ -184,7 +188,7 @@ public class PlanServiceImp implements PlanService {
     }
 
     @Override
-    public PlanData getPlanData(String barcode) {
+    public PlanData getPlanData(String barcode, boolean loadFlags) {
         Labware destination = lwRepo.getByBarcode(barcode);
         validateLabwareForPlanData(destination);
         List<PlanOperation> plans = planRepo.findAllByDestinationIdIn(List.of(destination.getId()));
@@ -194,9 +198,24 @@ public class PlanServiceImp implements PlanService {
         if (plans.size() > 1) {
             throw new IllegalArgumentException("Multiple plans found for labware "+destination.getBarcode()+".");
         }
-        PlanOperation plan = plans.get(0);
+        PlanOperation plan = plans.getFirst();
         List<Labware> sources = getSources(plan);
-        return new PlanData(plan, sources, destination);
+        List<LabwareFlagged> lfSources;
+        LabwareFlagged lfDest;
+        if (loadFlags) {
+            List<Labware> labware = new ArrayList<>(sources.size()+1);
+            labware.addAll(sources);
+            labware.add(destination);
+            List<LabwareFlagged> lf = flagLookupService.getLabwareFlagged(labware);
+            lfSources = lf.subList(0, lf.size()-1);
+            lfDest = lf.getLast();
+        } else {
+            lfDest = new LabwareFlagged(destination, false);
+            lfSources = sources.stream()
+                    .map(lw -> new LabwareFlagged(lw, false))
+                    .toList();
+        }
+        return new PlanData(plan, lfSources, lfDest);
     }
 
     public void validateLabwareForPlanData(Labware labware) {

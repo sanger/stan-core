@@ -1,0 +1,8 @@
+mutation {
+    flagLabware(request: {
+        barcode: "[BC]"
+        description: "[DESC]"
+    }) {
+        operations { id }
+    }
+}
