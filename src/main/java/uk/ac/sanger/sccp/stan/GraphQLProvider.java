@@ -151,6 +151,7 @@ public class GraphQLProvider {
                         .dataFetcher("setCommentEnabled", transact(graphQLMutation.setCommentEnabled()))
                         .dataFetcher("addEquipment", transact(graphQLMutation.addEquipment()))
                         .dataFetcher("setEquipmentEnabled", transact(graphQLMutation.setEquipmentEnabled()))
+                        .dataFetcher("renameEquipment", transact(graphQLMutation.renameEquipment()))
                         .dataFetcher("addHmdmc", transact(graphQLMutation.addHmdmc()))
                         .dataFetcher("setHmdmcEnabled", transact(graphQLMutation.setHmdmcEnabled()))
                         .dataFetcher("addDestructionReason", transact(graphQLMutation.addDestructionReason()))
@@ -214,6 +215,7 @@ public class GraphQLProvider {
                         .dataFetcher("recordAnalyser", transact(graphQLMutation.recordAnalyser()))
                         .dataFetcher("flagLabware", transact(graphQLMutation.flagLabware()))
                         .dataFetcher("recordQCLabware", transact(graphQLMutation.recordQcLabware()))
+                        .dataFetcher("recordOrientationQC", transact(graphQLMutation.recordOrientationQC()))
                         .dataFetcher("reactivateLabware", transact(graphQLMutation.reactivateLabware()))
 
                         .dataFetcher("addUser", transact(graphQLMutation.addUser()))

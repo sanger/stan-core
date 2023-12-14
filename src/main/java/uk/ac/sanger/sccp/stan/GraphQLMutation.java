@@ -99,6 +99,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final AnalyserService analyserService;
     final FlagLabwareService flagLabwareService;
     final QCLabwareService qcLabwareService;
+    final OrientationService orientationService;
     final SSStudyService ssStudyService;
     final ReactivateService reactivateService;
     final UserAdminService userAdminService;
@@ -131,7 +132,8 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            SampleProcessingService sampleProcessingService, SolutionTransferService solutionTransferService,
                            ParaffinProcessingService paraffinProcessingService, OpWithSlotCommentsService opWithSlotCommentsService,
                            ProbeService probeService, CompletionService completionService, AnalyserService analyserService,
-                           FlagLabwareService flagLabwareService, QCLabwareService qcLabwareService, SSStudyService ssStudyService,
+                           FlagLabwareService flagLabwareService, QCLabwareService qcLabwareService,
+                           OrientationService orientationService, SSStudyService ssStudyService,
                            ReactivateService reactivateService,
                            UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
@@ -189,6 +191,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.analyserService = analyserService;
         this.flagLabwareService = flagLabwareService;
         this.qcLabwareService = qcLabwareService;
+        this.orientationService = orientationService;
         this.ssStudyService = ssStudyService;
         this.reactivateService = reactivateService;
         this.userAdminService = userAdminService;
@@ -390,6 +393,17 @@ public class GraphQLMutation extends BaseGraphQLResource {
             requireNonNull(enabled, "enabled not specified");
             logRequest("SetEquipmentEnabled", user, String.format("(equipmentId=%s, enabled=%s)", equipmentId, enabled));
             return equipmentAdminService.setEquipmentEnabled(equipmentId, enabled);
+        };
+    }
+
+    public DataFetcher<Equipment> renameEquipment() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.admin);
+            Integer equipmentId = dfe.getArgument("equipmentId");
+            requireNonNull(equipmentId, "equipmentId not specified");
+            String name = dfe.getArgument("name");
+            logRequest("RenameEquipment", user, String.format("(equipmentId=%s, name=%s)", equipmentId, repr(name)));
+            return equipmentAdminService.renameEquipment(equipmentId, name);
         };
     }
 
@@ -860,6 +874,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             QCLabwareRequest request = arg(dfe, "request", QCLabwareRequest.class);
             logRequest("QC labware", user, request);
             return qcLabwareService.perform(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> recordOrientationQC() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            OrientationRequest request = arg(dfe, "request", OrientationRequest.class);
+            logRequest("Orientation QC", user, request);
+            return orientationService.perform(user, request);
         };
     }
 

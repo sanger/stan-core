@@ -1782,6 +1782,16 @@ input QCLabwareRequest {
     labware: [QCLabware!]!
 }
 
+"""Record the orientation state of labware."""
+input OrientationRequest {
+    """The barcode of the labware."""
+    barcode: String!
+    """The work number to link to the operation."""
+    workNumber: String!
+    """Is the orientation correct?"""
+    correct: Boolean!
+}
+
 """Request to undestroy/undiscard labware."""
 input ReactivateLabware {
     """The barcode of the labware to reactivate."""
@@ -1969,6 +1979,8 @@ type Mutation {
     setCommentEnabled(commentId: Int!, enabled: Boolean!): Comment!
     """Create a new piece of equipment that users can record using in future operations."""
     addEquipment(category: String!, name: String!): Equipment!
+    """Rename existing equipment."""
+    renameEquipment(equipmentId: Int!, name: String!): Equipment!
     """Enable or disable a piece of equipment."""
     setEquipmentEnabled(equipmentId: Int!, enabled: Boolean!): Equipment!
     """Create a new reason that users can record when destroying labware."""
@@ -2101,6 +2113,8 @@ type Mutation {
     flagLabware(request: FlagLabwareRequest!): OperationResult!
     """Record QC labware request."""
     recordQCLabware(request: QCLabwareRequest!): OperationResult!
+    """Record Orientation QC."""
+    recordOrientationQC(request: OrientationRequest!): OperationResult!
     """Reactivate labware."""
     reactivateLabware(items: [ReactivateLabware!]!): OperationResult!
 

@@ -79,27 +79,31 @@ public class TestLabwareValidator {
     }
 
     @ParameterizedTest
-    @ValueSource(ints={0,1,2,3,4})
+    @ValueSource(ints={0,1,2,3,4,8,9,15})
     public void testValidateSources(int requirements) {
         boolean unique = (requirements&1)!=0;
         boolean single = (requirements&2)!=0;
         boolean singleSlot = (requirements&4)!=0;
+        boolean block = (requirements&8)!=0;
 
         doNothing().when(validator).validateUnique();
         doNothing().when(validator).validateNonEmpty();
         doNothing().when(validator).validateSingleSample();
         doNothing().when(validator).validateStates();
         doNothing().when(validator).validateOneFilledSlot();
+        doNothing().when(validator).validateBlock();
 
         validator.setUniqueRequired(unique);
         validator.setSingleSample(single);
         validator.setOneFilledSlotRequired(singleSlot);
+        validator.setBlockRequired(block);
         validator.validateSources();
 
         verify(validator, times(unique ? 1 : 0)).validateUnique();
         verify(validator).validateNonEmpty();
         verify(validator, times(single ? 1 : 0)).validateSingleSample();
         verify(validator, times(singleSlot && !single ? 1 : 0)).validateOneFilledSlot();
+        verify(validator, times(block ? 1 : 0)).validateBlock();
         verify(validator).validateStates();
     }
 
@@ -258,6 +262,21 @@ public class TestLabwareValidator {
         testValidator(List.of(goodLw, multiSampleLw, multiSlotLw, multiSlotLw), action,
                 errorBarcode("Labware contains multiple samples", multiSampleLw),
                 errorBarcode("Labware contains samples in multiple slots", multiSlotLw));
+    }
+
+    @Test
+    public void testValidateBlock() {
+        final Runnable action = validator::validateBlock;
+        testValidator(List.of(), action);
+        Sample sam1 = EntityFactory.getSample();
+        Sample sam2 = new Sample(sam1.getId()+1, 800, sam1.getTissue(), sam1.getBioState());
+        Labware goodLw = EntityFactory.makeBlock(sam1);
+        Labware badLw = EntityFactory.makeLabware(EntityFactory.getTubeType(), sam2);
+
+        testValidator(List.of(goodLw), action);
+
+        testValidator(List.of(goodLw, badLw), action,
+                errorBarcode("Labware contains non-block samples", badLw));
     }
 
     @Test

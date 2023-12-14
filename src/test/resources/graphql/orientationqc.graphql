@@ -1,0 +1,11 @@
+mutation {
+    recordOrientationQC(request: {
+        barcode: "STAN-1"
+        workNumber: "SGP1"
+        correct: true
+    }) {
+        operations {
+            id
+        }
+    }
+}
