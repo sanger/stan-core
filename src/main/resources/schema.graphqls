@@ -1730,6 +1730,16 @@ input QCLabwareRequest {
     labware: [QCLabware!]!
 }
 
+"""Record the orientation state of labware."""
+input OrientationRequest {
+    """The barcode of the labware."""
+    barcode: String!
+    """The work number to link to the operation."""
+    workNumber: String!
+    """Is the orientation correct?"""
+    correct: Boolean!
+}
+
 """Request to undestroy/undiscard labware."""
 input ReactivateLabware {
     """The barcode of the labware to reactivate."""
@@ -2045,6 +2055,8 @@ type Mutation {
     recordAnalyser(request: AnalyserRequest!): OperationResult!
     """Record QC labware request."""
     recordQCLabware(request: QCLabwareRequest!): OperationResult!
+    """Record Orientation QC."""
+    recordOrientationQC(request: OrientationRequest!): OperationResult!
     """Reactivate labware."""
     reactivateLabware(items: [ReactivateLabware!]!): OperationResult!
 

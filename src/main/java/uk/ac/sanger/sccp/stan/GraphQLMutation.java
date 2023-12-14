@@ -97,6 +97,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final CompletionService completionService;
     final AnalyserService analyserService;
     final QCLabwareService qcLabwareService;
+    final OrientationService orientationService;
     final SSStudyService ssStudyService;
     final ReactivateService reactivateService;
     final UserAdminService userAdminService;
@@ -129,7 +130,8 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            SampleProcessingService sampleProcessingService, SolutionTransferService solutionTransferService,
                            ParaffinProcessingService paraffinProcessingService, OpWithSlotCommentsService opWithSlotCommentsService,
                            ProbeService probeService, CompletionService completionService, AnalyserService analyserService,
-                           QCLabwareService qcLabwareService, SSStudyService ssStudyService, ReactivateService reactivateService,
+                           QCLabwareService qcLabwareService, OrientationService orientationService, SSStudyService ssStudyService,
+                           ReactivateService reactivateService,
                            UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
@@ -185,6 +187,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.completionService = completionService;
         this.analyserService = analyserService;
         this.qcLabwareService = qcLabwareService;
+        this.orientationService = orientationService;
         this.ssStudyService = ssStudyService;
         this.reactivateService = reactivateService;
         this.userAdminService = userAdminService;
@@ -859,6 +862,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             QCLabwareRequest request = arg(dfe, "request", QCLabwareRequest.class);
             logRequest("QC labware", user, request);
             return qcLabwareService.perform(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> recordOrientationQC() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            OrientationRequest request = arg(dfe, "request", OrientationRequest.class);
+            logRequest("Orientation QC", user, request);
+            return orientationService.perform(user, request);
         };
     }
 
