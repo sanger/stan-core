@@ -271,23 +271,34 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
     }
 
     /**
-     * Checks that the replicate field is given, correctly formatted, and unique
+     * Checks the formatting of the replicate field, if provided; otherwise, assigns the same replicate as the source.
      * @param problems receptacle for problems
      * @param request the request
      * @param sources map to look up source labware from its barcode
      */
     public void checkReplicates(Collection<String> problems, TissueBlockRequest request, UCMap<Labware> sources) {
         boolean anyMissing = false;
+        boolean differentRep = false;
         Set<RepKey> repKeys = new LinkedHashSet<>();
         Set<RepKey> repKeyDupes = new LinkedHashSet<>();
         for (var block : request.getLabware()) {
-            if (nullOrEmpty(block.getReplicate())) {
-                anyMissing = true;
-            } else if (replicateValidator.validate(block.getReplicate(), problems::add)) {
-                RepKey repKey = RepKey.from(sources.get(block.getSourceBarcode()), block.getReplicate());
-                if (repKey!=null && !repKeys.add(repKey)) {
-                    repKeyDupes.add(repKey);
+            String sourceReplicateNumber = Optional.ofNullable(sources.get(block.getSourceBarcode()))
+                    .flatMap(BlockProcessingServiceImp::getSample)
+                    .map(sam -> sam.getTissue().getReplicate())
+                    .orElse(null);
+            if (nullOrEmpty(sourceReplicateNumber)) {
+                if (nullOrEmpty(block.getReplicate())) {
+                    anyMissing = true;
+                } else if (replicateValidator.validate(block.getReplicate(), problems::add)) {
+                    RepKey repKey = RepKey.from(sources.get(block.getSourceBarcode()), block.getReplicate());
+                    if (repKey != null && !repKeys.add(repKey)) {
+                        repKeyDupes.add(repKey);
+                    }
                 }
+            } else if (nullOrEmpty(block.getReplicate())) {
+                block.setReplicate(sourceReplicateNumber);
+            } else if (!block.getReplicate().equalsIgnoreCase(sourceReplicateNumber)) {
+                differentRep = true;
             }
         }
         if (!repKeyDupes.isEmpty()) {
@@ -296,9 +307,12 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
         if (anyMissing) {
             problems.add("Missing replicate for some blocks.");
         }
+        if (differentRep) {
+            problems.add("Replicate numbers must match the source replicate number where present.");
+        }
         List<RepKey> alreadyExistRepKeys = repKeys.stream()
                 .filter(rp -> !tissueRepo.findByDonorIdAndSpatialLocationIdAndReplicate(
-                        rp.getDonorId(), rp.getSpatialLocationId(), rp.getReplicate()).isEmpty()
+                        rp.donorId(), rp.spatialLocationId(), rp.replicate()).isEmpty()
                 ).collect(toList());
         if (!alreadyExistRepKeys.isEmpty()) {
             problems.add("Replicate already exists in the database: "+alreadyExistRepKeys);
@@ -353,7 +367,7 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
     }
 
     /**
-     * Creates a new tissue block and sample.
+     * Creates a new sample, from a new tissue if necessary.
      * @param block the specification of the block
      * @param sourceLabware the source labware for the new block
      * @param bs the bio state for the new block
@@ -363,13 +377,16 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
         Tissue original = getSample(sourceLabware)
                 .map(Sample::getTissue)
                 .orElseThrow();
-        Tissue newTissue = new Tissue(null, original.getExternalName(), block.getReplicate().toLowerCase(),
-                original.getSpatialLocation(), original.getDonor(), original.getMedium(),
-                original.getFixative(), original.getHmdmc(), original.getCollectionDate(),
-                original.getId());
-        Tissue tissue = tissueRepo.save(newTissue);
-        Sample newSample = new Sample(null, null, tissue, bs);
-        return sampleRepo.save(newSample);
+        Tissue tissue;
+        if (nullOrEmpty(block.getReplicate()) || block.getReplicate().equalsIgnoreCase(original.getReplicate())) {
+            tissue = original;
+        } else {
+            tissue = tissueRepo.save(new Tissue(null, original.getExternalName(), block.getReplicate().toLowerCase(),
+                    original.getSpatialLocation(), original.getDonor(), original.getMedium(),
+                    original.getFixative(), original.getHmdmc(), original.getCollectionDate(),
+                    original.getId()));
+        }
+        return sampleRepo.save(new Sample(null, null, tissue, bs));
     }
 
     /**
@@ -468,30 +485,19 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
         }
     }
 
-    /**
-     * The unique fields associated with a block
-     */
-    static class RepKey {
-        Donor donor;
-        SpatialLocation spatialLocation;
-        String replicate;
-
-        public RepKey(Donor donor, SpatialLocation spatialLocation, String replicate) {
+    /** The unique fields associated with a block */
+    record RepKey(Donor donor, SpatialLocation spatialLocation, String replicate) {
+        RepKey(Donor donor, SpatialLocation spatialLocation, String replicate) {
             this.donor = donor;
             this.spatialLocation = spatialLocation;
             this.replicate = replicate.toLowerCase();
         }
 
-        Integer getDonorId() {
+        Integer donorId() {
             return this.donor.getId();
         }
-
-        Integer getSpatialLocationId() {
+        Integer spatialLocationId() {
             return this.spatialLocation.getId();
-        }
-
-        String getReplicate() {
-            return this.replicate;
         }
 
         static RepKey from(Labware sourceLabware, String replicate) {
@@ -507,26 +513,12 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
             return new RepKey(tissue.getDonor(), tissue.getSpatialLocation(), replicate);
         }
 
+
         @Override
         public String toString() {
             return String.format("{Donor: %s, Tissue type: %s, Spatial location: %s, Replicate: %s}",
                     donor.getDonorName(), spatialLocation.getTissueType().getName(), spatialLocation.getCode(),
                     replicate);
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj==this) return true;
-            if (obj==null || obj.getClass()!=this.getClass()) return false;
-            RepKey that = (RepKey) obj;
-            return (this.getDonorId().equals(that.getDonorId())
-                    && this.getSpatialLocationId().equals(that.getSpatialLocationId())
-                    && this.getReplicate().equals(that.getReplicate()));
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(this.donor.getId(), this.spatialLocation.getId(), this.replicate);
         }
     }
 

@@ -5,9 +5,7 @@ import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
 import uk.ac.sanger.sccp.stan.repo.MeasurementRepo;
-import uk.ac.sanger.sccp.stan.request.ControlType;
-import uk.ac.sanger.sccp.stan.request.SamplePositionResult;
-import uk.ac.sanger.sccp.stan.request.VisiumPermData;
+import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.request.VisiumPermData.AddressPermData;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.Ancestry;
@@ -53,7 +51,7 @@ public class VisiumPermDataService {
 
         var ssToAddress = makeSlotSampleIdAddressMap(lw, ancestry);
         Set<Integer> slotIds = ancestry.keySet().stream()
-                .map(ss -> ss.getSlot().getId())
+                .map(Ancestoriser.SlotSample::slotId)
                 .collect(toSet());
         List<Measurement> measurements = measurementRepo.findAllBySlotIdIn(slotIds);
         List<AddressPermData> pds = compilePermData(measurements, ssToAddress);
@@ -69,9 +67,8 @@ public class VisiumPermDataService {
      */
     public Map<SlotIdSampleId, Set<Address>> makeSlotSampleIdAddressMap(Labware lw, Ancestry ancestry) {
         final Map<SlotIdSampleId, Set<Address>> ssToAddress = new HashMap<>();
-        final TriConsumer<Slot, Sample, Address> addToMap = (slot, sample, address) -> {
-            ssToAddress.computeIfAbsent(new SlotIdSampleId(slot, sample), k -> new HashSet<>()).add(address);
-        };
+        final TriConsumer<Slot, Sample, Address> addToMap = (slot, sample, address)
+                -> ssToAddress.computeIfAbsent(new SlotIdSampleId(slot, sample), k -> new HashSet<>()).add(address);
 
         for (Slot slot : lw.getSlots()) {
             for (Sample sam : slot.getSamples()) {
@@ -80,9 +77,9 @@ public class VisiumPermDataService {
         }
 
         Ancestoriser.SlotSample.stream(lw).forEach(targetSs -> {
-            Address targetAddress = targetSs.getSlot().getAddress();
+            Address targetAddress = targetSs.slot().getAddress();
             for (Ancestoriser.SlotSample ancesterSs : ancestry.ancestors(targetSs)) {
-                addToMap.accept(ancesterSs.getSlot(), ancesterSs.getSample(), targetAddress);
+                addToMap.accept(ancesterSs.slot(), ancesterSs.sample(), targetAddress);
             }
         });
         return ssToAddress;

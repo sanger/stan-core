@@ -209,7 +209,7 @@ public class LabwareValidator {
     }
 
     /**
-     * Validates the labware for use a sources.
+     * Validates the labware for use as sources.
      * Checks:
      * <ul>
      *     <li>{@link #validateUnique}—if {@link #isUniqueRequired}</li>
@@ -231,6 +231,16 @@ public class LabwareValidator {
         }
         if (isBlockRequired()) {
             validateBlock();
+        }
+        validateStates();
+    }
+
+    /**
+     * Validates the labware for use as active destinations
+     */
+    public void validateActiveDestinations() {
+        if (isUniqueRequired()) {
+            validateUnique();
         }
         validateStates();
     }

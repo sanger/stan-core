@@ -110,26 +110,31 @@ public class SlotCopyServiceImp implements SlotCopyService {
             throws ValidationException {
         Collection<String> problems = new LinkedHashSet<>();
         OperationType opType = loadEntity(problems, request.getOperationType(), "operation type", opTypeRepo::findByName);
+        UCMap<Labware> existingDestinations = loadExistingDestinations(problems, opType, request.getDestinations());
         UCMap<LabwareType> lwTypes = loadLabwareTypes(problems, request.getDestinations());
         checkPreBarcodes(problems, request.getDestinations(), lwTypes);
-        checkPreBarcodesInUse(problems, request.getDestinations());
+        checkPreBarcodesInUse(problems, request.getDestinations(), existingDestinations);
         UCMap<Labware> sourceMap = loadSources(problems, request);
         validateSources(problems, sourceMap.values());
         UCMap<Labware.State> sourceStateMap = checkListedSources(problems, request);
         validateLotNumbers(problems, request.getDestinations());
-        validateContents(problems, lwTypes, sourceMap, request);
+        validateContents(problems, lwTypes, sourceMap, existingDestinations, request);
         validateOps(problems, request.getDestinations(), opType, lwTypes);
         UCMap<BioState> bs = validateBioStates(problems, request.getDestinations());
+        checkExistingDestinations(problems, request.getDestinations(), existingDestinations, lwTypes, bs);
         Work work = workService.validateUsableWork(problems, request.getWorkNumber());
         if (!problems.isEmpty()) {
             throw new ValidationException("The operation could not be validated.", problems);
         }
-        OperationResult opres = executeOps(user, request.getDestinations(), opType, lwTypes, bs, sourceMap, work);
+        OperationResult opres = executeOps(user, request.getDestinations(), opType, lwTypes, bs, sourceMap, work,
+                existingDestinations);
         final Labware.State newSourceState = (opType.discardSource() ? Labware.State.discarded
                 : opType.markSourceUsed() ? Labware.State.used : null);
         updateSources(sourceStateMap, sourceMap.values(), newSourceState, barcodesToUnstore);
         return opres;
     }
+
+    // region Loading and validating
 
     /**
      * Checks for problems with lot numbers.
@@ -149,6 +154,90 @@ public class SlotCopyServiceImp implements SlotCopyService {
     }
 
     /**
+     * Loads labware specified as existing labware to put further samples into
+     * @param problems receptacle for problems
+     * @param opType the operation type
+     * @param destinations the request destinations
+     * @return the specified labware
+     */
+    public UCMap<Labware> loadExistingDestinations(Collection<String> problems, OperationType opType,
+                                                   List<SlotCopyDestination> destinations) {
+        List<String> barcodes = destinations.stream()
+                .map(SlotCopyDestination::getBarcode)
+                .filter(s -> !nullOrEmpty(s))
+                .collect(toList());
+        if (barcodes.isEmpty()) {
+            return new UCMap<>(0); // none
+        }
+        if (opType != null && !opType.supportsActiveDest()) {
+            problems.add("Reusing existing destinations is not supported for operation type "+opType.getName()+".");
+        }
+        LabwareValidator val = labwareValidatorFactory.getValidator();
+        val.setUniqueRequired(true);
+        val.loadLabware(lwRepo, barcodes);
+        val.validateActiveDestinations();
+        problems.addAll(val.getErrors());
+        return UCMap.from(val.getLabware(), Labware::getBarcode);
+    }
+
+    /**
+     * Checks that the information is correct if given for existing destination labware
+     * @param problems receptacle for problems
+     * @param destinations the request destinations
+     * @param labware map of labware from barcode
+     * @param lwTypes map of labware type from name
+     * @param bs map of bio states from name
+     */
+    public void checkExistingDestinations(Collection<String> problems, List<SlotCopyDestination> destinations,
+                                               UCMap<Labware> labware, UCMap<LabwareType> lwTypes, UCMap<BioState> bs) {
+        for (SlotCopyDestination dest : destinations) {
+            if (nullOrEmpty(dest.getBarcode())) {
+                continue;
+            }
+            Labware lw = labware.get(dest.getBarcode());
+            if (lw==null) {
+                continue;
+            }
+            checkExistingLabwareType(problems, lw, lwTypes.get(dest.getLabwareType()));
+            checkExistingLabwareBioState(problems, lw, bs.get(dest.getBioState()));
+        }
+    }
+
+    /**
+     * Checks that specified labware type matches existing labware
+     * @param problems receptacle for problems
+     * @param lw existing labware, if any
+     * @param lt specified labware type, if any
+     */
+    public void checkExistingLabwareType(Collection<String> problems, Labware lw, LabwareType lt) {
+        if (lw!=null && lt!=null && !lw.getLabwareType().equals(lt)) {
+            problems.add(String.format("Labware type %s specified for labware %s but it already has type %s.",
+                    lt.getName(), lw.getBarcode(), lw.getLabwareType().getName()));
+        }
+    }
+
+    /**
+     * Checks that specified bio state matches existing labware
+     * @param problems receptacle for problems
+     * @param lw existing labware, if any
+     * @param newBs specified bio state, if any
+     */
+    public void checkExistingLabwareBioState(Collection<String> problems, Labware lw, BioState newBs) {
+        if (lw!=null && newBs!=null) {
+            Set<BioState> lwBs = lw.getSlots().stream()
+                    .flatMap(slot -> slot.getSamples().stream().map(Sample::getBioState))
+                    .collect(toSet());
+            if (lwBs.size() == 1) {
+                BioState oldBs = lwBs.iterator().next();
+                if (!oldBs.equals(newBs)) {
+                    problems.add(String.format("Bio state %s specified for labware %s, which already uses bio state %s.",
+                            newBs.getName(), lw.getBarcode(), oldBs.getName()));
+                }
+            }
+        }
+    }
+
+    /**
      * Loads the labware types specified for destinations
      * @param problems receptacle for problems
      * @param destinations the destinations specified in the request
@@ -159,8 +248,10 @@ public class SlotCopyServiceImp implements SlotCopyService {
         Set<String> lwTypeNames = new HashSet<>(destinations.size());
         for (SlotCopyDestination dest : destinations) {
             String name = dest.getLabwareType();
-            if (name==null || name.isEmpty()) {
-                anyMissing = true;
+            if (nullOrEmpty(name)) {
+                if (nullOrEmpty(dest.getBarcode())) {
+                    anyMissing = true;
+                }
             } else {
                 lwTypeNames.add(name);
             }
@@ -183,8 +274,6 @@ public class SlotCopyServiceImp implements SlotCopyService {
         }
         return lwTypes;
     }
-
-    // region Loading and validating
 
     /**
      * Helper to load an entity using a function that returns an optional.
@@ -244,22 +333,31 @@ public class SlotCopyServiceImp implements SlotCopyService {
      * and not already used as a regular or external labware barcode.
      * @param problems receptacle for problems
      * @param destinations the requested destinations
+     * @param existingDestinations the existing labware destinations
      */
-    public void checkPreBarcodesInUse(Collection<String> problems, List<SlotCopyDestination> destinations) {
+    public void checkPreBarcodesInUse(Collection<String> problems, List<SlotCopyDestination> destinations,
+                                      UCMap<Labware> existingDestinations) {
         Set<String> seen = new HashSet<>(destinations.size());
         for (SlotCopyDestination dest : destinations) {
-            String barcode = dest.getPreBarcode();
-            if (barcode==null || barcode.isEmpty()) {
+            String prebc = dest.getPreBarcode();
+            if (nullOrEmpty(prebc)) {
                 continue;
             }
-            barcode = barcode.toUpperCase();
-            if (!seen.add(barcode)) {
-                problems.add("Destination barcode given multiple times: "+barcode);
+            prebc = prebc.toUpperCase();
+            Labware existingDest = existingDestinations.get(dest.getBarcode());
+            if (existingDest!=null) {
+                if (!prebc.equalsIgnoreCase(existingDest.getExternalBarcode())
+                    && !prebc.equalsIgnoreCase(existingDest.getBarcode())) {
+                    problems.add(String.format("External barcode %s cannot be added to existing labware %s.",
+                            repr(prebc), existingDest.getBarcode()));
+                }
+            } else if (!seen.add(prebc)) {
+                problems.add("External barcode given multiple times: "+prebc);
             } else {
-                if (lwRepo.existsByBarcode(barcode)) {
-                    problems.add("Labware already exists with barcode "+barcode+".");
-                } else if (lwRepo.existsByExternalBarcode(barcode)) {
-                    problems.add("Labware already exists with external barcode "+barcode+".");
+                if (lwRepo.existsByBarcode(prebc)) {
+                    problems.add("Labware already exists with barcode "+prebc+".");
+                } else if (lwRepo.existsByExternalBarcode(prebc)) {
+                    problems.add("Labware already exists with external barcode "+prebc+".");
                 }
             }
         }
@@ -397,10 +495,11 @@ public class SlotCopyServiceImp implements SlotCopyService {
      * @param problems the receptacle for problems
      * @param lwTypes the types of the destination labware (values be null if a valid labware type was not specified)
      * @param lwMap the map of source barcode to labware (some labware may be missing if there were invalid/missing barcodes)
+     * @param existingDestinations map of existing labware to add samples to
      * @param request the request
      */
     public void validateContents(Collection<String> problems, UCMap<LabwareType> lwTypes, UCMap<Labware> lwMap,
-                                 SlotCopyRequest request) {
+                                 UCMap<Labware> existingDestinations, SlotCopyRequest request) {
         if (request.getDestinations().isEmpty()) {
             problems.add("No destinations specified.");
             return;
@@ -411,7 +510,8 @@ public class SlotCopyServiceImp implements SlotCopyService {
         }
         for (var dest : request.getDestinations()) {
             Set<SlotCopyContent> contentSet = new HashSet<>(dest.getContents().size());
-            LabwareType lt = lwTypes.get(dest.getLabwareType());
+            Labware destLw = existingDestinations.get(dest.getBarcode());
+            LabwareType lt = destLw != null ? destLw.getLabwareType() : lwTypes.get(dest.getLabwareType());
             for (var content : dest.getContents()) {
                 Address destAddress = content.getDestinationAddress();
                 if (!contentSet.add(content)) {
@@ -420,6 +520,13 @@ public class SlotCopyServiceImp implements SlotCopyService {
                 }
                 if (destAddress == null) {
                     problems.add("No destination address specified.");
+                } else if (destLw != null) {
+                    Slot slot = destLw.optSlot(destAddress).orElse(null);
+                    if (slot==null) {
+                        problems.add(String.format("No such slot %s in labware %s.", destAddress, destLw.getBarcode()));
+                    } else if (!slot.getSamples().isEmpty()) {
+                        problems.add(String.format("Slot %s in labware %s is not empty.", destAddress, destLw.getBarcode()));
+                    }
                 } else if (lt != null && lt.indexOf(destAddress) < 0) {
                     problems.add("Invalid address " + destAddress + " for labware type " + lt.getName() + ".");
                 }
@@ -468,13 +575,13 @@ public class SlotCopyServiceImp implements SlotCopyService {
 
     public OperationResult executeOps(User user, Collection<SlotCopyDestination> dests,
                                       OperationType opType, UCMap<LabwareType> lwTypes, UCMap<BioState> bioStates,
-                                      UCMap<Labware> sources, Work work) {
+                                      UCMap<Labware> sources, Work work, UCMap<Labware> existingDests) {
         List<Operation> ops = new ArrayList<>(dests.size());
         List<Labware> destLabware = new ArrayList<>(dests.size());
         for (SlotCopyDestination dest : dests) {
             OperationResult opres = executeOp(user, dest.getContents(), opType, lwTypes.get(dest.getLabwareType()),
                     dest.getPreBarcode(), sources, dest.getCosting(), dest.getLotNumber(), dest.getProbeLotNumber(),
-                    bioStates.get(dest.getBioState()));
+                    bioStates.get(dest.getBioState()), existingDests.get(dest.getBarcode()));
             ops.addAll(opres.getOperations());
             destLabware.addAll(opres.getLabware());
         }
@@ -498,15 +605,19 @@ public class SlotCopyServiceImp implements SlotCopyService {
      * @param lotNumber the lot number of the new labware, if specified
      * @param probeLotNumber the transcriptome probe lot number, if specified
      * @param bioState the new bio state of the labware, if given
+     * @param destLw existing destination labware, if applicable
      * @return the result of the operation
      */
     public OperationResult executeOp(User user, Collection<SlotCopyContent> contents,
                                      OperationType opType, LabwareType lwType, String preBarcode,
-                                     UCMap<Labware> labwareMap, SlideCosting costing, String lotNumber, String probeLotNumber, BioState bioState) {
-        Labware emptyLabware = lwService.create(lwType, preBarcode, preBarcode);
+                                     UCMap<Labware> labwareMap, SlideCosting costing, String lotNumber,
+                                     String probeLotNumber, BioState bioState, Labware destLw) {
+        if (destLw==null) {
+            destLw = lwService.create(lwType, preBarcode, preBarcode);
+        }
         Map<Integer, Sample> oldSampleIdToNewSample = createSamples(contents, labwareMap,
                 coalesce(bioState, opType.getNewBioState()));
-        Labware filledLabware = fillLabware(emptyLabware, contents, labwareMap, oldSampleIdToNewSample);
+        Labware filledLabware = fillLabware(destLw, contents, labwareMap, oldSampleIdToNewSample);
         Operation op = createOperation(user, contents, opType, labwareMap, filledLabware, oldSampleIdToNewSample);
         if (costing != null) {
             lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), "costing", costing.name()));
@@ -553,8 +664,8 @@ public class SlotCopyServiceImp implements SlotCopyService {
     }
 
     /**
-     * Puts samples into the new empty labware
-     * @param destLabware the new empty labware
+     * Puts samples into the destination labware
+     * @param destLabware the destination labware
      * @param contents the description of what locations are copied to where
      * @param labwareMap the source labware, mapped from its barcode
      * @param oldSampleIdToNewSample the map of source sample id to destination sample

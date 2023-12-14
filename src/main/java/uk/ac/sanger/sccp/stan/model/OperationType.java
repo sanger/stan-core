@@ -103,6 +103,10 @@ public class OperationType implements HasName, HasIntId {
     public boolean usesProbes() {
         return this.has(OperationTypeFlag.PROBES);
     }
+
+    public boolean supportsActiveDest() {
+        return this.has(OperationTypeFlag.ACTIVE_DEST);
+    }
     //endregion
 
     @Override

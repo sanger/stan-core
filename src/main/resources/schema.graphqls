@@ -540,8 +540,10 @@ input SlotCopyContent {
 
 """A destination for slot copy."""
 input SlotCopyDestination {
-    """The name of the type of the new destination labware."""
-    labwareType: String!
+    """The name of the type of the destination labware (if it is new labware)."""
+    labwareType: String
+    """The barcode of the existing piece of labware."""
+    barcode: String
     """The bio state for samples in the destination (if specified)."""
     bioState: String
     """The costing of the slide, if specified."""
@@ -1738,6 +1740,16 @@ input OrientationRequest {
     correct: Boolean!
 }
 
+"""Request to undestroy/undiscard labware."""
+input ReactivateLabware {
+    """The barcode of the labware to reactivate."""
+    barcode: String!
+    """The work number to associate with the reactivation."""
+    workNumber: String!
+    """The comment id to associate with the reactivation."""
+    commentId: Int!
+}
+
 """Info about the app version."""
 type VersionInfo {
     """The output of git describe."""
@@ -1911,6 +1923,8 @@ type Mutation {
     setCommentEnabled(commentId: Int!, enabled: Boolean!): Comment!
     """Create a new piece of equipment that users can record using in future operations."""
     addEquipment(category: String!, name: String!): Equipment!
+    """Rename existing equipment."""
+    renameEquipment(equipmentId: Int!, name: String!): Equipment!
     """Enable or disable a piece of equipment."""
     setEquipmentEnabled(equipmentId: Int!, enabled: Boolean!): Equipment!
     """Create a new reason that users can record when destroying labware."""
@@ -2043,6 +2057,8 @@ type Mutation {
     recordQCLabware(request: QCLabwareRequest!): OperationResult!
     """Record Orientation QC."""
     recordOrientationQC(request: OrientationRequest!): OperationResult!
+    """Reactivate labware."""
+    reactivateLabware(items: [ReactivateLabware!]!): OperationResult!
 
     """Create a new user for the application."""
     addUser(username: String!): User!

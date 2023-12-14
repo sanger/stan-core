@@ -355,63 +355,16 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
         slotRepo.saveAll(slotsToUpdate.values());
     }
 
-    /**
-     * A key used to identify a particular plan action so we can look it up.
-     */
-    static class PlanActionKey {
-        Address address;
-        Integer sectionId;
-
-        public PlanActionKey(Address address, Integer sectionId) {
-            this.address = address;
-            this.sectionId = sectionId;
-        }
-
-        public PlanActionKey(PlanAction pa) {
+    /** A key used to identify a particular plan action so we can look it up. */
+    public record PlanActionKey(Address address, Integer sectionId) {
+        PlanActionKey(PlanAction pa) {
             this(pa.getDestination().getAddress(), pa.getSample().getId());
         }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            PlanActionKey that = (PlanActionKey) o;
-            return (Objects.equals(this.address, that.address)
-                    && Objects.equals(this.sectionId, that.sectionId));
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(address, sectionId);
-        }
     }
-
 
     /**
      * The result on an individual piece of labware of the confirmation request.
      * If the planned operation was cancelled, then the operation included will be null.
      */
-    static class ConfirmLabwareResult {
-        Operation operation;
-        Labware labware;
-
-        public ConfirmLabwareResult(Operation operation, Labware labware) {
-            this.operation = operation;
-            this.labware = labware;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            ConfirmLabwareResult that = (ConfirmLabwareResult) o;
-            return (Objects.equals(this.operation, that.operation)
-                    && Objects.equals(this.labware, that.labware));
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(operation, labware);
-        }
-    }
+    public record ConfirmLabwareResult(Operation operation, Labware labware) {}
 }

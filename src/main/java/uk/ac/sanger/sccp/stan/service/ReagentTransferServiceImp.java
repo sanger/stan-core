@@ -354,13 +354,8 @@ public class ReagentTransferServiceImp implements ReagentTransferService {
         reagentActionRepo.saveAll(ras);
     }
 
-    /**
-     * A helper class used for deduping and tracking errors in specified slots.
-     */
-    static class RSlot {
-        Address address;
-        String barcode;
-
+    /** A helper class used for deduping and tracking errors in specified slots. */
+    record RSlot(Address address, String barcode) {
         RSlot(Address address, String barcode) {
             this.address = address;
             this.barcode = barcode.toUpperCase();
@@ -369,20 +364,6 @@ public class ReagentTransferServiceImp implements ReagentTransferService {
         @Override
         public String toString() {
             return "slot "+address+" in reagent plate "+barcode;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            RSlot that = (RSlot) o;
-            return (Objects.equals(this.barcode, that.barcode)
-                    && Objects.equals(this.address, that.address));
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(barcode, address);
         }
     }
 
