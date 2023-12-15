@@ -1,12 +1,14 @@
 package uk.ac.sanger.sccp.stan.service;
 
 import org.apache.logging.log4j.util.TriConsumer;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
 import uk.ac.sanger.sccp.stan.repo.MeasurementRepo;
 import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.request.VisiumPermData.AddressPermData;
+import uk.ac.sanger.sccp.stan.service.flag.FlagLookupService;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.Ancestry;
 
@@ -31,13 +33,16 @@ public class VisiumPermDataService {
     private final MeasurementRepo measurementRepo;
     private final Ancestoriser ancestoriser;
     private final SlotRegionService slotRegionService;
+    private final FlagLookupService flagLookupService;
 
+    @Autowired
     public VisiumPermDataService(LabwareRepo lwRepo, MeasurementRepo measurementRepo, Ancestoriser ancestoriser,
-                                 SlotRegionService slotRegionService) {
+                                 SlotRegionService slotRegionService, FlagLookupService flagLookupService) {
         this.lwRepo = lwRepo;
         this.measurementRepo = measurementRepo;
         this.ancestoriser = ancestoriser;
         this.slotRegionService = slotRegionService;
+        this.flagLookupService = flagLookupService;
     }
 
     /**
@@ -56,7 +61,8 @@ public class VisiumPermDataService {
         List<Measurement> measurements = measurementRepo.findAllBySlotIdIn(slotIds);
         List<AddressPermData> pds = compilePermData(measurements, ssToAddress);
         List<SamplePositionResult> samplePositionResults = slotRegionService.loadSamplePositionResultsForLabware(barcode);
-        return new VisiumPermData(lw, pds, samplePositionResults);
+        LabwareFlagged lf = flagLookupService.getLabwareFlagged(lw);
+        return new VisiumPermData(lf, pds, samplePositionResults);
     }
 
     /**
