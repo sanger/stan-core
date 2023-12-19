@@ -1345,7 +1345,7 @@ type AddressPermData {
 """The permeabilisation data recorded for a particular piece of labware."""
 type VisiumPermData {
     """The labware in question."""
-    labware: Labware!
+    labware: LabwareFlagged!
     """The permeabilisation data for each slot."""
     addressPermData: [AddressPermData!]!
     """The region of a sample in a particular slot referenced by the entries"""
