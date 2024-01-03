@@ -108,7 +108,7 @@ public class FieldValidation {
 
     @Bean
     public Validator<String> equipmentCategoryValidator() {
-        Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA);
+        Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA, CharacterType.SPACE);
         return new StringValidator("Equipment category", 2, 32, charTypes);
     }
 
