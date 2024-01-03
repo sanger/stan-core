@@ -315,7 +315,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
         if (!externalNamesUC.isEmpty()) {
             var tissues = tissueRepo.findAllByExternalNameIn(externalNamesUC);
             if (!tissues.isEmpty()) {
-                problems.add("External name already used: " + tissues.stream().map(Tissue::getExternalName).collect(toList()));
+                problems.add("External name already used: " + tissues.stream().map(Tissue::getExternalName).toList());
             }
         }
     }
@@ -446,7 +446,8 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
      */
     void createNewSamples(List<DataStruct> datas) {
         final Medium medium = mediumRepo.getByName("None");
-        final BioState bs = bsRepo.getByName("Original sample");
+        BioState cassetteBs = bsRepo.getByName("Tissue");
+        BioState nonCassetteBs = bsRepo.getByName("Original sample");
 
         for (DataStruct data : datas) {
             OriginalSampleData req = data.getOriginalSampleData();
@@ -456,6 +457,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
                     data.spatialLocation, data.donor, medium, data.fixative, data.hmdmc,
                     req.getSampleCollectionDate(),null
             ));
+            BioState bs = (data.labwareType.getName().equalsIgnoreCase("Cassette") ? cassetteBs : nonCassetteBs);
             data.sample = sampleRepo.save(new Sample(null, null, createdTissue, bs));
         }
     }
