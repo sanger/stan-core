@@ -13,8 +13,8 @@ import java.util.*;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
-import static uk.ac.sanger.sccp.utils.BasicUtils.pluralise;
-import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
+import static java.util.stream.Collectors.toSet;
+import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 /**
  * @author dr6
@@ -100,17 +100,12 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
         List<Labware> lwList = validator.loadLabware(lwRepo, List.of(barcode));
         validator.validateSources();
         problems.addAll(validator.getErrors());
-        return (lwList.isEmpty() ? null : lwList.get(0));
+        return (lwList.isEmpty() ? null : lwList.getFirst());
     }
 
-    /**
-     * Loads the op type and checks that it is in-place
-     * @param problems receptacle for problems found
-     * @param opTypeName the name of the operation to record
-     * @return the op type loaded
-     */
+    @Override
     public OperationType loadOpType(Collection<String> problems, String opTypeName) {
-        if (opTypeName==null || opTypeName.isEmpty()) {
+        if (nullOrEmpty(opTypeName)) {
             problems.add("No operation type specified.");
             return null;
         }
@@ -135,6 +130,16 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
      * @param slotMeasurements the requested measurements
      */
     public void validateAddresses(Collection<String> problems, Labware lw, List<SlotMeasurementRequest> slotMeasurements) {
+        Set<Address> filledSlotAddresses = lw.getSlots().stream()
+                .filter(slot -> !slot.getSamples().isEmpty())
+                .map(Slot::getAddress)
+                .collect(toSet());
+        validateAddresses(problems, lw.getLabwareType(), filledSlotAddresses, slotMeasurements);
+    }
+
+    @Override
+    public void validateAddresses(Collection<String> problems, LabwareType lt, Set<Address> filledSlotAddresses,
+                                  List<SlotMeasurementRequest> slotMeasurements) {
         Set<Address> invalidAddresses = new LinkedHashSet<>();
         Set<Address> emptyAddresses = new LinkedHashSet<>();
         boolean nullAddress = false;
@@ -143,13 +148,10 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
             if (address ==null) {
                 nullAddress = true;
             } else {
-                var optSlot = lw.optSlot(address);
-                if (optSlot.isEmpty()) {
+                if (lt.indexOf(address) < 0) {
                     invalidAddresses.add(address);
-                } else {
-                    if (optSlot.get().getSamples().isEmpty()) {
-                        emptyAddresses.add(address);
-                    }
+                } else if (!filledSlotAddresses.contains(address)){
+                    emptyAddresses.add(address);
                 }
             }
         }
@@ -164,12 +166,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
         }
     }
 
-    /**
-     * Checks for problems with comment ids, if any.
-     * @param problems receptacle for problems found
-     * @param sms the slot measurement requests
-     * @return the indicated comments
-     */
+    @Override
     public List<Comment> validateComments(Collection<String> problems, Collection<SlotMeasurementRequest> sms) {
         Stream<Integer> commentIdStream = sms.stream()
                 .map(SlotMeasurementRequest::getCommentId)
@@ -177,15 +174,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
         return commentValidationService.validateCommentIds(problems, commentIdStream);
     }
 
-    /**
-     * Validates and sanitises measurement names and values.
-     * Problems include missing names, missing values, invalid names (for the op type), and whatever problems are
-     * found by {@link #sanitiseMeasurementValue}.
-     * @param problems receptacle for problems found
-     * @param opType the op type requested
-     * @param slotMeasurements the requested measurements
-     * @return the validated measurements
-     */
+    @Override
     public List<SlotMeasurementRequest> sanitiseMeasurements(Collection<String> problems, OperationType opType,
                                                              Collection<SlotMeasurementRequest> slotMeasurements) {
         if (slotMeasurements.isEmpty()) {
@@ -281,23 +270,15 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
      * @return the sanitised value, or null if the measurement is found to be invalid
      */
     public String sanitiseMeasurementValue(Collection<String> problems, String name, String value) {
-        switch (name) {
-            case MEAS_CDNA: case MEAS_LIBR:
-                return concentrationSanitiser.sanitise(problems, value);
-            case MEAS_CQ:
-                return cqSanitiser.sanitise(problems, value);
-            case MEAS_CYC:
-                return cycleSanitiser.sanitise(problems, value);
-        }
-        return null;
+        return switch (name) {
+            case MEAS_CDNA, MEAS_LIBR -> concentrationSanitiser.sanitise(problems, value);
+            case MEAS_CQ -> cqSanitiser.sanitise(problems, value);
+            case MEAS_CYC -> cycleSanitiser.sanitise(problems, value);
+            default -> null;
+        };
     }
 
-    /**
-     * Checks for occurrences where the same measurement name is requested in the same address.
-     * The measurement names should already be sanitised so that they are easy to identify.
-     * @param problems receptacle for problems found
-     * @param smrs the measurement requests
-     */
+    @Override
     public void checkForDupeMeasurements(Collection<String> problems, Collection<SlotMeasurementRequest> smrs) {
         if (smrs==null || smrs.size() <= 1) {
             return;
@@ -320,15 +301,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
         }
     }
 
-    /**
-     * Executes the request. Records the op; links it to the given work (if any); records the measurements (if any)
-     * @param user the user responsible for the request
-     * @param lw the labware to record the operation and measurements on
-     * @param opType the type of op to record
-     * @param work the work to link to the op (if any)
-     * @param sanitisedMeasurements the specification of what measurements to record
-     * @return the op and labware
-     */
+    @Override
     public OperationResult execute(User user, Labware lw, OperationType opType, Work work,
                                    Collection<Comment> comments,
                                    Collection<SlotMeasurementRequest> sanitisedMeasurements) {

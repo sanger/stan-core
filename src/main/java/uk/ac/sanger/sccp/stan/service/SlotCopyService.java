@@ -4,6 +4,8 @@ import uk.ac.sanger.sccp.stan.model.User;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.request.SlotCopyRequest;
 
+import java.util.Set;
+
 /**
  * Service to record an operation that creates new labware
  * and copies the contents of existing labware by specified slot addresses
@@ -18,4 +20,14 @@ public interface SlotCopyService {
      * @exception ValidationException if validation fails
      */
     OperationResult perform(User user, SlotCopyRequest request) throws ValidationException;
+
+    /**
+     * Records the specified operation.
+     * This is called inside a transaction, after validation.
+     * @param user the user responsible
+     * @param data the information about the request
+     * @param barcodesToUnstore receptacle for barcodes to unstore
+     * @return the result
+     */
+    OperationResult record(User user, SlotCopyValidationService.Data data, Set<String> barcodesToUnstore);
 }

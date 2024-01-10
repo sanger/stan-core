@@ -52,11 +52,25 @@ public interface ValidationHelper {
     }
 
     /**
-     * Loads and checks the labware
+     * Loads and checks the labware as a source
      * @param barcodes barcodes of labware
      * @return the loaded labware, mapped from barcodes
      */
     UCMap<Labware> checkLabware(Collection<String> barcodes);
+
+    /**
+     * Loads labware and checks it is a valid active destination (for operations that support active destinations)
+     * @param barcode the labware barcode
+     * @return the loaded labware, if any
+     */
+    Labware loadActiveDestination(String barcode);
+
+    /**
+     * Loads labware and checks they are valid active destinations (for operations that support active destinations)
+     * @param barcodes the labware barcodes
+     * @return the loaded labware, if any
+     */
+    UCMap<Labware> loadActiveDestinations(Collection<String> barcodes);
 
     /**
      * Loads and checks the work
@@ -64,6 +78,13 @@ public interface ValidationHelper {
      * @return the loaded work, mapped from work numbers
      */
     UCMap<Work> checkWork(Collection<String> workNumbers);
+
+    /**
+     * Loads and checks a single work
+     * @param workNumber work number to load
+     * @return the single loaded work, if any
+     */
+    Work checkWork(String workNumber);
 
     /**
      * Loads and checks comments

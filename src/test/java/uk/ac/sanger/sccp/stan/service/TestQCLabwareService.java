@@ -82,8 +82,8 @@ public class TestQCLabwareService {
         List<QCLabware> qcls = request.getLabware();
 
         doReturn(opType).when(mockVal).checkOpType(anyString(), any(OperationTypeFlag.class));
-        doReturn(lwMap).when(mockVal).checkLabware(any());
-        doReturn(workMap).when(mockVal).checkWork(any());
+        doReturn(lwMap).when(mockVal).checkLabware(anyCollection());
+        doReturn(workMap).when(mockVal).checkWork(anyCollection());
         doNothing().when(service).checkTimestamps(any(), any(), any(), any());
         doReturn(commentMap).when(mockVal).checkCommentIds(any());
 
@@ -111,8 +111,8 @@ public class TestQCLabwareService {
         assertValidationException(() -> service.perform(user, request), List.of("No labware specified."));
 
         verify(mockVal).checkOpType(request.getOperationType(), OperationTypeFlag.IN_PLACE);
-        verify(mockVal, never()).checkLabware(any());
-        verify(mockVal, never()).checkWork(any());
+        verify(mockVal, never()).checkLabware(anyCollection());
+        verify(mockVal, never()).checkWork(anyCollection());
         verify(service, never()).checkTimestamps(any(), any(), any(), any());
         verify(service, never()).checkComments(any(), any());
         verify(service, never()).record(any(), any(), any(), any(), any(), any());
@@ -133,8 +133,8 @@ public class TestQCLabwareService {
         problems.add("Problem B.");
 
         when(mockVal.checkOpType(any(), any(OperationTypeFlag.class))).thenReturn(opType);
-        when(mockVal.checkLabware(any())).thenReturn(lwMap);
-        when(mockVal.checkWork(any())).thenReturn(workMap);
+        when(mockVal.checkLabware(anyCollection())).thenReturn(lwMap);
+        when(mockVal.checkWork(anyCollection())).thenReturn(workMap);
 
         doAnswer(addProblem("Bad time")).when(service).checkTimestamps(any(), any(), any(), any());
         doAnswer(addProblem("Bad comment", commentMap)).when(service).checkComments(any(), any());

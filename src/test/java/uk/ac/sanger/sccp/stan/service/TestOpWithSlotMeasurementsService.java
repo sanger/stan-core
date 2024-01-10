@@ -205,16 +205,12 @@ public class TestOpWithSlotMeasurementsService {
             "Transfer, Operation cannot be recorded in place: Transfer",
     })
     public void testLoadOpType(String opName, String expectedProblem) {
-        OperationType opType;
-        switch (coalesce(opName, "")) {
-            case OP_VISIUM_CONC: case OP_AMP: case "Bake":
-                opType = EntityFactory.makeOperationType(opName, null, OperationTypeFlag.IN_PLACE);
-                break;
-            case "Transfer":
-                opType = EntityFactory.makeOperationType(opName, null);
-                break;
-            default: opType = null;
-        }
+        OperationType opType = switch (coalesce(opName, "")) {
+            case OP_VISIUM_CONC, OP_AMP, "Bake" ->
+                    EntityFactory.makeOperationType(opName, null, OperationTypeFlag.IN_PLACE);
+            case "Transfer" -> EntityFactory.makeOperationType(opName, null);
+            default -> null;
+        };
         if (opName!=null && !opName.isEmpty()) {
             when(mockOpTypeRepo.findByName(opName)).thenReturn(Optional.ofNullable(opType));
         }
@@ -457,23 +453,13 @@ public class TestOpWithSlotMeasurementsService {
             "Cycles,024,24,",
     })
     public void testSanitiseMeasurementValue(String name, String value, String sanValue, String problem) {
-        Sanitiser<String> san;
         List<Sanitiser<String>> sans = List.of(mockConcSan, mockCqSan, mockCycSan);
-        switch (name) {
-            case "cDNA concentration":
-            case "Library concentration":
-                san = mockConcSan;
-                break;
-            case "Cq value":
-                san = mockCqSan;
-                break;
-            case "Cycles":
-                san = mockCycSan;
-                break;
-            default:
-                san = null;
-                break;
-        }
+        Sanitiser<String> san = switch (name) {
+            case "cDNA concentration", "Library concentration" -> mockConcSan;
+            case "Cq value" -> mockCqSan;
+            case "Cycles" -> mockCycSan;
+            default -> null;
+        };
         if (san!=null) {
             mayAddProblem(problem, sanValue).when(san).sanitise(any(), any());
         }

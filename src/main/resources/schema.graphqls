@@ -1571,6 +1571,22 @@ input ReagentTransferRequest {
     plateType: String!
 }
 
+"""A request to record transfer, dual index and amplification ops."""
+input LibraryPrepRequest {
+    """The work number to associate with these operations."""
+    workNumber: String!
+    """The source labware and new labware states for this request."""
+    sources: [SlotCopySource!]!
+    """The one destination labware for this request, and the description of what is transferred into it."""
+    destination: SlotCopyDestination!
+    """The transfers from aliquot slots to destination slots."""
+    reagentTransfers: [ReagentTransfer!]!
+    """The type of reagent plate involved."""
+    reagentPlateType: String
+    """The measurement to record on slots in the destination."""
+    slotMeasurements: [SlotMeasurementRequest!]!
+}
+
 """A request to process original tissue into blocks."""
 input TissueBlockRequest {
     """The work number associated with this request."""
@@ -2117,6 +2133,8 @@ type Mutation {
     recordOrientationQC(request: OrientationRequest!): OperationResult!
     """Reactivate labware."""
     reactivateLabware(items: [ReactivateLabware!]!): OperationResult!
+    """Perform library prep request."""
+    libraryPrep(request: LibraryPrepRequest!): OperationResult!
 
     """Create a new user for the application."""
     addUser(username: String!): User!
