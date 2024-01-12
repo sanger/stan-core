@@ -1,5 +1,7 @@
 package uk.ac.sanger.sccp.stan;
 
+import graphql.GraphQLContext;
+import graphql.execution.CoercedVariables;
 import graphql.language.*;
 import graphql.schema.*;
 import org.jetbrains.annotations.NotNull;
@@ -10,6 +12,7 @@ import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.format.ResolverStyle;
 import java.util.Date;
+import java.util.Locale;
 
 /**
  * @author dr6
@@ -22,7 +25,7 @@ public class GraphQLCustomTypes {
             .description("A 1-indexed row and column, in the form \"B12\" (row 2, column 12) or \"32,15\" (row 32, column 15).")
             .coercing(new Coercing<Address, String>() {
                 @Override
-                public String serialize(@NotNull Object dataFetcherResult) throws CoercingSerializeException {
+                public String serialize(@NotNull Object dataFetcherResult, @NotNull GraphQLContext context, @NotNull Locale locale) throws CoercingSerializeException {
                     if (dataFetcherResult instanceof Address) {
                         return dataFetcherResult.toString();
                     }
@@ -31,7 +34,7 @@ public class GraphQLCustomTypes {
 
                 @NotNull
                 @Override
-                public Address parseValue(@NotNull Object input) throws CoercingParseValueException {
+                public Address parseValue(@NotNull Object input, @NotNull GraphQLContext context, @NotNull Locale locale) throws CoercingParseValueException {
                     if (input instanceof String) {
                         try {
                             return Address.valueOf((String) input);
@@ -44,7 +47,7 @@ public class GraphQLCustomTypes {
 
                 @NotNull
                 @Override
-                public Address parseLiteral(@NotNull Object input) throws CoercingParseLiteralException {
+                public Address parseLiteral(@NotNull Value<?> input, @NotNull CoercedVariables variables, @NotNull GraphQLContext graphQLContext, @NotNull Locale locale) throws CoercingParseLiteralException {
                     if (input instanceof StringValue) {
                         try {
                             return Address.valueOf(((StringValue) input).getValue());
@@ -56,7 +59,7 @@ public class GraphQLCustomTypes {
                 }
 
                 @Override
-                public @NotNull Value<?> valueToLiteral(@NotNull Object input) {
+                public @NotNull Value<?> valueToLiteral(@NotNull Object input, @NotNull GraphQLContext context, @NotNull Locale locale) {
                     return StringValue.of((String) input);
                 }
             })
@@ -67,7 +70,7 @@ public class GraphQLCustomTypes {
             .description("A scalar type representing a point in time.")
             .coercing(new Coercing<LocalDateTime, String>() {
                 @Override
-                public String serialize(@NotNull Object dataFetcherResult) throws CoercingSerializeException {
+                public String serialize(@NotNull Object dataFetcherResult, @NotNull GraphQLContext context, @NotNull Locale locale) throws CoercingSerializeException {
                     try {
                         LocalDateTime d = toLocalDateTime(dataFetcherResult);
                         if (d != null) {
@@ -81,7 +84,7 @@ public class GraphQLCustomTypes {
 
                 @NotNull
                 @Override
-                public LocalDateTime parseValue(@NotNull Object input) throws CoercingParseValueException {
+                public LocalDateTime parseValue(@NotNull Object input, @NotNull GraphQLContext context, @NotNull Locale locale) throws CoercingParseValueException {
                     try {
                         LocalDateTime d = toLocalDateTime(input);
                         if (d != null) {
@@ -95,7 +98,7 @@ public class GraphQLCustomTypes {
 
                 @NotNull
                 @Override
-                public LocalDateTime parseLiteral(@NotNull Object input) throws CoercingParseLiteralException {
+                public LocalDateTime parseLiteral(@NotNull Value<?> input, @NotNull CoercedVariables variables, @NotNull GraphQLContext graphQLContext, @NotNull Locale locale) throws CoercingParseLiteralException {
                     try {
                         LocalDateTime d = toLocalDateTime(input);
                         if (d != null) {
@@ -108,7 +111,7 @@ public class GraphQLCustomTypes {
                 }
 
                 @Override
-                public @NotNull Value<?> valueToLiteral(@NotNull Object input) {
+                public @NotNull Value<?> valueToLiteral(@NotNull Object input, @NotNull GraphQLContext context, @NotNull Locale locale) {
                     return StringValue.of(toLocalDateTime(input).format(DATE_TIME_FORMAT));
                 }
             })
@@ -119,7 +122,7 @@ public class GraphQLCustomTypes {
             .description("A scalar type representing a date.")
             .coercing(new Coercing<LocalDate, String>() {
                 @Override
-                public String serialize(@NotNull Object dataFetcherResult) throws CoercingSerializeException {
+                public String serialize(@NotNull Object dataFetcherResult, @NotNull GraphQLContext context, @NotNull Locale locale) throws CoercingSerializeException {
                     try {
                         LocalDate d = toLocalDate(dataFetcherResult);
                         if (d != null) {
@@ -133,7 +136,7 @@ public class GraphQLCustomTypes {
 
                 @NotNull
                 @Override
-                public LocalDate parseValue(@NotNull Object input) throws CoercingParseValueException {
+                public LocalDate parseValue(@NotNull Object input, @NotNull GraphQLContext context, @NotNull Locale locale) throws CoercingParseValueException {
                     try {
                         LocalDate d = toLocalDate(input);
                         if (d != null) {
@@ -145,9 +148,8 @@ public class GraphQLCustomTypes {
                     throw new CoercingParseValueException("Unable to parse value " + input + " as a date.");
                 }
 
-                @NotNull
                 @Override
-                public LocalDate parseLiteral(@NotNull Object input) throws CoercingParseLiteralException {
+                public LocalDate parseLiteral(@NotNull Value<?> input, @NotNull CoercedVariables variables, @NotNull GraphQLContext graphQLContext, @NotNull Locale locale) throws CoercingParseLiteralException {
                     try {
                         LocalDate d = toLocalDate(input);
                         if (d != null) {
@@ -160,7 +162,7 @@ public class GraphQLCustomTypes {
                 }
 
                 @Override
-                public @NotNull Value<?> valueToLiteral(@NotNull Object input) {
+                public @NotNull Value<?> valueToLiteral(@NotNull Object input, @NotNull GraphQLContext context, @NotNull Locale locale) {
                     return StringValue.of(toLocalDate(input).toString());
                 }
             })
