@@ -11,6 +11,9 @@ import java.util.List;
 import java.util.Objects;
 
 /**
+ * An operation is a piece of work done on one or more labware.
+ * Operations have a type, indicating what the operation was;
+ * and actions, describing the interactions of slots and samples.
  * @author dr6
  */
 @Entity
@@ -102,6 +105,9 @@ public class Operation implements Comparable<Operation> {
         this.user = user;
     }
 
+    /**
+     * The id of the plan (if any) that was recorded in advance setting up this operation
+     */
     public Integer getPlanOperationId() {
         return this.planOperationId;
     }
@@ -110,6 +116,7 @@ public class Operation implements Comparable<Operation> {
         this.planOperationId = planOperationId;
     }
 
+    /** The equipment, if any, used in this operation */
     public Equipment getEquipment() {
         return this.equipment;
     }

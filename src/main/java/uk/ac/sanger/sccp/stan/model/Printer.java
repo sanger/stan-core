@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
+ * A database record of an available label printer
  * @author dr6
  */
 @Entity
@@ -58,6 +59,7 @@ public class Printer {
         this.labelTypes = labelTypes;
     }
 
+    /** What service is used to send requests to this printer? */
     public Service getService() {
         return this.service;
     }

@@ -4,6 +4,7 @@ import javax.persistence.*;
 import java.util.Objects;
 
 /**
+ * A type of operation. This indicates what the operation was that was being performed
  * @author dr6
  */
 @Entity
@@ -47,6 +48,7 @@ public class OperationType implements HasName, HasIntId {
         this.name = name;
     }
 
+    /** A bitfield for flags that indicate the behaviour of operations of this type. */
     public int getFlags() {
         return this.flags;
     }
@@ -55,6 +57,7 @@ public class OperationType implements HasName, HasIntId {
         this.flags = flags;
     }
 
+    /** What new bio state (if any) should destination samples be in after this operation? */
     public BioState getNewBioState() {
         return this.newBioState;
     }
@@ -64,46 +67,57 @@ public class OperationType implements HasName, HasIntId {
     }
 
     //region operation behaviour
+    /** Checks if this operation type has a particular flag set */
     public boolean has(OperationTypeFlag flag) {
         return (this.flags & flag.bit()) != 0;
     }
 
+    /** Is this operation in-place (i.e. is the source of each action expected to be the destination of that action) */
     public boolean inPlace() {
         return this.has(OperationTypeFlag.IN_PLACE);
     }
 
+    /** Is it possible to prelabel labware for this operation? */
     public boolean canPrelabel() {
         return !inPlace();
     }
 
+    /** Might this operation create sections? An operation in-place cannot create sections */
     public boolean canCreateSection() {
         return !inPlace();
     }
 
+    /** Must this operation be recorded using a block as the source labware? */
     public boolean sourceMustBeBlock() {
         return this.has(OperationTypeFlag.SOURCE_IS_BLOCK);
     }
 
+    /** Should the source labware be discarded after it is used in this operation? */
     public boolean discardSource() {
         return this.has(OperationTypeFlag.DISCARD_SOURCE);
     }
 
+    /** Should the source labware be marked as used after it is used in this operation? */
     public boolean markSourceUsed() {
         return this.has(OperationTypeFlag.MARK_SOURCE_USED);
     }
 
+    /** Does this operation transfer reagents from a reagent plate into the target labware? */
     public boolean transfersReagent() {
         return this.has(OperationTypeFlag.REAGENT_TRANSFER);
     }
 
+    /** Is this operation a result? */
     public boolean isResult() {
         return this.has(OperationTypeFlag.RESULT);
     }
 
+    /** Does this operation use labware probes? */
     public boolean usesProbes() {
         return this.has(OperationTypeFlag.PROBES);
     }
 
+    /** Can a labware that is already active (and contains samples) be used as the destination? */
     public boolean supportsActiveDest() {
         return this.has(OperationTypeFlag.ACTIVE_DEST);
     }

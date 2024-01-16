@@ -38,6 +38,7 @@ public class DnapStudy implements HasIntId, HasEnabled, HasName {
         this.id = id;
     }
 
+    /** The ID of this study in Sequencescape */
     public Integer getSsId() {
         return this.ssId;
     }

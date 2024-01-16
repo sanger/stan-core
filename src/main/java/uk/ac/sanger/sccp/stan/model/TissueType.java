@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Objects;
 
 /**
+ * A type of tissue, typically an organ. More specific origins are indicated by
+ * spatial locations in a tissue type.
  * @author dr6
  */
 @Entity

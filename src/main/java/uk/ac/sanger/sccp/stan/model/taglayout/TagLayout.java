@@ -8,6 +8,7 @@ import java.util.*;
 import static uk.ac.sanger.sccp.utils.BasicUtils.nullToEmpty;
 
 /**
+ * A layout of tags in a plate
  * @author dr6
  */
 @Entity
@@ -31,6 +32,7 @@ public class TagLayout {
         this.id = id;
     }
 
+    /** The name of the tag layout */
     public String getName() {
         return this.name;
     }
@@ -39,6 +41,7 @@ public class TagLayout {
         this.name = name;
     }
 
+    /** The tag headings in this layout */
     public List<TagHeading> getHeadings() {
         return this.headings;
     }
@@ -69,6 +72,7 @@ public class TagLayout {
 
     /**
      * Gets a map of tag heading to tag value for the given address.
+     * Only headings are included if their {@link TagHeading#isInRelease isInRelease} method returns true
      * @param address the address to get tag data for
      * @return a map of tag heading to tag value
      */

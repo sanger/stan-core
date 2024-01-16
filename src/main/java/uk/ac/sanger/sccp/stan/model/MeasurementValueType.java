@@ -1,6 +1,7 @@
 package uk.ac.sanger.sccp.stan.model;
 
 /**
+ * Different types of measurement value
  * @author dr6
  */
 public enum MeasurementValueType {

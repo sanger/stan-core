@@ -1,11 +1,10 @@
 package uk.ac.sanger.sccp.stan.model;
 
-import com.google.common.base.MoreObjects;
-
 import javax.persistence.*;
 import java.util.Objects;
 
 /**
+ * A medium is a chemical that was used in setting up a piece of tissue
  * @author dr6
  */
 @Entity

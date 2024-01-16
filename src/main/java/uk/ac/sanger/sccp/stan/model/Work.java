@@ -15,6 +15,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.coalesce;
 @Entity
 public class Work {
     // region inner classes
+    /** The states that a particular work may go through */
     public enum Status {
         unstarted, active, paused, completed, failed, withdrawn
     }
@@ -208,6 +209,7 @@ public class Work {
         this.status = status;
     }
 
+    /** The ids of operations linked to this work */
     public List<Integer> getOperationIds() {
         return this.operationIds;
     }
@@ -216,6 +218,7 @@ public class Work {
         this.operationIds = (operationIds instanceof ArrayList ? operationIds : BasicUtils.newArrayList(operationIds));
     }
 
+    /** The ids of releases linked to this work */
     public List<Integer> getReleaseIds() {
         return this.releaseIds;
     }
@@ -224,6 +227,7 @@ public class Work {
         this.releaseIds = coalesce(releaseIds, List.of());
     }
 
+    /** The ids of samples and slots that are in combination linked to this work */
     public List<SampleSlotId> getSampleSlotIds() {
         return this.sampleSlotIds;
     }

@@ -8,6 +8,7 @@ import java.util.*;
 import static uk.ac.sanger.sccp.utils.BasicUtils.newArrayList;
 
 /**
+ * An addressed position inside labware that may contain samples
  * @author dr6
  */
 @Entity

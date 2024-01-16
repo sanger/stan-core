@@ -6,6 +6,7 @@ import javax.persistence.*;
 import java.util.Objects;
 
 /**
+ * A flag recorded against a particular piece of labware in an operation.
  * @author dr6
  */
 @Entity
@@ -40,6 +41,7 @@ public class LabwareFlag {
         this.id = id;
     }
 
+    /** The item of labware that was flagged. */
     public Labware getLabware() {
         return this.labware;
     }
@@ -48,6 +50,7 @@ public class LabwareFlag {
         this.labware = labware;
     }
 
+    /** The text of the flag raised against this labware. */
     public String getDescription() {
         return this.description;
     }
@@ -56,6 +59,7 @@ public class LabwareFlag {
         this.description = description;
     }
 
+    /** The user who flagged the labware */
     public User getUser() {
         return this.user;
     }
@@ -64,6 +68,7 @@ public class LabwareFlag {
         this.user = user;
     }
 
+    /** The id of the operation that recorded this flag. */
     public Integer getOperationId() {
         return this.operationId;
     }

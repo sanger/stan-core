@@ -8,6 +8,7 @@ import java.util.Objects;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
+ * A specification of an item removed from storage, and the address it was removed from
  * @author dr6
  */
 public class UnstoredItem {

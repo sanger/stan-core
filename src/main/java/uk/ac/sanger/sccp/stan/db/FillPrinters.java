@@ -12,15 +12,20 @@ import java.io.IOException;
 import java.util.*;
 
 /**
+ * The SQL change to set up the printers from a csv file
  * @author dr6
  */
 public class FillPrinters implements CustomSqlChange {
+    /** The enum type representing expected columns in the csv file */
     private enum Column {
         name,
         label_type,
         service,
     }
 
+    /**
+     * An entry representing a printer to add
+     */
     private static class PrinterEntry {
         String name;
         Printer.Service service;
@@ -48,6 +53,11 @@ public class FillPrinters implements CustomSqlChange {
         }
     }
 
+    /**
+     * Reads the printers csv file and creates SQL statements to put the data into the database.
+     * @return the sql statements to add the printers
+     * @exception IOException there was a problem reading the resource
+     */
     private SqlStatement[] generateStatementsInner() throws IOException {
         var data = CsvResourceReader.readData(Column.class, ",", resourceAccessor, "db/printers.csv");
         var entries = toEntries(data);
@@ -70,6 +80,11 @@ public class FillPrinters implements CustomSqlChange {
         return statements.toArray(new SqlStatement[0]);
     }
 
+    /**
+     * Converts csv data to printer entries
+     * @param data a list of maps, each representing a row in the csv file
+     * @return printer entries to add to the database
+     */
     private Collection<PrinterEntry> toEntries(List<Map<Column, String>> data) {
         Map<String, PrinterEntry> entries = new LinkedHashMap<>();
         for (var row : data) {

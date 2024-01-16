@@ -46,6 +46,7 @@ public class Equipment implements HasEnabled {
         this.name = name;
     }
 
+    /** The type of equipment this is, indicating the context in which it is appropriate to be used */
     public String getCategory() {
         return this.category;
     }

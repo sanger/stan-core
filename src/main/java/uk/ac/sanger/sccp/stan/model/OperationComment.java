@@ -6,6 +6,8 @@ import javax.persistence.*;
 import java.util.Objects;
 
 /**
+ * A link between an operation and a comment recorded for that operation.
+ * The comment in the operation may be linked to a particular sample, labware, and slot.
  * @author dr6
  */
 @Entity

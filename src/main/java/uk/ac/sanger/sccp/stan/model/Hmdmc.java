@@ -4,6 +4,7 @@ import javax.persistence.*;
 import java.util.Objects;
 
 /**
+ * An HMDMC (HuMFre number) indicating the ethical approval given to tissues for projects
  * @author dr6
  */
 @Entity

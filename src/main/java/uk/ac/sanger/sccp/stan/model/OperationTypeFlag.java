@@ -1,5 +1,6 @@
 package uk.ac.sanger.sccp.stan.model;
 
+/** Flags indicating different possible types of behaviour for operations of a given type */
 public enum OperationTypeFlag {
     /** Op happens in-place (source labware is the same as destination) */
     IN_PLACE,

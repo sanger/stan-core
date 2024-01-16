@@ -6,6 +6,7 @@ import java.util.Objects;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
+ * An individual to whom labware may be released
  * @author dr6
  */
 @Entity

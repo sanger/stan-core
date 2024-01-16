@@ -7,6 +7,8 @@ import java.util.Objects;
 
 /**
  * Some kind of measurement, such as a section thickness.
+ * A measurement is typically recorded against sample or samples in a particular labware slot.
+ * The name and value represent a key/value pair
  * @author dr6
  */
 @Entity
