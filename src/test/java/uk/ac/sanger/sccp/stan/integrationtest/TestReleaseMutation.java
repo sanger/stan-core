@@ -150,8 +150,8 @@ public class TestReleaseMutation {
                 .filter(c -> c.getMode()!=ReleaseFileMode.CDNA)
                 .map(ReleaseColumn::toString)
                 .collect(toSet());
-        assertThat(tsvMaps.get(0).keySet()).containsExactlyInAnyOrderElementsOf(expectedColumns);
-        var row0 = tsvMaps.get(0);
+        var row0 = tsvMaps.getFirst();
+        assertThat(row0.keySet()).containsExactlyInAnyOrderElementsOf(expectedColumns);
         assertMapValue(row0, ReleaseColumn.Released_labware_barcode, block.getBarcode());
         assertMapValue(row0, ReleaseColumn.Labware_type, block.getLabwareType().getName());
         assertMapValue(row0, ReleaseColumn.Last_section_number, "6");
@@ -170,7 +170,7 @@ public class TestReleaseMutation {
         }
 
         entityManager.refresh(work1);
-        assertThat(work1.getReleaseIds()).contains(releaseIds.get(0));
+        assertThat(work1.getReleaseIds()).contains(releaseIds.getFirst());
 
         entityCreator.createOpType("Unrelease", null, OperationTypeFlag.IN_PLACE);
 
