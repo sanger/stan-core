@@ -1,7 +1,6 @@
 package uk.ac.sanger.sccp.stan.request;
 
 import uk.ac.sanger.sccp.stan.model.Address;
-import uk.ac.sanger.sccp.stan.model.Labware;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import java.util.List;
@@ -82,21 +81,21 @@ public class VisiumPermData {
         }
     }
 
-    private Labware labware;
+    private LabwareFlagged labware;
     private List<AddressPermData> addressPermData;
     private List<SamplePositionResult> samplePositionResults;
 
-    public VisiumPermData(Labware labware, List<AddressPermData> addressPermData, List<SamplePositionResult> samplePositionResults) {
+    public VisiumPermData(LabwareFlagged labware, List<AddressPermData> addressPermData, List<SamplePositionResult> samplePositionResults) {
         this.labware = labware;
         this.samplePositionResults = samplePositionResults;
         setAddressPermData(addressPermData);
     }
 
-    public Labware getLabware() {
+    public LabwareFlagged getLabware() {
         return this.labware;
     }
 
-    public void setLabware(Labware labware) {
+    public void setLabware(LabwareFlagged labware) {
         this.labware = labware;
     }
 

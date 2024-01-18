@@ -74,6 +74,7 @@ public class GraphQLProvider {
                         .dataFetcher("fixatives", graphQLDataFetchers.getFixatives())
                         .dataFetcher("species", graphQLDataFetchers.getSpecies())
                         .dataFetcher("labware", graphQLDataFetchers.findLabwareByBarcode())
+                        .dataFetcher("labwareFlagged", graphQLDataFetchers.findLabwareFlagged())
                         .dataFetcher("printers", graphQLDataFetchers.findPrinters())
                         .dataFetcher("comments", graphQLDataFetchers.getComments())
                         .dataFetcher("equipments", graphQLDataFetchers.getEquipments())
@@ -110,6 +111,7 @@ public class GraphQLProvider {
                         .dataFetcher("suggestedWorkForLabware", graphQLDataFetchers.getSuggestedWorkForLabwareBarcodes())
                         .dataFetcher("suggestedLabwareForWork", graphQLDataFetchers.getSuggestedLabwareForWork())
                         .dataFetcher("findLatestOp", graphQLDataFetchers.findLatestOperation())
+                        .dataFetcher("labwareFlagDetails", graphQLDataFetchers.getFlagDetails())
 
                         .dataFetcher("users", graphQLDataFetchers.getUsers())
                         .dataFetcher("planData", graphQLDataFetchers.getPlanData())
@@ -211,6 +213,7 @@ public class GraphQLProvider {
                         .dataFetcher("recordProbeOperation", transact(graphQLMutation.recordProbeOperation()))
                         .dataFetcher("recordCompletion", transact(graphQLMutation.recordCompletion()))
                         .dataFetcher("recordAnalyser", transact(graphQLMutation.recordAnalyser()))
+                        .dataFetcher("flagLabware", transact(graphQLMutation.flagLabware()))
                         .dataFetcher("recordQCLabware", transact(graphQLMutation.recordQcLabware()))
                         .dataFetcher("recordOrientationQC", transact(graphQLMutation.recordOrientationQC()))
                         .dataFetcher("reactivateLabware", transact(graphQLMutation.reactivateLabware()))

@@ -2,7 +2,6 @@ package uk.ac.sanger.sccp.stan;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import graphql.language.Field;
 import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +14,7 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.extract.ExtractResultQueryService;
+import uk.ac.sanger.sccp.stan.service.flag.FlagLookupService;
 import uk.ac.sanger.sccp.stan.service.history.HistoryService;
 import uk.ac.sanger.sccp.stan.service.label.print.LabelPrintService;
 import uk.ac.sanger.sccp.stan.service.operation.RecentOpService;
@@ -23,11 +23,11 @@ import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.stan.service.work.WorkSummaryService;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
-import javax.persistence.EntityNotFoundException;
 import java.util.*;
 import java.util.function.Supplier;
 
 import static java.util.stream.Collectors.toList;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 
 /**
  * @author dr6
@@ -75,6 +75,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final FileStoreService fileStoreService;
     final SlotRegionService slotRegionService;
     final RecentOpService recentOpService;
+    final FlagLookupService flagLookupService;
 
     @Autowired
     public GraphQLDataFetchers(ObjectMapper objectMapper, AuthenticationComponent authComp, UserRepo userRepo,
@@ -96,7 +97,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                WorkService workService, VisiumPermDataService visiumPermDataService,
                                NextReplicateService nextReplicateService, WorkSummaryService workSummaryService,
                                LabwareService labwareService, FileStoreService fileStoreService,
-                               SlotRegionService slotRegionService, RecentOpService recentOpService) {
+                               SlotRegionService slotRegionService, RecentOpService recentOpService, FlagLookupService flagLookupService) {
         super(objectMapper, authComp, userRepo);
         this.sessionConfig = sessionConfig;
         this.versionInfo = versionInfo;
@@ -138,6 +139,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.fileStoreService = fileStoreService;
         this.slotRegionService = slotRegionService;
         this.recentOpService = recentOpService;
+        this.flagLookupService = flagLookupService;
     }
 
     public DataFetcher<User> getUser() {
@@ -171,11 +173,24 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     public DataFetcher<Labware> findLabwareByBarcode() {
         return dfe -> {
             String barcode = dfe.getArgument("barcode");
-            if (barcode==null || barcode.isEmpty()) {
+            if (nullOrEmpty(barcode)) {
                 throw new IllegalArgumentException("No barcode supplied.");
             }
-            return labwareRepo.findByBarcode(barcode)
-                    .orElseThrow(() -> new EntityNotFoundException("No labware found with barcode: "+barcode));
+            return labwareRepo.getByBarcode(barcode);
+        };
+    }
+
+    public DataFetcher<LabwareFlagged> findLabwareFlagged() {
+        return dfe -> {
+            String barcode = dfe.getArgument("barcode");
+            if (nullOrEmpty(barcode)) {
+                throw new IllegalArgumentException("No barcode supplied.");
+            }
+            Labware lw = labwareRepo.getByBarcode(barcode);
+            if (requestsField(dfe, "flagged")) {
+                return flagLookupService.getLabwareFlagged(lw);
+            }
+            return new LabwareFlagged(lw, false);
         };
     }
 
@@ -310,6 +325,14 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         };
     }
 
+    public DataFetcher<List<FlagDetail>> getFlagDetails() {
+        return dfe -> {
+            List<String> barcodes = dfe.getArgument("barcodes");
+            List<Labware> labware = labwareRepo.findByBarcodeIn(barcodes);
+            return flagLookupService.lookUpDetails(labware);
+        };
+    }
+
     public DataFetcher<Operation> findLatestOperation() {
         return dfe -> {
             String barcode = dfe.getArgument("barcode");
@@ -411,7 +434,10 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     }
   
     public DataFetcher<PlanData> getPlanData() {
-        return dfe -> planService.getPlanData(dfe.getArgument("barcode"));
+        return dfe -> {
+            boolean requestsFlags = requestsField(dfe, "**/flagged");
+            return planService.getPlanData(dfe.getArgument("barcode"), requestsFlags);
+        };
     }
 
     public DataFetcher<List<StainType>> getEnabledStainTypes() {
@@ -423,7 +449,10 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     }
 
     public DataFetcher<ExtractResult> getExtractResult() {
-        return dfe -> extractResultQueryService.getExtractResult(dfe.getArgument("barcode"));
+        return dfe -> {
+            boolean loadFlags = requestsField(dfe, "**/flagged");
+            return extractResultQueryService.getExtractResult(dfe.getArgument("barcode"), loadFlags);
+        };
     }
 
     public DataFetcher<List<OpPassFail>> getPassFails() {
@@ -474,9 +503,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         };
     }
 
-    private boolean requestsField(DataFetchingEnvironment dfe, String childName) {
-        return dfe.getField().getSelectionSet().getChildren().stream()
-                .anyMatch(f -> ((Field) f).getName().equals(childName));
+    private boolean requestsField(DataFetchingEnvironment dfe, String glob) {
+       return dfe.getSelectionSet().contains(glob);
     }
 
     @FunctionalInterface

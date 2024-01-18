@@ -6,10 +6,9 @@ import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
 import uk.ac.sanger.sccp.stan.repo.MeasurementRepo;
-import uk.ac.sanger.sccp.stan.request.ControlType;
-import uk.ac.sanger.sccp.stan.request.SamplePositionResult;
-import uk.ac.sanger.sccp.stan.request.VisiumPermData;
+import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.request.VisiumPermData.AddressPermData;
+import uk.ac.sanger.sccp.stan.service.flag.FlagLookupService;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.Ancestry;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
@@ -33,6 +32,7 @@ public class TestVisiumPermDataService {
     private Ancestoriser mockAncestoriser;
     private VisiumPermDataService service;
     private SlotRegionService mockSlotRegionService;
+    private FlagLookupService mockFlagLookupService;
 
     @BeforeEach
     void setUp() {
@@ -40,7 +40,9 @@ public class TestVisiumPermDataService {
         mockMeasurementRepo = mock(MeasurementRepo.class);
         mockAncestoriser = mock(Ancestoriser.class);
         mockSlotRegionService = mock(SlotRegionService.class);
-        service = new VisiumPermDataService(mockLwRepo, mockMeasurementRepo, mockAncestoriser, mockSlotRegionService);
+        mockFlagLookupService = mock(FlagLookupService.class);
+        service = new VisiumPermDataService(mockLwRepo, mockMeasurementRepo, mockAncestoriser,
+                mockSlotRegionService, mockFlagLookupService);
     }
 
     @Test
@@ -48,6 +50,8 @@ public class TestVisiumPermDataService {
         LabwareType lt = EntityFactory.makeLabwareType(3,2);
         Sample sample = EntityFactory.getSample();
         Labware lw = EntityFactory.makeLabware(lt, sample, sample, sample);
+        LabwareFlagged lf = new LabwareFlagged(lw, false);
+        when(mockFlagLookupService.getLabwareFlagged(lw)).thenReturn(lf);
         final Slot slot = lw.getFirstSlot();
         Ancestry ancestry = new Ancestry();
         when(mockAncestoriser.findAncestry(any())).thenReturn(ancestry);
@@ -64,10 +68,11 @@ public class TestVisiumPermDataService {
         when(mockMeasurementRepo.findAllBySlotIdIn(any())).thenReturn(measurements);
         when(mockSlotRegionService.loadSamplePositionResultsForLabware(lw.getBarcode())).thenReturn(List.of(samplePositionResult));
         VisiumPermData pd = service.load(lw.getBarcode());
-        assertSame(lw, pd.getLabware());
+        assertSame(lf, pd.getLabware());
         assertThat(pd.getAddressPermData()).containsExactly(new AddressPermData(A1, 120));
         assertThat(pd.getSamplePositionResults()).containsExactly(samplePositionResult);
         verify(mockAncestoriser).findAncestry(SlotSample.stream(lw).collect(toList()));
+        verify(mockFlagLookupService).getLabwareFlagged(lw);
     }
 
     @Test

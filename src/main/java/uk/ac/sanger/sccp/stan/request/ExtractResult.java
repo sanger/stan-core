@@ -1,6 +1,5 @@
 package uk.ac.sanger.sccp.stan.request;
 
-import uk.ac.sanger.sccp.stan.model.Labware;
 import uk.ac.sanger.sccp.stan.model.PassFail;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
@@ -11,23 +10,23 @@ import java.util.Objects;
  * @author dr6
  */
 public class ExtractResult {
-    private Labware labware;
+    private LabwareFlagged labware;
     private PassFail result;
     private String concentration;
 
     public ExtractResult() {}
 
-    public ExtractResult(Labware labware, PassFail result, String concentration) {
+    public ExtractResult(LabwareFlagged labware, PassFail result, String concentration) {
         this.labware = labware;
         this.result = result;
         this.concentration = concentration;
     }
 
-    public Labware getLabware() {
+    public LabwareFlagged getLabware() {
         return this.labware;
     }
 
-    public void setLabware(Labware labware) {
+    public void setLabware(LabwareFlagged labware) {
         this.labware = labware;
     }
 

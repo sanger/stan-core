@@ -1,0 +1,9 @@
+query {
+    labwareFlagDetails(barcodes: ["STAN-1", "STAN-3"]) {
+        barcode
+        flags {
+            barcode
+            description
+        }
+    }
+}

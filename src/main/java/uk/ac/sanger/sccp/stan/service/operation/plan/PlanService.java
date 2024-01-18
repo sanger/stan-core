@@ -19,7 +19,8 @@ public interface PlanService {
     /**
      * Gets the plan data for a destination labware barcode.
      * @param barcode the barcode of a labware for which a plan has been recorded
+     * @param loadFlags true to require that flags are loaded for labware
      * @return the plan data for that barcode
      */
-    PlanData getPlanData(String barcode);
+    PlanData getPlanData(String barcode, boolean loadFlags);
 }

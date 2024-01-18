@@ -70,6 +70,10 @@ public class EntityCreator {
     private WorkTypeRepo workTypeRepo;
     @Autowired
     private WorkRepo workRepo;
+    @Autowired
+    private OperationRepo opRepo;
+    @Autowired
+    private ActionRepo actionRepo;
 
     @Autowired
     private EntityManager entityManager;
@@ -251,6 +255,17 @@ public class EntityCreator {
 
     public Work createWorkLike(Work otherWork) {
         return createWork(otherWork.getWorkType(), otherWork.getProject(), otherWork.getProgram(), otherWork.getCostCode(), otherWork.getWorkRequester());
+    }
+
+    public Operation simpleOp(OperationType opType, User user, Labware source, Labware dest) {
+        Slot slot0 = source.getFirstSlot();
+        Slot slot1 = dest.getFirstSlot();
+        Sample sam0 = slot0.getSamples().get(0);
+        Sample sam1 = slot1.getSamples().get(0);
+        Operation op = opRepo.save(new Operation(null, opType, null, List.of(), user));
+        Action action = actionRepo.save(new Action(null, op.getId(), slot0, slot1, sam1, sam0));
+        op.setActions(List.of(action));
+        return op;
     }
 
     public Printer createPrinter(String name, LabelType labelType) {

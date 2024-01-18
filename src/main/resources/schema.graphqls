@@ -216,6 +216,34 @@ type Labware {
     created: Timestamp!
 }
 
+"""Labware with an additional field specifying whether it is flagged."""
+type LabwareFlagged {
+    """The unique id of this labware."""
+    id: Int!
+    """The unique barcode of this labware."""
+    barcode: String!
+    """The external barcode of this labware, as input by the user."""
+    externalBarcode: String
+    """The type of labware."""
+    labwareType: LabwareType!
+    """The slots in this labware. The number of slots and their addresses are determined by the labware type."""
+    slots: [Slot!]!
+    """Has this labware been released?"""
+    released: Boolean!
+    """Has this labware been destroyed?"""
+    destroyed: Boolean!
+    """Has this labware been discarded?"""
+    discarded: Boolean!
+    """Has this labware been marked as used?"""
+    used: Boolean!
+    """The state, derived from the contents and other fields on the labware."""
+    state: LabwareState!
+    """The time when this labware was created in the application."""
+    created: Timestamp!
+    """Is there a labware flag applicable to this labware?"""
+    flagged: Boolean!
+}
+
 """A solution used in an operation."""
 type Solution {
     """The unique name of the solution."""
@@ -979,11 +1007,11 @@ type History {
 """Information about a plan previously recorded, now being looked up."""
 type PlanData {
     """One or more items of source labware for the plan."""
-    sources: [Labware!]!
+    sources: [LabwareFlagged!]!
     """The planned operation."""
     plan: PlanOperation!
     """The single item of destination labware for the plan."""
-    destination: Labware!
+    destination: LabwareFlagged!
 }
 
 """A project that work can be associated with."""
@@ -1094,6 +1122,22 @@ type WorkProgress {
     timestamps: [WorkProgressTimestamp!]!
     """The most recent operation for a given piece of work"""
     mostRecentOperation: String
+}
+
+"""Summary of a particular labware flag."""
+type FlagSummary {
+    """The labware barcode that was flagged."""
+    barcode: String!
+    """The description of the flag."""
+    description: String!
+}
+
+"""Information about flags related to some labware."""
+type FlagDetail {
+    """The barcode of the labware whose flags have been looked up."""
+    barcode: String!
+    """Summaries of the flags applicable to the specified labware."""
+    flags: [FlagSummary!]!
 }
 
 """A measurement given as a number of seconds for some particular named measure."""
@@ -1301,7 +1345,7 @@ type AddressPermData {
 """The permeabilisation data recorded for a particular piece of labware."""
 type VisiumPermData {
     """The labware in question."""
-    labware: Labware!
+    labware: LabwareFlagged!
     """The permeabilisation data for each slot."""
     addressPermData: [AddressPermData!]!
     """The region of a sample in a particular slot referenced by the entries"""
@@ -1341,7 +1385,7 @@ type OpPassFail {
 """A piece of labware and an extract result, if any exists."""
 type ExtractResult {
     """The labware the result refers to."""
-    labware: Labware!
+    labware: LabwareFlagged!
     """The result, if any."""
     result: PassFail
     """The concentration recorded, if any."""
@@ -1722,6 +1766,14 @@ input QCLabware {
     comments: [Int!]!
 }
 
+"""Raise a flag on a piece of labware."""
+input FlagLabwareRequest {
+    """The barcode of the flagged labware."""
+    barcode: String!
+    """The description of the flag."""
+    description: String!
+}
+
 """Request to record QC and completion time for one or more labware."""
 input QCLabwareRequest {
     """The name of the operation to record."""
@@ -1783,6 +1835,8 @@ type Query {
     probePanels(includeDisabled: Boolean): [ProbePanel!]!
     """Get the labware with the given barcode."""
     labware(barcode: String!): Labware!
+    """Get the labware and check if it is flagged."""
+    labwareFlagged(barcode: String!): LabwareFlagged!
     """Get all printers available, or get all printers that support a named label type."""
     printers(labelType: String): [Printer!]!
     """Get all enabled comments in a particular category, or all enabled in any category; optionally include disabled."""
@@ -1875,6 +1929,8 @@ type Query {
     suggestedWorkForLabware(barcodes: [String!]!, includeInactive: Boolean): SuggestedWorkResponse!
     """Get suggested labware for work."""
     suggestedLabwareForWork(workNumber: String!, forRelease: Boolean): [Labware!]!
+    """Get labware flag details applicable to the specified labware."""
+    labwareFlagDetails(barcodes: [String!]!): [FlagDetail!]!
 
     """Get the specified storage location."""
     location(locationBarcode: String!): Location!
@@ -2053,6 +2109,8 @@ type Mutation {
     recordCompletion(request: CompletionRequest!): OperationResult!
     """Record analyser operation."""
     recordAnalyser(request: AnalyserRequest!): OperationResult!
+    """Flag labware."""
+    flagLabware(request: FlagLabwareRequest!): OperationResult!
     """Record QC labware request."""
     recordQCLabware(request: QCLabwareRequest!): OperationResult!
     """Record Orientation QC."""

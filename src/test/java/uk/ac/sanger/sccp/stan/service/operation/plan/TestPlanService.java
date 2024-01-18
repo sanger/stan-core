@@ -8,10 +8,12 @@ import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.request.LabwareFlagged;
 import uk.ac.sanger.sccp.stan.request.PlanData;
 import uk.ac.sanger.sccp.stan.request.plan.*;
 import uk.ac.sanger.sccp.stan.service.LabwareService;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
+import uk.ac.sanger.sccp.stan.service.flag.FlagLookupService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
@@ -33,6 +35,7 @@ public class TestPlanService {
     private PlanValidationFactory mockPlanValidationFactory;
     private PlanValidation mockPlanValidation;
     private LabwareService mockLwService;
+    private FlagLookupService mockFlagLookupService;
 
     private PlanOperationRepo mockPlanRepo;
     private PlanActionRepo mockPlanActionRepo;
@@ -49,6 +52,7 @@ public class TestPlanService {
         mockPlanValidationFactory = mock(PlanValidationFactory.class);
         mockPlanValidation = mock(PlanValidation.class);
         mockLwService = mock(LabwareService.class);
+        mockFlagLookupService = mock(FlagLookupService.class);
         mockPlanRepo = mock(PlanOperationRepo.class);
         mockPlanActionRepo = mock(PlanActionRepo.class);
         mockOpTypeRepo = mock(OperationTypeRepo.class);
@@ -61,8 +65,8 @@ public class TestPlanService {
 
         when(mockPlanValidationFactory.createPlanValidation(any())).thenReturn(mockPlanValidation);
 
-        planService = spy(new PlanServiceImp(mockPlanValidationFactory, mockLwService, mockPlanRepo,
-                mockPlanActionRepo, mockOpTypeRepo, mockLwRepo, mockLtRepo, mockLwNoteRepo, mockBsRepo));
+        planService = spy(new PlanServiceImp(mockPlanValidationFactory, mockLwService, mockFlagLookupService,
+                mockPlanRepo, mockPlanActionRepo, mockOpTypeRepo, mockLwRepo, mockLtRepo, mockLwNoteRepo, mockBsRepo));
     }
 
     @Test
@@ -352,20 +356,49 @@ public class TestPlanService {
         if (numPlansFound != 1) {
             String expectedErrorMessage = String.format("%s found for labware %s.",
                     numPlansFound==0 ? "No plan" : "Multiple plans", barcode);
-            assertThat(assertThrows(IllegalArgumentException.class, () -> planService.getPlanData(barcode)))
+            assertThat(assertThrows(IllegalArgumentException.class, () -> planService.getPlanData(barcode, false)))
                     .hasMessage(expectedErrorMessage);
         } else {
-            PlanOperation plan = plans.get(0);
+            PlanOperation plan = plans.getFirst();
             List<Labware> sources = List.of(EntityFactory.makeEmptyLabware(lt));
             doReturn(sources).when(planService).getSources(any());
+            List<LabwareFlagged> lfSources = sources.stream().map(x -> new LabwareFlagged(x, false)).toList();
+            LabwareFlagged lfDest = new LabwareFlagged(lw, false);
 
-            assertEquals(new PlanData(plan, sources, lw), planService.getPlanData(barcode));
+            assertEquals(new PlanData(plan, lfSources, lfDest), planService.getPlanData(barcode, false));
             verify(planService).getSources(plan);
         }
 
+        verifyNoInteractions(mockFlagLookupService);
         verify(mockLwRepo).getByBarcode(barcode);
         verify(planService).validateLabwareForPlanData(lw);
         verify(mockPlanRepo).findAllByDestinationIdIn(List.of(lw.getId()));
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testGetPlanData_flags(boolean flagged) {
+        LabwareType lt = EntityFactory.getTubeType();
+        Labware lw = EntityFactory.makeEmptyLabware(lt);
+        final String barcode = lw.getBarcode();
+        when(mockLwRepo.getByBarcode(barcode)).thenReturn(lw);
+        OperationType opType = EntityFactory.makeOperationType("Section", null);
+        PlanOperation plan = new PlanOperation(100, opType, null, null, null);
+        doNothing().when(planService).validateLabwareForPlanData(any());
+
+        when(mockPlanRepo.findAllByDestinationIdIn(any())).thenReturn(List.of(plan));
+        List<Labware> sources = List.of(EntityFactory.makeEmptyLabware(lt));
+        doReturn(sources).when(planService).getSources(any());
+        List<LabwareFlagged> lfSources = sources.stream().map(x -> new LabwareFlagged(x, flagged)).toList();
+        LabwareFlagged lfDest = new LabwareFlagged(lw, flagged);
+
+        when(mockFlagLookupService.getLabwareFlagged(anyCollection())).then(invocation -> {
+            Collection<Labware> lws = invocation.getArgument(0);
+            return lws.stream().map(x -> new LabwareFlagged(x, flagged)).toList();
+        });
+
+        assertEquals(new PlanData(plan, lfSources, lfDest), planService.getPlanData(barcode, true));
+        verify(planService).getSources(plan);
     }
 
     @ParameterizedTest
