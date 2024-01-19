@@ -1,11 +1,10 @@
 package uk.ac.sanger.sccp.stan.service;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
-import org.mockito.ArgumentCaptor;
+import org.mockito.*;
 import org.mockito.stubbing.Answer;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.Matchers;
@@ -13,6 +12,8 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.service.sanitiser.Sanitiser;
+import uk.ac.sanger.sccp.stan.service.validation.ValidationHelper;
+import uk.ac.sanger.sccp.stan.service.validation.ValidationHelperFactory;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 
 import java.util.*;
@@ -25,43 +26,48 @@ import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.EntityFactory.objToCollection;
 import static uk.ac.sanger.sccp.stan.Matchers.assertProblem;
 import static uk.ac.sanger.sccp.stan.Matchers.mayAddProblem;
-import static uk.ac.sanger.sccp.stan.service.OpWithSlotMeasurementsServiceImp.OP_AMP;
-import static uk.ac.sanger.sccp.stan.service.OpWithSlotMeasurementsServiceImp.OP_VISIUM_CONC;
+import static uk.ac.sanger.sccp.stan.service.OpWithSlotMeasurementsServiceImp.*;
 import static uk.ac.sanger.sccp.utils.BasicUtils.coalesce;
 
 /**
  * Tests {@link OpWithSlotMeasurementsServiceImp}
  */
 public class TestOpWithSlotMeasurementsService {
-    private OperationTypeRepo mockOpTypeRepo;
+    @Mock
     private MeasurementRepo mockMeasRepo;
+    @Mock
     private LabwareRepo mockLwRepo;
+    @Mock
     private OperationCommentRepo mockOpComRepo;
+    @Mock
     private LabwareValidatorFactory mockLwValFactory;
+    @Mock
     private Sanitiser<String> mockCqSan, mockConcSan, mockCycSan;
+    @Mock
     private WorkService mockWorkService;
+    @Mock
     private OperationService mockOpService;
+    @Mock
     private CommentValidationService mockCommentValidationService;
+    @Mock
+    private ValidationHelperFactory mockValHelperFactory;
 
     private OpWithSlotMeasurementsServiceImp service;
 
-    @SuppressWarnings("unchecked")
+    private AutoCloseable mocking;
+
     @BeforeEach
     void setup() {
-        mockOpTypeRepo = mock(OperationTypeRepo.class);
-        mockMeasRepo = mock(MeasurementRepo.class);
-        mockLwRepo = mock(LabwareRepo.class);
-        mockOpComRepo = mock(OperationCommentRepo.class);
-        mockLwValFactory = mock(LabwareValidatorFactory.class);
-        mockCqSan = mock(Sanitiser.class);
-        mockConcSan = mock(Sanitiser.class);
-        mockCycSan = mock(Sanitiser.class);
-        mockWorkService = mock(WorkService.class);
-        mockOpService = mock(OperationService.class);
-        mockCommentValidationService = mock(CommentValidationService.class);
+        mocking = MockitoAnnotations.openMocks(this);
 
-        service = spy(new OpWithSlotMeasurementsServiceImp(mockOpTypeRepo, mockMeasRepo, mockLwRepo, mockOpComRepo,
-                mockLwValFactory, mockCqSan, mockConcSan, mockCycSan, mockWorkService, mockOpService, mockCommentValidationService));
+        service = spy(new OpWithSlotMeasurementsServiceImp(mockMeasRepo, mockLwRepo, mockOpComRepo,
+                mockLwValFactory, mockCqSan, mockConcSan, mockCycSan, mockWorkService, mockOpService,
+                mockCommentValidationService, mockValHelperFactory));
+    }
+
+    @AfterEach
+    void cleanup() throws Exception {
+        mocking.close();
     }
 
     @Test
@@ -198,6 +204,7 @@ public class TestOpWithSlotMeasurementsService {
     @CsvSource({
             "Amplification,",
             "Visium concentration,",
+            "qPCR results,",
             "Bake, Operation not expected for this request: Bake",
             "'', No operation type specified.",
             ", No operation type specified.",
@@ -205,26 +212,21 @@ public class TestOpWithSlotMeasurementsService {
             "Transfer, Operation cannot be recorded in place: Transfer",
     })
     public void testLoadOpType(String opName, String expectedProblem) {
-        OperationType opType;
-        switch (coalesce(opName, "")) {
-            case OP_VISIUM_CONC: case OP_AMP: case "Bake":
-                opType = EntityFactory.makeOperationType(opName, null, OperationTypeFlag.IN_PLACE);
-                break;
-            case "Transfer":
-                opType = EntityFactory.makeOperationType(opName, null);
-                break;
-            default: opType = null;
-        }
+        OperationType opType = switch (coalesce(opName, "")) {
+            case OP_VISIUM_CONC, OP_AMP, OP_QPCR, "Bake" ->
+                    EntityFactory.makeOperationType(opName, null, OperationTypeFlag.IN_PLACE);
+            case "Transfer" -> EntityFactory.makeOperationType(opName, null);
+            default -> null;
+        };
+        ValidationHelper val = mock(ValidationHelper.class);
+        when(mockValHelperFactory.getHelper()).thenReturn(val);
         if (opName!=null && !opName.isEmpty()) {
-            when(mockOpTypeRepo.findByName(opName)).thenReturn(Optional.ofNullable(opType));
+            when(val.checkOpType(any(), any(), any(), any())).thenReturn(opType);
         }
+        when(val.getProblems()).thenReturn(expectedProblem==null ? Set.of() : Set.of(expectedProblem));
         final List<String> problems = new ArrayList<>(expectedProblem==null ? 0 : 1);
         assertSame(opType, service.loadOpType(problems, opName));
-        if (expectedProblem==null) {
-            assertThat(problems).isEmpty();
-        } else {
-            assertThat(problems).containsExactly(expectedProblem);
-        }
+        assertProblem(problems, expectedProblem);
     }
 
     @ParameterizedTest
@@ -410,6 +412,7 @@ public class TestOpWithSlotMeasurementsService {
             OP_AMP +",cDNA concentration,",
             OP_VISIUM_CONC+",Cq value,",
             OP_AMP +", CYCLES, Cycles",
+            OP_QPCR +", CQ Value, Cq value,",
             ",Cq value,",
             ",cDNA concentration,",
             "Bananas,Cq value,",
@@ -459,21 +462,12 @@ public class TestOpWithSlotMeasurementsService {
     public void testSanitiseMeasurementValue(String name, String value, String sanValue, String problem) {
         Sanitiser<String> san;
         List<Sanitiser<String>> sans = List.of(mockConcSan, mockCqSan, mockCycSan);
-        switch (name) {
-            case "cDNA concentration":
-            case "Library concentration":
-                san = mockConcSan;
-                break;
-            case "Cq value":
-                san = mockCqSan;
-                break;
-            case "Cycles":
-                san = mockCycSan;
-                break;
-            default:
-                san = null;
-                break;
-        }
+        san = switch (name) {
+            case "cDNA concentration", "Library concentration" -> mockConcSan;
+            case "Cq value" -> mockCqSan;
+            case "Cycles" -> mockCycSan;
+            default -> null;
+        };
         if (san!=null) {
             mayAddProblem(problem, sanValue).when(san).sanitise(any(), any());
         }
