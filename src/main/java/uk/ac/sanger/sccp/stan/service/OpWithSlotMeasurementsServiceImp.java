@@ -3,7 +3,8 @@ package uk.ac.sanger.sccp.stan.service;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.repo.MeasurementRepo;
+import uk.ac.sanger.sccp.stan.repo.OperationCommentRepo;
 import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.service.sanitiser.Sanitiser;
 import uk.ac.sanger.sccp.stan.service.validation.ValidationHelper;
@@ -31,10 +32,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
             MEAS_LIBR = "Library concentration", MEAS_CYC = "Cycles";
 
     private final MeasurementRepo measurementRepo;
-    private final LabwareRepo lwRepo;
     private final OperationCommentRepo opComRepo;
-
-    private final LabwareValidatorFactory labwareValidatorFactory;
     private final Sanitiser<String> cqSanitiser,  concentrationSanitiser, cycleSanitiser;
     private final WorkService workService;
     private final OperationService opService;
@@ -43,9 +41,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
 
     private final Map<String, List<String>> opTypeMeasurements;
 
-    public OpWithSlotMeasurementsServiceImp(MeasurementRepo measurementRepo,
-                                            LabwareRepo lwRepo, OperationCommentRepo opComRepo,
-                                            LabwareValidatorFactory labwareValidatorFactory,
+    public OpWithSlotMeasurementsServiceImp(MeasurementRepo measurementRepo, OperationCommentRepo opComRepo,
                                             @Qualifier("cqSanitiser") Sanitiser<String> cqSanitiser,
                                             @Qualifier("concentrationSanitiser") Sanitiser<String> concentrationSanitiser,
                                             @Qualifier("cycleSanitiser") Sanitiser<String> cycleSanitiser,
@@ -53,9 +49,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
                                             CommentValidationService commentValidationService,
                                             ValidationHelperFactory valHelperFactory) {
         this.measurementRepo = measurementRepo;
-        this.lwRepo = lwRepo;
         this.opComRepo = opComRepo;
-        this.labwareValidatorFactory = labwareValidatorFactory;
         this.cqSanitiser = cqSanitiser;
         this.concentrationSanitiser = concentrationSanitiser;
         this.cycleSanitiser = cycleSanitiser;
@@ -80,8 +74,9 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
             problems.add("No request specified.");
             throw new ValidationException("The request could not be validated.", problems);
         }
-        Labware lw = validateLabware(problems, request.getBarcode());
-        OperationType opType = loadOpType(problems, request.getOperationType());
+        ValidationHelper val = valHelperFactory.getHelper();
+        Labware lw = validateLabware(val, request.getBarcode());
+        OperationType opType = loadOpType(val, request.getOperationType());
         Work work = workService.validateUsableWork(problems, request.getWorkNumber());
         if (lw!=null) {
             validateAddresses(problems, lw, request.getSlotMeasurements());
@@ -89,7 +84,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
         List<Comment> comments = validateComments(problems, request.getSlotMeasurements());
         List<SlotMeasurementRequest> sanitisedMeasurements = sanitiseMeasurements(problems, opType, request.getSlotMeasurements());
         checkForDupeMeasurements(problems, sanitisedMeasurements);
-
+        problems.addAll(val.getProblems());
         if (!problems.isEmpty()) {
             throw new ValidationException("The request could not be validated.", problems);
         }
@@ -99,35 +94,25 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
 
     /**
      * Loads and checks the labware from the given barcode
-     * @param problems receptacle for problems found
+     * @param val validation helper to load labware and track problems
      * @param barcode the labware barcode to load
      * @return the labware loaded, if any
-     * @see LabwareValidator
      */
-    public Labware validateLabware(Collection<String> problems, String barcode) {
-        if (nullOrEmpty(barcode)) {
-            problems.add("No barcode specified.");
-            return null;
-        }
-        LabwareValidator validator = labwareValidatorFactory.getValidator();
-        List<Labware> lwList = validator.loadLabware(lwRepo, List.of(barcode));
-        validator.validateSources();
-        problems.addAll(validator.getErrors());
-        return (lwList.isEmpty() ? null : lwList.getFirst());
+    public Labware validateLabware(ValidationHelper val, String barcode) {
+        List<String> barcodes = nullOrEmpty(barcode) ? List.of() : List.of(barcode);
+        UCMap<Labware> lwMap = val.checkLabware(barcodes);
+        return (lwMap.isEmpty() ? null : lwMap.values().iterator().next());
     }
 
     /**
      * Loads the op type and checks that it is in-place
-     * @param problems receptacle for problems found
+     * @param val validation helper to load op type and track problems
      * @param opTypeName the name of the operation to record
      * @return the op type loaded
      */
-    public OperationType loadOpType(Collection<String> problems, String opTypeName) {
-        ValidationHelper val = valHelperFactory.getHelper();
-        OperationType opType = val.checkOpType(opTypeName, EnumSet.of(OperationTypeFlag.IN_PLACE), null,
+    public OperationType loadOpType(ValidationHelper val, String opTypeName) {
+        return val.checkOpType(opTypeName, EnumSet.of(OperationTypeFlag.IN_PLACE), null,
                 ot -> opTypeMeasurements.containsKey(ot.getName()));
-        problems.addAll(val.getProblems());
-        return opType;
     }
 
     /**

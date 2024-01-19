@@ -9,14 +9,17 @@ import org.mockito.stubbing.Answer;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.repo.MeasurementRepo;
+import uk.ac.sanger.sccp.stan.repo.OperationCommentRepo;
 import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.service.sanitiser.Sanitiser;
 import uk.ac.sanger.sccp.stan.service.validation.ValidationHelper;
 import uk.ac.sanger.sccp.stan.service.validation.ValidationHelperFactory;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
+import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -28,6 +31,7 @@ import static uk.ac.sanger.sccp.stan.Matchers.assertProblem;
 import static uk.ac.sanger.sccp.stan.Matchers.mayAddProblem;
 import static uk.ac.sanger.sccp.stan.service.OpWithSlotMeasurementsServiceImp.*;
 import static uk.ac.sanger.sccp.utils.BasicUtils.coalesce;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 
 /**
  * Tests {@link OpWithSlotMeasurementsServiceImp}
@@ -36,11 +40,7 @@ public class TestOpWithSlotMeasurementsService {
     @Mock
     private MeasurementRepo mockMeasRepo;
     @Mock
-    private LabwareRepo mockLwRepo;
-    @Mock
     private OperationCommentRepo mockOpComRepo;
-    @Mock
-    private LabwareValidatorFactory mockLwValFactory;
     @Mock
     private Sanitiser<String> mockCqSan, mockConcSan, mockCycSan;
     @Mock
@@ -60,8 +60,8 @@ public class TestOpWithSlotMeasurementsService {
     void setup() {
         mocking = MockitoAnnotations.openMocks(this);
 
-        service = spy(new OpWithSlotMeasurementsServiceImp(mockMeasRepo, mockLwRepo, mockOpComRepo,
-                mockLwValFactory, mockCqSan, mockConcSan, mockCycSan, mockWorkService, mockOpService,
+        service = spy(new OpWithSlotMeasurementsServiceImp(mockMeasRepo, mockOpComRepo,
+                mockCqSan, mockConcSan, mockCycSan, mockWorkService, mockOpService,
                 mockCommentValidationService, mockValHelperFactory));
     }
 
@@ -83,12 +83,13 @@ public class TestOpWithSlotMeasurementsService {
         stubValidation(lw, opType, work, sanMeas, null);
         List<Comment> comments = List.of(new Comment(50, "Banana", "custard"));
         doReturn(comments).when(service).validateComments(any(), any());
-
+        ValidationHelper val = mock(ValidationHelper.class);
+        when(mockValHelperFactory.getHelper()).thenReturn(val);
         OperationResult opres = new OperationResult(List.of(), List.of(lw));
         doReturn(opres).when(service).execute(any(), any(), any(), any(), any(), any());
 
         assertSame(opres, service.perform(user, request));
-        verifyValidation(lw, opType, request, sanMeas);
+        verifyValidation(val, lw, opType, request, sanMeas);
 
         verify(service).execute(user, lw, opType, work, comments, sanMeas);
     }
@@ -118,9 +119,10 @@ public class TestOpWithSlotMeasurementsService {
         List<SlotMeasurementRequest> sanMeas = List.of(new SlotMeasurementRequest(A1, "cDNA concentration", "10.000", null));
         final String problem = "Everything is bad.";
         stubValidation(lw, opType, work, sanMeas, problem);
-
+        ValidationHelper val = mock(ValidationHelper.class);
+        when(mockValHelperFactory.getHelper()).thenReturn(val);
         assertValidationError(() -> service.perform(user, request), problem);
-        verifyValidation(lw, opType, request, sanMeas);
+        verifyValidation(val, lw, opType, request, sanMeas);
 
         verify(service, never()).execute(any(), any(), any(), any(), any(), any());
     }
@@ -150,13 +152,13 @@ public class TestOpWithSlotMeasurementsService {
         assertThat((Collection<Object>) ex.getProblems()).containsExactlyInAnyOrder(problems);
     }
 
-    private void verifyValidation(Labware lw, OperationType opType, OpWithSlotMeasurementsRequest request, List<SlotMeasurementRequest> sanMeas) {
+    private void verifyValidation(ValidationHelper val, Labware lw, OperationType opType, OpWithSlotMeasurementsRequest request, List<SlotMeasurementRequest> sanMeas) {
         //noinspection unchecked
         ArgumentCaptor<Collection<String>> problemsCaptor = ArgumentCaptor.forClass(Collection.class);
-        verify(service).validateLabware(problemsCaptor.capture(), eq(request.getBarcode()));
+        verify(service).validateLabware(val, request.getBarcode());
+        verify(service).loadOpType(val, request.getOperationType());
+        verify(mockWorkService).validateUsableWork(problemsCaptor.capture(), eq(request.getWorkNumber()));
         Collection<String> problems = problemsCaptor.getValue();
-        verify(service).loadOpType(same(problems), eq(request.getOperationType()));
-        verify(mockWorkService).validateUsableWork(same(problems), eq(request.getWorkNumber()));
         verify(service).validateAddresses(same(problems), same(lw), same(request.getSlotMeasurements()));
         verify(service).sanitiseMeasurements(same(problems), same(opType), same(request.getSlotMeasurements()));
         verify(service).validateComments(same(problems), same(request.getSlotMeasurements()));
@@ -165,53 +167,35 @@ public class TestOpWithSlotMeasurementsService {
 
     @ParameterizedTest
     @MethodSource("validateLabwareArgs")
-    public void testValidateLabware(String barcode, Labware lw, String valError, String expectedProblem) {
-        final List<String> problems = new ArrayList<>(expectedProblem==null ? 0 : 1);
-        if (barcode==null || barcode.isEmpty()) {
-            assertNull(service.validateLabware(problems, barcode));
-            verifyNoInteractions(mockLwValFactory);
-            assertThat(problems).containsExactly(expectedProblem);
-            return;
-        }
-        LabwareValidator val = mock(LabwareValidator.class);
-        when(mockLwValFactory.getValidator()).thenReturn(val);
-        when(val.loadLabware(any(), any())).thenReturn(lw==null ? List.of() : List.of(lw));
-        when(val.getErrors()).thenReturn(valError==null ? List.of() : List.of(valError));
+    public void testValidateLabware(String barcode, Labware lw) {
+        ValidationHelper val = mock(ValidationHelper.class);
+        List<String> barcodes = (nullOrEmpty(barcode) ? List.of() : List.of(barcode));
+        UCMap<Labware> lwMap = (lw==null ? new UCMap<>() : UCMap.from(Labware::getBarcode, lw));
+        when(val.checkLabware(any())).thenReturn(lwMap);
 
-        assertSame(lw, service.validateLabware(problems, barcode));
-        verify(val).loadLabware(mockLwRepo, List.of(barcode));
-        verify(val).validateSources();
-        if (expectedProblem==null) {
-            assertThat(problems).isEmpty();
-        } else {
-            assertThat(problems).containsExactly(expectedProblem);
-        }
+        assertSame(lw, service.validateLabware(val, barcode));
+        verify(val).checkLabware(barcodes);
     }
 
     static Stream<Arguments> validateLabwareArgs() {
         Labware lw = EntityFactory.getTube();
         String bc = lw.getBarcode();
         return Arrays.stream(new Object[][] {
-                {bc, lw, null, null},
-                {"STAN-404", null, "Unknown labware", "Unknown labware"},
-                {"", null, null, "No barcode specified."},
-                {null, null, null, "No barcode specified."},
-                {bc, lw, "Bad labware.", "Bad labware."},
+                {bc, lw},
+                {"STAN-404", null},
+                {"", null},
+                {null, null},
         }).map(Arguments::of);
     }
 
     @ParameterizedTest
     @CsvSource({
-            "Amplification,",
-            "Visium concentration,",
-            "qPCR results,",
-            "Bake, Operation not expected for this request: Bake",
-            "'', No operation type specified.",
-            ", No operation type specified.",
-            "Bananas, Unknown operation type: \"Bananas\"",
-            "Transfer, Operation cannot be recorded in place: Transfer",
+            "Amplification, true",
+            "Visium concentration, true",
+            "qPCR results, true",
+            "Bake, false",
     })
-    public void testLoadOpType(String opName, String expectedProblem) {
+    public void testLoadOpType(String opName, boolean expectedPredicateValue) {
         OperationType opType = switch (coalesce(opName, "")) {
             case OP_VISIUM_CONC, OP_AMP, OP_QPCR, "Bake" ->
                     EntityFactory.makeOperationType(opName, null, OperationTypeFlag.IN_PLACE);
@@ -219,14 +203,17 @@ public class TestOpWithSlotMeasurementsService {
             default -> null;
         };
         ValidationHelper val = mock(ValidationHelper.class);
-        when(mockValHelperFactory.getHelper()).thenReturn(val);
         if (opName!=null && !opName.isEmpty()) {
             when(val.checkOpType(any(), any(), any(), any())).thenReturn(opType);
         }
-        when(val.getProblems()).thenReturn(expectedProblem==null ? Set.of() : Set.of(expectedProblem));
-        final List<String> problems = new ArrayList<>(expectedProblem==null ? 0 : 1);
-        assertSame(opType, service.loadOpType(problems, opName));
-        assertProblem(problems, expectedProblem);
+        assertSame(opType, service.loadOpType(val, opName));
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Predicate<OperationType>> predicateCaptor = ArgumentCaptor.forClass(Predicate.class);
+        verify(val).checkOpType(eq(opName), eq(EnumSet.of(OperationTypeFlag.IN_PLACE)), isNull(), predicateCaptor.capture());
+        if (opType!=null) {
+            Predicate<OperationType> predicate = predicateCaptor.getValue();
+            assertEquals(expectedPredicateValue, predicate.test(opType));
+        }
     }
 
     @ParameterizedTest
