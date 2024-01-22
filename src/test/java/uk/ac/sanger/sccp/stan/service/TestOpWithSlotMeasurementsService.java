@@ -9,8 +9,7 @@ import org.mockito.stubbing.Answer;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.repo.MeasurementRepo;
-import uk.ac.sanger.sccp.stan.repo.OperationCommentRepo;
+import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.service.sanitiser.Sanitiser;
 import uk.ac.sanger.sccp.stan.service.validation.ValidationHelper;
@@ -23,6 +22,7 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -42,6 +42,10 @@ public class TestOpWithSlotMeasurementsService {
     @Mock
     private OperationCommentRepo mockOpComRepo;
     @Mock
+    private ActionRepo mockActionRepo;
+    @Mock
+    private SlotRepo mockSlotRepo;
+    @Mock
     private Sanitiser<String> mockCqSan, mockConcSan, mockCycSan;
     @Mock
     private WorkService mockWorkService;
@@ -60,7 +64,7 @@ public class TestOpWithSlotMeasurementsService {
     void setup() {
         mocking = MockitoAnnotations.openMocks(this);
 
-        service = spy(new OpWithSlotMeasurementsServiceImp(mockMeasRepo, mockOpComRepo,
+        service = spy(new OpWithSlotMeasurementsServiceImp(mockMeasRepo, mockOpComRepo, mockActionRepo, mockSlotRepo,
                 mockCqSan, mockConcSan, mockCycSan, mockWorkService, mockOpService,
                 mockCommentValidationService, mockValHelperFactory));
     }
@@ -104,6 +108,7 @@ public class TestOpWithSlotMeasurementsService {
         verify(service, never()).sanitiseMeasurements(any(), any(), any());
         verify(service, never()).checkForDupeMeasurements(any(), any());
         verify(service, never()).validateComments(any(), any());
+        verify(service, never()).validateOperation(any(), any(), any(), any());
         verify(service, never()).execute(any(), any(), any(), any(), any(), any());
     }
 
@@ -135,15 +140,8 @@ public class TestOpWithSlotMeasurementsService {
         doNothing().when(service).validateAddresses(any(), any(), any());
         doReturn(sanMeas).when(service).sanitiseMeasurements(any(), any(), any());
         doReturn(List.of()).when(service).validateComments(any(), any());
-        if (problem==null) {
-            doNothing().when(service).checkForDupeMeasurements(any(), any());
-        } else {
-            doAnswer(invocation -> {
-                Collection<String> problems = invocation.getArgument(0);
-                problems.add(problem);
-                return null;
-            }).when(service).checkForDupeMeasurements(any(), any());
-        }
+        doNothing().when(service).validateOperation(any(), any(), any(), any());
+        mayAddProblem(problem).when(service).checkForDupeMeasurements(any(), any());
     }
 
     private static void assertValidationError(Executable executable, String... problems) {
@@ -152,7 +150,8 @@ public class TestOpWithSlotMeasurementsService {
         assertThat((Collection<Object>) ex.getProblems()).containsExactlyInAnyOrder(problems);
     }
 
-    private void verifyValidation(ValidationHelper val, Labware lw, OperationType opType, OpWithSlotMeasurementsRequest request, List<SlotMeasurementRequest> sanMeas) {
+    private void verifyValidation(ValidationHelper val, Labware lw, OperationType opType,
+                                  OpWithSlotMeasurementsRequest request, List<SlotMeasurementRequest> sanMeas) {
         //noinspection unchecked
         ArgumentCaptor<Collection<String>> problemsCaptor = ArgumentCaptor.forClass(Collection.class);
         verify(service).validateLabware(val, request.getBarcode());
@@ -163,6 +162,7 @@ public class TestOpWithSlotMeasurementsService {
         verify(service).sanitiseMeasurements(same(problems), same(opType), same(request.getSlotMeasurements()));
         verify(service).validateComments(same(problems), same(request.getSlotMeasurements()));
         verify(service).checkForDupeMeasurements(same(problems), same(sanMeas));
+        verify(service).validateOperation(same(problems), same(opType), same(lw), same(sanMeas));
     }
 
     @ParameterizedTest
@@ -505,6 +505,98 @@ public class TestOpWithSlotMeasurementsService {
                         new SlotMeasurementRequest(A3, "Gamma", "60", null)),
                 "Measurements specified multiple times: Alpha in A1; Gamma in A2"},
         }).map(Arguments::of);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "Amplification,Bad op.",
+            "Amplification,",
+            "Bananas,",
+            ",",
+    })
+    public void testValidateOperation(String opName, String valProblem) {
+        OperationType opType = (opName==null ? null : EntityFactory.makeOperationType(opName, null));
+        Labware lw = EntityFactory.getTube();
+        List<SlotMeasurementRequest> smrs = List.of(new SlotMeasurementRequest());
+        mayAddProblem(valProblem).when(service).validateAmp(any(), any(), any());
+        List<String> problems = new ArrayList<>(valProblem==null ? 0 : 1);
+        service.validateOperation(problems, opType, lw, smrs);
+        if (opName==null || !opName.equalsIgnoreCase("Amplification")) {
+            verify(service, never()).validateAmp(any(), any(), any());
+        } else {
+            verify(service).validateAmp(same(problems), same(lw), same(smrs));
+        }
+        assertProblem(problems, valProblem);
+    }
+
+    @ParameterizedTest
+    @MethodSource("validateAmpArgs")
+    public void testValidateAmp(final boolean valid, final Labware lw, List<SlotMeasurementRequest> smrs,
+                                List<Measurement> directMeasurements, List<Integer> parentLabwareIds,
+                                List<Integer> parentLabwareSlotIds, List<Measurement> parentMeasurements) {
+        Set<Integer> lwSlotIds;
+        if (directMeasurements!=null) {
+            lwSlotIds = lw.getSlots().stream().map(Slot::getId).collect(toSet());
+            when(mockMeasRepo.findAllBySlotIdIn(lwSlotIds)).thenReturn(directMeasurements);
+        } else {
+            lwSlotIds = null;
+        }
+        if (parentLabwareIds!=null) {
+            when(mockActionRepo.findSourceLabwareIdsForDestinationLabwareIds(any())).thenReturn(parentLabwareIds);
+        }
+        if (parentLabwareSlotIds!=null) {
+            Collection<Integer> labwareIds = any();
+            when(mockSlotRepo.findSlotIdsByLabwareIdIn(labwareIds)).thenReturn(parentLabwareSlotIds);
+        }
+        if (parentMeasurements!=null) {
+            when(mockMeasRepo.findAllBySlotIdIn(parentLabwareSlotIds)).thenReturn(parentMeasurements);
+        }
+        String expectedProblem = valid ? null : ("No " + MEAS_CQ + " has been recorded on labware " + lw.getBarcode() + ".");
+        List<String> problems = new ArrayList<>(valid ? 0 : 1);
+        service.validateAmp(problems, lw, smrs);
+        assertProblem(problems, expectedProblem);
+        if (directMeasurements!=null) {
+            verify(mockMeasRepo).findAllBySlotIdIn(lwSlotIds);
+        } else {
+            verifyNoInteractions(mockMeasRepo);
+        }
+        if (parentLabwareIds!=null) {
+            verify(mockActionRepo).findSourceLabwareIdsForDestinationLabwareIds(List.of(lw.getId()));
+        } else {
+            verifyNoInteractions(mockActionRepo);
+        }
+        if (parentLabwareSlotIds!=null) {
+            SlotRepo slotRepo = verify(mockSlotRepo);
+            slotRepo.findSlotIdsByLabwareIdIn(parentLabwareIds);
+        } else {
+            verifyNoInteractions(mockSlotRepo);
+        }
+        if (parentMeasurements!=null) {
+            verify(mockMeasRepo).findAllBySlotIdIn(parentLabwareSlotIds);
+        }
+    }
+
+    static Stream<Arguments> validateAmpArgs() {
+        Labware lw = EntityFactory.getTube();
+        final Address A1 = new Address(1,1);
+        SlotMeasurementRequest cqSmr = new SlotMeasurementRequest(A1, "Cq value", "10", null);
+        List<SlotMeasurementRequest> otherSmrs = List.of(new SlotMeasurementRequest(A1, "Bananas", "50", null));
+        List<Measurement> otherMeasurements = List.of(new Measurement(500, "Banana", "20", 1,2,3));
+        Measurement cqMeasurement = new Measurement(500, "Cq value", "20", 1, 2, 3);
+        List<Measurement> cqAndOtherMeasurements = List.of(cqMeasurement, otherMeasurements.getFirst());
+        List<Integer> parentLabwareIds = List.of(400,401);
+        List<Integer> parentLabwareSlotIds = List.of(500,501);
+
+        // valid, lw, smrs, directMeasurements, parentLabwareIds, parentLabwareSlotIds, parentMeasurements
+        return Arrays.stream(new Object[][] {
+                {true, lw, null},
+                {true, null, otherSmrs},
+                {true, lw, List.of(cqSmr, otherSmrs.getFirst())},
+                {true, lw, otherSmrs, cqAndOtherMeasurements},
+                {true, lw, otherSmrs, otherMeasurements, parentLabwareIds, parentLabwareSlotIds, cqAndOtherMeasurements},
+                {false, lw, otherSmrs, otherMeasurements, parentLabwareIds, parentLabwareSlotIds, List.of()},
+                {false, lw, otherSmrs, otherMeasurements, parentLabwareIds, parentLabwareSlotIds, otherMeasurements},
+        }).map(arr -> Arguments.of(arr.length==7 ? arr : Arrays.copyOf(arr, 7)));
     }
 
     @ParameterizedTest

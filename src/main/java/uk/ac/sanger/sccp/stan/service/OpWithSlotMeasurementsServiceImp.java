@@ -3,8 +3,7 @@ package uk.ac.sanger.sccp.stan.service;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.repo.MeasurementRepo;
-import uk.ac.sanger.sccp.stan.repo.OperationCommentRepo;
+import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.service.sanitiser.Sanitiser;
 import uk.ac.sanger.sccp.stan.service.validation.ValidationHelper;
@@ -17,6 +16,7 @@ import java.util.*;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 import static uk.ac.sanger.sccp.utils.BasicUtils.pluralise;
 
@@ -33,6 +33,8 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
 
     private final MeasurementRepo measurementRepo;
     private final OperationCommentRepo opComRepo;
+    private final ActionRepo actionRepo;
+    private final SlotRepo slotRepo;
     private final Sanitiser<String> cqSanitiser,  concentrationSanitiser, cycleSanitiser;
     private final WorkService workService;
     private final OperationService opService;
@@ -41,7 +43,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
 
     private final Map<String, List<String>> opTypeMeasurements;
 
-    public OpWithSlotMeasurementsServiceImp(MeasurementRepo measurementRepo, OperationCommentRepo opComRepo,
+    public OpWithSlotMeasurementsServiceImp(MeasurementRepo measurementRepo, OperationCommentRepo opComRepo, ActionRepo actionRepo, SlotRepo slotRepo,
                                             @Qualifier("cqSanitiser") Sanitiser<String> cqSanitiser,
                                             @Qualifier("concentrationSanitiser") Sanitiser<String> concentrationSanitiser,
                                             @Qualifier("cycleSanitiser") Sanitiser<String> cycleSanitiser,
@@ -50,6 +52,8 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
                                             ValidationHelperFactory valHelperFactory) {
         this.measurementRepo = measurementRepo;
         this.opComRepo = opComRepo;
+        this.actionRepo = actionRepo;
+        this.slotRepo = slotRepo;
         this.cqSanitiser = cqSanitiser;
         this.concentrationSanitiser = concentrationSanitiser;
         this.cycleSanitiser = cycleSanitiser;
@@ -85,6 +89,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
         List<SlotMeasurementRequest> sanitisedMeasurements = sanitiseMeasurements(problems, opType, request.getSlotMeasurements());
         checkForDupeMeasurements(problems, sanitisedMeasurements);
         problems.addAll(val.getProblems());
+        validateOperation(problems, opType, lw, sanitisedMeasurements);
         if (!problems.isEmpty()) {
             throw new ValidationException("The request could not be validated.", problems);
         }
@@ -182,8 +187,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
 
         List<SlotMeasurementRequest> sanitised = new ArrayList<>(slotMeasurements.size());
         for (SlotMeasurementRequest smr : slotMeasurements) {
-            var sanitisedSmr = sanitiseMeasurement(problems, invalidNames,
-                    opType, smr);
+            var sanitisedSmr = sanitiseMeasurement(problems, invalidNames, opType, smr);
             if (sanitisedSmr != null) {
                 sanitised.add(sanitisedSmr);
             }
@@ -291,6 +295,48 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
             sb.setLength(sb.length()-2);
             problems.add(sb.toString());
         }
+    }
+
+    /**
+     * Checks some op-specific requirements; e.g. if some measurement is missing for a particular operation.
+     * @param problems receptacle for problems
+     * @param opType the op type to record
+     * @param lw the labware to record the op on
+     * @param smrs the sanitised measurements requested
+     */
+    public void validateOperation(Collection<String> problems, OperationType opType, Labware lw,
+                                  List<SlotMeasurementRequest> smrs) {
+        if (opType!=null && opType.getName().equalsIgnoreCase(OP_AMP)) {
+            validateAmp(problems, lw, smrs);
+        }
+    }
+
+    /**
+     * Validates amplification op. It must provide Cq measurements, or those must already have been recorded
+     * on this or on the parent labware.
+     * @param problems receptacle for problems
+     * @param lw the labware to record the op on
+     * @param smrs the sanitised measurements requested
+     */
+    public void validateAmp(Collection<String> problems, Labware lw, List<SlotMeasurementRequest> smrs) {
+        if (lw==null || smrs==null) {
+            return;
+        }
+        if (smrs.stream().anyMatch(smr -> MEAS_CQ.equalsIgnoreCase(smr.getName()))) {
+            return;
+        }
+        Set<Integer> slotIds = lw.getSlots().stream().map(Slot::getId).collect(toSet());
+        List<Measurement> measurements = measurementRepo.findAllBySlotIdIn(slotIds);
+        if (measurements.stream().anyMatch(m -> m.getName().equalsIgnoreCase(MEAS_CQ))) {
+            return; // cq already recorded on this labware
+        }
+        List<Integer> sourceLabwareIds = actionRepo.findSourceLabwareIdsForDestinationLabwareIds(List.of(lw.getId()));
+        List<Integer> sourceLwSlotIds = slotRepo.findSlotIdsByLabwareIdIn(sourceLabwareIds);
+        List<Measurement> sourceMeasurements = measurementRepo.findAllBySlotIdIn(sourceLwSlotIds);
+        if (sourceMeasurements.stream().anyMatch(m -> m.getName().equalsIgnoreCase(MEAS_CQ))) {
+            return;
+        }
+        problems.add("No "+MEAS_CQ+" has been recorded on labware "+lw.getBarcode()+".");
     }
 
     /**
