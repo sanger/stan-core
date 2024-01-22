@@ -128,6 +128,12 @@ public class TestRecordOpWithSlotMeasurementsMutation {
 
         Labware lw2 = entityCreator.createLabware("STAN-B", lt, sam);
         entityCreator.simpleOp(simpleTransfer, user, lw1, lw2);
+
+        String query = "query { measurementValueFromLabwareOrParent(barcode: \"STAN-B\", name: \"Cq value\") }";
+        Object queryResult = tester.post(query);
+        String measValue = chainGet(queryResult, "data", "measurementValueFromLabwareOrParent");
+        assertEquals(10, Double.parseDouble(measValue));
+
         String ampMutation = baseMutation
                 .replace("OP-TYPE", amp.getName())
                 .replace("STAN-A", "STAN-B")

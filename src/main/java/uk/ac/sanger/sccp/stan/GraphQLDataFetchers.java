@@ -76,6 +76,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final SlotRegionService slotRegionService;
     final RecentOpService recentOpService;
     final FlagLookupService flagLookupService;
+    final MeasurementService measurementService;
 
     @Autowired
     public GraphQLDataFetchers(ObjectMapper objectMapper, AuthenticationComponent authComp, UserRepo userRepo,
@@ -97,7 +98,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                WorkService workService, VisiumPermDataService visiumPermDataService,
                                NextReplicateService nextReplicateService, WorkSummaryService workSummaryService,
                                LabwareService labwareService, FileStoreService fileStoreService,
-                               SlotRegionService slotRegionService, RecentOpService recentOpService, FlagLookupService flagLookupService) {
+                               SlotRegionService slotRegionService, RecentOpService recentOpService,
+                               FlagLookupService flagLookupService, MeasurementService measurementService) {
         super(objectMapper, authComp, userRepo);
         this.sessionConfig = sessionConfig;
         this.versionInfo = versionInfo;
@@ -140,6 +142,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.slotRegionService = slotRegionService;
         this.recentOpService = recentOpService;
         this.flagLookupService = flagLookupService;
+        this.measurementService = measurementService;
     }
 
     public DataFetcher<User> getUser() {
@@ -330,6 +333,16 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
             List<String> barcodes = dfe.getArgument("barcodes");
             List<Labware> labware = labwareRepo.findByBarcodeIn(barcodes);
             return flagLookupService.lookUpDetails(labware);
+        };
+    }
+
+    public DataFetcher<String> getMeasurementValueFromLabwareOrParent() {
+        return dfe -> {
+            String barcode = dfe.getArgument("barcode");
+            String name = dfe.getArgument("name");
+            return measurementService.getMeasurementFromLabwareOrParent(barcode, name)
+                    .map(Measurement::getValue)
+                    .orElse(null);
         };
     }
 

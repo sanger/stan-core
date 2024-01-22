@@ -1931,6 +1931,8 @@ type Query {
     suggestedLabwareForWork(workNumber: String!, forRelease: Boolean): [Labware!]!
     """Get labware flag details applicable to the specified labware."""
     labwareFlagDetails(barcodes: [String!]!): [FlagDetail!]!
+    """Get named measurement value from the indicated labware or its parent labware."""
+    measurementValueFromLabwareOrParent(barcode: String!, name: String!): String
 
     """Get the specified storage location."""
     location(locationBarcode: String!): Location!

@@ -3,7 +3,8 @@ package uk.ac.sanger.sccp.stan.service;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.repo.MeasurementRepo;
+import uk.ac.sanger.sccp.stan.repo.OperationCommentRepo;
 import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.service.sanitiser.Sanitiser;
 import uk.ac.sanger.sccp.stan.service.validation.ValidationHelper;
@@ -16,7 +17,6 @@ import java.util.*;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toSet;
 import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 import static uk.ac.sanger.sccp.utils.BasicUtils.pluralise;
 
@@ -33,33 +33,31 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
 
     private final MeasurementRepo measurementRepo;
     private final OperationCommentRepo opComRepo;
-    private final ActionRepo actionRepo;
-    private final SlotRepo slotRepo;
     private final Sanitiser<String> cqSanitiser,  concentrationSanitiser, cycleSanitiser;
     private final WorkService workService;
     private final OperationService opService;
     private final CommentValidationService commentValidationService;
+    private final MeasurementService measurementService;
     private final ValidationHelperFactory valHelperFactory;
 
     private final Map<String, List<String>> opTypeMeasurements;
 
-    public OpWithSlotMeasurementsServiceImp(MeasurementRepo measurementRepo, OperationCommentRepo opComRepo, ActionRepo actionRepo, SlotRepo slotRepo,
+    public OpWithSlotMeasurementsServiceImp(MeasurementRepo measurementRepo, OperationCommentRepo opComRepo,
                                             @Qualifier("cqSanitiser") Sanitiser<String> cqSanitiser,
                                             @Qualifier("concentrationSanitiser") Sanitiser<String> concentrationSanitiser,
                                             @Qualifier("cycleSanitiser") Sanitiser<String> cycleSanitiser,
                                             WorkService workService, OperationService opService,
-                                            CommentValidationService commentValidationService,
+                                            CommentValidationService commentValidationService, MeasurementService measurementService,
                                             ValidationHelperFactory valHelperFactory) {
         this.measurementRepo = measurementRepo;
         this.opComRepo = opComRepo;
-        this.actionRepo = actionRepo;
-        this.slotRepo = slotRepo;
         this.cqSanitiser = cqSanitiser;
         this.concentrationSanitiser = concentrationSanitiser;
         this.cycleSanitiser = cycleSanitiser;
         this.workService = workService;
         this.opService = opService;
         this.commentValidationService = commentValidationService;
+        this.measurementService = measurementService;
         this.valHelperFactory = valHelperFactory;
         UCMap<List<String>> opTypeMeasurements = new UCMap<>(3);
         opTypeMeasurements.put(OP_AMP, List.of(MEAS_CQ, MEAS_CYC));
@@ -325,18 +323,10 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
         if (smrs.stream().anyMatch(smr -> MEAS_CQ.equalsIgnoreCase(smr.getName()))) {
             return;
         }
-        Set<Integer> slotIds = lw.getSlots().stream().map(Slot::getId).collect(toSet());
-        List<Measurement> measurements = measurementRepo.findAllBySlotIdIn(slotIds);
-        if (measurements.stream().anyMatch(m -> m.getName().equalsIgnoreCase(MEAS_CQ))) {
-            return; // cq already recorded on this labware
+        Optional<Measurement> optMeas = measurementService.getMeasurementFromLabwareOrParent(lw.getBarcode(), MEAS_CQ);
+        if (optMeas.isEmpty()) {
+            problems.add("No "+MEAS_CQ+" has been recorded on labware "+lw.getBarcode()+".");
         }
-        List<Integer> sourceLabwareIds = actionRepo.findSourceLabwareIdsForDestinationLabwareIds(List.of(lw.getId()));
-        List<Integer> sourceLwSlotIds = slotRepo.findSlotIdsByLabwareIdIn(sourceLabwareIds);
-        List<Measurement> sourceMeasurements = measurementRepo.findAllBySlotIdIn(sourceLwSlotIds);
-        if (sourceMeasurements.stream().anyMatch(m -> m.getName().equalsIgnoreCase(MEAS_CQ))) {
-            return;
-        }
-        problems.add("No "+MEAS_CQ+" has been recorded on labware "+lw.getBarcode()+".");
     }
 
     /**

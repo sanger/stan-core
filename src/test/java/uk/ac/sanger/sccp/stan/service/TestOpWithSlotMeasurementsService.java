@@ -9,7 +9,8 @@ import org.mockito.stubbing.Answer;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.repo.MeasurementRepo;
+import uk.ac.sanger.sccp.stan.repo.OperationCommentRepo;
 import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.service.sanitiser.Sanitiser;
 import uk.ac.sanger.sccp.stan.service.validation.ValidationHelper;
@@ -22,7 +23,6 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -42,10 +42,6 @@ public class TestOpWithSlotMeasurementsService {
     @Mock
     private OperationCommentRepo mockOpComRepo;
     @Mock
-    private ActionRepo mockActionRepo;
-    @Mock
-    private SlotRepo mockSlotRepo;
-    @Mock
     private Sanitiser<String> mockCqSan, mockConcSan, mockCycSan;
     @Mock
     private WorkService mockWorkService;
@@ -53,6 +49,8 @@ public class TestOpWithSlotMeasurementsService {
     private OperationService mockOpService;
     @Mock
     private CommentValidationService mockCommentValidationService;
+    @Mock
+    private MeasurementService mockMeasurementService;
     @Mock
     private ValidationHelperFactory mockValHelperFactory;
 
@@ -64,9 +62,9 @@ public class TestOpWithSlotMeasurementsService {
     void setup() {
         mocking = MockitoAnnotations.openMocks(this);
 
-        service = spy(new OpWithSlotMeasurementsServiceImp(mockMeasRepo, mockOpComRepo, mockActionRepo, mockSlotRepo,
+        service = spy(new OpWithSlotMeasurementsServiceImp(mockMeasRepo, mockOpComRepo,
                 mockCqSan, mockConcSan, mockCycSan, mockWorkService, mockOpService,
-                mockCommentValidationService, mockValHelperFactory));
+                mockCommentValidationService, mockMeasurementService, mockValHelperFactory));
     }
 
     @AfterEach
@@ -532,48 +530,16 @@ public class TestOpWithSlotMeasurementsService {
     @ParameterizedTest
     @MethodSource("validateAmpArgs")
     public void testValidateAmp(final boolean valid, final Labware lw, List<SlotMeasurementRequest> smrs,
-                                List<Measurement> directMeasurements, List<Integer> parentLabwareIds,
-                                List<Integer> parentLabwareSlotIds, List<Measurement> parentMeasurements) {
-        Set<Integer> lwSlotIds;
-        if (directMeasurements!=null) {
-            lwSlotIds = lw.getSlots().stream().map(Slot::getId).collect(toSet());
-            when(mockMeasRepo.findAllBySlotIdIn(lwSlotIds)).thenReturn(directMeasurements);
-        } else {
-            lwSlotIds = null;
+                                Measurement foundMeasurement) {
+        if (lw!=null) {
+            when(mockMeasurementService.getMeasurementFromLabwareOrParent(lw.getBarcode(), MEAS_CQ))
+                    .thenReturn(Optional.ofNullable(foundMeasurement));
         }
-        if (parentLabwareIds!=null) {
-            when(mockActionRepo.findSourceLabwareIdsForDestinationLabwareIds(any())).thenReturn(parentLabwareIds);
-        }
-        if (parentLabwareSlotIds!=null) {
-            Collection<Integer> labwareIds = any();
-            when(mockSlotRepo.findSlotIdsByLabwareIdIn(labwareIds)).thenReturn(parentLabwareSlotIds);
-        }
-        if (parentMeasurements!=null) {
-            when(mockMeasRepo.findAllBySlotIdIn(parentLabwareSlotIds)).thenReturn(parentMeasurements);
-        }
+        assert valid || lw!=null;
         String expectedProblem = valid ? null : ("No " + MEAS_CQ + " has been recorded on labware " + lw.getBarcode() + ".");
         List<String> problems = new ArrayList<>(valid ? 0 : 1);
         service.validateAmp(problems, lw, smrs);
         assertProblem(problems, expectedProblem);
-        if (directMeasurements!=null) {
-            verify(mockMeasRepo).findAllBySlotIdIn(lwSlotIds);
-        } else {
-            verifyNoInteractions(mockMeasRepo);
-        }
-        if (parentLabwareIds!=null) {
-            verify(mockActionRepo).findSourceLabwareIdsForDestinationLabwareIds(List.of(lw.getId()));
-        } else {
-            verifyNoInteractions(mockActionRepo);
-        }
-        if (parentLabwareSlotIds!=null) {
-            SlotRepo slotRepo = verify(mockSlotRepo);
-            slotRepo.findSlotIdsByLabwareIdIn(parentLabwareIds);
-        } else {
-            verifyNoInteractions(mockSlotRepo);
-        }
-        if (parentMeasurements!=null) {
-            verify(mockMeasRepo).findAllBySlotIdIn(parentLabwareSlotIds);
-        }
     }
 
     static Stream<Arguments> validateAmpArgs() {
@@ -581,22 +547,16 @@ public class TestOpWithSlotMeasurementsService {
         final Address A1 = new Address(1,1);
         SlotMeasurementRequest cqSmr = new SlotMeasurementRequest(A1, "Cq value", "10", null);
         List<SlotMeasurementRequest> otherSmrs = List.of(new SlotMeasurementRequest(A1, "Bananas", "50", null));
-        List<Measurement> otherMeasurements = List.of(new Measurement(500, "Banana", "20", 1,2,3));
         Measurement cqMeasurement = new Measurement(500, "Cq value", "20", 1, 2, 3);
-        List<Measurement> cqAndOtherMeasurements = List.of(cqMeasurement, otherMeasurements.getFirst());
-        List<Integer> parentLabwareIds = List.of(400,401);
-        List<Integer> parentLabwareSlotIds = List.of(500,501);
 
-        // valid, lw, smrs, directMeasurements, parentLabwareIds, parentLabwareSlotIds, parentMeasurements
+        // valid, lw, smrs, measurement
         return Arrays.stream(new Object[][] {
-                {true, lw, null},
-                {true, null, otherSmrs},
-                {true, lw, List.of(cqSmr, otherSmrs.getFirst())},
-                {true, lw, otherSmrs, cqAndOtherMeasurements},
-                {true, lw, otherSmrs, otherMeasurements, parentLabwareIds, parentLabwareSlotIds, cqAndOtherMeasurements},
-                {false, lw, otherSmrs, otherMeasurements, parentLabwareIds, parentLabwareSlotIds, List.of()},
-                {false, lw, otherSmrs, otherMeasurements, parentLabwareIds, parentLabwareSlotIds, otherMeasurements},
-        }).map(arr -> Arguments.of(arr.length==7 ? arr : Arrays.copyOf(arr, 7)));
+                {true, lw, null, null},
+                {true, null, otherSmrs, null},
+                {true, null, List.of(otherSmrs.getFirst(), cqSmr), null},
+                {false, lw, otherSmrs, null},
+                {true, lw, otherSmrs, cqMeasurement},
+        }).map(Arguments::of);
     }
 
     @ParameterizedTest
