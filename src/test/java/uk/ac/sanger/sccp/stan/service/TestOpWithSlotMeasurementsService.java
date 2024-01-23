@@ -532,8 +532,13 @@ public class TestOpWithSlotMeasurementsService {
     public void testValidateAmp(final boolean valid, final Labware lw, List<SlotMeasurementRequest> smrs,
                                 Measurement foundMeasurement) {
         if (lw!=null) {
-            when(mockMeasurementService.getMeasurementFromLabwareOrParent(lw.getBarcode(), MEAS_CQ))
-                    .thenReturn(Optional.ofNullable(foundMeasurement));
+            Map<Address, List<Measurement>> mal;
+            if (foundMeasurement==null) {
+                mal = Map.of();
+            } else {
+                mal = Map.of(new Address(1,1), List.of(foundMeasurement));
+            }
+            when(mockMeasurementService.getMeasurementsFromLabwareOrParent(lw.getBarcode(), MEAS_CQ)).thenReturn(mal);
         }
         assert valid || lw!=null;
         String expectedProblem = valid ? null : ("No " + MEAS_CQ + " has been recorded on labware " + lw.getBarcode() + ".");

@@ -1547,6 +1547,12 @@ type SuggestedWorkResponse {
     works: [Work!]!
 }
 
+"""An address and a string associated with that address."""
+type AddressString {
+    address: Address!
+    string: String!
+}
+
 """A specification that a particular reagent slot should be transferred to an address."""
 input ReagentTransfer {
     """The barcode of a reagent plate."""
@@ -1931,8 +1937,8 @@ type Query {
     suggestedLabwareForWork(workNumber: String!, forRelease: Boolean): [Labware!]!
     """Get labware flag details applicable to the specified labware."""
     labwareFlagDetails(barcodes: [String!]!): [FlagDetail!]!
-    """Get named measurement value from the indicated labware or its parent labware."""
-    measurementValueFromLabwareOrParent(barcode: String!, name: String!): String
+    """Get named measurement values for each slot from the indicated labware or its parent labware."""
+    measurementValueFromLabwareOrParent(barcode: String!, name: String!): [AddressString!]!
 
     """Get the specified storage location."""
     location(locationBarcode: String!): Location!

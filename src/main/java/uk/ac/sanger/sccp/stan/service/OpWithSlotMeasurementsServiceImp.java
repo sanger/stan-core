@@ -323,8 +323,8 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
         if (smrs.stream().anyMatch(smr -> MEAS_CQ.equalsIgnoreCase(smr.getName()))) {
             return;
         }
-        Optional<Measurement> optMeas = measurementService.getMeasurementFromLabwareOrParent(lw.getBarcode(), MEAS_CQ);
-        if (optMeas.isEmpty()) {
+        Map<Address, List<Measurement>> meas = measurementService.getMeasurementsFromLabwareOrParent(lw.getBarcode(), MEAS_CQ);
+        if (meas.values().stream().allMatch(Objects::isNull)) {
             problems.add("No "+MEAS_CQ+" has been recorded on labware "+lw.getBarcode()+".");
         }
     }
