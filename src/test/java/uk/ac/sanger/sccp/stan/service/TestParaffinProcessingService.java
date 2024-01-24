@@ -171,6 +171,39 @@ public class TestParaffinProcessingService {
 
     @ParameterizedTest
     @ValueSource(booleans={false,true})
+    public void testCheckLabwareIsBlockish(boolean anyBad) {
+        Tissue tissue = EntityFactory.getTissue();
+        BioState bs = EntityFactory.getBioState();
+        Sample[] samples = IntStream.rangeClosed(101,105).mapToObj(
+                i -> new Sample(i, null, tissue, bs)
+        ).toArray(Sample[]::new);
+        LabwareType lt = EntityFactory.makeLabwareType(1,2);
+        List<Labware> labware = Arrays.stream(samples)
+                .map(sam -> EntityFactory.makeLabware(lt, sam))
+                .toList();
+        for (int i = 0; i < labware.size(); ++i) {
+            labware.get(i).setBarcode("STAN-"+i);
+        }
+        String expectedProblem;
+        if (anyBad) {
+            Sample otherSam = new Sample(105, null, tissue, bs);
+            samples[0].setSection(5);
+            labware.get(1).getFirstSlot().addSample(otherSam);
+            labware.get(2).getFirstSlot().getSamples().clear();
+            labware.get(3).getSlot(new Address(1,2)).addSample(samples[3]);
+            expectedProblem =
+                    "Labware must contain one unsectioned sample, and it must be in the first slot. " +
+                    "The following labware cannot be used in this operation: [STAN-0, STAN-1, STAN-2, STAN-3]";
+        } else {
+            expectedProblem = null;
+        }
+        List<String> problems = new ArrayList<>(anyBad ? 1 : 0);
+        service.checkLabwareIsBlockish(problems, labware);
+        assertProblem(problems, expectedProblem);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
     public void testLoadMedium(boolean exists) {
         String name = "Sosostris";
         Medium medium = (exists ? new Medium(15, name) : null);
