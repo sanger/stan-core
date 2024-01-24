@@ -18,6 +18,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGet;
 
 /**
@@ -59,11 +60,13 @@ public class TestParaffinProcessingMutation {
         Integer opId = (Integer) opData.get("id");
         final List<OperationComment> opComments = opComRepo.findAllByOperationIdIn(List.of(opId));
         assertThat(opComments).hasSize(1);
-        var opComment = opComments.get(0);
+        var opComment = opComments.getFirst();
         assertEquals(1, opComment.getComment().getId());
         entityManager.flush();
         Tissue tissue = sample.getTissue();
         entityManager.refresh(tissue);
         assertEquals("Paraffin", tissue.getMedium().getName());
+        entityManager.refresh(lw.getFirstSlot());
+        assertTrue(lw.getFirstSlot().isBlock()); // Block is created in the labware
     }
 }
