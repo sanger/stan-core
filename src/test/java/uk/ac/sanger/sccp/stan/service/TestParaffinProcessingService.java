@@ -1,10 +1,10 @@
 package uk.ac.sanger.sccp.stan.service;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.*;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
@@ -19,8 +19,7 @@ import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.Matchers.assertProblem;
 
@@ -28,32 +27,40 @@ import static uk.ac.sanger.sccp.stan.Matchers.assertProblem;
  * Tests {@link ParaffinProcessingServiceImp}
  */
 public class TestParaffinProcessingService {
+    @Mock
     private LabwareRepo mockLwRepo;
+    @Mock
     private OperationCommentRepo mockOpComRepo;
+    @Mock
     private OperationTypeRepo mockOpTypeRepo;
+    @Mock
     private MediumRepo mockMediumRepo;
+    @Mock
     private TissueRepo mockTissueRepo;
+    @Mock
+    private SlotRepo mockSlotRepo;
+    @Mock
     private WorkService mockWorkService;
+    @Mock
     private OperationService mockOpService;
+    @Mock
     private CommentValidationService mockCommentValidationService;
+    @Mock
     private LabwareValidatorFactory mockLwValFactory;
 
+    @InjectMocks
     private ParaffinProcessingServiceImp service;
 
+    private AutoCloseable mocking;
     @BeforeEach
     void setup() {
-        mockLwRepo = mock(LabwareRepo.class);
-        mockOpComRepo = mock(OperationCommentRepo.class);
-        mockOpTypeRepo = mock(OperationTypeRepo.class);
-        mockMediumRepo = mock(MediumRepo.class);
-        mockTissueRepo = mock(TissueRepo.class);
-        mockWorkService = mock(WorkService.class);
-        mockOpService = mock(OperationService.class);
-        mockCommentValidationService = mock(CommentValidationService.class);
-        mockLwValFactory = mock(LabwareValidatorFactory.class);
+        mocking = MockitoAnnotations.openMocks(this);
+        service = spy(service);
+    }
 
-        service = spy(new ParaffinProcessingServiceImp(mockLwRepo, mockOpComRepo, mockOpTypeRepo, mockMediumRepo, mockTissueRepo,
-                mockWorkService, mockOpService, mockCommentValidationService, mockLwValFactory));
+    @AfterEach
+    void cleanup() throws Exception {
+        mocking.close();
     }
 
     @ParameterizedTest
@@ -149,11 +156,17 @@ public class TestParaffinProcessingService {
         when(val.loadLabware(any(), any())).thenReturn(labware);
         final List<String> expectedProblems = (expectedProblem == null ? List.of() : List.of(expectedProblem));
         when(val.getErrors()).thenReturn(expectedProblems);
+        doNothing().when(service).checkLabwareIsBlockish(any(), any());
 
         assertSame(labware, service.loadLabware(problems, barcodes));
         verify(val).loadLabware(mockLwRepo, barcodes);
         verify(val).validateSources();
         assertThat(problems).containsExactlyElementsOf(expectedProblems);
+        if (expectedProblems.isEmpty()) {
+            verify(service).checkLabwareIsBlockish(problems, labware);
+        } else {
+            verify(service, never()).checkLabwareIsBlockish(any(), any());
+        }
     }
 
     @ParameterizedTest
@@ -179,12 +192,14 @@ public class TestParaffinProcessingService {
         doReturn(ops).when(service).createOps(any(), any());
         doNothing().when(service).recordComments(any(), any());
         doNothing().when(service).updateMedium(any(), any());
+        doNothing().when(service).createBlocks(any());
 
         assertEquals(new OperationResult(ops, labware), service.record(user, labware, work, comment, medium));
         verify(service).updateMedium(labware, medium);
         verify(service).createOps(user, labware);
         verify(mockWorkService).link(work, ops);
         verify(service).recordComments(comment, ops);
+        verify(service).createBlocks(labware);
     }
 
     @Test
@@ -213,15 +228,15 @@ public class TestParaffinProcessingService {
         // Create two different samples for each tissue, to make sure all get updated
         List<Sample> samples = IntStream.range(0,tissues.size()*2)
                 .mapToObj(i -> new Sample(10+i, null, tissues.get(i/2), bs))
-                .collect(toList());
+                .toList();
         LabwareType lt = EntityFactory.makeLabwareType(1,1);
         List<Labware> labware = samples.stream()
                 .map(sam -> EntityFactory.makeLabware(lt, sam))
-                .collect(toList());
+                .toList();
 
         service.updateMedium(labware, medium);
         for (int i = 0; i < labware.size(); ++i) {
-            assertSame(samples.get(i), labware.get(i).getFirstSlot().getSamples().get(0));
+            assertSame(samples.get(i), labware.get(i).getFirstSlot().getSamples().getFirst());
             assertEquals(medium, samples.get(i).getTissue().getMedium());
             assertEquals(samples.get(i).getTissue(), tissues.get(i/2));
         }
@@ -248,6 +263,42 @@ public class TestParaffinProcessingService {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testCreateBlocks(boolean anyChanged) {
+        Tissue tissue = EntityFactory.getTissue();
+        BioState bs = EntityFactory.getBioState();
+        Sample[] samples = IntStream.rangeClosed(101,104)
+                .mapToObj(i -> new Sample(i, null, tissue, bs))
+                .toArray(Sample[]::new);
+        LabwareType lt = EntityFactory.getTubeType();
+        List<Labware> labware;
+        if (anyChanged) {
+            labware = IntStream.range(0, 4).mapToObj(
+                    i -> (i < 2 ? EntityFactory.makeBlock(samples[i]) : EntityFactory.makeLabware(lt, samples[i]))
+            ).toList();
+        } else {
+            labware = IntStream.range(0,4).mapToObj(
+                    i -> EntityFactory.makeBlock(samples[i])
+            ).toList();
+        }
+        List<Slot> changedSlots;
+        if (anyChanged) {
+            changedSlots = labware.subList(2,4).stream().map(Labware::getFirstSlot).toList();
+        } else {
+            changedSlots = List.of();
+        }
+        service.createBlocks(labware);
+        if (anyChanged) {
+            verify(mockSlotRepo).saveAll(changedSlots);
+        } else {
+            verifyNoInteractions(mockSlotRepo);
+        }
+        for (Labware lw : labware) {
+            assertTrue(lw.getFirstSlot().isBlock());
+        }
+    }
+
     @Test
     public void testRecordComments() {
         Comment comment = new Comment(10, "Bananas", "blue");
@@ -256,7 +307,7 @@ public class TestParaffinProcessingService {
         LabwareType lt = EntityFactory.getTubeType();
         List<Labware> labware = Stream.of(sample1, sample2)
                 .map(sam -> EntityFactory.makeLabware(lt, sam))
-                .collect(toList());
+                .toList();
 
         final OperationType opType = EntityFactory.makeOperationType("Paraffin processing", null);
         List<Operation> ops = labware.stream()
@@ -271,7 +322,7 @@ public class TestParaffinProcessingService {
                 .mapToObj(i -> {
                     Slot slot = labware.get(i).getFirstSlot();
                     return new OperationComment(null, comment, ops.get(i).getId(),
-                            slot.getSamples().get(0).getId(), slot.getId(), null);
+                            slot.getSamples().getFirst().getId(), slot.getId(), null);
                 })
                 .collect(toList());
 

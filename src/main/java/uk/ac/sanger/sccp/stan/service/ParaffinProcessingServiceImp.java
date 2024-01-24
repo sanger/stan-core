@@ -30,10 +30,11 @@ public class ParaffinProcessingServiceImp implements ParaffinProcessingService {
     private final OperationService opService;
     private final CommentValidationService commentValidationService;
     private final LabwareValidatorFactory lwValFactory;
+    private final SlotRepo slotRepo;
 
     @Autowired
     public ParaffinProcessingServiceImp(LabwareRepo lwRepo, OperationCommentRepo opComRepo, OperationTypeRepo opTypeRepo,
-                                        MediumRepo mediumRepo, TissueRepo tissueRepo,
+                                        MediumRepo mediumRepo, TissueRepo tissueRepo, SlotRepo slotRepo,
                                         WorkService workService, OperationService opService,
                                         CommentValidationService commentValidationService,
                                         LabwareValidatorFactory lwValFactory) {
@@ -42,6 +43,7 @@ public class ParaffinProcessingServiceImp implements ParaffinProcessingService {
         this.opTypeRepo = opTypeRepo;
         this.mediumRepo = mediumRepo;
         this.tissueRepo = tissueRepo;
+        this.slotRepo = slotRepo;
         this.workService = workService;
         this.opService = opService;
         this.commentValidationService = commentValidationService;
@@ -75,7 +77,7 @@ public class ParaffinProcessingServiceImp implements ParaffinProcessingService {
             return null;
         }
         var comments = commentValidationService.validateCommentIds(problems, Stream.of(commentId));
-        return (comments.isEmpty() ? null : comments.get(0));
+        return (comments.isEmpty() ? null : comments.getFirst());
     }
 
     /**
@@ -92,8 +94,40 @@ public class ParaffinProcessingServiceImp implements ParaffinProcessingService {
         LabwareValidator val = lwValFactory.getValidator();
         List<Labware> labware = val.loadLabware(lwRepo, barcodes);
         val.validateSources();
-        problems.addAll(val.getErrors());
+        final Collection<String> valErrors = val.getErrors();
+        problems.addAll(valErrors);
+        if (valErrors.isEmpty()) {
+            checkLabwareIsBlockish(problems, labware);
+        }
         return labware;
+    }
+
+    /**
+     * Check: labware must have one sample, which must be in the first slot only,
+     * and must not have a section number.
+     * @param problems receptacle for problems
+     * @param labware the labware to check
+     */
+    public void checkLabwareIsBlockish(Collection<String> problems, Collection<Labware> labware) {
+        Set<String> badBarcodes = new LinkedHashSet<>();
+        final Address A1 = new Address(1,1);
+        for (Labware lw : labware) {
+            for (Slot slot : lw.getSlots()) {
+                if (slot.getAddress().equals(A1)) {
+                    if (slot.getSamples().size()!=1 || slot.getSamples().getFirst().getSection()!=null) {
+                        badBarcodes.add(lw.getBarcode());
+                    }
+                } else {
+                    if (!slot.getSamples().isEmpty()) {
+                        badBarcodes.add(lw.getBarcode());
+                    }
+                }
+            }
+        }
+        if (!badBarcodes.isEmpty()) {
+            problems.add("Labware must contain one unsectioned sample, and it must be in the first slot. " +
+                    "The following labware cannot be used in this operation: "+badBarcodes);
+        }
     }
 
     public Medium loadMedium(Collection<String> problems, String mediumName) {
@@ -117,6 +151,7 @@ public class ParaffinProcessingServiceImp implements ParaffinProcessingService {
     public OperationResult record(User user, Collection<Labware> labware, Work work, Comment comment, Medium medium) {
         updateMedium(labware, medium);
         List<Operation> ops = createOps(user, labware);
+        createBlocks(labware);
         workService.link(work, ops);
         recordComments(comment, ops);
         return new OperationResult(ops, labware);
@@ -133,12 +168,31 @@ public class ParaffinProcessingServiceImp implements ParaffinProcessingService {
                 .flatMap(slot -> slot.getSamples().stream())
                 .map(Sample::getTissue)
                 .filter(tis -> !medium.equals(tis.getMedium()))
-                .collect(toList());
+                .toList();
         if (tissuesToUpdate.isEmpty()) {
             return;
         }
         tissuesToUpdate.forEach(tis -> tis.setMedium(medium));
         tissueRepo.saveAll(new HashSet<>(tissuesToUpdate));
+    }
+
+    /**
+     * Converts labware to blocks, if they aren't already
+     * @param labware the labware to make into blocks, if they aren't already
+     */
+    public void createBlocks(Collection<Labware> labware) {
+        List<Slot> slotsToSave = new ArrayList<>();
+        for (Labware lw : labware) {
+            Slot slot = lw.getFirstSlot();
+            if (!slot.isBlock()) {
+                slot.setBlockSampleId(slot.getSamples().getFirst().getId());
+                slot.setBlockHighestSection(0);
+                slotsToSave.add(slot);
+            }
+        }
+        if (!slotsToSave.isEmpty()) {
+            slotRepo.saveAll(slotsToSave);
+        }
     }
 
     /**
