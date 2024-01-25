@@ -3,58 +3,65 @@ package uk.ac.sanger.sccp.stan.service;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.repo.MeasurementRepo;
+import uk.ac.sanger.sccp.stan.repo.OperationCommentRepo;
 import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.service.sanitiser.Sanitiser;
+import uk.ac.sanger.sccp.stan.service.validation.ValidationHelper;
+import uk.ac.sanger.sccp.stan.service.validation.ValidationHelperFactory;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.BasicUtils;
+import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 import static uk.ac.sanger.sccp.utils.BasicUtils.pluralise;
-import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
  * @author dr6
  */
 @Service
 public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsService {
-    public static final String OP_AMP = "Amplification", OP_VISIUM_CONC = "Visium concentration";
+    public static final String OP_AMP = "Amplification",
+            OP_VISIUM_CONC = "Visium concentration",
+            OP_QPCR = "qPCR results";
     public static final String MEAS_CQ = "Cq value", MEAS_CDNA = "cDNA concentration",
             MEAS_LIBR = "Library concentration", MEAS_CYC = "Cycles";
 
-    private final OperationTypeRepo opTypeRepo;
     private final MeasurementRepo measurementRepo;
-    private final LabwareRepo lwRepo;
     private final OperationCommentRepo opComRepo;
-
-    private final LabwareValidatorFactory labwareValidatorFactory;
     private final Sanitiser<String> cqSanitiser,  concentrationSanitiser, cycleSanitiser;
     private final WorkService workService;
     private final OperationService opService;
     private final CommentValidationService commentValidationService;
+    private final ValidationHelperFactory valHelperFactory;
 
-    public OpWithSlotMeasurementsServiceImp(OperationTypeRepo opTypeRepo, MeasurementRepo measurementRepo,
-                                            LabwareRepo lwRepo, OperationCommentRepo opComRepo,
-                                            LabwareValidatorFactory labwareValidatorFactory,
+    private final Map<String, List<String>> opTypeMeasurements;
+
+    public OpWithSlotMeasurementsServiceImp(MeasurementRepo measurementRepo, OperationCommentRepo opComRepo,
                                             @Qualifier("cqSanitiser") Sanitiser<String> cqSanitiser,
                                             @Qualifier("concentrationSanitiser") Sanitiser<String> concentrationSanitiser,
                                             @Qualifier("cycleSanitiser") Sanitiser<String> cycleSanitiser,
                                             WorkService workService, OperationService opService,
-                                            CommentValidationService commentValidationService) {
-        this.opTypeRepo = opTypeRepo;
+                                            CommentValidationService commentValidationService,
+                                            ValidationHelperFactory valHelperFactory) {
         this.measurementRepo = measurementRepo;
-        this.lwRepo = lwRepo;
         this.opComRepo = opComRepo;
-        this.labwareValidatorFactory = labwareValidatorFactory;
         this.cqSanitiser = cqSanitiser;
         this.concentrationSanitiser = concentrationSanitiser;
         this.cycleSanitiser = cycleSanitiser;
         this.workService = workService;
         this.opService = opService;
         this.commentValidationService = commentValidationService;
+        this.valHelperFactory = valHelperFactory;
+        UCMap<List<String>> opTypeMeasurements = new UCMap<>(3);
+        opTypeMeasurements.put(OP_AMP, List.of(MEAS_CQ, MEAS_CYC));
+        opTypeMeasurements.put(OP_VISIUM_CONC, List.of(MEAS_CDNA, MEAS_LIBR));
+        opTypeMeasurements.put(OP_QPCR, List.of(MEAS_CQ));
+        this.opTypeMeasurements = Collections.unmodifiableMap(opTypeMeasurements);
     }
 
     @Override
@@ -67,8 +74,9 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
             problems.add("No request specified.");
             throw new ValidationException("The request could not be validated.", problems);
         }
-        Labware lw = validateLabware(problems, request.getBarcode());
-        OperationType opType = loadOpType(problems, request.getOperationType());
+        ValidationHelper val = valHelperFactory.getHelper();
+        Labware lw = validateLabware(val, request.getBarcode());
+        OperationType opType = loadOpType(val, request.getOperationType());
         Work work = workService.validateUsableWork(problems, request.getWorkNumber());
         if (lw!=null) {
             validateAddresses(problems, lw, request.getSlotMeasurements());
@@ -76,7 +84,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
         List<Comment> comments = validateComments(problems, request.getSlotMeasurements());
         List<SlotMeasurementRequest> sanitisedMeasurements = sanitiseMeasurements(problems, opType, request.getSlotMeasurements());
         checkForDupeMeasurements(problems, sanitisedMeasurements);
-
+        problems.addAll(val.getProblems());
         if (!problems.isEmpty()) {
             throw new ValidationException("The request could not be validated.", problems);
         }
@@ -86,46 +94,25 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
 
     /**
      * Loads and checks the labware from the given barcode
-     * @param problems receptacle for problems found
+     * @param val validation helper to load labware and track problems
      * @param barcode the labware barcode to load
      * @return the labware loaded, if any
-     * @see LabwareValidator
      */
-    public Labware validateLabware(Collection<String> problems, String barcode) {
-        if (barcode==null || barcode.isEmpty()) {
-            problems.add("No barcode specified.");
-            return null;
-        }
-        LabwareValidator validator = labwareValidatorFactory.getValidator();
-        List<Labware> lwList = validator.loadLabware(lwRepo, List.of(barcode));
-        validator.validateSources();
-        problems.addAll(validator.getErrors());
-        return (lwList.isEmpty() ? null : lwList.get(0));
+    public Labware validateLabware(ValidationHelper val, String barcode) {
+        List<String> barcodes = nullOrEmpty(barcode) ? List.of() : List.of(barcode);
+        UCMap<Labware> lwMap = val.checkLabware(barcodes);
+        return (lwMap.isEmpty() ? null : lwMap.values().iterator().next());
     }
 
     /**
      * Loads the op type and checks that it is in-place
-     * @param problems receptacle for problems found
+     * @param val validation helper to load op type and track problems
      * @param opTypeName the name of the operation to record
      * @return the op type loaded
      */
-    public OperationType loadOpType(Collection<String> problems, String opTypeName) {
-        if (opTypeName==null || opTypeName.isEmpty()) {
-            problems.add("No operation type specified.");
-            return null;
-        }
-        var optOpType = opTypeRepo.findByName(opTypeName);
-        if (optOpType.isEmpty()) {
-            problems.add("Unknown operation type: "+repr(opTypeName));
-            return null;
-        }
-        OperationType opType = optOpType.get();
-        if (!opType.inPlace()) {
-            problems.add("Operation cannot be recorded in place: "+opType.getName());
-        } else if (!opType.getName().equalsIgnoreCase(OP_AMP) && !opType.getName().equalsIgnoreCase(OP_VISIUM_CONC)) {
-            problems.add("Operation not expected for this request: "+opType.getName());
-        }
-        return opType;
+    public OperationType loadOpType(ValidationHelper val, String opTypeName) {
+        return val.checkOpType(opTypeName, EnumSet.of(OperationTypeFlag.IN_PLACE), null,
+                ot -> opTypeMeasurements.containsKey(ot.getName()));
     }
 
     /**
@@ -255,22 +242,11 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
         if (name==null || opType==null) {
             return null;
         }
-        if (opType.getName().equalsIgnoreCase(OP_AMP)) {
-            if (name.equalsIgnoreCase(MEAS_CQ)) {
-                return MEAS_CQ;
-            }
-            if (name.equalsIgnoreCase(MEAS_CYC)) {
-                return MEAS_CYC;
-            }
-        } else if (opType.getName().equalsIgnoreCase(OP_VISIUM_CONC)) {
-            if (name.equalsIgnoreCase(MEAS_CDNA)) {
-                return MEAS_CDNA;
-            }
-            if (name.equalsIgnoreCase(MEAS_LIBR)) {
-                return MEAS_LIBR;
-            }
+        List<String> expectedMeasurements = opTypeMeasurements.get(opType.getName());
+        if (expectedMeasurements==null) {
+            return null;
         }
-        return null;
+        return expectedMeasurements.stream().filter(name::equalsIgnoreCase).findAny().orElse(null);
     }
 
     /**
@@ -281,15 +257,12 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
      * @return the sanitised value, or null if the measurement is found to be invalid
      */
     public String sanitiseMeasurementValue(Collection<String> problems, String name, String value) {
-        switch (name) {
-            case MEAS_CDNA: case MEAS_LIBR:
-                return concentrationSanitiser.sanitise(problems, value);
-            case MEAS_CQ:
-                return cqSanitiser.sanitise(problems, value);
-            case MEAS_CYC:
-                return cycleSanitiser.sanitise(problems, value);
-        }
-        return null;
+        return switch (name) {
+            case MEAS_CDNA, MEAS_LIBR -> concentrationSanitiser.sanitise(problems, value);
+            case MEAS_CQ -> cqSanitiser.sanitise(problems, value);
+            case MEAS_CYC -> cycleSanitiser.sanitise(problems, value);
+            default -> null;
+        };
     }
 
     /**
