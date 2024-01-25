@@ -40,7 +40,7 @@ public class TestRecordOpWithSlotMeasurementsMutation {
 
     @Transactional
     @ParameterizedTest
-    @ValueSource(strings={"Amplification", "Visium concentration"})
+    @ValueSource(strings={"Amplification", "Visium concentration", "qPCR results"})
     public void testRecordOpWithSlotMeasurements(String opName) throws Exception {
         OperationType opType = entityCreator.createOpType(opName, null, OperationTypeFlag.IN_PLACE);
         Sample sam = entityCreator.createSample(entityCreator.createTissue(entityCreator.createDonor("DONOR1"), "TISSUE1"), 1);
@@ -50,10 +50,15 @@ public class TestRecordOpWithSlotMeasurementsMutation {
         User user = entityCreator.createUser("user1");
         String[] measNames, sanMeasNames, measValues, sanMeasValues;
         if (opName.equalsIgnoreCase("Visium concentration")) {
-            measNames = new String[] { "CDNA CONCENTRATION", "library CONCENTRATION" };
-            sanMeasNames = new String[] { "cDNA concentration", "Library concentration"};
-            measValues = new String[] { "0123.5", "4" };
-            sanMeasValues = new String[] { "123.50", "4.00"};
+            measNames = new String[]{"CDNA CONCENTRATION", "library CONCENTRATION"};
+            sanMeasNames = new String[]{"cDNA concentration", "Library concentration"};
+            measValues = new String[]{"0123.5", "4"};
+            sanMeasValues = new String[]{"123.50", "4.00"};
+        } else if (opName.equalsIgnoreCase("qPCR results")) {
+            measNames = new String[] {"CQ Value"};
+            sanMeasNames = new String[] {"Cq value"};
+            measValues = new String[] {"05.5"};
+            sanMeasValues = new String[] {"5.50"};
         } else {
             measNames = new String[] { "CQ VALUE", "CYCLES"};
             sanMeasNames = new String[] { "Cq value", "Cycles"};
@@ -63,6 +68,10 @@ public class TestRecordOpWithSlotMeasurementsMutation {
         String mutation = tester.readGraphQL("opwithslotmeasurements.graphql")
                 .replace("OP-TYPE", opType.getName())
                 .replace("WORK-NUM", work.getWorkNumber());
+        if (measNames.length < 2) {
+            // If the test is only recording one measurement, delete the second measurement from the mutation
+            mutation = mutation.replaceFirst("\\{[^}]+\"MEAS-NAME-1\"[^}]+}", "");
+        }
         for (int i = 0; i < measNames.length; ++i) {
             mutation = mutation.replace("MEAS-NAME-"+i, measNames[i])
                     .replace("MEAS-VALUE-"+i, measValues[i]);
@@ -78,7 +87,7 @@ public class TestRecordOpWithSlotMeasurementsMutation {
 
         List<Measurement> measurements = measurementRepo.findAllByOperationIdIn(List.of(opId));
         assertThat(measurements).hasSize(sanMeasNames.length);
-        if (measurements.get(0).getName().equalsIgnoreCase(sanMeasNames[1])) {
+        if (sanMeasNames.length > 1 && measurements.get(0).getName().equalsIgnoreCase(sanMeasNames[1])) {
             measurements = List.of(measurements.get(1), measurements.get(0));
         }
         for (int i = 0; i < sanMeasNames.length; ++i) {

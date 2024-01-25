@@ -19,14 +19,6 @@ public interface OpWithSlotMeasurementsService {
      */
     OperationResult perform(User user, OpWithSlotMeasurementsRequest request) throws ValidationException;
 
-    /**
-     * Loads the op type and checks that it is in-place
-     * @param problems receptacle for problems found
-     * @param opTypeName the name of the operation to record
-     * @return the op type loaded
-     */
-    OperationType loadOpType(Collection<String> problems, String opTypeName);
-
     void validateAddresses(Collection<String> problems, LabwareType lt, Set<Address> filledSlotAddresses,
                            List<SlotMeasurementRequest> slotMeasurements);
 
@@ -70,4 +62,12 @@ public interface OpWithSlotMeasurementsService {
     OperationResult execute(User user, Labware lw, OperationType opType, Work work,
                             Collection<Comment> comments,
                             Collection<SlotMeasurementRequest> sanitisedMeasurements);
+
+    /**
+     * Loads the op type and checks it is suitable
+     * @param problems receptacle for problems
+     * @param opName name of the operation type
+     * @return the loaded operation type, or null
+     */
+    OperationType loadOpType(Collection<String> problems, String opName);
 }
