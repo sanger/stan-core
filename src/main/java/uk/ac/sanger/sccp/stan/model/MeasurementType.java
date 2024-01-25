@@ -1,6 +1,7 @@
 package uk.ac.sanger.sccp.stan.model;
 
 /**
+ * Types of measurements, used to alter how different types of measurements are displayed
  * @author dr6
  */
 public enum MeasurementType {

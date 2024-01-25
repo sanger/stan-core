@@ -89,6 +89,7 @@ public class Release {
         this.labware = labware;
     }
 
+    /** The place or lab or purpose to whom the labware is released */
     public ReleaseDestination getDestination() {
         return this.destination;
     }
@@ -97,6 +98,7 @@ public class Release {
         this.destination = destination;
     }
 
+    /** The individual responsible for receiving the released labware */
     public ReleaseRecipient getRecipient() {
         return this.recipient;
     }
@@ -113,6 +115,7 @@ public class Release {
         this.released = released;
     }
 
+    /** The user responsible for recording the release in Stan */
     public User getUser() {
         return this.user;
     }

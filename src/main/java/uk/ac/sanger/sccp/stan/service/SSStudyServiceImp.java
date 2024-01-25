@@ -69,6 +69,7 @@ public class SSStudyServiceImp implements SSStudyService {
      * @param ssStudies Sequencescape studies loaded from the mlwh
      */
     void update(Map<Integer, DnapStudy> stanStudies, Map<Integer, SSStudy> ssStudies) {
+        // Any studies in stan that are enabled but do not appear in the mlwh should be disabled
         List<DnapStudy> toDisable = stanStudies.values().stream()
                 .filter(ds -> ds.isEnabled() && ssStudies.get(ds.getSsId())==null)
                 .collect(toList());
@@ -78,7 +79,7 @@ public class SSStudyServiceImp implements SSStudyService {
                 .filter(ds -> !ds.isEnabled() && ssStudies.get(ds.getSsId())!=null)
                 .collect(toList());
 
-        // Any studies in stan that are enabled but do not appear in the mlwh should be disabled
+        // Any studies in stan that are linked to mlwh studies with a different name should be renamed
         List<DnapStudy> toRename = stanStudies.values().stream()
                 .filter(ds -> {
                     SSStudy ss = ssStudies.get(ds.getSsId());

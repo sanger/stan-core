@@ -9,6 +9,7 @@ import java.util.Objects;
 import static uk.ac.sanger.sccp.utils.BasicUtils.nullToEmpty;
 
 /**
+ * A heading and set of tag entries in a tag layout
  * @author dr6
  */
 @Entity
@@ -39,6 +40,7 @@ public class TagHeading {
         this.id = id;
     }
 
+    /** The name of the tag heading */
     public String getName() {
         return this.name;
     }
@@ -47,6 +49,7 @@ public class TagHeading {
         this.name = name;
     }
 
+    /* The entries for this tag heading in the tag layout */
     public Map<Address, String> getEntries() {
         return this.entries;
     }
@@ -55,6 +58,7 @@ public class TagHeading {
         this.entries = nullToEmpty(entries);
     }
 
+    /** Should this heading be included in a release file? */
     public boolean isInRelease() {
         return this.inRelease;
     }

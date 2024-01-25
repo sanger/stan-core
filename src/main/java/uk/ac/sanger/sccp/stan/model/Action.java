@@ -6,6 +6,8 @@ import javax.persistence.*;
 import java.util.Objects;
 
 /**
+ * An action is part of an operation, linking a source slot/sample to a destination slot/sample.
+ * For operations that happen in place, the source and destination are typically the same slot.
  * @author dr6
  */
 @Entity
@@ -70,6 +72,7 @@ public class Action {
         this.destination = destination;
     }
 
+    /** The sample involved in this operation in the destination slot */
     public Sample getSample() {
         return this.sample;
     }
@@ -78,6 +81,7 @@ public class Action {
         this.sample = sample;
     }
 
+    /** The sample in the source slot that was used as input to the operation */
     public Sample getSourceSample() {
         return this.sourceSample;
     }

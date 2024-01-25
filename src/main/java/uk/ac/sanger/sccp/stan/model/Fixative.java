@@ -4,6 +4,7 @@ import javax.persistence.*;
 import java.util.Objects;
 
 /**
+ * What type of chemical was used to fix a tissue sample?
  * @author dr6
  */
 @Entity

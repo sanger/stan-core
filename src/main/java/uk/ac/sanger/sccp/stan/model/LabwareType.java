@@ -4,6 +4,8 @@ import javax.persistence.*;
 import java.util.Objects;
 
 /**
+ * A type of labware. This indicates the layout of the labware, its name, what kind of labels it uses,
+ * and might indicate other functional changes for certain operations.
  * @author dr6
  */
 @Entity

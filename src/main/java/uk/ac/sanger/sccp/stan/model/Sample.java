@@ -6,6 +6,8 @@ import javax.persistence.*;
 import java.util.Objects;
 
 /**
+ * A sample is a piece of some tissue that has some particular state and can be located inside slots in labware,
+ * and used in operations.
  * @author dr6
  */
 @Entity

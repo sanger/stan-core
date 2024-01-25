@@ -115,7 +115,7 @@ public class TestOriginalSampleRegisterService {
             String fieldName = invocation.getArgument(2);
             Function<OriginalSampleData, ?> func = invocation.getArgument(3);
 
-            problems.add(fieldName+" wrong: "+func.apply(req.getSamples().get(0)));
+            problems.add(fieldName+" wrong: "+func.apply(req.getSamples().getFirst()));
             return null;
         }).when(service).checkFormat(any(), any(), any(), any(), anyBoolean(), any());
 
@@ -688,14 +688,20 @@ public class TestOriginalSampleRegisterService {
         Fixative fix = EntityFactory.getFixative();
         Medium medium = new Medium(100, "None");
         BioState bs = new BioState(101, "Original tissue");
+        BioState tisBs = new BioState(102, "Tissue");
         Hmdmc hmdmc = EntityFactory.getHmdmc();
         LocalDate date1 = LocalDate.of(2022, 10, 25);
+        LabwareType cassetteLt = EntityFactory.makeLabwareType(1, 1, "Cassette");
+        LabwareType provLt = EntityFactory.makeLabwareType(1, 1, "Proviasette");
         List<DataStruct> datas = List.of(
                 dataOf(donors[0], sl0, "R1", "EXT1", fix, hmdmc, date1, human),
                 dataOf(donors[1], sl1, null, null, fix,null, null, banana)
         );
+        datas.get(0).setLabwareType(provLt);
+        datas.get(1).setLabwareType(cassetteLt);
         when(mockMediumRepo.getByName("None")).thenReturn(medium);
         when(mockBsRepo.getByName("Original sample")).thenReturn(bs);
+        when(mockBsRepo.getByName("Tissue")).thenReturn(tisBs);
         final List<Tissue> savedTissues = new ArrayList<>(2);
         when(mockTissueRepo.save(any())).then(invocation -> {
             Tissue unsaved = invocation.getArgument(0);
@@ -727,7 +733,7 @@ public class TestOriginalSampleRegisterService {
             assertNotNull(sample.getId());
             assertNotNull(tissue.getId());
             assertNull(sample.getSection());
-            assertSame(bs, sample.getBioState());
+            assertSame(i==0 ? bs : tisBs, sample.getBioState());
             assertSame(osd.getReplicateNumber(), tissue.getReplicate());
             assertSame(osd.getExternalIdentifier(), tissue.getExternalName());
             assertSame(medium, tissue.getMedium());
@@ -822,7 +828,7 @@ public class TestOriginalSampleRegisterService {
             Operation op = new Operation();
             op.setId(i);
             return op;
-        }).collect(toList());
+        }).toList();
         when(mockOpService.createOperationInPlace(any(), any(), any(), any(), any())).thenReturn(ops.get(0), ops.get(1));
         OperationType opType = EntityFactory.makeOperationType("Register", null, OperationTypeFlag.IN_PLACE);
         when(mockOpTypeRepo.getByName(opType.getName())).thenReturn(opType);

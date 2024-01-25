@@ -12,11 +12,14 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.newArrayList;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
+ * Labware represents the contains (e.g. plates, tubes) that have a unique barcode and contain samples in
+ * particular positions, known as slots
  * @author dr6
  */
 @Entity
 public class Labware {
 
+    /** The states a piece of labware may be in */
     public enum State {
         empty, active, discarded, released, destroyed, used
     }
@@ -60,6 +63,7 @@ public class Labware {
         this.id = id;
     }
 
+    /** The unique barcode that identifies this labware */
     public String getBarcode() {
         return this.barcode;
     }
@@ -68,6 +72,7 @@ public class Labware {
         this.barcode = barcode;
     }
 
+    /** An external barcode input into Stan to refer to this labware */
     public String getExternalBarcode() {
         return this.externalBarcode;
     }
@@ -84,6 +89,11 @@ public class Labware {
         this.labwareType = labwareType;
     }
 
+    /**
+     * Gets the slots of this labware. Slots are individual sample containers in a labware,
+     * indicated by a row/column address. Simple labware, such as a tube, has one slot, at address A1.
+     * @return the slots of this labware.
+     */
     public List<Slot> getSlots() {
         return this.slots;
     }
@@ -93,7 +103,7 @@ public class Labware {
     }
 
     public Slot getFirstSlot() {
-        return this.slots.get(0);
+        return this.slots.getFirst();
     }
 
     public void setCreated(LocalDateTime created) {
@@ -215,6 +225,9 @@ public class Labware {
         return this.slots.stream().allMatch(slot -> slot.getSamples().isEmpty());
     }
 
+    /**
+     * Gets the state of this labware by checking if it is listed as destroyed, released, various other methods.
+     */
     @JsonIgnore
     public Labware.State getState() {
         if (isDestroyed()) return State.destroyed;

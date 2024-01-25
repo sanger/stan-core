@@ -48,6 +48,7 @@ public class ReleaseEntry {
     private String solution;
     private String stainQcComment;
     private String amplificationCycles;
+    private String flagDescription = "";
 
     private String equipment;
 
@@ -380,6 +381,14 @@ public class ReleaseEntry {
         this.equipment = equipment;
     }
 
+    public String getFlagDescription() {
+        return this.flagDescription;
+    }
+
+    public void setFlagDescription(String flagDescription) {
+        this.flagDescription = flagDescription;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -426,6 +435,7 @@ public class ReleaseEntry {
                 && Objects.equals(this.stainQcComment, that.stainQcComment)
                 && Objects.equals(this.amplificationCycles, that.amplificationCycles)
                 && Objects.equals(this.equipment, that.equipment)
+                && Objects.equals(this.flagDescription, that.flagDescription)
         );
     }
 
@@ -478,6 +488,7 @@ public class ReleaseEntry {
                 .add("stainQcComment", stainQcComment)
                 .add("amplificationCycles", amplificationCycles)
                 .add("equipment", equipment)
+                .add("flagDescription", flagDescription)
                 .reprStringValues()
                 .omitNullValues()
                 .toString();

@@ -91,6 +91,12 @@ public class StoredItem {
         );
     }
 
+    /**
+     * Sets this location's content to this instance where it has the same barcode.
+     * Calls {@link Location#fixInternalLinks} on the location.
+     * Does nothing if the location is null.
+     * @return this stored item
+     */
     public StoredItem fixInternalLinks() {
         if (location!=null) {
             List<StoredItem> storedItems = location.getStored();

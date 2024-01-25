@@ -6,12 +6,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.request.FlagDetail;
 import uk.ac.sanger.sccp.stan.service.ComplexStainServiceImp;
+import uk.ac.sanger.sccp.stan.service.flag.FlagLookupService;
 import uk.ac.sanger.sccp.stan.service.history.ReagentActionDetailService;
 import uk.ac.sanger.sccp.stan.service.operation.AnalyserServiceImp;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.Ancestry;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
 import uk.ac.sanger.sccp.utils.BasicUtils;
+import uk.ac.sanger.sccp.utils.UCMap;
 import uk.ac.sanger.sccp.utils.tsv.TsvColumn;
 
 import javax.persistence.EntityNotFoundException;
@@ -50,6 +53,7 @@ public class ReleaseFileService {
     private final SolutionRepo solutionRepo;
     private final OperationSolutionRepo opSolRepo;
     private final ResultOpRepo roRepo;
+    private final FlagLookupService flagLookupService;
 
     @Autowired
     public ReleaseFileService(Ancestoriser ancestoriser,
@@ -58,7 +62,10 @@ public class ReleaseFileService {
                               OperationRepo opRepo, LabwareNoteRepo lwNoteRepo,
                               StainTypeRepo stainTypeRepo, SamplePositionRepo samplePositionRepo,
                               OperationCommentRepo opComRepo,
-                              LabwareProbeRepo lwProbeRepo, RoiRepo roiRepo, ReagentActionDetailService reagentActionDetailService, SolutionRepo solutionRepo, OperationSolutionRepo opSolRepo, ResultOpRepo roRepo) {
+                              LabwareProbeRepo lwProbeRepo, RoiRepo roiRepo,
+                              ReagentActionDetailService reagentActionDetailService,
+                              SolutionRepo solutionRepo, OperationSolutionRepo opSolRepo, ResultOpRepo roRepo,
+                              FlagLookupService flagLookupService) {
         this.releaseRepo = releaseRepo;
         this.sampleRepo = sampleRepo;
         this.labwareRepo = labwareRepo;
@@ -77,6 +84,7 @@ public class ReleaseFileService {
         this.solutionRepo = solutionRepo;
         this.opSolRepo = opSolRepo;
         this.roRepo = roRepo;
+        this.flagLookupService = flagLookupService;
     }
 
     /**
@@ -90,7 +98,6 @@ public class ReleaseFileService {
             return new ReleaseFileContent(ReleaseFileMode.NORMAL, List.of(), options);
         }
         List<Release> releases = getReleases(releaseIds);
-
         Map<Integer, Snapshot> snapshots = loadSnapshots(releases);
         Map<Integer, Sample> samples = loadSamples(releases, snapshots);
         ReleaseFileMode mode = checkMode(samples.values());
@@ -118,6 +125,7 @@ public class ReleaseFileService {
         loadSolutions(entries);
 
         loadXeniumFields(entries, slotIds);
+        loadFlags(entries);
         return new ReleaseFileContent(mode, entries, options);
     }
 
@@ -1042,13 +1050,39 @@ public class ReleaseFileService {
     }
 
     /**
-     * Loads the stain types for the given operations.
-     * @param lwOps map to operations
-     * @return a map from operation id to stain types
+     * Loads flags relevant to the specified labware.
+     * @param entries the release entries
      */
-    public Map<Integer, List<StainType>> loadStainTypes(Map<Integer, Operation> lwOps) {
-        Set<Integer> opIds = lwOps.values().stream().map(Operation::getId).collect(toSet());
-        return stainTypeRepo.loadOperationStainTypes(opIds);
+    public void loadFlags(Collection<ReleaseEntry> entries) {
+        UCMap<Labware> labware = new UCMap<>();
+        for (ReleaseEntry entry : entries) {
+            Labware lw = entry.getLabware();
+            labware.put(lw.getBarcode(), lw);
+        }
+        List<FlagDetail> flagDetails = flagLookupService.lookUpDetails(labware.values());
+        if (flagDetails.isEmpty()) {
+            return;
+        }
+        Map<Integer, String> flagMap = flagDetails.stream()
+                .collect(toMap(fd -> labware.get(fd.getBarcode()).getId(),
+                        fd -> describeFlags(fd.getFlags())));
+        for (ReleaseEntry entry : entries) {
+            entry.setFlagDescription(flagMap.getOrDefault(entry.getLabware().getId(), ""));
+        }
+    }
+
+    /**
+     * Combines flag summaries into a single string.
+     * @param summaries flag summaries
+     * @return a string combining the flag summaries
+     */
+    public String describeFlags(Collection<FlagDetail.FlagSummary> summaries) {
+        if (nullOrEmpty(summaries)) {
+            return "";
+        }
+        return summaries.stream()
+                .map(summary -> summary.getBarcode()+": "+summary.getDescription())
+                .collect(joining(" "));
     }
 
     public List<? extends TsvColumn<ReleaseEntry>> computeColumns(ReleaseFileContent rfc) {

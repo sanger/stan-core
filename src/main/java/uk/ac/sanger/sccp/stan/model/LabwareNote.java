@@ -7,6 +7,7 @@ import java.util.Objects;
 
 /**
  * A piece of named information recorded (as a string) against a particular piece of labware in an operation.
+ * A note includes a name and a value, which may be regarded as a key/value pair.
  * Like a {@link Measurement}, but not associated with a particular slot and sample.
  * @author dr6
  */
@@ -64,6 +65,7 @@ public class LabwareNote {
         this.planId = planId;
     }
 
+    /** The name of the note: What information this note indicates */
     public String getName() {
         return this.name;
     }
@@ -72,6 +74,7 @@ public class LabwareNote {
         this.name = name;
     }
 
+    /** The value of the note: What value does this note store? */
     public String getValue() {
         return this.value;
     }

@@ -6,6 +6,7 @@ import javax.persistence.*;
 import java.util.Objects;
 
 /**
+ * An entity representing the individual organism that tissue was taken from
  * @author dr6
  */
 @Entity
@@ -38,6 +39,7 @@ public class Donor {
         this.id = id;
     }
 
+    /** A unique identifier for a donor */
     public String getDonorName() {
         return this.donorName;
     }
@@ -46,6 +48,7 @@ public class Donor {
         this.donorName = donorName;
     }
 
+    /** What was the stage of life of the donor when their tissues were donated */
     public LifeStage getLifeStage() {
         return this.lifeStage;
     }

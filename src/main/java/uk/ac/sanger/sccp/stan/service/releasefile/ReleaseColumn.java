@@ -24,6 +24,7 @@ public enum ReleaseColumn implements TsvColumn<ReleaseEntry> {
     Spatial_location(Compose.tissue, Tissue::getSpatialLocation, SpatialLocation::getCode),
     Replicate_number(Compose.tissue, Tissue::getReplicate),
     Section_number(Compose.sample, Sample::getSection),
+    Flag_description(ReleaseEntry::getFlagDescription),
     Section_position_in_slot(ReleaseEntry::getSamplePosition, ReleaseFileOption.Histology, ReleaseFileOption.RNAscope_IHC, ReleaseFileOption.Visium, ReleaseFileOption.Xenium),
     Section_thickness(ReleaseEntry::getSectionThickness, ReleaseFileOption.Histology, ReleaseFileOption.RNAscope_IHC, ReleaseFileOption.Visium, ReleaseFileOption.Xenium),
     Date_sectioned(ReleaseEntry::getSectionDate, ReleaseFileOption.Histology, ReleaseFileOption.RNAscope_IHC, ReleaseFileOption.Visium, ReleaseFileOption.Xenium),

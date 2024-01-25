@@ -87,6 +87,11 @@ public class ReagentPlate implements HasIntId {
         return PLATE_LAYOUT_96;
     }
 
+    /**
+     * Gets an optional of the slot at the given address in the reagent plate, if such a slot exists
+     * @param address a slot address
+     * @return an optional of the relevant reagent slot, if such a thing exists
+     */
     public Optional<ReagentSlot> optSlot(Address address) {
         int index = getPlateLayout().indexOf(address);
         if (index < 0) {
@@ -100,6 +105,12 @@ public class ReagentPlate implements HasIntId {
         return Optional.of(slot);
     }
 
+    /**
+     * Gets the slot at a given address; throws an exception if it does not exist
+     * @param address a slot address
+     * @return the reagent slot with the given address in this plate
+     * @exception IllegalStateException the address is not valid in this plate
+     */
     public ReagentSlot getSlot(Address address) {
         return optSlot(address)
                 .orElseThrow(() -> new IllegalStateException("Address "+address+" is not valid in "+ getPlateLayout().getName()));

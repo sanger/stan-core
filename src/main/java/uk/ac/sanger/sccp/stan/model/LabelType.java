@@ -4,6 +4,8 @@ import javax.persistence.*;
 import java.util.Objects;
 
 /**
+ * A label type for printing. Different labware have different label types, and the label types
+ * indicate the dimensions and contents of the label
  * @author dr6
  */
 @Entity

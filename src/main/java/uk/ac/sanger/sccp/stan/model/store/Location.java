@@ -74,6 +74,10 @@ public class Location extends LinkedLocation {
         this.qualifiedNameWithFirstBarcode = qualifiedNameWithFirstBarcode;
     }
 
+    /**
+     * Sets the contents of this location to have this location instance as its location.
+     * @return this location
+     */
     public Location fixInternalLinks() {
         if (stored!=null && !stored.isEmpty()) {
             for (StoredItem si : stored) {
@@ -105,6 +109,17 @@ public class Location extends LinkedLocation {
         return (this.parent==null ? null : this.parent.getBarcode());
     }
 
+    /**
+     * Checks if two collections have similar contents.
+     * Elements are compared using strings and addresses given by the given functions.
+     * A null reference is alike to an empty collection.
+     * @param alpha the first collection
+     * @param beta the second collection
+     * @param stringFunction function to get a string from an element
+     * @param addressFunction function to get an address from an element
+     * @return true if the two collections are alike; false otherwise
+     * @param <E> the type of contents in the collections
+     */
     protected static <E> boolean alike(Collection<E> alpha, Collection<E> beta,
                                        Function<? super E, String> stringFunction,
                                        Function<? super E, Address> addressFunction) {

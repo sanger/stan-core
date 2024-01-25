@@ -12,10 +12,11 @@ import java.util.*;
 import static java.util.stream.Collectors.toList;
 
 /**
+ * The SQL change to set up tissue types and spatial locations from a csv file
  * @author dr6
  */
 public class FillTissueTypesAndSpatialLocations implements CustomSqlChange {
-
+    /** The enum type representing expected columns in the csv file */
     enum Column {
         TTCODE("Tissue type code"),
         TTNAME("Tissue type name"),

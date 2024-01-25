@@ -5,6 +5,7 @@ import com.google.common.base.MoreObjects;
 import java.util.*;
 
 /**
+ * The result of unstoring some items
  * @author dr6
  */
 public class UnstoreResult {

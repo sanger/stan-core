@@ -7,6 +7,8 @@ import org.junit.jupiter.params.provider.*;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.request.FlagDetail;
+import uk.ac.sanger.sccp.stan.service.flag.FlagLookupService;
 import uk.ac.sanger.sccp.stan.service.history.ReagentActionDetailService;
 import uk.ac.sanger.sccp.stan.service.history.ReagentActionDetailService.ReagentActionDetail;
 import uk.ac.sanger.sccp.stan.service.operation.AnalyserServiceImp;
@@ -22,6 +24,7 @@ import static java.util.stream.Collectors.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.stan.Matchers.sameElements;
 import static uk.ac.sanger.sccp.stan.service.ComplexStainServiceImp.*;
 import static uk.ac.sanger.sccp.utils.BasicUtils.orderedMap;
 
@@ -49,6 +52,7 @@ public class TestReleaseFileService {
     ResultOpRepo mockRoRepo;
 
     ReagentActionDetailService mockRadService;
+    FlagLookupService mockFlagLookupService;
 
     ReleaseFileService service;
 
@@ -81,10 +85,12 @@ public class TestReleaseFileService {
         mockSolutionRepo = mock(SolutionRepo.class);
         mockOpSolRepo = mock(OperationSolutionRepo.class);
         mockRoRepo = mock(ResultOpRepo.class);
+        mockFlagLookupService = mock(FlagLookupService.class);
 
         service = spy(new ReleaseFileService(mockAncestoriser, mockSampleRepo, mockLabwareRepo, mockMeasurementRepo,
                 mockSnapshotRepo, mockReleaseRepo, mockOpTypeRepo, mockOpRepo, mockLwNoteRepo, mockStainTypeRepo,
-                mockSamplePositionRepo, mockOpComRepo, mockLwProbeRepo, mockRoiRepo, mockRadService, mockSolutionRepo, mockOpSolRepo, mockRoRepo));
+                mockSamplePositionRepo, mockOpComRepo, mockLwProbeRepo, mockRoiRepo, mockRadService, mockSolutionRepo,
+                mockOpSolRepo, mockRoRepo, mockFlagLookupService));
 
         user = EntityFactory.getUser();
         destination = new ReleaseDestination(50, "Venus");
@@ -180,6 +186,7 @@ public class TestReleaseFileService {
         doNothing().when(service).loadSectionComments(any());
         doNothing().when(service).loadXeniumFields(any(), any());
         doNothing().when(service).loadSolutions(any());
+        doNothing().when(service).loadFlags(any());
 
         Set<ReleaseFileOption> options = EnumSet.allOf(ReleaseFileOption.class);
 
@@ -203,6 +210,7 @@ public class TestReleaseFileService {
         verify(service).loadSectionComments(entries);
         verify(service).loadXeniumFields(entries, slotIds);
         verify(service).loadSolutions(entries);
+        verify(service).loadFlags(entries);
     }
 
     @ParameterizedTest
@@ -880,23 +888,6 @@ public class TestReleaseFileService {
     }
 
     @Test
-    public void testLoadStainTypes() {
-        final int op1id = 10, op2id=11;
-        final int lw1id = 80, lw2id=81, lw3id=82;
-        Operation op1 = new Operation(op1id, null, null, null, null);
-        Operation op2 = new Operation(op2id, null, null, null, null);
-        Map<Integer, Operation> lwOps = Map.of(lw1id, op1, lw2id, op1, lw3id, op2);
-        StainType st1 = new StainType(1, "Alpha");
-        StainType st2 = new StainType(2, "Beta");
-        Map<Integer, List<StainType>> opStainTypes = Map.of(
-                op1id, List.of(st1, st2)
-        );
-        when(mockStainTypeRepo.loadOperationStainTypes(any())).thenReturn(opStainTypes);
-        assertSame(opStainTypes, service.loadStainTypes(lwOps));
-        verify(mockStainTypeRepo).loadOperationStainTypes(Set.of(op1id, op2id));
-    }
-
-    @Test
     public void testLoadReagentSources() {
         setupLabware();
         Slot slot1 = lw1.getFirstSlot();
@@ -1227,7 +1218,7 @@ public class TestReleaseFileService {
                 .mapToObj(i -> EntityFactory.makeLabware(lt, sample))
                 .toArray(Labware[]::new);
         List<ReleaseEntry> entries = Arrays.stream(lws)
-                .map(lw -> new ReleaseEntry(lw, lw.getFirstSlot(), lw.getFirstSlot().getSamples().get(0)))
+                .map(lw -> new ReleaseEntry(lw, lw.getFirstSlot(), lw.getFirstSlot().getSamples().getFirst()))
                 .collect(toList());
         Set<Integer> slotIds = Arrays.stream(lws).map(lw -> lw.getFirstSlot().getId()).collect(toSet());
         Operation op = EntityFactory.makeOpForLabware(opType, List.of(lws[0]), List.of(lws[0]));
@@ -1257,13 +1248,76 @@ public class TestReleaseFileService {
         assertNull(entry.getXeniumComment());
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testLoadFlags(boolean anyFlags) {
+        Sample sample = EntityFactory.getSample();
+        LabwareType lt = EntityFactory.getTubeType();
+        List<Labware> lws = IntStream.range(0, 2)
+                .mapToObj(i -> EntityFactory.makeLabware(lt, sample))
+                .toList();
+        List<ReleaseEntry> entries = lws.stream()
+                .map(lw -> new ReleaseEntry(lw, lw.getFirstSlot(), lw.getFirstSlot().getSamples().getFirst()))
+                .toList();
+        List<FlagDetail> details;
+        if (anyFlags) {
+            details = List.of(new FlagDetail(lws.getFirst().getBarcode(), List.of(
+                    new FlagDetail.FlagSummary("STAN-1", "Flag 1"),
+                    new FlagDetail.FlagSummary("STAN-2", "Flag 2"))));
+        } else {
+            details = List.of();
+        }
+        doReturn(details).when(mockFlagLookupService).lookUpDetails(any());
+        if (anyFlags) {
+            doAnswer(invocation -> {
+                List<FlagDetail.FlagSummary> summaries = invocation.getArgument(0);
+                return (summaries.isEmpty() ? "" : "FLAG DESC");
+            }).when(service).describeFlags(any());
+        }
+
+        service.loadFlags(entries);
+        for (ReleaseEntry entry : entries) {
+            if (anyFlags && entry.getLabware().equals(lws.getFirst())) {
+                assertEquals(entry.getFlagDescription(), "FLAG DESC");
+            } else {
+                assertThat(entry.getFlagDescription()).isEmpty();
+            }
+        }
+        verify(mockFlagLookupService).lookUpDetails(sameElements(lws, true));
+        if (anyFlags) {
+            verify(service).describeFlags(details.getFirst().getFlags());
+        } else {
+            verify(service, never()).describeFlags(any());
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testDescribeFlags(boolean anyFlags) {
+        List<FlagDetail.FlagSummary> summaries;
+        if (anyFlags) {
+            summaries = List.of(
+                    new FlagDetail.FlagSummary("STAN-1", "Flag 1."),
+                    new FlagDetail.FlagSummary("STAN-2", "Flag 2.")
+            );
+        } else {
+            summaries = List.of();
+        }
+        String desc = service.describeFlags(summaries);
+        if (anyFlags) {
+            assertEquals("STAN-1: Flag 1. STAN-2: Flag 2.", desc);
+        } else {
+            assertThat(desc).isEmpty();
+        }
+    }
+
     private LocalDateTime time(int day) {
         return LocalDateTime.of(2021,12,1+day, 12,0,0);
     }
 
     private Operation makeOp(int id, OperationType opType, Labware lw, LocalDateTime time) {
         Slot slot = lw.getFirstSlot();
-        Sample sam = slot.getSamples().get(0);
+        Sample sam = slot.getSamples().getFirst();
         Action action = new Action(10*id, id, slot, slot, sam, sam);
         return new Operation(id, opType, time, List.of(action), null);
     }

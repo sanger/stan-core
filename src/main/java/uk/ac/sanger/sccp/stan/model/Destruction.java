@@ -64,6 +64,7 @@ public class Destruction {
         this.user = user;
     }
 
+    /** When was this destruction recorded */
     public LocalDateTime getDestroyed() {
         return this.destroyed;
     }
@@ -72,6 +73,7 @@ public class Destruction {
         this.destroyed = destroyed;
     }
 
+    /** The reason given for this destruction */
     public DestructionReason getReason() {
         return this.reason;
     }

@@ -4,6 +4,8 @@ import javax.persistence.*;
 import java.util.Objects;
 
 /**
+ * A location inside a particular tissue type, e.g. the location inside an organ that a particular
+ * sample might come from.
  * @author dr6
  */
 @Entity
@@ -41,6 +43,7 @@ public class SpatialLocation {
         this.name = name;
     }
 
+    /** The integer code that identifies a spatial location for a particular tissue type */
     public Integer getCode() {
         return this.code;
     }

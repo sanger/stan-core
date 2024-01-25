@@ -6,6 +6,7 @@ import javax.persistence.*;
 import java.util.Objects;
 
 /**
+ * A comment in the database available for users to use in operations.
  * @author dr6
  */
 @Entity
@@ -39,6 +40,7 @@ public class Comment implements HasEnabled {
         this.id = id;
     }
 
+    /** The text of this comment */
     public String getText() {
         return this.text;
     }
@@ -47,6 +49,7 @@ public class Comment implements HasEnabled {
         this.text = text;
     }
 
+    /** The category this comment belongs to, indicating in what context it is appropriate to use it */
     public String getCategory() {
         return this.category;
     }

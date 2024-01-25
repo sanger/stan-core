@@ -148,7 +148,7 @@ public class TestWorkProgressQuery {
     }
 
     private static String timeToString(LocalDateTime time) {
-        return (String) GraphQLCustomTypes.TIMESTAMP.getCoercing().serialize(time);
+        return GraphQLCustomTypes.DATE_TIME_FORMAT.format(time);
     }
 
     private LocalDateTime time(int day) {
