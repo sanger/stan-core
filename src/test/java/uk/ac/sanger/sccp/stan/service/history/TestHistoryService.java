@@ -1,9 +1,10 @@
 package uk.ac.sanger.sccp.stan.service.history;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
@@ -34,28 +35,54 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.*;
  * @author dr6
  */
 public class TestHistoryService {
+    @Mock
     private OperationRepo mockOpRepo;
+    @Mock
     private OperationTypeRepo mockOpTypeRepo;
+    @Mock
     private LabwareRepo mockLwRepo;
+    @Mock
     private SampleRepo mockSampleRepo;
+    @Mock
     private TissueRepo mockTissueRepo;
+    @Mock
     private DonorRepo mockDonorRepo;
+    @Mock
     private ReleaseRepo mockReleaseRepo;
+    @Mock
     private DestructionRepo mockDestructionRepo;
+    @Mock
     private OperationCommentRepo mockOpCommentRepo;
+    @Mock
     private RoiRepo mockRoiRepo;
+    @Mock
     private SnapshotRepo mockSnapshotRepo;
+    @Mock
     private WorkRepo mockWorkRepo;
+    @Mock
     private MeasurementRepo mockMeasurementRepo;
+    @Mock
     private LabwareNoteRepo mockLwNoteRepo;
+    @Mock
     private ResultOpRepo mockResultOpRepo;
+    @Mock
     private StainTypeRepo mockStainTypeRepo;
+    @Mock
     private LabwareProbeRepo mockLwProbeRepo;
+    @Mock
     private LabwareFlagRepo mockFlagRepo;
+    @Mock
+    private OperationSolutionRepo mockOpSolRepo;
+    @Mock
+    private SolutionRepo mockSolutionRepo;
+    @Mock
     private ReagentActionDetailService mockRadService;
+    @Mock
     private SlotRegionService mockSlotRegionService;
 
     private HistoryServiceImp service;
+
+    private AutoCloseable mocking;
 
     private Sample[] samples;
     private Labware[] labware;
@@ -63,31 +90,18 @@ public class TestHistoryService {
 
     @BeforeEach
     public void setup() {
-        mockOpRepo = mock(OperationRepo.class);
-        mockOpTypeRepo = mock(OperationTypeRepo.class);
-        mockLwRepo = mock(LabwareRepo.class);
-        mockSampleRepo = mock(SampleRepo.class);
-        mockTissueRepo = mock(TissueRepo.class);
-        mockDonorRepo = mock(DonorRepo.class);
-        mockReleaseRepo = mock(ReleaseRepo.class);
-        mockDestructionRepo = mock(DestructionRepo.class);
-        mockOpCommentRepo = mock(OperationCommentRepo.class);
-        mockRoiRepo = mock(RoiRepo.class);
-        mockSnapshotRepo = mock(SnapshotRepo.class);
-        mockWorkRepo = mock(WorkRepo.class);
-        mockMeasurementRepo = mock(MeasurementRepo.class);
-        mockLwNoteRepo = mock(LabwareNoteRepo.class);
-        mockResultOpRepo = mock(ResultOpRepo.class);
-        mockRadService = mock(ReagentActionDetailService.class);
-        mockFlagRepo = mock(LabwareFlagRepo.class);
-        mockStainTypeRepo = mock(StainTypeRepo.class);
-        mockSlotRegionService = mock(SlotRegionService.class);
-        mockLwProbeRepo = mock(LabwareProbeRepo.class);
+        mocking = MockitoAnnotations.openMocks(this);
 
         service = spy(new HistoryServiceImp(mockOpRepo, mockOpTypeRepo, mockLwRepo, mockSampleRepo, mockTissueRepo, mockDonorRepo,
                 mockReleaseRepo, mockDestructionRepo, mockOpCommentRepo, mockRoiRepo, mockSnapshotRepo, mockWorkRepo,
                 mockMeasurementRepo, mockLwNoteRepo, mockResultOpRepo, mockStainTypeRepo, mockLwProbeRepo,
-                mockFlagRepo, mockRadService, mockSlotRegionService));
+                mockFlagRepo, mockOpSolRepo, mockSolutionRepo,
+                mockRadService, mockSlotRegionService));
+    }
+
+    @AfterEach
+    void cleanup() throws Exception {
+        mocking.close();
     }
 
     @Test
@@ -962,6 +976,65 @@ public class TestHistoryService {
     }
 
     @Test
+    public void testLoadOpSolutions_noTransfers() {
+        List<Operation> ops = IntStream.range(0,2).mapToObj(i -> new Operation()).toList();
+        for (int i = 0; i < ops.size(); ++i) {
+            ops.get(i).setId(100+i);
+            ops.get(i).setOperationType(EntityFactory.makeOperationType("optype"+i, null));
+        }
+        assertThat(service.loadOpSolutions(ops)).isEmpty();
+        verifyNoInteractions(mockOpSolRepo);
+        verifyNoInteractions(mockSolutionRepo);
+    }
+
+    @Test
+    public void testLoadOpSolutions_noOpSols() {
+        List<Operation> ops = IntStream.range(0,3).mapToObj(i -> new Operation()).toList();
+        OperationType solTransferOpType = EntityFactory.makeOperationType("Solution transfer", null, OperationTypeFlag.IN_PLACE);
+        OperationType otherOpType = EntityFactory.makeOperationType("Other", null);
+        for (int i = 0; i < ops.size(); ++i) {
+            ops.get(i).setId(100+i);
+            ops.get(i).setOperationType(i==0 ? otherOpType : solTransferOpType);
+        }
+        when(mockOpSolRepo.findAllByOperationIdIn(any())).thenReturn(List.of());
+
+        assertThat(service.loadOpSolutions(ops)).isEmpty();
+
+        verify(mockOpSolRepo).findAllByOperationIdIn(List.of(101,102));
+        verifyNoInteractions(mockSolutionRepo);
+    }
+
+    @Test
+    public void testLoadOpSolutions() {
+        List<Operation> ops = IntStream.range(0,3).mapToObj(i -> new Operation()).toList();
+        OperationType solTransferOpType = EntityFactory.makeOperationType("Solution transfer", null, OperationTypeFlag.IN_PLACE);
+        OperationType otherOpType = EntityFactory.makeOperationType("Other", null);
+        for (int i = 0; i < ops.size(); ++i) {
+            ops.get(i).setId(100+i);
+            ops.get(i).setOperationType(i==0 ? otherOpType : solTransferOpType);
+        }
+        List<OperationSolution> opsols = List.of(
+                new OperationSolution(101, 201, 301, 401),
+                new OperationSolution(102, 202, 302, 402)
+        );
+        when(mockOpSolRepo.findAllByOperationIdIn(any())).thenReturn(opsols);
+        List<Solution> solutions = List.of(
+                new Solution(201, "Solution 1"),
+                new Solution(202, "Solution 2")
+        );
+        Map<Integer, Solution> solutionMap = solutions.stream().collect(inMap(Solution::getId));
+        when(mockSolutionRepo.getMapByIdIn(any())).thenReturn(solutionMap);
+
+        Map<Integer, Set<Solution>> opSolutions = service.loadOpSolutions(ops);
+
+        verify(mockOpSolRepo).findAllByOperationIdIn(List.of(101,102));
+        verify(mockSolutionRepo).getMapByIdIn(Set.of(201,202));
+        assertThat(opSolutions).hasSize(2);
+        assertThat(opSolutions.get(101)).containsExactly(solutions.get(0));
+        assertThat(opSolutions.get(102)).containsExactly(solutions.get(1));
+    }
+
+    @Test
     public void testLoadOpRois() {
         List<Roi> rois = List.of(
                 new Roi(1, 11, 21, "roi1"),
@@ -1265,6 +1338,10 @@ public class TestHistoryService {
         Map<Integer, List<LabwareProbe>> opProbes = Map.of(opIds[1], List.of(lwp));
         doReturn(opProbes).when(service).loadOpProbes(ops);
 
+        Solution sol = new Solution(100, "Solution 100");
+        Map<Integer, Set<Solution>> opSolutions = Map.of(opIds[1], Set.of(sol));
+        doReturn(opSolutions).when(service).loadOpSolutions(ops);
+
         // Letting doesCommentApply actually run is easier than mocking it to return what it would return anyway
 
         List<Labware> labwareList = Arrays.asList(this.labware);
@@ -1281,7 +1358,9 @@ public class TestHistoryService {
                                 "A1: pass", "Alabama", "A1: Alaska", "Thickness: 4\u00a0μm", "ROI (90, A1): roi1"), "A1", null),
                 new HistoryEntry(opIds[1], opTypeName1, ops.get(1).getPerformed(), labware[0].getId(),
                         labware[3].getId(), samples[2].getId(), username, null,
-                        List.of("Stain type: Coffee, Blood", "Epsilon: Zeta", "Probe panel: probe1", "Lot: LOT1", "Plex: 5", "Costing: SGP", "Arizona"), "A1", null)
+                        List.of("Stain type: Coffee, Blood", "Epsilon: Zeta", "Probe panel: probe1", "Lot: LOT1",
+                                "Plex: 5", "Costing: SGP", "Solution: Solution 100", "Arizona"),
+                        "A1", null)
         );
         assertThat(service.createEntriesForOps(ops, sampleIds, labwareList, opWork, null)).containsExactlyElementsOf(expectedEntries);
 
