@@ -67,9 +67,34 @@ public class Matchers {
      * @return a stream captor
      * @param <E> the element type of the stream
      */
-    @SuppressWarnings("unchecked")
     public static <E> ArgumentCaptor<Stream<E>> streamCaptor() {
-        return ArgumentCaptor.forClass(Stream.class);
+        return genericCaptor(Stream.class);
+    }
+
+    /**
+     * Creates a captor for a generic type, using a class of the corresponding raw type.
+     * This method is provided to isolate the unchecked cast in one place.
+     * @param cls the class of the raw type of the generic type for the captor
+     * @return a captor for the given type, cast to the specific generic type
+     * @param <B> the raw type for the captor
+     * @param <T> the generic type for the captor to be returned
+     */
+    @SuppressWarnings("unchecked")
+    public static <B,T extends B> T genericCaptor(Class<B> cls) {
+        return (T) ArgumentCaptor.forClass(cls);
+    }
+
+    /**
+     * Creates a mock for a generic type, using a class of the corresponding raw type.
+     * This method is provided to isolate the unchecked cast in one place.
+     * @param cls the class of the raw type of the generic type for the mock
+     * @return a mock for the given type, cast to the specific generic type
+     * @param <B> the raw type for the mock
+     * @param <T> the generic type for the mock to be returned
+     */
+    @SuppressWarnings("unchecked")
+    public static <B,T extends B> T genericMock(Class<B> cls) {
+        return (T) mock(cls);
     }
 
     /**

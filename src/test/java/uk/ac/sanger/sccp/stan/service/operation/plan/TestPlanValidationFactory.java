@@ -9,21 +9,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.mock;
+import static uk.ac.sanger.sccp.stan.Matchers.genericMock;
 
 /**
  * Tests for {@link PlanValidationFactory}
  * @author dr6
  */
 public class TestPlanValidationFactory {
-    @SuppressWarnings("unchecked")
     @Test
     public void testCreatePlanValidation() {
         LabwareRepo lwRepo = mock(LabwareRepo.class);
         LabwareTypeRepo ltRepo = mock(LabwareTypeRepo.class);
         OperationTypeRepo opTypeRepo = mock(OperationTypeRepo.class);
-        Validator<String> mockVisiumValidator = mock(Validator.class);
-        Validator<String> mockLotValidator = mock(Validator.class);
-        Validator<String> mockXeniumValidator = mock(Validator.class);
+        Validator<String> mockVisiumValidator = genericMock(Validator.class);
+        Validator<String> mockLotValidator = genericMock(Validator.class);
+        Validator<String> mockXeniumValidator = genericMock(Validator.class);
         PlanValidationFactory factory = new PlanValidationFactory(lwRepo, ltRepo, opTypeRepo,
                 mockVisiumValidator, mockXeniumValidator, mockLotValidator);
         PlanRequest request = new PlanRequest();

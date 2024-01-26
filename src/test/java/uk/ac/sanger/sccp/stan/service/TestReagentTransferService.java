@@ -1,9 +1,10 @@
 package uk.ac.sanger.sccp.stan.service;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.reagentplate.ReagentAction;
@@ -31,34 +32,41 @@ import static uk.ac.sanger.sccp.stan.Matchers.assertValidationException;
  * Tests {@link ReagentTransferServiceImp}
  */
 public class TestReagentTransferService {
+    @Mock
     private OperationTypeRepo mockOpTypeRepo;
+    @Mock
     private ReagentActionRepo mockReagentActionRepo;
+    @Mock
     private LabwareRepo mockLwRepo;
+    @Mock
     private Validator<String> mockReagentPlateBarcodeValidator;
+    @Mock
     private LabwareValidatorFactory mockLwValFactory;
+    @Mock
     private OperationService mockOpService;
+    @Mock
     private ReagentPlateService mockReagentPlateService;
+    @Mock
     private WorkService mockWorkService;
+    @Mock
     private BioStateReplacer mockBioStateReplacer;
 
     private ReagentTransferServiceImp service;
 
-    @SuppressWarnings("unchecked")
+    private AutoCloseable mocking;
+
     @BeforeEach
     void setup() {
-        mockOpTypeRepo = mock(OperationTypeRepo.class);
-        mockReagentActionRepo = mock(ReagentActionRepo.class);
-        mockLwRepo = mock(LabwareRepo.class);
-        mockReagentPlateBarcodeValidator = mock(Validator.class);
-        mockLwValFactory = mock(LabwareValidatorFactory.class);
-        mockOpService = mock(OperationService.class);
-        mockReagentPlateService = mock(ReagentPlateService.class);
-        mockWorkService = mock(WorkService.class);
-        mockBioStateReplacer = mock(BioStateReplacer.class);
+        mocking = MockitoAnnotations.openMocks(this);
 
         service = spy(new ReagentTransferServiceImp(mockOpTypeRepo, mockReagentActionRepo, mockLwRepo,
                 mockReagentPlateBarcodeValidator, mockLwValFactory, mockOpService, mockReagentPlateService,
                 mockWorkService, mockBioStateReplacer));
+    }
+
+    @AfterEach
+    void cleanup() throws Exception {
+        mocking.close();
     }
 
     @ParameterizedTest
@@ -252,7 +260,6 @@ public class TestReagentTransferService {
         assertThat(problems).containsExactlyInAnyOrderElementsOf(expectedProblems);
     }
 
-    @SuppressWarnings("unchecked")
     static Stream<Arguments> validateTransfersArgs() {
         final String bc1 = "123";
         final String bc2 = "456";
@@ -306,6 +313,7 @@ public class TestReagentTransferService {
         }).map(arr -> {
             Collection<ReagentTransfer> transfers;
             if (arr[0]==null || arr[0] instanceof Collection) {
+                //noinspection unchecked
                 transfers = (Collection<ReagentTransfer>) arr[0];
             } else {
                 transfers = List.of((ReagentTransfer) arr[0]);
@@ -314,6 +322,7 @@ public class TestReagentTransferService {
             if (arr[1]==null) {
                 expectedProblems = List.of();
             } else if (arr[1] instanceof Collection) {
+                //noinspection unchecked
                 expectedProblems = (Collection<String>) arr[1];
             } else {
                 expectedProblems = List.of((String) arr[1]);
@@ -331,7 +340,7 @@ public class TestReagentTransferService {
         String plateType = ReagentPlate.TYPE_FFPE;
         UCMap<ReagentPlate> rpmap = UCMap.from(ReagentPlate::getBarcode, new ReagentPlate("123", plateType));
         Labware lw = EntityFactory.getTube();
-        Sample sam = lw.getFirstSlot().getSamples().get(0);
+        Sample sam = lw.getFirstSlot().getSamples().getFirst();
         List<Action> actions = List.of(new Action(null, null, lw.getFirstSlot(), lw.getFirstSlot(), sam, sam));
         Operation op = EntityFactory.makeOpForLabware(opType, List.of(lw), List.of(lw));
         doNothing().when(service).createReagentPlates(any(), any(), any());
@@ -384,7 +393,7 @@ public class TestReagentTransferService {
         List<Action> actions;
         if (withActions) {
             Slot slot = lw.getFirstSlot();
-            Sample sample = slot.getSamples().get(0);
+            Sample sample = slot.getSamples().getFirst();
             actions = List.of(new Action(null,  null, slot, slot, sample, sample));
         } else {
             actions = null;

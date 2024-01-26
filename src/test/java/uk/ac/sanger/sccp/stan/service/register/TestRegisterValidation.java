@@ -2,10 +2,11 @@ package uk.ac.sanger.sccp.stan.service.register;
 
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.Streams;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.mockito.verification.VerificationMode;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.Matchers;
@@ -36,36 +37,43 @@ import static uk.ac.sanger.sccp.stan.EntityFactory.objToList;
  * @author dr6
  */
 public class TestRegisterValidation {
+    @Mock
     private DonorRepo mockDonorRepo;
+    @Mock
     private HmdmcRepo mockHmdmcRepo;
+    @Mock
     private TissueTypeRepo mockTtRepo;
+    @Mock
     private LabwareTypeRepo mockLtRepo;
+    @Mock
     private MediumRepo mockMediumRepo;
+    @Mock
     private FixativeRepo mockFixativeRepo;
+    @Mock
     private TissueRepo mockTissueRepo;
+    @Mock
     private SpeciesRepo mockSpeciesRepo;
+    @Mock
     private Validator<String> mockDonorNameValidation;
+    @Mock
     private Validator<String> mockExternalNameValidation;
+    @Mock
     private Validator<String> mockReplicateValidator;
+    @Mock
     private TissueFieldChecker mockFieldChecker;
+    @Mock
     private WorkService mockWorkService;
 
-    @SuppressWarnings("unchecked")
+    private AutoCloseable mocking;
+
     @BeforeEach
     void setup() {
-        mockDonorRepo = mock(DonorRepo.class);
-        mockHmdmcRepo = mock(HmdmcRepo.class);
-        mockTtRepo = mock(TissueTypeRepo.class);
-        mockLtRepo = mock(LabwareTypeRepo.class);
-        mockMediumRepo = mock(MediumRepo.class);
-        mockTissueRepo = mock(TissueRepo.class);
-        mockFixativeRepo = mock(FixativeRepo.class);
-        mockSpeciesRepo = mock(SpeciesRepo.class);
-        mockDonorNameValidation = mock(Validator.class);
-        mockExternalNameValidation = mock(Validator.class);
-        mockReplicateValidator = mock(Validator.class);
-        mockFieldChecker = mock(TissueFieldChecker.class);
-        mockWorkService = mock(WorkService.class);
+        mocking = MockitoAnnotations.openMocks(this);
+    }
+
+    @AfterEach
+    void cleanup() throws Exception {
+        mocking.close();
     }
 
     private void loadSpecies(final Collection<Species> specieses) {

@@ -1,10 +1,10 @@
 package uk.ac.sanger.sccp.stan.service;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
-import org.mockito.ArgumentCaptor;
+import org.mockito.*;
+import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.*;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
@@ -32,52 +32,58 @@ import static uk.ac.sanger.sccp.stan.Matchers.*;
  * Tests {@link BlockProcessingServiceImp}
  */
 public class TestBlockProcessingService {
+    @Mock
     private LabwareValidatorFactory mockLwValFactory;
+    @Mock
     private Validator<String> mockPrebarcodeValidator;
+    @Mock
     private Validator<String> mockReplicateValidator;
+    @Mock
     private LabwareRepo mockLwRepo;
+    @Mock
     private SlotRepo mockSlotRepo;
+    @Mock
     private OperationTypeRepo mockOpTypeRepo;
+    @Mock
     private OperationCommentRepo mockOpCommentRepo;
+    @Mock
     private LabwareTypeRepo mockLtRepo;
+    @Mock
     private BioStateRepo mockBsRepo;
+    @Mock
     private TissueRepo mockTissueRepo;
+    @Mock
     private SampleRepo mockSampleRepo;
+    @Mock
     private CommentValidationService mockCommentValidationService;
+    @Mock
     private OperationService mockOpService;
+    @Mock
     private LabwareService mockLwService;
+    @Mock
     private WorkService mockWorkService;
+    @Mock
     private StoreService mockStoreService;
+    @Mock
     private Transactor mockTransactor;
 
     private BlockProcessingServiceImp service;
 
-    @SuppressWarnings("unchecked")
+    private AutoCloseable mocking;
+
     @BeforeEach
     void setup() {
-        mockLwValFactory = mock(LabwareValidatorFactory.class);
-        mockPrebarcodeValidator = mock(Validator.class);
-        mockReplicateValidator = mock(Validator.class);
-        mockLwRepo = mock(LabwareRepo.class);
-        mockSlotRepo = mock(SlotRepo.class);
-        mockOpTypeRepo = mock(OperationTypeRepo.class);
-        mockOpCommentRepo = mock(OperationCommentRepo.class);
-        mockLtRepo = mock(LabwareTypeRepo.class);
-        mockBsRepo = mock(BioStateRepo.class);
-        mockTissueRepo = mock(TissueRepo.class);
-        mockSampleRepo = mock(SampleRepo.class);
-        mockCommentValidationService = mock(CommentValidationService.class);
-        mockOpService = mock(OperationService.class);
-        mockLwService = mock(LabwareService.class);
-        mockWorkService = mock(WorkService.class);
-        mockStoreService = mock(StoreService.class);
-        mockTransactor = mock(Transactor.class);
-
+        mocking = MockitoAnnotations.openMocks(this);
         service = spy(new BlockProcessingServiceImp(mockLwValFactory, mockPrebarcodeValidator, mockReplicateValidator,
                 mockLwRepo, mockSlotRepo, mockOpTypeRepo, mockOpCommentRepo, mockLtRepo,
                 mockBsRepo, mockTissueRepo, mockSampleRepo,
                 mockCommentValidationService, mockOpService, mockLwService, mockWorkService, mockStoreService,
                 mockTransactor));
+    }
+
+    @AfterEach
+    void cleanup() throws Exception {
+        mocking.close();
     }
 
     @ParameterizedTest
@@ -170,7 +176,7 @@ public class TestBlockProcessingService {
         stubValidation(sources, ltMap, work, commentMap, null);
 
         List<Sample> samples = List.of(EntityFactory.getSample());
-        List<Labware> dests = List.of(EntityFactory.makeLabware(lt, samples.get(0)));
+        List<Labware> dests = List.of(EntityFactory.makeLabware(lt, samples.getFirst()));
         List<Operation> ops = List.of(new Operation());
         doReturn(samples).when(service).createSamples(any(), any());
         doReturn(dests).when(service).createDestinations(any(), any(), any());
@@ -204,7 +210,7 @@ public class TestBlockProcessingService {
         ArgumentCaptor<Set<String>> problemsCaptor = ArgumentCaptor.forClass(Set.class);
         LabwareType lt = EntityFactory.getTubeType();
         final List<LabwareType> ltList = List.of(lt);
-        TissueBlockLabware block = request.getLabware().get(0);
+        TissueBlockLabware block = request.getLabware().getFirst();
 
         verify(service).loadSources(problemsCaptor.capture(), same(request));
         final Set<String> problems = problemsCaptor.getValue();

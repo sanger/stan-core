@@ -1,5 +1,6 @@
 package uk.ac.sanger.sccp.stan.service.releasefile;
 
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -240,8 +241,7 @@ public class TestReleaseFileService {
     @ParameterizedTest
     @MethodSource("checkModeArgs")
     public void testCheckMode(Collection<Sample> samples, Object expectedOutcome) {
-        if (expectedOutcome instanceof String) {
-            String expectedErrorMessage = (String) expectedOutcome;
+        if (expectedOutcome instanceof String expectedErrorMessage) {
             assertThat(
                     assertThrows(IllegalArgumentException.class, () -> service.checkMode(samples))
             ).hasMessage(expectedErrorMessage);
@@ -347,7 +347,7 @@ public class TestReleaseFileService {
                 .toArray(Labware[]::new);
 
         List<ReleaseEntry> entries = Arrays.stream(labware)
-                .map(lw -> new ReleaseEntry(lw, lw.getFirstSlot(), lw.getFirstSlot().getSamples().get(0)))
+                .map(lw -> new ReleaseEntry(lw, lw.getFirstSlot(), lw.getFirstSlot().getSamples().getFirst()))
                 .collect(toList());
 
         service.loadLastSection(entries);
@@ -585,7 +585,7 @@ public class TestReleaseFileService {
 
         final Map<Integer, Operation> lwSectionOpMap = Map.of(lw2.getId(), op);
         doReturn(lwSectionOpMap).when(service).labwareIdToOp(any());
-        doReturn(Map.of(entries.get(0), op)).when(service).findEntryOps(any(), any(), any());
+        doReturn(Map.of(entries.getFirst(), op)).when(service).findEntryOps(any(), any(), any());
 
         service.loadSectionDate(entries, ancestry);
 
@@ -731,17 +731,7 @@ public class TestReleaseFileService {
         rops.get(1).setOperationId(14);
         when(mockRoRepo.findAllByRefersToOpIdIn(any())).thenReturn(rops);
 
-        Comment[] comments = {
-                new Comment(1, "Banana.", "cat"),
-                new Comment(2, "Custard.", "cat")
-        };
-
-        final Integer sampleId = sample.getId();
-        List<OperationComment> opcoms = List.of(
-                new OperationComment(1, comments[0], 13, sampleId, lw1.getFirstSlot().getId(), null),
-                new OperationComment(2, comments[0], 14, sampleId, lw3.getFirstSlot().getId(), null),
-                new OperationComment(3, comments[1], 14, sampleId, lw3.getFirstSlot().getId(), null)
-        );
+        final List<OperationComment> opcoms = makeOpComs(lw3);
         when(mockOpComRepo.findAllByOperationIdIn(any())).thenReturn(opcoms);
 
         List<ReleaseEntry> entries = List.of(new ReleaseEntry(lw2, lw2.getFirstSlot(), sample),
@@ -754,6 +744,21 @@ public class TestReleaseFileService {
 
         assertEquals("Banana.", entries.get(0).getStainQcComment());
         assertEquals("Banana. Custard.", entries.get(1).getStainQcComment());
+    }
+
+    @NotNull
+    private List<OperationComment> makeOpComs(Labware lw3) {
+        Comment[] comments = {
+                new Comment(1, "Banana.", "cat"),
+                new Comment(2, "Custard.", "cat")
+        };
+
+        final Integer sampleId = sample.getId();
+        return List.of(
+                new OperationComment(1, comments[0], 13, sampleId, lw1.getFirstSlot().getId(), null),
+                new OperationComment(2, comments[0], 14, sampleId, lw3.getFirstSlot().getId(), null),
+                new OperationComment(3, comments[1], 14, sampleId, lw3.getFirstSlot().getId(), null)
+        );
     }
 
     @Test
@@ -898,20 +903,7 @@ public class TestReleaseFileService {
                 new ReleaseEntry(lw1, slot2, sample),
                 new ReleaseEntry(lw2, slot3, sample1)
         );
-        final Address A1 = new Address(1, 1);
-        final Address B1 = new Address(2, 1);
-        final Address B2 = new Address(2,2);
-        Map<String, String> tagData = Map.of("Alpha", "ABC", "Beta", "BCD", "Gamma", "GHI");
-        Map<Integer, List<ReagentActionDetail>> radMap = Map.of(
-                slot1.getId(), List.of(
-                        new ReagentActionDetail("123", "rt1", A1, A1, lw1.getId(), tagData),
-                        new ReagentActionDetail("123", "rt1", A1, A1, lw1.getId(), null),
-                        new ReagentActionDetail("456", "rt2", B1, A1, lw1.getId(), null)
-                ),
-                slot3.getId(), List.of(
-                        new ReagentActionDetail("456", "rt2", B2, A1, lw2.getId(), null)
-                )
-        );
+        final Map<Integer, List<ReagentActionDetail>> radMap = makeRadMap(slot1, slot3);
         when(mockRadService.loadAncestralReagentTransfers(any())).thenReturn(radMap);
 
         service.loadReagentSources(entries);
@@ -927,6 +919,24 @@ public class TestReleaseFileService {
         assertEquals("rt1, rt2", entries.get(0).getReagentPlateType());
         assertEquals("rt2", entries.get(2).getReagentPlateType());
         assertEquals(Map.of("Alpha", "ABC", "Beta", "BCD", "Gamma", "GHI"), entries.get(0).getTagData());
+    }
+
+    @NotNull
+    private Map<Integer, List<ReagentActionDetail>> makeRadMap(Slot slot1, Slot slot3) {
+        final Address A1 = new Address(1, 1);
+        final Address B1 = new Address(2, 1);
+        final Address B2 = new Address(2,2);
+        Map<String, String> tagData = Map.of("Alpha", "ABC", "Beta", "BCD", "Gamma", "GHI");
+        return Map.of(
+                slot1.getId(), List.of(
+                        new ReagentActionDetail("123", "rt1", A1, A1, lw1.getId(), tagData),
+                        new ReagentActionDetail("123", "rt1", A1, A1, lw1.getId(), null),
+                        new ReagentActionDetail("456", "rt2", B1, A1, lw1.getId(), null)
+                ),
+                slot3.getId(), List.of(
+                        new ReagentActionDetail("456", "rt2", B2, A1, lw2.getId(), null)
+                )
+        );
     }
 
     @ParameterizedTest
@@ -945,7 +955,7 @@ public class TestReleaseFileService {
             return;
         }
         if (numDicts==1) {
-            assertSame(datas.get(0), merged);
+            assertSame(datas.getFirst(), merged);
             return;
         }
         assertThat(merged).containsExactly(
@@ -1081,7 +1091,7 @@ public class TestReleaseFileService {
                 .mapToObj(i -> EntityFactory.makeLabware(lt, sample))
                 .toArray(Labware[]::new);
         List<ReleaseEntry> entries = Arrays.stream(lws)
-                .map(lw -> new ReleaseEntry(lw, lw.getFirstSlot(), lw.getFirstSlot().getSamples().get(0)))
+                .map(lw -> new ReleaseEntry(lw, lw.getFirstSlot(), lw.getFirstSlot().getSamples().getFirst()))
                 .collect(toList());
         Set<Integer> slotIds = Arrays.stream(lws).map(lw -> lw.getFirstSlot().getId()).collect(toSet());
         Operation op = EntityFactory.makeOpForLabware(opType, List.of(lws[0]), List.of(lws[0]));
@@ -1098,7 +1108,7 @@ public class TestReleaseFileService {
         verify(mockOpRepo).findAllByOperationTypeAndDestinationSlotIdIn(opType, slotIds);
         verify(mockLwProbeRepo).findAllByOperationIdIn(List.of(op.getId()));
 
-        ReleaseEntry entry = entries.get(0);
+        ReleaseEntry entry = entries.getFirst();
         assertEquals(op.getPerformed(), entry.getHybridStart());
         assertEquals("8, 9", entry.getXeniumPlex());
         assertEquals("Alpha, Beta", entry.getXeniumProbe());
@@ -1120,7 +1130,7 @@ public class TestReleaseFileService {
                 .mapToObj(i -> EntityFactory.makeLabware(lt, sample))
                 .toArray(Labware[]::new);
         List<ReleaseEntry> entries = Arrays.stream(lws)
-                .map(lw -> new ReleaseEntry(lw, lw.getFirstSlot(), lw.getFirstSlot().getSamples().get(0)))
+                .map(lw -> new ReleaseEntry(lw, lw.getFirstSlot(), lw.getFirstSlot().getSamples().getFirst()))
                 .collect(toList());
         Set<Integer> slotIds = Arrays.stream(lws).map(lw -> lw.getFirstSlot().getId()).collect(toSet());
         Operation op = EntityFactory.makeOpForLabware(opType, List.of(lws[0]), List.of(lws[0]));
@@ -1140,7 +1150,7 @@ public class TestReleaseFileService {
         verify(mockOpRepo).findAllByOperationTypeAndDestinationSlotIdIn(opType, slotIds);
         verify(mockOpComRepo).findAllByOperationIdIn(List.of(op.getId()));
 
-        ReleaseEntry entry = entries.get(0);
+        ReleaseEntry entry = entries.getFirst();
         assertEquals(op.getPerformed(), entry.getHybridEnd());
         assertEquals("California. Colorado.", entry.getHybridComment());
         entry = entries.get(1);
@@ -1158,7 +1168,7 @@ public class TestReleaseFileService {
                 .mapToObj(i -> EntityFactory.makeLabware(lt, sample))
                 .toArray(Labware[]::new);
         List<ReleaseEntry> entries = Arrays.stream(lws)
-                .map(lw -> new ReleaseEntry(lw, lw.getFirstSlot(), lw.getFirstSlot().getSamples().get(0)))
+                .map(lw -> new ReleaseEntry(lw, lw.getFirstSlot(), lw.getFirstSlot().getSamples().getFirst()))
                 .collect(toList());
         Set<Integer> slotIds = Arrays.stream(lws).map(lw -> lw.getFirstSlot().getId()).collect(toSet());
         Operation op = EntityFactory.makeOpForLabware(opType, List.of(lws[0]), List.of(lws[0]));
@@ -1189,7 +1199,7 @@ public class TestReleaseFileService {
         verify(mockRoiRepo).findAllByOperationIdIn(opIds);
         verify(mockLwNoteRepo).findAllByOperationIdIn(opIds);
 
-        ReleaseEntry entry = entries.get(0);
+        ReleaseEntry entry = entries.getFirst();
         assertEquals(op.getPerformed(), entry.getXeniumStart());
         assertEquals("lot Alpha", entry.getXeniumReagentALot());
         assertEquals("lot Beta", entry.getXeniumReagentBLot());
@@ -1239,7 +1249,7 @@ public class TestReleaseFileService {
         verify(mockOpRepo).findAllByOperationTypeAndDestinationSlotIdIn(opType, slotIds);
         verify(mockOpComRepo).findAllByOperationIdIn(List.of(opId));
 
-        ReleaseEntry entry = entries.get(0);
+        ReleaseEntry entry = entries.getFirst();
         assertEquals(op.getPerformed(), entry.getXeniumEnd());
         assertEquals("Connecticut. Delaware.", entry.getXeniumComment());
 

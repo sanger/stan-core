@@ -27,8 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.EntityFactory.objToCollection;
-import static uk.ac.sanger.sccp.stan.Matchers.assertProblem;
-import static uk.ac.sanger.sccp.stan.Matchers.mayAddProblem;
+import static uk.ac.sanger.sccp.stan.Matchers.*;
 import static uk.ac.sanger.sccp.stan.service.OpWithSlotMeasurementsServiceImp.*;
 import static uk.ac.sanger.sccp.utils.BasicUtils.coalesce;
 import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
@@ -207,8 +206,7 @@ public class TestOpWithSlotMeasurementsService {
             when(val.checkOpType(any(), any(), any(), any())).thenReturn(opType);
         }
         assertSame(opType, service.loadOpType(val, opName));
-        @SuppressWarnings("unchecked")
-        ArgumentCaptor<Predicate<OperationType>> predicateCaptor = ArgumentCaptor.forClass(Predicate.class);
+        ArgumentCaptor<Predicate<OperationType>> predicateCaptor = genericCaptor(Predicate.class);
         verify(val).checkOpType(eq(opName), eq(EnumSet.of(OperationTypeFlag.IN_PLACE)), isNull(), predicateCaptor.capture());
         if (opType!=null) {
             Predicate<OperationType> predicate = predicateCaptor.getValue();

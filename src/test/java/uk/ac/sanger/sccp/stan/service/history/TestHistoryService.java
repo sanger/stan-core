@@ -25,6 +25,7 @@ import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.stan.Matchers.genericMock;
 import static uk.ac.sanger.sccp.stan.Matchers.sameElements;
 import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
@@ -619,15 +620,14 @@ public class TestHistoryService {
             "false,true",
             "false,false"
     })
-    @SuppressWarnings("unchecked")
     public void testTissuePredicate(boolean hasXnFilter, boolean hasDnFilter) {
         List<String> externalNames = List.of("xn");
         List<String> donorNames = List.of("dn");
         Predicate<Tissue> xnFilter, dnFilter, expectedFilter;
-        xnFilter = hasXnFilter ? mock(Predicate.class) : null;
-        dnFilter = hasDnFilter ? mock(Predicate.class) : null;
+        xnFilter = hasXnFilter ? genericMock(Predicate.class) : null;
+        dnFilter = hasDnFilter ? genericMock(Predicate.class) : null;
         if (hasXnFilter && hasDnFilter) {
-            Predicate<Tissue> combinedFilter = mock(Predicate.class);
+            Predicate<Tissue> combinedFilter = genericMock(Predicate.class);
             when(xnFilter.and(dnFilter)).thenReturn(combinedFilter);
             expectedFilter = combinedFilter;
         } else {
@@ -731,7 +731,7 @@ public class TestHistoryService {
         List<HistoryEntry> releaseEntries = List.of(new HistoryEntry(2, "release", null, 1, 1, null, "user2", null));
         List<HistoryEntry> destructionEntries = List.of(new HistoryEntry(3, "destruction", null, 1, 1, null, "user3", null));
 
-        List<HistoryEntry> entries = List.of(opEntries.get(0), releaseEntries.get(0), destructionEntries.get(0));
+        List<HistoryEntry> entries = List.of(opEntries.getFirst(), releaseEntries.getFirst(), destructionEntries.getFirst());
 
         when(mockOpRepo.findAllBySampleIdIn(sampleIds)).thenReturn(ops);
         when(mockDestructionRepo.findAllByLabwareIdIn(labwareIds)).thenReturn(destructions);
@@ -1194,7 +1194,7 @@ public class TestHistoryService {
                 new Comment(3, "Arkansas", "Bananas"),
         };
         createOps();
-        ops.get(0).setEquipment(new Equipment("Feeniks", "scanner"));
+        ops.getFirst().setEquipment(new Equipment("Feeniks", "scanner"));
         int[] opIds = ops.stream().mapToInt(Operation::getId).toArray();
         final Set<Integer> opIdSet = Set.of(opIds[0], opIds[1]);
         LabwareProbe lwp = new LabwareProbe(1, new ProbePanel("probe1"), opIds[1], labware[3].getId(), "LOT1", 5, SlideCosting.SGP);
@@ -1359,7 +1359,7 @@ public class TestHistoryService {
         String workNumber = "SGP42";
         List<HistoryEntry> entries = service.createEntriesForOps(List.of(op), null, List.of(lw), null, workNumber);
         assertThat(entries).hasSize(1);
-        HistoryEntry entry = entries.get(0);
+        HistoryEntry entry = entries.getFirst();
         assertEquals(new HistoryEntry(op.getId(), opType.getName(), op.getPerformed(), lw.getId(), lw.getId(),
                 sample.getId(), user.getUsername(), workNumber, null, "A1, A2", null), entry);
     }

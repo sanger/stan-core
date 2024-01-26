@@ -1,10 +1,9 @@
 package uk.ac.sanger.sccp.stan.service.register;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
-import org.mockito.ArgumentCaptor;
+import org.mockito.*;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
@@ -32,62 +31,68 @@ import static uk.ac.sanger.sccp.stan.Matchers.*;
 /**
  * Tests {@link OriginalSampleRegisterServiceImp}
  */
-@SuppressWarnings("FieldCanBeLocal")
 public class TestOriginalSampleRegisterService {
+    @Mock
     private DonorRepo mockDonorRepo;
+    @Mock
     private TissueRepo mockTissueRepo;
+    @Mock
     private TissueTypeRepo mockTissueTypeRepo;
+    @Mock
     private SampleRepo mockSampleRepo;
+    @Mock
     private BioStateRepo mockBsRepo;
+    @Mock
     private SlotRepo mockSlotRepo;
+    @Mock
     private HmdmcRepo mockHmdmcRepo;
+    @Mock
     private SpeciesRepo mockSpeciesRepo;
+    @Mock
     private FixativeRepo mockFixativeRepo;
+    @Mock
     private MediumRepo mockMediumRepo;
+    @Mock
     private SolutionRepo mockSolutionRepo;
+    @Mock
     private LabwareTypeRepo mockLtRepo;
+    @Mock
     private OperationTypeRepo mockOpTypeRepo;
+    @Mock
     private OperationSolutionRepo mockOpSolRepo;
+    @Mock
     private Validator<String> mockDonorNameValidator;
+    @Mock
     private Validator<String> mockExternalNameValidator;
+    @Mock
     private Validator<String> mockHmdmcValidator;
+    @Mock
     private Validator<String> mockReplicateValidator;
+    @Mock
     private LabwareService mockLabwareService;
+    @Mock
     private OperationService mockOpService;
+    @Mock
     private WorkService mockWorkService;
 
     OriginalSampleRegisterServiceImp service;
 
-    @SuppressWarnings("unchecked")
+    private AutoCloseable mocking;
+
+
     @BeforeEach
     void setup() {
-        mockDonorRepo = mock(DonorRepo.class);
-        mockTissueRepo = mock(TissueRepo.class);
-        mockTissueTypeRepo = mock(TissueTypeRepo.class);
-        mockSampleRepo = mock(SampleRepo.class);
-        mockBsRepo = mock(BioStateRepo.class);
-        mockSlotRepo = mock(SlotRepo.class);
-        mockHmdmcRepo = mock(HmdmcRepo.class);
-        mockSpeciesRepo = mock(SpeciesRepo.class);
-        mockFixativeRepo = mock(FixativeRepo.class);
-        mockMediumRepo = mock(MediumRepo.class);
-        mockSolutionRepo = mock(SolutionRepo.class);
-        mockLtRepo = mock(LabwareTypeRepo.class);
-        mockOpTypeRepo = mock(OperationTypeRepo.class);
-        mockOpSolRepo = mock(OperationSolutionRepo.class);
-        mockDonorNameValidator = mock(Validator.class);
-        mockExternalNameValidator = mock(Validator.class);
-        mockHmdmcValidator = mock(Validator.class);
-        mockReplicateValidator = mock(Validator.class);
-        mockLabwareService = mock(LabwareService.class);
-        mockOpService = mock(OperationService.class);
-        mockWorkService = mock(WorkService.class);
-
+        mocking = MockitoAnnotations.openMocks(this);
         service = spy(new OriginalSampleRegisterServiceImp(mockDonorRepo, mockTissueRepo, mockTissueTypeRepo,
                 mockSampleRepo, mockBsRepo, mockSlotRepo, mockHmdmcRepo, mockSpeciesRepo, mockFixativeRepo,
                 mockMediumRepo, mockSolutionRepo, mockLtRepo, mockOpTypeRepo, mockOpSolRepo, mockDonorNameValidator,
                 mockExternalNameValidator,
                 mockHmdmcValidator, mockReplicateValidator, mockLabwareService, mockOpService, mockWorkService));
+    }
+
+    @AfterEach
+    void cleanup() throws Exception {
+        mocking.close();
     }
 
     @Test
@@ -194,9 +199,8 @@ public class TestOriginalSampleRegisterService {
         verify(service).makeResult(same(datas));
     }
 
-    @SuppressWarnings("unchecked")
     private List<DataStruct> verifyValidationMethods(OriginalSampleRegisterRequest request) {
-        ArgumentCaptor<Collection<String>> problemsArgCaptor = ArgumentCaptor.forClass(Collection.class);
+        ArgumentCaptor<Collection<String>> problemsArgCaptor = genericCaptor(Collection.class);
         verify(service).checkFormat(problemsArgCaptor.capture(), same(request), eq("Donor identifier"), any(), eq(true), same(mockDonorNameValidator));
         Collection<String> problems = problemsArgCaptor.getValue();
         verify(service).checkFormat(same(problems), same(request), eq("External identifier"), any(), eq(false), same(mockExternalNameValidator));
@@ -210,7 +214,7 @@ public class TestOriginalSampleRegisterService {
         verify(service).checkFormat(same(problems), same(request), eq("Solution"), any(), eq(true), isNull());
         verify(service).checkFormat(same(problems), same(request), eq("Labware type"), any(), eq(true), isNull());
 
-        ArgumentCaptor<List<DataStruct>> dataStructArgCaptor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<List<DataStruct>> dataStructArgCaptor = genericCaptor(List.class);
 
         verify(service).checkHmdmcsForSpecies(same(problems), same(request));
         verify(service).checkCollectionDates(same(problems), same(request));
@@ -532,7 +536,7 @@ public class TestOriginalSampleRegisterService {
         }
         final SpatialLocation arm0 = arm.getSpatialLocations().get(0);
         final SpatialLocation arm1 = arm.getSpatialLocations().get(1);
-        final SpatialLocation leg0 = leg.getSpatialLocations().get(0);
+        final SpatialLocation leg0 = leg.getSpatialLocations().getFirst();
 
         return Arrays.stream(new Object[][] {
                 { osdWithSL("Arm", 0), arm0,
@@ -656,7 +660,7 @@ public class TestOriginalSampleRegisterService {
 
         service.createNewDonors(datas);
         assertThat(createdDonors).hasSize(2);
-        Donor d3 = createdDonors.get(0);
+        Donor d3 = createdDonors.getFirst();
         assertEquals(d3.getDonorName(), "DONOR3");
         assertSame(d3.getSpecies(), human);
         assertSame(d3.getLifeStage(), LifeStage.fetal);
