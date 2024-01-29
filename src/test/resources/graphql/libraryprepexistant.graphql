@@ -1,0 +1,51 @@
+mutation {
+    libraryPrep(request: {
+        sources: [{barcode: "STAN-1", labwareState: used}]
+        workNumber: "[WORK]"
+        reagentPlateType: "ffpe - dual index ts set a"
+        reagentTransfers: [{
+            reagentPlateBarcode: "012345678901234567890123"
+            reagentSlotAddress: "A1"
+            destinationAddress: "A1"
+        }, {
+            reagentPlateBarcode: "012345678901234567890123"
+            reagentSlotAddress: "A2"
+            destinationAddress: "A2"
+        }]
+        destination: {
+            barcode: "STAN-2"
+            bioState: "Probes"
+            costing: Faculty
+            lotNumber: "123456"
+            probeLotNumber: "234567"
+            contents: [{
+                destinationAddress: "A1"
+                sourceAddress: "A1"
+                sourceBarcode: "STAN-1"
+            }, {
+                destinationAddress: "A2"
+                sourceBarcode: "STAN-1"
+                sourceAddress: "A2"
+            }]
+        }
+        slotMeasurements: [{
+            address: "A1"
+            commentId: 1
+            name: "Cq value"
+            value: "10"
+        },{
+            address: "A2"
+            commentId: 2
+            name: "Cq value"
+            value: "20"
+        }]
+    }) {
+        labware {
+            barcode
+        }
+        operations {
+            operationType { name }
+            id
+        }
+    }
+}

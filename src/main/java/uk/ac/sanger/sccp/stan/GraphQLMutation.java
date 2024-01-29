@@ -102,6 +102,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final OrientationService orientationService;
     final SSStudyService ssStudyService;
     final ReactivateService reactivateService;
+    final LibraryPrepService libraryPrepService;
     final UserAdminService userAdminService;
 
     @Autowired
@@ -132,9 +133,9 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            SampleProcessingService sampleProcessingService, SolutionTransferService solutionTransferService,
                            ParaffinProcessingService paraffinProcessingService, OpWithSlotCommentsService opWithSlotCommentsService,
                            ProbeService probeService, CompletionService completionService, AnalyserService analyserService,
-                           FlagLabwareService flagLabwareService, QCLabwareService qcLabwareService,
-                           OrientationService orientationService, SSStudyService ssStudyService,
-                           ReactivateService reactivateService,
+                           FlagLabwareService flagLabwareService,
+                           QCLabwareService qcLabwareService, OrientationService orientationService, SSStudyService ssStudyService,
+                           ReactivateService reactivateService, LibraryPrepService libraryPrepService,
                            UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.ldapService = ldapService;
@@ -194,6 +195,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.orientationService = orientationService;
         this.ssStudyService = ssStudyService;
         this.reactivateService = reactivateService;
+        this.libraryPrepService = libraryPrepService;
         this.userAdminService = userAdminService;
     }
 
@@ -892,6 +894,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             List<ReactivateLabware> items = arg(dfe, "items", new TypeReference<>() {});
             logRequest("Reactivate labware", user, items);
             return reactivateService.reactivate(user, items);
+        };
+    }
+
+    public DataFetcher<OperationResult> libraryPrep() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            LibraryPrepRequest request = arg(dfe, "request", LibraryPrepRequest.class);
+            logRequest("Library prep", user, request);
+            return libraryPrepService.perform(user, request);
         };
     }
 

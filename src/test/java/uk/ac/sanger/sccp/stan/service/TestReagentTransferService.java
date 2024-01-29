@@ -18,15 +18,13 @@ import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
-import java.util.function.Consumer;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
-import static uk.ac.sanger.sccp.stan.Matchers.addProblem;
-import static uk.ac.sanger.sccp.stan.Matchers.assertValidationException;
+import static uk.ac.sanger.sccp.stan.Matchers.*;
 
 /**
  * Tests {@link ReagentTransferServiceImp}
@@ -39,7 +37,7 @@ public class TestReagentTransferService {
     @Mock
     private LabwareRepo mockLwRepo;
     @Mock
-    private Validator<String> mockReagentPlateBarcodeValidator;
+    private ReagentTransferValidatorService mockValService;
     @Mock
     private LabwareValidatorFactory mockLwValFactory;
     @Mock
@@ -58,9 +56,8 @@ public class TestReagentTransferService {
     @BeforeEach
     void setup() {
         mocking = MockitoAnnotations.openMocks(this);
-
         service = spy(new ReagentTransferServiceImp(mockOpTypeRepo, mockReagentActionRepo, mockLwRepo,
-                mockReagentPlateBarcodeValidator, mockLwValFactory, mockOpService, mockReagentPlateService,
+                mockValService, mockLwValFactory, mockOpService, mockReagentPlateService,
                 mockWorkService, mockBioStateReplacer));
     }
 
@@ -243,92 +240,20 @@ public class TestReagentTransferService {
     }
 
     @ParameterizedTest
-    @MethodSource("validateTransfersArgs")
-    public void testValidateTransfers(Collection<ReagentTransfer> transfers, UCMap<ReagentPlate> rpMap, Labware lw,
-                                      Collection<String> expectedProblems) {
-        when(mockReagentPlateBarcodeValidator.validate(any(), any())).then(invocation -> {
-            String bc = invocation.getArgument(0);
-            if (bc.contains("!")) {
-                Consumer<String> addProblem = invocation.getArgument(1);
-                addProblem.accept("Bad barcode: "+bc);
-                return false;
-            }
-            return true;
-        });
-        final List<String> problems = new ArrayList<>(expectedProblems.size());
+    @ValueSource(booleans={false,true})
+    public void testValidateTransfers(boolean valid) {
+        final String problem = valid ? null : "Bad transfers.";
+        mayAddProblem(problem).when(mockValService).validateTransfers(any(), any(), any(), any());
+
+        final List<String> problems = new ArrayList<>(valid ? 0 : 1);
+        List<ReagentTransfer> transfers = List.of(
+                new ReagentTransfer("RP1", new Address(1,1), new Address(1,2))
+        );
+        UCMap<ReagentPlate> rpMap = UCMap.from(ReagentPlate::getBarcode, EntityFactory.makeReagentPlate("RP1"));
+        Labware lw = EntityFactory.getTube();
         service.validateTransfers(problems, transfers, rpMap, lw);
-        assertThat(problems).containsExactlyInAnyOrderElementsOf(expectedProblems);
-    }
-
-    static Stream<Arguments> validateTransfersArgs() {
-        final String bc1 = "123";
-        final String bc2 = "456";
-        ReagentPlate rp1 = EntityFactory.makeReagentPlate(bc1);
-        ReagentPlate rp2 = EntityFactory.makeReagentPlate(bc2);
-        for (int c = 1; c <= rp2.getPlateLayout().getNumColumns(); ++c) {
-            rp2.getSlot(new Address(2,c)).setUsed(true);
-        }
-        UCMap<ReagentPlate> rpMap = UCMap.from(ReagentPlate::getBarcode, rp1, rp2);
-        Labware lw = EntityFactory.makeEmptyLabware(EntityFactory.makeLabwareType(2,3));
-        final Address A1 = new Address(1,1);
-        final Address A2 = new Address(1,2);
-        final Address B1 = new Address(2,1);
-        final Address B2 = new Address(2,2);
-
-        return Arrays.stream(new Object[][]{
-                {List.of(new ReagentTransfer(bc1, A1, A1), new ReagentTransfer(bc1, A2, A2), new ReagentTransfer(bc2, A1, B1),
-                        new ReagentTransfer("999", A1, B2)), null},
-                {null, "No transfers specified."},
-                {List.of(), "No transfers specified."},
-                {new ReagentTransfer(null, A1, A1), "Missing reagent plate barcode for transfer."},
-                {new ReagentTransfer(bc1, null, A1), "Missing reagent slot address for transfer."},
-                {new ReagentTransfer(bc1, A1, null), "Missing destination slot address for transfer."},
-                {List.of(new ReagentTransfer(bc1, new Address(1, 13), A1),
-                        new ReagentTransfer("789", new Address(1, 14), A2),
-                        new ReagentTransfer(bc1, new Address(1, 1), B1)),
-                        "Invalid reagent slots specified: [slot A13 in reagent plate 123, slot A14 in reagent plate 789]"},
-                {List.of(new ReagentTransfer(bc1, A1, new Address(3, 1)),
-                        new ReagentTransfer(bc1, A2, new Address(1, 4))),
-                        "Invalid destination slots specified: [C1, A4]"},
-                {List.of(new ReagentTransfer(bc1, A1, A1), new ReagentTransfer(bc1, A2, A2), new ReagentTransfer(bc1, A2, B1)),
-                        "Repeated reagent slot specified: [slot A2 in reagent plate 123]"},
-                {List.of(new ReagentTransfer(bc1, A1, A1), new ReagentTransfer(bc2, B1, A2), new ReagentTransfer(bc2, B2, B2)),
-                        "Reagent slots already used: [slot B1 in reagent plate 456, slot B2 in reagent plate 456]"},
-                {List.of(new ReagentTransfer("BC!", A1, A1), new ReagentTransfer(bc1, B1, A2)),
-                        "Bad barcode: BC!"},
-                {List.of(new ReagentTransfer(bc1, A1, A1), new ReagentTransfer(bc1, A1, A1),
-                        new ReagentTransfer(null, null, null),
-                        new ReagentTransfer(bc1, new Address(1, 13), new Address(3, 1)),
-                        new ReagentTransfer(bc2, B1, B2),
-                        new ReagentTransfer("BC!", A1, A1)),
-                        List.of("Missing reagent plate barcode for transfer.",
-                                "Missing reagent slot address for transfer.",
-                                "Missing destination slot address for transfer.",
-                                "Invalid reagent slot specified: [slot A13 in reagent plate 123]",
-                                "Invalid destination slot specified: [C1]",
-                                "Reagent slot already used: [slot B1 in reagent plate 456]",
-                                "Repeated reagent slot specified: [slot A1 in reagent plate 123]",
-                                "Bad barcode: BC!"
-                        )},
-        }).map(arr -> {
-            Collection<ReagentTransfer> transfers;
-            if (arr[0]==null || arr[0] instanceof Collection) {
-                //noinspection unchecked
-                transfers = (Collection<ReagentTransfer>) arr[0];
-            } else {
-                transfers = List.of((ReagentTransfer) arr[0]);
-            }
-            Collection<String> expectedProblems;
-            if (arr[1]==null) {
-                expectedProblems = List.of();
-            } else if (arr[1] instanceof Collection) {
-                //noinspection unchecked
-                expectedProblems = (Collection<String>) arr[1];
-            } else {
-                expectedProblems = List.of((String) arr[1]);
-            }
-            return Arguments.of(transfers, rpMap, lw, expectedProblems);
-        });
+        verify(mockValService).validateTransfers(problems, transfers, rpMap, lw.getLabwareType());
+        assertProblem(problems, problem);
     }
 
     @Test

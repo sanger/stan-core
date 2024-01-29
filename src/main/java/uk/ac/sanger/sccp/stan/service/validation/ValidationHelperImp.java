@@ -89,8 +89,40 @@ public class ValidationHelperImp implements ValidationHelper {
     }
 
     @Override
+    public Labware loadActiveDestination(String barcode) {
+        if (nullOrEmpty(barcode)) {
+            addProblem("No destination barcode supplied.");
+            return null;
+        }
+        LabwareValidator val = lwValFactory.getValidator();
+        List<Labware> lws = val.loadLabware(lwRepo, List.of(barcode));
+        val.validateActiveDestinations();
+        problems.addAll(val.getErrors());
+        return (lws.isEmpty() ? null : lws.getFirst());
+    }
+
+    @Override
+    public UCMap<Labware> loadActiveDestinations(Collection<String> barcodes) {
+        if (nullOrEmpty(barcodes)) {
+            addProblem("No destination barcodes supplied.");
+            return new UCMap<>(0);
+        }
+        LabwareValidator val = lwValFactory.getValidator();
+        List<Labware> lws = val.loadLabware(lwRepo, barcodes);
+        val.validateActiveDestinations();
+        val.setUniqueRequired(true);
+        problems.addAll(val.getErrors());
+        return UCMap.from(lws, Labware::getBarcode);
+    }
+
+    @Override
     public UCMap<Work> checkWork(Collection<String> workNumbers) {
         return workService.validateUsableWorks(this.problems, workNumbers);
+    }
+
+    @Override
+    public Work checkWork(String workNumber) {
+        return workService.validateUsableWork(this.problems, workNumber);
     }
 
     @Override

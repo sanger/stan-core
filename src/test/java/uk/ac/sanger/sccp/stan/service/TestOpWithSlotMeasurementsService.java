@@ -99,7 +99,7 @@ public class TestOpWithSlotMeasurementsService {
     public void testPerform_null() {
         assertValidationError(() -> service.perform(null, null), "No user specified.", "No request specified.");
         verify(service, never()).validateLabware(any(), any());
-        verify(service, never()).loadOpType(any(), any());
+        verify(service, never()).loadOpType(any(ValidationHelper.class), any());
         verifyNoInteractions(mockWorkService);
         verify(service, never()).validateAddresses(any(), any(), any());
         verify(service, never()).sanitiseMeasurements(any(), any(), any());
@@ -132,7 +132,7 @@ public class TestOpWithSlotMeasurementsService {
     private void stubValidation(Labware lw, OperationType opType, Work work, List<SlotMeasurementRequest> sanMeas,
                                 String problem) {
         doReturn(lw).when(service).validateLabware(any(), any());
-        doReturn(opType).when(service).loadOpType(any(), any());
+        doReturn(opType).when(service).loadOpType(any(ValidationHelper.class), any());
         doReturn(work).when(mockWorkService).validateUsableWork(any(), any());
         doNothing().when(service).validateAddresses(any(), any(), any());
         doReturn(sanMeas).when(service).sanitiseMeasurements(any(), any(), any());
@@ -443,9 +443,8 @@ public class TestOpWithSlotMeasurementsService {
             "Cycles,024,24,",
     })
     public void testSanitiseMeasurementValue(String name, String value, String sanValue, String problem) {
-        Sanitiser<String> san;
         List<Sanitiser<String>> sans = List.of(mockConcSan, mockCqSan, mockCycSan);
-        san = switch (name) {
+        Sanitiser<String> san = switch (name) {
             case "cDNA concentration", "Library concentration" -> mockConcSan;
             case "Cq value" -> mockCqSan;
             case "Cycles" -> mockCycSan;

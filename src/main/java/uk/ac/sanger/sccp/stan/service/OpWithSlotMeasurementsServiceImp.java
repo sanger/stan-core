@@ -17,6 +17,7 @@ import java.util.*;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 import static uk.ac.sanger.sccp.utils.BasicUtils.pluralise;
 
@@ -118,6 +119,14 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
                 ot -> opTypeMeasurements.containsKey(ot.getName()));
     }
 
+    @Override
+    public OperationType loadOpType(Collection<String> problems, String opTypeName) {
+        ValidationHelper val = valHelperFactory.getHelper();
+        OperationType opType = loadOpType(val, opTypeName);
+        problems.addAll(val.getProblems());
+        return opType;
+    }
+
     /**
      * Checks that the addresses given in the measurement requests are present and valid.
      * @param problems receptacle for problems found
@@ -125,6 +134,16 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
      * @param slotMeasurements the requested measurements
      */
     public void validateAddresses(Collection<String> problems, Labware lw, List<SlotMeasurementRequest> slotMeasurements) {
+        Set<Address> filledSlotAddresses = lw.getSlots().stream()
+                .filter(slot -> !slot.getSamples().isEmpty())
+                .map(Slot::getAddress)
+                .collect(toSet());
+        validateAddresses(problems, lw.getLabwareType(), filledSlotAddresses, slotMeasurements);
+    }
+
+    @Override
+    public void validateAddresses(Collection<String> problems, LabwareType lt, Set<Address> filledSlotAddresses,
+                                  List<SlotMeasurementRequest> slotMeasurements) {
         Set<Address> invalidAddresses = new LinkedHashSet<>();
         Set<Address> emptyAddresses = new LinkedHashSet<>();
         boolean nullAddress = false;
@@ -133,13 +152,10 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
             if (address ==null) {
                 nullAddress = true;
             } else {
-                var optSlot = lw.optSlot(address);
-                if (optSlot.isEmpty()) {
+                if (lt.indexOf(address) < 0) {
                     invalidAddresses.add(address);
-                } else {
-                    if (optSlot.get().getSamples().isEmpty()) {
-                        emptyAddresses.add(address);
-                    }
+                } else if (!filledSlotAddresses.contains(address)){
+                    emptyAddresses.add(address);
                 }
             }
         }
@@ -154,12 +170,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
         }
     }
 
-    /**
-     * Checks for problems with comment ids, if any.
-     * @param problems receptacle for problems found
-     * @param sms the slot measurement requests
-     * @return the indicated comments
-     */
+    @Override
     public List<Comment> validateComments(Collection<String> problems, Collection<SlotMeasurementRequest> sms) {
         Stream<Integer> commentIdStream = sms.stream()
                 .map(SlotMeasurementRequest::getCommentId)
@@ -167,15 +178,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
         return commentValidationService.validateCommentIds(problems, commentIdStream);
     }
 
-    /**
-     * Validates and sanitises measurement names and values.
-     * Problems include missing names, missing values, invalid names (for the op type), and whatever problems are
-     * found by {@link #sanitiseMeasurementValue}.
-     * @param problems receptacle for problems found
-     * @param opType the op type requested
-     * @param slotMeasurements the requested measurements
-     * @return the validated measurements
-     */
+    @Override
     public List<SlotMeasurementRequest> sanitiseMeasurements(Collection<String> problems, OperationType opType,
                                                              Collection<SlotMeasurementRequest> slotMeasurements) {
         if (slotMeasurements.isEmpty()) {
@@ -267,12 +270,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
         };
     }
 
-    /**
-     * Checks for occurrences where the same measurement name is requested in the same address.
-     * The measurement names should already be sanitised so that they are easy to identify.
-     * @param problems receptacle for problems found
-     * @param smrs the measurement requests
-     */
+    @Override
     public void checkForDupeMeasurements(Collection<String> problems, Collection<SlotMeasurementRequest> smrs) {
         if (smrs==null || smrs.size() <= 1) {
             return;
@@ -338,6 +336,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
      * @param sanitisedMeasurements the specification of what measurements to record
      * @return the op and labware
      */
+    @Override
     public OperationResult execute(User user, Labware lw, OperationType opType, Work work,
                                    Collection<Comment> comments,
                                    Collection<SlotMeasurementRequest> sanitisedMeasurements) {

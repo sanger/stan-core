@@ -1,7 +1,6 @@
 package uk.ac.sanger.sccp.stan.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.reagentplate.*;
@@ -18,7 +17,6 @@ import java.util.*;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
-import static uk.ac.sanger.sccp.utils.BasicUtils.pluralise;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
@@ -31,7 +29,7 @@ public class ReagentTransferServiceImp implements ReagentTransferService {
     private final ReagentActionRepo reagentActionRepo;
     private final LabwareRepo lwRepo;
 
-    private final Validator<String> reagentPlateBarcodeValidator;
+    private final ReagentTransferValidatorService rtValidatorService;
     private final LabwareValidatorFactory lwValFactory;
 
     private final OperationService opService;
@@ -42,14 +40,14 @@ public class ReagentTransferServiceImp implements ReagentTransferService {
     @Autowired
     public ReagentTransferServiceImp(OperationTypeRepo opTypeRepo, ReagentActionRepo reagentActionRepo,
                                      LabwareRepo lwRepo,
-                                     @Qualifier("reagentPlateBarcodeValidator") Validator<String> reagentPlateBarcodeValidator,
+                                     ReagentTransferValidatorService rtValidatorService,
                                      LabwareValidatorFactory lwValFactory,
                                      OperationService opService, ReagentPlateService reagentPlateService,
                                      WorkService workService, BioStateReplacer bioStateReplacer) {
         this.opTypeRepo = opTypeRepo;
         this.reagentActionRepo = reagentActionRepo;
         this.lwRepo = lwRepo;
-        this.reagentPlateBarcodeValidator = reagentPlateBarcodeValidator;
+        this.rtValidatorService = rtValidatorService;
         this.lwValFactory = lwValFactory;
         this.opService = opService;
         this.reagentPlateService = reagentPlateService;
@@ -76,12 +74,7 @@ public class ReagentTransferServiceImp implements ReagentTransferService {
         return record(user, opType, work, request.getTransfers(), reagentPlates, lw, plateType);
     }
 
-    /**
-     * Loads and checks the operation type
-     * @param problems receptacle for problems
-     * @param opName the name of the op type
-     * @return the operation type loaded, if any
-     */
+    @Override
     public OperationType loadOpType(Collection<String> problems, String opName) {
         if (opName==null || opName.isEmpty()) {
             problems.add("No operation type specified.");
@@ -111,15 +104,10 @@ public class ReagentTransferServiceImp implements ReagentTransferService {
         List<Labware> lws = val.loadLabware(lwRepo, List.of(barcode));
         val.validateSources();
         problems.addAll(val.getErrors());
-        return (lws.isEmpty() ? null : lws.get(0));
+        return (lws.isEmpty() ? null : lws.getFirst());
     }
 
-    /**
-     * Loads any reagent plates already in the database matching any of the specified barcodes.
-     * Unrecognised or missing barcodes are omitted without error.
-     * @param transfers reagent transfers, specifying reagent plate barcodes
-     * @return a map of barcode to reagent plates
-     */
+    @Override
     public UCMap<ReagentPlate> loadReagentPlates(Collection<ReagentTransfer> transfers) {
         Set<String> barcodes = transfers.stream()
                 .map(ReagentTransfer::getReagentPlateBarcode)
@@ -129,14 +117,7 @@ public class ReagentTransferServiceImp implements ReagentTransferService {
         return reagentPlateService.loadPlates(barcodes);
     }
 
-    /**
-     * Checks the given plate type is suitable.
-     * It must be equal to either {@link ReagentPlate#TYPE_FFPE} or {@link ReagentPlate#TYPE_FRESH_FROZEN}.
-     * It must match existing plates.
-     * @param problems receptacle for problems
-     * @param existingPlates the existing reagent plates (if any) referred to by the request
-     * @param plateTypeArg the plate type as given in the request
-     */
+    @Override
     public String checkPlateType(Collection<String> problems, Collection<ReagentPlate> existingPlates, String plateTypeArg) {
         String plateType = ReagentPlate.canonicalPlateType(plateTypeArg);
         if (plateType==null) {
@@ -146,7 +127,7 @@ public class ReagentTransferServiceImp implements ReagentTransferService {
         List<String> nonMatching = existingPlates.stream()
                 .filter(rp -> !plateType.equalsIgnoreCase(rp.getPlateType()))
                 .map(ReagentPlate::getBarcode)
-                .collect(toList());
+                .toList();
         if (!nonMatching.isEmpty()) {
             problems.add("The given plate type "+plateType+" does not match the existing plate "+nonMatching+".");
         }
@@ -168,125 +149,10 @@ public class ReagentTransferServiceImp implements ReagentTransferService {
      */
     public void validateTransfers(Collection<String> problems, Collection<ReagentTransfer> transfers,
                                   UCMap<ReagentPlate> reagentPlates, Labware lw) {
-        if (transfers==null || transfers.isEmpty()) {
-            problems.add("No transfers specified.");
-            return;
-        }
-        boolean missingPlateBarcodes = false;
-        boolean missingReagentAddresses = false;
-        boolean missingDestAddresses = false;
-        Set<RSlot> seenReagentSlots = new HashSet<>();
-        Set<RSlot> invalidReagentSlots = new LinkedHashSet<>();
-        Set<RSlot> alreadyUsedReagentSlots = new LinkedHashSet<>();
-        Set<RSlot> repeatedReagentSlots = new LinkedHashSet<>();
-        Set<Address> invalidDestSlots = new LinkedHashSet<>();
-        Set<String> newBarcodesSeen = new HashSet<>();
-
-        for (var transfer : transfers) {
-            String barcode = transfer.getReagentPlateBarcode();
-            Address rAddress = transfer.getReagentSlotAddress();
-            Address dAddress = transfer.getDestinationAddress();
-            ReagentPlate plate;
-            if (barcode==null || barcode.isEmpty()) {
-                missingPlateBarcodes = true;
-                plate = null;
-                barcode = null;
-            } else {
-                plate = reagentPlates.get(barcode);
-                if (plate==null && newBarcodesSeen.add(barcode.toUpperCase())) {
-                    reagentPlateBarcodeValidator.validate(barcode, problems::add);
-                }
-            }
-            if (rAddress==null) {
-                missingReagentAddresses = true;
-            } else if (barcode!=null) {
-                checkReagentSlotAddress(invalidReagentSlots, alreadyUsedReagentSlots, repeatedReagentSlots,
-                        seenReagentSlots, barcode, rAddress, plate);
-            }
-            if (dAddress==null) {
-                missingDestAddresses = true;
-            } else if (lw!=null) {
-                if (lw.optSlot(dAddress).isEmpty()) {
-                    invalidDestSlots.add(dAddress);
-                }
-            }
-        }
-
-        if (missingPlateBarcodes) {
-            problems.add("Missing reagent plate barcode for transfer.");
-        }
-        if (missingReagentAddresses) {
-            problems.add("Missing reagent slot address for transfer.");
-        }
-        if (missingDestAddresses) {
-            problems.add("Missing destination slot address for transfer.");
-        }
-        describeProblem(problems, "Invalid reagent slot{s} specified: ", invalidReagentSlots);
-        describeProblem(problems, "Invalid destination slot{s} specified: ", invalidDestSlots);
-        describeProblem(problems, "Reagent slot{s} already used: ", alreadyUsedReagentSlots);
-        describeProblem(problems, "Repeated reagent slot{s} specified: ", repeatedReagentSlots);
+        rtValidatorService.validateTransfers(problems, transfers, reagentPlates, lw==null ? null : lw.getLabwareType());
     }
 
-    /**
-     * Adds a problem listing the given items, if there are any
-     * @param problems the receptacle for problems
-     * @param description the pluralisable description of the problem
-     * @param items the items associated with the problem
-     */
-    private static void describeProblem(Collection<String> problems, String description, Collection<?> items) {
-        if (!items.isEmpty()) {
-            problems.add(pluralise(description, items.size()) + items);
-        }
-    }
-
-    /**
-     * Checks for problems with the reagent slot address
-     * @param invalidReagentSlots receptacle for invalid reagent slots found
-     * @param alreadyUsedReagentSlots receptacle for already used reagent slots found
-     * @param repeatedReagentSlots receptacle for repeated reagent slots found
-     * @param seenRSlots running collection of reagent slots specified, to check for dupes
-     * @param barcode the reagent plate barcode specified
-     * @param rAddress the reagent slot address specified
-     * @param plate the existing reagent plate (if any) matching the given barcode
-     */
-    private void checkReagentSlotAddress(Set<RSlot> invalidReagentSlots, Set<RSlot> alreadyUsedReagentSlots,
-                                         Set<RSlot> repeatedReagentSlots, Set<RSlot> seenRSlots,
-                                         String barcode, Address rAddress, ReagentPlate plate) {
-        RSlot rslot = new RSlot(rAddress, plate!=null ? plate.getBarcode() : barcode);
-        if (plate != null) {
-            var optSlot = plate.optSlot(rAddress);
-            if (optSlot.isEmpty()) {
-                invalidReagentSlots.add(rslot);
-                return;
-            }
-            var reagentSlot = optSlot.get();
-            if (reagentSlot.isUsed()) {
-                alreadyUsedReagentSlots.add(rslot);
-                return;
-            }
-        } else {
-            // Since the reagent plate doesn't exist yet, we assume its size
-            // (a safe assumption, since it is the only size we support).
-            if (ReagentPlate.PLATE_LAYOUT_96.indexOf(rAddress) < 0) {
-                invalidReagentSlots.add(new RSlot(rAddress, barcode));
-            }
-        }
-        if (!seenRSlots.add(rslot)) {
-            repeatedReagentSlots.add(rslot);
-        }
-    }
-
-    /**
-     * Records the specified transfers.
-     * @param user the user responsible
-     * @param opType the type of operation to record
-     * @param work the work number (if any) to link the operation with
-     * @param transfers the transfers to make
-     * @param reagentPlates the reagent plates that already exist
-     * @param lw the destination labware
-     * @param plateType the plate type for new plates
-     * @return the operations and affected labware
-     */
+    @Override
     public OperationResult record(User user, OperationType opType, Work work, Collection<ReagentTransfer> transfers,
                                   UCMap<ReagentPlate> reagentPlates, Labware lw, String plateType) {
         createReagentPlates(transfers, reagentPlates, plateType);
