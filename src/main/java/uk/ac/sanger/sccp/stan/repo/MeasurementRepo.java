@@ -13,5 +13,7 @@ import java.util.List;
 public interface MeasurementRepo extends CrudRepository<Measurement, Integer> {
     List<Measurement> findAllBySlotIdIn(Collection<Integer> slotIds);
 
+    List<Measurement> findAllBySlotIdInAndName(Collection<Integer> slotIds, String name);
+
     List<Measurement> findAllByOperationIdIn(Collection<Integer> opIds);
 }

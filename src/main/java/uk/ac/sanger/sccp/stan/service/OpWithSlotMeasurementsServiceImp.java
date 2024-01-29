@@ -37,6 +37,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
     private final WorkService workService;
     private final OperationService opService;
     private final CommentValidationService commentValidationService;
+    private final MeasurementService measurementService;
     private final ValidationHelperFactory valHelperFactory;
 
     private final Map<String, List<String>> opTypeMeasurements;
@@ -46,7 +47,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
                                             @Qualifier("concentrationSanitiser") Sanitiser<String> concentrationSanitiser,
                                             @Qualifier("cycleSanitiser") Sanitiser<String> cycleSanitiser,
                                             WorkService workService, OperationService opService,
-                                            CommentValidationService commentValidationService,
+                                            CommentValidationService commentValidationService, MeasurementService measurementService,
                                             ValidationHelperFactory valHelperFactory) {
         this.measurementRepo = measurementRepo;
         this.opComRepo = opComRepo;
@@ -56,6 +57,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
         this.workService = workService;
         this.opService = opService;
         this.commentValidationService = commentValidationService;
+        this.measurementService = measurementService;
         this.valHelperFactory = valHelperFactory;
         UCMap<List<String>> opTypeMeasurements = new UCMap<>(3);
         opTypeMeasurements.put(OP_AMP, List.of(MEAS_CQ, MEAS_CYC));
@@ -85,6 +87,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
         List<SlotMeasurementRequest> sanitisedMeasurements = sanitiseMeasurements(problems, opType, request.getSlotMeasurements());
         checkForDupeMeasurements(problems, sanitisedMeasurements);
         problems.addAll(val.getProblems());
+        validateOperation(problems, opType, lw, sanitisedMeasurements);
         if (!problems.isEmpty()) {
             throw new ValidationException("The request could not be validated.", problems);
         }
@@ -182,8 +185,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
 
         List<SlotMeasurementRequest> sanitised = new ArrayList<>(slotMeasurements.size());
         for (SlotMeasurementRequest smr : slotMeasurements) {
-            var sanitisedSmr = sanitiseMeasurement(problems, invalidNames,
-                    opType, smr);
+            var sanitisedSmr = sanitiseMeasurement(problems, invalidNames, opType, smr);
             if (sanitisedSmr != null) {
                 sanitised.add(sanitisedSmr);
             }
@@ -290,6 +292,40 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
             }
             sb.setLength(sb.length()-2);
             problems.add(sb.toString());
+        }
+    }
+
+    /**
+     * Checks some op-specific requirements; e.g. if some measurement is missing for a particular operation.
+     * @param problems receptacle for problems
+     * @param opType the op type to record
+     * @param lw the labware to record the op on
+     * @param smrs the sanitised measurements requested
+     */
+    public void validateOperation(Collection<String> problems, OperationType opType, Labware lw,
+                                  List<SlotMeasurementRequest> smrs) {
+        if (opType!=null && opType.getName().equalsIgnoreCase(OP_AMP)) {
+            validateAmp(problems, lw, smrs);
+        }
+    }
+
+    /**
+     * Validates amplification op. It must provide Cq measurements, or those must already have been recorded
+     * on this or on the parent labware.
+     * @param problems receptacle for problems
+     * @param lw the labware to record the op on
+     * @param smrs the sanitised measurements requested
+     */
+    public void validateAmp(Collection<String> problems, Labware lw, List<SlotMeasurementRequest> smrs) {
+        if (lw==null || smrs==null) {
+            return;
+        }
+        if (smrs.stream().anyMatch(smr -> MEAS_CQ.equalsIgnoreCase(smr.getName()))) {
+            return;
+        }
+        Map<Address, List<Measurement>> meas = measurementService.getMeasurementsFromLabwareOrParent(lw.getBarcode(), MEAS_CQ);
+        if (meas.values().stream().allMatch(Objects::isNull)) {
+            problems.add("No "+MEAS_CQ+" has been recorded on labware "+lw.getBarcode()+".");
         }
     }
 

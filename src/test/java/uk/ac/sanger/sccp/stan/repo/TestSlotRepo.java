@@ -11,8 +11,8 @@ import uk.ac.sanger.sccp.stan.model.*;
 import javax.persistence.EntityManager;
 import javax.transaction.Transactional;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -52,12 +52,12 @@ public class TestSlotRepo {
         LabwareType lt = entityCreator.createLabwareType("lwtype", 1, 4);
         Labware lw = entityCreator.createLabware("STAN-A1", lt, samples.get(0), samples.get(0), samples.get(1));
         List<Slot> slots = lw.getSlots();
-        slots.get(0).getSamples().add(samples.get(1));
+        slots.getFirst().getSamples().add(samples.get(1));
         // Slot 0 contains samples 0 and 1
         // Slot 1 contains sample 0
         // Slot 2 contains sample 1
         // Slot 3 is empty
-        slots.set(0, slotRepo.save(slots.get(0)));
+        slots.set(0, slotRepo.save(slots.getFirst()));
         assertThat(slotRepo.findDistinctBySamplesIn(samples)).hasSize(3).hasSameElementsAs(slots.subList(0,3));
         assertThat(slotRepo.findDistinctBySamplesIn(samples.subList(1,3))).hasSize(2).containsOnly(slots.get(0), slots.get(2));
         assertThat(slotRepo.findDistinctBySamplesIn(samples.subList(2,3))).isEmpty();
@@ -71,7 +71,7 @@ public class TestSlotRepo {
         BioState bioState = entityCreator.anyBioState();
         List<Sample> samples = IntStream.range(0,3)
                 .mapToObj(i -> entityCreator.createSample(tissue, i, bioState))
-                .collect(toList());
+                .toList();
         LabwareType lt = entityCreator.createLabwareType("lwtype", 1, 4);
         Labware lw1 = entityCreator.createLabware("STAN-A1", lt, samples.get(0), samples.get(1));
         Labware lw2 = entityCreator.createLabware("STAN-A2", lt, samples.get(2));
@@ -82,5 +82,20 @@ public class TestSlotRepo {
 
         assertThat(slotRepo.findAllByIdIn(slot1Ids)).isEqualTo(slots1);
         assertThat(slotRepo.findAllByIdIn(slot2Ids)).isEqualTo(slots2);
+    }
+
+    @Test
+    @Transactional
+    public void testFindSlotIdsByLabwareIdIn() {
+        LabwareType lt = entityCreator.createLabwareType("lt", 1, 2);
+        Labware lw1 = entityCreator.createLabware("STAN-1", lt);
+        Labware lw2 = entityCreator.createLabware("STAN-2", lt);
+        assertThat(slotRepo.findSlotIdsByLabwareIdIn(List.of(lw1.getId())))
+                .containsExactlyInAnyOrder(lw1.getSlots().stream().map(Slot::getId).toArray(Integer[]::new));
+        assertThat(slotRepo.findSlotIdsByLabwareIdIn(List.of(lw2.getId())))
+                .containsExactlyInAnyOrder(lw2.getSlots().stream().map(Slot::getId).toArray(Integer[]::new));
+        assertThat(slotRepo.findSlotIdsByLabwareIdIn(List.of(lw1.getId(), lw2.getId())))
+                .containsExactlyInAnyOrder(Stream.of(lw1, lw2).flatMap(lw -> lw.getSlots().stream())
+                        .map(Slot::getId).toArray(Integer[]::new));
     }
 }

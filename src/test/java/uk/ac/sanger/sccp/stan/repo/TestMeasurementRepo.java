@@ -9,9 +9,12 @@ import uk.ac.sanger.sccp.stan.EntityCreator;
 import uk.ac.sanger.sccp.stan.model.*;
 
 import javax.transaction.Transactional;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static uk.ac.sanger.sccp.utils.BasicUtils.asList;
 
 /**
  * Tests {@link MeasurementRepo}
@@ -52,6 +55,33 @@ public class TestMeasurementRepo {
         assertThat(measurementRepo.findAllBySlotIdIn(List.of(slot3id))).isEmpty();
         assertThat(measurementRepo.findAllBySlotIdIn(List.of(slot2id, slot3id))).containsOnly(m2);
         assertThat(measurementRepo.findAllBySlotIdIn(List.of(slot1id, slot2id, slot3id))).containsOnly(m1, m2, m3);
+    }
+
+    @Transactional
+    @Test
+    public void testFindAllBySlotIdInAndName() {
+        OperationType opType = entityCreator.createOpType("opname", null);
+        User user = entityCreator.createUser("user1");
+        Sample sample = entityCreator.createSample(null, null);
+        LabwareType lt = entityCreator.getTubeType();
+        Labware[] lws = IntStream.range(0,3)
+                .mapToObj(i -> entityCreator.createLabware("STAN-"+i, lt, sample))
+                .toArray(Labware[]::new);
+        Integer[] slotIds = Arrays.stream(lws).map(lw -> lw.getFirstSlot().getId()).toArray(Integer[]::new);
+        Integer[] opIds = Arrays.stream(lws)
+                .map(lw -> entityCreator.simpleOp(opType, user, lw, lw).getId())
+                .toArray(Integer[]::new);
+        final Integer sampleId = sample.getId();
+        List<Measurement> measurements = asList(measurementRepo.saveAll(
+                List.of(new Measurement(null, "alpha", "1", sampleId, opIds[0], slotIds[0]),
+                        new Measurement(null, "alpha", "2", sampleId, opIds[1], slotIds[1]),
+                        new Measurement(null, "beta", "3", sampleId, opIds[2], slotIds[2])
+        )));
+        assertThat(measurementRepo.findAllBySlotIdInAndName(List.of(slotIds[0]), "alpha")).containsExactly(measurements.get(0));
+        assertThat(measurementRepo.findAllBySlotIdInAndName(List.of(slotIds[0], slotIds[2]), "alpha")).containsExactly(measurements.get(0));
+        assertThat(measurementRepo.findAllBySlotIdInAndName(List.of(slotIds[1]), "alpha")).containsExactly(measurements.get(1));
+        assertThat(measurementRepo.findAllBySlotIdInAndName(Arrays.asList(slotIds), "alpha")).containsExactlyInAnyOrderElementsOf(measurements.subList(0,2));
+        assertThat(measurementRepo.findAllBySlotIdInAndName(List.of(slotIds[2]), "alpha")).isEmpty();
     }
 
     @Transactional

@@ -1,5 +1,6 @@
 package uk.ac.sanger.sccp.stan.integrationtest;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,13 +12,14 @@ import uk.ac.sanger.sccp.stan.EntityCreator;
 import uk.ac.sanger.sccp.stan.GraphQLTester;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.MeasurementRepo;
+import uk.ac.sanger.sccp.stan.repo.OperationRepo;
 
 import javax.transaction.Transactional;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGet;
 
 /**
@@ -37,6 +39,8 @@ public class TestRecordOpWithSlotMeasurementsMutation {
 
     @Autowired
     private MeasurementRepo measurementRepo;
+    @Autowired
+    private OperationRepo opRepo;
 
     @Transactional
     @ParameterizedTest
@@ -96,5 +100,57 @@ public class TestRecordOpWithSlotMeasurementsMutation {
             assertEquals(sanMeasValues[i], measurement.getValue());
             assertEquals(lw.getFirstSlot().getId(), measurement.getSlotId());
         }
+    }
+
+    @Test
+    @Transactional
+    public void testAmplificationWithParentCqValues() throws Exception {
+        OperationType qpcr = entityCreator.createOpType("qPCR results", null, OperationTypeFlag.IN_PLACE);
+        OperationType amp = entityCreator.createOpType("Amplification", null, OperationTypeFlag.IN_PLACE);
+        OperationType simpleTransfer = entityCreator.createOpType("Simple transfer", null);
+        Sample sam = entityCreator.createSample(entityCreator.createTissue(entityCreator.createDonor("DONOR1"), "TISSUE1"), 1);
+        LabwareType lt = entityCreator.createLabwareType("lt1", 1,1);
+        Labware lw1 = entityCreator.createLabware("STAN-A", lt, sam);
+        Work work = entityCreator.createWork(null, null, null, null, null);
+        User user = entityCreator.createUser("user1");
+        String baseMutation = tester.readGraphQL("opwithslotmeasurements.graphql")
+                .replace("WORK-NUM", work.getWorkNumber())
+                .replaceFirst("\\{[^}]+\"MEAS-NAME-1\"[^}]+}", "");
+        tester.setUser(user);
+        // record a qpcr mutation to add cq measurement to the parent labware
+        String qpcrMutation = baseMutation
+                .replace("OP-TYPE", qpcr.getName())
+                .replace("MEAS-NAME-0", "CQ VALUE")
+                .replace("MEAS-VALUE-0", "10");
+        Map<String, ?> qpcrResponse = tester.post(qpcrMutation);
+
+        assertNull(qpcrResponse.get("errors"));
+
+        Labware lw2 = entityCreator.createLabware("STAN-B", lt, sam);
+        entityCreator.simpleOp(simpleTransfer, user, lw1, lw2);
+
+        String query = "query { measurementValueFromLabwareOrParent(barcode: \"STAN-B\", name: \"Cq value\") { address, string } }";
+        Object queryResult = tester.post(query);
+        Map<String,String> measData = chainGet(queryResult, "data", "measurementValueFromLabwareOrParent", 0);
+        assertEquals("A1", measData.get("address"));
+        assertEquals(10, Double.parseDouble(measData.get("string")));
+
+        String ampMutation = baseMutation
+                .replace("OP-TYPE", amp.getName())
+                .replace("STAN-A", "STAN-B")
+                .replace("MEAS-NAME-0", "Cycles")
+                .replace("MEAS-VALUE-0", "20");
+        Map<String, ?> ampResponse = tester.post(ampMutation);
+        assertNull(ampResponse.get("errors"));
+        Integer opId = chainGet(ampResponse, "data", "recordOpWithSlotMeasurements", "operations", 0, "id");
+        Operation op = opRepo.findById(opId).orElseThrow();
+        assertEquals(amp, op.getOperationType());
+        assertEquals(lw2.getSlots().getFirst(), op.getActions().getFirst().getDestination());
+        List<Measurement> measurements = measurementRepo.findAllByOperationIdIn(List.of(opId));
+        assertThat(measurements).hasSize(1);
+        Measurement measurement = measurements.getFirst();
+        assertEquals(lw2.getSlots().getFirst().getId(), measurement.getSlotId());
+        assertEquals("Cycles", measurement.getName());
+        assertEquals("20", measurement.getValue());
     }
 }
