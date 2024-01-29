@@ -1,7 +1,6 @@
 package uk.ac.sanger.sccp.stan.service;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
 import org.mockito.*;
@@ -37,47 +36,53 @@ import static org.mockito.Mockito.*;
  * @author dr6
  */
 public class TestResultService {
+    @Mock
     private OperationTypeRepo mockOpTypeRepo;
+    @Mock
     private LabwareRepo mockLwRepo;
+    @Mock
     private OperationRepo mockOpRepo;
+    @Mock
     private OperationCommentRepo mockOpCommentRepo;
+    @Mock
     private ResultOpRepo mockResOpRepo;
+    @Mock
     private LabwareNoteRepo mockLwNoteRepo;
+    @Mock
     private LabwareValidatorFactory mockLabwareValidatorFactory;
+    @Mock
     private OperationService mockOpService;
+    @Mock
     private WorkService mockWorkService;
+    @Mock
     private CommentValidationService mockCommentValidationService;
+    @Mock
     private MeasurementRepo mockMeasurementRepo;
+    @Mock
     private SlotMeasurementValidatorFactory mockSlotMeasurementValidatorFactory;
+    @Mock
     private Sanitiser<String> mockCoverageSanitiser;
+    @Mock
     private Validator<String> mockLotValidator;
+    @Mock
     private OpSearcher mockOpSearcher;
 
     private ResultServiceImp service;
 
-    @SuppressWarnings("unchecked")
+    private AutoCloseable mocking;
+
     @BeforeEach
     void setup() {
-        mockOpTypeRepo = mock(OperationTypeRepo.class);
-        mockLwRepo = mock(LabwareRepo.class);
-        mockOpRepo = mock(OperationRepo.class);
-        mockOpCommentRepo = mock(OperationCommentRepo.class);
-        mockResOpRepo = mock(ResultOpRepo.class);
-        mockMeasurementRepo = mock(MeasurementRepo.class);
-        mockLwNoteRepo = mock(LabwareNoteRepo.class);
-        mockCoverageSanitiser = mock(Sanitiser.class);
-        mockLotValidator = mock(Validator.class);
-        mockLabwareValidatorFactory = mock(LabwareValidatorFactory.class);
-        mockOpService = mock(OperationService.class);
-        mockWorkService = mock(WorkService.class);
-        mockCommentValidationService = mock(CommentValidationService.class);
-        mockSlotMeasurementValidatorFactory = mock(SlotMeasurementValidatorFactory.class);
-        mockOpSearcher = mock(OpSearcher.class);
-
+        mocking = MockitoAnnotations.openMocks(this);
         service = spy(new ResultServiceImp(mockOpTypeRepo, mockLwRepo, mockOpRepo, mockOpCommentRepo,
                 mockResOpRepo, mockMeasurementRepo, mockLwNoteRepo, mockCoverageSanitiser, mockLabwareValidatorFactory,
                 mockOpService, mockWorkService, mockCommentValidationService, mockSlotMeasurementValidatorFactory, mockOpSearcher,
                 mockLotValidator));
+    }
+
+    @AfterEach
+    void cleanup() throws Exception {
+        mocking.close();
     }
 
     @Test
@@ -530,7 +535,7 @@ public class TestResultService {
         when(mockCommentValidationService.validateCommentIds(any(), any())).then(invocation -> {
             Stream<Integer> commentIds = invocation.getArgument(1);
             Collection<String> problems = invocation.getArgument(0);
-            problems.add("Received comment IDs: " + commentIds.collect(toList()));
+            problems.add("Received comment IDs: " + commentIds.toList());
             return commentList;
         });
         List<SampleResult> srs = Stream.of(10, 11, null, 12, 13, null)
@@ -700,7 +705,7 @@ public class TestResultService {
                 new SampleResult(A1, PassFail.pass, null),
                 new SampleResult(A2, PassFail.fail, 17)
         );
-        srs1.get(0).setSampleComments(List.of(
+        srs1.getFirst().setSampleComments(List.of(
                 new SampleIdCommentId(sam1id, 17),
                 new SampleIdCommentId(sam1id, 18)
         ));

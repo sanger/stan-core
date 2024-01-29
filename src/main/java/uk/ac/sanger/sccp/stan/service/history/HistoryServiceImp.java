@@ -26,7 +26,8 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.*;
  */
 @Service
 public class HistoryServiceImp implements HistoryService {
-    static final String RELEASE_EVENT_TYPE = "Release", DESTRUCTION_EVENT_TYPE = "Destruction";
+    static final String RELEASE_EVENT_TYPE = "Release", DESTRUCTION_EVENT_TYPE = "Destruction",
+            SOLUTION_TRANSFER_OP_NAME = "Solution transfer";
 
     private final OperationRepo opRepo;
     private final OperationTypeRepo opTypeRepo;
@@ -46,6 +47,8 @@ public class HistoryServiceImp implements HistoryService {
     private final StainTypeRepo stainTypeRepo;
     private final LabwareProbeRepo lwProbeRepo;
     private final LabwareFlagRepo flagRepo;
+    private final OperationSolutionRepo opSolRepo;
+    private final SolutionRepo solutionRepo;
     private final ReagentActionDetailService reagentActionDetailService;
     private final SlotRegionService slotRegionService;
 
@@ -55,7 +58,7 @@ public class HistoryServiceImp implements HistoryService {
                              DestructionRepo destructionRepo, OperationCommentRepo opCommentRepo, RoiRepo roiRepo,
                              SnapshotRepo snapshotRepo, WorkRepo workRepo, MeasurementRepo measurementRepo,
                              LabwareNoteRepo labwareNoteRepo, ResultOpRepo resultOpRepo,
-                             StainTypeRepo stainTypeRepo, LabwareProbeRepo lwProbeRepo, LabwareFlagRepo flagRepo,
+                             StainTypeRepo stainTypeRepo, LabwareProbeRepo lwProbeRepo, LabwareFlagRepo flagRepo, OperationSolutionRepo opSolRepo, SolutionRepo solutionRepo,
                              ReagentActionDetailService reagentActionDetailService,
                              SlotRegionService slotRegionService) {
         this.opRepo = opRepo;
@@ -76,6 +79,8 @@ public class HistoryServiceImp implements HistoryService {
         this.stainTypeRepo = stainTypeRepo;
         this.lwProbeRepo = lwProbeRepo;
         this.flagRepo = flagRepo;
+        this.opSolRepo = opSolRepo;
+        this.solutionRepo = solutionRepo;
         this.reagentActionDetailService = reagentActionDetailService;
         this.slotRegionService = slotRegionService;
     }
@@ -130,7 +135,7 @@ public class HistoryServiceImp implements HistoryService {
             return new History();
         }
         List<HistoryEntry> entries = createEntriesForReleases(releases, null, null, null);
-        List<Labware> labware = releases.stream().map(Release::getLabware).distinct().collect(toList());
+        List<Labware> labware = releases.stream().map(Release::getLabware).distinct().toList();
         List<Sample> samples = referencedSamples(entries, labware);
         entries.sort(Comparator.comparing(HistoryEntry::getTime));
         return new History(entries, samples, labware);
@@ -257,8 +262,8 @@ public class HistoryServiceImp implements HistoryService {
         if (externalNames.isEmpty()) {
             return t -> false; // can't possibly match an empty list
         }
-        if (externalNames.size() == 1 && externalNames.get(0).indexOf('*') < 0) {
-            String xn = externalNames.get(0);
+        if (externalNames.size() == 1 && externalNames.getFirst().indexOf('*') < 0) {
+            String xn = externalNames.getFirst();
             return t -> t.getExternalName().equalsIgnoreCase(xn);
         }
         Pattern p = BasicUtils.makeWildcardPattern(externalNames);
@@ -273,7 +278,7 @@ public class HistoryServiceImp implements HistoryService {
             return t -> false;
         }
         if (donorNames.size()==1) {
-            String dn = donorNames.get(0);
+            String dn = donorNames.getFirst();
             return t -> t.getDonor().getDonorName().equalsIgnoreCase(dn);
         }
         final Set<String> dnUpper = donorNames.stream()
@@ -758,12 +763,41 @@ public class HistoryServiceImp implements HistoryService {
         List<Integer> probeOpIds = ops.stream()
                 .filter(op -> op.getOperationType().usesProbes())
                 .map(Operation::getId)
-                .collect(toList());
+                .toList();
         if (probeOpIds.isEmpty()) {
             return Map.of();
         }
         return lwProbeRepo.findAllByOperationIdIn(probeOpIds).stream()
                 .collect(Collectors.groupingBy(LabwareProbe::getOperationId));
+    }
+
+    /**
+     * Loads the solutions recorded against the given operations
+     * @param ops operations, some of which might involve solutions
+     * @return a map of op id to list of applicable solutions
+     */
+    public Map<Integer, Set<Solution>> loadOpSolutions(Collection<Operation> ops) {
+        List<Integer> solutionTransferOpIds = ops.stream()
+                .filter(op -> op.getOperationType().getName().equalsIgnoreCase(SOLUTION_TRANSFER_OP_NAME))
+                .map(Operation::getId)
+                .toList();
+        if (solutionTransferOpIds.isEmpty()) {
+            return Map.of();
+        }
+        List<OperationSolution> opsols = opSolRepo.findAllByOperationIdIn(solutionTransferOpIds);
+        if (opsols.isEmpty()) {
+            return Map.of();
+        }
+        Set<Integer> solutionIds = opsols.stream()
+                .map(OperationSolution::getSolutionId)
+                .collect(toSet());
+        Map<Integer, Solution> solutionMap = solutionRepo.getMapByIdIn(solutionIds);
+        Map<Integer, Set<Solution>> opSolMap = new HashMap<>(opsols.size());
+        for (OperationSolution opsol : opsols) {
+            opSolMap.computeIfAbsent(opsol.getOperationId(), k -> new HashSet<>())
+                    .add(solutionMap.get(opsol.getSolutionId()));
+        }
+        return opSolMap;
     }
 
     /**
@@ -805,6 +839,7 @@ public class HistoryServiceImp implements HistoryService {
         var opFlags = loadLabwareFlags(operations);
         var opResults = loadOpResults(operations);
         var opProbes = loadOpProbes(operations);
+        var opSolutions = loadOpSolutions(operations);
         final Map<Integer, Slot> slotIdMap;
         Map<SlotIdSampleId, String> samplePositionResultsMap = slotRegionService.loadSamplePositionResultsForLabware(labware)
                 .stream()
@@ -841,12 +876,19 @@ public class HistoryServiceImp implements HistoryService {
             List<ReagentActionDetail> reagentActions = opReagentActions.getOrDefault(op.getId(), List.of());
             List<LabwareProbe> lwProbes = opProbes.getOrDefault(op.getId(), List.of());
             List<LabwareFlag> flags = opFlags.getOrDefault(op.getId(), List.of());
+            Set<Solution> solutions = opSolutions.getOrDefault(op.getId(), Set.of());
             List<String> flagInfo = List.of();
             if (!flags.isEmpty()) {
                 // As currently written, only one labware can be involved in a flag labware op
                 flagInfo = flags.stream()
                         .map(flag -> "Flag: "+flag.getDescription())
-                        .collect(toList());
+                        .toList();
+            }
+            List<String> solutionInfo = List.of();
+            if (!solutions.isEmpty()) {
+                solutionInfo = solutions.stream()
+                        .map(sol -> "Solution: "+sol.getName())
+                        .toList();
             }
             String workNumber;
             if (opWork!=null) {
@@ -901,6 +943,9 @@ public class HistoryServiceImp implements HistoryService {
                 }
                 if (!flagInfo.isEmpty()) {
                     entry.addDetails(flagInfo);
+                }
+                if (!solutionInfo.isEmpty()) {
+                    entry.addDetails(solutionInfo);
                 }
                 if (equipment!=null) {
                     entry.addDetail("Equipment: "+equipment.getName());

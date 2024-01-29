@@ -19,8 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
-import static uk.ac.sanger.sccp.stan.Matchers.returnArgument;
-import static uk.ac.sanger.sccp.stan.Matchers.sameElements;
+import static uk.ac.sanger.sccp.stan.Matchers.*;
 import static uk.ac.sanger.sccp.utils.BasicUtils.inMap;
 
 public class TestSSStudyService {
@@ -47,7 +46,6 @@ public class TestSSStudyService {
         mocking.close();
     }
 
-    @SuppressWarnings("unchecked")
     @Test
     void testUpdateStudies() {
         List<DnapStudy> dss = List.of(new DnapStudy(1, 10, "Ten", false),
@@ -62,8 +60,8 @@ public class TestSSStudyService {
 
         service.updateStudies();
 
-        ArgumentCaptor<Map<Integer, DnapStudy>> dsCaptor = ArgumentCaptor.forClass(Map.class);
-        ArgumentCaptor<Map<Integer, SSStudy>> ssCaptor = ArgumentCaptor.forClass(Map.class);
+        ArgumentCaptor<Map<Integer, DnapStudy>> dsCaptor = genericCaptor(Map.class);
+        ArgumentCaptor<Map<Integer, SSStudy>> ssCaptor = genericCaptor(Map.class);
 
         verify(mockTransactor).transact(any(), any());
         verify(service).update(dsCaptor.capture(), ssCaptor.capture());

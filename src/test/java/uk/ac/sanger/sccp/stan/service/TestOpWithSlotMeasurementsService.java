@@ -27,8 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.EntityFactory.objToCollection;
-import static uk.ac.sanger.sccp.stan.Matchers.assertProblem;
-import static uk.ac.sanger.sccp.stan.Matchers.mayAddProblem;
+import static uk.ac.sanger.sccp.stan.Matchers.*;
 import static uk.ac.sanger.sccp.stan.service.OpWithSlotMeasurementsServiceImp.*;
 import static uk.ac.sanger.sccp.utils.BasicUtils.coalesce;
 import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
@@ -50,6 +49,8 @@ public class TestOpWithSlotMeasurementsService {
     @Mock
     private CommentValidationService mockCommentValidationService;
     @Mock
+    private MeasurementService mockMeasurementService;
+    @Mock
     private ValidationHelperFactory mockValHelperFactory;
 
     private OpWithSlotMeasurementsServiceImp service;
@@ -62,7 +63,7 @@ public class TestOpWithSlotMeasurementsService {
 
         service = spy(new OpWithSlotMeasurementsServiceImp(mockMeasRepo, mockOpComRepo,
                 mockCqSan, mockConcSan, mockCycSan, mockWorkService, mockOpService,
-                mockCommentValidationService, mockValHelperFactory));
+                mockCommentValidationService, mockMeasurementService, mockValHelperFactory));
     }
 
     @AfterEach
@@ -104,6 +105,7 @@ public class TestOpWithSlotMeasurementsService {
         verify(service, never()).sanitiseMeasurements(any(), any(), any());
         verify(service, never()).checkForDupeMeasurements(any(), any());
         verify(service, never()).validateComments(any(), any());
+        verify(service, never()).validateOperation(any(), any(), any(), any());
         verify(service, never()).execute(any(), any(), any(), any(), any(), any());
     }
 
@@ -135,15 +137,8 @@ public class TestOpWithSlotMeasurementsService {
         doNothing().when(service).validateAddresses(any(), any(), any());
         doReturn(sanMeas).when(service).sanitiseMeasurements(any(), any(), any());
         doReturn(List.of()).when(service).validateComments(any(), any());
-        if (problem==null) {
-            doNothing().when(service).checkForDupeMeasurements(any(), any());
-        } else {
-            doAnswer(invocation -> {
-                Collection<String> problems = invocation.getArgument(0);
-                problems.add(problem);
-                return null;
-            }).when(service).checkForDupeMeasurements(any(), any());
-        }
+        doNothing().when(service).validateOperation(any(), any(), any(), any());
+        mayAddProblem(problem).when(service).checkForDupeMeasurements(any(), any());
     }
 
     private static void assertValidationError(Executable executable, String... problems) {
@@ -152,7 +147,8 @@ public class TestOpWithSlotMeasurementsService {
         assertThat((Collection<Object>) ex.getProblems()).containsExactlyInAnyOrder(problems);
     }
 
-    private void verifyValidation(ValidationHelper val, Labware lw, OperationType opType, OpWithSlotMeasurementsRequest request, List<SlotMeasurementRequest> sanMeas) {
+    private void verifyValidation(ValidationHelper val, Labware lw, OperationType opType,
+                                  OpWithSlotMeasurementsRequest request, List<SlotMeasurementRequest> sanMeas) {
         //noinspection unchecked
         ArgumentCaptor<Collection<String>> problemsCaptor = ArgumentCaptor.forClass(Collection.class);
         verify(service).validateLabware(val, request.getBarcode());
@@ -163,6 +159,7 @@ public class TestOpWithSlotMeasurementsService {
         verify(service).sanitiseMeasurements(same(problems), same(opType), same(request.getSlotMeasurements()));
         verify(service).validateComments(same(problems), same(request.getSlotMeasurements()));
         verify(service).checkForDupeMeasurements(same(problems), same(sanMeas));
+        verify(service).validateOperation(same(problems), same(opType), same(lw), same(sanMeas));
     }
 
     @ParameterizedTest
@@ -207,8 +204,7 @@ public class TestOpWithSlotMeasurementsService {
             when(val.checkOpType(any(), any(), any(), any())).thenReturn(opType);
         }
         assertSame(opType, service.loadOpType(val, opName));
-        @SuppressWarnings("unchecked")
-        ArgumentCaptor<Predicate<OperationType>> predicateCaptor = ArgumentCaptor.forClass(Predicate.class);
+        ArgumentCaptor<Predicate<OperationType>> predicateCaptor = genericCaptor(Predicate.class);
         verify(val).checkOpType(eq(opName), eq(EnumSet.of(OperationTypeFlag.IN_PLACE)), isNull(), predicateCaptor.capture());
         if (opType!=null) {
             Predicate<OperationType> predicate = predicateCaptor.getValue();
@@ -503,6 +499,65 @@ public class TestOpWithSlotMeasurementsService {
                         new SlotMeasurementRequest(A2, "Gamma", "50", null),
                         new SlotMeasurementRequest(A3, "Gamma", "60", null)),
                 "Measurements specified multiple times: Alpha in A1; Gamma in A2"},
+        }).map(Arguments::of);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "Amplification,Bad op.",
+            "Amplification,",
+            "Bananas,",
+            ",",
+    })
+    public void testValidateOperation(String opName, String valProblem) {
+        OperationType opType = (opName==null ? null : EntityFactory.makeOperationType(opName, null));
+        Labware lw = EntityFactory.getTube();
+        List<SlotMeasurementRequest> smrs = List.of(new SlotMeasurementRequest());
+        mayAddProblem(valProblem).when(service).validateAmp(any(), any(), any());
+        List<String> problems = new ArrayList<>(valProblem==null ? 0 : 1);
+        service.validateOperation(problems, opType, lw, smrs);
+        if (opName==null || !opName.equalsIgnoreCase("Amplification")) {
+            verify(service, never()).validateAmp(any(), any(), any());
+        } else {
+            verify(service).validateAmp(same(problems), same(lw), same(smrs));
+        }
+        assertProblem(problems, valProblem);
+    }
+
+    @ParameterizedTest
+    @MethodSource("validateAmpArgs")
+    public void testValidateAmp(final boolean valid, final Labware lw, List<SlotMeasurementRequest> smrs,
+                                Measurement foundMeasurement) {
+        if (lw!=null) {
+            Map<Address, List<Measurement>> mal;
+            if (foundMeasurement==null) {
+                mal = Map.of();
+            } else {
+                mal = Map.of(new Address(1,1), List.of(foundMeasurement));
+            }
+            when(mockMeasurementService.getMeasurementsFromLabwareOrParent(lw.getBarcode(), MEAS_CQ)).thenReturn(mal);
+        }
+        assert valid || lw!=null;
+        String expectedProblem = valid ? null : ("No " + MEAS_CQ + " has been recorded on labware " + lw.getBarcode() + ".");
+        List<String> problems = new ArrayList<>(valid ? 0 : 1);
+        service.validateAmp(problems, lw, smrs);
+        assertProblem(problems, expectedProblem);
+    }
+
+    static Stream<Arguments> validateAmpArgs() {
+        Labware lw = EntityFactory.getTube();
+        final Address A1 = new Address(1,1);
+        SlotMeasurementRequest cqSmr = new SlotMeasurementRequest(A1, "Cq value", "10", null);
+        List<SlotMeasurementRequest> otherSmrs = List.of(new SlotMeasurementRequest(A1, "Bananas", "50", null));
+        Measurement cqMeasurement = new Measurement(500, "Cq value", "20", 1, 2, 3);
+
+        // valid, lw, smrs, measurement
+        return Arrays.stream(new Object[][] {
+                {true, lw, null, null},
+                {true, null, otherSmrs, null},
+                {true, null, List.of(otherSmrs.getFirst(), cqSmr), null},
+                {false, lw, otherSmrs, null},
+                {true, lw, otherSmrs, cqMeasurement},
         }).map(Arguments::of);
     }
 

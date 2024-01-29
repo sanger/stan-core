@@ -1,9 +1,10 @@
 package uk.ac.sanger.sccp.stan.service;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.reagentplate.ReagentAction;
@@ -29,33 +30,40 @@ import static uk.ac.sanger.sccp.stan.Matchers.*;
  * Tests {@link ReagentTransferServiceImp}
  */
 public class TestReagentTransferService {
+    @Mock
     private OperationTypeRepo mockOpTypeRepo;
+    @Mock
     private ReagentActionRepo mockReagentActionRepo;
+    @Mock
     private LabwareRepo mockLwRepo;
+    @Mock
     private ReagentTransferValidatorService mockValService;
+    @Mock
     private LabwareValidatorFactory mockLwValFactory;
+    @Mock
     private OperationService mockOpService;
+    @Mock
     private ReagentPlateService mockReagentPlateService;
+    @Mock
     private WorkService mockWorkService;
+    @Mock
     private BioStateReplacer mockBioStateReplacer;
 
     private ReagentTransferServiceImp service;
 
+    private AutoCloseable mocking;
+
     @BeforeEach
     void setup() {
-        mockOpTypeRepo = mock(OperationTypeRepo.class);
-        mockReagentActionRepo = mock(ReagentActionRepo.class);
-        mockLwRepo = mock(LabwareRepo.class);
-        mockValService = mock(ReagentTransferValidatorService.class);
-        mockLwValFactory = mock(LabwareValidatorFactory.class);
-        mockOpService = mock(OperationService.class);
-        mockReagentPlateService = mock(ReagentPlateService.class);
-        mockWorkService = mock(WorkService.class);
-        mockBioStateReplacer = mock(BioStateReplacer.class);
-
+        mocking = MockitoAnnotations.openMocks(this);
         service = spy(new ReagentTransferServiceImp(mockOpTypeRepo, mockReagentActionRepo, mockLwRepo,
                 mockValService, mockLwValFactory, mockOpService, mockReagentPlateService,
                 mockWorkService, mockBioStateReplacer));
+    }
+
+    @AfterEach
+    void cleanup() throws Exception {
+        mocking.close();
     }
 
     @ParameterizedTest

@@ -13,6 +13,7 @@ import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.stan.Matchers.genericMock;
 import static uk.ac.sanger.sccp.stan.service.analysis.AnalysisMeasurementValidator.RIN_VALUE_NAME;
 
 public class TestAnalysisMeasurementValidator {
@@ -35,11 +36,10 @@ public class TestAnalysisMeasurementValidator {
         return value;
     };
 
-    @SuppressWarnings("unchecked")
     @Test
     public void testMeasurementValidatorFactory() {
-        Sanitiser<String> rinSanitiser = mock(Sanitiser.class);
-        Sanitiser<String> dv200Sanitiser = mock(Sanitiser.class);
+        Sanitiser<String> rinSanitiser = genericMock(Sanitiser.class);
+        Sanitiser<String> dv200Sanitiser = genericMock(Sanitiser.class);
         AnalysisMeasurementValidatorFactory factory = new AnalysisMeasurementValidatorFactory(rinSanitiser, dv200Sanitiser);
 
         var val = factory.makeValidator(AnalysisType.RIN);
