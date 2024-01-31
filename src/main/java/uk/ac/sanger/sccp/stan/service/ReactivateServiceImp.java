@@ -84,11 +84,11 @@ public class ReactivateServiceImp implements ReactivateService {
         problems.addAll(val.getErrors());
         Collection<Labware> lwList = val.getLabware();
         List<String> unsuitable = lwList.stream()
-                .filter(lw -> !lw.isDestroyed() && !lw.isDiscarded())
+                .filter(lw -> !(lw.isDestroyed() || lw.isDiscarded() || lw.isUsed()))
                 .map(Labware::getBarcode)
-                .collect(toList());
+                .toList();
         if (!unsuitable.isEmpty()) {
-            problems.add("Labware is not discarded or destroyed: "+unsuitable);
+            problems.add("Labware is not discarded, destroyed or used: "+unsuitable);
         }
         return UCMap.from(val.getLabware(), Labware::getBarcode);
     }
@@ -163,13 +163,14 @@ public class ReactivateServiceImp implements ReactivateService {
     }
 
     /**
-     * Marks labware as not destroyed or discarded
+     * Marks labware as not destroyed, discarded or used
      * @param labware the labware to update
      */
     void updateLabware(Collection<Labware> labware) {
         for (Labware lw : labware) {
             lw.setDiscarded(false);
             lw.setDestroyed(false);
+            lw.setUsed(false);
         }
         lwRepo.saveAll(labware);
     }

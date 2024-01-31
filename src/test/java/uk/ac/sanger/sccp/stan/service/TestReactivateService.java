@@ -13,7 +13,6 @@ import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
-import java.util.function.Predicate;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -137,16 +136,19 @@ class TestReactivateService {
         discardedLw.setDiscarded(true);
         Labware destroyedLw = EntityFactory.makeLabware(lt, sample);
         destroyedLw.setDestroyed(true);
+        Labware usedLw = EntityFactory.makeLabware(lt, sample);
+        usedLw.setUsed(true);
         Labware activeLw = EntityFactory.makeLabware(lt, sample);
 
         discardedLw.setBarcode("STAN-DISC");
         destroyedLw.setBarcode("STAN-DEST");
+        usedLw.setBarcode("STAN-USED");
         activeLw.setBarcode("STAN-A");
 
         return Arrays.stream(new Object[][] {
-                {List.of("STAN-DISC", "STAN-DEST"), List.of(discardedLw, destroyedLw), null, null},
+                {List.of("STAN-DISC", "STAN-DEST", "STAN-USED"), List.of(discardedLw, destroyedLw, usedLw), null, null},
                 {List.of("STAN-DISC", "STAN-DEST", "bananas"), List.of(discardedLw, destroyedLw), "Bad bananas", "Bad bananas"},
-                {List.of("STAN-DISC", "STAN-A"), List.of(discardedLw, activeLw), null, "Labware is not discarded or destroyed: [STAN-A]"},
+                {List.of("STAN-DISC", "STAN-A"), List.of(discardedLw, activeLw), null, "Labware is not discarded, destroyed or used: [STAN-A]"},
         }).map(Arguments::of);
     }
 
@@ -241,11 +243,13 @@ class TestReactivateService {
         LabwareType lt = EntityFactory.getTubeType();
         Labware lw1 = EntityFactory.makeEmptyLabware(lt, "STAN-1");
         Labware lw2 = EntityFactory.makeEmptyLabware(lt, "STAN-2");
+        Labware lw3 = EntityFactory.makeEmptyLabware(lt, "STAN-3");
         lw1.setDiscarded(true);
         lw2.setDestroyed(true);
-        List<Labware> lws = List.of(lw1, lw2);
+        lw3.setUsed(true);
+        List<Labware> lws = List.of(lw1, lw2, lw3);
         service.updateLabware(lws);
-        assertThat(lws).noneMatch(((Predicate<Labware>) Labware::isDestroyed).or(Labware::isDiscarded));
+        assertThat(lws).noneMatch(lw -> lw.isDestroyed() || lw.isDiscarded() || lw.isUsed());
         verify(mockLwRepo).saveAll(lws);
     }
 
