@@ -28,6 +28,36 @@ public class UserAdminService {
     }
 
     /**
+     * Validates a given username
+     * @param username the username to validate
+     * @return the name in a sanitised form
+     * @exception IllegalArgumentException if the username is unsuitable
+     */
+    public String validateUsername(String username) {
+        username = trimAndRequire(username, "Username not supplied.").toLowerCase();
+        usernameValidator.checkArgument(username);
+        return username;
+    }
+
+    /**
+     * Creates a new user with the given username.
+     * The username will be stripped and made lower case.
+     * @param username the username
+     * @param role the role for the new user
+     * @return the newly created user
+     * @exception IllegalArgumentException if the username is unsuitable
+     * @exception EntityExistsException if the user already exists
+     */
+    public User addUser(String username, User.Role role) {
+        username = validateUsername(username);
+        requireNonNull(role, "User role is null");
+        if (userRepo.findByUsername(username).isPresent()) {
+            throw new EntityExistsException("User already exists: "+username);
+        }
+        return userRepo.save(new User(null, username, role));
+    }
+
+    /**
      * Creates a new user with the given username.
      * The username will be stripped and made lower case.
      * @param username the username
@@ -36,12 +66,7 @@ public class UserAdminService {
      * @exception EntityExistsException if the user already exists
      */
     public User addUser(String username) {
-        username = trimAndRequire(username, "Username not supplied.").toLowerCase();
-        usernameValidator.checkArgument(username);
-        if (userRepo.findByUsername(username).isPresent()) {
-            throw new EntityExistsException("User already exists: "+username);
-        }
-        return userRepo.save(new User(null, username, User.Role.normal));
+        return addUser(username, User.Role.normal);
     }
 
     /**

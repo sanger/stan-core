@@ -4,6 +4,7 @@ import org.springframework.data.repository.CrudRepository;
 import uk.ac.sanger.sccp.stan.model.User;
 
 import javax.persistence.EntityNotFoundException;
+import java.util.List;
 import java.util.Optional;
 
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
@@ -14,4 +15,6 @@ public interface UserRepo extends CrudRepository<User, Integer> {
     default User getByUsername(String username) throws EntityNotFoundException {
         return findByUsername(username).orElseThrow(() -> new EntityNotFoundException("User not found: "+repr(username)));
     }
+
+    List<User> findAllByRole(User.Role role);
 }

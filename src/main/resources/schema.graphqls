@@ -1973,6 +1973,8 @@ Send information to the application.
 These typically require a user with the suitable permission for the particular request.
 """
 type Mutation {
+    """Log in with your Sanger id and create an end user account."""
+    registerAsEndUser(username: String!, password: String!): LoginResult!
     """Log in with the given credentials."""
     login(username: String!, password: String!): LoginResult!
     """Log out; end the current login session."""
