@@ -20,7 +20,7 @@ public class TestSpeciesAdminService extends AdminServiceTestUtils<Species, Spec
     @BeforeEach
     void setup() {
         mockRepo = mock(SpeciesRepo.class);
-        service = new SpeciesAdminService(mockRepo, simpleValidator());
+        service = new SpeciesAdminService(mockRepo, mockUserRepo, simpleValidator(), mockEmailService);
     }
 
     @ParameterizedTest

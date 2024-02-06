@@ -21,7 +21,7 @@ public class TestSolutionAdminService extends AdminServiceTestUtils<Solution, So
     @BeforeEach
     void setup() {
         mockRepo = mock(SolutionRepo.class);
-        service = new SolutionAdminService(mockRepo, simpleValidator());
+        service = new SolutionAdminService(mockRepo, mockUserRepo, simpleValidator(), mockEmailService);
     }
 
     @ParameterizedTest

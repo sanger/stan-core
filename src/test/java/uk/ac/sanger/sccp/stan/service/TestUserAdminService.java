@@ -5,6 +5,7 @@ import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.User;
 import uk.ac.sanger.sccp.stan.repo.UserRepo;
@@ -35,8 +36,8 @@ public class TestUserAdminService {
     }
 
     @ParameterizedTest
-    @MethodSource("addUserArgs")
-    public void testAddUser(String username, String sanitisedUsername, Exception expectedException) {
+    @MethodSource("addNormalUserArgs")
+    public void testAddNormalUser(User creator, String username, String sanitisedUsername, Exception expectedException) {
         User existingUser;
         if (expectedException instanceof EntityExistsException) {
             existingUser = new User(13, sanitisedUsername, User.Role.normal);
@@ -45,24 +46,25 @@ public class TestUserAdminService {
         }
         when(mockUserRepo.findByUsername(sanitisedUsername)).thenReturn(Optional.ofNullable(existingUser));
         if (expectedException != null) {
-            assertException(expectedException, () -> service.addUser(username));
+            assertException(expectedException, () -> service.addNormalUser(creator, username));
             verify(mockUserRepo, never()).save(any());
             return;
         }
         User newUser = new User(14, sanitisedUsername, User.Role.normal);
         when(mockUserRepo.save(any())).thenReturn(newUser);
-        assertSame(newUser, service.addUser(username));
+        assertSame(newUser, service.addNormalUser(creator, username));
         verify(mockUserRepo).save(new User(null, sanitisedUsername, User.Role.normal));
     }
 
-    static Stream<Arguments> addUserArgs() {
+    static Stream<Arguments> addNormalUserArgs() {
+        User creator = EntityFactory.getUser();
         return Stream.of(
-                Arguments.of("Alpha", "alpha", null),
-                Arguments.of("   Alpha\t  \n", "alpha", null),
-                Arguments.of("!Alpha", "!alpha", new IllegalArgumentException("username \"!alpha\" contains invalid characters \"!\".")),
-                Arguments.of(null, null, new IllegalArgumentException("Username not supplied.")),
-                Arguments.of("  \t\n  ", null, new IllegalArgumentException("Username not supplied.")),
-                Arguments.of("  ALPHA ", "alpha", new EntityExistsException("User already exists: alpha"))
+                Arguments.of(creator, "Alpha", "alpha", null),
+                Arguments.of(creator, "   Alpha\t  \n", "alpha", null),
+                Arguments.of(creator, "!Alpha", "!alpha", new IllegalArgumentException("username \"!alpha\" contains invalid characters \"!\".")),
+                Arguments.of(creator, null, null, new IllegalArgumentException("Username not supplied.")),
+                Arguments.of(creator, "  \t\n  ", null, new IllegalArgumentException("Username not supplied.")),
+                Arguments.of(creator, "  ALPHA ", "alpha", new EntityExistsException("User already exists: alpha"))
         );
     }
 

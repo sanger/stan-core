@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.Hmdmc;
 import uk.ac.sanger.sccp.stan.repo.HmdmcRepo;
+import uk.ac.sanger.sccp.stan.repo.UserRepo;
 
 import java.util.Optional;
 
@@ -15,8 +16,8 @@ import java.util.Optional;
 @Service
 public class HmdmcAdminService extends BaseAdminService<Hmdmc, HmdmcRepo> {
     @Autowired
-    public HmdmcAdminService(HmdmcRepo repo, @Qualifier("hmdmcValidator") Validator<String> hmdmcValidator) {
-        super(repo, "HuMFre", "HuMFre", hmdmcValidator);
+    public HmdmcAdminService(HmdmcRepo repo, UserRepo userRepo,  @Qualifier("hmdmcValidator") Validator<String> hmdmcValidator, EmailService emailService) {
+        super(repo, userRepo, "HuMFre", "HuMFre", hmdmcValidator, emailService);
     }
 
     @Override

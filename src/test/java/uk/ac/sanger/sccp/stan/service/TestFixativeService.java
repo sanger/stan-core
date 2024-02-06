@@ -21,7 +21,7 @@ public class TestFixativeService extends AdminServiceTestUtils<Fixative, Fixativ
     @BeforeEach
     void setup() {
         mockRepo = mock(FixativeRepo.class);
-        service = new FixativeService(mockRepo, simpleValidator());
+        service = new FixativeService(mockRepo, mockUserRepo, simpleValidator(), mockEmailService);
     }
 
     @ParameterizedTest

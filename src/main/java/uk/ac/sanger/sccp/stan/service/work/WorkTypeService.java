@@ -4,9 +4,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.WorkType;
+import uk.ac.sanger.sccp.stan.repo.UserRepo;
 import uk.ac.sanger.sccp.stan.repo.WorkTypeRepo;
-import uk.ac.sanger.sccp.stan.service.BaseAdminService;
-import uk.ac.sanger.sccp.stan.service.Validator;
+import uk.ac.sanger.sccp.stan.service.*;
 
 import java.util.Optional;
 
@@ -17,9 +17,10 @@ import java.util.Optional;
 @Service
 public class WorkTypeService extends BaseAdminService<WorkType, WorkTypeRepo> {
     @Autowired
-    public WorkTypeService(WorkTypeRepo workTypeRepo,
-                           @Qualifier("workTypeNameValidator") Validator<String> nameValidator) {
-        super(workTypeRepo, "WorkType", "Name", nameValidator);
+    public WorkTypeService(WorkTypeRepo workTypeRepo, UserRepo userRepo,
+                           @Qualifier("workTypeNameValidator") Validator<String> nameValidator,
+                           EmailService emailService) {
+        super(workTypeRepo, userRepo, "WorkType", "Name", nameValidator, emailService);
     }
 
     @Override

@@ -60,12 +60,13 @@ public class UserAdminService {
     /**
      * Creates a new user with the given username.
      * The username will be stripped and made lower case.
+     * @param creator the user responsible for creating this new user
      * @param username the username
      * @return the newly created user
      * @exception IllegalArgumentException if the username is unsuitable
      * @exception EntityExistsException if the user already exists
      */
-    public User addUser(String username) {
+    public User addNormalUser(User creator, String username) {
         return addUser(username, User.Role.normal);
     }
 

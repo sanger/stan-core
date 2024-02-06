@@ -1,10 +1,14 @@
 package uk.ac.sanger.sccp.stan.service;
 
 import org.apache.commons.lang3.function.TriFunction;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.params.provider.Arguments;
 import org.springframework.data.repository.CrudRepository;
+import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.HasEnabled;
+import uk.ac.sanger.sccp.stan.model.User;
+import uk.ac.sanger.sccp.stan.repo.UserRepo;
 
 import javax.persistence.EntityExistsException;
 import javax.persistence.EntityNotFoundException;
@@ -30,6 +34,9 @@ public abstract class AdminServiceTestUtils<E extends HasEnabled, R extends Crud
     protected R mockRepo;
     protected S service;
 
+    protected UserRepo mockUserRepo;
+    protected EmailService mockEmailService;
+
     protected AdminServiceTestUtils(String entityTypeName, BiFunction<Integer, String, E> newEntityFunction,
                           BiFunction<R, String, Optional<E>> repoFindFunction,
                           String missingStringMessage) {
@@ -39,22 +46,32 @@ public abstract class AdminServiceTestUtils<E extends HasEnabled, R extends Crud
         this.missingStringMessage = missingStringMessage;
     }
 
+    @BeforeEach
+    protected void setupBase() {
+        this.mockUserRepo = mock(UserRepo.class);
+        this.mockEmailService = mock(EmailService.class);
+    }
+
     protected E newEntity(Integer id, String string) {
         return newEntityFunction.apply(id, string);
     }
 
-    protected void genericTestAddNew(BiFunction<S, String, E> serviceAddFunction,
+    protected void genericTestAddNew(TriFunction<S, User, String, E> serviceAddFunction,
                            String string, String existingEntityString, Exception expectedException, String expectedResultString) {
         when(repoFindFunction.apply(mockRepo, string)).thenReturn(Optional.ofNullable(existingEntityString).map(s -> newEntity(14, s)));
+        User user = EntityFactory.getUser();
         if (expectedException != null) {
-            assertException(expectedException, () -> serviceAddFunction.apply(service, string));
+            assertException(expectedException, () -> serviceAddFunction.apply(service, user, string));
             verify(mockRepo, never()).save(any());
             return;
         }
         E expectedResult = newEntity(20, expectedResultString);
         when(mockRepo.save(any())).thenReturn(expectedResult);
-        assertSame(expectedResult, serviceAddFunction.apply(service, string));
+        assertSame(expectedResult, serviceAddFunction.apply(service, user, string));
         verify(mockRepo).save(newEntity(null, expectedResultString));
+        if (user.getRole()!= User.Role.enduser) {
+            verifyNoInteractions(mockEmailService);
+        }
     }
 
     protected String expectedMessage(Exception expectedException) {

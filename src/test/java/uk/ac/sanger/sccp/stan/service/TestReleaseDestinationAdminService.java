@@ -20,7 +20,7 @@ public class TestReleaseDestinationAdminService extends AdminServiceTestUtils<Re
     @BeforeEach
     void setup() {
         mockRepo = mock(ReleaseDestinationRepo.class);
-        service = new ReleaseDestinationAdminService(mockRepo, simpleValidator());
+        service = new ReleaseDestinationAdminService(mockRepo, mockUserRepo, simpleValidator(), mockEmailService);
     }
 
     @ParameterizedTest

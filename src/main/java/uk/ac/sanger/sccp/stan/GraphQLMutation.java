@@ -31,7 +31,6 @@ import uk.ac.sanger.sccp.stan.service.work.WorkTypeService;
 
 import java.util.List;
 import java.util.function.BiFunction;
-import java.util.function.Function;
 
 import static java.util.Objects.requireNonNull;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
@@ -439,7 +438,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     }
 
     public DataFetcher<Project> addProject() {
-        return adminAdd(projectService::addNew, "AddProject", "name");
+        return adminAdd(projectService::addNew, "AddProject", "name", User.Role.enduser);
     }
 
     public DataFetcher<Project> setProjectEnabled() {
@@ -455,7 +454,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     }
 
     public DataFetcher<CostCode> addCostCode() {
-        return adminAdd(costCodeService::addNew, "AddCostCode", "code");
+        return adminAdd(costCodeService::addNew, "AddCostCode", "code", User.Role.enduser);
     }
 
     public DataFetcher<CostCode> setCostCodeEnabled() {
@@ -876,7 +875,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     }
 
     public DataFetcher<User> addUser() {
-        return adminAdd(userAdminService::addUser, "AddUser", "username");
+        return adminAdd(userAdminService::addNormalUser, "AddUser", "username");
     }
 
     public DataFetcher<User> setUserRole() {
@@ -889,12 +888,16 @@ public class GraphQLMutation extends BaseGraphQLResource {
         };
     }
 
-    private <E> DataFetcher<E> adminAdd(Function<String, E> addFunction, String functionName, String argName) {
+    private <E> DataFetcher<E> adminAdd(BiFunction<User, String, E> addFunction, String functionName, String argName) {
+        return adminAdd(addFunction, functionName, argName, User.Role.admin);
+    }
+
+    private <E> DataFetcher<E> adminAdd(BiFunction<User, String, E> addFunction, String functionName, String argName, User.Role role) {
         return dfe -> {
-            User user = checkUser(dfe, User.Role.admin);
+            User user = checkUser(dfe, role);
             String arg = dfe.getArgument(argName);
             logRequest(functionName, user, repr(arg));
-            return addFunction.apply(arg);
+            return addFunction.apply(user, arg);
         };
     }
 

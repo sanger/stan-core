@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.OmeroProject;
 import uk.ac.sanger.sccp.stan.repo.OmeroProjectRepo;
+import uk.ac.sanger.sccp.stan.repo.UserRepo;
 
 import java.util.Optional;
 
@@ -15,9 +16,10 @@ import java.util.Optional;
 @Service
 public class OmeroProjectAdminService extends BaseAdminService<OmeroProject, OmeroProjectRepo> {
     @Autowired
-    public OmeroProjectAdminService(OmeroProjectRepo repo,
-                                    @Qualifier("omeroProjectNameValidator") Validator<String> omeroProjectValidator) {
-        super(repo, "Omero project", "Name", omeroProjectValidator);
+    public OmeroProjectAdminService(OmeroProjectRepo repo, UserRepo userRepo,
+                                    @Qualifier("omeroProjectNameValidator") Validator<String> omeroProjectValidator,
+                                    EmailService emailService) {
+        super(repo, userRepo, "Omero project", "Name", omeroProjectValidator, emailService);
     }
 
     @Override

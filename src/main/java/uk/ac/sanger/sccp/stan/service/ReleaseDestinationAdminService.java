@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.ReleaseDestination;
 import uk.ac.sanger.sccp.stan.repo.ReleaseDestinationRepo;
+import uk.ac.sanger.sccp.stan.repo.UserRepo;
 
 import java.util.Optional;
 
@@ -15,9 +16,10 @@ import java.util.Optional;
 @Service
 public class ReleaseDestinationAdminService extends BaseAdminService<ReleaseDestination, ReleaseDestinationRepo> {
     @Autowired
-    public ReleaseDestinationAdminService(ReleaseDestinationRepo repo,
-                                          @Qualifier("releaseDestinationValidator") Validator<String> releaseDestinationValidator) {
-        super(repo, "Release destination", "Name", releaseDestinationValidator);
+    public ReleaseDestinationAdminService(ReleaseDestinationRepo repo, UserRepo userRepo,
+                                          @Qualifier("releaseDestinationValidator") Validator<String> releaseDestinationValidator,
+                                          EmailService emailService) {
+        super(repo, userRepo, "Release destination", "Name", releaseDestinationValidator, emailService);
     }
 
     @Override

@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.SlotRegion;
 import uk.ac.sanger.sccp.stan.repo.SlotRegionRepo;
+import uk.ac.sanger.sccp.stan.repo.UserRepo;
 
 import java.util.Optional;
 
@@ -15,8 +16,10 @@ import java.util.Optional;
 @Service
 public class SlotRegionAdminService extends BaseAdminService<SlotRegion, SlotRegionRepo> {
     @Autowired
-    public SlotRegionAdminService(SlotRegionRepo repo, @Qualifier("slotRegionNameValidator") Validator<String> nameValidator) {
-        super(repo, "SlotRegion", "name", nameValidator);
+    public SlotRegionAdminService(SlotRegionRepo repo, UserRepo userRepo,
+                                  @Qualifier("slotRegionNameValidator") Validator<String> nameValidator,
+                                  EmailService emailService) {
+        super(repo, userRepo, "SlotRegion", "name", nameValidator, emailService);
     }
 
     @Override

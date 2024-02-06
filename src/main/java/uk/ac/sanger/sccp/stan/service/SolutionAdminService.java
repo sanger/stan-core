@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.Solution;
 import uk.ac.sanger.sccp.stan.repo.SolutionRepo;
+import uk.ac.sanger.sccp.stan.repo.UserRepo;
 
 import java.util.Optional;
 
@@ -15,9 +16,10 @@ import java.util.Optional;
 @Service
 public class SolutionAdminService extends BaseAdminService<Solution, SolutionRepo> {
     @Autowired
-    public SolutionAdminService(SolutionRepo solutionRepo,
-                                @Qualifier("solutionValidator") Validator<String> solutionValidator) {
-        super(solutionRepo, "Solution", "Name", solutionValidator);
+    public SolutionAdminService(SolutionRepo solutionRepo, UserRepo userRepo,
+                                @Qualifier("solutionValidator") Validator<String> solutionValidator,
+                                EmailService emailService) {
+        super(solutionRepo, userRepo, "Solution", "Name", solutionValidator, emailService);
     }
 
     @Override
