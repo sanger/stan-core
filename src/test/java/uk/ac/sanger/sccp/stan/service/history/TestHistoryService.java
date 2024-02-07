@@ -10,6 +10,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.service.SlotRegionService;
+import uk.ac.sanger.sccp.stan.service.flag.FlagLookupService;
 import uk.ac.sanger.sccp.stan.service.history.HistoryServiceImp.EventTypeFilter;
 import uk.ac.sanger.sccp.stan.service.history.ReagentActionDetailService.ReagentActionDetail;
 import uk.ac.sanger.sccp.utils.BasicUtils;
@@ -79,6 +80,8 @@ public class TestHistoryService {
     private ReagentActionDetailService mockRadService;
     @Mock
     private SlotRegionService mockSlotRegionService;
+    @Mock
+    private FlagLookupService mockFlagLookupService;
 
     private HistoryServiceImp service;
 
@@ -96,7 +99,7 @@ public class TestHistoryService {
                 mockReleaseRepo, mockDestructionRepo, mockOpCommentRepo, mockRoiRepo, mockSnapshotRepo, mockWorkRepo,
                 mockMeasurementRepo, mockLwNoteRepo, mockResultOpRepo, mockStainTypeRepo, mockLwProbeRepo,
                 mockFlagRepo, mockOpSolRepo, mockSolutionRepo,
-                mockRadService, mockSlotRegionService));
+                mockRadService, mockSlotRegionService, mockFlagLookupService));
     }
 
     @AfterEach
@@ -214,15 +217,18 @@ public class TestHistoryService {
         doReturn(entries.subList(1,2)).when(service).createEntriesForOps(ops, null, lws, null, work.getWorkNumber());
 
         doReturn(entries.subList(0,1)).when(service).createEntriesForReleases(releases, null, null, work.getWorkNumber());
+        List<String> flaggedBarcodes = List.of("alpha", "beta");
 
         List<Sample> samples = List.of(sam1,sam2);
         List<Labware> allLabware = BasicUtils.concat(lws, List.of(rlw1, rlw2));
         doReturn(samples).when(service).referencedSamples(sameElements(entries, true), sameElements(allLabware, true));
+        doReturn(flaggedBarcodes).when(service).loadFlaggedBarcodes(allLabware);
 
         History history = service.getHistoryForWorkNumber(workNumber);
         assertEquals(entries, history.getEntries());
         assertEquals(samples, history.getSamples());
         assertEquals(allLabware, history.getLabware());
+        assertEquals(flaggedBarcodes, history.getFlaggedBarcodes());
     }
 
     @ParameterizedTest
@@ -401,10 +407,14 @@ public class TestHistoryService {
             doReturn(history).when(service).getHistoryForOpType(opType);
         }
 
+        List<String> flaggedBarcodes = List.of("alpha", "beta");
+        doReturn(flaggedBarcodes).when(service).loadFlaggedBarcodes(history.getLabware());
+
         if (expectException) {
             assertThrows(EntityNotFoundException.class, () -> service.getHistoryForEventType(eventTypeName));
         } else {
             assertSame(history, service.getHistoryForEventType(eventTypeName));
+            assertEquals(flaggedBarcodes, history.getFlaggedBarcodes());
         }
     }
 
@@ -751,6 +761,8 @@ public class TestHistoryService {
         when(mockDestructionRepo.findAllByLabwareIdIn(labwareIds)).thenReturn(destructions);
         when(mockReleaseRepo.findAllByLabwareIdIn(labwareIds)).thenReturn(releases);
         when(mockLwRepo.findAllByIdIn(labwareIds)).thenReturn(labware);
+        List<String> flaggedBarcodes = List.of("Alpha", "Beta");
+        doReturn(flaggedBarcodes).when(service).loadFlaggedBarcodes(labware);
 
         doReturn(labwareIds).when(service).loadLabwareIdsForOpsAndSampleIds(ops, sampleIds);
 
@@ -761,9 +773,10 @@ public class TestHistoryService {
         doReturn(entries).when(service).assembleEntries(List.of(opEntries, releaseEntries, destructionEntries));
 
         History history = service.getHistoryForSamples(samples);
-        assertEquals(history.getEntries(), entries);
-        assertEquals(history.getSamples(), samples);
-        assertEquals(history.getLabware(), labware);
+        assertEquals(entries, history.getEntries());
+        assertEquals(samples, history.getSamples());
+        assertEquals(labware, history.getLabware());
+        assertEquals(flaggedBarcodes, history.getFlaggedBarcodes());
     }
 
     @ParameterizedTest
@@ -1519,7 +1532,6 @@ public class TestHistoryService {
                 .containsExactlyElementsOf(expectedEntries);
     }
 
-
     @Test
     public void testAssembleEntries() {
         List<HistoryEntry> e1 = List.of(
@@ -1576,5 +1588,16 @@ public class TestHistoryService {
         List<OperationType> opTypes = Stream.of("Alpha", "Beta").map(s -> EntityFactory.makeOperationType(s, null)).collect(toList());
         when(mockOpTypeRepo.findAll()).thenReturn(opTypes);
         assertThat(service.getEventTypes()).containsExactly("Alpha", "Beta", "Release", "Destruction");
+    }
+
+    @Test
+    public void testLoadFlaggedBarcodes() {
+        createLabware();
+        List<Labware> labwares = Arrays.asList(this.labware);
+        List<LabwareFlagged> lfs = IntStream.range(0, labwares.size())
+                .mapToObj(i -> new LabwareFlagged(labwares.get(i), i==1 || i==2))
+                .toList();
+        when(mockFlagLookupService.getLabwareFlagged(labwares)).thenReturn(lfs);
+        assertThat(service.loadFlaggedBarcodes(labwares)).containsExactlyInAnyOrder(labwares.get(1).getBarcode(), labwares.get(2).getBarcode());
     }
 }

@@ -7,6 +7,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.service.SlotRegionService;
+import uk.ac.sanger.sccp.stan.service.flag.FlagLookupService;
 import uk.ac.sanger.sccp.stan.service.history.ReagentActionDetailService.ReagentActionDetail;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
@@ -51,6 +52,7 @@ public class HistoryServiceImp implements HistoryService {
     private final SolutionRepo solutionRepo;
     private final ReagentActionDetailService reagentActionDetailService;
     private final SlotRegionService slotRegionService;
+    private final FlagLookupService flagLookupService;
 
     @Autowired
     public HistoryServiceImp(OperationRepo opRepo, OperationTypeRepo opTypeRepo, LabwareRepo lwRepo, SampleRepo sampleRepo, TissueRepo tissueRepo,
@@ -60,7 +62,7 @@ public class HistoryServiceImp implements HistoryService {
                              LabwareNoteRepo labwareNoteRepo, ResultOpRepo resultOpRepo,
                              StainTypeRepo stainTypeRepo, LabwareProbeRepo lwProbeRepo, LabwareFlagRepo flagRepo, OperationSolutionRepo opSolRepo, SolutionRepo solutionRepo,
                              ReagentActionDetailService reagentActionDetailService,
-                             SlotRegionService slotRegionService) {
+                             SlotRegionService slotRegionService, FlagLookupService flagLookupService) {
         this.opRepo = opRepo;
         this.opTypeRepo = opTypeRepo;
         this.lwRepo = lwRepo;
@@ -83,6 +85,7 @@ public class HistoryServiceImp implements HistoryService {
         this.solutionRepo = solutionRepo;
         this.reagentActionDetailService = reagentActionDetailService;
         this.slotRegionService = slotRegionService;
+        this.flagLookupService = flagLookupService;
     }
 
     @Override
@@ -112,17 +115,21 @@ public class HistoryServiceImp implements HistoryService {
 
     /**
      * Gets history with the given event type.
+     * This method loads flagged barcodes.
      * @param eventType a string identifying an event type
      * @return the history comprising the event type
      */
     public History getHistoryForEventType(String eventType) {
+        History history;
         if (eventType.equalsIgnoreCase(RELEASE_EVENT_TYPE)) {
-            return getHistoryOfReleases();
+            history = getHistoryOfReleases();
+        } else if (eventType.equalsIgnoreCase(DESTRUCTION_EVENT_TYPE)) {
+            history = getHistoryOfDestructions();
+        } else {
+            history = getHistoryForOpType(opTypeRepo.getByName(eventType));
         }
-        if (eventType.equalsIgnoreCase(DESTRUCTION_EVENT_TYPE)) {
-            return getHistoryOfDestructions();
-        }
-        return getHistoryForOpType(opTypeRepo.getByName(eventType));
+        history.setFlaggedBarcodes(loadFlaggedBarcodes(history.getLabware()));
+        return history;
     }
 
     /**
@@ -359,7 +366,7 @@ public class HistoryServiceImp implements HistoryService {
         }
         List<Sample> samples = referencedSamples(entries, allLabware);
         entries.sort(Comparator.comparing(HistoryEntry::getTime));
-        return new History(entries, samples, allLabware);
+        return new History(entries, samples, allLabware, loadFlaggedBarcodes(allLabware));
     }
 
     /**
@@ -422,6 +429,7 @@ public class HistoryServiceImp implements HistoryService {
 
     /**
      * Gets the history for the specifically supplied samples (which are commonly all related).
+     * This method loads flagged barcodes.
      * @param samples the samples to get the history for
      * @param requiredWorkNumber the required work number (if any)
      * @param etFilter a filter for event types
@@ -477,7 +485,7 @@ public class HistoryServiceImp implements HistoryService {
         List<HistoryEntry> destructionEntries = createEntriesForDestructions(destructions, sampleIds);
 
         List<HistoryEntry> entries = assembleEntries(List.of(opEntries, releaseEntries, destructionEntries));
-        return new History(entries, samples, labware);
+        return new History(entries, samples, labware, loadFlaggedBarcodes(labware));
     }
 
 
@@ -1060,6 +1068,16 @@ public class HistoryServiceImp implements HistoryService {
             }
         }
         return entries;
+    }
+
+    /**
+     * Gets a list of the barcodes of the indicated labware that are flagged
+     * @param labware the labware
+     * @return the barcodes of those labware that are flagged
+     */
+    public List<String> loadFlaggedBarcodes(Collection<Labware> labware) {
+        List<LabwareFlagged> lfs = flagLookupService.getLabwareFlagged(labware);
+        return lfs.stream().filter(LabwareFlagged::isFlagged).map(lf -> lf.getLabware().getBarcode()).toList();
     }
 
     /**
