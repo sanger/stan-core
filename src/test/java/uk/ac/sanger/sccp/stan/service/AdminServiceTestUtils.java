@@ -6,9 +6,9 @@ import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.params.provider.Arguments;
 import org.springframework.data.repository.CrudRepository;
 import uk.ac.sanger.sccp.stan.EntityFactory;
+import uk.ac.sanger.sccp.stan.Transactor;
 import uk.ac.sanger.sccp.stan.model.HasEnabled;
 import uk.ac.sanger.sccp.stan.model.User;
-import uk.ac.sanger.sccp.stan.repo.UserRepo;
 
 import javax.persistence.EntityExistsException;
 import javax.persistence.EntityNotFoundException;
@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.stan.Matchers.mockTransactor;
 
 /**
  * Utils class for tests of admin services
@@ -34,8 +35,8 @@ public abstract class AdminServiceTestUtils<E extends HasEnabled, R extends Crud
     protected R mockRepo;
     protected S service;
 
-    protected UserRepo mockUserRepo;
-    protected EmailService mockEmailService;
+    protected Transactor mockTransactor;
+    protected AdminNotifyService mockNotifyService;
 
     protected AdminServiceTestUtils(String entityTypeName, BiFunction<Integer, String, E> newEntityFunction,
                           BiFunction<R, String, Optional<E>> repoFindFunction,
@@ -48,8 +49,8 @@ public abstract class AdminServiceTestUtils<E extends HasEnabled, R extends Crud
 
     @BeforeEach
     protected void setupBase() {
-        this.mockUserRepo = mock(UserRepo.class);
-        this.mockEmailService = mock(EmailService.class);
+        this.mockTransactor = mock(Transactor.class);
+        this.mockNotifyService = mock(AdminNotifyService.class);
     }
 
     protected E newEntity(Integer id, String string) {
@@ -58,6 +59,7 @@ public abstract class AdminServiceTestUtils<E extends HasEnabled, R extends Crud
 
     protected void genericTestAddNew(TriFunction<S, User, String, E> serviceAddFunction,
                            String string, String existingEntityString, Exception expectedException, String expectedResultString) {
+        mockTransactor(mockTransactor);
         when(repoFindFunction.apply(mockRepo, string)).thenReturn(Optional.ofNullable(existingEntityString).map(s -> newEntity(14, s)));
         User user = EntityFactory.getUser();
         if (expectedException != null) {
@@ -70,8 +72,9 @@ public abstract class AdminServiceTestUtils<E extends HasEnabled, R extends Crud
         assertSame(expectedResult, serviceAddFunction.apply(service, user, string));
         verify(mockRepo).save(newEntity(null, expectedResultString));
         if (user.getRole()!= User.Role.enduser) {
-            verifyNoInteractions(mockEmailService);
+            verifyNoInteractions(mockNotifyService);
         }
+        verify(mockTransactor).transact(any(), any());
     }
 
     protected String expectedMessage(Exception expectedException) {

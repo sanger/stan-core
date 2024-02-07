@@ -20,7 +20,7 @@ public class TestProbePanelService extends AdminServiceTestUtils<ProbePanel, Pro
     @BeforeEach
     void setup() {
         mockRepo = mock(ProbePanelRepo.class);
-        service = new ProbePanelService(mockRepo, mockUserRepo, simpleValidator(), mockEmailService);
+        service = new ProbePanelService(mockRepo, simpleValidator(), mockTransactor, mockNotifyService);
     }
 
     @ParameterizedTest

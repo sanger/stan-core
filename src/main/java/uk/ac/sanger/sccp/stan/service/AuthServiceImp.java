@@ -8,12 +8,14 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.AuthenticationComponent;
+import uk.ac.sanger.sccp.stan.Transactor;
 import uk.ac.sanger.sccp.stan.config.SessionConfig;
 import uk.ac.sanger.sccp.stan.model.User;
 import uk.ac.sanger.sccp.stan.repo.UserRepo;
 import uk.ac.sanger.sccp.stan.request.LoginResult;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Optional;
 
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
@@ -27,19 +29,23 @@ public class AuthServiceImp implements AuthService {
     private final UserRepo userRepo;
     private final AuthenticationComponent authComp;
     private final LDAPService ldapService;
-    private final EmailService emailService;
+    private final AdminNotifyService adminNotifyService;
     private final UserAdminService userAdminService;
+    private final Transactor transactor;
 
     @Autowired
     public AuthServiceImp(SessionConfig sessionConfig,
                           UserRepo userRepo, AuthenticationComponent authComp,
-                          LDAPService ldapService, EmailService emailService, UserAdminService userAdminService) {
+                          LDAPService ldapService, AdminNotifyService adminNotifyService,
+                          UserAdminService userAdminService,
+                          Transactor transactor) {
         this.sessionConfig = sessionConfig;
         this.userRepo = userRepo;
         this.authComp = authComp;
         this.ldapService = ldapService;
-        this.emailService = emailService;
+        this.adminNotifyService = adminNotifyService;
         this.userAdminService = userAdminService;
+        this.transactor = transactor;
     }
 
     /**
@@ -89,8 +95,7 @@ public class AuthServiceImp implements AuthService {
         return "OK";
     }
 
-    @Override
-    public LoginResult selfRegister(String username, String password, User.Role role) {
+    public LoginResult selfRegisterInTransaction(String username, String password, User.Role role) {
         if (log.isInfoEnabled()) {
             log.info("selfRegister attempt by {}", repr(username));
         }
@@ -100,21 +105,33 @@ public class AuthServiceImp implements AuthService {
         }
         Optional<User> optUser = userRepo.findByUsername(username);
         User user;
+        boolean created;
         if (optUser.isEmpty()) {
             user = userAdminService.addUser(username, role);
             log.info("Login succeeded as new user {}", user);
-            sendNewUserEmail(user);
+            created = true;
         } else {
             user = optUser.get();
             if (user.getRole()== User.Role.disabled) {
                 return new LoginResult("Username is disabled.", null);
             }
             log.info("Login succeeded for existing user {}", user);
+            created = false;
         }
 
         Authentication authentication = new UsernamePasswordAuthenticationToken(user, password, new ArrayList<>());
         authComp.setAuthentication(authentication, sessionConfig.getMaxInactiveMinutes());
-        return new LoginResult("OK", user);
+        return new LoginResult("OK", user, created);
+    }
+
+    @Override
+    public LoginResult selfRegister(String username, String password, User.Role role) {
+        LoginResult result = transactor.transact("selfRegister",
+                () -> selfRegisterInTransaction(username, password, role));
+        if (result.isCreated()) {
+            sendNewUserEmail(result.getUser());
+        }
+        return result;
     }
 
     /**
@@ -122,12 +139,7 @@ public class AuthServiceImp implements AuthService {
      * @param user the new user
      */
     public void sendNewUserEmail(User user) {
-        List<User> admins = userRepo.findAllByRole(User.Role.admin);
-        if (admins.isEmpty()) {
-            return;
-        }
-        List<String> usernames = admins.stream().map(User::getUsername).toList();
         String body = "User "+user.getUsername()+" has registered themself as "+user.getRole()+" on %service.";
-        emailService.tryEmail(usernames, "New user created on %service", body);
+        adminNotifyService.issue("user", "New user created on %service", body);
     }
 }

@@ -3,9 +3,9 @@ package uk.ac.sanger.sccp.stan.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import uk.ac.sanger.sccp.stan.Transactor;
 import uk.ac.sanger.sccp.stan.model.ReleaseRecipient;
 import uk.ac.sanger.sccp.stan.repo.ReleaseRecipientRepo;
-import uk.ac.sanger.sccp.stan.repo.UserRepo;
 
 import javax.persistence.EntityNotFoundException;
 import java.util.Objects;
@@ -21,10 +21,10 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 @Service
 public class ReleaseRecipientAdminService extends BaseAdminService<ReleaseRecipient, ReleaseRecipientRepo> {
     @Autowired
-    public ReleaseRecipientAdminService(ReleaseRecipientRepo repo, UserRepo userRepo,
+    public ReleaseRecipientAdminService(ReleaseRecipientRepo repo,
                                         @Qualifier("releaseRecipientValidator") Validator<String> releaseRecipientValidator,
-                                        EmailService emailService) {
-        super(repo, userRepo, "Release recipient", "Username", releaseRecipientValidator, emailService);
+                                        Transactor transactor, AdminNotifyService notifyService) {
+        super(repo, "Release recipient", "Username", releaseRecipientValidator, transactor, notifyService);
     }
 
     public ReleaseRecipient addNew(String username, String fullName) {

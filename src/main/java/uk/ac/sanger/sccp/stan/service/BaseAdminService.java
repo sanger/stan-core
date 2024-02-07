@@ -1,13 +1,12 @@
 package uk.ac.sanger.sccp.stan.service;
 
 import org.springframework.data.repository.CrudRepository;
+import uk.ac.sanger.sccp.stan.Transactor;
 import uk.ac.sanger.sccp.stan.model.HasEnabled;
 import uk.ac.sanger.sccp.stan.model.User;
-import uk.ac.sanger.sccp.stan.repo.UserRepo;
 
 import javax.persistence.EntityExistsException;
 import javax.persistence.EntityNotFoundException;
-import java.util.List;
 import java.util.Optional;
 
 import static uk.ac.sanger.sccp.utils.BasicUtils.trimAndRequire;
@@ -19,19 +18,20 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.trimAndRequire;
 public abstract class BaseAdminService<E extends HasEnabled, R extends CrudRepository<E, ?>> {
     final String entityTypeName;
     final R repo;
-    final UserRepo userRepo;
     final String missingFieldMessage;
     final Validator<String> stringValidator;
-    final EmailService emailService;
+    final Transactor transactor;
+    final AdminNotifyService notifyService;
 
-    protected BaseAdminService(R repo, UserRepo userRepo, String entityTypeName, String stringFieldName,
-                               Validator<String> stringValidator, EmailService emailService) {
+    protected BaseAdminService(R repo, String entityTypeName, String stringFieldName,
+                               Validator<String> stringValidator, Transactor transactor,
+                               AdminNotifyService notifyService) {
         this.repo = repo;
-        this.userRepo = userRepo;
         this.entityTypeName = entityTypeName;
         this.missingFieldMessage = stringFieldName+" not supplied.";
         this.stringValidator = stringValidator;
-        this.emailService = emailService;
+        this.transactor = transactor;
+        this.notifyService = notifyService;
     }
 
     /**
@@ -44,7 +44,8 @@ public abstract class BaseAdminService<E extends HasEnabled, R extends CrudRepos
      * @exception EntityExistsException A matching item already exists
      */
     public E addNew(User creator, String string) {
-        E newValue = repo.save(newEntity(validateEntity(string)));
+        E newValue = transactor.transact("Add "+entityTypeName,
+                () -> repo.save(newEntity(validateEntity(string))));
         if (creator != null && creator.getRole() == User.Role.enduser) {
             sendNewEntityEmail(creator, newValue);
         }
@@ -116,12 +117,11 @@ public abstract class BaseAdminService<E extends HasEnabled, R extends CrudRepos
      * @param item the new item created
      */
     public void sendNewEntityEmail(User creator, E item) {
-        List<User> adminUsers = userRepo.findAllByRole(User.Role.admin);
-        if (!adminUsers.isEmpty()) {
-            List<String> recipients = adminUsers.stream().map(User::getUsername).toList();
+        String notification = this.notificationName();
+        if (notification!=null) {
             String body = String.format("User %s has created a new %s on %%service: %s",
                     creator.getUsername(), entityTypeName, item);
-            emailService.tryEmail(recipients, "%service new "+entityTypeName, body);
+            notifyService.issue(notification, "%service new "+entityTypeName, body);
         }
     }
 
@@ -139,4 +139,13 @@ public abstract class BaseAdminService<E extends HasEnabled, R extends CrudRepos
      * @return an optional that will contain the entity if it is found
      */
     protected abstract Optional<E> findEntity(R repo, String string);
+
+    /**
+     * If this returns a string, it will be used as the name of the notification sent to admin users.
+     * By default it returns null, and no notification will be sent.
+     * @return the name of the notification
+     */
+    public String notificationName() {
+        return null;
+    }
 }

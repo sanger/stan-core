@@ -3,9 +3,9 @@ package uk.ac.sanger.sccp.stan.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import uk.ac.sanger.sccp.stan.Transactor;
 import uk.ac.sanger.sccp.stan.model.Program;
 import uk.ac.sanger.sccp.stan.repo.ProgramRepo;
-import uk.ac.sanger.sccp.stan.repo.UserRepo;
 
 import java.util.Optional;
 
@@ -16,10 +16,10 @@ import java.util.Optional;
 @Service
 public class ProgramService extends BaseAdminService<Program, ProgramRepo> {
     @Autowired
-    public ProgramService(ProgramRepo ProgramRepo, UserRepo userRepo,
+    public ProgramService(ProgramRepo ProgramRepo,
                           @Qualifier("programNameValidator") Validator<String> ProgramNameValidator,
-                          EmailService emailService) {
-        super(ProgramRepo, userRepo, "Program", "Name", ProgramNameValidator, emailService);
+                          Transactor transactor, AdminNotifyService notifyService) {
+        super(ProgramRepo, "Program", "Name", ProgramNameValidator, transactor, notifyService);
     }
 
     @Override

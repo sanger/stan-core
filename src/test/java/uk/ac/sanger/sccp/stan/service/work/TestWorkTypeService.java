@@ -22,7 +22,7 @@ public class TestWorkTypeService extends AdminServiceTestUtils<WorkType, WorkTyp
     @BeforeEach
     void setup() {
         mockRepo = mock(WorkTypeRepo.class);
-        service = new WorkTypeService(mockRepo, mockUserRepo, simpleValidator(), mockEmailService);
+        service = new WorkTypeService(mockRepo, simpleValidator(), mockTransactor, mockNotifyService);
     }
 
     @ParameterizedTest

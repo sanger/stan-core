@@ -27,7 +27,7 @@ public class TestReleaseRecipientAdminService extends AdminServiceTestUtils<Rele
     @BeforeEach
     void setup() {
         mockRepo = mock(ReleaseRecipientRepo.class);
-        service = new ReleaseRecipientAdminService(mockRepo, mockUserRepo, simpleValidator(), mockEmailService);
+        service = new ReleaseRecipientAdminService(mockRepo, simpleValidator(), mockTransactor, mockNotifyService);
     }
 
     @ParameterizedTest

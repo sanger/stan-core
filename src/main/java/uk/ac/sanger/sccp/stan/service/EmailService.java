@@ -154,13 +154,6 @@ public class EmailService {
      * @return true if the email was send; false if an exception was caught
      */
     public boolean tryEmail(Collection<String> recipients, String heading, String text) {
-        String serviceDesc = mailConfig.getServiceDescription();
-        if (heading.contains("%service")) {
-            heading = heading.replace("%service", serviceDesc);
-        }
-        if (text.contains("%service")) {
-            text = text.replace("%service", serviceDesc);
-        }
         String[] emailRecs = recipients.stream()
                 .map(this::usernameToEmail)
                 .toArray(String[]::new);

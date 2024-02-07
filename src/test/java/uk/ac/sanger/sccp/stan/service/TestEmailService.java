@@ -167,11 +167,10 @@ public class TestEmailService {
             doThrow(RuntimeException.class).when(service).send(any(), any(), any(), any());
         }
         List<String> recipients = List.of("alpha", "beta@gamma");
-        doReturn("Stan test").when(mockMailConfig).getServiceDescription();
-        assertEquals(succeeds, service.tryEmail(recipients, "Email from %service",
-                "%service has done stuff."));
-        verify(service).send("Email from Stan test",
-                "Stan test has done stuff.",
+        assertEquals(succeeds, service.tryEmail(recipients, "Email header",
+                "Email body."));
+        verify(service).send("Email header",
+                "Email body.",
                 new String[] { "alpha@sanger.ac.uk", "beta@gamma" },
                 null);
     }

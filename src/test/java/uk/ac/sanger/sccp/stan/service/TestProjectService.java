@@ -4,16 +4,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.ValueSource;
 import uk.ac.sanger.sccp.stan.model.Project;
 import uk.ac.sanger.sccp.stan.model.User;
 import uk.ac.sanger.sccp.stan.repo.ProjectRepo;
 
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.stan.Matchers.mockTransactor;
 
 /**
  * Tests {@link ProjectService}
@@ -28,7 +26,7 @@ public class TestProjectService extends AdminServiceTestUtils<Project, ProjectRe
     @BeforeEach
     void setup() {
         mockRepo = mock(ProjectRepo.class);
-        service = spy(new ProjectService(mockRepo, mockUserRepo, simpleValidator(), mockEmailService));
+        service = spy(new ProjectService(mockRepo, simpleValidator(), mockTransactor, mockNotifyService));
     }
 
     @ParameterizedTest
@@ -40,31 +38,23 @@ public class TestProjectService extends AdminServiceTestUtils<Project, ProjectRe
 
     @Test
     public void testAddNewByEndUser() {
+        mockTransactor(mockTransactor);
         User creator = new User(100, "user1", User.Role.enduser);
         Project project = new Project(200, "Bananas");
         when(mockRepo.save(any())).thenReturn(project);
         doNothing().when(service).sendNewEntityEmail(any(), any());
         assertSame(project, service.addNew(creator, "Bananas"));
         verify(service).sendNewEntityEmail(creator, project);
+        verify(mockTransactor).transact(eq("Add Project"), any());
     }
 
-    @ParameterizedTest
-    @ValueSource(booleans={false,true})
-    public void testSendNewEntityEmail(boolean anyAdmin) {
-        List<User> adminUsers = anyAdmin ? List.of(new User(1, "admin1", User.Role.admin),
-                new User(2, "admin2", User.Role.admin)) : List.of();
-        when(mockUserRepo.findAllByRole(User.Role.admin)).thenReturn(adminUsers);
+    @Test
+    public void testSendNewEntityEmail() {
         Project item = new Project(100, "Bananas");
         User creator = new User(1, "jeff", User.Role.enduser);
 
         service.sendNewEntityEmail(creator, item);
-
-        if (!anyAdmin) {
-            verifyNoInteractions(mockEmailService);
-            return;
-        }
-        List<String> recipients = List.of("admin1", "admin2");
-        verify(mockEmailService).tryEmail(recipients, "%service new Project",
+        verify(mockNotifyService).issue("project", "%service new Project",
                 "User jeff has created a new Project on %service: Bananas");
     }
 
