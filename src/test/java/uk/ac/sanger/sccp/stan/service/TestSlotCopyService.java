@@ -238,15 +238,18 @@ public class TestSlotCopyService {
         final User user = EntityFactory.getUser();
         final BioState rbs = bsInRequest ? new BioState(5, "requestbs") : null;
         final BioState obs = bsInOpType ? new BioState(6, "opbs") : null;
+        final BioState dbs = (existingDest && !bsInRequest ? new BioState(7, "dbs") : null);
         List<SlotCopyContent> contents = List.of(new SlotCopyContent());
         final SlideCosting costing = SlideCosting.SGP;
         final String lotNumber = "1234567";
         final String probeLotNumber = "777777";
         LabwareType lt = EntityFactory.getTubeType();
         UCMap<Labware> sourceMap = UCMap.from(Labware::getBarcode, EntityFactory.getTube());
-        Labware emptyLw = EntityFactory.makeEmptyLabware(lt);
+        Labware destLw = EntityFactory.makeEmptyLabware(lt);
         if (!existingDest) {
-            when(mockLwService.create(any(), any(), any())).thenReturn(emptyLw);
+            when(mockLwService.create(any(), any(), any())).thenReturn(destLw);
+        } else if (!bsInRequest) {
+            doReturn(dbs).when(service).findBioStateInLabware(destLw);
         }
         final String preBarcode = "pb1";
         OperationType opType = EntityFactory.makeOperationType("optype1", obs);
@@ -258,7 +261,7 @@ public class TestSlotCopyService {
         op.setId(50);
         doReturn(op).when(service).createOperation(any(), any(), any(), any(), any(), any());
 
-        OperationResult opres = service.executeOp(user, contents, opType, lt, preBarcode, sourceMap, costing, lotNumber, probeLotNumber, rbs, existingDest ? emptyLw : null);
+        OperationResult opres = service.executeOp(user, contents, opType, lt, preBarcode, sourceMap, costing, lotNumber, probeLotNumber, rbs, existingDest ? destLw : null);
         assertThat(opres.getLabware()).containsExactly(filledLw);
         assertThat(opres.getOperations()).containsExactly(op);
 
@@ -267,12 +270,51 @@ public class TestSlotCopyService {
         } else {
             verify(mockLwService).create(lt, preBarcode, preBarcode);
         }
-        verify(service).createSamples(contents, sourceMap, bsInRequest ? rbs : obs);
-        verify(service).fillLabware(emptyLw, contents, sourceMap, oldSampleIdToNewSample);
+        verify(service).createSamples(contents, sourceMap, dbs!=null ? dbs : bsInRequest ? rbs : obs);
+        if (dbs==null) {
+            verify(service, never()).findBioStateInLabware(any());
+        } else {
+            verify(service).findBioStateInLabware(destLw);
+        }
+        verify(service).fillLabware(destLw, contents, sourceMap, oldSampleIdToNewSample);
         verify(service).createOperation(user, contents, opType, sourceMap, filledLw, oldSampleIdToNewSample);
         verify(mockLwNoteRepo).save(new LabwareNote(null, filledLw.getId(), op.getId(), "costing", costing.name()));
         verify(mockLwNoteRepo).save(new LabwareNote(null, filledLw.getId(), op.getId(), "lot", lotNumber));
         verify(mockLwNoteRepo).save(new LabwareNote(null, filledLw.getId(), op.getId(), "probe lot", probeLotNumber));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints={0,1,2})
+    public void testFindBioStateInLabware(int numBs) {
+        Labware lw;
+        LabwareType lt = EntityFactory.makeLabwareType(1,2);
+        BioState expectedBs;
+        switch (numBs) {
+            case 0 -> {
+                lw = EntityFactory.makeEmptyLabware(lt);
+                expectedBs = null;
+            }
+            case 1 -> {
+                expectedBs = EntityFactory.getBioState();
+                Tissue tissue = EntityFactory.getTissue();
+                Sample[] samples = IntStream.range(100,102)
+                        .mapToObj(i -> new Sample(i, null, tissue, expectedBs))
+                        .toArray(Sample[]::new);
+                lw = EntityFactory.makeLabware(lt, samples);
+            }
+            default -> {
+                expectedBs = null;
+                Tissue tissue = EntityFactory.getTissue();
+                BioState[] bss = IntStream.rangeClosed(1,2)
+                        .mapToObj(i -> new BioState(i, "bs"+i))
+                        .toArray(BioState[]::new);
+                Sample[] samples = IntStream.range(0, bss.length)
+                        .mapToObj(i -> new Sample(100+i, null, tissue, bss[i]))
+                        .toArray(Sample[]::new);
+                lw = EntityFactory.makeLabware(lt, samples);
+            }
+        }
+        assertSame(expectedBs, service.findBioStateInLabware(lw));
     }
 
     @ParameterizedTest
