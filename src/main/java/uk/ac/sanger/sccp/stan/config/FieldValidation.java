@@ -94,7 +94,7 @@ public class FieldValidation {
         Set<CharacterType> charTypes = EnumSet.of(
                 CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.UNDERSCORE
         );
-        return new StringValidator("Probe lot number", 1, 20, charTypes);
+        return new StringValidator("Probe lot number", 1, 25, charTypes);
     }
 
     @Bean
