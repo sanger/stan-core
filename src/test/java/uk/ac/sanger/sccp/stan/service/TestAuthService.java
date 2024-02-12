@@ -8,17 +8,19 @@ import org.mockito.*;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import uk.ac.sanger.sccp.stan.AuthenticationComponent;
+import uk.ac.sanger.sccp.stan.Transactor;
 import uk.ac.sanger.sccp.stan.config.SessionConfig;
 import uk.ac.sanger.sccp.stan.model.User;
 import uk.ac.sanger.sccp.stan.repo.UserRepo;
 import uk.ac.sanger.sccp.stan.request.LoginResult;
 
-import java.util.*;
-import java.util.stream.IntStream;
+import java.util.ArrayList;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.stan.Matchers.mockTransactor;
 
 /** Test {@link AuthServiceImp} */
 class TestAuthService {
@@ -31,9 +33,11 @@ class TestAuthService {
     @Mock
     private LDAPService mockLdapService;
     @Mock
-    private EmailService mockEmailService;
-    @Mock
     private UserAdminService mockUserAdminService;
+    @Mock
+    private AdminNotifyService mockNotifyService;
+    @Mock
+    private Transactor mockTransactor;
 
     @InjectMocks
     private AuthServiceImp service;
@@ -124,6 +128,7 @@ class TestAuthService {
         final String password = "pw";
         final String inputUsername = " USER1";
         final User.Role suppliedRole = User.Role.enduser;
+        mockTransactor(mockTransactor);
         when(mockSessionConfig.getMaxInactiveMinutes()).thenReturn(maxInactiveMinutes);
         User existingUser = (existingRole==null ? null : new User(100, sanUsername, existingRole));
         when(mockUserAdminService.validateUsername(inputUsername)).thenReturn(sanUsername);
@@ -165,32 +170,17 @@ class TestAuthService {
         } else {
             verify(service, never()).sendNewUserEmail(any());
         }
+        verify(mockTransactor).transact(any(), any());
     }
 
 
-    @ParameterizedTest
-    @ValueSource(booleans={false,true})
-    void testSendNewUserEmail(boolean anyAdmins) {
+    @Test
+    void testSendNewUserEmail() {
         User newUser = new User(100, "user1", User.Role.enduser);
-        List<User> adminUsers;
-        if (anyAdmins) {
-            adminUsers = IntStream.rangeClosed(1,2)
-                    .mapToObj(i -> new User(100+i, "admin"+i, User.Role.admin))
-                    .toList();
-        } else {
-            adminUsers = List.of();
-        }
-        when(mockUserRepo.findAllByRole(User.Role.admin)).thenReturn(adminUsers);
-        when(mockEmailService.tryEmail(any(), any(), any())).thenReturn(true);
 
         service.sendNewUserEmail(newUser);
 
-        if (!anyAdmins) {
-            verifyNoInteractions(mockEmailService);
-        } else {
-            List<String> adminUsernames = adminUsers.stream().map(User::getUsername).toList();
-            verify(mockEmailService).tryEmail(adminUsernames, "New user created on %service",
-                    "User user1 has registered themself as enduser on %service.");
-        }
+        verify(mockNotifyService).issue("user", "New user created on %service",
+                "User user1 has registered themself as enduser on %service.");
     }
 }

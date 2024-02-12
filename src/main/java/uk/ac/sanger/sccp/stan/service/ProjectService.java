@@ -3,6 +3,7 @@ package uk.ac.sanger.sccp.stan.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import uk.ac.sanger.sccp.stan.Transactor;
 import uk.ac.sanger.sccp.stan.model.Project;
 import uk.ac.sanger.sccp.stan.repo.ProjectRepo;
 
@@ -16,8 +17,14 @@ import java.util.Optional;
 public class ProjectService extends BaseAdminService<Project, ProjectRepo> {
     @Autowired
     public ProjectService(ProjectRepo projectRepo,
-                          @Qualifier("projectNameValidator") Validator<String> projectNameValidator) {
-        super(projectRepo, "Project", "Name", projectNameValidator);
+                          @Qualifier("projectNameValidator") Validator<String> projectNameValidator,
+                          Transactor transactor, AdminNotifyService notifyService) {
+        super(projectRepo, "Project", "Name", projectNameValidator, transactor, notifyService);
+    }
+
+    @Override
+    public String notificationName() {
+        return "project";
     }
 
     @Override

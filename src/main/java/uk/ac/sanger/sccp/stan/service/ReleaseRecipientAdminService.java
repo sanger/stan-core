@@ -3,6 +3,7 @@ package uk.ac.sanger.sccp.stan.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import uk.ac.sanger.sccp.stan.Transactor;
 import uk.ac.sanger.sccp.stan.model.ReleaseRecipient;
 import uk.ac.sanger.sccp.stan.repo.ReleaseRecipientRepo;
 
@@ -21,8 +22,9 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 public class ReleaseRecipientAdminService extends BaseAdminService<ReleaseRecipient, ReleaseRecipientRepo> {
     @Autowired
     public ReleaseRecipientAdminService(ReleaseRecipientRepo repo,
-                                        @Qualifier("releaseRecipientValidator") Validator<String> releaseRecipientValidator) {
-        super(repo, "Release recipient", "Username", releaseRecipientValidator);
+                                        @Qualifier("releaseRecipientValidator") Validator<String> releaseRecipientValidator,
+                                        Transactor transactor, AdminNotifyService notifyService) {
+        super(repo, "Release recipient", "Username", releaseRecipientValidator, transactor, notifyService);
     }
 
     public ReleaseRecipient addNew(String username, String fullName) {

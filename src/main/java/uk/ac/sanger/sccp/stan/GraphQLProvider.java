@@ -135,7 +135,7 @@ public class GraphQLProvider {
                         .dataFetcher("version", graphQLDataFetchers.versionInfo())
                 )
                 .type(newTypeWiring("Mutation")
-                        .dataFetcher("registerAsEndUser", graphQLMutation.userSelfRegister(User.Role.enduser))
+                        .dataFetcher("registerAsEndUser", graphQLMutation.userSelfRegister(User.Role.enduser)) // internal transaction
                         .dataFetcher("login", graphQLMutation.logIn())
                         .dataFetcher("logout", graphQLMutation.logOut())
                         .dataFetcher("register", transact(graphQLMutation.register()))
@@ -155,34 +155,34 @@ public class GraphQLProvider {
                         .dataFetcher("addEquipment", transact(graphQLMutation.addEquipment()))
                         .dataFetcher("setEquipmentEnabled", transact(graphQLMutation.setEquipmentEnabled()))
                         .dataFetcher("renameEquipment", transact(graphQLMutation.renameEquipment()))
-                        .dataFetcher("addHmdmc", transact(graphQLMutation.addHmdmc()))
+                        .dataFetcher("addHmdmc", graphQLMutation.addHmdmc()) // internal transaction
                         .dataFetcher("setHmdmcEnabled", transact(graphQLMutation.setHmdmcEnabled()))
-                        .dataFetcher("addDestructionReason", transact(graphQLMutation.addDestructionReason()))
+                        .dataFetcher("addDestructionReason", graphQLMutation.addDestructionReason()) // internal transaction
                         .dataFetcher("setDestructionReasonEnabled", transact(graphQLMutation.setDestructionReasonEnabled()))
-                        .dataFetcher("addReleaseDestination", transact(graphQLMutation.addReleaseDestination()))
+                        .dataFetcher("addReleaseDestination", graphQLMutation.addReleaseDestination()) // internal transaction
                         .dataFetcher("setReleaseDestinationEnabled", transact(graphQLMutation.setReleaseDestinationEnabled()))
                         .dataFetcher("addReleaseRecipient", transact(graphQLMutation.addReleaseRecipient()))
                         .dataFetcher("updateReleaseRecipientFullName", transact(graphQLMutation.updateReleaseRecipientFullName()))
                         .dataFetcher("setReleaseRecipientEnabled", transact(graphQLMutation.setReleaseRecipientEnabled()))
-                        .dataFetcher("addSpecies", transact(graphQLMutation.addSpecies()))
+                        .dataFetcher("addSpecies", graphQLMutation.addSpecies()) // internal transaction
                         .dataFetcher("setSpeciesEnabled", transact(graphQLMutation.setSpeciesEnabled()))
-                        .dataFetcher("addProject", transact(graphQLMutation.addProject()))
+                        .dataFetcher("addProject", graphQLMutation.addProject()) // internal transaction
                         .dataFetcher("setProjectEnabled", transact(graphQLMutation.setProjectEnabled()))
-                        .dataFetcher("addProgram", transact(graphQLMutation.addProgram()))
+                        .dataFetcher("addProgram", graphQLMutation.addProgram()) // internal transaction
                         .dataFetcher("setProgramEnabled", transact(graphQLMutation.setProgramEnabled()))
-                        .dataFetcher("addCostCode", transact(graphQLMutation.addCostCode()))
+                        .dataFetcher("addCostCode", graphQLMutation.addCostCode()) // internal transaction
                         .dataFetcher("setCostCodeEnabled", transact(graphQLMutation.setCostCodeEnabled()))
-                        .dataFetcher("addFixative", transact(graphQLMutation.addFixative()))
+                        .dataFetcher("addFixative", graphQLMutation.addFixative()) // internal transaction
                         .dataFetcher("setFixativeEnabled", transact(graphQLMutation.setFixativeEnabled()))
-                        .dataFetcher("addSolution", transact(graphQLMutation.addSolution()))
+                        .dataFetcher("addSolution", graphQLMutation.addSolution()) // internal transaction
                         .dataFetcher("setSolutionEnabled", transact(graphQLMutation.setSolutionEnabled()))
-                        .dataFetcher("addOmeroProject", transact(graphQLMutation.addOmeroProject()))
+                        .dataFetcher("addOmeroProject", graphQLMutation.addOmeroProject()) // internal transaction
                         .dataFetcher("setOmeroProjectEnabled", transact(graphQLMutation.setOmeroProjectEnabled()))
-                        .dataFetcher("addSlotRegion", transact(graphQLMutation.addSlotRegion()))
+                        .dataFetcher("addSlotRegion", graphQLMutation.addSlotRegion()) // internal transaction
                         .dataFetcher("setSlotRegionEnabled", transact(graphQLMutation.setSlotRegionEnabled()))
-                        .dataFetcher("addProbePanel", transact(graphQLMutation.addProbePanel()))
+                        .dataFetcher("addProbePanel", graphQLMutation.addProbePanel()) // internal transaction
                         .dataFetcher("setProbePanelEnabled", transact(graphQLMutation.setProbePanelEnabled()))
-                        .dataFetcher("addWorkType", transact(graphQLMutation.addWorkType()))
+                        .dataFetcher("addWorkType", graphQLMutation.addWorkType()) // internal transaction
                         .dataFetcher("setWorkTypeEnabled", transact(graphQLMutation.setWorkTypeEnabled()))
                         .dataFetcher("createWork", transact(graphQLMutation.createWork()))
                         .dataFetcher("updateWorkStatus", transact(graphQLMutation.updateWorkStatus()))

@@ -3,6 +3,7 @@ package uk.ac.sanger.sccp.stan.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import uk.ac.sanger.sccp.stan.Transactor;
 import uk.ac.sanger.sccp.stan.model.DestructionReason;
 import uk.ac.sanger.sccp.stan.repo.DestructionReasonRepo;
 
@@ -16,8 +17,10 @@ import java.util.Optional;
 public class DestructionReasonAdminService extends BaseAdminService<DestructionReason, DestructionReasonRepo> {
     @Autowired
     public DestructionReasonAdminService(DestructionReasonRepo destructionReasonRepo,
-                                         @Qualifier("destructionReasonValidator") Validator<String> destructionReasonValidator) {
-        super(destructionReasonRepo, "Destruction reason", "Text", destructionReasonValidator);
+                                         @Qualifier("destructionReasonValidator") Validator<String> destructionReasonValidator,
+                                         Transactor transactor, AdminNotifyService notifyService) {
+        super(destructionReasonRepo, "Destruction reason", "Text",
+                destructionReasonValidator, transactor, notifyService);
     }
 
     @Override

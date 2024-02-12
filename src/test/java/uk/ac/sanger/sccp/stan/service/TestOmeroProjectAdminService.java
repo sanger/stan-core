@@ -20,7 +20,7 @@ public class TestOmeroProjectAdminService extends AdminServiceTestUtils<OmeroPro
     @BeforeEach
     void setup() {
         mockRepo = mock(OmeroProjectRepo.class);
-        service = new OmeroProjectAdminService(mockRepo, simpleValidator());
+        service = new OmeroProjectAdminService(mockRepo, simpleValidator(), mockTransactor, mockNotifyService);
     }
 
     @ParameterizedTest

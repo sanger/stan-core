@@ -3,6 +3,7 @@ package uk.ac.sanger.sccp.stan.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import uk.ac.sanger.sccp.stan.Transactor;
 import uk.ac.sanger.sccp.stan.model.CostCode;
 import uk.ac.sanger.sccp.stan.repo.CostCodeRepo;
 
@@ -16,8 +17,14 @@ import java.util.Optional;
 public class CostCodeService extends BaseAdminService<CostCode, CostCodeRepo> {
     @Autowired
     public CostCodeService(CostCodeRepo costCodeRepo,
-                          @Qualifier("costCodeValidator") Validator<String> costCodeValidator) {
-        super(costCodeRepo, "CostCode", "Code", costCodeValidator);
+                           @Qualifier("costCodeValidator") Validator<String> costCodeValidator,
+                           Transactor transactor, AdminNotifyService notifyService) {
+        super(costCodeRepo, "CostCode", "Code", costCodeValidator, transactor, notifyService);
+    }
+
+    @Override
+    public String notificationName() {
+        return "costcode";
     }
 
     @Override

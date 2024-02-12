@@ -10,11 +10,10 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.test.context.ActiveProfiles;
 import uk.ac.sanger.sccp.stan.model.User;
 import uk.ac.sanger.sccp.stan.repo.UserRepo;
-import uk.ac.sanger.sccp.stan.service.EmailService;
+import uk.ac.sanger.sccp.stan.service.AdminNotifyServiceImp;
 import uk.ac.sanger.sccp.stan.service.LDAPService;
 
 import java.util.*;
-import java.util.stream.IntStream;
 
 import static java.util.Collections.singletonMap;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -35,7 +34,7 @@ public class TestLogin {
     @MockBean
     private UserRepo mockUserRepo;
     @MockBean
-    private EmailService mockEmailService;
+    private AdminNotifyServiceImp mockNotifyService;
 
     @Autowired
     private GraphQLTester tester;
@@ -77,15 +76,11 @@ public class TestLogin {
         final String mutation = "mutation { registerAsEndUser(username: \"user1\", password: \"42\") " +
                 "{ user { username role } } }";
         User newUser = new User(100, "user1", User.Role.enduser);
-        List<User> adminUsers = IntStream.rangeClosed(1,2)
-                .mapToObj(i -> new User(i, "admin"+i, User.Role.admin))
-                .toList();
-        List<String> recipients = adminUsers.stream().map(User::getUsername).toList();
-        when(mockUserRepo.findAllByRole(User.Role.admin)).thenReturn(adminUsers);
-        when(mockEmailService.tryEmail(any(), any(), any())).thenReturn(true);
+        when(mockNotifyService.issue(any(), any(), any())).thenReturn(true);
         when(mockUserRepo.findByUsername(any())).thenReturn(Optional.empty());
         when(mockUserRepo.save(any())).thenReturn(newUser);
         when(mockLdapService.verifyCredentials("user1", "42")).thenReturn(true);
+        when(mockNotifyService.issue(any(), any(), any())).thenReturn(true);
 
         Object response = tester.post(mutation);
         Map<String, String> userData = chainGet(response, "data", "registerAsEndUser", "user");
@@ -94,7 +89,7 @@ public class TestLogin {
         verify(mockUserRepo, atLeastOnce()).findByUsername(eq("user1"));
         verify(mockUserRepo).save(new User("user1", User.Role.enduser));
         verify(mockLdapService).verifyCredentials("user1", "42");
-        verify(mockEmailService).tryEmail(recipients, "New user created on %service",
+        verify(mockNotifyService).issue("user", "New user created on %service",
                 "User user1 has registered themself as enduser on %service.");
 
         verify(tester.mockAuthComp).setAuthentication(eq(new UsernamePasswordAuthenticationToken(newUser, "42", new ArrayList<>())), anyInt());

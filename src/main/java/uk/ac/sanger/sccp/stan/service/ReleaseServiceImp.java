@@ -276,28 +276,28 @@ public class ReleaseServiceImp implements ReleaseService {
         List<String> emptyLabwareBarcodes = labware.stream()
                 .filter(Labware::isEmpty)
                 .map(Labware::getBarcode)
-                .collect(toList());
+                .toList();
         if (!emptyLabwareBarcodes.isEmpty()) {
             throw new IllegalArgumentException("Cannot release empty labware: "+emptyLabwareBarcodes);
         }
         List<String> releasedLabwareBarcodes = labware.stream()
                 .filter(Labware::isReleased)
                 .map(Labware::getBarcode)
-                .collect(toList());
+                .toList();
         if (!releasedLabwareBarcodes.isEmpty()) {
             throw new IllegalArgumentException("Labware has already been released: "+releasedLabwareBarcodes);
         }
         List<String> destroyedLabwareBarcodes = labware.stream()
                 .filter(Labware::isDestroyed)
                 .map(Labware::getBarcode)
-                .collect(toList());
+                .toList();
         if (!destroyedLabwareBarcodes.isEmpty()) {
             throw new IllegalArgumentException("Labware cannot be released because it is destroyed: "+destroyedLabwareBarcodes);
         }
         List<String> discardedLabwareBarcodes = labware.stream()
                 .filter(Labware::isDiscarded)
                 .map(Labware::getBarcode)
-                .collect(toList());
+                .toList();
         if (!discardedLabwareBarcodes.isEmpty()) {
             throw new IllegalArgumentException("Labware cannot be released because it is discarded: "+discardedLabwareBarcodes);
         }

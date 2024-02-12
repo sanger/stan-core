@@ -3,6 +3,7 @@ package uk.ac.sanger.sccp.stan.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import uk.ac.sanger.sccp.stan.Transactor;
 import uk.ac.sanger.sccp.stan.model.Species;
 import uk.ac.sanger.sccp.stan.repo.SpeciesRepo;
 
@@ -15,8 +16,10 @@ import java.util.Optional;
 @Service
 public class SpeciesAdminService extends BaseAdminService<Species, SpeciesRepo> {
     @Autowired
-    public SpeciesAdminService(SpeciesRepo repo, @Qualifier("speciesValidator") Validator<String> speciesValidator) {
-        super(repo, "Species", "Name", speciesValidator);
+    public SpeciesAdminService(SpeciesRepo repo,
+                               @Qualifier("speciesValidator") Validator<String> speciesValidator,
+                               Transactor transactor, AdminNotifyService notifyService) {
+        super(repo, "Species", "Name", speciesValidator, transactor, notifyService);
     }
 
     @Override

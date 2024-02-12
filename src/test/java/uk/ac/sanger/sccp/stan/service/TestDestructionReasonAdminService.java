@@ -21,7 +21,7 @@ public class TestDestructionReasonAdminService extends AdminServiceTestUtils<Des
     @BeforeEach
     void setup() {
         mockRepo = mock(DestructionReasonRepo.class);
-        service = new DestructionReasonAdminService(mockRepo, simpleValidator());
+        service = new DestructionReasonAdminService(mockRepo, simpleValidator(), mockTransactor, mockNotifyService);
     }
 
     @ParameterizedTest

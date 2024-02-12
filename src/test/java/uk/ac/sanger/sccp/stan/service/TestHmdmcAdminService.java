@@ -20,7 +20,7 @@ public class TestHmdmcAdminService extends AdminServiceTestUtils<Hmdmc, HmdmcRep
     @BeforeEach
     void setup() {
         mockRepo = mock(HmdmcRepo.class);
-        service = new HmdmcAdminService(mockRepo, simpleValidator());
+        service = new HmdmcAdminService(mockRepo, simpleValidator(), mockTransactor, mockNotifyService);
     }
 
     @ParameterizedTest
