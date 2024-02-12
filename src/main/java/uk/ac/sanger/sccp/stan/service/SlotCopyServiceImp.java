@@ -151,6 +151,8 @@ public class SlotCopyServiceImp implements SlotCopyService {
                                      String probeLotNumber, BioState bioState, Labware destLw) {
         if (destLw==null) {
             destLw = lwService.create(lwType, preBarcode, preBarcode);
+        } else if (bioState==null) {
+            bioState = findBioStateInLabware(destLw);
         }
         Map<Integer, Sample> oldSampleIdToNewSample = createSamples(contents, labwareMap,
                 coalesce(bioState, opType.getNewBioState()));
@@ -166,6 +168,26 @@ public class SlotCopyServiceImp implements SlotCopyService {
             lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), "probe lot", probeLotNumber.toUpperCase()));
         }
         return new OperationResult(List.of(op), List.of(filledLabware));
+    }
+
+    /**
+     * Gets the bio state for samples in the given labware, if there are any and they are all the same bio state.
+     * Otherwise, returns null.
+     * @param destLw the labware to get the bio state from
+     * @return the identified bio state, or null
+     */
+    public BioState findBioStateInLabware(Labware destLw) {
+        BioState found = null;
+        for (Slot slot : destLw.getSlots()) {
+            for (Sample sample : slot.getSamples()) {
+                if (found==null) {
+                    found = sample.getBioState();
+                } else if (!found.equals(sample.getBioState())) {
+                    return null;
+                }
+            }
+        }
+        return found;
     }
 
     /**
