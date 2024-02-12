@@ -148,4 +148,31 @@ public class TestEmailService {
 
         verify(service).send(desc+" release", body + path, new String[] { recipient }, ccArray);
     }
+
+    @ParameterizedTest
+    @CsvSource({",",
+            "alpha, alpha@sanger.ac.uk",
+            "beta@gamma, beta@gamma",
+    })
+    public void testUsernameToEmail(String input, String expected) {
+        assertEquals(expected, service.usernameToEmail(input));
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testTryEmail(boolean succeeds) {
+        if (succeeds) {
+            doNothing().when(service).send(any(), any(), any(), any());
+        } else {
+            doThrow(RuntimeException.class).when(service).send(any(), any(), any(), any());
+        }
+        List<String> recipients = List.of("alpha", "beta@gamma");
+        doReturn("Stan test").when(mockMailConfig).getServiceDescription();
+        assertEquals(succeeds, service.tryEmail(recipients, "Email from %service",
+                "%service has done stuff."));
+        verify(service).send("Email from Stan test",
+                "Stan test has done stuff.",
+                new String[] { "alpha@sanger.ac.uk", "beta@gamma" },
+                null);
+    }
 }

@@ -11,6 +11,7 @@ import graphql.schema.idl.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
+import uk.ac.sanger.sccp.stan.model.User;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
@@ -134,6 +135,7 @@ public class GraphQLProvider {
                         .dataFetcher("version", graphQLDataFetchers.versionInfo())
                 )
                 .type(newTypeWiring("Mutation")
+                        .dataFetcher("registerAsEndUser", graphQLMutation.userSelfRegister(User.Role.enduser))
                         .dataFetcher("login", graphQLMutation.logIn())
                         .dataFetcher("logout", graphQLMutation.logOut())
                         .dataFetcher("register", transact(graphQLMutation.register()))

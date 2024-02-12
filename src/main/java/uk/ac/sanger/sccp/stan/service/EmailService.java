@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.config.MailConfig;
 import uk.ac.sanger.sccp.stan.service.store.StoreService;
 
+import java.util.Collection;
 import java.util.List;
 
 import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
@@ -88,12 +89,9 @@ public class EmailService {
      * @return an array of cc recipients, or null
      */
     public String[] releaseEmailCCs(List<String> ccList) {
-        String releaseCc = mailConfig.getReleaseCC();
+        String releaseCc = usernameToEmail(mailConfig.getReleaseCC());
         if (nullOrEmpty(releaseCc)) {
             return nullOrEmpty(ccList) ? null : ccList.toArray(String[]::new);
-        }
-        if (releaseCc.indexOf('@') < 0) {
-            releaseCc += "@sanger.ac.uk";
         }
         if (nullOrEmpty(ccList)) {
             return new String[] { releaseCc };
@@ -130,6 +128,47 @@ public class EmailService {
             return true;
         } catch (Exception e) {
             log.error("Failed to send release email.", e);
+            return false;
+        }
+    }
+
+    /**
+     * Adds the sanger email suffix to the end of usernames, if they don't contain an {@code @} symbol
+     * @param username the username
+     * @return an email address for the username
+     */
+    public String usernameToEmail(String username) {
+        if (!nullOrEmpty(username) && username.indexOf('@') < 0) {
+            return username + "@sanger.ac.uk";
+        }
+        return username;
+    }
+
+    /**
+     * Tries to send the described email.
+     * Catches and logs any exceptions thrown.
+     * Recipient usernames are turned to email addresses using {@link #usernameToEmail}
+     * @param recipients the usernames or email addresses to send the email to
+     * @param heading the heading of the email
+     * @param text the text of the email
+     * @return true if the email was send; false if an exception was caught
+     */
+    public boolean tryEmail(Collection<String> recipients, String heading, String text) {
+        String serviceDesc = mailConfig.getServiceDescription();
+        if (heading.contains("%service")) {
+            heading = heading.replace("%service", serviceDesc);
+        }
+        if (text.contains("%service")) {
+            text = text.replace("%service", serviceDesc);
+        }
+        String[] emailRecs = recipients.stream()
+                .map(this::usernameToEmail)
+                .toArray(String[]::new);
+        try {
+            send(heading, text, emailRecs, null);
+            return true;
+        } catch (Exception e) {
+            log.error("Failed to send email", e);
             return false;
         }
     }

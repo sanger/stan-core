@@ -6,10 +6,7 @@ import graphql.schema.DataFetcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
-import uk.ac.sanger.sccp.stan.config.SessionConfig;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.UserRepo;
 import uk.ac.sanger.sccp.stan.request.*;
@@ -32,7 +29,7 @@ import uk.ac.sanger.sccp.stan.service.register.IRegisterService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.stan.service.work.WorkTypeService;
 
-import java.util.*;
+import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -45,8 +42,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 @Component
 public class GraphQLMutation extends BaseGraphQLResource {
     Logger log = LoggerFactory.getLogger(GraphQLMutation.class);
-    final LDAPService ldapService;
-    final SessionConfig sessionConfig;
+    final AuthService authService;
     final IRegisterService<RegisterRequest> registerService;
     final IRegisterService<SectionRegisterRequest> sectionRegisterService;
     final PlanService planService;
@@ -107,7 +103,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
 
     @Autowired
     public GraphQLMutation(ObjectMapper objectMapper, AuthenticationComponent authComp,
-                           LDAPService ldapService, SessionConfig sessionConfig,
+                           AuthService authService,
                            IRegisterService<RegisterRequest> registerService,
                            IRegisterService<SectionRegisterRequest> sectionRegisterService,
                            PlanService planService, LabelPrintService labelPrintService,
@@ -138,8 +134,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            ReactivateService reactivateService, LibraryPrepService libraryPrepService,
                            UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
-        this.ldapService = ldapService;
-        this.sessionConfig = sessionConfig;
+        this.authService = authService;
         this.registerService = registerService;
         this.sectionRegisterService = sectionRegisterService;
         this.planService = planService;
@@ -206,48 +201,22 @@ public class GraphQLMutation extends BaseGraphQLResource {
     }
 
     public DataFetcher<LoginResult> logIn() {
-        return dataFetchingEnvironment -> {
-            String username = dataFetchingEnvironment.getArgument("username");
-            if (log.isInfoEnabled()) {
-                log.info("Login attempt by {}", repr(username));
-            }
-            Optional<User> optUser = userRepo.findByUsername(username);
-            if (optUser.isEmpty()) {
-                return new LoginResult("Username not in database.", null);
-            }
-            User user = optUser.get();
-            if (user.getRole()==User.Role.disabled) {
-                return new LoginResult("Username is disabled.", null);
-            }
-            String password = dataFetchingEnvironment.getArgument("password");
-            if (!ldapService.verifyCredentials(username, password)) {
-                return new LoginResult("Login failed", null);
-            }
-            Authentication authentication = new UsernamePasswordAuthenticationToken(user, password, new ArrayList<>());
-            authComp.setAuthentication(authentication, sessionConfig.getMaxInactiveMinutes());
-            log.info("Login succeeded for user {}", user);
-            return new LoginResult("OK", user);
+        return dfe -> {
+            String username = dfe.getArgument("username");
+            String password = dfe.getArgument("password");
+            return authService.logIn(username, password);
         };
     }
 
-    private String loggedInUsername() {
-        var auth = authComp.getAuthentication();
-        if (auth != null) {
-            var princ = auth.getPrincipal();
-            if (princ instanceof User) {
-                return ((User) princ).getUsername();
-            }
-        }
-        return null;
+    public DataFetcher<String> logOut() {
+        return dfe -> authService.logOut();
     }
 
-    public DataFetcher<String> logOut() {
-        return dataFetchingEnvironment -> {
-            if (log.isInfoEnabled()) {
-                log.info("Logout requested by {}", repr(loggedInUsername()));
-            }
-            authComp.setAuthentication(null, 0);
-            return "OK";
+    public DataFetcher<LoginResult> userSelfRegister(final User.Role role) {
+        return dfe -> {
+            String username = dfe.getArgument("username");
+            String password = dfe.getArgument("password");
+            return authService.selfRegister(username, password, role);
         };
     }
 
