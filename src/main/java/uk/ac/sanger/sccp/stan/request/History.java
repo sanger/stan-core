@@ -16,11 +16,17 @@ public class History {
     private List<HistoryEntry> entries;
     private List<Sample> samples;
     private List<Labware> labware;
+    private List<String> flaggedBarcodes;
 
-    public History(List<HistoryEntry> entries, List<Sample> samples, List<Labware> labware) {
+    public History(List<HistoryEntry> entries, List<Sample> samples, List<Labware> labware, List<String> flaggedBarcodes) {
         setEntries(entries);
         setSamples(samples);
         setLabware(labware);
+        setFlaggedBarcodes(flaggedBarcodes);
+    }
+
+    public History(List<HistoryEntry> entries, List<Sample> samples, List<Labware> labware) {
+        this(entries, samples, labware, null);
     }
 
     public History() {
@@ -51,6 +57,14 @@ public class History {
         this.labware = nullToEmpty(labware);
     }
 
+    public List<String> getFlaggedBarcodes() {
+        return this.flaggedBarcodes;
+    }
+
+    public void setFlaggedBarcodes(List<String> flaggedBarcodes) {
+        this.flaggedBarcodes = nullToEmpty(flaggedBarcodes);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -58,7 +72,8 @@ public class History {
         History that = (History) o;
         return (Objects.equals(this.entries, that.entries)
                 && Objects.equals(this.samples, that.samples)
-                && Objects.equals(this.labware, that.labware));
+                && Objects.equals(this.labware, that.labware)
+                && Objects.equals(this.flaggedBarcodes, that.flaggedBarcodes));
     }
 
     @Override
@@ -72,6 +87,7 @@ public class History {
                 .add("entries", entries)
                 .add("samples", samples)
                 .add("labware", labware)
+                .add("flaggedBarcodes", flaggedBarcodes)
                 .toString();
     }
 }

@@ -1002,6 +1002,8 @@ type History {
     labware: [Labware!]!
     """The samples referenced by the entries."""
     samples: [Sample!]!
+    """The included labware barcodes that are flagged."""
+    flaggedBarcodes: [String!]!
 }
 
 """Information about a plan previously recorded, now being looked up."""
