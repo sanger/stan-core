@@ -929,6 +929,7 @@ public class HistoryServiceImp implements HistoryService {
                 HistoryEntry entry = new HistoryEntry(op.getId(), op.getOperationType().getName(),
                         op.getPerformed(), item.sourceId, item.destId, item.sampleId, username, workNumber, null,
                         addressString, item.region);
+                entry.setOperation(op);
                 if (stainDetail!=null) {
                     entry.addDetail(stainDetail);
                 }

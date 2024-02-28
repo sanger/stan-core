@@ -1,5 +1,6 @@
 package uk.ac.sanger.sccp.stan.request;
 
+import uk.ac.sanger.sccp.stan.model.Operation;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import java.time.LocalDateTime;
@@ -20,6 +21,7 @@ public class HistoryEntry {
     private String region;
     private String username;
     private String workNumber;
+    private Operation operation;
     private final List<String> details = new ArrayList<>();
 
     public HistoryEntry(int eventId, String type, LocalDateTime time, int sourceLabwareId, int destinationLabwareId,
@@ -151,6 +153,14 @@ public class HistoryEntry {
         this.region = region;
     }
 
+    public Operation getOperation() {
+        return this.operation;
+    }
+
+    public void setOperation(Operation operation) {
+        this.operation = operation;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -167,6 +177,7 @@ public class HistoryEntry {
                 && Objects.equals(this.workNumber, that.workNumber)
                 && Objects.equals(this.address, that.address)
                 && Objects.equals(this.region, that.region)
+                && Objects.equals(this.operation, that.operation)
         );
     }
 
