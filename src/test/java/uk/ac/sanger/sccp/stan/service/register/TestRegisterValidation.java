@@ -31,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.EntityFactory.objToList;
+import static uk.ac.sanger.sccp.stan.Matchers.assertProblem;
 
 /**
  * Tests for {@link RegisterValidationImp}
@@ -500,6 +501,7 @@ public class TestRegisterValidation {
         validation.validateWorks();
         if (!anyWorks) {
             verifyNoInteractions(mockWorkService);
+            assertProblem(validation.getProblems(), "No work number supplied.");
         } else {
             if (anyProblem) {
                 assertThat(validation.getProblems()).containsExactly("Bad work");

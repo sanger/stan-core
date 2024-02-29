@@ -47,7 +47,8 @@ public class TestHistoryQuery {
     @Transactional
     @Test
     public void testHistory() throws Exception {
-        String mutation = tester.readGraphQL("register.graphql").replace("\"SGP1\"", "");
+        Work work = entityCreator.createWork(null, null, null, null, null);
+        String mutation = tester.readGraphQL("register.graphql").replace("SGP1", work.getWorkNumber());
         User user = entityCreator.createUser("user1");
         tester.setUser(user);
 
@@ -74,7 +75,7 @@ public class TestHistoryQuery {
             Map<String, ?> historyData = chainGet(response, "data", queryName);
             List<Map<String,?>> entries = chainGetList(historyData, "entries");
             assertThat(entries).hasSize(1);
-            Map<String,?> entry = entries.get(0);
+            Map<String,?> entry = entries.getFirst();
             assertNotNull(entry.get("eventId"));
             assertEquals("Register", entry.get("type"));
             assertEquals(sampleId, entry.get("sampleId"));
@@ -86,14 +87,14 @@ public class TestHistoryQuery {
 
             List<Map<String,?>> labwareData = chainGetList(historyData, "labware");
             assertThat(labwareData).hasSize(1);
-            lwData = labwareData.get(0);
+            lwData = labwareData.getFirst();
             assertEquals(labwareId, lwData.get("id"));
             assertEquals(barcode, lwData.get("barcode"));
             assertEquals("active", lwData.get("state"));
 
             List<Map<String,?>> samplesData = chainGetList(historyData, "samples");
             assertThat(samplesData).hasSize(1);
-            Map<String,?> sampleData = samplesData.get(0);
+            Map<String,?> sampleData = samplesData.getFirst();
             assertEquals(sampleId, sampleData.get("id"));
             assertEquals("TISSUE1", chainGet(sampleData, "tissue", "externalName"));
             assertEquals("Bone", chainGet(sampleData, "tissue", "spatialLocation", "tissueType", "name"));
@@ -131,14 +132,14 @@ public class TestHistoryQuery {
         List<Map<String, ?>> samplesData = historyData.get("samples");
 
         assertThat(labwaresData).hasSize(1);
-        assertEquals(lw.getId(), labwaresData.get(0).get("id"));
-        assertEquals(lw.getBarcode(), labwaresData.get(0).get("barcode"));
+        assertEquals(lw.getId(), labwaresData.getFirst().get("id"));
+        assertEquals(lw.getBarcode(), labwaresData.getFirst().get("barcode"));
 
         assertThat(samplesData).hasSize(1);
-        assertEquals(sample.getId(), samplesData.get(0).get("id"));
+        assertEquals(sample.getId(), samplesData.getFirst().get("id"));
 
         assertThat(entriesData).hasSize(1);
-        Map<String, ?> entryData = entriesData.get(0);
+        Map<String, ?> entryData = entriesData.getFirst();
         assertEquals(op.getId(), entryData.get("eventId"));
         assertEquals(opType.getName(), entryData.get("type"));
         assertEquals(work.getWorkNumber(), entryData.get("workNumber"));

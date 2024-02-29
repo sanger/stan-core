@@ -11,7 +11,6 @@ import java.time.LocalDate;
 import java.util.*;
 import java.util.function.Function;
 
-import static java.util.stream.Collectors.toList;
 import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 /**
@@ -237,7 +236,7 @@ public class RegisterValidationImp implements RegisterValidation {
         List<String> disabledHmdmcs = hmdmcMap.values().stream()
                 .filter(h -> h!=null && !h.isEnabled())
                 .map(Hmdmc::getHmdmc)
-                .collect(toList());
+                .toList();
         if (!disabledHmdmcs.isEmpty()) {
             addProblem(pluralise("HuMFre number{s} not enabled: ", disabledHmdmcs.size()) + disabledHmdmcs);
         }
@@ -291,7 +290,7 @@ public class RegisterValidationImp implements RegisterValidation {
     public void validateExistingTissues() {
         List<BlockRegisterRequest> blocksForExistingTissues = blocks().stream()
                 .filter(BlockRegisterRequest::isExistingTissue)
-                .collect(toList());
+                .toList();
         if (blocksForExistingTissues.isEmpty()) {
             return;
         }
@@ -358,10 +357,11 @@ public class RegisterValidationImp implements RegisterValidation {
     }
 
     public void validateWorks() {
-        if (!request.getWorkNumbers().isEmpty()) {
-            works = workService.validateUsableWorks(problems, request.getWorkNumbers()).values();
-        } else {
+        if (request.getWorkNumbers().isEmpty()) {
+            addProblem("No work number supplied.");
             works = List.of();
+        } else {
+            works = workService.validateUsableWorks(problems, request.getWorkNumbers()).values();
         }
     }
 
