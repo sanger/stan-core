@@ -1,8 +1,8 @@
 package uk.ac.sanger.sccp.stan.service.graph.render;
 
-import uk.ac.sanger.sccp.stan.model.HistoryGraph;
-import uk.ac.sanger.sccp.stan.model.HistoryGraph.Link;
-import uk.ac.sanger.sccp.stan.model.HistoryGraph.Node;
+import uk.ac.sanger.sccp.stan.request.HistoryGraph;
+import uk.ac.sanger.sccp.stan.request.HistoryGraph.Link;
+import uk.ac.sanger.sccp.stan.request.HistoryGraph.Node;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -14,15 +14,15 @@ import static java.util.stream.Collectors.groupingBy;
  * @author dr6
  */
 public class GraphRendererImp implements GraphRenderer {
-    public static final int NODE_WIDTH = 175, NODE_HEIGHT = 130, MARGIN = 50;
+    public static final int NODE_WIDTH = 200, NODE_HEIGHT = 110, MARGIN = 50;
 
-    private static final int nodeOutline = 0xff000000, nodeFill = 0xffffffff, linkColour = 0x80ff0000, dateColour = 0xffc0c0c0;
+    private static final int nodeOutline = 0xff000000, nodeFill = 0xffffffff, linkColour = 0x800000ff, dateColour = 0xffc0c0c0;
     private static final int dropShadowColour = 0x40000000;
 
     private Draw draw;
     private HistoryGraph graph;
     private CoordSpace coords;
-    private boolean datesOn;
+    private boolean datesOn = true;
     private DrawStroke dateStroke = new DrawStroke(1, 10);
     private List<DateLine> dateLines;
 
@@ -91,6 +91,19 @@ public class GraphRendererImp implements GraphRenderer {
                 coords.toRenderScale(NODE_WIDTH), coords.toRenderScale(NODE_HEIGHT));
     }
 
+    @Override
+    public Bounds getExportBounds(int fontSize) {
+        Bounds drawBounds = coords.toRender(getWorldBounds());
+        final int margin = coords.toRenderScale(MARGIN / 2f);
+        int left = margin, top = margin;
+        if (isDatesOn()) {
+            top = Math.max(drawBounds.y() + 4 + fontSize - coords.toRenderY(0), top);
+            left = Math.max(getExportedDateXOffset(fontSize), left);
+        }
+        return new Bounds(drawBounds.x() - left , drawBounds.y() - top,
+                drawBounds.width() + left + margin, drawBounds.height() + top + margin);
+    }
+
     /**
      * Are date lines drawn?
      * @return true if date lines should be drawn
@@ -140,8 +153,8 @@ public class GraphRendererImp implements GraphRenderer {
      * @param node the node to paint the dropshadow for
      */
     public void paintDropShadow(Node node) {
-        int x = coords.toRenderX(getNodeLeft(node.getX()));
-        int y = coords.toRenderY(getNodeTop(node.getY()));
+        int x = coords.toRenderX(getNodeLeft(node.getX())+5)+1;
+        int y = coords.toRenderY(getNodeTop(node.getY())+5)+1;
         int wid = coords.toRenderScale(NODE_WIDTH);
         int hei = coords.toRenderScale(NODE_HEIGHT);
         draw.addRect(dropShadowColour, 0, x, y, wid, hei);
@@ -191,7 +204,7 @@ public class GraphRendererImp implements GraphRenderer {
             return;
         }
         // pick a spot to go horizontal
-        float by = getNodeTop(parent.getY()) + NODE_HEIGHT + MARGIN / 2f;
+        float by = getNodeTop(parent.getY()) + NODE_HEIGHT + MARGIN * 0.75f;
         int rpx = coords.toRenderX(px);
         int rpy = coords.toRenderY(py);
         int rcx = coords.toRenderX(cx);

@@ -1,4 +1,4 @@
-package uk.ac.sanger.sccp.stan.model;
+package uk.ac.sanger.sccp.stan.request;
 
 import java.time.LocalDateTime;
 import java.util.List;

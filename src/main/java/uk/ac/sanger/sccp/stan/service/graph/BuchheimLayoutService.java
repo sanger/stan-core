@@ -1,7 +1,7 @@
 package uk.ac.sanger.sccp.stan.service.graph;
 
-import uk.ac.sanger.sccp.stan.model.HistoryGraph.Link;
-import uk.ac.sanger.sccp.stan.model.HistoryGraph.Node;
+import uk.ac.sanger.sccp.stan.request.HistoryGraph.Link;
+import uk.ac.sanger.sccp.stan.request.HistoryGraph.Node;
 
 import java.util.List;
 

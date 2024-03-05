@@ -3,10 +3,9 @@ package uk.ac.sanger.sccp.stan.service.graph;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.model.HistoryGraph.Link;
-import uk.ac.sanger.sccp.stan.model.HistoryGraph.Node;
-import uk.ac.sanger.sccp.stan.request.History;
-import uk.ac.sanger.sccp.stan.request.HistoryEntry;
+import uk.ac.sanger.sccp.stan.request.*;
+import uk.ac.sanger.sccp.stan.request.HistoryGraph.Link;
+import uk.ac.sanger.sccp.stan.request.HistoryGraph.Node;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
 
 import java.time.LocalDateTime;
@@ -23,10 +22,12 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.inMap;
 @Service
 public class GraphServiceImp implements GraphService {
     private final BuchheimLayoutService layoutService;
+    private final GraphRenderService renderService;
 
     @Autowired
-    public GraphServiceImp(BuchheimLayoutService layoutService) {
+    public GraphServiceImp(BuchheimLayoutService layoutService, GraphRenderService renderService) {
         this.layoutService = layoutService;
+        this.renderService = renderService;
     }
 
     @Override
@@ -41,6 +42,11 @@ public class GraphServiceImp implements GraphService {
             nodeData.get(i).nodeId = i;
         }
         return createHistoryGraph(nodeData, lwMap, sampleMap);
+    }
+
+    @Override
+    public GraphSVG render(HistoryGraph graph, float zoom) {
+        return renderService.toSVG(graph, zoom);
     }
 
     /**
@@ -240,6 +246,8 @@ public class GraphServiceImp implements GraphService {
         }
         return links;
     }
+
+
 
     /**
      * A key used to group similar history entries.

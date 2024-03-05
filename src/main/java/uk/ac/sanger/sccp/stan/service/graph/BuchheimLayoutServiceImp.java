@@ -2,8 +2,8 @@ package uk.ac.sanger.sccp.stan.service.graph;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.ac.sanger.sccp.stan.model.HistoryGraph.Link;
-import uk.ac.sanger.sccp.stan.model.HistoryGraph.Node;
+import uk.ac.sanger.sccp.stan.request.HistoryGraph.Link;
+import uk.ac.sanger.sccp.stan.request.HistoryGraph.Node;
 
 import java.time.LocalDateTime;
 import java.util.*;

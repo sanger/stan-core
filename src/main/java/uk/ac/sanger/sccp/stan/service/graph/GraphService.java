@@ -1,7 +1,6 @@
 package uk.ac.sanger.sccp.stan.service.graph;
 
-import uk.ac.sanger.sccp.stan.model.HistoryGraph;
-import uk.ac.sanger.sccp.stan.request.History;
+import uk.ac.sanger.sccp.stan.request.*;
 
 /**
  * Service to create history graphs.
@@ -12,4 +11,9 @@ public interface GraphService {
      * @param history the history to graph
      */
     HistoryGraph createGraph(History history);
+
+    /**
+     * Renders history graph to SVG
+     */
+    GraphSVG render(HistoryGraph graph, float zoom);
 }
