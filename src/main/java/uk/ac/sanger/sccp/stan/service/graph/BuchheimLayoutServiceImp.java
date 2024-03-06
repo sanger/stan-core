@@ -65,6 +65,9 @@ public class BuchheimLayoutServiceImp implements BuchheimLayoutService {
         }
     }
 
+    /**
+     * Makes a map from each node id to a parent node id.
+     */
     public Map<Integer, Integer> findParents(List<Link> links) {
         Map<Integer, Set<Integer>> childToParents = new HashMap<>();
         for (Link link : links) {
@@ -84,7 +87,7 @@ public class BuchheimLayoutServiceImp implements BuchheimLayoutService {
         Map<Integer, BuchheimNode<Node>> idToBuchheim = nodes.stream()
                 .collect(toMap(Node::id, node -> new BuchheimNode<>(node, node.getY())));
         idToBuchheim.values().forEach(node -> node.y = node.data.getY());
-        parents.forEach((parId, childId) -> {
+        parents.forEach((childId, parId) -> {
             BuchheimNode<Node> parent = idToBuchheim.get(parId);
             BuchheimNode<Node> child = idToBuchheim.get(childId);
             while (child.getY() > parent.getY() + 1) {
@@ -148,6 +151,4 @@ public class BuchheimLayoutServiceImp implements BuchheimLayoutService {
             node.x = xKeys.indexOf(reKey.getOrDefault(node.x, node.x)) - offset;
         }
     }
-
-
 }

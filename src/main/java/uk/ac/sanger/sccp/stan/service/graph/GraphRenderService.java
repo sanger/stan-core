@@ -29,7 +29,7 @@ public class GraphRenderService {
      * @return a new SVG draw object
      */
     public SVGDraw makeSVGDraw() {
-        return new SVGDraw(20);
+        return new SVGDraw(16);
     }
 
     /**

@@ -14,20 +14,19 @@ import static java.util.stream.Collectors.groupingBy;
  * @author dr6
  */
 public class GraphRendererImp implements GraphRenderer {
-    public static final int NODE_WIDTH = 200, NODE_HEIGHT = 110, MARGIN = 50;
+    public static final int NODE_WIDTH = 160, NODE_HEIGHT = 90, MARGIN = 50;
 
     private static final int nodeOutline = 0xff000000, nodeFill = 0xffffffff, linkColour = 0x800000ff, dateColour = 0xffc0c0c0;
     private static final int dropShadowColour = 0x40000000;
 
-    private Draw draw;
-    private HistoryGraph graph;
-    private CoordSpace coords;
+    private final Draw draw;
+    private final HistoryGraph graph;
+    private final CoordSpace coords;
     private boolean datesOn = true;
-    private DrawStroke dateStroke = new DrawStroke(1, 10);
+    private final DrawStroke dateStroke = new DrawStroke(1, 10);
     private List<DateLine> dateLines;
 
     private Bounds worldBounds;
-    private Bounds renderBounds;
 
     public GraphRendererImp(Draw draw, CoordSpace coords, HistoryGraph graph) {
         this.draw = draw;
@@ -164,23 +163,18 @@ public class GraphRendererImp implements GraphRenderer {
      * Draws the lines indicating dates
      */
     public void drawDateLines() {
-        int rx, rw;
-        if (renderBounds==null) {
-            Bounds worldBounds = getWorldBounds();
-            int adjustment = getExportedDateXOffset(draw.getFontHeight(Draw.FontStyle.PLAIN));
-            rx = coords.toRenderX(worldBounds.x()) - adjustment;
-            rw = coords.toRenderScale(worldBounds.width()) + adjustment;
-        } else {
-            rx = renderBounds.x();
-            rw = renderBounds.width();
-        }
+        Bounds worldBounds = getWorldBounds();
+        int adjustment = getExportedDateXOffset(draw.getFontHeight(Draw.FontStyle.PLAIN));
+        int rx = coords.toRenderX(worldBounds.x()) - adjustment;
+        int rw = coords.toRenderScale(worldBounds.width()) + adjustment;
         final int colour = dateColour;
-        DrawStroke stroke = dateStroke;
+        final DrawStroke stroke = dateStroke;
+        final int fh = draw.getFontHeight(Draw.FontStyle.PLAIN);
 
         for (var dateLine : getDateLines()) {
             String string = dateLine.date().toString();
             int ry = coords.toRenderY(dateLine.y() * (NODE_HEIGHT + MARGIN));
-            draw.addString(colour, Draw.FontStyle.PLAIN, string, rx + 10, ry - 3);
+            draw.addString(colour, Draw.FontStyle.PLAIN, string, rx + 10, ry + fh);
             draw.addLine(colour, stroke, rx, ry, rx + rw, ry);
         }
     }
@@ -231,7 +225,6 @@ public class GraphRendererImp implements GraphRenderer {
                 yText += nodeDraw.getFontHeight(fontStyle);
                 nodeDraw.addString(nodeOutline, fontStyle, lines.get(i), bds.x() + inset, yText);
             }
-
         }
     }
 
