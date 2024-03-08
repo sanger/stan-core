@@ -31,6 +31,11 @@ public class BuchheimLayoutServiceImp implements BuchheimLayoutService {
         setX(nodes, links);
     }
 
+    /**
+     * Sets the y-position of the given by their time.
+     * The nodes should be ordered by time
+     * @param nodes the nodes
+     */
     public void setY(List<Node> nodes) {
         // Nodes should already be ordered by time
         int y = 0;
@@ -44,6 +49,11 @@ public class BuchheimLayoutServiceImp implements BuchheimLayoutService {
         }
     }
 
+    /**
+     * Lays out the given nodes and sets their x-coordinates
+     * @param nodes the nodes to lay out
+     * @param links the links between nodes
+     */
     public void setX(List<Node> nodes, List<Link> links) {
         Map<Integer, Integer> nodeParents = findParents(links);
         Collection<BuchheimNode<Node>> buchheimNodes = makeBuchheimNodes(nodes, nodeParents);
@@ -59,7 +69,6 @@ public class BuchheimLayoutServiceImp implements BuchheimLayoutService {
         }
         for (BuchheimNode<Node> buchheimNode : buchheimNodes) {
             if (buchheimNode.data != null) {
-                buchheimNode.data.setY(buchheimNode.getY());
                 buchheimNode.data.setX((int) Math.round(buchheimNode.getX()));
             }
         }
@@ -83,10 +92,16 @@ public class BuchheimLayoutServiceImp implements BuchheimLayoutService {
         return bestParents;
     }
 
+    /**
+     * Makes BuchheimNodes out of the given graph nodes.
+     * Intermediate BuchheimNodes are inserted to make sure the y-coordinates correspond to hierarchical level.
+     * @param nodes the graph nodes to convert
+     * @param parents map from node id to a parent node id
+     * @return BuchheimNodes wrapping the given graph nodes
+     */
     public Collection<BuchheimNode<Node>> makeBuchheimNodes(List<Node> nodes, Map<Integer, Integer> parents) {
         Map<Integer, BuchheimNode<Node>> idToBuchheim = nodes.stream()
                 .collect(toMap(Node::id, node -> new BuchheimNode<>(node, node.getY())));
-        idToBuchheim.values().forEach(node -> node.y = node.data.getY());
         parents.forEach((childId, parId) -> {
             BuchheimNode<Node> parent = idToBuchheim.get(parId);
             BuchheimNode<Node> child = idToBuchheim.get(childId);
@@ -109,7 +124,7 @@ public class BuchheimLayoutServiceImp implements BuchheimLayoutService {
      * with the root at zero.
      * @param root the root of the tree
      */
-    private <N> void realign(BuchheimNode<N> root) {
+    public <N> void realign(BuchheimNode<N> root) {
         Map<Double, List<BuchheimNode<N>>> xNodes = new HashMap<>();
         for (BuchheimNode<N> node : root.tree()) {
             xNodes.computeIfAbsent(node.getX(), k -> new ArrayList<>()).add(node);

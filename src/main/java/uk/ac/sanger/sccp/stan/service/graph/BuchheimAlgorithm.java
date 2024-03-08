@@ -9,8 +9,16 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class BuchheimAlgorithm {
+    private final double distance = 2.0; // distance to put between adjacent nodes
 
-    private final double distance = 2.0;
+    /**
+     * Lays out the nodes descended from the given root node.
+     * @param root the root node
+     */
+    public void run(BuchheimNode<?> root) {
+        firstWalk(root);
+        secondWalk(root, -root.x);
+    }
 
     private <E> void firstWalk(BuchheimNode<E> v) {
         if (!v.hasChildren()) {
@@ -86,10 +94,10 @@ public class BuchheimAlgorithm {
         wp.mod += shift;
     }
 
-    private <E> void executeShifts(BuchheimNode<E> v) {
+    private void executeShifts(BuchheimNode<?> v) {
         double shift = 0;
         double change = 0;
-        for (BuchheimNode<E> w : v.reverseChildren()) {
+        for (var w : v.reverseChildren()) {
             w.x += shift;
             w.mod += shift;
             change += w.change;
@@ -97,7 +105,7 @@ public class BuchheimAlgorithm {
         }
     }
 
-    private <E> boolean siblings(BuchheimNode<E> a, BuchheimNode<E> b) {
+    private boolean siblings(BuchheimNode<?> a, BuchheimNode<?> b) {
         return (a!=null && b!=null && a.parent!=null && a.parent==b.parent);
     }
 
@@ -105,15 +113,10 @@ public class BuchheimAlgorithm {
         return (siblings(vil.ancestor, v) ? vil.ancestor : defaultAncestor);
     }
 
-    private <E> void secondWalk(BuchheimNode<E> v, double m) {
+    private void secondWalk(BuchheimNode<?> v, double m) {
         v.x += m;
-        for (BuchheimNode<E> w : v.children()) {
+        for (var w : v.children()) {
             secondWalk(w, m+v.mod);
         }
-    }
-
-    <E> void run(BuchheimNode<E> root) {
-        firstWalk(root);
-        secondWalk(root, -root.x);
     }
 }
