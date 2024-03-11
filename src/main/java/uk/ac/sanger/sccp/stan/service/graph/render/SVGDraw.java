@@ -130,7 +130,7 @@ public class SVGDraw implements Draw {
         final int h = boundsH + 2*margin;
         final int xOffset = boundsX - margin;
         final int yOffset = boundsY - margin;
-        out.printf(qp("<svg width=%q height=%q viewBox=\"%s %s %s %s\" >%n"),
+        out.printf(qp("<svg xmlns=\"http://www.w3.org/2000/svg\" width=%q height=%q viewBox=\"%s %s %s %s\" >%n"),
                 w, h, xOffset, yOffset, w, h);
         if (!definitions.isEmpty()) {
             out.println("  <defs>");
