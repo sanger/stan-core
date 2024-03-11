@@ -552,4 +552,21 @@ public class BasicUtils {
         }
         return false;
     }
+
+    /**
+     * Streams pairs of items from the given list.
+     * Each combination of items will be emitted once, via the given mapper function,
+     * with the order of the items used as arguments consistent with the order they
+     * occur in the list
+     * @param items the items to stream
+     * @param mapper mapper to combine the pairs of items into one combined object
+     * @return a stream of pairs of items
+     * @param <E> the type of item in the list
+     */
+    public static <E, P> Stream<P> streamPairs(final List<? extends E> items, final BiFunction<E,E,P> mapper) {
+        final int n = items.size();
+        return IntStream.range(0, n-1).boxed()
+                .flatMap(i -> IntStream.range(i+1, n)
+                        .mapToObj(j -> mapper.apply(items.get(i), items.get(j))));
+    }
 }

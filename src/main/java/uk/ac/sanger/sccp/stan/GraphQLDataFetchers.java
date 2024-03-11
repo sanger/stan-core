@@ -15,6 +15,7 @@ import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.extract.ExtractResultQueryService;
 import uk.ac.sanger.sccp.stan.service.flag.FlagLookupService;
+import uk.ac.sanger.sccp.stan.service.graph.GraphService;
 import uk.ac.sanger.sccp.stan.service.history.HistoryService;
 import uk.ac.sanger.sccp.stan.service.label.print.LabelPrintService;
 import uk.ac.sanger.sccp.stan.service.operation.RecentOpService;
@@ -77,6 +78,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final RecentOpService recentOpService;
     final FlagLookupService flagLookupService;
     final MeasurementService measurementService;
+    final GraphService graphService;
 
     @Autowired
     public GraphQLDataFetchers(ObjectMapper objectMapper, AuthenticationComponent authComp, UserRepo userRepo,
@@ -99,7 +101,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                NextReplicateService nextReplicateService, WorkSummaryService workSummaryService,
                                LabwareService labwareService, FileStoreService fileStoreService,
                                SlotRegionService slotRegionService, RecentOpService recentOpService,
-                               FlagLookupService flagLookupService, MeasurementService measurementService) {
+                               FlagLookupService flagLookupService, MeasurementService measurementService,
+                               GraphService graphService) {
         super(objectMapper, authComp, userRepo);
         this.sessionConfig = sessionConfig;
         this.versionInfo = versionInfo;
@@ -143,6 +146,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.recentOpService = recentOpService;
         this.flagLookupService = flagLookupService;
         this.measurementService = measurementService;
+        this.graphService = graphService;
     }
 
     public DataFetcher<User> getUser() {
@@ -394,14 +398,26 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         };
     }
 
+    private History fetchHistory(DataFetchingEnvironment dfe) {
+        String workNumber = dfe.getArgument("workNumber");
+        String barcode = dfe.getArgument("barcode");
+        List<String> externalNames = dfe.getArgument("externalName");
+        List<String> donorNames = dfe.getArgument("donorName");
+        String eventType = dfe.getArgument("eventType");
+        return historyService.getHistory(workNumber, barcode, externalNames, donorNames, eventType);
+    }
+
     public DataFetcher<History> history() {
+        return this::fetchHistory;
+    }
+
+    public DataFetcher<GraphSVG> historyGraph() {
         return dfe -> {
-            String workNumber = dfe.getArgument("workNumber");
-            String barcode = dfe.getArgument("barcode");
-            List<String> externalNames = dfe.getArgument("externalName");
-            List<String> donorNames = dfe.getArgument("donorName");
-            String eventType = dfe.getArgument("eventType");
-            return historyService.getHistory(workNumber, barcode, externalNames, donorNames, eventType);
+            History history = fetchHistory(dfe);
+            HistoryGraph graph = graphService.createGraph(history);
+            Number zoomNumber = dfe.getArgument("zoom");
+            float zoom = (zoomNumber==null ? 1 : zoomNumber.floatValue());
+            return graphService.render(graph, zoom);
         };
     }
 
