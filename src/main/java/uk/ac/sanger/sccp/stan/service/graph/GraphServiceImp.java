@@ -12,8 +12,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toSet;
+import static java.util.stream.Collectors.*;
 import static uk.ac.sanger.sccp.utils.BasicUtils.inMap;
 
 /**
@@ -202,7 +201,7 @@ public class GraphServiceImp implements GraphService {
      * @return the key for this entry
      */
     public NodeKey keyForEntry(HistoryEntry entry, Map<Integer, Sample> sampleMap) {
-        Sample sample = sampleMap.get(entry.getSampleId());
+        Sample sample = entry.getSampleId()==null ? null : sampleMap.get(entry.getSampleId());
         return new NodeKey(entry.getType(), entry.getEventId(), entry.getDestinationLabwareId(),
                 sample==null ? null : sample.getTissue().getId(),
                 sample==null ? null : sample.getBioState().getId());
@@ -219,13 +218,17 @@ public class GraphServiceImp implements GraphService {
         List<Link> links = new ArrayList<>();
         for (int i = nodeData.size()-1; i > 0; --i) {
             NodeData child = nodeData.get(i);
-            int lwId = child.sourceLabwareId();
+            Set<Integer> sourceLwIds = child.entries.stream()
+                    .map(HistoryEntry::getSourceLabwareId)
+                    .collect(toCollection(HashSet::new));
             if (!child.isOperation()) {
                 for (int j = i-1; j >= 0; --j) {
                     NodeData parent = nodeData.get(j);
-                    if (parent.destLabwareId()==lwId) {
+                    if (sourceLwIds.remove(parent.destLabwareId())) {
                         links.add(new Link(parent.nodeId, child.nodeId));
-                        break;
+                        if (sourceLwIds.isEmpty()) {
+                            break;
+                        }
                     }
                 }
                 continue;
@@ -233,7 +236,7 @@ public class GraphServiceImp implements GraphService {
             Set<SlotSample> sources = new HashSet<>(child.sourceSs);
             for (int j = i-1; j >= 0; --j) {
                 NodeData parent = nodeData.get(j);
-                if (parent.destLabwareId()!=lwId) {
+                if (!sourceLwIds.contains(parent.destLabwareId())) {
                     continue;
                 }
                 if (!parent.isOperation() || sources.removeAll(parent.destSs)) {
@@ -246,8 +249,6 @@ public class GraphServiceImp implements GraphService {
         }
         return links;
     }
-
-
 
     /**
      * A key used to group similar history entries.
@@ -266,11 +267,11 @@ public class GraphServiceImp implements GraphService {
      */
     public static class NodeData {
         // The history entries that the node describes
-        private final List<HistoryEntry> entries;
+        final List<HistoryEntry> entries;
         // The slot/samples used to find links between nodes
-        private Set<SlotSample> sourceSs, destSs;
+        Set<SlotSample> sourceSs, destSs;
         // The arbitrary id given to nodes in a graph
-        private Integer nodeId;
+        Integer nodeId;
 
         public NodeData(List<HistoryEntry> entries) {
             this.entries = entries;
@@ -294,10 +295,6 @@ public class GraphServiceImp implements GraphService {
         /** The destination labware id of the op/event */
         public int destLabwareId() {
             return this.entries.getFirst().getDestinationLabwareId();
-        }
-        /** The source labware id of the op/event */
-        public int sourceLabwareId() {
-            return this.entries.getFirst().getSourceLabwareId();
         }
     }
 }

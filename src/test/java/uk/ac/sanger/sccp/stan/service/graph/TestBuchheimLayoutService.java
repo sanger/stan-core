@@ -135,9 +135,26 @@ class TestBuchheimLayoutService {
 
     @Test
     void testRealign() {
-        //TODO
+        BuchheimNode<String> root = bnode(null, 0, 0);
+        BuchheimNode<String> a1 = bnode(root, -5, 1);
+        BuchheimNode<String> a2 = bnode(root, 3, 1);
+        BuchheimNode<String> b1 = bnode(a1, -5.1, 2);
+        BuchheimNode<String> b2 = bnode(a1, -5.0, 2);
+        BuchheimNode<String> b3 = bnode(a1, -4.9, 2);
+        service.realign(root);
+
+        assertPosition(root, 0, 0);
+        assertPosition(a1, -1, 1);
+        assertPosition(a2, 0,1);
+        assertPosition(b1, -2, 2);
+        assertPosition(b2, -1, 2);
+        assertPosition(b3, 0, 2);
     }
 
+    private static void assertPosition(BuchheimNode<?> bn, double x, int y) {
+        assertEquals(x, bn.x);
+        assertEquals(y, bn.y);
+    }
 
     private static Node nodeAtTime(int id, int time) {
         return new Node(id, time(time), null, null, null, null, null);
