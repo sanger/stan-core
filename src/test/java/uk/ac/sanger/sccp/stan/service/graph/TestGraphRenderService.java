@@ -24,7 +24,7 @@ class TestGraphRenderService {
     @Test
     void makeSVGDraw() {
         GraphRenderService service = new GraphRenderService();
-        assertThat(service.makeSVGDraw()).isInstanceOf(SVGDraw.class);
+        assertThat(service.makeSVGDraw(null)).isInstanceOf(SVGDraw.class);
     }
 
     @Test
@@ -35,7 +35,7 @@ class TestGraphRenderService {
 
     @Test
     void toSVG() {
-        final int fh = 16;
+        final int fh = 18;
         float zoom = 1.5f;
         String svgData = "SVG DATA\n";
 
@@ -46,7 +46,7 @@ class TestGraphRenderService {
         HistoryGraph graph = mock(HistoryGraph.class);
 
         //noinspection resource
-        doReturn(draw).when(service).makeSVGDraw();
+        doReturn(draw).when(service).makeSVGDraw(fh);
         doReturn(coords).when(service).makeCoordSpace();
         doReturn(renderer).when(service).makeRenderer(any(), any(), any());
         Bounds bounds = new Bounds(1,2,3,4);
@@ -58,7 +58,7 @@ class TestGraphRenderService {
             return null;
         }).when(draw).write(any(), anyInt(), anyInt(), anyInt(), anyInt());
 
-        GraphSVG svg = service.toSVG(graph, zoom);
+        GraphSVG svg = service.toSVG(graph, zoom, fh);
         assertEquals(svgData, svg.getSvg());
 
         verify(service).makeRenderer(draw, coords, graph);

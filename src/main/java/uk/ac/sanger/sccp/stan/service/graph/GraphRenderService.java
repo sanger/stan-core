@@ -28,8 +28,8 @@ public class GraphRenderService {
      * Makes an SVG draw object
      * @return a new SVG draw object
      */
-    public SVGDraw makeSVGDraw() {
-        return new SVGDraw(16);
+    public SVGDraw makeSVGDraw(Integer fontSize) {
+        return new SVGDraw(fontSize==null ? 16 : fontSize);
     }
 
     /**
@@ -45,8 +45,8 @@ public class GraphRenderService {
      * @param graph the graph to render
      * @return a new object containing SVG data
      */
-    public GraphSVG toSVG(HistoryGraph graph, float zoom) {
-        try (SVGDraw draw = makeSVGDraw()) {
+    public GraphSVG toSVG(HistoryGraph graph, float zoom, Integer fontSize) {
+        try (SVGDraw draw = makeSVGDraw(fontSize)) {
             CoordSpace coords = makeCoordSpace();
             coords.setZoom(zoom);
             GraphRenderer renderer = makeRenderer(draw, coords, graph);

@@ -87,10 +87,11 @@ class TestGraphService {
     void testRender() {
         HistoryGraph graph = mock(HistoryGraph.class);
         float zoom = 1.5f;
+        Integer fontSize = 21;
         GraphSVG graphSVG = mock(GraphSVG.class);
-        when(mockRenderService.toSVG(graph, zoom)).thenReturn(graphSVG);
-        assertSame(graphSVG, service.render(graph, zoom));
-        verify(mockRenderService).toSVG(graph, zoom);
+        when(mockRenderService.toSVG(graph, zoom, fontSize)).thenReturn(graphSVG);
+        assertSame(graphSVG, service.render(graph, zoom, fontSize));
+        verify(mockRenderService).toSVG(graph, zoom, fontSize);
     }
 
     @Test

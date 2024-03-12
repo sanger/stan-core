@@ -1375,7 +1375,12 @@ public class TestHistoryService {
                                 "Plex: 5", "Costing: SGP", "Solution: Solution 100", "Arizona"),
                         "A1", null)
         );
-        assertThat(service.createEntriesForOps(ops, sampleIds, labwareList, opWork, null)).containsExactlyElementsOf(expectedEntries);
+        final List<HistoryEntry> actualEntries = service.createEntriesForOps(ops, sampleIds, labwareList, opWork, null);
+        for (HistoryEntry entry : actualEntries) {
+            assertNotNull(entry.getOperation());
+            entry.setOperation(null);
+        }
+        assertThat(actualEntries).containsExactlyElementsOf(expectedEntries);
 
         verify(service).loadOpMeasurements(opIdSet);
         verify(service).loadLabwareFlags(ops);
@@ -1409,13 +1414,14 @@ public class TestHistoryService {
                         null, expectedAddress1, expectedRegion1)
 
         ));
-        if(expectedAddress2 != null) {
+        if (expectedAddress2 != null) {
             expectedEntries.add(new HistoryEntry(op1.getId(), op1.getOperationType().getName(), op1.getPerformed(), labware[0].getId(),
                     labware[3].getId(), samples[sampleIndex2].getId(), getUser().getUsername(), null,
                     null, expectedAddress2, expectedRegion2));
 
         }
 
+        expectedEntries.forEach(e -> e.setOperation(op1));
 
         assertThat(service.createEntriesForOps(List.of(op1), Set.of(samples[0].getId(), samples[2].getId()), Arrays.asList(labware), Map.of(
                 op1.getId(), Set.of()
@@ -1452,6 +1458,8 @@ public class TestHistoryService {
         List<HistoryEntry> entries = service.createEntriesForOps(List.of(op), null, List.of(lw), null, workNumber);
         assertThat(entries).hasSize(1);
         HistoryEntry entry = entries.getFirst();
+        assertSame(op, entry.getOperation());
+        entry.setOperation(null);
         assertEquals(new HistoryEntry(op.getId(), opType.getName(), op.getPerformed(), lw.getId(), lw.getId(),
                 sample.getId(), user.getUsername(), workNumber, null, "A1, A2", null), entry);
     }

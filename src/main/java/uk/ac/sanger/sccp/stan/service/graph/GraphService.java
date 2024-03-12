@@ -14,6 +14,7 @@ public interface GraphService {
 
     /**
      * Renders history graph to SVG
+     * @param fontSize optional font size
      */
-    GraphSVG render(HistoryGraph graph, float zoom);
+    GraphSVG render(HistoryGraph graph, float zoom, Integer fontSize);
 }

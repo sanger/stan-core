@@ -1946,8 +1946,8 @@ type Query {
     historyForLabwareBarcode(barcode: String!): History!
     """Get the history associated with a specified work number, and/or barcode, external name, donor name."""
     history(workNumber: String, barcode: String, externalName: [String!], donorName: [String!], eventType: String): History!
-    """Get a graph of the indicated history."""
-    historyGraph(workNumber: String, barcode: String, externalName: [String!], donorName: [String!], zoom: Float): GraphSVG!
+    """Get a graph of the indicated history. Zoom and fontSize are optional."""
+    historyGraph(workNumber: String, barcode: String, externalName: [String!], donorName: [String!], zoom: Float, fontSize: Int): GraphSVG!
 
    """Get the work progress (some particular timestamps) associated with a specified work number, and/or
     work types, programs, statuses."""

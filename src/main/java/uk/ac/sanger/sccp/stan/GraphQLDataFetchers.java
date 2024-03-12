@@ -416,8 +416,10 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
             History history = fetchHistory(dfe);
             HistoryGraph graph = graphService.createGraph(history);
             Number zoomNumber = dfe.getArgument("zoom");
+            Number fontNumber = dfe.getArgument("fontSize");
             float zoom = (zoomNumber==null ? 1 : zoomNumber.floatValue());
-            return graphService.render(graph, zoom);
+            Integer fontInteger = (fontNumber==null ? null : fontNumber.intValue());
+            return graphService.render(graph, zoom, fontInteger);
         };
     }
 

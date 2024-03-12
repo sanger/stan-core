@@ -44,8 +44,8 @@ public class GraphServiceImp implements GraphService {
     }
 
     @Override
-    public GraphSVG render(HistoryGraph graph, float zoom) {
-        return renderService.toSVG(graph, zoom);
+    public GraphSVG render(HistoryGraph graph, float zoom, Integer fontSize) {
+        return renderService.toSVG(graph, zoom, fontSize);
     }
 
     /**
