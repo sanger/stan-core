@@ -16,8 +16,8 @@ import static java.util.stream.Collectors.groupingBy;
 public class GraphRendererImp implements GraphRenderer {
     public static final int NODE_WIDTH = 160, NODE_HEIGHT = 90, MARGIN = 50;
 
-    private static final int nodeOutline = 0xff000000, nodeFill = 0xffffffff, linkColour = 0x800000ff, dateColour = 0xffc0c0c0;
-    private static final int dropShadowColour = 0x40000000;
+    static final int nodeOutline = 0xff000000, nodeFill = 0xffffffff, linkColour = 0x800000ff, dateColour = 0xffc0c0c0;
+    static final int dropShadowColour = 0x40000000;
 
     private final Draw draw;
     private final HistoryGraph graph;
@@ -164,18 +164,17 @@ public class GraphRendererImp implements GraphRenderer {
      */
     public void drawDateLines() {
         Bounds worldBounds = getWorldBounds();
-        int adjustment = getExportedDateXOffset(draw.getFontHeight(Draw.FontStyle.PLAIN));
+        final int fh = draw.getFontHeight(Draw.FontStyle.PLAIN);
+        int adjustment = getExportedDateXOffset(fh);
         int rx = coords.toRenderX(worldBounds.x()) - adjustment;
         int rw = coords.toRenderScale(worldBounds.width()) + adjustment;
         final int colour = dateColour;
-        final DrawStroke stroke = dateStroke;
-        final int fh = draw.getFontHeight(Draw.FontStyle.PLAIN);
 
         for (var dateLine : getDateLines()) {
             String string = dateLine.date().toString();
             int ry = coords.toRenderY(dateLine.y() * (NODE_HEIGHT + MARGIN));
             draw.addString(colour, Draw.FontStyle.PLAIN, string, rx + 10, ry + fh);
-            draw.addLine(colour, stroke, rx, ry, rx + rw, ry);
+            draw.addLine(colour, dateStroke, rx, ry, rx + rw, ry);
         }
     }
 

@@ -24,8 +24,8 @@ import java.util.Arrays;
  * @author dr6
  */
 public class DrawStroke {
-    private int width;
-    private int[] dashArray;
+    private final int width;
+    private final int[] dashArray;
 
     public DrawStroke(int width, int... dashes) {
         this.width = width;
