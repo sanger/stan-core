@@ -25,10 +25,10 @@ public interface OriginalSampleRegisterFileReader extends MultipartFileReader<Or
         Life_stage,
         Collection_date(LocalDate.class, Pattern.compile("(if.*)date.*collection.*", Pattern.CASE_INSENSITIVE), false),
         Species,
-        HuMFre(null, false),
+        HuMFre(Pattern.compile("humfre\\s*(number)?", Pattern.CASE_INSENSITIVE), false),
         Tissue_type,
         External_identifier(Pattern.compile("external\\s*id.*", Pattern.CASE_INSENSITIVE), false),
-        Spatial_location(Integer.class),
+        Spatial_location(Integer.class, Pattern.compile("spatial\\s*location\\s*(number)?", Pattern.CASE_INSENSITIVE), true),
         Replicate_number(Pattern.compile("replicate.*", Pattern.CASE_INSENSITIVE), false),
         Labware_type,
         Fixative,
@@ -50,10 +50,6 @@ public interface OriginalSampleRegisterFileReader extends MultipartFileReader<Or
 
         Column(Pattern pattern, boolean required) {
             this(null, pattern, required);
-        }
-
-        Column(Class<?> dataType) {
-            this(dataType, null, true);
         }
 
         Column(Class<?> dataType, Pattern pattern, boolean required) {
