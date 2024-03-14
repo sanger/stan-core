@@ -14,7 +14,7 @@ public class StringValidator implements Validator<String> {
 
     public enum CharacterType {
         ALPHA, DIGIT, HYPHEN, UNDERSCORE, SPACE, SLASH, BACKSLASH, PAREN, FULL_STOP, APOSTROPHE, PERCENT, COMMA,
-        COLON, SEMICOLON
+        COLON, SEMICOLON, COMPARATOR, EQUALS, PLUS, MICRO, EXCLAMATION,
     }
 
     private final String fieldName;
@@ -197,6 +197,11 @@ public class StringValidator implements Validator<String> {
             case ',' -> CharacterType.COMMA;
             case ':' -> CharacterType.COLON;
             case ';' -> CharacterType.SEMICOLON;
+            case '<', '>' -> CharacterType.COMPARATOR;
+            case '=' -> CharacterType.EQUALS;
+            case '+' -> CharacterType.PLUS;
+            case 'µ' -> CharacterType.MICRO;
+            case '!' -> CharacterType.EXCLAMATION;
             default -> null;
         };
     }
