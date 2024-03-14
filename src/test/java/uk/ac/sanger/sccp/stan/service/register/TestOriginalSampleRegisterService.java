@@ -204,7 +204,7 @@ public class TestOriginalSampleRegisterService {
         verify(service).checkFormat(problemsArgCaptor.capture(), same(request), eq("Donor identifier"), any(), eq(true), same(mockDonorNameValidator));
         Collection<String> problems = problemsArgCaptor.getValue();
         verify(service).checkFormat(same(problems), same(request), eq("External identifier"), any(), eq(false), same(mockExternalNameValidator));
-        verify(service).checkFormat(same(problems), same(request), eq("Life stage"), any(), eq(true), isNull());
+        verify(service).checkFormat(same(problems), same(request), eq("Life stage"), any(), eq(false), isNull());
         verify(service).checkFormat(same(problems), same(request), eq("HuMFre number"), any(), eq(false), same(mockHmdmcValidator));
         verify(service).checkFormat(same(problems), same(request), eq("Replicate number"), any(), eq(false), same(mockReplicateValidator));
         verify(service).checkFormat(same(problems), same(request), eq("Species"), any(), eq(true), isNull());

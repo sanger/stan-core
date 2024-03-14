@@ -99,7 +99,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
 
         checkFormat(problems, request, "Donor identifier", OriginalSampleData::getDonorIdentifier, true, donorNameValidator);
         checkFormat(problems, request, "External identifier", OriginalSampleData::getExternalIdentifier, false, externalNameValidator);
-        checkFormat(problems, request, "Life stage", OriginalSampleData::getLifeStage, true, null);
+        checkFormat(problems, request, "Life stage", OriginalSampleData::getLifeStage, false, null);
         checkFormat(problems, request, "HuMFre number", OriginalSampleData::getHmdmc, false, hmdmcValidator);
         checkFormat(problems, request, "Replicate number", OriginalSampleData::getReplicateNumber, false, replicateValidator);
         checkFormat(problems, request, "Species", OriginalSampleData::getSpecies, true, null);

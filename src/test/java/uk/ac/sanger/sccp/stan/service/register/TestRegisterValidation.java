@@ -598,7 +598,7 @@ public class TestRegisterValidation {
                         List.of("Multiple different life stages specified for donor Donor1")),
                 Arguments.of(Arrays.asList(null, null), Arrays.asList(null, null),
                         List.of("human", "human"),
-                        List.of(), knownSpecies, List.of(), List.of("Missing donor identifier.", "Missing life stage.")),
+                        List.of(), knownSpecies, List.of(), List.of("Missing donor identifier.")),
                 Arguments.of(List.of(""), List.of(LifeStage.adult),
                         List.of("human", "human"),
                         List.of(), knownSpecies, List.of(), List.of("Missing donor identifier.")),

@@ -95,9 +95,6 @@ public class RegisterValidationImp implements RegisterValidation {
             } else if (donorNameValidation!=null) {
                 donorNameValidation.validate(block.getDonorIdentifier(), this::addProblem);
             }
-            if (block.getLifeStage()==null) {
-                addProblem("Missing life stage.");
-            }
             if (block.getSpecies()==null || block.getSpecies().isEmpty()) {
                 addProblem("Missing species.");
             } else {
@@ -122,7 +119,7 @@ public class RegisterValidationImp implements RegisterValidation {
                 donor = new Donor(null, block.getDonorIdentifier(), block.getLifeStage(), species);
                 donorMap.put(donorNameUc, donor);
             } else {
-                if (block.getLifeStage()!=null && donor.getLifeStage()!=block.getLifeStage()) {
+                if (donor.getLifeStage()!=block.getLifeStage()) {
                     addProblem("Multiple different life stages specified for donor "+donor.getDonorName());
                 }
                 if (species!=null && !species.equals(donor.getSpecies())) {
@@ -137,7 +134,7 @@ public class RegisterValidationImp implements RegisterValidation {
             }
             Donor realDonor = optDonor.get();
             Donor newDonor = entry.getValue();
-            if (newDonor.getLifeStage()!=null && realDonor.getLifeStage()!=newDonor.getLifeStage()) {
+            if (realDonor.getLifeStage()!=newDonor.getLifeStage()) {
                 addProblem("Wrong life stage given for existing donor "+realDonor.getDonorName());
             }
             if (newDonor.getSpecies()!=null && !newDonor.getSpecies().equals(realDonor.getSpecies())) {

@@ -341,11 +341,14 @@ public class LabwareLabelDataService {
     }
 
     public String prefix(LifeStage lifeStage) {
-        return switch (lifeStage) {
-            case fetal -> "F";
-            case paediatric -> "P";
-            default -> "";
-        };
+        if (lifeStage!=null) {
+            return switch (lifeStage) {
+                case fetal -> "F";
+                case paediatric -> "P";
+                default -> "";
+            };
+        }
+        return "";
     }
 
     public List<LabelContent> getPlannedContent(List<PlanAction> planActions, Comparator<Slot> slotOrder) {

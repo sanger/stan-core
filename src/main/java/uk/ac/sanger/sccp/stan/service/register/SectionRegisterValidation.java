@@ -2,22 +2,15 @@ package uk.ac.sanger.sccp.stan.service.register;
 
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.register.SectionRegisterContent;
-import uk.ac.sanger.sccp.stan.request.register.SectionRegisterLabware;
-import uk.ac.sanger.sccp.stan.request.register.SectionRegisterRequest;
-import uk.ac.sanger.sccp.stan.service.SlotRegionService;
-import uk.ac.sanger.sccp.stan.service.ValidationException;
-import uk.ac.sanger.sccp.stan.service.Validator;
+import uk.ac.sanger.sccp.stan.request.register.*;
+import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
-import java.util.function.BiConsumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
+import java.util.function.*;
 import java.util.stream.Stream;
 
-import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 import static uk.ac.sanger.sccp.utils.UCMap.toUCMap;
@@ -128,9 +121,6 @@ public class SectionRegisterValidation {
             } else if (donorNameValidation!=null) {
                 donorNameValidation.validate(content.getDonorIdentifier(), this::addProblem);
             }
-            if (content.getLifeStage()==null) {
-                addProblem("Missing life stage.");
-            }
             if (content.getSpecies()==null || content.getSpecies().isEmpty()) {
                 addProblem("Missing species.");
             } else {
@@ -148,13 +138,11 @@ public class SectionRegisterValidation {
                 donor = new Donor(null, content.getDonorIdentifier(), content.getLifeStage(), species);
                 donorMap.put(donorName, donor);
             } else {
-                if (content.getLifeStage()!=null && content.getLifeStage()!=donor.getLifeStage()) {
+                if (content.getLifeStage()!=donor.getLifeStage()) {
                     if (donor.getId()!=null) {
                         addProblem("Wrong life stage given for existing donor "+donor.getDonorName());
-                    } else if (donor.getLifeStage()!=null) {
-                        addProblem("Multiple different life stages specified for donor "+donor.getDonorName());
                     } else {
-                        donor.setLifeStage(content.getLifeStage());
+                        addProblem("Multiple different life stages specified for donor "+donor.getDonorName());
                     }
                 }
                 if (species!=null && !species.equals(donor.getSpecies())) {
@@ -512,7 +500,7 @@ public class SectionRegisterValidation {
                 .filter(x -> x!=null && !enabledPredicate.test(x))
                 .map(stringFunction)
                 .sorted()
-                .collect(toList());
+                .toList();
         if (notUsable.isEmpty()) {
             return true;
         }

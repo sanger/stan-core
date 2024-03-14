@@ -3,31 +3,20 @@ package uk.ac.sanger.sccp.stan.service.register;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.junit.jupiter.params.provider.*;
+import org.mockito.*;
 import org.mockito.stubbing.Answer;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.register.SectionRegisterContent;
-import uk.ac.sanger.sccp.stan.request.register.SectionRegisterLabware;
-import uk.ac.sanger.sccp.stan.request.register.SectionRegisterRequest;
-import uk.ac.sanger.sccp.stan.service.SlotRegionService;
-import uk.ac.sanger.sccp.stan.service.ValidationException;
-import uk.ac.sanger.sccp.stan.service.Validator;
+import uk.ac.sanger.sccp.stan.request.register.*;
+import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Supplier;
+import java.util.function.*;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -243,9 +232,12 @@ public class TestSectionRegisterValidation {
                                 new SectionRegisterContent("DONOR1", LifeStage.adult, "human"),
                                 new SectionRegisterContent("DONOR2", LifeStage.fetal, "Human"),
                                 new SectionRegisterContent("DONOR2", LifeStage.fetal, "HUMAN"),
-                                new SectionRegisterContent("DONOR3", LifeStage.paediatric, "Hamster")),
+                                new SectionRegisterContent("DONOR3", LifeStage.paediatric, "Hamster"),
+                                new SectionRegisterContent("DONOR4", null, "human"),
+                                new SectionRegisterContent("DONOR4", null, "HUMAN")),
                         null, List.of(new Donor(null, "DONOR2", LifeStage.fetal, human),
                                 new Donor(null, "DONOR3", LifeStage.paediatric, hamster),
+                                new Donor(null, "DONOR4", null, human),
                                 donor1), knownDonors, knownSpecies
                 ),
 
@@ -260,7 +252,7 @@ public class TestSectionRegisterValidation {
                 ),
                 Arguments.of(
                         new SectionRegisterContent("DONOR1", null, "Human"),
-                        "Missing life stage.", donor1, knownDonors, knownSpecies
+                        "Wrong life stage given for existing donor DONOR1", donor1, knownDonors, knownSpecies
                 ),
                 Arguments.of(
                         new SectionRegisterContent("DONOR1", LifeStage.adult, null),
@@ -305,8 +297,8 @@ public class TestSectionRegisterValidation {
                         List.of(new SectionRegisterContent("DONOR2", null, ""),
                                 new SectionRegisterContent("Donor2", LifeStage.adult, null),
                                 new SectionRegisterContent("donor2", null, "Human")),
-                        List.of("Missing life stage.", "Missing species."),
-                        new Donor(null, "DONOR2", LifeStage.adult, human),
+                        List.of("Missing species.", "Multiple different life stages specified for donor DONOR2"),
+                        new Donor(null, "DONOR2", null, human),
                         knownDonors, knownSpecies
                 ),
 
@@ -320,12 +312,12 @@ public class TestSectionRegisterValidation {
                                 new SectionRegisterContent("DONOR3", LifeStage.fetal, "Unicorn")),
                         List.of("Wrong life stage given for existing donor DONOR1",
                                 "Wrong species given for existing donor DONOR1",
-                                "Missing life stage.", "Missing species.", "Missing donor identifier.",
-                                "Multiple different species specified for donor DONOR2",
+                                "Missing species.", "Missing donor identifier.",
                                 "Multiple different life stages specified for donor DONOR2",
+                                "Multiple different species specified for donor DONOR2",
                                 "Unknown species: \"Unicorn\""
                         ),
-                        List.of(donor1, new Donor(null, "DONOR2", LifeStage.adult, human),
+                        List.of(donor1, new Donor(null, "DONOR2", null, human),
                                 new Donor(null, "DONOR3", LifeStage.fetal, null)),
                         knownDonors, knownSpecies
                 )

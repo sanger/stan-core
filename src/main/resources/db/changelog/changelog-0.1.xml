@@ -248,7 +248,7 @@
                 <constraints nullable="false" unique="true"/>
             </column>
             <column name="life_stage" type="ENUM('adult', 'paediatric', 'fetal')">
-                <constraints nullable="false"/>
+                <constraints nullable="true"/>
             </column>
             <column name="species_id" type="INT">
                 <constraints nullable="false" foreignKeyName="fk_donor_species" referencedTableName="species" referencedColumnNames="id"/>
