@@ -24,10 +24,10 @@ public interface BlockRegisterFileReader extends MultipartFileReader<RegisterReq
         Life_stage,
         Collection_date(LocalDate.class, Pattern.compile("(if.*)date.*collection.*", Pattern.CASE_INSENSITIVE)),
         Species,
-        HuMFre,
+        HuMFre(Pattern.compile("humfre\\s*(number)?", Pattern.CASE_INSENSITIVE)),
         Tissue_type,
         External_identifier(Pattern.compile("external\\s*id.*", Pattern.CASE_INSENSITIVE)),
-        Spatial_location(Integer.class),
+        Spatial_location(Integer.class, Pattern.compile("spatial\\s*location\\s*(number)?", Pattern.CASE_INSENSITIVE)),
         Replicate_number,
         Last_known_section(Integer.class, Pattern.compile("last.*section.*", Pattern.CASE_INSENSITIVE)),
         Labware_type,
@@ -45,10 +45,6 @@ public interface BlockRegisterFileReader extends MultipartFileReader<RegisterReq
 
         Column(Pattern pattern) {
             this(null, pattern);
-        }
-
-        Column(Class<?> dataType) {
-            this(dataType, null);
         }
 
         Column(Class<?> dataType, Pattern pattern) {

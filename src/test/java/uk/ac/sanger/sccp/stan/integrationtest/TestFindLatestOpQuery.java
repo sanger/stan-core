@@ -9,6 +9,7 @@ import org.springframework.test.context.ActiveProfiles;
 import uk.ac.sanger.sccp.stan.EntityCreator;
 import uk.ac.sanger.sccp.stan.GraphQLTester;
 import uk.ac.sanger.sccp.stan.model.User;
+import uk.ac.sanger.sccp.stan.model.Work;
 
 import javax.transaction.Transactional;
 
@@ -33,7 +34,8 @@ public class TestFindLatestOpQuery {
     @Transactional
     @Test
     public void testFindLatestOp() throws Exception {
-        String mutation = tester.readGraphQL("register.graphql").replace("\"SGP1\"", "");
+        Work work = entityCreator.createWork(null, null, null, null, null);
+        String mutation = tester.readGraphQL("register.graphql").replace("SGP1", work.getWorkNumber());
         User user = entityCreator.createUser("user1");
         tester.setUser(user);
         Object mutationResult = tester.post(mutation);
