@@ -54,7 +54,7 @@ public class FieldValidation {
     public Validator<String> externalNameValidator() {
         Set<CharacterType> charTypes = EnumSet.of(
                 CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN,
-                CharacterType.UNDERSCORE
+                CharacterType.UNDERSCORE, CharacterType.FULL_STOP
         ) ;
         return new StringValidator("External identifier", 3, 64, charTypes);
     }
