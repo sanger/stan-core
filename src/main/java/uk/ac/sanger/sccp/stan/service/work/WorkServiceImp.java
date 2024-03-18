@@ -1,5 +1,6 @@
 package uk.ac.sanger.sccp.stan.service.work;
 
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.util.Streamable;
@@ -95,7 +96,6 @@ public class WorkServiceImp implements WorkService {
                 throw new IllegalArgumentException("DNAP study is disabled: "+dnapStudy);
             }
         }
-        ReleaseRecipient workRequester = recipientRepo.getByUsername(workRequesterName);
         if (numBlocks!=null && numBlocks < 0) {
             throw new IllegalArgumentException("Number of blocks cannot be a negative number.");
         }
@@ -105,12 +105,36 @@ public class WorkServiceImp implements WorkService {
         if (numOriginalSamples!=null && numOriginalSamples < 0) {
             throw new IllegalArgumentException("Number of original samples cannot be a negative number.");
         }
+        requireNonNull(user, "No user supplied.");
+        ReleaseRecipient workRequester = findOrCreateRequester(user, workRequesterName);
 
         String workNumber = workRepo.createNumber(prefix);
         Work work = workRepo.save(new Work(null, workNumber, type, workRequester, project, program, cc, Status.unstarted,
                 numBlocks, numSlides, numOriginalSamples, null, omeroProject, dnapStudy));
         workEventService.recordEvent(user, work, WorkEvent.Type.create, null);
         return work;
+    }
+
+    /**
+     * Looks up the specified work requester. If it doesn't exist as a requester,
+     * but matches the given user's username, then creates it.
+     * @param user the user responsible for the request
+     * @param requesterName the username of the specified work requester
+     * @return the work requester
+     * @exception IllegalArgumentException if the given string does not correspond to a permitted requester
+     */
+    public ReleaseRecipient findOrCreateRequester(@NotNull User user, String requesterName) {
+        if (nullOrEmpty(requesterName)) {
+            throw new IllegalArgumentException("No work requester specified.");
+        }
+        var optRec = recipientRepo.findByUsername(requesterName);
+        if (optRec.isPresent()) {
+            return optRec.get();
+        }
+        if (requesterName.equalsIgnoreCase(user.getUsername())) {
+            return recipientRepo.save(new ReleaseRecipient(null, user.getUsername()));
+        }
+        throw new IllegalArgumentException("Unknown requester: "+repr(requesterName));
     }
 
     @Override
@@ -320,7 +344,7 @@ public class WorkServiceImp implements WorkService {
         List<String> inactiveWorkNumbers = works.stream()
                 .filter(work -> !work.isUsable())
                 .map(Work::getWorkNumber)
-                .collect(toList());
+                .toList();
         if (!inactiveWorkNumbers.isEmpty()) {
             throw new IllegalArgumentException("Specified work cannot be used because it is not active: "+inactiveWorkNumbers);
         }

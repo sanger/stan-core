@@ -92,7 +92,7 @@ public class TestWorkService {
         User user = new User(1, "user1", User.Role.admin);
         when(mockWorkRepo.save(any())).then(Matchers.returnArgument());
         ReleaseRecipient workRequester = new ReleaseRecipient(30, workRequesterName);
-        when(mockReleaseRecipientRepo.getByUsername(workRequesterName)).thenReturn(workRequester);
+        doReturn(workRequester).when(workService).findOrCreateRequester(user, workRequesterName);
 
         if (expectedErrorMessage==null) {
             Work result = workService.createWork(user, prefix, workTypeName, workRequesterName, projectName, progName, code, numBlocks, numSlides, numOriginalSamples, null, null);
@@ -141,6 +141,7 @@ public class TestWorkService {
         String workNumber = "SGP4000";
         when(mockWorkRepo.createNumber(prefix)).thenReturn(workNumber);
         User user = new User(1, "user1", User.Role.admin);
+        when(mockReleaseRecipientRepo.findByUsername(workRequesterName)).thenReturn(Optional.of(new ReleaseRecipient(10, workRequesterName)));
 
         when(mockWorkRepo.save(any())).then(Matchers.returnArgument());
         if (expectedErrorMessage!=null) {
@@ -187,6 +188,7 @@ public class TestWorkService {
         String workNumber = "SGP4000";
         when(mockWorkRepo.createNumber(prefix)).thenReturn(workNumber);
         User user = new User(1, "user1", User.Role.admin);
+        when(mockReleaseRecipientRepo.findByUsername(workRequesterName)).thenReturn(Optional.of(new ReleaseRecipient(10, workRequesterName)));
 
         when(mockWorkRepo.save(any())).then(Matchers.returnArgument());
         if (expectedErrorMessage!=null) {
@@ -196,6 +198,40 @@ public class TestWorkService {
             Work result = workService.createWork(user, prefix, workTypeName, workRequesterName, projectName, progName, code, null, null, null, null, ssId);
             verify(mockWorkRepo).save(result);
             assertSame(study, result.getDnapStudy());
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource({", user1, fred, true",
+            ", user1, user1, false",
+            ", user1, USER1, false",
+            "No work requester specified., user1,,false",
+            "Unknown requester: \"Bananas\", user1, Bananas, false",
+    })
+    public void testFindOrCreateRequester(String expectedErrorMessage, String username, String recipientName, boolean exists) {
+        ReleaseRecipient rec = (expectedErrorMessage==null ? new ReleaseRecipient(10, recipientName) : null);
+        if (rec!=null && exists) {
+            when(mockReleaseRecipientRepo.findByUsername(recipientName)).thenReturn(Optional.of(rec));
+        } else if (recipientName!=null) {
+            when(mockReleaseRecipientRepo.findByUsername(recipientName)).thenReturn(Optional.empty());
+        }
+
+        if (!exists && expectedErrorMessage==null) {
+            when(mockReleaseRecipientRepo.save(any())).thenReturn(rec);
+        }
+
+        User user = new User(200, username, User.Role.enduser);
+
+        if (expectedErrorMessage!=null) {
+            assertThat(assertThrows(IllegalArgumentException.class, () -> workService.findOrCreateRequester(user, recipientName)))
+                    .hasMessage(expectedErrorMessage);
+        } else {
+            assertSame(rec, workService.findOrCreateRequester(user, recipientName));
+        }
+        if (rec!=null && !exists) {
+            verify(mockReleaseRecipientRepo).save(new ReleaseRecipient(null, user.getUsername()));
+        } else {
+            verify(mockReleaseRecipientRepo, never()).save(any());
         }
     }
 
