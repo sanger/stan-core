@@ -1006,6 +1006,12 @@ type History {
     flaggedBarcodes: [String!]!
 }
 
+"""The SVG of a graph."""
+type GraphSVG {
+    """The svg data of the graph."""
+    svg: String!
+}
+
 """Information about a plan previously recorded, now being looked up."""
 type PlanData {
     """One or more items of source labware for the plan."""
@@ -1940,6 +1946,9 @@ type Query {
     historyForLabwareBarcode(barcode: String!): History!
     """Get the history associated with a specified work number, and/or barcode, external name, donor name."""
     history(workNumber: String, barcode: String, externalName: [String!], donorName: [String!], eventType: String): History!
+    """Get a graph of the indicated history. Zoom and fontSize are optional."""
+    historyGraph(workNumber: String, barcode: String, externalName: [String!], donorName: [String!], zoom: Float, fontSize: Int): GraphSVG!
+
    """Get the work progress (some particular timestamps) associated with a specified work number, and/or
     work types, programs, statuses."""
     workProgress(workNumber: String, workTypes: [String!], programs: [String!], statuses: [WorkStatus!], requesters: [String!]): [WorkProgress!]!
