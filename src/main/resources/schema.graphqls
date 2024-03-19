@@ -137,7 +137,7 @@ type Species {
 type Donor {
     donorName: String!
     """The stage of life of this donor at the point the tissue was collected."""
-    lifeStage: LifeStage!
+    lifeStage: LifeStage
     species: Species!
 }
 
@@ -273,7 +273,7 @@ input BlockRegisterRequest {
     """The string to use as the donor name."""
     donorIdentifier: String!
     """The life stage of the donor."""
-    lifeStage: LifeStage!
+    lifeStage: LifeStage
     """The HMDMC to use for the tissue."""
     hmdmc: String
     """The name of the tissue type (the organ from which the tissue is taken)."""
@@ -317,7 +317,7 @@ input SectionRegisterContent {
     """A name for the donor."""
     donorIdentifier: String!
     """The life stage of the donor."""
-    lifeStage: LifeStage!
+    lifeStage: LifeStage
     """The external name for the tissue from which this section was taken."""
     externalIdentifier: String!
     """The name of the tissue type (organ) for the tissue."""
@@ -363,7 +363,7 @@ input OriginalSampleData {
     """The string to use as the donor name."""
     donorIdentifier: String!
     """The life stage of the donor."""
-    lifeStage: LifeStage!
+    lifeStage: LifeStage
     """The HMDMC to use for the tissue."""
     hmdmc: String
     """The name of the tissue type (the organ from which the tissue is taken)."""
