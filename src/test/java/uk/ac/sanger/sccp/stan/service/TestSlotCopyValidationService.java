@@ -3,7 +3,8 @@ package uk.ac.sanger.sccp.stan.service;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
-import org.mockito.*;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
@@ -513,7 +514,8 @@ public class TestSlotCopyValidationService {
     @CsvSource({
             ", Visium LP CytAssist, 1 4",
             ", Visium LP CytAssist XL, 1 2",
-            "Expected labware type Visium LP CytAssist or Visium LP CytAssist XL for operation CytAssist., Bananas, 1",
+            ", Visium LP CytAssist HD, 1 2",
+            "Expected a CytAssist labware type for operation CytAssist., Bananas, 1",
             "Slots B1 and C1 are disallowed for use in this operation., Visium LP CytAssist, 1 2",
             "Slots B1 and C1 are disallowed for use in this operation., Visium LP CytAssist, 3 4",
     })

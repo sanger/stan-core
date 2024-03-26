@@ -29,7 +29,8 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 @Service
 public class SlotCopyServiceImp implements SlotCopyService {
     static final String CYTASSIST_OP = "CytAssist";
-    static final String CYTASSIST_SLIDE = "Visium LP CytAssist", CYTASSIST_SLIDE_XL = "Visium LP CytAssist XL";
+    static final String CYTASSIST_SLIDE = "Visium LP CytAssist", CYTASSIST_SLIDE_XL = "Visium LP CytAssist XL",
+            CYTASSIST_SLIDE_HD = "Visium LP CytAssist HD";
 
     static final String BS_PROBES = "Probes", BS_CDNA = "cDNA", BS_LIBRARY = "Library",
             BS_LIB_PRE_CLEAN = "Library pre-clean", BS_LIB_POST_CLEAN = "Library post-clean",
