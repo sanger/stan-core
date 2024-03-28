@@ -136,25 +136,25 @@ public class TestFindService {
 
     static Stream<FindRequest> findArgs() {
         return Stream.of(
-                new FindRequest("STAN-A1", null, null, null, -1, null, null, null),
-                new FindRequest(null, null, List.of("TISSUE1"), null, -1, null, null, null),
-                new FindRequest(null, List.of("DONOR1"), null, null, -1, null,  null, null),
-                new FindRequest(null, null, null, "Heart", -1, null, null, null),
-                new FindRequest(null, null, null, "Heart", -1, "SGP-1", null, null)
+                new FindRequest("STAN-A1", null, null, null, -1, null, null, null, null),
+                new FindRequest(null, null, List.of("TISSUE1"), null, -1, null, null, null, null),
+                new FindRequest(null, List.of("DONOR1"), null, null, -1, null, null, null, null),
+                new FindRequest(null, null, null, "Heart", -1, null, null, null, null),
+                new FindRequest(null, null, null, "Heart", -1, "SGP-1", null, null, null)
         );
     }
 
     @Test
     public void testValidateRequest() {
-        findService.validateRequest(new FindRequest("STAN-A1", null, null, null, 50, null, null, null));
-        findService.validateRequest(new FindRequest(null, List.of("DONOR1"), null, null, 50, null, null, null));
-        findService.validateRequest(new FindRequest(null, null, List.of("TISSUE1"), null, 50, null, null, null));
-        findService.validateRequest(new FindRequest(null, null, null, "TTYPE", 50, null, null, null));
-        findService.validateRequest(new FindRequest(null, null, null, null, 50, "SGP-1", null, null));
-        findService.validateRequest(new FindRequest("STAN-A1", List.of("DONOR1"), List.of("TISSUE1"), "TTYPE", 50, "SGP-1", null, null));
+        findService.validateRequest(new FindRequest("STAN-A1", null, null, null, 50, null, null, null, null));
+        findService.validateRequest(new FindRequest(null, List.of("DONOR1"), null, null, 50, null, null, null, null));
+        findService.validateRequest(new FindRequest(null, null, List.of("TISSUE1"), null, 50, null, null, null, null));
+        findService.validateRequest(new FindRequest(null, null, null, "TTYPE", 50, null, null, null, null));
+        findService.validateRequest(new FindRequest(null, null, null, null, 50, "SGP-1", null, null, null));
+        findService.validateRequest(new FindRequest("STAN-A1", List.of("DONOR1"), List.of("TISSUE1"), "TTYPE", 50, "SGP-1", null, null, null));
 
         assertThat(assertThrows(IllegalArgumentException.class, () ->
-                findService.validateRequest(new FindRequest(null, null, null, null, 50, null, null, null))))
+                findService.validateRequest(new FindRequest(null, null, null, null, 50, null, null, null, null))))
                 .hasMessage("Donor name or external name or labware barcode or tissue type or work number must be specified.");
     }
 
@@ -347,11 +347,11 @@ public class TestFindService {
         ReleaseRecipient workRequester = new ReleaseRecipient(1, "test1");
         Work work = new Work(1, "SGP404", workType, workRequester, pr, null, cc, Work.Status.active);
         work.setSampleSlotIds(List.of(
-                new Work.SampleSlotId(sample.getId(), lw.getSlots().get(0).getId())
+                new Work.SampleSlotId(sample.getId(), lw.getSlots().getFirst().getId())
         ));
 
         when(mockWorkRepo.getByWorkNumber(work.getWorkNumber())).thenReturn(work);
-        when(mockSlotRepo.findAllByIdIn(List.of(lw.getSlots().get(0).getId()))).thenReturn(List.of(lw.getSlots().get(0)));
+        when(mockSlotRepo.findAllByIdIn(List.of(lw.getSlots().getFirst().getId()))).thenReturn(List.of(lw.getSlots().getFirst()));
         when(mockLabwareRepo.findAllByIdIn(Set.of(lw.getId()))).thenReturn(List.of(lw));
         when(mockWorkRepo.findWorkForSampleIdAndSlotId(sample.getId(), lw.getFirstSlot().getId())).thenReturn(Set.of(work));
         List<LabwareSample> lss = List.of(new LabwareSample(lw, sample, Set.of(work.getWorkNumber())));
@@ -373,9 +373,10 @@ public class TestFindService {
         LocalDate friday = LocalDate.of(2021,3,5);
 
         LabwareType lt = EntityFactory.getTubeType();
+        LabwareType lt2 = EntityFactory.makeLabwareType(1, 1, "lt2");
         Labware lw1 = EntityFactory.makeEmptyLabware(lt);
         lw1.setCreated(tuesday.atStartOfDay().plusHours(12));
-        Labware lw2 = EntityFactory.makeEmptyLabware(lt);
+        Labware lw2 = EntityFactory.makeEmptyLabware(lt2);
         lw2.setCreated(thursday.atStartOfDay().plusHours(12));
         Sample sample1 = EntityFactory.getSample();
         Tissue tissue1 = sample1.getTissue();
@@ -406,23 +407,29 @@ public class TestFindService {
         List<LabwareSample> lastTwo = lss.subList(2,4);
 
         return Stream.of(
-                Arguments.of(lss, new FindRequest(null, null, null, null, 0, null, null, null), lss),
-                Arguments.of(lss, new FindRequest(lw1.getBarcode().toLowerCase(), null, null, null, 0, null, null, null), lss.subList(0,2)),
-                Arguments.of(lss, new FindRequest(null, List.of(donor1.getDonorName()), null, null, 0, null, null, null),
+                Arguments.of(lss, new FindRequest(null, null, null, null, 0, null, null, null, null), lss),
+                Arguments.of(lss, new FindRequest(lw1.getBarcode().toLowerCase(), null, null, null, 0, null, null, null, null), lss.subList(0,2)),
+                Arguments.of(lss, new FindRequest(null, List.of(donor1.getDonorName()), null, null, 0, null, null, null, null),
                         List.of(lss.get(0), lss.get(2))),
-                Arguments.of(lss, new FindRequest(null, null, List.of(tissue2.getExternalName()), null, 0, null, null, null),
+                Arguments.of(lss, new FindRequest(null, null, List.of(tissue2.getExternalName()), null, 0, null, null, null, null),
                         List.of(lss.get(1), lss.get(3))),
-                Arguments.of(lss, new FindRequest(null, null, null, tt1.getName().toLowerCase(), 0, null, null, null),
+                Arguments.of(lss, new FindRequest(null, null, null, tt1.getName().toLowerCase(), 0, null, null, null, null),
                         List.of(lss.get(0), lss.get(2))),
-                Arguments.of(lss, new FindRequest(null, null, null, null, 0, work.getWorkNumber(), null, null),
+                Arguments.of(lss, new FindRequest(null, null, null, null, 0, work.getWorkNumber(), null, null, null),
                         List.of(lss.get(0))),
-                Arguments.of(lss, new FindRequest(null, null, List.of("*UE2"), null, 0, null, null, null),
+                Arguments.of(lss, new FindRequest(null, null, List.of("*UE2"), null, 0, null, null, null, null),
                         List.of(lss.get(1), lss.get(3))),
-                Arguments.of(lss, new FindRequest(null, null, List.of("tiss*"), null, 0, null, null, null),
+                Arguments.of(lss, new FindRequest(null, null, List.of("tiss*"), null, 0, null, null, null, null),
                         lss),
-                Arguments.of(lss, new FindRequest(lw1.getBarcode(), List.of(donor1.getDonorName()), List.of(tissue1.getExternalName()), tt2.getName(), 0, null, null, null), List.of()),
+                Arguments.of(lss, new FindRequest(null, null, null, null, 0, null, "LT2", null, null),
+                        lss.subList(2,4)),
+                Arguments.of(lss, new FindRequest(null, null, null, null, 0, null, lt.getName(), null, null),
+                        lss.subList(0,2)),
+                Arguments.of(lss, new FindRequest(null, null, null, null, 0, null, "nosuchlw", null, null),
+                       List.of()),
+                Arguments.of(lss, new FindRequest(lw1.getBarcode(), List.of(donor1.getDonorName()), List.of(tissue1.getExternalName()), tt2.getName(), 0, null, null, null, null), List.of()),
                 // Date filtering:
-                Arguments.of(lss, new FindRequest(null, null, null, tt1.getName(), 0, null, wednesday, null), List.of(lss.get(2))),
+                Arguments.of(lss, new FindRequest(null, null, null, tt1.getName(), 0, null, null, wednesday, null), List.of(lss.get(2))),
                 Arguments.of(lss, requestDate(null, null), lss),
                 Arguments.of(lss, requestDate(monday, friday), lss),
                 Arguments.of(lss, requestDate(tuesday, thursday), lss),
@@ -438,7 +445,7 @@ public class TestFindService {
     }
 
     private static FindRequest requestDate(LocalDate min, LocalDate max) {
-        return new FindRequest(null, null, null, null, 0, null, min, max);
+        return new FindRequest(null, null, null, null, 0, null, null, min, max);
     }
 
     @Test
@@ -505,25 +512,25 @@ public class TestFindService {
         // Case 0:
         // barcode specified and lw unstored - no limit - 1 item returned
         // Case 1:
-        // differnet barcode specified and lw unstored - no limit - no items returned
+        // different barcode specified and lw unstored - no limit - no items returned
         // Case 2:
         // barcode unspecified, some stored and some unstored lw - no limit - 6 returned
         // Case 3:
         // barcode unspecified, some stored and some unstored - limit 3 - 3 returned
 
         return Stream.of(
-                Arguments.of(new FindRequest(labware[3].getBarcode(), null, null, null, -1, null, null, null),
+                Arguments.of(new FindRequest(labware[3].getBarcode(), null, null, null, -1, null, null, null, null),
                         lssForLw3, storedItems,
                         result(2, labware[3], samples[0], samples[1],
                                 lssForLw3)),
-                Arguments.of(new FindRequest(null, null, null, null, -1, null, null, null),
+                Arguments.of(new FindRequest(null, null, null, null, -1, null, null, null, null),
                         lssForLw3, storedItems,
                         result(0)),
-                Arguments.of(new FindRequest(null, null, null, null, -1, null, null, null),
+                Arguments.of(new FindRequest(null, null, null, null, -1, null, null, null, null),
                         lss, storedItems,
                         result(6, labware[0], labware[1], labware[2], samples[0], samples[1],
                                 lssWithoutLw3, loc1, loc2, storedItems)),
-                Arguments.of(new FindRequest(null, null, null, null, 3, null, null, null),
+                Arguments.of(new FindRequest(null, null, null, null, 3, null, null, null, null),
                         lss, storedItems,
                         result(6, labware[0], labware[1], samples[0], samples[1],
                                 lss.get(0), lss.get(1), lss.get(2), storedItems.get(0), storedItems.get(1), loc1))
@@ -547,15 +554,13 @@ public class TestFindService {
             for (Object item : iterable) {
                 if (item instanceof Sample) {
                     samples.add((Sample) item);
-                } else if (item instanceof LabwareSample) {
-                    LabwareSample ls = (LabwareSample) item;
+                } else if (item instanceof LabwareSample ls) {
                     entries.add(new FindEntry(ls.sample.getId(), ls.labware.getId(), ls.workNumbers));
                 } else if (item instanceof Labware) {
                     labware.add((Labware) item);
                 } else if (item instanceof Location) {
                     locations.add((Location) item);
-                } else if (item instanceof StoredItem) {
-                    StoredItem si = (StoredItem) item;
+                } else if (item instanceof StoredItem si) {
                     Labware lwItem = labware.stream().filter(lw -> lw.getBarcode().equalsIgnoreCase(si.getBarcode()))
                             .findAny().orElseThrow();
                     LabwareLocation lwloc = new LabwareLocation(lwItem.getId(), si.getLocation().getId(), si.getAddress());

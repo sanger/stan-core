@@ -19,8 +19,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.*;
-import static uk.ac.sanger.sccp.utils.BasicUtils.makeWildcardPattern;
-import static uk.ac.sanger.sccp.utils.BasicUtils.wildcardToLikeSql;
+import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 /**
  * Service for finding stored labware
@@ -172,7 +171,7 @@ public class FindService {
         }
         List<Labware> labware = labwareService.findBySample(samples).stream()
                 .filter(Labware::isStorable)
-                .collect(toList());
+                .toList();
         if (labware.isEmpty()) {
             return List.of();
         }
@@ -255,8 +254,8 @@ public class FindService {
         }
         final List<String> externalNames = request.getTissueExternalNames();
         if (externalNames!=null) {
-            if (externalNames.size()==1 && externalNames.get(0).indexOf('*') < 0) {
-                String externalName = externalNames.get(0);
+            if (externalNames.size()==1 && externalNames.getFirst().indexOf('*') < 0) {
+                String externalName = externalNames.getFirst();
                 predicate = andPredicate(predicate,
                         ls -> externalName.equalsIgnoreCase(ls.getSample().getTissue().getExternalName())
                 );
@@ -279,6 +278,11 @@ public class FindService {
                     ls -> ls.getWorkNumbers().contains(workNumber)
             );
         }
+        final String labwareTypeName = request.getLabwareTypeName();
+        if (!nullOrEmpty(labwareTypeName)) {
+            predicate = andPredicate(predicate,
+                    ls -> ls.getLabware().getLabwareType().getName().equalsIgnoreCase(labwareTypeName));
+        }
         predicate = andPredicate(predicate, datePredicate(request.getCreatedMin(), request.getCreatedMax()));
         return predicate;
     }
@@ -295,14 +299,14 @@ public class FindService {
             return null;
         }
         if (min==null) {
-            return ls -> (ls.getLabware().getCreated().toLocalDate().compareTo(max) <= 0);
+            return ls -> (!ls.getLabware().getCreated().toLocalDate().isAfter(max));
         }
         if (max==null) {
-            return ls -> (ls.getLabware().getCreated().toLocalDate().compareTo(min) >= 0);
+            return ls -> (!ls.getLabware().getCreated().toLocalDate().isBefore(min));
         }
         return ls -> {
             LocalDate d = ls.getLabware().getCreated().toLocalDate();
-            return (d.compareTo(min) >= 0 && d.compareTo(max) <= 0);
+            return (!d.isBefore(min) && !d.isAfter(max));
         };
     }
 
