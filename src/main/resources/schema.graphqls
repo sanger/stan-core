@@ -958,6 +958,8 @@ input FindRequest {
     tissueExternalNames: [String!]
     """The name of a tissue type to find stored samples of."""
     tissueTypeName: String
+    """The name of a labware type to find labware of."""
+    labwareTypeName: String
     """The maximum number of records to return. Use a negative value to indicate no limit."""
     maxRecords: Int
     """The work number associated with the labware."""

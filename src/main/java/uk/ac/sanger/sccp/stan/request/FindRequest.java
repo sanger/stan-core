@@ -18,6 +18,7 @@ public class FindRequest {
     private List<String> tissueExternalNames;
     private String tissueTypeName;
     private String workNumber;
+    private String labwareTypeName;
     private LocalDate createdMin;
     private LocalDate createdMax;
 
@@ -26,13 +27,14 @@ public class FindRequest {
     public FindRequest() {}
 
     public FindRequest(String labwareBarcode, List<String> donorNames, List<String> tissueExternalNames, String tissueTypeName,
-                       int maxRecords, String workNumber, LocalDate createdMin, LocalDate createdMax) {
+                       int maxRecords, String workNumber, String labwareTypeName, LocalDate createdMin, LocalDate createdMax) {
         this.labwareBarcode = labwareBarcode;
         this.donorNames = donorNames;
         this.tissueExternalNames = tissueExternalNames;
         this.tissueTypeName = tissueTypeName;
         this.maxRecords = maxRecords;
         this.workNumber = workNumber;
+        this.labwareTypeName = labwareTypeName;
         this.createdMin = createdMin;
         this.createdMax = createdMax;
     }
@@ -93,6 +95,16 @@ public class FindRequest {
         this.tissueTypeName = tissueTypeName;
     }
 
+    /** The name of a labware type to find. */
+    public String getLabwareTypeName() {
+        return this.labwareTypeName;
+    }
+
+    /** Sets the name of the required labware type */
+    public void setLabwareTypeName(String labwareTypeName) {
+        this.labwareTypeName = labwareTypeName;
+    }
+
     /**
      * The maximum number of records this search should return.
      * If {@code maxRecords < 0} then there is no explicit limit.
@@ -151,13 +163,14 @@ public class FindRequest {
                 && Objects.equals(this.donorNames, that.donorNames)
                 && Objects.equals(this.tissueExternalNames, that.tissueExternalNames)
                 && Objects.equals(this.tissueTypeName, that.tissueTypeName)
+                && Objects.equals(this.labwareTypeName, that.labwareTypeName)
                 && this.maxRecords==that.maxRecords)
                 && Objects.equals(this.workNumber, that.workNumber);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(labwareBarcode, donorNames, tissueExternalNames, tissueTypeName, maxRecords);
+        return Objects.hash(labwareBarcode, donorNames, tissueExternalNames, labwareTypeName, tissueTypeName, maxRecords);
     }
 
     @Override
@@ -167,6 +180,7 @@ public class FindRequest {
                 .add("donorName", donorNames)
                 .add("tissueExternalName", tissueExternalNames)
                 .add("tissueTypeName", tissueTypeName)
+                .add("labwareTypeName", labwareTypeName)
                 .add("maxRecords", maxRecords)
                 .add("workNumber", workNumber)
                 .add("createdMin", createdMin)
