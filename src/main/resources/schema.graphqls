@@ -1804,6 +1804,8 @@ input FlagLabwareRequest {
     barcode: String!
     """The description of the flag."""
     description: String!
+    """Work number to link to the flag."""
+    workNumber: String
 }
 
 """Request to record QC and completion time for one or more labware."""

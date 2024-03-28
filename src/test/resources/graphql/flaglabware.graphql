@@ -2,6 +2,7 @@ mutation {
     flagLabware(request: {
         barcode: "[BC]"
         description: "[DESC]"
+        workNumber: "[WORKNUM]"
     }) {
         operations { id }
     }

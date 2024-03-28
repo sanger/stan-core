@@ -11,10 +11,12 @@ import java.util.Objects;
 public class FlagLabwareRequest {
     private String barcode;
     private String description;
+    private String workNumber;
 
-    public FlagLabwareRequest(String barcode, String description) {
+    public FlagLabwareRequest(String barcode, String description, String workNumber) {
         this.barcode = barcode;
         this.description = description;
+        this.workNumber = workNumber;
     }
 
     // required for framework
@@ -42,13 +44,23 @@ public class FlagLabwareRequest {
         this.description = description;
     }
 
+    /** The work number (if any) to link to the flag. */
+    public String getWorkNumber() {
+        return this.workNumber;
+    }
+
+    public void setWorkNumber(String workNumber) {
+        this.workNumber = workNumber;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         FlagLabwareRequest that = (FlagLabwareRequest) o;
         return (Objects.equals(this.barcode, that.barcode)
-                && Objects.equals(this.description, that.description));
+                && Objects.equals(this.description, that.description)
+                && Objects.equals(this.workNumber, that.workNumber));
     }
 
     @Override
@@ -61,6 +73,7 @@ public class FlagLabwareRequest {
         return BasicUtils.describe("FlagLabwareRequest")
                 .add("barcode", barcode)
                 .add("description", description)
+                .addIfNotNull("workNumber", workNumber)
                 .reprStringValues()
                 .toString();
     }
