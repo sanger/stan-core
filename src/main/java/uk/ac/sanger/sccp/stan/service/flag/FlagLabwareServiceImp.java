@@ -8,6 +8,7 @@ import uk.ac.sanger.sccp.stan.request.FlagLabwareRequest;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.service.OperationService;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
+import uk.ac.sanger.sccp.stan.service.work.WorkService;
 
 import java.util.*;
 
@@ -22,15 +23,17 @@ public class FlagLabwareServiceImp implements FlagLabwareService {
     static final int MAX_DESCRIPTION_LEN = 512;
 
     private final OperationService opService;
+    private final WorkService workService;
 
     private final LabwareFlagRepo flagRepo;
     private final LabwareRepo lwRepo;
     private final OperationTypeRepo opTypeRepo;
 
     @Autowired
-    public FlagLabwareServiceImp(OperationService opService,
+    public FlagLabwareServiceImp(OperationService opService, WorkService workService,
                                  LabwareFlagRepo flagRepo, LabwareRepo lwRepo, OperationTypeRepo opTypeRepo) {
         this.opService = opService;
+        this.workService = workService;
         this.flagRepo = flagRepo;
         this.lwRepo = lwRepo;
         this.opTypeRepo = opTypeRepo;
@@ -46,6 +49,8 @@ public class FlagLabwareServiceImp implements FlagLabwareService {
             problems.add("No request supplied.");
             throw new ValidationException(problems);
         }
+        Work work = (nullOrEmpty(request.getWorkNumber()) ? null
+                : workService.validateUsableWork(problems, request.getWorkNumber()));
 
         Labware lw = loadLabware(problems, request.getBarcode());
         String description = checkDescription(problems, request.getDescription());
@@ -55,7 +60,7 @@ public class FlagLabwareServiceImp implements FlagLabwareService {
             throw new ValidationException(problems);
         }
 
-        return create(user, opType, lw, description);
+        return create(user, opType, lw, description, work);
     }
 
     /**
@@ -119,12 +124,16 @@ public class FlagLabwareServiceImp implements FlagLabwareService {
      * @param opType the operation type to record
      * @param lw the labware being flagged
      * @param description the flag description
+     * @param work work to link to operation (or null)
      * @return the labware and operation
      */
-    OperationResult create(User user, OperationType opType, Labware lw, String description) {
+    OperationResult create(User user, OperationType opType, Labware lw, String description, Work work) {
         Operation op = opService.createOperationInPlace(opType, user, lw, null, null);
         LabwareFlag flag = new LabwareFlag(null, lw, description, user, op.getId());
         flagRepo.save(flag);
+        if (work!=null) {
+            workService.link(work, List.of(op));
+        }
         return new OperationResult(List.of(op), List.of(lw));
     }
 }

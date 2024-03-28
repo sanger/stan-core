@@ -37,6 +37,7 @@ public class TestLabwareFlags {
     @Test
     public void testRecordFlags() throws Exception {
         User user = entityCreator.createUser("user1");
+        Work work = entityCreator.createWork(null, null, null, null, null);
         entityCreator.createOpType("Flag labware", null, OperationTypeFlag.IN_PLACE);
         Sample sample = entityCreator.createSample(null, null);
         Sample sample2 = entityCreator.createSample(sample.getTissue(), null);
@@ -45,6 +46,7 @@ public class TestLabwareFlags {
         tester.setUser(user);
         String mutation = tester.readGraphQL("flaglabware.graphql");
         Object response1 = tester.post(mutation.replace("[BC]", lw1.getBarcode())
+                .replace("[WORKNUM]", work.getWorkNumber())
                 .replace("[DESC]", "Alpha"));
         Integer op1Id = chainGet(response1, "data", "flagLabware", "operations", 0, "id");
         assertNotNull(op1Id);
@@ -53,6 +55,7 @@ public class TestLabwareFlags {
 
         Labware lw2 = createOp(lw1, lt, ot, user, sample2, "STAN-2");
         Object response2 = tester.post(mutation.replace("[BC]", lw2.getBarcode())
+                .replace("\"[WORKNUM]\"", "null")
                 .replace("[DESC]", "Beta"));
         Integer op2Id = chainGet(response2, "data", "flagLabware", "operations", 0, "id");
         assertNotNull(op2Id);
