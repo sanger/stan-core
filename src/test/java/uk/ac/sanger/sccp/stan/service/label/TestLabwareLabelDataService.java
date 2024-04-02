@@ -113,7 +113,7 @@ public class TestLabwareLabelDataService {
         List<Slot> slots = Address.stream(2, 3)
                 .map(ad -> new Slot(null, 100, ad, null, null, null))
                 .sorted(service.slotOrderForLabwareType(lt))
-                .collect(toList());
+                .toList();
         if (columnMajor) {
             for (int i = 0; i < slots.size(); ++i) {
                 Address ad = slots.get(i).getAddress();
@@ -181,10 +181,12 @@ public class TestLabwareLabelDataService {
     @Test
     public void testLabelDataProviasette() {
         Medium medium = new Medium(1, "Sosostris");
+        Fixative fix = new Fixative(2, "Bananas");
         Donor donor = EntityFactory.getDonor();
         SpatialLocation sl = EntityFactory.getSpatialLocation();
         Tissue tissue = EntityFactory.makeTissue(donor, sl);
         tissue.setMedium(medium);
+        tissue.setFixative(fix);
         Sample sample = new Sample(1, null, tissue, EntityFactory.getBioState());
         LabwareType provType = EntityFactory.makeLabwareType(1, 1, "Proviasette");
         Labware lw = EntityFactory.makeLabware(provType, sample);
@@ -195,7 +197,7 @@ public class TestLabwareLabelDataService {
         assertEquals(medium.getName(), actual.getMedium());
         assertNotNull(actual.getDate());
         LabelContent content = new LabelContent(donor.getDonorName(),
-                sl.getTissueType().getCode()+"-"+sl.getCode(), tissue.getReplicate(), medium.getName());
+                sl.getTissueType().getCode()+"-"+sl.getCode(), tissue.getReplicate(), fix.getName());
         assertThat(actual.getContents()).containsExactly(content);
     }
 
@@ -544,18 +546,11 @@ public class TestLabwareLabelDataService {
     }
 
     private String tissueString(Tissue tissue) {
-        String prefix;
-        switch (tissue.getDonor().getLifeStage()) {
-            case paediatric:
-                prefix = "P";
-                break;
-            case fetal:
-                prefix = "F";
-                break;
-            default:
-                prefix = "";
-                break;
-        }
+        String prefix = switch (tissue.getDonor().getLifeStage()) {
+            case paediatric -> "P";
+            case fetal -> "F";
+            default -> "";
+        };
         return prefix + tissue.getTissueType().getCode() + "-" + tissue.getSpatialLocation().getCode();
     }
 

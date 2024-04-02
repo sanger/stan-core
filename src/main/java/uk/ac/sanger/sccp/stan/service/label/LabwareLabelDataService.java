@@ -43,19 +43,32 @@ public class LabwareLabelDataService {
                 .flatMap(slot -> slot.getSamples().stream())
                 .map(sample -> sample.getTissue().getMedium().getName())
                 .collect(toSet());
+        final boolean needFixatives = labware.getLabwareType().showFixativeAsStateOnLabel();
+        Set<String> fixatives = null;
+        if (needFixatives) {
+            fixatives = labware.getSlots().stream()
+                    .flatMap(slot -> slot.getSamples().stream())
+                    .map(sample -> sample.getTissue().getFixative().getName())
+                    .collect(toSet());
+        }
         if (content.isEmpty()) {
             List<PlanAction> planActions = planActionRepo.findAllByDestinationLabwareId(labware.getId());
             if (!planActions.isEmpty()) {
                 mediums = planActions.stream()
                         .map(pa -> pa.getSample().getTissue().getMedium().getName())
                         .collect(toSet());
+                if (needFixatives) {
+                    fixatives = planActions.stream()
+                            .map(pa -> pa.getSample().getTissue().getFixative().getName())
+                            .collect(toSet());
+                }
                 content = getPlannedContent(planActions, slotOrder);
             }
         }
-        if (labware.getLabwareType().showMediumAsStateOnLabel() && content.size()==1 && mediums.size()==1) {
-            String mediumName = mediums.iterator().next();
+        if (needFixatives && content.size()==1 && fixatives.size()==1) {
+            String fixativeName = fixatives.iterator().next();
             content = content.stream()
-                    .map(d -> d.withStateDesc(mediumName))
+                    .map(d -> d.withStateDesc(fixativeName))
                     .collect(toList());
         }
         return toLabelData(labware, content, mediums);
