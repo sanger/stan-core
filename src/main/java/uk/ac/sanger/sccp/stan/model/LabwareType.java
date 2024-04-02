@@ -93,9 +93,9 @@ public class LabwareType implements HasIntId, HasName {
     }
 
     /**
-     * Should labware of this type show medium in the state space on the label?
+     * Should labware of this type show fixative in the state field on the label?
      */
-    public boolean showMediumAsStateOnLabel() {
+    public boolean showFixativeAsStateOnLabel() {
         return (name!=null && (name.equalsIgnoreCase(PROVIASETTE_NAME) || name.equalsIgnoreCase(CASSETTE_NAME)));
     }
 
