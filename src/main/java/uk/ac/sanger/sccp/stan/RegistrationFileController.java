@@ -14,8 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 import uk.ac.sanger.sccp.stan.model.Labware;
 import uk.ac.sanger.sccp.stan.model.User;
-import uk.ac.sanger.sccp.stan.request.register.LabwareSolutionName;
-import uk.ac.sanger.sccp.stan.request.register.RegisterResult;
+import uk.ac.sanger.sccp.stan.request.register.*;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
 import uk.ac.sanger.sccp.stan.service.register.FileRegisterService;
 
@@ -77,13 +76,21 @@ public class RegistrationFileController {
         }
         log.info("{} {} file registration: {}", user.getUsername(), desc, result);
         List<String> barcodes = result.getLabware().stream().map(Labware::getBarcode).collect(toList());
-        final Map<String, List<?>> output;
-        if (nullOrEmpty(result.getLabwareSolutions())) {
-            output = Map.of("barcodes", barcodes);
-        } else {
-            output = Map.of("barcodes", barcodes, "labwareSolutions", barcodeSolutions(result.getLabwareSolutions()));
+        final Map<String, List<?>> output = new HashMap<>();
+        output.put("barcodes", barcodes);
+        if (!nullOrEmpty(result.getLabwareSolutions())) {
+            output.put("labwareSolutions", barcodeSolutions(result.getLabwareSolutions()));
+        }
+        if (!nullOrEmpty(result.getClashes())) {
+            output.put("clashes", serialiseClashes(result.getClashes()));
         }
         return ResponseEntity.ok().body(output);
+    }
+
+    protected List<Map<String, ?>> serialiseClashes(List<RegisterClash> clashes) {
+        return clashes.stream()
+                .<Map<String,?>>map(clash -> Map.of("tissue", Map.of("externalName", clash.getTissue().getExternalName())))
+                .toList();
     }
 
     protected List<Map<String, String>> barcodeSolutions(Collection<LabwareSolutionName> labwareSolutions) {

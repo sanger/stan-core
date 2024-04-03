@@ -15,8 +15,8 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMultipartHttpServletRequestBuilder;
 import uk.ac.sanger.sccp.stan.*;
-import uk.ac.sanger.sccp.stan.model.User;
-import uk.ac.sanger.sccp.stan.request.register.RegisterRequest;
+import uk.ac.sanger.sccp.stan.model.*;
+import uk.ac.sanger.sccp.stan.request.register.*;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
 import uk.ac.sanger.sccp.stan.service.register.IRegisterService;
 
@@ -74,6 +74,32 @@ public class TestFileBlockRegister {
         verifyNoInteractions(mockRegService);
     }
 
+    @Test
+    @Transactional
+    public void testClashes() throws Exception {
+        User user = creator.createUser("user1");
+        tester.setUser(user);
+        Tissue tissue1 = creator.createTissue(null, "EXT1");
+        Tissue tissue2 = creator.createTissue(tissue1.getDonor(), "EXT2");
+        Sample sample1 = creator.createSample(tissue1, null);
+        Sample sample2 = creator.createSample(tissue2, null);
+        Labware lw1 = creator.createBlock("STAN-X", sample1);
+        Labware lw2 = creator.createBlock("STAN-Y", sample2);
+        when(mockRegService.register(any(), any())).thenReturn(RegisterResult.clashes(
+                List.of(new RegisterClash(tissue1, List.of(lw1)), new RegisterClash(tissue2, List.of(lw2)))
+        ));
+        var response = upload("testdata/block_reg_existing.xlsx", null, true);
+        var map = objectMapper.readValue(response.getContentAsString(), Map.class);
+        Object clashesObj = map.get("clashes");
+        assertNotNull(clashesObj);
+        //noinspection unchecked
+        List<Map<String, Map<String, ?>>> clashes = (List<Map<String, Map<String, ?>>>) clashesObj;
+        assertThat(clashes).hasSize(2);
+        assertThat(clashes.stream()
+                .map(clash -> (String) clash.get("tissue").get("externalName"))
+        ).containsExactlyInAnyOrder("EXT1", "EXT2");
+    }
+
     /**
      * This test only goes as far as the service level, but checks that existing external names
      * are received in the post request and incorporated into the register request.
@@ -84,7 +110,7 @@ public class TestFileBlockRegister {
         User user = creator.createUser("user1");
         tester.setUser(user);
         when(mockRegService.register(any(), any())).thenThrow(new ValidationException(List.of("Bad reg")));
-        var response = upload("testdata/block_reg_existing.xlsx", List.of("Ext17"));
+        var response = upload("testdata/block_reg_existing.xlsx", List.of("Ext17"), false);
         var map = objectMapper.readValue(response.getContentAsString(), Map.class);
         ArgumentCaptor<RegisterRequest> requestCaptor = ArgumentCaptor.forClass(RegisterRequest.class);
         verify(mockRegService).register(eq(user), requestCaptor.capture());
@@ -96,10 +122,10 @@ public class TestFileBlockRegister {
     }
 
     private MockHttpServletResponse upload(String filename) throws Exception {
-        return upload(filename, null);
+        return upload(filename, null, false);
     }
 
-    private MockHttpServletResponse upload(String filename, List<String> existing) throws Exception {
+    private MockHttpServletResponse upload(String filename, List<String> existing, boolean success) throws Exception {
         URL url = Resources.getResource(filename);
         byte[] bytes = Resources.toByteArray(url);
         MockMultipartFile file = new MockMultipartFile("file", bytes);
@@ -107,7 +133,10 @@ public class TestFileBlockRegister {
         if (existing!=null) {
             rb.param("existingExternalNames", existing.toArray(String[]::new));
         }
-        MvcResult mvcr = tester.getMockMvc().perform(rb).andExpect(status().is4xxClientError()).andReturn();
+        MvcResult mvcr = tester.getMockMvc()
+                .perform(rb)
+                .andExpect(success ? status().is2xxSuccessful() : status().is4xxClientError())
+                .andReturn();
         return mvcr.getResponse();
     }
 
