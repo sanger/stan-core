@@ -3,8 +3,7 @@ package uk.ac.sanger.sccp.stan.service.register;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.*;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.web.multipart.MultipartFile;
@@ -16,12 +15,13 @@ import uk.ac.sanger.sccp.stan.service.register.filereader.MultipartFileReader;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.function.BiFunction;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -52,8 +52,8 @@ class TestFileRegisterService {
     @BeforeEach
     void setup() {
         mocking = MockitoAnnotations.openMocks(this);
-        service = new FileRegisterServiceImp(mockSectionRegisterService, mockBlockRegisterService,mockOriginalRegisterService,
-                mockSectionFileReader, mockBlockFileReader, mockOriginalFileReader, mockTransactor);
+        service = spy(new FileRegisterServiceImp(mockSectionRegisterService, mockBlockRegisterService,mockOriginalRegisterService,
+                mockSectionFileReader, mockBlockFileReader, mockOriginalFileReader, mockTransactor));
         user = EntityFactory.getUser();
     }
 
@@ -63,8 +63,8 @@ class TestFileRegisterService {
     }
 
     @ParameterizedTest
-    @MethodSource("regArgs")
-    void testSectionRegister_success(Object request) throws IOException {
+    @MethodSource("regAndExtNamesArgs")
+    void testSectionRegister_success(Object request, List<String> existingExt) throws IOException {
         Matchers.mockTransactor(mockTransactor);
         IRegisterService<?> regService;
         MultipartFileReader<?> fileReader;
@@ -80,7 +80,11 @@ class TestFileRegisterService {
         } else {
             regService = mockBlockRegisterService;
             fileReader = mockBlockFileReader;
-            functionUnderTest = service::registerBlocks;
+            if (existingExt==null) {
+                functionUnderTest = service::registerBlocks;
+            } else {
+                functionUnderTest = (user, mpFile) -> service.registerBlocks(user, mpFile, existingExt);
+            }
         }
         doReturn(request).when(fileReader).read(any(MultipartFile.class));
         RegisterResult result = new RegisterResult();
@@ -89,7 +93,21 @@ class TestFileRegisterService {
         verify(fileReader).read(file);
         //noinspection unchecked,rawtypes
         verify((IRegisterService) regService).register(user, request);
+        if (request instanceof RegisterRequest && existingExt!=null) {
+            verify(service).updateWithExisting((RegisterRequest) request, existingExt);
+        } else {
+            verify(service, never()).updateWithExisting(any(), any());
+        }
         verify(mockTransactor).transact(any(), any());
+    }
+
+    static Stream<Arguments> regAndExtNamesArgs() {
+        return Arrays.stream(new Object[][] {
+                {new SectionRegisterRequest(), null},
+                {new RegisterRequest(), null},
+                {new OriginalSampleRegisterRequest(), null},
+                {new OriginalSampleRegisterRequest(), List.of("Alpha1")},
+        }).map(Arguments::of);
     }
 
     @ParameterizedTest
@@ -126,5 +144,24 @@ class TestFileRegisterService {
                 {new RegisterRequest()},
                 {new OriginalSampleRegisterRequest()},
         }).map(Arguments::of);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testUpdateWithExisting(boolean any) {
+        String[] extNames = { null, "Alpha1", "Beta", "Alpha2" };
+        List<BlockRegisterRequest> blocks = Arrays.stream(extNames)
+                .map(xn -> {
+                    BlockRegisterRequest b = new BlockRegisterRequest();
+                    b.setExternalIdentifier(xn);
+                    return b;
+                }).toList();
+        RegisterRequest request = new RegisterRequest(blocks);
+        List<String> existing = any ? List.of("ALPHA1", "alpha2") : List.of();
+
+        service.updateWithExisting(request, existing);
+        IntStream.range(0, blocks.size()).forEach(i ->
+            assertEquals(any && (i==1 || i==3), blocks.get(i).isExistingTissue())
+        );
     }
 }

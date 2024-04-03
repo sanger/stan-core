@@ -50,8 +50,11 @@ public class RegistrationFileController {
     }
 
     @PostMapping(value = "/register/block", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> receiveBlockFile(@RequestParam("file") MultipartFile file) throws URISyntaxException {
-        return receiveFile("block", file, fileRegisterService::registerBlocks);
+    public ResponseEntity<?> receiveBlockFile(@RequestParam("file") MultipartFile file,
+                                              @RequestParam(value="existingExternalNames", required=false) List<String> existingExternalNames)
+            throws URISyntaxException {
+        BiFunction<User, MultipartFile, RegisterResult> biFunction = (user, multipartFile) -> fileRegisterService.registerBlocks(user, multipartFile, existingExternalNames);
+        return receiveFile("block", file, biFunction);
     }
 
     @PostMapping(value="/register/original", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -68,7 +71,7 @@ public class RegistrationFileController {
             result = serviceFunction.apply(user, file);
         } catch (ValidationException e) {
             log.error("File "+desc+" registration failed.", e);
-            List<String> problems = e.getProblems().stream().map(Object::toString).collect(toList());
+            List<String> problems = e.getProblems().stream().map(Object::toString).toList();
             Map<String, List<String>> output = Map.of("problems", problems);
             return ResponseEntity.badRequest().body(output);
         }

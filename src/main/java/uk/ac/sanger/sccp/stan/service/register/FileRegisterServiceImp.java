@@ -11,7 +11,11 @@ import uk.ac.sanger.sccp.stan.service.register.filereader.MultipartFileReader;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.*;
 import java.util.function.BiFunction;
+
+import static java.util.stream.Collectors.toSet;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 
 /**
  * @author dr6
@@ -44,30 +48,55 @@ public class FileRegisterServiceImp implements FileRegisterService {
     }
 
     protected <Req, Res> Res register(User user, MultipartFile multipartFile, MultipartFileReader<Req> fileReader,
-                                      BiFunction<User, Req, Res> service)
+                                      BiFunction<User, Req, Res> service, List<String> existingExternalNames)
             throws ValidationException {
-        Req req ;
+        Req req;
         try {
             req = fileReader.read(multipartFile);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-
+        if (!nullOrEmpty(existingExternalNames) && req instanceof RegisterRequest) {
+            updateWithExisting((RegisterRequest) req, existingExternalNames);
+        }
         return transactor.transact("register", () -> service.apply(user, req));
+    }
+
+    /**
+     * Update the blocks in the given request to specify that they are existing tissue if they
+     * are found in the given list of existing external names.
+     * @param request a block register request
+     * @param existingExternalNames list of known existing external names
+     */
+    public void updateWithExisting(RegisterRequest request, List<String> existingExternalNames) {
+        if (nullOrEmpty(existingExternalNames) || nullOrEmpty(request.getBlocks())) {
+            return;
+        }
+        Set<String> externalNamesUC = existingExternalNames.stream()
+                .filter(Objects::nonNull)
+                .map(String::toUpperCase)
+                .collect(toSet());
+        for (BlockRegisterRequest block : request.getBlocks()) {
+            if (block != null && !nullOrEmpty(block.getExternalIdentifier())
+                    && externalNamesUC.contains(block.getExternalIdentifier().toUpperCase())) {
+                block.setExistingTissue(true);
+            }
+        }
     }
 
     @Override
     public RegisterResult registerSections(User user, MultipartFile multipartFile) throws ValidationException {
-        return register(user, multipartFile, sectionFileReader, sectionRegisterService::register);
+        return register(user, multipartFile, sectionFileReader, sectionRegisterService::register, null);
     }
 
     @Override
-    public RegisterResult registerBlocks(User user, MultipartFile multipartFile) throws ValidationException, UncheckedIOException {
-        return register(user, multipartFile, blockFileReader, blockRegisterService::register);
+    public RegisterResult registerBlocks(User user, MultipartFile multipartFile, List<String> existingExternalNames)
+            throws ValidationException, UncheckedIOException {
+        return register(user, multipartFile, blockFileReader, blockRegisterService::register, existingExternalNames);
     }
 
     @Override
     public RegisterResult registerOriginal(User user, MultipartFile multipartFile) throws ValidationException, UncheckedIOException {
-        return register(user, multipartFile, originalSampleFileReader, originalSampleRegisterService::register);
+        return register(user, multipartFile, originalSampleFileReader, originalSampleRegisterService::register, null);
     }
 }
