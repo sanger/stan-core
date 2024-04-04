@@ -14,8 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 import uk.ac.sanger.sccp.stan.model.Labware;
 import uk.ac.sanger.sccp.stan.model.User;
-import uk.ac.sanger.sccp.stan.request.register.LabwareSolutionName;
-import uk.ac.sanger.sccp.stan.request.register.RegisterResult;
+import uk.ac.sanger.sccp.stan.request.register.*;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
 import uk.ac.sanger.sccp.stan.service.register.FileRegisterService;
 
@@ -50,8 +49,11 @@ public class RegistrationFileController {
     }
 
     @PostMapping(value = "/register/block", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> receiveBlockFile(@RequestParam("file") MultipartFile file) throws URISyntaxException {
-        return receiveFile("block", file, fileRegisterService::registerBlocks);
+    public ResponseEntity<?> receiveBlockFile(@RequestParam("file") MultipartFile file,
+                                              @RequestParam(value="existingExternalNames", required=false) List<String> existingExternalNames)
+            throws URISyntaxException {
+        BiFunction<User, MultipartFile, RegisterResult> biFunction = (user, multipartFile) -> fileRegisterService.registerBlocks(user, multipartFile, existingExternalNames);
+        return receiveFile("block", file, biFunction);
     }
 
     @PostMapping(value="/register/original", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -68,19 +70,36 @@ public class RegistrationFileController {
             result = serviceFunction.apply(user, file);
         } catch (ValidationException e) {
             log.error("File "+desc+" registration failed.", e);
-            List<String> problems = e.getProblems().stream().map(Object::toString).collect(toList());
+            List<String> problems = e.getProblems().stream().map(Object::toString).toList();
             Map<String, List<String>> output = Map.of("problems", problems);
             return ResponseEntity.badRequest().body(output);
         }
         log.info("{} {} file registration: {}", user.getUsername(), desc, result);
         List<String> barcodes = result.getLabware().stream().map(Labware::getBarcode).collect(toList());
-        final Map<String, List<?>> output;
-        if (nullOrEmpty(result.getLabwareSolutions())) {
-            output = Map.of("barcodes", barcodes);
-        } else {
-            output = Map.of("barcodes", barcodes, "labwareSolutions", barcodeSolutions(result.getLabwareSolutions()));
+        final Map<String, List<?>> output = new HashMap<>();
+        output.put("barcodes", barcodes);
+        if (!nullOrEmpty(result.getLabwareSolutions())) {
+            output.put("labwareSolutions", barcodeSolutions(result.getLabwareSolutions()));
+        }
+        if (!nullOrEmpty(result.getClashes())) {
+            output.put("clashes", serialiseClashes(result.getClashes()));
         }
         return ResponseEntity.ok().body(output);
+    }
+
+    protected List<Map<String, ?>> serialiseClashes(List<RegisterClash> clashes) {
+        return clashes.stream()
+                .<Map<String,?>>map(clash -> Map.of("tissue", Map.of("externalName", clash.getTissue().getExternalName()),
+                        "labware", serialiseClashLabware(clash)
+                ))
+                .toList();
+    }
+
+    protected List<Map<String, ?>> serialiseClashLabware(RegisterClash clash) {
+        return clash.getLabware().stream()
+                .<Map<String,?>>map(lw -> Map.of("barcode", lw.getBarcode(),
+                        "labwareType", Map.of("name", lw.getLabwareType().getName())))
+                .toList();
     }
 
     protected List<Map<String, String>> barcodeSolutions(Collection<LabwareSolutionName> labwareSolutions) {

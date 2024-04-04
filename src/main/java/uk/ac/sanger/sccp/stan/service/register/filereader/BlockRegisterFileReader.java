@@ -22,7 +22,7 @@ public interface BlockRegisterFileReader extends MultipartFileReader<RegisterReq
         Work_number(Pattern.compile("(work|sgp)\\s*number", Pattern.CASE_INSENSITIVE)),
         Donor_identifier(Pattern.compile("donor\\s*id.*", Pattern.CASE_INSENSITIVE)),
         Life_stage,
-        Collection_date(LocalDate.class, Pattern.compile("(if.*)date.*collection.*", Pattern.CASE_INSENSITIVE)),
+        Collection_date(LocalDate.class, Pattern.compile("(if.*)?(date.*collection|collection.*date).*", Pattern.CASE_INSENSITIVE)),
         Species,
         HuMFre(Pattern.compile("humfre\\s*(number)?", Pattern.CASE_INSENSITIVE)),
         Tissue_type,
@@ -73,8 +73,6 @@ public interface BlockRegisterFileReader extends MultipartFileReader<RegisterReq
         public boolean isRequired() {
             return this.dataType != Void.class;
         }
-
-
     }
 
     /**
