@@ -96,8 +96,13 @@ public class TestFileBlockRegister {
         List<Map<String, Map<String, ?>>> clashes = (List<Map<String, Map<String, ?>>>) clashesObj;
         assertThat(clashes).hasSize(2);
         assertThat(clashes.stream()
-                .map(clash -> (String) clash.get("tissue").get("externalName"))
-        ).containsExactlyInAnyOrder("EXT1", "EXT2");
+                .map(clash -> (String) clash.get("tissue").get("externalName")))
+                .containsExactlyInAnyOrder("EXT1", "EXT2");
+        for (var clash : clashes) {
+            String bc = clash.get("tissue").get("externalName").equals("EXT1") ? "STAN-X" : "STAN-Y";
+            assertEquals(List.of(Map.of("barcode", bc,"labwareType", Map.of("name", "Proviasette"))),
+                    clash.get("labware"));
+        }
     }
 
     /**

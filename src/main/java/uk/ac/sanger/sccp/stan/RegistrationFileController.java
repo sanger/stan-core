@@ -89,7 +89,16 @@ public class RegistrationFileController {
 
     protected List<Map<String, ?>> serialiseClashes(List<RegisterClash> clashes) {
         return clashes.stream()
-                .<Map<String,?>>map(clash -> Map.of("tissue", Map.of("externalName", clash.getTissue().getExternalName())))
+                .<Map<String,?>>map(clash -> Map.of("tissue", Map.of("externalName", clash.getTissue().getExternalName()),
+                        "labware", serialiseClashLabware(clash)
+                ))
+                .toList();
+    }
+
+    protected List<Map<String, ?>> serialiseClashLabware(RegisterClash clash) {
+        return clash.getLabware().stream()
+                .<Map<String,?>>map(lw -> Map.of("barcode", lw.getBarcode(),
+                        "labwareType", Map.of("name", lw.getLabwareType().getName())))
                 .toList();
     }
 
