@@ -8,6 +8,9 @@ import uk.ac.sanger.sccp.stan.service.ValidationException;
 import java.io.UncheckedIOException;
 import java.util.List;
 
+/**
+ * Service handling registrations by user-submitted file.
+ */
 public interface FileRegisterService {
 
     /**

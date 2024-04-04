@@ -47,6 +47,20 @@ public class FileRegisterServiceImp implements FileRegisterService {
         this.transactor = transactor;
     }
 
+    /**
+     * Reads the file and performs the registration.
+     * @param user the user responsible for the request
+     * @param multipartFile the file data
+     * @param fileReader service to read the particular request information from the file
+     * @param service service method to validate and perform the request
+     * @param existingExternalNames null or a list of tissue external names referenced in the request
+     *        that are known to already exist
+     * @return the result of the registration request
+     * @param <Req> the type of request to read from the file
+     * @param <Res> the type of result expected from the request
+     * @exception ValidationException the request fails validation
+     * @exception UncheckedIOException there was an IOException reading the file
+     */
     protected <Req, Res> Res register(User user, MultipartFile multipartFile, MultipartFileReader<Req> fileReader,
                                       BiFunction<User, Req, Res> service, List<String> existingExternalNames)
             throws ValidationException {

@@ -5,6 +5,8 @@ import uk.ac.sanger.sccp.stan.request.register.RegisterResult;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
 
 /**
+ * A service to perform registrations of a particular request type
+ * @param <RequestType> the type of request accepted by this service
  * @author dr6
  */
 @FunctionalInterface
