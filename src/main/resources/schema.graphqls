@@ -1836,6 +1836,28 @@ input ReactivateLabware {
     commentId: Int!
 }
 
+"""Details about labware in a segmentation request."""
+input SegmentationLabware {
+    """The barcode of the labware."""
+    barcode: String!
+    """The work number to link to the operation."""
+    workNumber: String!
+    """The comment ids to link to the operation."""
+    commentIds: [Int!]!
+    """The costing of the operation."""
+    costing: SlideCosting!
+    """The time with which the operation should be recorded."""
+    performed: Timestamp
+}
+
+"""A request to record segmentation on one or more labware."""
+input SegmentationRequest {
+    """The name of the operation to record."""
+    operationType: String!
+    """The details of the labware involved."""
+    labware: [SegmentationLabware!]!
+}
+
 """Info about the app version."""
 type VersionInfo {
     """The output of git describe."""
@@ -1953,7 +1975,7 @@ type Query {
     """Get a graph of the indicated history. Zoom and fontSize are optional."""
     historyGraph(workNumber: String, barcode: String, externalName: [String!], donorName: [String!], zoom: Float, fontSize: Int): GraphSVG!
 
-   """Get the work progress (some particular timestamps) associated with a specified work number, and/or
+    """Get the work progress (some particular timestamps) associated with a specified work number, and/or
     work types, programs, statuses."""
     workProgress(workNumber: String, workTypes: [String!], programs: [String!], statuses: [WorkStatus!], requesters: [String!]): [WorkProgress!]!
     """Get a reagent plate, if it exists. May return null."""
@@ -2160,6 +2182,8 @@ type Mutation {
     reactivateLabware(items: [ReactivateLabware!]!): OperationResult!
     """Perform library prep request."""
     libraryPrep(request: LibraryPrepRequest!): OperationResult!
+    """Record segmentation."""
+    segmentation(request: SegmentationRequest!): OperationResult!
 
     """Create a new user for the application."""
     addUser(username: String!): User!
