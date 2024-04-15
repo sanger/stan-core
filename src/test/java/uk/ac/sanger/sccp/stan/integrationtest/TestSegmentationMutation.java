@@ -67,5 +67,24 @@ public class TestSegmentationMutation {
                 new Work.SampleSlotId(sam1.getId(), slot1.getId()),
                 new Work.SampleSlotId(sam2.getId(), slot2.getId())
         );
+
+        testSegmentationQC(work, lw);
+    }
+
+    private void testSegmentationQC(Work work, Labware lw) throws Exception {
+        OperationType opType = entityCreator.createOpType("Cell segmentation QC", null, OperationTypeFlag.IN_PLACE);
+        String mutation = tester.readGraphQL("segmentationqc.graphql")
+                .replace("[BC]", lw.getBarcode())
+                .replace("[WORK]", work.getWorkNumber());
+
+        Object response = tester.post(mutation);
+        Object data = chainGet(response, "data", "segmentation");
+        assertEquals(lw.getBarcode(), chainGet(data, "labware", 0, "barcode"));
+        Object opData = chainGet(data, "operations", 0);
+        assertEquals(opType.getName(), chainGet(opData, "operationType", "name"));
+        Integer opId = chainGet(opData, "id");
+
+        entityManager.flush();
+        assertThat(work.getOperationIds()).contains(opId);
     }
 }

@@ -206,7 +206,7 @@ class TestValidationHelper {
         if (priorOpTime==null) {
             val.checkTimestamp(timestamp, today, lw);
         } else {
-            val.checkTimestamp(timestamp, today, lw==null ? null : List.of(lw), priorOpTime);
+            val.checkTimestamp(timestamp, today, lw, priorOpTime);
         }
         assertProblem(val.getProblems(), expectedProblem);
     }

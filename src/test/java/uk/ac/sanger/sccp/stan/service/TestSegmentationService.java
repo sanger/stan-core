@@ -24,11 +24,14 @@ import java.util.function.Predicate;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.Matchers.*;
+import static uk.ac.sanger.sccp.stan.service.SegmentationServiceImp.CELL_SEGMENTATION_OP_NAME;
+import static uk.ac.sanger.sccp.stan.service.SegmentationServiceImp.QC_OP_NAME;
 import static uk.ac.sanger.sccp.utils.BasicUtils.inMap;
 
 /** Test {@link SegmentationServiceImp} */
@@ -43,6 +46,8 @@ class TestSegmentationService {
     private WorkService mockWorkService;
     @Mock
     private OperationRepo mockOpRepo;
+    @Mock
+    private OperationTypeRepo mockOpTypeRepo;
     @Mock
     private OperationCommentRepo mockOpComRepo;
     @Mock
@@ -104,12 +109,16 @@ class TestSegmentationService {
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, EntityFactory.getTube());
         UCMap<Work> workMap = UCMap.from(Work::getWorkNumber, EntityFactory.makeWork("SGP11"));
         Map<Integer, Comment> commentMap = Map.of(100, new Comment(100, "com", "cat"));
+        UCMap<LocalDateTime> priorOpMap = new UCMap<>();
+        priorOpMap.put("somebc", LocalDateTime.now());
         doReturn(opType).when(val).checkOpType(any(), any(), any(), any());
         doReturn(lwMap).when(service).loadLabware(any(), any());
         doReturn(workMap).when(service).loadWorks(any(), any());
         doReturn(commentMap).when(service).loadComments(any(), any());
-        doNothing().when(service).checkCostings(any(), any());
-        doNothing().when(service).checkTimestamps(any(), any(), any(), any());
+        doReturn(priorOpMap).when(service).checkPriorOps(any(), any(), any());
+        doNothing().when(service).checkCostings(any(), any(), any());
+
+        doNothing().when(service).checkTimestamps(any(), any(), any(), any(), any());
 
         SegmentationData data = service.validate(user, request);
         assertThat(data.problems).isEmpty();
@@ -129,8 +138,9 @@ class TestSegmentationService {
         verify(service).loadLabware(val, request.getLabware());
         verify(service).loadWorks(val, request.getLabware());
         verify(service).loadComments(val, request.getLabware());
-        verify(service).checkCostings(same(problems), same(request.getLabware()));
-        verify(service).checkTimestamps(same(val), same(mockClock), same(request.getLabware()), same(data.labware));
+        verify(service).checkCostings(same(problems), same(opType), same(request.getLabware()));
+        verify(service).checkPriorOps(same(problems), same(opType), eq(lwMap.values()));
+        verify(service).checkTimestamps(same(val), same(mockClock), same(request.getLabware()), same(data.labware), same(priorOpMap));
     }
 
     @ParameterizedTest
@@ -145,8 +155,9 @@ class TestSegmentationService {
         verify(service, never()).loadLabware(any(), any());
         verify(service, never()).loadWorks(any(), any());
         verify(service, never()).loadComments(any(), any());
-        verify(service, never()).checkCostings(any(), any());
-        verify(service, never()).checkTimestamps(any(), any(), any(), any());
+        verify(service, never()).checkCostings(any(), any(), any());
+        verify(service, never()).checkPriorOps(any(), any(), any());
+        verify(service, never()).checkTimestamps(any(), any(), any(), any(), any());
         if (userIsNull) {
             assertThat(data.problems).containsExactlyInAnyOrder("No user supplied.", "No request supplied.");
         } else {
@@ -172,8 +183,9 @@ class TestSegmentationService {
         verify(service, never()).loadLabware(any(), any());
         verify(service, never()).loadWorks(any(), any());
         verify(service, never()).loadComments(any(), any());
-        verify(service, never()).checkCostings(any(), any());
-        verify(service, never()).checkTimestamps(any(), any(), any(), any());
+        verify(service, never()).checkCostings(any(), any(), any());
+        verify(service, never()).checkPriorOps(any(), any(), any());
+        verify(service, never()).checkTimestamps(any(), any(), any(), any(), any());
 
         assertProblem(data.problems, "No labware specified.");
     }
@@ -190,12 +202,15 @@ class TestSegmentationService {
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, EntityFactory.getTube());
         UCMap<Work> workMap = UCMap.from(Work::getWorkNumber, EntityFactory.makeWork("SGP1"));
         Map<Integer, Comment> commentMap = Map.of(100, new Comment(100, "com", "cat"));
+        UCMap<LocalDateTime> priorOps = new UCMap<>();
+        priorOps.put("somebc", LocalDateTime.now());
 
         doAnswer(addProblem("Bad lw", lwMap)).when(service).loadLabware(any(), any());
         doAnswer(addProblem("Bad work", workMap)).when(service).loadWorks(any(), any());
         doAnswer(addProblem("Bad comment", commentMap)).when(service).loadComments(any(), any());
-        mayAddProblem("Bad costing").when(service).checkCostings(any(), any());
-        mayAddProblem("Bad time").when(service).checkTimestamps(any(), any(), any(), any());
+        mayAddProblem("Bad costing").when(service).checkCostings(any(), any(), any());
+        doAnswer(addProblem("Bad prior op", priorOps)).when(service).checkPriorOps(any(), any(), any());
+        mayAddProblem("Bad time").when(service).checkTimestamps(any(), any(), any(), any(), any());
 
         SegmentationData data = service.validate(null, request);
         verify(val).checkOpType(eq("opname"), any(), any(), any());
@@ -203,11 +218,11 @@ class TestSegmentationService {
         verify(service).loadLabware(val, lwReqs);
         verify(service).loadWorks(val, lwReqs);
         verify(service).loadComments(val, lwReqs);
-        verify(service).checkCostings(any(), same(lwReqs));
-        verify(service).checkTimestamps(val, mockClock, lwReqs, lwMap);
+        verify(service).checkCostings(any(), same(opType), same(lwReqs));
+        verify(service).checkTimestamps(val, mockClock, lwReqs, lwMap, priorOps);
 
         assertThat(data.problems).containsExactlyInAnyOrder(
-                "No user supplied.", "Bad lw", "Bad work", "Bad comment", "Bad costing", "Bad time"
+                "No user supplied.", "Bad lw", "Bad work", "Bad comment", "Bad costing", "Bad prior op", "Bad time"
         );
     }
 
@@ -259,8 +274,9 @@ class TestSegmentationService {
 
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
-    void testCheckCostings(boolean anyNull) {
+    void testCheckCostings_segmentation(boolean anyNull) {
         List<SegmentationLabware> lwReqs = IntStream.range(0,4).mapToObj(i -> new SegmentationLabware()).toList();
+        OperationType opType = EntityFactory.makeOperationType(CELL_SEGMENTATION_OP_NAME, null, OperationTypeFlag.IN_PLACE);
         lwReqs.get(0).setCosting(SlideCosting.Faculty);
         lwReqs.get(1).setCosting(SlideCosting.SGP);
         if (!anyNull) {
@@ -268,13 +284,104 @@ class TestSegmentationService {
             lwReqs.get(3).setCosting(SlideCosting.Faculty);
         }
         List<String> problems = new ArrayList<>(anyNull ? 1 : 0);
-        service.checkCostings(problems, lwReqs);
+        service.checkCostings(problems, opType, lwReqs);
         assertProblem(problems, anyNull ? "Costing missing from request." : null);
     }
 
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
-    void testCheckTimestamps(boolean withLw) {
+    void testCheckCostings_qc(boolean anyPresent) {
+        List<SegmentationLabware> lwReqs = IntStream.range(0,4).mapToObj(i -> new SegmentationLabware()).toList();
+        OperationType opType = EntityFactory.makeOperationType(QC_OP_NAME, null, OperationTypeFlag.IN_PLACE);
+        if (anyPresent) {
+            lwReqs.get(2).setCosting(SlideCosting.Faculty);
+            lwReqs.get(3).setCosting(SlideCosting.SGP);
+        }
+        List<String> problems = new ArrayList<>(anyPresent ? 1 : 0);
+        service.checkCostings(problems, opType, lwReqs);
+        assertProblem(problems, anyPresent ? "Costing not expected in this request." : null);
+    }
+
+    @Test
+    void testCheckCosting_noOpType() {
+        List<SegmentationLabware> lwReqs = List.of(new SegmentationLabware());
+        List<String> problems = new ArrayList<>(0);
+        service.checkCostings(problems, null, lwReqs);
+        assertThat(problems).isEmpty();
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints={0,1,2})
+    void testCheckPriorOps_null(int mode) {
+        // 0: No op type
+        // 1: Op type isn't QC
+        // 2: No labware
+        OperationType opType = (mode==0 ? null : EntityFactory.makeOperationType(mode==1 ? "Bananas" : QC_OP_NAME, null, OperationTypeFlag.IN_PLACE));
+        List<Labware> lws = (mode==2 ? null : List.of(EntityFactory.getTube()));
+        List<String> problems = new ArrayList<>(0);
+        assertNull(service.checkPriorOps(problems, opType, lws));
+        verifyNoInteractions(mockOpTypeRepo);
+        verifyNoInteractions(mockOpRepo);
+        assertThat(problems).isEmpty();
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void testCheckPriorOps(boolean anyMissing) {
+        OperationType opType = EntityFactory.makeOperationType(QC_OP_NAME, null, OperationTypeFlag.IN_PLACE);
+        OperationType priorOpType = EntityFactory.makeOperationType(CELL_SEGMENTATION_OP_NAME, null, OperationTypeFlag.IN_PLACE);
+        when(mockOpTypeRepo.getByName(CELL_SEGMENTATION_OP_NAME)).thenReturn(priorOpType);
+        LabwareType lt = EntityFactory.getTubeType();
+        Sample sample = EntityFactory.getSample();
+        List<Labware> lws = IntStream.range(0,3)
+                .mapToObj(i -> EntityFactory.makeLabware(lt, sample))
+                .toList();
+        Set<Integer> lwIds = lws.stream().map(Labware::getId).collect(toSet());
+        List<LocalDateTime> times = IntStream.rangeClosed(1, anyMissing ? 2 : 3)
+                .mapToObj(i -> LocalDateTime.of(2024,1,i,12,0))
+                .toList();
+        List<Operation> ops = IntStream.range(0, times.size())
+                .mapToObj(i -> {
+                    List<Labware> opLw = List.of(lws.get(i));
+                    Operation op = EntityFactory.makeOpForLabware(priorOpType, opLw, opLw);
+                    op.setPerformed(times.get(i));
+                    return op;
+                }).toList();
+        when(mockOpRepo.findAllByOperationTypeAndDestinationLabwareIdIn(priorOpType, lwIds)).thenReturn(ops);
+
+        List<String> problems = new ArrayList<>(anyMissing ? 1 : 0);
+        UCMap<LocalDateTime> timeMap = service.checkPriorOps(problems, opType, lws);
+        verify(mockOpTypeRepo).getByName(CELL_SEGMENTATION_OP_NAME);
+        verify(mockOpRepo).findAllByOperationTypeAndDestinationLabwareIdIn(priorOpType, lwIds);
+
+        assertProblem(problems,
+                anyMissing ? "Cell segmentation has not been recorded on labware ["+lws.get(2).getBarcode()+"]." : null);
+        assertThat(timeMap).hasSize(times.size());
+        for (int i = 0; i < times.size(); ++i) {
+            assertEquals(times.get(i), timeMap.get(lws.get(i).getBarcode()));
+        }
+    }
+
+    @Test
+    void testGreater() {
+        for (Object[] args : new Object[][]{
+                {null,null,false},
+                {null,5,false},
+                {null,-5,false},
+                {1,null,true},
+                {-4,null,true},
+                {2,3,false},
+                {5,2,true},
+        }) {
+            Integer a = (Integer) args[0];
+            Integer b = (Integer) args[1];
+            assertEquals(args[2], SegmentationServiceImp.greater(a, b));
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource({"false,false", "true,false", "true,true"})
+    void testCheckTimestamps(boolean withLw, boolean withTimes) {
         ValidationHelper val = mock(ValidationHelper.class);
         Clock clock = Clock.fixed(LocalDateTime.of(2024,4,10,12,0).toInstant(ZoneOffset.UTC), ZoneId.systemDefault());
         LocalDate today = LocalDate.of(2024,4,10);
@@ -285,10 +392,21 @@ class TestSegmentationService {
         lwReqs.get(0).setPerformed(LocalDateTime.of(2024,4,1,10,0));
         lwReqs.get(1).setPerformed(LocalDateTime.of(2024,4,2,10,0));
 
-        service.checkTimestamps(val, clock, lwReqs, lwMap);
+        UCMap<LocalDateTime> priorOpTimes;
+        LocalDateTime priorOpTime;
+        if (withTimes && lw!=null) {
+            priorOpTime = LocalDateTime.of(2024,1,1,12,0);
+            priorOpTimes = new UCMap<>();
+            priorOpTimes.put(lw.getBarcode(), priorOpTime);
+        } else {
+            priorOpTime = null;
+            priorOpTimes = null;
+        }
 
-        verify(val).checkTimestamp(lwReqs.get(0).getPerformed(), today, withLw ? lw : null);
-        verify(val).checkTimestamp(lwReqs.get(1).getPerformed(), today, null);
+        service.checkTimestamps(val, clock, lwReqs, lwMap, priorOpTimes);
+
+        verify(val).checkTimestamp(lwReqs.get(0).getPerformed(), today, withLw ? lw : null, priorOpTime);
+        verify(val).checkTimestamp(lwReqs.get(1).getPerformed(), today, (Labware) null, null);
         verifyNoMoreInteractions(val);
     }
 

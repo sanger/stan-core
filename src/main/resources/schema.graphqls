@@ -1845,7 +1845,7 @@ input SegmentationLabware {
     """The comment ids to link to the operation."""
     commentIds: [Int!]!
     """The costing of the operation."""
-    costing: SlideCosting!
+    costing: SlideCosting
     """The time with which the operation should be recorded."""
     performed: Timestamp
 }

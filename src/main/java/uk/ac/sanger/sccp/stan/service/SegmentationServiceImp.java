@@ -12,11 +12,12 @@ import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService.WorkOp;
 import uk.ac.sanger.sccp.utils.UCMap;
 
-import java.time.Clock;
-import java.time.LocalDate;
+import java.time.*;
 import java.util.*;
 import java.util.stream.Stream;
 
+import static java.util.stream.Collectors.toSet;
+import static uk.ac.sanger.sccp.utils.BasicUtils.inMap;
 import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 
 /**
@@ -24,7 +25,8 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
  */
 @Service
 public class SegmentationServiceImp implements SegmentationService {
-    public static final String CELL_SEGMENTATION_OP_NAME = "Cell segmentation";
+    public static final String CELL_SEGMENTATION_OP_NAME = "Cell segmentation",
+            QC_OP_NAME = "Cell segmentation QC";
 
     private final Clock clock;
     private final ValidationHelperFactory valHelperFactory;
@@ -33,17 +35,20 @@ public class SegmentationServiceImp implements SegmentationService {
     private final WorkService workService;
 
     private final OperationRepo opRepo;
+    private final OperationTypeRepo opTypeRepo;
     private final OperationCommentRepo opComRepo;
     private final LabwareNoteRepo noteRepo;
 
     public SegmentationServiceImp(Clock clock, ValidationHelperFactory valHelperFactory,
                                   OperationService opService, WorkService workService,
-                                  OperationRepo opRepo, OperationCommentRepo opComRepo, LabwareNoteRepo noteRepo) {
+                                  OperationRepo opRepo, OperationTypeRepo opTypeRepo,
+                                  OperationCommentRepo opComRepo, LabwareNoteRepo noteRepo) {
         this.clock = clock;
         this.valHelperFactory = valHelperFactory;
         this.opService = opService;
         this.workService = workService;
         this.opRepo = opRepo;
+        this.opTypeRepo = opTypeRepo;
         this.opComRepo = opComRepo;
         this.noteRepo = noteRepo;
     }
@@ -74,8 +79,9 @@ public class SegmentationServiceImp implements SegmentationService {
             problems.add("No request supplied.");
             return data;
         }
+        Set<String> opNamesUC = Stream.of(CELL_SEGMENTATION_OP_NAME, QC_OP_NAME).map(String::toUpperCase).collect(toSet());
         data.opType = val.checkOpType(request.getOperationType(), EnumSet.of(OperationTypeFlag.IN_PLACE),
-                null, ot -> ot.getName().equalsIgnoreCase(CELL_SEGMENTATION_OP_NAME));
+                null, ot -> opNamesUC.contains(ot.getName().toUpperCase()));
         if (nullOrEmpty(request.getLabware())) {
             problems.add("No labware specified.");
             return data;
@@ -83,8 +89,9 @@ public class SegmentationServiceImp implements SegmentationService {
         data.labware = loadLabware(val, request.getLabware());
         data.works = loadWorks(val, request.getLabware());
         data.comments = loadComments(val, request.getLabware());
-        checkCostings(problems, request.getLabware());
-        checkTimestamps(val, clock, request.getLabware(), data.labware);
+        checkCostings(problems, data.opType, request.getLabware());
+        UCMap<LocalDateTime> priorOpTimes = checkPriorOps(problems, data.opType, data.labware.values());
+        checkTimestamps(val, clock, request.getLabware(), data.labware, priorOpTimes);
         return data;
     }
 
@@ -128,13 +135,69 @@ public class SegmentationServiceImp implements SegmentationService {
     }
 
     /**
+     * Checks if the labware has the required prior operations, if appropriate
+     * @param problems receptacle for problems
+     * @param opType the operation type, if known
+     * @param labware the labware involved
+     * @return the prior op timestamp for each labware, if found. Null if no prior op is required
+     */
+    UCMap<LocalDateTime> checkPriorOps(Collection<String> problems, OperationType opType, Collection<Labware> labware) {
+        if (opType==null || !opType.getName().equalsIgnoreCase(QC_OP_NAME) || nullOrEmpty(labware)) {
+            return null;
+        }
+        Map<Integer, Labware> idLabware = labware.stream().collect(inMap(Labware::getId));
+        OperationType priorOpType = opTypeRepo.getByName(CELL_SEGMENTATION_OP_NAME);
+        List<Operation> priorOps = opRepo.findAllByOperationTypeAndDestinationLabwareIdIn(priorOpType, idLabware.keySet());
+        UCMap<LocalDateTime> opTimes = new UCMap<>(priorOps.size());
+        for (Operation op : priorOps) {
+            Set<Integer> opLwIds = op.getActions().stream()
+                    .map(a -> a.getDestination().getLabwareId())
+                    .collect(toSet());
+            for (Integer lwId : opLwIds) {
+                Labware lw = idLabware.get(lwId);
+                if (lw!=null && greater(op.getPerformed(), opTimes.get(lw.getBarcode()))) {
+                    opTimes.put(lw.getBarcode(), op.getPerformed());
+                }
+            }
+        }
+        List<String> missing = labware.stream()
+                .map(Labware::getBarcode)
+                .filter(bc -> opTimes.get(bc)==null)
+                .toList();
+        if (!missing.isEmpty()) {
+            problems.add(priorOpType.getName()+" has not been recorded on labware "+missing+".");
+        }
+        return opTimes;
+    }
+
+    /**
+     * Is a greater than b? regarding null as less than everything
+     * @param a thing that might be greater
+     * @param b thing that might be lesser
+     * @return true if a is non-null and b is null or a is greater than b
+     * @param <E> the type of thing being compared
+     */
+    static <E extends Comparable<E>> boolean greater(E a, E b) {
+        return (a!=null && (b==null || a.compareTo(b) > 0));
+    }
+
+    /**
      * Checks the costings
      * @param problems receptacle for problems found
      * @param lwReqs details of the request
      */
-    void checkCostings(Collection<String> problems, List<SegmentationLabware> lwReqs) {
-        if (lwReqs.stream().anyMatch(lwReq -> lwReq.getCosting()==null)) {
-            problems.add("Costing missing from request.");
+    void checkCostings(Collection<String> problems, OperationType opType, List<SegmentationLabware> lwReqs) {
+        if (opType==null) {
+            return;
+        }
+        if (opType.getName().equalsIgnoreCase(CELL_SEGMENTATION_OP_NAME)) {
+            if (lwReqs.stream().anyMatch(lwReq -> lwReq.getCosting() == null)) {
+                problems.add("Costing missing from request.");
+            }
+        } else if (opType.getName().equalsIgnoreCase(QC_OP_NAME)) {
+            if (lwReqs.stream().anyMatch(lwReq -> lwReq.getCosting()!=null)) {
+                problems.add("Costing not expected in this request.");
+            }
         }
     }
 
@@ -143,13 +206,17 @@ public class SegmentationServiceImp implements SegmentationService {
      * @param val validation helper
      * @param clock to get current time
      * @param lwReqs details of the request
+     * @param priorOpTimes times the prior op was recorded on each labware, if appropriate
      * @param lwMap map to look up labware from its barcode
      */
-    void checkTimestamps(ValidationHelper val, Clock clock, List<SegmentationLabware> lwReqs, UCMap<Labware> lwMap) {
+    void checkTimestamps(ValidationHelper val, Clock clock, List<SegmentationLabware> lwReqs, UCMap<Labware> lwMap,
+                         UCMap<LocalDateTime> priorOpTimes) {
         LocalDate today = LocalDate.now(clock);
         for (SegmentationLabware lwReq : lwReqs) {
             if (lwReq.getPerformed()!=null) {
-                val.checkTimestamp(lwReq.getPerformed(), today, lwMap==null ? null : lwMap.get(lwReq.getBarcode()));
+                String barcode = lwReq.getBarcode();
+                val.checkTimestamp(lwReq.getPerformed(), today, lwMap==null ? null : lwMap.get(barcode),
+                        priorOpTimes==null ? null : priorOpTimes.get(barcode));
             }
         }
     }
