@@ -98,6 +98,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final SSStudyService ssStudyService;
     final ReactivateService reactivateService;
     final LibraryPrepService libraryPrepService;
+    final SegmentationService segmentationService;
     final UserAdminService userAdminService;
 
     @Autowired
@@ -130,7 +131,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            ProbeService probeService, CompletionService completionService, AnalyserService analyserService,
                            FlagLabwareService flagLabwareService,
                            QCLabwareService qcLabwareService, OrientationService orientationService, SSStudyService ssStudyService,
-                           ReactivateService reactivateService, LibraryPrepService libraryPrepService,
+                           ReactivateService reactivateService, LibraryPrepService libraryPrepService, SegmentationService segmentationService,
                            UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.authService = authService;
@@ -190,6 +191,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.ssStudyService = ssStudyService;
         this.reactivateService = reactivateService;
         this.libraryPrepService = libraryPrepService;
+        this.segmentationService = segmentationService;
         this.userAdminService = userAdminService;
     }
 
@@ -871,6 +873,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             LibraryPrepRequest request = arg(dfe, "request", LibraryPrepRequest.class);
             logRequest("Library prep", user, request);
             return libraryPrepService.perform(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> segmentation() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            SegmentationRequest request = arg(dfe, "request", SegmentationRequest.class);
+            logRequest("Segmentation", user, request);
+            return segmentationService.perform(user, request);
         };
     }
 
