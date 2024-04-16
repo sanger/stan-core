@@ -34,7 +34,7 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
     public static final String ANALYSER_OP_NAME = "Xenium analyser";
 
     public static final String LOT_A_NAME = "decoding reagent A lot", LOT_B_NAME = "decoding reagent B lot",
-            RUN_NAME = "run", POSITION_NAME = "cassette position";
+            RUN_NAME = "run", POSITION_NAME = "cassette position", CELL_SEGMENTATION_LOT_NAME = "cell segmentation lot";
 
     public static final String EQUIPMENT_CATEGORY = "xenium analyser";
 
@@ -46,6 +46,7 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
     private final Validator<String> decodingReagentLotValidator;
     private final Validator<String> runNameValidator;
     private final Validator<String> roiValidator;
+    private final Validator<String> cellSegmentationLotValidator;
     private final ValidationHelperFactory valFactory;
     // validators
 
@@ -58,6 +59,7 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
                               @Qualifier("decodingReagentLotValidator") Validator<String> decodingReagentLotValidator,
                               @Qualifier("runNameValidator") Validator<String> runNameValidator,
                               @Qualifier("roiValidator") Validator<String> roiValidator,
+                              @Qualifier("cellSegmentationLotValidator") Validator<String> cellSegmentationLotValidator,
                               ValidationHelperFactory valFactory) {
         super(lwValFactory, opTypeRepo, opRepo, lwRepo, opSearcher);
         this.opService = opService;
@@ -68,6 +70,7 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
         this.decodingReagentLotValidator = decodingReagentLotValidator;
         this.runNameValidator = runNameValidator;
         this.roiValidator = roiValidator;
+        this.cellSegmentationLotValidator = cellSegmentationLotValidator;
         this.valFactory = valFactory;
     }
 
@@ -86,6 +89,7 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
         checkSamples(problems, request.getLabware(), lwMap);
         validateLot(problems, request.getLotNumberA());
         validateLot(problems, request.getLotNumberB());
+        validateCellSegmentationLot(problems, request.getCellSegmentationLot());
         validateRunName(problems, request.getRunName());
         ValidationHelper val = valFactory.getHelper();
         Equipment equipment = val.checkEquipment(request.getEquipmentId(), EQUIPMENT_CATEGORY, true);
@@ -199,7 +203,7 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
                     Operation op = priorOps.get(lw.getId());
                     return (op!=null && op.getPerformed().isAfter(timestamp) ? lw.getBarcode() : null);
                 }).filter(Objects::nonNull)
-                .collect(toList());
+                .toList();
         if (!tooEarlyBarcodes.isEmpty()) {
             problems.add("The given date is before the preceding operation for labware " + tooEarlyBarcodes+".");
         }
@@ -351,6 +355,13 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
         }
     }
 
+    /** Validates the cell segmentation lot number */
+    public void validateCellSegmentationLot(Collection<String> problems, String lot) {
+        if (!nullOrEmpty(lot)) {
+            cellSegmentationLotValidator.validate(lot, problems::add);
+        }
+    }
+
     /** Validates the run name */
     public void validateRunName(Collection<String> problems, String runName) {
         if (isBlank(runName)) {
@@ -378,6 +389,7 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
         String lotA = request.getLotNumberA().trim();
         String lotB = request.getLotNumberB().trim();
         String run = request.getRunName().trim();
+        String cellSegmentationLot = nullOrEmpty(request.getCellSegmentationLot()) ? null : request.getCellSegmentationLot().trim();
         final int numLw = request.getLabware().size();
         List<Labware> labware = new ArrayList<>(numLw);
         List<Operation> ops = new ArrayList<>(numLw);
@@ -394,6 +406,9 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
             lwNotes.add(new LabwareNote(null, lw.getId(), op.getId(), RUN_NAME, run));
             lwNotes.add(new LabwareNote(null, lw.getId(), op.getId(), LOT_A_NAME, lotA));
             lwNotes.add(new LabwareNote(null, lw.getId(), op.getId(), LOT_B_NAME, lotB));
+            if (cellSegmentationLot != null) {
+                lwNotes.add(new LabwareNote(null, lw.getId(), op.getId(), CELL_SEGMENTATION_LOT_NAME, cellSegmentationLot));
+            }
             lwNotes.add(new LabwareNote(null, lw.getId(), op.getId(), POSITION_NAME, al.getPosition().toString()));
             addRois(rois, op.getId(), lw, al.getSamples());
             labware.add(lw);

@@ -1784,6 +1784,8 @@ input AnalyserRequest {
     labware: [AnalyserLabware!]!
     """The id of the equipment used in this operation."""
     equipmentId: Int!
+    """The cell segmentation lot number."""
+    cellSegmentationLot: String
 }
 
 """Labware to be QC'd with comments and a completion time."""

@@ -100,6 +100,14 @@ public class FieldValidation {
     }
 
     @Bean
+    public Validator<String> cellSegmentationLotValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(
+                CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.UNDERSCORE
+        );
+        return new StringValidator("Cell segmentation lot number", 1, 25, charTypes);
+    }
+
+    @Bean
     public Validator<String> commentTextValidator() {
         Set<CharacterType> charTypes = EnumSet.of(
                 CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN, CharacterType.SPACE, CharacterType.COLON,
