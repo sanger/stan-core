@@ -50,9 +50,10 @@ public class RegistrationFileController {
 
     @PostMapping(value = "/register/block", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> receiveBlockFile(@RequestParam("file") MultipartFile file,
-                                              @RequestParam(value="existingExternalNames", required=false) List<String> existingExternalNames)
+                                              @RequestParam(value="existingExternalNames", required=false) List<String> existingExternalNames,
+                                              @RequestParam(value="ignoreExternalNames", required=false) List<String> ignoreExternalNames)
             throws URISyntaxException {
-        BiFunction<User, MultipartFile, RegisterResult> biFunction = (user, multipartFile) -> fileRegisterService.registerBlocks(user, multipartFile, existingExternalNames);
+        BiFunction<User, MultipartFile, RegisterResult> biFunction = (user, multipartFile) -> fileRegisterService.registerBlocks(user, multipartFile, existingExternalNames, ignoreExternalNames);
         return receiveFile("block", file, biFunction);
     }
 
