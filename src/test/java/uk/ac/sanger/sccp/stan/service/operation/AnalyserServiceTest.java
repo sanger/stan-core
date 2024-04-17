@@ -66,6 +66,8 @@ public class AnalyserServiceTest {
     private Validator<String> mockRunNameValidator;
     @Mock(name="roiValidator")
     private Validator<String> mockRoiValidator;
+    @Mock(name="cellSegmentationLotValidator")
+    private Validator<String> mockCSLotValidator;
     @Mock
     private ValidationHelperFactory mockValFactory;
     @Mock
@@ -80,7 +82,8 @@ public class AnalyserServiceTest {
         mocking = MockitoAnnotations.openMocks(this);
         service = spy(new AnalyserServiceImp(mockLwValFactory, mockOpSearcher, mockOpService, mockWorkService,
                 mockLwRepo, mockOpTypeRepo, mockOpRepo, mockClock, mockLwNoteRepo, mockRoiRepo,
-                mockDecodingReagentLotValidator, mockRunNameValidator, mockRoiValidator, mockValFactory));
+                mockDecodingReagentLotValidator, mockRunNameValidator, mockRoiValidator, mockCSLotValidator,
+                mockValFactory));
     }
 
     @AfterEach
@@ -109,13 +112,14 @@ public class AnalyserServiceTest {
         doNothing().when(service).checkSamples(any(), any(), any());
         doNothing().when(service).validateLot(any(), any());
         doNothing().when(service).validateRunName(any(), any());
+        doNothing().when(service).validateCellSegmentationLot(any(), any());
         doReturn(mockVal).when(mockValFactory).getHelper();
         doReturn(new HashSet<>()).when(mockVal).getProblems();
         doReturn(equipment).when(mockVal).checkEquipment(any(), any(), anyBoolean());
 
         doReturn(opres).when(service).record(any(), any(), any(), any(), any(), any());
 
-        AnalyserRequest request = new AnalyserRequest("opname", "lotA", "lotB", "run", LocalDateTime.now(), List.of(new AnalyserLabware()), equipment.getId());
+        AnalyserRequest request = new AnalyserRequest("opname", "lotA", "lotB", "run", LocalDateTime.now(), List.of(new AnalyserLabware()), equipment.getId(), "cslot");
 
         assertSame(opres, service.perform(user, request));
 
@@ -141,15 +145,16 @@ public class AnalyserServiceTest {
         doAnswer(addProblem("bad roi")).when(service).checkRois(any(), any());
         doAnswer(addProblem("bad sample")).when(service).checkSamples(any(), any(), any());
         doAnswer(addProblem("bad lot")).when(service).validateLot(any(), any());
+        doAnswer(addProblem("bad cslot")).when(service).validateCellSegmentationLot(any(), any());
         doAnswer(addProblem("bad run")).when(service).validateRunName(any(), any());
         doReturn(mockVal).when(mockValFactory).getHelper();
         doReturn(Set.of("Bad equipment")).when(mockVal).getProblems();
 
-        AnalyserRequest request = new AnalyserRequest("opname", "lotA", "lotB", "run", LocalDateTime.now(), List.of(new AnalyserLabware()), null);
+        AnalyserRequest request = new AnalyserRequest("opname", "lotA", "lotB", "run", LocalDateTime.now(), List.of(new AnalyserLabware()), null, "cslot");
 
         assertValidationException(() -> service.perform(user, request), List.of(
                         "bad lw", "bad optype", "bad prior ops", "bad time", "bad work",
-                        "bad position", "bad roi", "bad sample", "bad lot", "bad run", "Bad equipment"
+                        "bad position", "bad roi", "bad sample", "bad lot", "bad cslot", "bad run", "Bad equipment"
         ));
         verify(mockValFactory, times(1)).getHelper();
         verifyValidation(request, opType, lwMap, priorOps, mockVal);
@@ -169,6 +174,7 @@ public class AnalyserServiceTest {
         verify(service).checkSamples(any(), same(request.getLabware()), same(lwMap));
         verify(service).validateLot(any(), eq(request.getLotNumberA()));
         verify(service).validateLot(any(), eq(request.getLotNumberB()));
+        verify(service).validateCellSegmentationLot(any(), eq(request.getCellSegmentationLot()));
         verify(service).validateRunName(any(), eq(request.getRunName()));
         verify(mockVal).checkEquipment(request.getEquipmentId(), EQUIPMENT_CATEGORY, true);
     }
@@ -488,7 +494,7 @@ public class AnalyserServiceTest {
     @ValueSource(strings={"", "X!", "Alpha"})
     public void testValidateLot(String string) {
         String expectedProblem;
-        if (string==null || string.isEmpty()) {
+        if (nullOrEmpty(string)) {
             expectedProblem = "Missing lot number.";
         } else if (string.indexOf('!') >= 0) {
             expectedProblem = "Bad "+string;
@@ -504,6 +510,30 @@ public class AnalyserServiceTest {
         }
         List<String> problems = new ArrayList<>(expectedProblem==null ? 0 : 1);
         service.validateLot(problems, string);
+        assertProblem(problems, expectedProblem);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings={"NULL", "", "X!", "Alpha"})
+    public void testValidateCellSegmentationLot(String string) {
+        String expectedProblem;
+        if (string.equals("NULL")) {
+            expectedProblem = null;
+            string = null;
+        } else if (string.indexOf('!') >= 0) {
+            expectedProblem = "Bad " + string;
+            doAnswer(invocation -> {
+                String v = invocation.getArgument(0);
+                Consumer<String> cons = invocation.getArgument(1);
+                cons.accept("Bad " + v);
+                return false;
+            }).when(mockCSLotValidator).validate(any(), any());
+        } else {
+            expectedProblem = null;
+            doReturn(true).when(mockCSLotValidator).validate(any(), any());
+        }
+        List<String> problems = new ArrayList<>(expectedProblem==null ? 0 : 1);
+        service.validateCellSegmentationLot(problems, string);
         assertProblem(problems, expectedProblem);
     }
 
@@ -532,8 +562,12 @@ public class AnalyserServiceTest {
         assertProblem(problems, expectedProblem);
     }
 
-    @Test
-    public void testRecord() {
+    @ParameterizedTest
+    @ValueSource(strings={"NULL", "", "cslot1"})
+    public void testRecord(String cslot) {
+        if (cslot.equals("NULL")) {
+            cslot = null;
+        }
         User user = EntityFactory.getUser();
         OperationType opType = EntityFactory.makeOperationType("foo", null);
         LabwareType lt = EntityFactory.getTubeType();
@@ -553,7 +587,7 @@ public class AnalyserServiceTest {
         AnalyserLabware al2 = new AnalyserLabware("STAN-2", "SGP2", CassettePosition.right, srs2);
         Equipment equipment = new Equipment(1, "Xenium 1", EQUIPMENT_CATEGORY, true);
         AnalyserRequest request = new AnalyserRequest(opType.getName(), "lot1", "lot2", "run1",
-                LocalDateTime.of(2023,1,1,12,0), List.of(al1, al2), equipment.getId());
+                LocalDateTime.of(2023,1,1,12,0), List.of(al1, al2), equipment.getId(), cslot);
         Operation op1 = new Operation();
         op1.setId(11);
         Operation op2 = new Operation();
@@ -566,7 +600,7 @@ public class AnalyserServiceTest {
         assertThat(opres.getLabware()).containsExactly(lw1, lw2);
         assertThat(opres.getOperations()).containsExactly(op1, op2);
 
-        verify(mockLwNoteRepo).saveAll(sameElements(List.of(
+        List<LabwareNote> expectedNotes = List.of(
                 new LabwareNote(null, lw1.getId(), op1.getId(), "run", "run1"),
                 new LabwareNote(null, lw2.getId(), op2.getId(), "run", "run1"),
                 new LabwareNote(null, lw1.getId(), op1.getId(), "decoding reagent A lot", "lot1"),
@@ -575,7 +609,15 @@ public class AnalyserServiceTest {
                 new LabwareNote(null, lw2.getId(), op2.getId(), "decoding reagent B lot", "lot2"),
                 new LabwareNote(null, lw1.getId(), op1.getId(), "cassette position", "left"),
                 new LabwareNote(null, lw2.getId(), op2.getId(), "cassette position", "right")
-        ), true));
+        );
+        if (!nullOrEmpty(cslot)) {
+            expectedNotes = new ArrayList<>(expectedNotes);
+            expectedNotes.add(new LabwareNote(null, lw1.getId(), op1.getId(), "cell segmentation lot", cslot));
+            expectedNotes.add(new LabwareNote(null, lw2.getId(), op2.getId(), "cell segmentation lot", cslot));
+        }
+
+
+        verify(mockLwNoteRepo).saveAll(sameElements(expectedNotes, true));
 
         verify(mockWorkService).link(work1, List.of(op1));
         verify(mockWorkService).link(work2, List.of(op2));
