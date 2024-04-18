@@ -55,6 +55,7 @@ public class FileRegisterServiceImp implements FileRegisterService {
      * @param service service method to validate and perform the request
      * @param existingExternalNames null or a list of tissue external names referenced in the request
      *        that are known to already exist
+     * @param ignoreExternalNames null or a list of tissue external names referenced in the request that should be ignored
      * @return the result of the registration request
      * @param <Req> the type of request to read from the file
      * @param <Res> the type of result expected from the request
@@ -62,13 +63,16 @@ public class FileRegisterServiceImp implements FileRegisterService {
      * @exception UncheckedIOException there was an IOException reading the file
      */
     protected <Req, Res> Res register(User user, MultipartFile multipartFile, MultipartFileReader<Req> fileReader,
-                                      BiFunction<User, Req, Res> service, List<String> existingExternalNames)
+                                      BiFunction<User, Req, Res> service, List<String> existingExternalNames, List<String> ignoreExternalNames)
             throws ValidationException {
         Req req;
         try {
             req = fileReader.read(multipartFile);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
+        }
+        if (!nullOrEmpty(ignoreExternalNames) && req instanceof RegisterRequest) {
+            updateToRemove((RegisterRequest) req, ignoreExternalNames);
         }
         if (!nullOrEmpty(existingExternalNames) && req instanceof RegisterRequest) {
             updateWithExisting((RegisterRequest) req, existingExternalNames);
@@ -77,7 +81,7 @@ public class FileRegisterServiceImp implements FileRegisterService {
     }
 
     /**
-     * Update the blocks in the given request to specify that they are existing tissue if they
+     * Updates the blocks in the given request to specify that they are existing tissue if they
      * are found in the given list of existing external names.
      * @param request a block register request
      * @param existingExternalNames list of known existing external names
@@ -98,19 +102,38 @@ public class FileRegisterServiceImp implements FileRegisterService {
         }
     }
 
-    @Override
-    public RegisterResult registerSections(User user, MultipartFile multipartFile) throws ValidationException {
-        return register(user, multipartFile, sectionFileReader, sectionRegisterService::register, null);
+    /**
+     * Updates the blocks in the given request to remove those matching the given list of external names.
+     * @param request block register request
+     * @param externalNames external names to remove
+     */
+    public void updateToRemove(RegisterRequest request, List<String> externalNames) {
+        if (nullOrEmpty(externalNames) || nullOrEmpty(request.getBlocks())) {
+            return;
+        }
+        Set<String> ignoreUC = externalNames.stream()
+                .filter(Objects::nonNull)
+                .map(String::toUpperCase)
+                .collect(toSet());
+        List<BlockRegisterRequest> blocks = request.getBlocks().stream()
+                .filter(block -> block==null || block.getExternalIdentifier()==null || !ignoreUC.contains(block.getExternalIdentifier().toUpperCase()))
+                .toList();
+        request.setBlocks(blocks);
     }
 
     @Override
-    public RegisterResult registerBlocks(User user, MultipartFile multipartFile, List<String> existingExternalNames)
-            throws ValidationException, UncheckedIOException {
-        return register(user, multipartFile, blockFileReader, blockRegisterService::register, existingExternalNames);
+    public RegisterResult registerSections(User user, MultipartFile multipartFile) throws ValidationException {
+        return register(user, multipartFile, sectionFileReader, sectionRegisterService::register, null, null);
+    }
+
+    @Override
+    public RegisterResult registerBlocks(User user, MultipartFile multipartFile, List<String> existingExternalNames,
+                                         List<String> ignoreExternalNames) throws ValidationException, UncheckedIOException {
+        return register(user, multipartFile, blockFileReader, blockRegisterService::register, existingExternalNames, ignoreExternalNames);
     }
 
     @Override
     public RegisterResult registerOriginal(User user, MultipartFile multipartFile) throws ValidationException, UncheckedIOException {
-        return register(user, multipartFile, originalSampleFileReader, originalSampleRegisterService::register, null);
+        return register(user, multipartFile, originalSampleFileReader, originalSampleRegisterService::register, null, null);
     }
 }
