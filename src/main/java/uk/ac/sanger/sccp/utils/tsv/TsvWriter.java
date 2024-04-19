@@ -1,6 +1,7 @@
 package uk.ac.sanger.sccp.utils.tsv;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.util.Iterator;
 import java.util.List;
 
@@ -12,7 +13,7 @@ import java.util.List;
  * (by default {@code "} is escaped to {@code ""}).
  * @author dr6
  */
-public class TsvWriter implements Closeable {
+public class TsvWriter implements TableFileWriter {
     private final char separator;
     private final char quote;
     private final char quoteEscape;
@@ -32,6 +33,7 @@ public class TsvWriter implements Closeable {
         this.newline = newline;
     }
 
+    @Override
     public <C, V> void write(TsvData<C, V> data) throws IOException {
         final List<? extends C> columns = data.getColumns();
         writeLn(columns.stream().map(Object::toString).iterator());
