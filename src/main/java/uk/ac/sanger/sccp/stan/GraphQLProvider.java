@@ -223,6 +223,7 @@ public class GraphQLProvider {
                         .dataFetcher("reactivateLabware", transact(graphQLMutation.reactivateLabware()))
                         .dataFetcher("libraryPrep", graphQLMutation.libraryPrep()) // internal transaction
                         .dataFetcher("segmentation", transact(graphQLMutation.segmentation()))
+                        .dataFetcher("cleanOut", transact(graphQLMutation.cleanOut()))
 
                         .dataFetcher("addUser", transact(graphQLMutation.addUser()))
                         .dataFetcher("setUserRole", transact(graphQLMutation.setUserRole()))

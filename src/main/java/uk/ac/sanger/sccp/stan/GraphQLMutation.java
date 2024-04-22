@@ -99,6 +99,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final ReactivateService reactivateService;
     final LibraryPrepService libraryPrepService;
     final SegmentationService segmentationService;
+    final CleanOutService cleanOutService;
     final UserAdminService userAdminService;
 
     @Autowired
@@ -131,7 +132,8 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            ProbeService probeService, CompletionService completionService, AnalyserService analyserService,
                            FlagLabwareService flagLabwareService,
                            QCLabwareService qcLabwareService, OrientationService orientationService, SSStudyService ssStudyService,
-                           ReactivateService reactivateService, LibraryPrepService libraryPrepService, SegmentationService segmentationService,
+                           ReactivateService reactivateService, LibraryPrepService libraryPrepService,
+                           SegmentationService segmentationService, CleanOutService cleanOutService,
                            UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.authService = authService;
@@ -192,6 +194,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.reactivateService = reactivateService;
         this.libraryPrepService = libraryPrepService;
         this.segmentationService = segmentationService;
+        this.cleanOutService = cleanOutService;
         this.userAdminService = userAdminService;
     }
 
@@ -882,6 +885,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             SegmentationRequest request = arg(dfe, "request", SegmentationRequest.class);
             logRequest("Segmentation", user, request);
             return segmentationService.perform(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> cleanOut() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            CleanOutRequest request = arg(dfe, "request", CleanOutRequest.class);
+            logRequest("Clean out", user, request);
+            return cleanOutService.perform(user, request);
         };
     }
 

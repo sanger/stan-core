@@ -1860,6 +1860,16 @@ input SegmentationRequest {
     labware: [SegmentationLabware!]!
 }
 
+"""A request to remove samples from particular slots in labware."""
+input CleanOutRequest {
+    """The barcode of the labware."""
+    barcode: String!
+    """The addresses of the slots to clean out."""
+    addresses: [Address!]!
+    """The work number to link to the operation."""
+    workNumber: String!
+}
+
 """Info about the app version."""
 type VersionInfo {
     """The output of git describe."""
@@ -2186,6 +2196,8 @@ type Mutation {
     libraryPrep(request: LibraryPrepRequest!): OperationResult!
     """Record segmentation."""
     segmentation(request: SegmentationRequest!): OperationResult!
+    """Clean out a slot of a labware."""
+    cleanOut(request: CleanOutRequest!) : OperationResult!
 
     """Create a new user for the application."""
     addUser(username: String!): User!
