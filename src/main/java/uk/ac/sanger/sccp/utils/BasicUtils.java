@@ -402,6 +402,16 @@ public class BasicUtils {
     }
 
     /**
+     * Does the given string end with the given substring, ignoring its case?
+     * @param string the containing string
+     * @param sub the substring
+     * @return true if {@code string} ends with {@code sub}, ignoring case; false otherwise
+     */
+    public static boolean endsWithIgnoreCase(String string, String sub) {
+        return StringUtils.endsWithIgnoreCase(string, sub);
+    }
+
+    /**
      * Escape the sql-LIKE symbols in a string
      * (percent, which is any sequence of characters, underscore, which is any single character,
      * and backslash, which is the escape character).

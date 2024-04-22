@@ -3,17 +3,20 @@ package uk.ac.sanger.sccp.utils.tsv;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.http.*;
 import org.springframework.http.converter.*;
+import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import java.io.IOException;
+import java.io.OutputStream;
 
 /**
  * @author dr6
  */
 public class TsvFileConverter extends AbstractHttpMessageConverter<TsvFile<?>> {
-    public static final MediaType MEDIA_TYPE = new MediaType("text", "tsv");
+    public static final MediaType TSV_MEDIA_TYPE = new MediaType("text", "tsv"),
+            XLSX_MEDIA_TYPE = new MediaType("application", "vnd.openxmlformats-officedocument.spreadsheetml.sheet");
 
     public TsvFileConverter() {
-        super(MEDIA_TYPE);
+        super(TSV_MEDIA_TYPE, XLSX_MEDIA_TYPE);
     }
 
     @Override
@@ -30,9 +33,11 @@ public class TsvFileConverter extends AbstractHttpMessageConverter<TsvFile<?>> {
 
     @Override
     protected void writeInternal(TsvFile<?> rel, HttpOutputMessage output) throws IOException, HttpMessageNotWritableException {
-        output.getHeaders().setContentType(MEDIA_TYPE);
+        boolean useTsv = BasicUtils.endsWithIgnoreCase(rel.getFilename(), "tsv");
+        output.getHeaders().setContentType(useTsv ? TSV_MEDIA_TYPE : XLSX_MEDIA_TYPE);
         output.getHeaders().set("Content-Disposition", "attachment; filename=\"" + rel.getFilename() + "\"");
-        try (TsvWriter writer = new TsvWriter(output.getBody())) {
+        OutputStream out = output.getBody();
+        try (TableFileWriter writer = useTsv ? new TsvWriter(out) : new XlsxWriter(out)) {
             writer.write(rel);
         }
     }
