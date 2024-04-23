@@ -29,18 +29,21 @@ public class SlotCopyValidationServiceImp implements SlotCopyValidationService {
     private final ValidationHelperFactory valHelperFactory;
     private final Validator<String> preBarcodeValidator;
     private final Validator<String> lotNumberValidator;
+    private final CleanedOutSlotService cleanedOutSlotService;
 
     @Autowired
     public SlotCopyValidationServiceImp(LabwareTypeRepo lwTypeRepo, LabwareRepo lwRepo, BioStateRepo bsRepo,
                                         ValidationHelperFactory valHelperFactory,
                                         @Qualifier("cytAssistBarcodeValidator") Validator<String> preBarcodeValidator,
-                                        @Qualifier("lotNumberValidator") Validator<String> lotNumberValidator) {
+                                        @Qualifier("lotNumberValidator") Validator<String> lotNumberValidator,
+                                        CleanedOutSlotService cleanedOutSlotService) {
         this.lwTypeRepo = lwTypeRepo;
         this.lwRepo = lwRepo;
         this.bsRepo = bsRepo;
         this.valHelperFactory = valHelperFactory;
         this.preBarcodeValidator = preBarcodeValidator;
         this.lotNumberValidator = lotNumberValidator;
+        this.cleanedOutSlotService = cleanedOutSlotService;
     }
 
     @Override
@@ -343,6 +346,45 @@ public class SlotCopyValidationServiceImp implements SlotCopyValidationService {
                     problems.add(String.format("Slot %s in labware %s is empty.", sourceAddress, lw.getBarcode()));
                 }
             }
+        }
+        checkCleanedOutDestinations(problems, request, existingDestinations);
+    }
+
+    /**
+     * Checks if request wants to put samples into any slots that have been previously cleaned out
+     * @param problems receptacle for problems
+     * @param request the transfer request
+     * @param existingDestinations map of existing destinations from barcode
+     */
+    public void checkCleanedOutDestinations(Collection<String> problems, SlotCopyRequest request,
+                                            UCMap<Labware> existingDestinations) {
+        if (existingDestinations.isEmpty()) {
+            return;
+        }
+        Set<Slot> cleanedOutSlots = cleanedOutSlotService.findCleanedOutSlots(existingDestinations.values());
+        if (cleanedOutSlots.isEmpty()) {
+            return;
+        }
+        UCMap<Set<Address>> badSlots = new UCMap<>();
+        for (var scd : request.getDestinations()) {
+            if (scd==null || nullOrEmpty(scd.getContents())) {
+                continue;
+            }
+            Labware lw = existingDestinations.get(scd.getBarcode());
+            if (lw==null) {
+                continue;
+            }
+            for (var content : scd.getContents()) {
+                Address destAddress = content.getDestinationAddress();
+                if (destAddress != null) {
+                    lw.optSlot(destAddress).filter(cleanedOutSlots::contains).ifPresent(slot ->
+                        badSlots.computeIfAbsent(lw.getBarcode(), k -> new LinkedHashSet<>()).add(slot.getAddress())
+                    );
+                }
+            }
+        }
+        for (var entry : badSlots.entrySet()) {
+            problems.add("Cannot add samples to cleaned out slots in labware "+entry.getKey()+": "+entry.getValue());
         }
     }
 
