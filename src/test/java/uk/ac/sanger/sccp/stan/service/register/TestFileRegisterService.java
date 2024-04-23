@@ -63,8 +63,8 @@ class TestFileRegisterService {
     }
 
     @ParameterizedTest
-    @MethodSource("regAndExtNamesArgs")
-    void testSectionRegister_success(Object request, List<String> existingExt) throws IOException {
+    @MethodSource("regExtNamesIgnoreArgs")
+    void testSectionRegister_success(Object request, List<String> existingExt, List<String> ignoreExt) throws IOException {
         Matchers.mockTransactor(mockTransactor);
         IRegisterService<?> regService;
         MultipartFileReader<?> fileReader;
@@ -80,10 +80,10 @@ class TestFileRegisterService {
         } else {
             regService = mockBlockRegisterService;
             fileReader = mockBlockFileReader;
-            if (existingExt==null) {
+            if (existingExt==null && ignoreExt==null) {
                 functionUnderTest = service::registerBlocks;
             } else {
-                functionUnderTest = (user, mpFile) -> service.registerBlocks(user, mpFile, existingExt);
+                functionUnderTest = (user, mpFile) -> service.registerBlocks(user, mpFile, existingExt, ignoreExt);
             }
         }
         doReturn(request).when(fileReader).read(any(MultipartFile.class));
@@ -98,17 +98,25 @@ class TestFileRegisterService {
         } else {
             verify(service, never()).updateWithExisting(any(), any());
         }
+        if (request instanceof RegisterRequest && ignoreExt!=null) {
+            verify(service).updateToRemove((RegisterRequest) request, ignoreExt);
+        } else {
+            verify(service, never()).updateToRemove(any(), any());
+        }
         verify(mockTransactor).transact(any(), any());
     }
 
-    static Stream<Arguments> regAndExtNamesArgs() {
+    static Stream<Arguments> regExtNamesIgnoreArgs() {
         return Arrays.stream(new Object[][] {
-                {new SectionRegisterRequest(), null},
-                {new RegisterRequest(), null},
-                {new OriginalSampleRegisterRequest(), null},
-                {new OriginalSampleRegisterRequest(), List.of("Alpha1")},
-        }).map(Arguments::of);
-    }
+                    {new SectionRegisterRequest()},
+                    {new OriginalSampleRegisterRequest()},
+                    {new RegisterRequest()},
+                    {new RegisterRequest(), List.of("Alpha1"), null},
+                    {new RegisterRequest(), null, List.of("Beta")},
+                    {new RegisterRequest(), List.of("Alpha1"), List.of("Beta")},
+            }).map(arr -> arr.length < 3 ? Arrays.copyOf(arr, 3) : arr)
+            .map(Arguments::of);
+}
 
     @ParameterizedTest
     @MethodSource("regArgs")
@@ -151,11 +159,8 @@ class TestFileRegisterService {
     public void testUpdateWithExisting(boolean any) {
         String[] extNames = { null, "Alpha1", "Beta", "Alpha2" };
         List<BlockRegisterRequest> blocks = Arrays.stream(extNames)
-                .map(xn -> {
-                    BlockRegisterRequest b = new BlockRegisterRequest();
-                    b.setExternalIdentifier(xn);
-                    return b;
-                }).toList();
+                .map(TestFileRegisterService::blockRegWithExternalName)
+                .toList();
         RegisterRequest request = new RegisterRequest(blocks);
         List<String> existing = any ? List.of("ALPHA1", "alpha2") : List.of();
 
@@ -163,5 +168,24 @@ class TestFileRegisterService {
         IntStream.range(0, blocks.size()).forEach(i ->
             assertEquals(any && (i==1 || i==3), blocks.get(i).isExistingTissue())
         );
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testUpdateToRemove(boolean anyToRemove) {
+        String[] extNames = { null, "Alpha1", "Beta", "Alpha2" };
+        RegisterRequest request = new RegisterRequest(Arrays.stream(extNames)
+                .map(TestFileRegisterService::blockRegWithExternalName)
+                .toList());
+        List<String> ignore = anyToRemove ? List.of("ALPHA1", "alpha2") : List.of();
+        service.updateToRemove(request, ignore);
+        String[] remaining = (anyToRemove ? new String[]{null, "Beta"} : extNames);
+        assertThat(request.getBlocks().stream().map(BlockRegisterRequest::getExternalIdentifier)).containsExactly(remaining);
+    }
+
+    private static BlockRegisterRequest blockRegWithExternalName(String xn) {
+        BlockRegisterRequest br = new BlockRegisterRequest();
+        br.setExternalIdentifier(xn);
+        return br;
     }
 }

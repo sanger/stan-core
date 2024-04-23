@@ -11,6 +11,7 @@ import uk.ac.sanger.sccp.utils.tsv.TsvFile;
 import java.util.*;
 
 import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
+import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
  * Controller for delivering release files (tsv).
@@ -28,10 +29,22 @@ public class ReleaseFileController {
     @RequestMapping(value="/release", method = RequestMethod.GET, produces = "text/tsv")
     @ResponseBody
     public TsvFile<ReleaseEntry> getReleaseFile(@RequestParam(name="id") List<Integer> ids,
-                                                @RequestParam(name="groups", required = false) List<String> groupNames) {
+                                                @RequestParam(name="groups", required=false) List<String> groupNames,
+                                                @RequestParam(name="type", required=false) String fileType) {
+        final String filename = filenameForType(fileType);
         ReleaseFileContent rfc = releaseFileService.getReleaseFileContent(ids, parseOptions(groupNames));
         List<? extends TsvColumn<ReleaseEntry>> columns = releaseFileService.computeColumns(rfc);
-        return new TsvFile<>("releases.tsv", rfc.getEntries(), columns);
+        return new TsvFile<>(filename, rfc.getEntries(), columns);
+    }
+
+    protected String filenameForType(String fileType) {
+        if (nullOrEmpty(fileType) || fileType.equalsIgnoreCase("tsv")) {
+            return "releases.tsv";
+        }
+        if (fileType.equalsIgnoreCase("xlsx")) {
+            return "releases.xlsx";
+        }
+        throw new IllegalArgumentException("Unsupported file type: " + repr(fileType));
     }
 
     /**

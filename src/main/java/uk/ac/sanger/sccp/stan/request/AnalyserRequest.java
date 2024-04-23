@@ -163,18 +163,20 @@ public class AnalyserRequest {
     private String runName;
     private LocalDateTime performed;
     private Integer equipmentId;
+    private String cellSegmentationLot;
     private List<AnalyserLabware> labware = List.of();
 
     public AnalyserRequest() {}
 
     public AnalyserRequest(String operationType, String lotNumberA, String lotNumberB, String runName,
-                           LocalDateTime performed, List<AnalyserLabware> labware, Integer equipmentId) {
+                           LocalDateTime performed, List<AnalyserLabware> labware, Integer equipmentId, String cellSegmentationLot) {
         this.operationType = operationType;
         this.lotNumberA = lotNumberA;
         this.lotNumberB = lotNumberB;
         this.runName = runName;
         this.performed = performed;
         this.equipmentId = equipmentId;
+        this.cellSegmentationLot = cellSegmentationLot;
         setLabware(labware);
     }
 
@@ -245,6 +247,17 @@ public class AnalyserRequest {
     }
 
     /**
+     * The cell segmentation lot number
+     */
+    public String getCellSegmentationLot() {
+        return this.cellSegmentationLot;
+    }
+
+    public void setCellSegmentationLot(String cellSegmentationLot) {
+        this.cellSegmentationLot = cellSegmentationLot;
+    }
+
+    /**
      * The labware involved in this request.
      */
     public List<AnalyserLabware> getLabware() {
@@ -263,6 +276,7 @@ public class AnalyserRequest {
                 .add("lotNumberB", lotNumberB)
                 .add("runName", runName)
                 .add("performed", performed)
+                .add("cellSegmentationLot", cellSegmentationLot)
                 .add("labware", labware)
                 .reprStringValues()
                 .toString();
@@ -278,6 +292,7 @@ public class AnalyserRequest {
                 && Objects.equals(this.lotNumberB, that.lotNumberB)
                 && Objects.equals(this.runName, that.runName)
                 && Objects.equals(this.performed, that.performed)
+                && Objects.equals(this.cellSegmentationLot, that.cellSegmentationLot)
                 && Objects.equals(this.labware, that.labware));
     }
 

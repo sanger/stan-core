@@ -206,7 +206,7 @@ public class TestReleaseMutation {
             stainTypeRepo.saveOperationStainTypes(op.getId(), List.of(st));
         }
         Slot slot = lw.getFirstSlot();
-        Sample sample = slot.getSamples().get(0);
+        Sample sample = slot.getSamples().getFirst();
         actionRepo.save(new Action(null, op.getId(), slot, slot, sample, sample));
         lwNoteRepo.save(new LabwareNote(null, lw.getId(), op.getId(), "Bond barcode", bondBarcode));
         if (rnaPlex!=null) {

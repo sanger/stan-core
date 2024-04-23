@@ -1,0 +1,18 @@
+mutation {
+    segmentation(request: {
+        operationType: "Cell segmentation QC"
+        labware: [{
+            barcode: "[BC]"
+            workNumber: "[WORK]"
+            commentIds: [2]
+        }]
+    }) {
+        labware {
+            barcode
+        }
+        operations {
+            operationType { name }
+            id
+        }
+    }
+}

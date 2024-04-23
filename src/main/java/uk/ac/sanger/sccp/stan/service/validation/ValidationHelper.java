@@ -98,7 +98,7 @@ public interface ValidationHelper {
      * @param timestamp the timestamp to check (may be null, in which case nothing is checked)
      * @param today the date today
      * @param labware the labware that must be created before the given timestamp
-     * @param priorOpTime the time of the prior operation that must be before the given timestamp
+     * @param priorOpTime the time of the prior operation that must be before the given timestamp (if appropriate)
      */
     void checkTimestamp(LocalDateTime timestamp, LocalDate today, Collection<Labware> labware, LocalDateTime priorOpTime);
 
@@ -111,6 +111,18 @@ public interface ValidationHelper {
     default void checkTimestamp(LocalDateTime timestamp, LocalDate today, Labware lw) {
         List<Labware> labware = (lw==null ? null : List.of(lw));
         checkTimestamp(timestamp, today, labware, null);
+    }
+
+    /**
+     * Checks the given timestamp seems appropriate
+     * @param timestamp the timestamp to check (may be null, in which case nothing is checked)
+     * @param today the date today
+     * @param lw the single labware (or null) that must be created before the given timestamp
+     * @param priorOpTime the time of the prior operation that must be before the given timestamp (if appropriate)
+     */
+    default void checkTimestamp(LocalDateTime timestamp, LocalDate today, Labware lw, LocalDateTime priorOpTime) {
+        List<Labware> labware = (lw==null ? null : List.of(lw));
+        checkTimestamp(timestamp, today, labware, priorOpTime);
     }
 
     /**
