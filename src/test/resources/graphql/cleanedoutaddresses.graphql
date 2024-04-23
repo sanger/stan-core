@@ -1,0 +1,3 @@
+query {
+    cleanedOutAddresses(barcode: "STAN-A1")
+}

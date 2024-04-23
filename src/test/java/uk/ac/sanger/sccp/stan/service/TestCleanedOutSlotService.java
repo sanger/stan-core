@@ -1,11 +1,12 @@
 package uk.ac.sanger.sccp.stan.service;
 
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.*;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.repo.OperationRepo;
-import uk.ac.sanger.sccp.stan.repo.OperationTypeRepo;
+import uk.ac.sanger.sccp.stan.repo.*;
 
 import java.util.*;
 import java.util.stream.IntStream;
@@ -17,6 +18,8 @@ import static org.mockito.Mockito.*;
 
 /** Test {@link CleanedOutSlotServiceImp} */
 class TestCleanedOutSlotService {
+    @Mock
+    private LabwareRepo mockLwRepo;
     @Mock
     private OperationTypeRepo mockOpTypeRepo;
     @Mock
@@ -74,5 +77,29 @@ class TestCleanedOutSlotService {
         assertThat(service.findCleanedOutSlots(labware)).containsExactlyInAnyOrder(labware.get(0).getSlot(A1), labware.get(1).getSlot(A2));
         Set<Integer> lwIds = labware.stream().map(Labware::getId).collect(toSet());
         verify(mockOpRepo).findAllByOperationTypeAndDestinationLabwareIdIn(opType, lwIds);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    void findCleanedOutAddresses(final boolean lwExists) {
+        Labware lw = (lwExists ? EntityFactory.getTube() : null);
+        String barcode = (lwExists ? lw.getBarcode() : "STAN-1");
+        when(mockLwRepo.findByBarcode(any())).thenReturn(Optional.ofNullable(lw));
+        CleanedOutSlotServiceImp service = spy(this.service);
+        final Address A1 = new Address(1,1);
+        if (lwExists) {
+            doReturn(Set.of(lw.getSlot(A1))).when(service).findCleanedOutSlots(any());
+        }
+        if (lwExists) {
+            assertThat(service.findCleanedOutAddresses(barcode)).containsExactly(A1);
+        } else {
+            assertThat(service.findCleanedOutAddresses(barcode)).isEmpty();
+        }
+        verify(mockLwRepo).findByBarcode(barcode);
+        if (lwExists) {
+            verify(service).findCleanedOutSlots(List.of(lw));
+        } else {
+            verify(service, never()).findCleanedOutSlots(any());
+        }
     }
 }

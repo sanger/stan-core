@@ -73,6 +73,8 @@ public class TestCleanOutMutation {
         assertThat(work.getOperationIds()).containsExactly(opId);
         assertThat(work.getSampleSlotIds()).containsExactlyInAnyOrder(new Work.SampleSlotId(samples[1].getId(), slotId),
                 new Work.SampleSlotId(samples[2].getId(), slotId));
+
+        checkCleanedOutQuery();
     }
 
     private static int checkResponse(Object response, Sample[] samples, int slotId) {
@@ -109,5 +111,11 @@ public class TestCleanOutMutation {
             assertEquals(action.getSample(), action.getSourceSample());
         }
         assertThat(op.getActions().stream().map(Action::getSample)).containsExactlyInAnyOrder(samples[1], samples[2]);
+    }
+
+    private void checkCleanedOutQuery() throws Exception {
+        Object response = tester.post(tester.readGraphQL("cleanedoutaddresses.graphql"));
+        List<String> addressData = chainGet(response, "data", "cleanedOutAddresses");
+        assertThat(addressData).containsExactly("A2");
     }
 }

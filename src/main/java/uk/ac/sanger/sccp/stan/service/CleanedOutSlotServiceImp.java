@@ -3,8 +3,7 @@ package uk.ac.sanger.sccp.stan.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.repo.OperationRepo;
-import uk.ac.sanger.sccp.stan.repo.OperationTypeRepo;
+import uk.ac.sanger.sccp.stan.repo.*;
 
 import java.util.*;
 
@@ -18,11 +17,13 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 public class CleanedOutSlotServiceImp implements CleanedOutSlotService {
     public static final String CLEAN_OUT_OP = "Clean out";
 
+    private final LabwareRepo lwRepo;
     private final OperationTypeRepo opTypeRepo;
     private final OperationRepo opRepo;
 
     @Autowired
-    public CleanedOutSlotServiceImp(OperationTypeRepo opTypeRepo, OperationRepo opRepo) {
+    public CleanedOutSlotServiceImp(LabwareRepo lwRepo, OperationTypeRepo opTypeRepo, OperationRepo opRepo) {
+        this.lwRepo = lwRepo;
         this.opTypeRepo = opTypeRepo;
         this.opRepo = opRepo;
     }
@@ -45,5 +46,16 @@ public class CleanedOutSlotServiceImp implements CleanedOutSlotService {
                 .map(Action::getDestination)
                 .filter(slot -> labwareIds.contains(slot.getLabwareId()))
                 .collect(toSet());
+    }
+
+    @Override
+    public List<Address> findCleanedOutAddresses(String barcode) {
+        Labware lw = lwRepo.findByBarcode(barcode).orElse(null);
+        if (lw==null) {
+            return List.of();
+        }
+        return findCleanedOutSlots(List.of(lw)).stream()
+                .map(Slot::getAddress)
+                .toList();
     }
 }

@@ -1971,6 +1971,8 @@ type Query {
     labwareCosting(barcode: String!): SlideCosting
     """Look up the latest operation of some specified type whose destinations included a given labware barcode."""
     findLatestOp(barcode: String!, operationType: String!): Operation
+    """Get addresses of cleaned out slots in the specified labware.."""
+    cleanedOutAddresses(barcode: String!): [Address!]!
 
     """Get the history containing a given sample id."""
     historyForSampleId(sampleId: Int!): History!
