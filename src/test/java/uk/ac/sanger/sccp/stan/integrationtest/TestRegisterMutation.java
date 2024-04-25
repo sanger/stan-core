@@ -71,14 +71,14 @@ public class TestRegisterMutation {
         entityManager.flush();
         entityManager.refresh(work);
         assertThat(work.getOperationIds()).hasSize(1);
-        Integer opId = work.getOperationIds().get(0);
+        Integer opId = work.getOperationIds().iterator().next();
         Operation op = opRepo.findById(opId).orElseThrow();
         assertEquals("Register", op.getOperationType().getName());
         Slot slot = lwRepo.getByBarcode(barcode).getFirstSlot();
         assertThat(work.getSampleSlotIds()).hasSize(1);
-        Work.SampleSlotId ss = work.getSampleSlotIds().get(0);
+        Work.SampleSlotId ss = work.getSampleSlotIds().iterator().next();
         assertEquals(slot.getId(), ss.getSlotId());
-        assertEquals(slot.getSamples().get(0).getId(), ss.getSampleId());
+        assertEquals(slot.getSamples().getFirst().getId(), ss.getSampleId());
     }
 
     @Test

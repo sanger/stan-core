@@ -128,7 +128,7 @@ public class TestLibraryPrepMutation {
             verifyStorelightQuery(mockStorelightClient, List.of("unstoreBarcodes", sourceLw.getBarcode()), user.getUsername());
         }
         entityManager.refresh(work);
-        assertThat(work.getOperationIds()).containsExactlyElementsOf(Arrays.stream(opIds).boxed()::iterator);
+        assertThat(work.getOperationIds()).containsExactlyInAnyOrderElementsOf(Arrays.stream(opIds).boxed()::iterator);
     }
 
     @NotNull

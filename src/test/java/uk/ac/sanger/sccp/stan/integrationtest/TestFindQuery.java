@@ -74,10 +74,10 @@ public class TestFindQuery {
         ReleaseRecipient workRequester = new ReleaseRecipient(1, "test1");
         Work work = entityCreator.createWork(workType, pr, null, cc,workRequester);
         List<String> workNumbers = List.of(work.getWorkNumber());
-        work.setSampleSlotIds(List.of(
-                new Work.SampleSlotId(samples[0].getId(), labware[0].getSlots().get(0).getId()),
-                new Work.SampleSlotId(samples[1].getId(), labware[1].getSlots().get(0).getId()),
-                new Work.SampleSlotId(samples[2].getId(), labware[2].getSlots().get(0).getId())
+        work.setSampleSlotIds(Set.of(
+                new Work.SampleSlotId(samples[0].getId(), labware[0].getSlots().getFirst().getId()),
+                new Work.SampleSlotId(samples[1].getId(), labware[1].getSlots().getFirst().getId()),
+                new Work.SampleSlotId(samples[2].getId(), labware[2].getSlots().getFirst().getId())
         ));
 
         Location[] locations = {

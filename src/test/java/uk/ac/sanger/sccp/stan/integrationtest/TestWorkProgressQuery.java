@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.IntFunction;
 
-import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGet;
@@ -109,7 +109,7 @@ public class TestWorkProgressQuery {
         releaseRepo.save(release);
 
         Work work = entityCreator.createWork(null, null, null, null, null);
-        work.setOperationIds(Arrays.stream(ops).map(Operation::getId).collect(toList()));
+        work.setOperationIds(Arrays.stream(ops).map(Operation::getId).collect(toSet()));
         work.setStatus(Work.Status.paused);
         work = workRepo.save(work);
 

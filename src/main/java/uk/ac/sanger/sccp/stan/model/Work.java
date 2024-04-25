@@ -1,12 +1,9 @@
 package uk.ac.sanger.sccp.stan.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import javax.persistence.*;
 import java.util.*;
-
-import static uk.ac.sanger.sccp.utils.BasicUtils.coalesce;
 
 /**
  * A work (identified by a work number) indicates a piece of requested work to be performed for some particular project and cost code
@@ -102,16 +99,16 @@ public class Work {
     @ElementCollection
     @CollectionTable(name="work_op", joinColumns=@JoinColumn(name="work_id"))
     @Column(name="operation_id")
-    private List<Integer> operationIds = List.of();
+    private Set<Integer> operationIds = new HashSet<>();
 
     @ElementCollection
     @CollectionTable(name="work_release", joinColumns=@JoinColumn(name="work_id"))
     @Column(name="release_id")
-    private List<Integer> releaseIds = List.of();
+    private Set<Integer> releaseIds = new HashSet<>();
 
     @ElementCollection
     @CollectionTable(name="work_sample", joinColumns=@JoinColumn(name="work_id"))
-    private List<SampleSlotId> sampleSlotIds = List.of();
+    private Set<SampleSlotId> sampleSlotIds = new HashSet<>();
 
     private Integer numBlocks, numSlides, numOriginalSamples;
 
@@ -210,30 +207,30 @@ public class Work {
     }
 
     /** The ids of operations linked to this work */
-    public List<Integer> getOperationIds() {
+    public Set<Integer> getOperationIds() {
         return this.operationIds;
     }
 
-    public void setOperationIds(List<Integer> operationIds) {
-        this.operationIds = (operationIds instanceof ArrayList ? operationIds : BasicUtils.newArrayList(operationIds));
+    public void setOperationIds(Set<Integer> operationIds) {
+        this.operationIds = operationIds==null ? new HashSet<>() : operationIds;
     }
 
     /** The ids of releases linked to this work */
-    public List<Integer> getReleaseIds() {
+    public Set<Integer> getReleaseIds() {
         return this.releaseIds;
     }
 
-    public void setReleaseIds(List<Integer> releaseIds) {
-        this.releaseIds = coalesce(releaseIds, List.of());
+    public void setReleaseIds(Set<Integer> releaseIds) {
+        this.releaseIds = releaseIds==null ? new HashSet<>() : releaseIds;
     }
 
     /** The ids of samples and slots that are in combination linked to this work */
-    public List<SampleSlotId> getSampleSlotIds() {
+    public Set<SampleSlotId> getSampleSlotIds() {
         return this.sampleSlotIds;
     }
 
-    public void setSampleSlotIds(List<SampleSlotId> sampleSlotIds) {
-        this.sampleSlotIds = (sampleSlotIds instanceof ArrayList ? sampleSlotIds : BasicUtils.newArrayList(sampleSlotIds));
+    public void setSampleSlotIds(Set<SampleSlotId> sampleSlotIds) {
+        this.sampleSlotIds = sampleSlotIds==null ? new HashSet<>() : sampleSlotIds;
     }
 
     public Integer getNumBlocks() {

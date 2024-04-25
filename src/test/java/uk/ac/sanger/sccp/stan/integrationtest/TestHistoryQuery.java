@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGet;
 import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGetList;
+import static uk.ac.sanger.sccp.utils.BasicUtils.hashSetOf;
 
 /**
  * Tests the history queries
@@ -117,7 +118,7 @@ public class TestHistoryQuery {
         Operation op = opRepo.save(new Operation(null, opType, null, null, user));
         actionRepo.save(new Action(null, op.getId(), slot, slot, sample, sample));
         entityManager.refresh(op);
-        work.setOperationIds(List.of(op.getId()));
+        work.setOperationIds(hashSetOf(op.getId()));
         workRepo.save(work);
 
         String baseQuery = tester.readGraphQL("history.graphql");

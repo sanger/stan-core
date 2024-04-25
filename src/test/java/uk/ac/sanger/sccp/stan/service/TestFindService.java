@@ -346,9 +346,7 @@ public class TestFindService {
         WorkType workType = new WorkType(1, "worktype", true);
         ReleaseRecipient workRequester = new ReleaseRecipient(1, "test1");
         Work work = new Work(1, "SGP404", workType, workRequester, pr, null, cc, Work.Status.active);
-        work.setSampleSlotIds(List.of(
-                new Work.SampleSlotId(sample.getId(), lw.getSlots().getFirst().getId())
-        ));
+        work.getSampleSlotIds().add(new Work.SampleSlotId(sample.getId(), lw.getSlots().getFirst().getId()));
 
         when(mockWorkRepo.getByWorkNumber(work.getWorkNumber())).thenReturn(work);
         when(mockSlotRepo.findAllByIdIn(List.of(lw.getSlots().getFirst().getId()))).thenReturn(List.of(lw.getSlots().getFirst()));
