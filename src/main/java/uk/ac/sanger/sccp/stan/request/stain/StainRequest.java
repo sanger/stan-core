@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Objects;
 
 import static uk.ac.sanger.sccp.utils.BasicUtils.describe;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullToEmpty;
 
 /**
  * A request to perform a stain operation
@@ -12,15 +13,18 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.describe;
 public class StainRequest {
     private String stainType;
     private List<String> barcodes;
-    private List<TimeMeasurement> timeMeasurements;
+    private List<TimeMeasurement> timeMeasurements = List.of();
     private String workNumber;
+    private List<Integer> commentIds = List.of();
 
     public StainRequest() {}
 
-    public StainRequest(String stainType, List<String> barcodes, List<TimeMeasurement> timeMeasurements) {
+    public StainRequest(String stainType, List<String> barcodes, List<TimeMeasurement> timeMeasurements,
+                        List<Integer> commentIds) {
         this.stainType = stainType;
         this.barcodes = barcodes;
-        this.timeMeasurements = timeMeasurements;
+        setTimeMeasurements(timeMeasurements);
+        setCommentIds(commentIds);
     }
 
     public String getStainType() {
@@ -44,7 +48,7 @@ public class StainRequest {
     }
 
     public void setTimeMeasurements(List<TimeMeasurement> timeMeasurements) {
-        this.timeMeasurements = timeMeasurements;
+        this.timeMeasurements = nullToEmpty(timeMeasurements);
     }
 
     public String getWorkNumber() {
@@ -55,6 +59,14 @@ public class StainRequest {
         this.workNumber = workNumber;
     }
 
+    public List<Integer> getCommentIds() {
+        return this.commentIds;
+    }
+
+    public void setCommentIds(List<Integer> commentIds) {
+        this.commentIds = nullToEmpty(commentIds);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -63,12 +75,14 @@ public class StainRequest {
         return (Objects.equals(this.stainType, that.stainType)
                 && Objects.equals(this.barcodes, that.barcodes)
                 && Objects.equals(this.timeMeasurements, that.timeMeasurements)
-                && Objects.equals(this.workNumber, that.workNumber));
+                && Objects.equals(this.workNumber, that.workNumber)
+                && Objects.equals(this.commentIds, that.commentIds)
+        );
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(stainType, barcodes, timeMeasurements, workNumber);
+        return Objects.hash(stainType, barcodes, timeMeasurements, workNumber, commentIds);
     }
 
     @Override
@@ -78,6 +92,7 @@ public class StainRequest {
                 .add("barcodes", barcodes)
                 .add("timeMeasurements", timeMeasurements)
                 .add("workNumber", workNumber)
+                .add("commentIds", commentIds)
                 .toString();
     }
 }

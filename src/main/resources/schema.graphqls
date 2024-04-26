@@ -1173,6 +1173,8 @@ input StainRequest {
     timeMeasurements: [TimeMeasurement!]!
     """An optional work number to associate with this operation."""
     workNumber: String
+    """Comment ids indicating reagent types used in stain."""
+    commentIds: [Int!]
 }
 
 """The panel used with a stain."""

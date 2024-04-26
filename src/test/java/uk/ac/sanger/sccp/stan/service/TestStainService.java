@@ -1,10 +1,10 @@
 package uk.ac.sanger.sccp.stan.service;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.*;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
@@ -23,35 +23,48 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.EntityFactory.objToList;
+import static uk.ac.sanger.sccp.stan.Matchers.streamCaptor;
 import static uk.ac.sanger.sccp.utils.BasicUtils.coalesce;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 
 /**
  * Tests {@link StainServiceImp}
  * @author dr6
  */
 public class TestStainService {
+    @Mock
     private StainTypeRepo mockStainTypeRepo;
+    @Mock
     private LabwareRepo mockLabwareRepo;
+    @Mock
     private OperationTypeRepo mockOpTypeRepo;
+    @Mock
     private MeasurementRepo mockMeasurementRepo;
+    @Mock
+    private OperationCommentRepo mockOpComRepo;
+    @Mock
     private LabwareValidatorFactory mockLabwareValidatorFactory;
+    @Mock
     private WorkService mockWorkService;
+    @Mock
     private OperationService mockOpService;
+    @Mock
+    private CommentValidationService mockCommentValidationService;
 
+    @InjectMocks
     private StainServiceImp service;
+
+    private AutoCloseable mocking;
 
     @BeforeEach
     void setup() {
-        mockStainTypeRepo = mock(StainTypeRepo.class);
-        mockLabwareRepo = mock(LabwareRepo.class);
-        mockOpTypeRepo = mock(OperationTypeRepo.class);
-        mockMeasurementRepo = mock(MeasurementRepo.class);
-        mockLabwareValidatorFactory = mock(LabwareValidatorFactory.class);
-        mockWorkService = mock(WorkService.class);
-        mockOpService = mock(OperationService.class);
+        mocking = MockitoAnnotations.openMocks(this);
+        service = spy(service);
+    }
 
-        service = spy(new StainServiceImp(mockStainTypeRepo, mockLabwareRepo, mockOpTypeRepo, mockMeasurementRepo,
-                mockLabwareValidatorFactory, mockWorkService, mockOpService));
+    @AfterEach
+    void cleanup() throws Exception {
+        mocking.close();
     }
 
     @Test
@@ -259,19 +272,64 @@ public class TestStainService {
         verify(mockMeasurementRepo).saveAll(Matchers.sameElements(expectedMeasurements, true));
     }
 
+    @Test
+    public void testRecordComments() {
+        List<Comment> comments = List.of(new Comment(1, "com1", "cat1"),
+                new Comment(2, "com2", "cat2"));
+        Sample sam1 = EntityFactory.getSample();
+        Sample sam2 = new Sample(sam1.getId()+1, 17, sam1.getTissue(), sam1.getBioState());
+        LabwareType lt = EntityFactory.makeLabwareType(1, 2);
+        Labware lw1 = EntityFactory.makeLabware(lt, sam1, sam2);
+        int slot1id1 = lw1.getFirstSlot().getId();
+        int slot1id2 = lw1.getSlots().get(1).getId();
+        Labware lw2 = EntityFactory.makeEmptyLabware(lt);
+        int slot2id1 = lw2.getFirstSlot().getId();
+        lw2.getFirstSlot().getSamples().addAll(List.of(sam1, sam2));
+        List<Operation> ops = Stream.of(lw1, lw2)
+                .map(lw -> {
+                    final int opId = 2 * lw.getId();
+                    List<Action> actions = lw.getSlots().stream()
+                            .flatMap(slot -> slot.getSamples().stream()
+                                    .map(sam -> new Action(null, opId, slot, slot, sam, sam)))
+                            .toList();
+                    Operation op = new Operation();
+                    op.setId(opId);
+                    op.setActions(actions);
+                    return op;
+                })
+                .toList();
+        service.recordComments(ops, comments);
+        List<OperationComment> expectedOpComs = List.of(
+                new OperationComment(null, comments.get(0), ops.get(0).getId(), sam1.getId(), slot1id1, null),
+                new OperationComment(null, comments.get(1), ops.get(0).getId(), sam1.getId(), slot1id1, null),
+                new OperationComment(null, comments.get(0), ops.get(0).getId(), sam2.getId(), slot1id2, null),
+                new OperationComment(null, comments.get(1), ops.get(0).getId(), sam2.getId(), slot1id2, null),
+                new OperationComment(null, comments.get(0), ops.get(1).getId(), sam1.getId(), slot2id1, null),
+                new OperationComment(null, comments.get(1), ops.get(1).getId(), sam1.getId(), slot2id1, null),
+                new OperationComment(null, comments.get(0), ops.get(1).getId(), sam2.getId(), slot2id1, null),
+                new OperationComment(null, comments.get(1), ops.get(1).getId(), sam2.getId(), slot2id1, null)
+        );
+        verify(mockOpComRepo).saveAll(expectedOpComs);
+    }
+
     @ParameterizedTest
     @MethodSource("recordStainArgs")
-    public void testRecordStain(String expectedProblem, String workNumber) {
+    public void testRecordStain(String expectedProblem, String workNumber, List<Comment> comments) {
         Work work = (workNumber==null ? null : new Work(5000, workNumber, null, null, null, null, null, Work.Status.active));
         Collection<Labware> labware = List.of(EntityFactory.getTube());
         StainType stainType = new StainType(6, "Coffee");
         List<TimeMeasurement> tms = List.of(new TimeMeasurement("Blueing", 500));
-
+        List<Integer> commentIds = (comments==null ? null : comments.stream().map(Comment::getId).toList());
+        if (!nullOrEmpty(comments)) {
+            when(mockCommentValidationService.validateCommentIds(any(), any())).thenReturn(comments);
+            doNothing().when(service).recordComments(any(), any());
+        }
         when(mockWorkService.validateUsableWork(any(), any())).thenReturn(work);
         doReturn(labware).when(service).validateLabware(any(), any());
         doReturn(stainType).when(service).validateStainType(any(), any());
         User user = EntityFactory.getUser();
-        StainRequest request = new StainRequest("Coffee", List.of("STAN-04"), List.of(new TimeMeasurement("BLUEING", 500)));
+        StainRequest request = new StainRequest("Coffee", List.of("STAN-04"),
+                List.of(new TimeMeasurement("BLUEING", 500)), commentIds);
         List<Operation> ops;
         if (expectedProblem != null) {
             doAnswer(invocation -> {
@@ -295,6 +353,11 @@ public class TestStainService {
 
 
         verify(mockWorkService).validateUsableWork(any(), eq(request.getWorkNumber()));
+        if (!nullOrEmpty(comments)) {
+            ArgumentCaptor<Stream<Integer>> streamCaptor = streamCaptor();
+            verify(mockCommentValidationService).validateCommentIds(any(), streamCaptor.capture());
+            assertThat(streamCaptor.getValue()).containsExactlyElementsOf(commentIds);
+        }
         verify(service).validateLabware(any(), eq(request.getBarcodes()));
         verify(service).validateStainType(any(), eq(request.getStainType()));
         verify(service).validateMeasurements(any(), eq(stainType), eq(request.getTimeMeasurements()));
@@ -306,6 +369,11 @@ public class TestStainService {
             verify(service).createOperations(user, labware, List.of(stainType));
             verify(service).recordMeasurements(ops, tms);
         }
+        if (expectedProblem!=null || nullOrEmpty(comments)) {
+            verify(service, never()).recordComments(any(), any());
+        } else {
+            verify(service).recordComments(ops, comments);
+        }
         if (expectedProblem==null && work!=null) {
             verify(mockWorkService).link(work, ops);
         } else {
@@ -316,11 +384,18 @@ public class TestStainService {
     }
 
     static Stream<Arguments> recordStainArgs() {
+        List<Comment> comments = List.of(
+                new Comment(1, "Thing", "Blueing"),
+                new Comment(2, "Stuff", "Haeomathing")
+        );
         return Stream.of(
-                Arguments.of(null, null),
-                Arguments.of("Stain went wrong colour.", null),
-                Arguments.of(null, "SGP5000"),
-                Arguments.of("Stain burned hole in table.", "SGP7000")
+                Arguments.of(null, null, null),
+                Arguments.of("Stain went wrong colour.", null, null),
+                Arguments.of("Stain went wrong colour.", null, comments),
+                Arguments.of(null, "SGP5000", List.of()),
+                Arguments.of(null, "SGP5000", comments),
+                Arguments.of("Stain burned hole in table.", "SGP7000", List.of()),
+                Arguments.of("Stain burned hole in table.", "SGP7000", comments)
         );
     }
 
