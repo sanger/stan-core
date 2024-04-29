@@ -21,6 +21,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -392,7 +393,7 @@ public class TestWorkProgressService {
         }
 
         when(mockStainTypeRepo.loadOperationStainTypes(any())).thenReturn(opStainTypes);
-        List<Integer> opIds = ops.stream().map(Operation::getId).collect(toList());
+        Set<Integer> opIds = ops.stream().map(Operation::getId).collect(toSet());
         Work work = workWithId(17);
         work.setOperationIds(opIds);
         when(mockOpRepo.findAllById(opIds)).thenReturn(ops);

@@ -534,6 +534,40 @@ public class BasicUtils {
     }
 
     /**
+     * Creates a new empty hashset
+     * @return a new empty hashset
+     * @param <E> type of contents of the hashset
+     */
+    public static <E> HashSet<E> hashSetOf() {
+        return new HashSet<>();
+    }
+
+    /**
+     * Creates a new empty hashset initially containing one element
+     * @param element single initial contents
+     * @return a new hashset
+     * @param <E> type of contents of the hashset
+     */
+    public static <E> HashSet<E> hashSetOf(E element) {
+        HashSet<E> set = new HashSet<>();
+        set.add(element);
+        return set;
+    }
+
+    /**
+     * Creates a new hashset with the given inital contents
+     * @param elements initial contents
+     * @return a new hashset
+     * @param <E> type of contents of the hashset
+     */
+    @SafeVarargs
+    public static <E> HashSet<E> hashSetOf(E... elements) {
+        HashSet<E> set = new HashSet<>();
+        Collections.addAll(set, elements);
+        return set;
+    }
+
+    /**
      * Returns a stream of the given iterable
      * @param iterable an iterable
      * @return a stream

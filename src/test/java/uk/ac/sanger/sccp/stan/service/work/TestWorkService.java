@@ -26,6 +26,7 @@ import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.utils.BasicUtils.hashSetOf;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
@@ -631,8 +632,8 @@ public class TestWorkService {
         Work work = new Work(50, "SGP5000", null, null, null, null, null, Status.active);
 
         when(mockWorkRepo.getByWorkNumber(work.getWorkNumber())).thenReturn(work);
-        work.setOperationIds(List.of(1,2,3));
-        work.setSampleSlotIds(List.of(new SampleSlotId(sam1.getId(), 2)));
+        work.setOperationIds(hashSetOf(1,2,3));
+        work.setSampleSlotIds(hashSetOf(new SampleSlotId(sam1.getId(), 2)));
 
         when(mockWorkRepo.save(any())).then(Matchers.returnArgument());
 
@@ -715,19 +716,19 @@ public class TestWorkService {
             w.setId(i);
             w.setWorkNumber("SGP"+i);
             w.setStatus(Status.active);
-            w.setOperationIds(i==51 ? List.of(existingOpId) : List.of());
-            w.setSampleSlotIds(i==51 ? List.of(existingSsid) : List.of());
+            w.setOperationIds(i==51 ? hashSetOf(existingOpId) : hashSetOf());
+            w.setSampleSlotIds(i==51 ? hashSetOf(existingSsid) : hashSetOf());
             return w;
         }).collect(toList());
         workService.link(works, List.of(op1, op2));
-        assertThat(works.get(0).getOperationIds()).containsExactly(existingOpId, 10, 11);
-        assertThat(works.get(1).getOperationIds()).containsExactly(10, 11);
-        assertThat(works.get(0).getSampleSlotIds()).containsExactly(
+        assertThat(works.get(0).getOperationIds()).containsExactlyInAnyOrder(existingOpId, 10, 11);
+        assertThat(works.get(1).getOperationIds()).containsExactlyInAnyOrder(10, 11);
+        assertThat(works.get(0).getSampleSlotIds()).containsExactlyInAnyOrder(
                 Stream.concat(Stream.of(existingSsid),
                         Stream.concat(opSsids(op1), opSsids(op2)))
                         .toArray(SampleSlotId[]::new)
         );
-        assertThat(works.get(1).getSampleSlotIds()).containsExactly(
+        assertThat(works.get(1).getSampleSlotIds()).containsExactlyInAnyOrder(
                 Stream.concat(opSsids(op1), opSsids(op2)).toArray(SampleSlotId[]::new)
         );
 
@@ -767,8 +768,8 @@ public class TestWorkService {
         Release rel2 = quickRelease(101, lw2);
         when(mockWorkRepo.save(any())).then(Matchers.returnArgument());
         Work work = quickWork(Status.active);
-        work.setReleaseIds(List.of(1));
-        work.setSampleSlotIds(List.of(new SampleSlotId(2,3)));
+        work.setReleaseIds(hashSetOf(1));
+        work.setSampleSlotIds(hashSetOf(new SampleSlotId(2,3)));
         assertSame(work, workService.linkReleases(work, List.of(rel1, rel2)));
         verify(mockWorkRepo).save(work);
         assertThat(work.getReleaseIds()).containsExactlyInAnyOrder(1, 100, 101);

@@ -13,7 +13,8 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 
 import javax.transaction.Transactional;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGet;
@@ -51,7 +52,7 @@ public class TestSuggestedWorkForLabwareQuery {
         Operation op = opRepo.save(new Operation(null, opType, null, null, entityCreator.createUser("user1")));
         Action ac = new Action(null, op.getId(), slot, slot, sample, sample);
         Work work = entityCreator.createWork(null, null, null, null, null);
-        work.setOperationIds(new ArrayList<>(List.of(op.getId())));
+        work.getOperationIds().add(op.getId());
         workRepo.save(work);
         actionRepo.save(ac);
         String query = tester.readGraphQL("suggestedwork.graphql");

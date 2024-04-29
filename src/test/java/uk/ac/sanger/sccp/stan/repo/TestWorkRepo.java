@@ -22,9 +22,11 @@ import java.util.*;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
 
+import static java.util.stream.Collectors.toCollection;
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
+import static uk.ac.sanger.sccp.utils.BasicUtils.hashSetOf;
 
 /**
  * Tests {@link WorkRepo}
@@ -199,16 +201,16 @@ public class TestWorkRepo {
         Program prog = entityCreator.createProgram("Hello");
         Work work = workRepo.save(new Work(null, "SGP123", workType, workRequester, project, prog, cc, Status.active));
         assertNotNull(work.getId());
-        List<Integer> opIds;
+        Set<Integer> opIds;
         if (problem==1) {
-            opIds = List.of(404);
+            opIds = hashSetOf(404);
         } else {
-            opIds = IntStream.range(0,2).mapToObj(i -> createOpId()).collect(toList());
+            opIds = IntStream.range(0,2).mapToObj(i -> createOpId()).collect(toCollection(HashSet::new));
         }
         work.setOperationIds(opIds);
         List<Integer> sampleIds = (problem==2 ? List.of(404, 405) : createSampleIds(2));
         List<Integer> slotIds = (problem==3 ? List.of(404, 405) : createSlotIds(2));
-        List<SampleSlotId> sampleSlotIds = List.of(
+        Set<SampleSlotId> sampleSlotIds = hashSetOf(
                 new SampleSlotId(sampleIds.get(0), slotIds.get(0)),
                 new SampleSlotId(sampleIds.get(0), slotIds.get(1)),
                 new SampleSlotId(sampleIds.get(1), slotIds.get(1))
@@ -259,11 +261,11 @@ public class TestWorkRepo {
         LabwareType lt = entityCreator.createLabwareType("lt", 1, 2);
         Labware lw1 = entityCreator.createLabware("STAN-A1", lt, sample, sample);
         Labware lw2 = entityCreator.createLabware("STAN-A2", lt, sample, sample);
-        work1.setSampleSlotIds(List.of(new SampleSlotId(sampleId, lw1.getSlot(A1).getId()),
+        work1.setSampleSlotIds(hashSetOf(new SampleSlotId(sampleId, lw1.getSlot(A1).getId()),
                 new SampleSlotId(sampleId, lw1.getSlot(A2).getId()),
                 new SampleSlotId(sampleId, lw2.getSlot(A1).getId())));
         workRepo.save(work1);
-        work2.setSampleSlotIds(List.of(new SampleSlotId(sampleId, lw2.getSlot(A2).getId())));
+        work2.setSampleSlotIds(hashSetOf(new SampleSlotId(sampleId, lw2.getSlot(A2).getId())));
         workRepo.save(work2);
 
         labwareIds = workRepo.findLabwareIdsForWorkIds(List.of(work1.getId(), -1));
@@ -300,8 +302,8 @@ public class TestWorkRepo {
         Work work1 = entityCreator.createWork(null, null, null, null, null);
         Work work2 = entityCreator.createWork(work1.getWorkType(), work1.getProject(), work1.getProgram(), work1.getCostCode(), work1.getWorkRequester());
 
-        work1.setSampleSlotIds(List.of(new Work.SampleSlotId(samples[0].getId(), labware[0].getSlots().get(0).getId())));
-        work2.setSampleSlotIds(List.of(
+        work1.setSampleSlotIds(Set.of(new Work.SampleSlotId(samples[0].getId(), labware[0].getSlots().get(0).getId())));
+        work2.setSampleSlotIds(Set.of(
                 new Work.SampleSlotId(samples[0].getId(), labware[0].getSlots().get(0).getId()),
                 new Work.SampleSlotId(samples[1].getId(), labware[1].getSlots().get(0).getId())
         ));
@@ -329,7 +331,7 @@ public class TestWorkRepo {
         Map<Integer, String> workMap = workRepo.findWorkNumbersForReleaseIds(ridList);
         assertNull(workMap.get(rids[0]));
         assertNull(workMap.get(rids[1]));
-        work1.setReleaseIds(ridList.subList(0,2));
+        work1.setReleaseIds(new HashSet<>(ridList.subList(0,2)));
         workRepo.saveAll(List.of(work1, work2));
         workMap = workRepo.findWorkNumbersForReleaseIds(ridList);
         assertEquals(wn1, workMap.get(rids[0]));
@@ -351,8 +353,8 @@ public class TestWorkRepo {
         for (int opId : opIds) {
             assertThat(workMap.get(opId)).isEmpty();
         }
-        work1.setOperationIds(List.of(opIds[0], opIds[1]));
-        work2.setOperationIds(List.of(opIds[1], opIds[2]));
+        work1.setOperationIds(hashSetOf(opIds[0], opIds[1]));
+        work2.setOperationIds(hashSetOf(opIds[1], opIds[2]));
         workRepo.saveAll(List.of(work1, work2));
 
         workMap = workRepo.findWorkNumbersForOpIds(List.of(opIds[3]));
@@ -379,9 +381,9 @@ public class TestWorkRepo {
         Work work3 = entityCreator.createWorkLike(work1);
 
         Operation[] ops = IntStream.rangeClosed(1,3).mapToObj(d -> saveOp(lw, day(d))).toArray(Operation[]::new);
-        work1.setOperationIds(List.of(ops[0].getId()));
-        work2.setOperationIds(List.of(ops[1].getId()));
-        work3.setOperationIds(List.of(ops[2].getId()));
+        work1.setOperationIds(hashSetOf(ops[0].getId()));
+        work2.setOperationIds(hashSetOf(ops[1].getId()));
+        work3.setOperationIds(hashSetOf(ops[2].getId()));
         if (!exists) {
             work1.setStatus(Status.completed);
             work2.setStatus(Status.failed);

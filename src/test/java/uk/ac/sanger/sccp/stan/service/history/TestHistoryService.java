@@ -186,9 +186,9 @@ public class TestHistoryService {
                 new Operation(20, null, null, null, null),
                 new Operation(21, null, null, null, null)
         );
-        final List<Integer> opIds = List.of(20, 21);
+        final Set<Integer> opIds = Set.of(20, 21);
         work.setOperationIds(opIds);
-        final List<Integer> releaseIds = List.of(30,31);
+        final Set<Integer> releaseIds = Set.of(30,31);
         Labware rlw1 = EntityFactory.makeEmptyLabware(EntityFactory.getTubeType());
         Labware rlw2 = EntityFactory.makeEmptyLabware(EntityFactory.getTubeType());
         List<Release> releases = List.of(
@@ -244,7 +244,7 @@ public class TestHistoryService {
         String workNumber = "SGP1";
         Work work = EntityFactory.makeWork(workNumber);
         when(mockWorkRepo.getByWorkNumber(workNumber)).thenReturn(work);
-        work.setOperationIds(includeOps ? List.of(2, 3, 4) : List.of());
+        work.setOperationIds(includeOps ? Set.of(2, 3, 4) : Set.of());
         Set<Integer> opLwIds = includeOps ? Set.of(10,11) : Set.of();
         doReturn(opLwIds).when(service).labwareIdsFromOps(any());
         LabwareType lt = EntityFactory.getTubeType();
@@ -267,7 +267,7 @@ public class TestHistoryService {
         List<Labware> opLw = (includeOps ? List.of(new Labware(2, "STAN-2", lt, null)) : List.of());
         doReturn(opLw).when(mockLwRepo).findAllByIdIn(opLwIds);
 
-        work.setReleaseIds(includeReleases ? List.of(5,6,7) : List.of());
+        work.setReleaseIds(includeReleases ? Set.of(5,6,7) : Set.of());
         List<Release> releases;
         List<Labware> releaseLw;
         if (includeReleases) {
@@ -317,7 +317,7 @@ public class TestHistoryService {
     @Test
     public void testGetHistoryForWorkNumber_noOps() {
         Work work = new Work(10, "SGP10", null, null, null, null, null, Work.Status.active);
-        work.setOperationIds(List.of());
+        work.setOperationIds(Set.of());
         final String workNumber = "sgp10";
         when(mockWorkRepo.getByWorkNumber(workNumber)).thenReturn(work);
         History history = service.getHistoryForWorkNumber(workNumber);

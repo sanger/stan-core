@@ -333,8 +333,8 @@ public class HistoryServiceImp implements HistoryService {
 
     public History getHistoryForWorkNumber(String workNumber, @NotNull EventTypeFilter etFilter) {
         Work work = workRepo.getByWorkNumber(workNumber);
-        List<Integer> opIds = etFilter.ops ? work.getOperationIds() : List.of();
-        List<Integer> releaseIds = etFilter.releases ? work.getReleaseIds() : List.of();
+        Set<Integer> opIds = etFilter.ops ? work.getOperationIds() : Set.of();
+        Set<Integer> releaseIds = etFilter.releases ? work.getReleaseIds() : Set.of();
         if (opIds.isEmpty() && releaseIds.isEmpty()) {
             return new History();
         }

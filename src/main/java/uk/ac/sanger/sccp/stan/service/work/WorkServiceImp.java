@@ -3,7 +3,6 @@ package uk.ac.sanger.sccp.stan.service.work;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.data.util.Streamable;
 import org.springframework.security.authentication.InsufficientAuthenticationException;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
@@ -22,6 +21,7 @@ import java.util.stream.Stream;
 
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 @Service
@@ -268,27 +268,15 @@ public class WorkServiceImp implements WorkService {
         if (!work.isUsable()) {
             throw new IllegalArgumentException(work.getWorkNumber()+" cannot be used because it is "+ work.getStatus()+".");
         }
-        List<Integer> opIds = work.getOperationIds();
-        if (!(opIds instanceof ArrayList)) {
-            opIds = newArrayList(opIds);
-        }
-        List<SampleSlotId> ssIds = work.getSampleSlotIds();
-        if (!(ssIds instanceof ArrayList)) {
-            ssIds = newArrayList(ssIds);
-        }
-        Set<SampleSlotId> seenSsIds = new HashSet<>(ssIds);
+        Set<Integer> opIds = work.getOperationIds();
+        Set<SampleSlotId> ssIds = work.getSampleSlotIds();
         for (Operation op : operations) {
             opIds.add(op.getId());
             for (Action action : op.getActions()) {
                 SampleSlotId ssId = new SampleSlotId(action.getSample().getId(), action.getDestination().getId());
-                if (seenSsIds.add(ssId)) {
-                    ssIds.add(ssId);
-                }
+                ssIds.add(ssId);
             }
         }
-
-        work.setOperationIds(opIds);
-        work.setSampleSlotIds(ssIds);
         return workRepo.save(work);
     }
 
@@ -317,18 +305,16 @@ public class WorkServiceImp implements WorkService {
         if (!work.isUsable()) {
             throw new IllegalArgumentException("Work "+work.getWorkNumber()+" is not usable because it is "+work.getStatus().name()+".");
         }
-        Set<Integer> releaseIds = new LinkedHashSet<>(work.getReleaseIds());
-        Set<SampleSlotId> ssids = new LinkedHashSet<>(work.getSampleSlotIds());
+        Set<Integer> releaseIds = work.getReleaseIds();
+        Set<SampleSlotId> ssIds = work.getSampleSlotIds();
         for (Release release : releases) {
             releaseIds.add(release.getId());
             for (Slot slot : release.getLabware().getSlots()) {
                 for (Sample sample : slot.getSamples()) {
-                    ssids.add(new SampleSlotId(sample.getId(), slot.getId()));
+                    ssIds.add(new SampleSlotId(sample.getId(), slot.getId()));
                 }
             }
         }
-        work.setReleaseIds(new ArrayList<>(releaseIds));
-        work.setSampleSlotIds(new ArrayList<>(ssids));
         return workRepo.save(work);
     }
 
@@ -348,20 +334,15 @@ public class WorkServiceImp implements WorkService {
         if (!inactiveWorkNumbers.isEmpty()) {
             throw new IllegalArgumentException("Specified work cannot be used because it is not active: "+inactiveWorkNumbers);
         }
-        Set<Integer> opIds = operations.stream().map(Operation::getId).collect(toLinkedHashSet());
+        Set<Integer> opIds = operations.stream().map(Operation::getId).collect(toSet());
         Set<SampleSlotId> ssIds = operations.stream()
                 .flatMap(op -> op.getActions().stream()
                         .map(a -> new SampleSlotId(a.getSample().getId(), a.getDestination().getId())))
-                .collect(toLinkedHashSet());
+                .collect(toSet());
 
         for (Work work : works) {
-            Set<Integer> workOpIds = new LinkedHashSet<>(work.getOperationIds());
-            workOpIds.addAll(opIds);
-            work.setOperationIds(new ArrayList<>(workOpIds));
-
-            Set<SampleSlotId> workSsIds = new LinkedHashSet<>(work.getSampleSlotIds());
-            workSsIds.addAll(ssIds);
-            work.setSampleSlotIds(new ArrayList<>(workSsIds));
+            work.getOperationIds().addAll(opIds);
+            work.getSampleSlotIds().addAll(ssIds);
         }
 
         workRepo.saveAll(works);
@@ -468,7 +449,7 @@ public class WorkServiceImp implements WorkService {
     @Override
     public List<WorkWithComment> getWorksWithComments(Collection<Status> statuses) {
         Iterable<Work> works = (statuses==null ? workRepo.findAll() : workRepo.findAllByStatusIn(statuses));
-        List<WorkWithComment> wcs = Streamable.of(works).stream()
+        List<WorkWithComment> wcs = stream(works)
                 .map(WorkWithComment::new)
                 .collect(toList());
         final Set<Status> pausedOrFailedStatuses = EnumSet.of(Status.paused, Status.failed, Status.withdrawn);
