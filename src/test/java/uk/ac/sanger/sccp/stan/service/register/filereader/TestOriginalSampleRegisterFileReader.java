@@ -12,6 +12,7 @@ import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.spy;
 
 /**
@@ -19,6 +20,17 @@ import static org.mockito.Mockito.spy;
  * @author dr6
  */
 public class TestOriginalSampleRegisterFileReader extends BaseTestFileReader {
+
+    // Check that the pattern for each column accepts that column's name
+    @Test
+    void testColumns() {
+        final Column[] columns = Column.values();
+        for (Column column : columns) {
+            if (!column.name().startsWith("_")) {
+                assertSame(column, IColumn.forHeading(columns, column.toString()));
+            }
+        }
+    }
 
     @Test
     void testHeadings() {

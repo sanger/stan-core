@@ -23,7 +23,7 @@ public interface OriginalSampleRegisterFileReader extends MultipartFileReader<Or
         Work_number(Pattern.compile("(work|sgp)\\s*number", Pattern.CASE_INSENSITIVE), false),
         Donor_identifier(Pattern.compile("donor\\s*id.*", Pattern.CASE_INSENSITIVE)),
         Life_stage,
-        Collection_date(LocalDate.class, Pattern.compile("(if.*)date.*collection.*", Pattern.CASE_INSENSITIVE), false),
+        Collection_date(LocalDate.class, Pattern.compile("(if.*)?(date.*collection|collection.*date).*", Pattern.CASE_INSENSITIVE), false),
         Species,
         HuMFre(Pattern.compile("humfre\\s*(number)?", Pattern.CASE_INSENSITIVE), false),
         Tissue_type,

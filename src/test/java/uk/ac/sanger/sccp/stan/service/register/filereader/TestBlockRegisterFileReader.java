@@ -38,6 +38,17 @@ class TestBlockRegisterFileReader extends BaseTestFileReader {
         reader = spy(new BlockRegisterFileReaderImp());
     }
 
+    // Check that the pattern for each column accepts that column's name
+    @Test
+    void testColumns() {
+        final Column[] columns = Column.values();
+        for (Column column : columns) {
+            if (!column.name().startsWith("_")) {
+                assertSame(column, IColumn.forHeading(columns, column.toString()));
+            }
+        }
+    }
+
     @Test
     void testRead_headingProblems() {
         final String problem = "Heading problem";
