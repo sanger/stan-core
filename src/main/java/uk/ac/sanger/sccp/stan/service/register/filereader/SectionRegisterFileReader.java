@@ -33,7 +33,7 @@ public interface SectionRegisterFileReader extends MultipartFileReader<SectionRe
         Section_external_ID,
         Section_number(Integer.class),
         Section_thickness(Integer.class),
-        Section_position(Pattern.compile("(if.+)?position", Pattern.CASE_INSENSITIVE)),
+        Section_position(Pattern.compile("(if.+)?(section\\s+)?position", Pattern.CASE_INSENSITIVE)),
         ;
 
         private final Pattern pattern;
