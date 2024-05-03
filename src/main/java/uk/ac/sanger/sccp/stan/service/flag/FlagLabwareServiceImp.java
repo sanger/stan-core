@@ -79,6 +79,10 @@ public class FlagLabwareServiceImp implements FlagLabwareService {
             problems.add("Unknown labware barcode: "+repr(barcode));
             return null;
         }
+        Labware lw = opt.get();
+        if (lw.isEmpty()) {
+            problems.add("Labware "+lw.getBarcode()+" is empty.");
+        }
         return opt.get();
     }
 

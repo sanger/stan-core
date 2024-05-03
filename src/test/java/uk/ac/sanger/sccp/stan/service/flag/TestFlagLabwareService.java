@@ -132,13 +132,24 @@ class TestFlagLabwareService {
     }
 
     @ParameterizedTest
-    @CsvSource({"STAN-1, true,",
-            "STAN-404, false, Unknown labware barcode: \"STAN-404\"",
-            ", false, No labware barcode supplied.",
+    @CsvSource({"STAN-1, true, true,",
+            "STAN-1, true, false, Labware STAN-1 is empty.",
+            "STAN-404, false, false, Unknown labware barcode: \"STAN-404\"",
+            ", false, false, No labware barcode supplied.",
     })
-    void testLoadLabware(String barcode, boolean exists, String expectedProblem) {
-        Labware lw = exists ? EntityFactory.getTube() : null;
+    void testLoadLabware(String barcode, boolean exists, boolean containsSample, String expectedProblem) {
+        Labware lw;
+        if (!exists) {
+            lw = null;
+        } else if (containsSample) {
+            lw = EntityFactory.makeLabware(EntityFactory.getTubeType(), EntityFactory.getSample());
+        } else {
+            lw = EntityFactory.makeEmptyLabware(EntityFactory.getTubeType());
+        }
         if (barcode!=null && !barcode.isEmpty()) {
+            if (lw!=null) {
+                lw.setBarcode(barcode);
+            }
             when(mockLwRepo.findByBarcode(barcode)).thenReturn(Optional.ofNullable(lw));
         }
 
