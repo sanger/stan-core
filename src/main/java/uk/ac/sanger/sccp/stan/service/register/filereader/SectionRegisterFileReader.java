@@ -6,6 +6,7 @@ import uk.ac.sanger.sccp.stan.request.register.SectionRegisterRequest;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.regex.Pattern;
 
 /**
@@ -90,6 +91,9 @@ public interface SectionRegisterFileReader extends MultipartFileReader<SectionRe
     @Override
     default SectionRegisterRequest read(MultipartFile multipartFile) throws IOException, ValidationException {
         try (Workbook wb = WorkbookFactory.create(multipartFile.getInputStream())) {
+            if (SHEET_INDEX < 0 || SHEET_INDEX >= wb.getNumberOfSheets()) {
+                throw new ValidationException(List.of("Workbook does not have a worksheet at index "+SHEET_INDEX));
+            }
             return read(wb.getSheetAt(SHEET_INDEX));
         }
     }

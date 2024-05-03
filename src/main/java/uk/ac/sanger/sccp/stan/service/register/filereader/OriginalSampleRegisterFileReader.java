@@ -7,6 +7,7 @@ import uk.ac.sanger.sccp.stan.service.ValidationException;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.regex.Pattern;
 
 /**
@@ -92,6 +93,9 @@ public interface OriginalSampleRegisterFileReader extends MultipartFileReader<Or
     @Override
     default OriginalSampleRegisterRequest read(MultipartFile multipartFile) throws IOException, ValidationException {
         try (Workbook wb = WorkbookFactory.create(multipartFile.getInputStream())) {
+            if (SHEET_INDEX < 0 || SHEET_INDEX >= wb.getNumberOfSheets()) {
+                throw new ValidationException(List.of("Workbook does not have a worksheet at index "+SHEET_INDEX));
+            }
             return read(wb.getSheetAt(SHEET_INDEX));
         }
     }
