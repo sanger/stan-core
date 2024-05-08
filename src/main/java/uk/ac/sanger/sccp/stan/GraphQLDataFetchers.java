@@ -76,6 +76,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final FileStoreService fileStoreService;
     final SlotRegionService slotRegionService;
     final RecentOpService recentOpService;
+    final CleanedOutSlotService cleanedOutSlotService;
     final FlagLookupService flagLookupService;
     final MeasurementService measurementService;
     final GraphService graphService;
@@ -101,6 +102,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                NextReplicateService nextReplicateService, WorkSummaryService workSummaryService,
                                LabwareService labwareService, FileStoreService fileStoreService,
                                SlotRegionService slotRegionService, RecentOpService recentOpService,
+                               CleanedOutSlotService cleanedOutSlotService,
                                FlagLookupService flagLookupService, MeasurementService measurementService,
                                GraphService graphService) {
         super(objectMapper, authComp, userRepo);
@@ -144,6 +146,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.fileStoreService = fileStoreService;
         this.slotRegionService = slotRegionService;
         this.recentOpService = recentOpService;
+        this.cleanedOutSlotService = cleanedOutSlotService;
         this.flagLookupService = flagLookupService;
         this.measurementService = measurementService;
         this.graphService = graphService;
@@ -354,6 +357,13 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
             String barcode = dfe.getArgument("barcode");
             String opName = dfe.getArgument("operationType");
             return recentOpService.findLatestOp(barcode, opName);
+        };
+    }
+
+    public DataFetcher<List<Address>> cleanedOutAddresses() {
+        return dfe -> {
+            String barcode = dfe.getArgument("barcode");
+            return cleanedOutSlotService.findCleanedOutAddresses(barcode);
         };
     }
 

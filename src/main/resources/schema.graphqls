@@ -1860,6 +1860,16 @@ input SegmentationRequest {
     labware: [SegmentationLabware!]!
 }
 
+"""A request to remove samples from particular slots in labware."""
+input CleanOutRequest {
+    """The barcode of the labware."""
+    barcode: String!
+    """The addresses of the slots to clean out."""
+    addresses: [Address!]!
+    """The work number to link to the operation."""
+    workNumber: String!
+}
+
 """Info about the app version."""
 type VersionInfo {
     """The output of git describe."""
@@ -1961,6 +1971,8 @@ type Query {
     labwareCosting(barcode: String!): SlideCosting
     """Look up the latest operation of some specified type whose destinations included a given labware barcode."""
     findLatestOp(barcode: String!, operationType: String!): Operation
+    """Get addresses of cleaned out slots in the specified labware.."""
+    cleanedOutAddresses(barcode: String!): [Address!]!
 
     """Get the history containing a given sample id."""
     historyForSampleId(sampleId: Int!): History!
@@ -2186,6 +2198,8 @@ type Mutation {
     libraryPrep(request: LibraryPrepRequest!): OperationResult!
     """Record segmentation."""
     segmentation(request: SegmentationRequest!): OperationResult!
+    """Clean out a slot of a labware."""
+    cleanOut(request: CleanOutRequest!) : OperationResult!
 
     """Create a new user for the application."""
     addUser(username: String!): User!

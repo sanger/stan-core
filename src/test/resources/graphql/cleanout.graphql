@@ -1,0 +1,22 @@
+mutation {
+    cleanOut(request: {
+        barcode: "STAN-A1"
+        addresses: ["A2"]
+        workNumber: "[WORK]"
+    }) {
+        labware {
+            slots {
+                address
+                samples { id }
+            }
+        }
+        operations {
+            id
+            operationType { name }
+            actions {
+                destination { id }
+                sample { id }
+            }
+        }
+    }
+}

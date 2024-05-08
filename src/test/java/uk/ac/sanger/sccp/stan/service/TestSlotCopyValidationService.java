@@ -24,8 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.*;
-import static uk.ac.sanger.sccp.stan.Matchers.assertProblem;
-import static uk.ac.sanger.sccp.stan.Matchers.mayAddProblem;
+import static uk.ac.sanger.sccp.stan.Matchers.*;
 import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 
 /**
@@ -44,6 +43,8 @@ public class TestSlotCopyValidationService {
     Validator<String> mockPreBarcodeValidator;
     @Mock
     Validator<String> mockLotNumberValidator;
+    @Mock
+    CleanedOutSlotService mockCleanedOutSlotService;
 
     SlotCopyValidationServiceImp service;
     AutoCloseable mocking;
@@ -52,7 +53,7 @@ public class TestSlotCopyValidationService {
     void setup() {
         mocking = MockitoAnnotations.openMocks(this);
         service = spy(new SlotCopyValidationServiceImp(mockLwTypeRepo, mockLwRepo, mockBsRepo, mockValHelperFactory,
-                mockPreBarcodeValidator, mockLotNumberValidator));
+                mockPreBarcodeValidator, mockLotNumberValidator, mockCleanedOutSlotService));
     }
 
     @AfterEach
@@ -415,6 +416,7 @@ public class TestSlotCopyValidationService {
         List<String> problems = new ArrayList<>(1);
         service.validateContents(problems, null, null, null, new SlotCopyRequest());
         assertProblem(problems, "No destinations specified.");
+        verify(service, never()).checkCleanedOutDestinations(any(), any(), any());
     }
 
     @Test
@@ -467,6 +469,7 @@ public class TestSlotCopyValidationService {
 
         SlotCopyRequest request = new SlotCopyRequest();
         request.setDestinations(scds);
+        doAnswer(addProblem("Cleaned out slots.")).when(service).checkCleanedOutDestinations(any(), any(), any());
         final List<String> problems = new ArrayList<>(10);
         service.validateContents(problems, lts, sourceMap, existingDestinations, request);
         assertThat(problems).containsExactlyInAnyOrder(
@@ -478,8 +481,73 @@ public class TestSlotCopyValidationService {
                 "Invalid address A4 for labware type lt.",
                 "No source address specified.",
                 "Invalid address A4 for source labware STAN-S.",
-                "Slot A2 in labware STAN-S is empty."
+                "Slot A2 in labware STAN-S is empty.",
+                "Cleaned out slots."
         );
+        verify(service).checkCleanedOutDestinations(problems, request, existingDestinations);
+    }
+
+    @Test
+    public void testCheckCleanedOutDestinations_noDestinations() {
+        SlotCopyRequest request = new SlotCopyRequest();
+        UCMap<Labware> dests = new UCMap<>();
+        List<String> problems = new ArrayList<>(0);
+        service.checkCleanedOutDestinations(problems, request, dests);
+        assertThat(problems).isEmpty();
+        verifyNoInteractions(mockCleanedOutSlotService);
+    }
+
+    @Test
+    public void testCheckCleanedOutDestinations_noCleanedOutSlots() {
+        SlotCopyRequest request = new SlotCopyRequest();
+        Labware lw = EntityFactory.getTube();
+        UCMap<Labware> dests = UCMap.from(Labware::getBarcode, lw);
+        List<String> problems = new ArrayList<>(0);
+        when(mockCleanedOutSlotService.findCleanedOutSlots(any())).thenReturn(Set.of());
+        service.checkCleanedOutDestinations(problems, request, dests);
+        assertThat(problems).isEmpty();
+        verify(mockCleanedOutSlotService).findCleanedOutSlots(dests.values());
+    }
+
+    @Test
+    public void testCheckCleanedOutDestinations() {
+        LabwareType lt = EntityFactory.makeLabwareType(1,2);
+        Labware[] lws = IntStream.range(0,3)
+                .mapToObj(i -> EntityFactory.makeEmptyLabware(lt))
+                .toArray(Labware[]::new);
+        for (int i = 0; i < lws.length; ++i) {
+            lws[i].setBarcode("STAN-"+i);
+        }
+        UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lws);
+        List<SlotCopyDestination> scds = IntStream.range(0,4).mapToObj(i -> new SlotCopyDestination()).toList();
+        Address A1 = new Address(1,1), A2 = new Address(1,2);
+        Address[][] addresses = {
+                {A1,A2}, {A1}, {A2, null}, {A1,A2},
+        };
+        for (int i = 0; i < scds.size(); ++i) {
+            scds.get(i).setBarcode("STAN-"+i);
+            final List<SlotCopyContent> contents = Arrays.stream(addresses[i])
+                    .map(ad -> new SlotCopyContent(null, null, ad))
+                    .toList();
+            scds.get(i).setContents(contents);
+        }
+
+        when(mockCleanedOutSlotService.findCleanedOutSlots(any())).thenReturn(Set.of(
+                lws[0].getSlot(A1), lws[0].getSlot(A2),
+                lws[1].getSlot(A1), lws[1].getSlot(A2),
+                lws[2].getSlot(A1)
+        ));
+
+        List<String> problems = new ArrayList<>(2);
+        SlotCopyRequest request = new SlotCopyRequest();
+        request.setDestinations(scds);
+        service.checkCleanedOutDestinations(problems, request, lwMap);
+        assertThat(problems).containsExactlyInAnyOrder(
+                "Cannot add samples to cleaned out slots in labware STAN-0: [A1, A2]",
+                "Cannot add samples to cleaned out slots in labware STAN-1: [A1]"
+        );
+
+        verify(mockCleanedOutSlotService).findCleanedOutSlots(lwMap.values());
     }
 
     @ParameterizedTest
