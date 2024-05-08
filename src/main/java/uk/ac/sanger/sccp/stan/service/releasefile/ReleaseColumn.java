@@ -40,6 +40,7 @@ public enum ReleaseColumn implements TsvColumn<ReleaseEntry> {
     Bond_barcode(ReleaseEntry::getBondBarcode, ReleaseFileOption.RNAscope_IHC),
     RNAscope_plex(ReleaseEntry::getRnascopePlex, ReleaseFileOption.RNAscope_IHC),
     IHC_plex(ReleaseEntry::getIhcPlex, ReleaseFileOption.RNAscope_IHC),
+    Visium_barcode(ReleaseEntry::getVisiumBarcode, ReleaseFileOption.Visium),
     Tissue_coverage(ReleaseEntry::getCoverage, ReleaseFileOption.Visium),
     Permeabilisation_time(ReleaseEntry::getPermTime, ReleaseFileOption.Visium),
     Cq_value(ReleaseEntry::getCq, ReleaseFileOption.Visium),
