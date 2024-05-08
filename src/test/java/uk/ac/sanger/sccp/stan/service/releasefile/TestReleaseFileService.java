@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.Matchers.sameElements;
 import static uk.ac.sanger.sccp.stan.service.ComplexStainServiceImp.*;
-import static uk.ac.sanger.sccp.utils.BasicUtils.orderedMap;
+import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 /**
  * Tests {@link ReleaseFileService}
@@ -142,8 +142,8 @@ public class TestReleaseFileService {
     }
 
     @ParameterizedTest
-    @ValueSource(booleans={false, true})
-    public void testGetReleaseFileContent(boolean includeStorageAddresses) {
+    @CsvSource({"false,false","true,false","true,true"})
+    public void testGetReleaseFileContent(boolean includeStorageAddresses, boolean includeVisium) {
         assertThat(service.getReleaseFileContent(List.of(), Set.of()).getEntries()).isEmpty();
 
         setupReleases();
@@ -185,11 +185,15 @@ public class TestReleaseFileService {
         doNothing().when(service).loadStains(any(), any());
         doNothing().when(service).loadSamplePositions(any());
         doNothing().when(service).loadSectionComments(any());
+        doNothing().when(service).loadVisiumBarcodes(any(), any());
         doNothing().when(service).loadXeniumFields(any(), any());
         doNothing().when(service).loadSolutions(any());
         doNothing().when(service).loadFlags(any());
 
         Set<ReleaseFileOption> options = EnumSet.allOf(ReleaseFileOption.class);
+        if (!includeVisium) {
+            options.remove(ReleaseFileOption.Visium);
+        }
 
         List<Integer> releaseIds = List.of(this.release1.getId(), release2.getId());
         ReleaseFileContent rfc = service.getReleaseFileContent(releaseIds, options);
@@ -209,6 +213,7 @@ public class TestReleaseFileService {
         verify(service).loadReagentSources(entries);
         verify(service).loadSamplePositions(entries);
         verify(service).loadSectionComments(entries);
+        verify(service, times(includeVisium ? 1 : 0)).loadVisiumBarcodes(entries, ancestry);
         verify(service).loadXeniumFields(entries, slotIds);
         verify(service).loadSolutions(entries);
         verify(service).loadFlags(entries);
@@ -1319,6 +1324,62 @@ public class TestReleaseFileService {
         } else {
             assertThat(desc).isEmpty();
         }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testVisiumBarcode(boolean found) {
+        LabwareType lt = EntityFactory.getTubeType();
+        Sample sample = EntityFactory.getSample();
+        LabwareType visiumLt = new LabwareType(10, "Visium lw", 1, 1, EntityFactory.getLabelType(), true);
+        Labware[] lws = IntStream.range(0,4).mapToObj(i -> EntityFactory.makeLabware(lt, sample)).toArray(Labware[]::new);
+        lws[3].setExternalBarcode("VIS1");
+        if (found) {
+            lws[3].setLabwareType(visiumLt);
+        }
+        Slot[] slots = Arrays.stream(lws).map(Labware::getFirstSlot).toArray(Slot[]::new);
+        ReleaseEntry entry = new ReleaseEntry(lws[0], slots[0], sample);
+        Ancestry mockAncestry = mock(Ancestry.class);
+        Set<SlotSample> ancestors = Arrays.stream(slots)
+                .map(slot -> new SlotSample(slot, sample))
+                .collect(toLinkedHashSet());
+        when(mockAncestry.ancestors(any())).thenReturn(ancestors);
+        Map<Integer, Labware> lwMap = Arrays.stream(lws).collect(inMap(Labware::getId));
+        assertEquals(found ? "VIS1" : null, service.visiumBarcode(entry, mockAncestry, lwMap));
+        verify(mockAncestry).ancestors(new SlotSample(slots[0], sample));
+    }
+
+    @Test
+    public void testLoadVisiumBarcodes() {
+        LabwareType lt = EntityFactory.getTubeType();
+        Sample sample = EntityFactory.getSample();
+        Labware[] lws = IntStream.range(0,3).mapToObj(i -> EntityFactory.makeLabware(lt, sample)).toArray(Labware[]::new);
+        ReleaseEntry[] entries = Arrays.stream(lws)
+                .map(lw -> new ReleaseEntry(lw, lw.getFirstSlot(), sample))
+                .toArray(ReleaseEntry[]::new);
+        Ancestry mockAncestry = mock(Ancestry.class);
+        Set<SlotSample> slotSamples = Arrays.stream(lws).map(lw -> new SlotSample(lw.getFirstSlot(), sample)).collect(toSet());
+        when(mockAncestry.keySet()).thenReturn(slotSamples);
+        when(mockLabwareRepo.findAllByIdIn(any())).thenReturn(Arrays.asList(lws));
+
+        doReturn(null).when(service).visiumBarcode(same(entries[0]), any(), any());
+        doReturn("VIS1").when(service).visiumBarcode(same(entries[1]), any(), any());
+        doReturn("VIS2").when(service).visiumBarcode(same(entries[2]), any(), any());
+
+        Map<Integer, Labware> expectedLwMap = Arrays.stream(lws).collect(inMap(Labware::getId));
+        Set<Integer> lwIds = Arrays.stream(lws).map(Labware::getId).collect(toSet());
+
+        service.loadVisiumBarcodes(Arrays.asList(entries), mockAncestry);
+
+        verify(mockAncestry).keySet();
+        verify(mockLabwareRepo).findAllByIdIn(lwIds);
+        for (ReleaseEntry entry : entries) {
+            verify(service).visiumBarcode(entry, mockAncestry, expectedLwMap);
+        }
+
+        assertNull(entries[0].getVisiumBarcode());
+        assertEquals("VIS1", entries[1].getVisiumBarcode());
+        assertEquals("VIS2", entries[2].getVisiumBarcode());
     }
 
     private LocalDateTime time(int day) {

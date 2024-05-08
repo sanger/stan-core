@@ -24,8 +24,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.*;
-import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
-import static uk.ac.sanger.sccp.utils.BasicUtils.toLinkedHashSet;
+import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 /**
  * Service loading data for release files
@@ -123,6 +122,9 @@ public class ReleaseFileService {
         loadSamplePositions(entries);
         loadSectionComments(entries);
         loadSolutions(entries);
+        if (options.contains(ReleaseFileOption.Visium)) {
+            loadVisiumBarcodes(entries, ancestry);
+        }
 
         loadXeniumFields(entries, slotIds);
         loadFlags(entries);
@@ -229,7 +231,7 @@ public class ReleaseFileService {
             List<Integer> missingReleaseIds = releases.stream()
                     .filter(rel -> snapshots.get(rel.getSnapshotId())==null)
                     .map(Release::getId)
-                    .collect(toList());
+                    .toList();
             if (!missingReleaseIds.isEmpty()) {
                 throw new EntityNotFoundException("Labware snapshot missing for release ids: "+missingReleaseIds);
             }
@@ -293,6 +295,42 @@ public class ReleaseFileService {
         } else {
             loadOriginalBarcodes(entries, ancestry);
         }
+    }
+
+    /**
+     * Loads the most recent visium barcode for each entry
+     * @param entries the release entries
+     * @param ancestry the ancestry map
+     */
+    public void loadVisiumBarcodes(Collection<ReleaseEntry> entries, Ancestry ancestry) {
+        Set<Integer> labwareIds = ancestry.keySet().stream()
+                .map(ss -> ss.slot().getLabwareId())
+                .collect(toSet());
+        Map<Integer, Labware> idToLabware = labwareRepo.findAllByIdIn(labwareIds).stream().collect(inMap(Labware::getId));
+        for (ReleaseEntry entry : entries) {
+            entry.setVisiumBarcode(visiumBarcode(entry, ancestry, idToLabware));
+        }
+    }
+
+    /**
+     * Finds the most recent visium barcode for the given entry
+     * @param entry the release entry
+     * @param ancestry the ancestry map
+     * @param idToLabware map to look up labware from its id
+     * @return the most recent visium barcode; or null
+     */
+    public String visiumBarcode(ReleaseEntry entry, Ancestry ancestry, Map<Integer, Labware> idToLabware) {
+        if (entry.getSlot() != null && entry.getSample() != null) {
+            SlotSample last = new SlotSample(entry.getSlot(), entry.getSample());
+            for (SlotSample ss : ancestry.ancestors(last)) {
+                Labware lw = idToLabware.get(ss.slot().getLabwareId());
+                if (lw != null && lw.getExternalBarcode() != null && lw.getLabwareType().isPrebarcoded()
+                        && containsIgnoreCase(lw.getLabwareType().getName(), "visium")) {
+                    return lw.getExternalBarcode();
+                }
+            }
+        }
+        return null;
     }
 
     /**
@@ -368,7 +406,7 @@ public class ReleaseFileService {
             }
             OperationSolution opSol;
             if (entry.getSample()==null) {
-                opSol = opSols.get(0);
+                opSol = opSols.getFirst();
             } else {
                 Integer sampleId = entry.getSample().getId();
                 opSol = opSols.stream()
@@ -516,7 +554,7 @@ public class ReleaseFileService {
                 continue;
             }
             probes = probes.stream().filter(p -> p.getLabwareId().equals(lwId))
-                    .collect(toList());
+                    .toList();
             if (!probes.isEmpty()) {
                 String plex = probes.stream()
                         .map(LabwareProbe::getPlex)
@@ -701,13 +739,13 @@ public class ReleaseFileService {
                 try {
                     opRnaPlex.put(opId, Integer.valueOf(value));
                 } catch (NumberFormatException e) {
-                    log.error("Should be an integer: "+note);
+                    log.error("RNAscope plex should be an integer: "+note);
                 }
             } else if (name.equalsIgnoreCase(ComplexStainServiceImp.LW_NOTE_PLEX_IHC)) {
                 try {
                     opIhcPlex.put(opId, Integer.valueOf(value));
                 } catch (NumberFormatException e) {
-                    log.error("Should be an integer: "+note);
+                    log.error("IHC plex should be an integer: "+note);
                 }
             }
         }
@@ -881,7 +919,7 @@ public class ReleaseFileService {
                     try {
                         entry.setPermTime(toMinutes(permMeasurement.getValue()));
                     } catch (NumberFormatException e) {
-                        log.error("Permeabilisation time measurement is not an integer: {}", permMeasurement);
+                        log.error("96 well plate permeabilisation time measurement is not an integer: {}", permMeasurement);
                     }
                 }
             }

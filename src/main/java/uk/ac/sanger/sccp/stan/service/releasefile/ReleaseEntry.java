@@ -25,6 +25,7 @@ public class ReleaseEntry {
     private String storageAddress;
     private String stainType;
     private String bondBarcode;
+    private String visiumBarcode;
     private Integer coverage;
     private String reagentPlateType;
     private String reagentSource;
@@ -129,6 +130,14 @@ public class ReleaseEntry {
 
     public void setBondBarcode(String bondBarcode) {
         this.bondBarcode = bondBarcode;
+    }
+
+    public String getVisiumBarcode() {
+        return this.visiumBarcode;
+    }
+
+    public void setVisiumBarcode(String visiumBarcode) {
+        this.visiumBarcode = visiumBarcode;
     }
 
     public Integer getCoverage() {
@@ -404,6 +413,7 @@ public class ReleaseEntry {
                 && Objects.equals(this.storageAddress, that.storageAddress)
                 && Objects.equals(this.stainType, that.stainType)
                 && Objects.equals(this.bondBarcode, that.bondBarcode)
+                && Objects.equals(this.visiumBarcode, that.visiumBarcode)
                 && Objects.equals(this.coverage, that.coverage)
                 && Objects.equals(this.reagentPlateType, that.reagentPlateType)
                 && Objects.equals(this.reagentSource, that.reagentSource)
@@ -457,6 +467,7 @@ public class ReleaseEntry {
                 .add("storageAddress", storageAddress)
                 .add("stainType", stainType)
                 .add("bondBarcode", bondBarcode)
+                .add("visiumBarcode", visiumBarcode)
                 .add("coverage", coverage)
                 .add("reagentPlateType", reagentPlateType)
                 .add("reagentSource", reagentSource)

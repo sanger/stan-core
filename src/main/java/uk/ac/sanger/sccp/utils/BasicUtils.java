@@ -412,6 +412,16 @@ public class BasicUtils {
     }
 
     /**
+     * Does the given string contain the given substring, ignoring its case?
+     * @param string the containing string
+     * @param sub the substring
+     * @return true if {@code string} contains with {@code sub}, ignoring case; false otherwise
+     */
+    public static boolean containsIgnoreCase(String string, String sub) {
+        return StringUtils.indexIgnoreCase(string, sub, 0) >= 0;
+    }
+
+    /**
      * Escape the sql-LIKE symbols in a string
      * (percent, which is any sequence of characters, underscore, which is any single character,
      * and backslash, which is the escape character).
