@@ -246,6 +246,32 @@ public class TestBasicUtils {
     }
 
     @Test
+    public void testEndsWithIgnoreCase() {
+        assertTrue(endsWithIgnoreCase("Alpha", "PHA"));
+        assertTrue(endsWithIgnoreCase("Alpha", "pha"));
+        assertTrue(endsWithIgnoreCase("Alp*a", "ALP*A"));
+        assertTrue(endsWithIgnoreCase("Alpha", ""));
+        assertTrue(endsWithIgnoreCase("", ""));
+
+        assertFalse(endsWithIgnoreCase("", "a"));
+        assertFalse(endsWithIgnoreCase("Alph", "Alpha"));
+        assertFalse(endsWithIgnoreCase("Alpha", "alphab"));
+    }
+
+    @Test
+    public void testContainsIgnoreCase() {
+        assertTrue(containsIgnoreCase("Alpha", "Lph"));
+        assertTrue(containsIgnoreCase("Alpha", "lPha"));
+        assertTrue(containsIgnoreCase("Alp*a", "ALP*A"));
+        assertTrue(containsIgnoreCase("Alpha", ""));
+        assertTrue(containsIgnoreCase("", ""));
+
+        assertFalse(containsIgnoreCase("", "a"));
+        assertFalse(containsIgnoreCase("Alph", "Alpha"));
+        assertFalse(containsIgnoreCase("Alpha", "alphab"));
+    }
+
+    @Test
     public void testReverseIter() {
         List<Integer> list = List.of(1,2,3,4);
         Iterator<Integer> expected = List.of(4,3,2,1).iterator();
@@ -289,5 +315,115 @@ public class TestBasicUtils {
         for (String bad : bads.split("\\s+")) {
             assertThat(bad).doesNotMatch(pattern);
         }
+    }
+
+    @Test
+    public void testEscapeLikeSql() {
+        assertEquals("A\\%B\\_\\\\C", escapeLikeSql("A%B_\\C"));
+    }
+
+    @Test
+    public void testWildcardToLikeSql() {
+        assertEquals("AlphaBeta", wildcardToLikeSql("AlphaBeta"));
+        assertEquals("Alpha%Beta", wildcardToLikeSql("Alpha*Beta"));
+        assertEquals("A\\%l\\_pha%Beta%", wildcardToLikeSql("A%l_pha**Beta*"));
+    }
+
+    @SuppressWarnings("ConstantValue")
+    @Test
+    public void testNullOrEmpty() {
+        assertTrue(nullOrEmpty(""));
+        assertTrue(nullOrEmpty((String) null));
+        assertFalse(nullOrEmpty("a"));
+
+        assertTrue(nullOrEmpty(List.of()));
+        assertTrue(nullOrEmpty((Collection<?>) null));
+        assertFalse(nullOrEmpty(List.of(0)));
+
+        assertTrue(nullOrEmpty(Map.of()));
+        assertTrue(nullOrEmpty((Map<?,?>) null));
+        assertFalse(nullOrEmpty(Map.of(1,2)));
+    }
+
+    @SuppressWarnings("ConstantValue")
+    @Test
+    public void testEmptyToNull() {
+        assertNull(emptyToNull(""));
+        assertNull(emptyToNull(null));
+        assertEquals("A", emptyToNull("A"));
+    }
+
+    @Test
+    public void testNullToEmpty() {
+        assertThat(nullToEmpty((List<?>) null)).isNotNull().isEmpty();
+        assertThat(nullToEmpty((Map<?,?>) null)).isNotNull().isEmpty();
+        assertThat(nullToEmpty(List.of())).isNotNull().isEmpty();
+        assertThat(nullToEmpty(Map.of())).isNotNull().isEmpty();
+
+        List<Integer> list = List.of(5);
+        Map<Integer, Integer> map = Map.of(1,2);
+        assertSame(list, nullToEmpty(list));
+        assertSame(map, nullToEmpty(map));
+    }
+
+    @ParameterizedTest
+    @MethodSource("concatArgs")
+    public <E> void testConcat(List<E> a, List<E> b, List<E> expected) {
+        assertEquals(expected, concat(a, b));
+    }
+
+    static Stream<Arguments> concatArgs() {
+        List<Integer> list1 = List.of(2,5);
+        List<Integer> list2 = List.of(6,2);
+        return Arrays.stream(new Object[][] {
+                {null, null, null},
+                {null, list1, list1},
+                {list1, null, list1},
+                {list1, List.of(), list1},
+                {List.of(), list1, list1},
+                {list1, list2, List.of(2,5,6,2)},
+                {list2, list1, List.of(6,2,2,5)},
+        }).map(Arguments::of);
+    }
+
+    @Test
+    public void testOrderedMap() {
+        Map<Integer, Integer> map = orderedMap(2,5,1,4);
+        assertEquals(5, map.get(2));
+        assertEquals(4, map.get(1));
+        assertThat(map.keySet()).containsExactly(2,1);
+        assertThat(map).isInstanceOf(SequencedMap.class);
+    }
+
+    @Test
+    public void testSimpleEntry() {
+        Map.Entry<Integer, String> entry = simpleEntry(15, "Hi");
+        assertEquals(15, entry.getKey());
+        assertEquals("Hi", entry.getValue());
+    }
+
+    @Test
+    public void testHashSetOf() {
+        assertThat(hashSetOf()).isInstanceOf(HashSet.class).isEmpty();
+        assertThat(hashSetOf(17)).isInstanceOf(HashSet.class).containsExactly(17);
+        assertThat(hashSetOf(1,2,4,1)).isInstanceOf(HashSet.class).containsExactlyInAnyOrder(1,2,4);
+    }
+
+    @Test
+    public void testStreamIterable() {
+        List<Integer> list = List.of(1, 4, 1, 5);
+        assertThat(stream(list)).containsExactlyElementsOf(list);
+        final Iterator<Integer> iterator = list.iterator();
+        assertThat(stream(() -> iterator)).containsExactlyElementsOf(list);
+    }
+
+    @Test
+    public void testStreamPairs() {
+        assertThat(streamPairs(List.of(11,22,303,44), (a,b) -> new Integer[] {a,b}))
+                .containsExactly(new Integer[][] {
+                        {11,22}, {11,303}, {11,44},
+                        {22,303}, {22,44},
+                        {303,44}
+                });
     }
 }
