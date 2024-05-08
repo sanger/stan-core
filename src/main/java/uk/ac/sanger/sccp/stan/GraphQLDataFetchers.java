@@ -80,6 +80,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final FlagLookupService flagLookupService;
     final MeasurementService measurementService;
     final GraphService graphService;
+    final CommentRepo commentRepo;
 
     @Autowired
     public GraphQLDataFetchers(ObjectMapper objectMapper, AuthenticationComponent authComp, UserRepo userRepo,
@@ -104,7 +105,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                SlotRegionService slotRegionService, RecentOpService recentOpService,
                                CleanedOutSlotService cleanedOutSlotService,
                                FlagLookupService flagLookupService, MeasurementService measurementService,
-                               GraphService graphService) {
+                               GraphService graphService, CommentRepo commentRepo) {
         super(objectMapper, authComp, userRepo);
         this.sessionConfig = sessionConfig;
         this.versionInfo = versionInfo;
@@ -150,6 +151,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.flagLookupService = flagLookupService;
         this.measurementService = measurementService;
         this.graphService = graphService;
+        this.commentRepo = commentRepo;
     }
 
     public DataFetcher<User> getUser() {
@@ -482,6 +484,10 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
 
     public DataFetcher<List<StainType>> getEnabledStainTypes() {
         return dfe -> stainService.getEnabledStainTypes();
+    }
+
+    public DataFetcher<List<Comment>> getStainReagentTypes() {
+        return dfe -> commentRepo.findAllByCategoryInAndEnabled(StainType.H_AND_E_MEASUREMENTS, true);
     }
 
     public DataFetcher<VisiumPermData> getVisiumPermData() {

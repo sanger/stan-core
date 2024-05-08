@@ -1173,6 +1173,8 @@ input StainRequest {
     timeMeasurements: [TimeMeasurement!]!
     """An optional work number to associate with this operation."""
     workNumber: String
+    """Comment ids indicating reagent types used in stain."""
+    commentIds: [Int!]
 }
 
 """The panel used with a stain."""
@@ -1957,6 +1959,8 @@ type Query {
     planData(barcode: String!): PlanData!
     """Get the available stain types."""
     stainTypes: [StainType!]!
+    """Get the reagent types for H&E staining."""
+    stainReagentTypes: [Comment!]!
     """Event types."""
     eventTypes: [String!]!
     """Get an item of labware and the visium permeabilisation data recorded on it, if any."""

@@ -15,6 +15,7 @@ import java.util.function.Function;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
@@ -26,22 +27,26 @@ public class StainServiceImp implements StainService {
     private final LabwareRepo labwareRepo;
     private final OperationTypeRepo opTypeRepo;
     private final MeasurementRepo measurementRepo;
+    private final OperationCommentRepo opComRepo;
 
     private final LabwareValidatorFactory labwareValidatorFactory;
     private final WorkService workService;
     private final OperationService opService;
+    private final CommentValidationService commentValidationService;
 
     public StainServiceImp(StainTypeRepo stainTypeRepo, LabwareRepo labwareRepo, OperationTypeRepo opTypeRepo,
-                           MeasurementRepo measurementRepo,
+                           MeasurementRepo measurementRepo, OperationCommentRepo opComRepo,
                            LabwareValidatorFactory labwareValidatorFactory, WorkService workService,
-                           OperationService opService) {
+                           OperationService opService, CommentValidationService commentValidationService) {
         this.stainTypeRepo = stainTypeRepo;
         this.labwareRepo = labwareRepo;
         this.opTypeRepo = opTypeRepo;
         this.measurementRepo = measurementRepo;
+        this.opComRepo = opComRepo;
         this.labwareValidatorFactory = labwareValidatorFactory;
         this.workService = workService;
         this.opService = opService;
+        this.commentValidationService = commentValidationService;
     }
 
     @Override
@@ -194,6 +199,20 @@ public class StainServiceImp implements StainService {
         return measurementRepo.saveAll(measurements);
     }
 
+    /**
+     * Records the given comments against every slot/sample in the given operations.
+     * @param ops the created operations
+     * @param comments the comments to record
+     */
+    public void recordComments(List<Operation> ops, List<Comment> comments) {
+        List<OperationComment> opComs = ops.stream()
+                .flatMap(op -> op.getActions().stream())
+                .flatMap(ac -> comments.stream()
+                        .map(com -> new OperationComment(null, com, ac.getOperationId(), ac.getSample().getId(), ac.getDestination().getId(), null))
+                ).toList();
+        opComRepo.saveAll(opComs);
+    }
+
     @Override
     public OperationResult recordStain(User user, StainRequest request) {
         Collection<String> problems = new LinkedHashSet<>();
@@ -201,13 +220,21 @@ public class StainServiceImp implements StainService {
         Collection<Labware> labware = validateLabware(problems, request.getBarcodes());
         StainType stainType = validateStainType(problems, request.getStainType());
         List<TimeMeasurement> measurements = validateMeasurements(problems, stainType, request.getTimeMeasurements());
-
+        List<Comment> comments;
+        if (nullOrEmpty(request.getCommentIds())) {
+            comments = List.of();
+        } else {
+            comments = commentValidationService.validateCommentIds(problems, request.getCommentIds().stream());
+        }
         if (!problems.isEmpty()) {
             throw new ValidationException("The stain request could not be validated.", problems);
         }
 
         List<Operation> ops = createOperations(user, labware, List.of(stainType));
         recordMeasurements(ops, measurements);
+        if (!comments.isEmpty()) {
+            recordComments(ops, comments);
+        }
         if (work!=null) {
             workService.link(work, ops);
         }

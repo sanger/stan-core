@@ -11,6 +11,7 @@ import java.util.*;
  */
 public interface CommentRepo extends CrudRepository<Comment, Integer> {
     List<Comment> findAllByCategory(String category);
+    List<Comment> findAllByCategoryInAndEnabled(List<String> categories, boolean enabled);
     List<Comment> findAllByCategoryAndEnabled(String category, boolean enabled);
     Optional<Comment> findByCategoryAndText(String category, String text);
 
