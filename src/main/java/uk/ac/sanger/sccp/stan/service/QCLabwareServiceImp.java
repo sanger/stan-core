@@ -8,6 +8,7 @@ import uk.ac.sanger.sccp.stan.repo.OperationRepo;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.request.QCLabwareRequest;
 import uk.ac.sanger.sccp.stan.request.QCLabwareRequest.QCLabware;
+import uk.ac.sanger.sccp.stan.request.QCLabwareRequest.QCSampleComment;
 import uk.ac.sanger.sccp.stan.service.validation.ValidationHelper;
 import uk.ac.sanger.sccp.stan.service.validation.ValidationHelperFactory;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
@@ -16,6 +17,7 @@ import uk.ac.sanger.sccp.utils.UCMap;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static uk.ac.sanger.sccp.utils.BasicUtils.containsDupes;
@@ -60,6 +62,7 @@ public class QCLabwareServiceImp implements QCLabwareService {
         UCMap<Work> workMap = val.checkWork(qcls.stream().map(QCLabware::getWorkNumber).collect(toList()));
         checkTimestamps(val, qcls, lwMap, clock);
         Map<Integer, Comment> commentMap = checkComments(val, qcls);
+        checkSampleComments(val, qcls, lwMap);
         if (!val.getProblems().isEmpty()) {
             throw new ValidationException(val.getProblems());
         }
@@ -86,13 +89,55 @@ public class QCLabwareServiceImp implements QCLabwareService {
      * @return comments mapped from their ids
      */
     public Map<Integer, Comment> checkComments(ValidationHelper val, List<QCLabware> qcls) {
-        Map<Integer, Comment> commentMap = val.checkCommentIds(qcls.stream().flatMap(qcl -> qcl.getComments().stream()));
+        Stream<Integer> commentIds = Stream.concat(
+                qcls.stream().flatMap(qcl -> qcl.getComments().stream()),
+                qcls.stream().map(QCLabware::getSampleComments)
+                        .filter(Objects::nonNull)
+                        .flatMap(scs -> scs.stream().map(QCSampleComment::getCommentId))
+        );
+        Map<Integer, Comment> commentMap = val.checkCommentIds(commentIds);
         for (QCLabware qcl : qcls) {
-            if (!nullOrEmpty(qcl.getBarcode()) && !nullOrEmpty(qcl.getComments()) && containsDupes(qcl.getComments())) {
+            if (nullOrEmpty(qcl.getBarcode())) {
+                continue;
+            }
+            if (containsDupes(qcl.getComments()) || !nullOrEmpty(qcl.getSampleComments()) && containsDupes(qcl.getSampleComments())) {
                 val.getProblems().add("Duplicate comments specified for barcode "+qcl.getBarcode()+".");
             }
         }
         return commentMap;
+    }
+
+    /**
+     * Checks the validity of sample comments specified in the request
+     * @param val validation helper
+     * @param qcls labware in the request
+     * @param labware map to look up labware
+     */
+    public void checkSampleComments(ValidationHelper val, List<QCLabware> qcls, UCMap<Labware> labware) {
+        for (QCLabware qcl : qcls) {
+            if (nullOrEmpty(qcl.getSampleComments())) {
+                continue;
+            }
+            Labware lw = labware.get(qcl.getBarcode());
+            for (QCSampleComment sc : qcl.getSampleComments()) {
+                Slot slot = null;
+                if (sc.getAddress()==null) {
+                    val.getProblems().add("Missing slot address for sample comment.");
+                } else if (lw!=null) {
+                    slot = lw.optSlot(sc.getAddress()).orElse(null);
+                    if (slot==null) {
+                        val.getProblems().add(String.format("No slot at address %s in labware %s.",
+                                sc.getAddress(), lw.getBarcode()));
+                    }
+                }
+                if (sc.getSampleId()==null) {
+                    val.getProblems().add("Missing sample ID for sample comment.");
+                } else if (slot!=null && slot.getSamples().stream().noneMatch(sam -> sam.getId().equals(sc.getSampleId()))) {
+                    val.getProblems().add(String.format("Sample ID %s is not present in slot %s of labware %s.",
+                            sc.getSampleId(), sc.getAddress(), lw.getBarcode()));
+                }
+            }
+        }
     }
 
     /**
@@ -161,6 +206,15 @@ public class QCLabwareServiceImp implements QCLabwareService {
                     Operation op = lwOps.get(qcl.getBarcode());
                     Labware lw = lwMap.get(qcl.getBarcode());
                     opcoms.add(new OperationComment(null, comment, op.getId(), null, null, lw.getId()));
+                });
+            }
+            if (!nullOrEmpty(qcl.getSampleComments())) {
+                qcl.getSampleComments().forEach(sc -> {
+                    Comment comment = commentMap.get(sc.getCommentId());
+                    Operation op = lwOps.get(qcl.getBarcode());
+                    Labware lw = lwMap.get(qcl.getBarcode());
+                    Slot slot = lw.getSlot(sc.getAddress());
+                    opcoms.add(new OperationComment(null, comment, op.getId(), sc.getSampleId(), slot.getId(), null));
                 });
             }
         }

@@ -9,7 +9,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static java.util.stream.Collectors.toList;
 import static uk.ac.sanger.sccp.utils.BasicUtils.pluralise;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
@@ -55,7 +54,7 @@ public class CommentValidationService {
         List<String> disabledComments = comments.stream()
                 .filter(c -> !c.isEnabled())
                 .map(c -> String.format("(id=%s, category=%s, text=%s)", c.getId(), c.getCategory(), repr(c.getText())))
-                .collect(toList());
+                .toList();
         if (!disabledComments.isEmpty()) {
             problems.add(pluralise("Comment{s} not enabled: ", disabledComments.size())+disabledComments);
         }

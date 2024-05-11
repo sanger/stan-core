@@ -1790,6 +1790,16 @@ input AnalyserRequest {
     cellSegmentationLot: String
 }
 
+"""A comment on a particular sample in a particular slot."""
+input QCSampleComment {
+    """The address of the slot."""
+    address: Address!
+    """The ID of the sample."""
+    sampleId: Int!
+    """The ID of the comment."""
+    commentId: Int!
+}
+
 """Labware to be QC'd with comments and a completion time."""
 input QCLabware {
     """The barcode of the labware."""
@@ -1800,6 +1810,16 @@ input QCLabware {
     completion: Timestamp
     """Zero or more comments applied to this labware in this operation."""
     comments: [Int!]!
+    """Zero or more comments on individual samples in particular slots."""
+    sampleComments: [QCSampleComment!]
+}
+
+"""Request to record QC and completion time for one or more labware."""
+input QCLabwareRequest {
+    """The name of the operation to record."""
+    operationType: String!
+    """The specifications of labware to QC."""
+    labware: [QCLabware!]!
 }
 
 """Raise a flag on a piece of labware."""
@@ -1810,14 +1830,6 @@ input FlagLabwareRequest {
     description: String!
     """Work number to link to the flag."""
     workNumber: String
-}
-
-"""Request to record QC and completion time for one or more labware."""
-input QCLabwareRequest {
-    """The name of the operation to record."""
-    operationType: String!
-    """The specifications of labware to QC."""
-    labware: [QCLabware!]!
 }
 
 """Record the orientation state of labware."""

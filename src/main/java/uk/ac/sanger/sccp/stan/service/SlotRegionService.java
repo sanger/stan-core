@@ -1,16 +1,10 @@
 package uk.ac.sanger.sccp.stan.service;
 
-import uk.ac.sanger.sccp.stan.model.Address;
-import uk.ac.sanger.sccp.stan.model.Labware;
-import uk.ac.sanger.sccp.stan.model.SamplePosition;
-import uk.ac.sanger.sccp.stan.model.SlotRegion;
+import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.request.SamplePositionResult;
 import uk.ac.sanger.sccp.utils.UCMap;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Stream;
 
 import static uk.ac.sanger.sccp.utils.BasicUtils.asList;

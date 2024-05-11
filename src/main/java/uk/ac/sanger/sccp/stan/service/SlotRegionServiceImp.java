@@ -3,19 +3,15 @@ package uk.ac.sanger.sccp.stan.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
-import uk.ac.sanger.sccp.stan.repo.SamplePositionRepo;
-import uk.ac.sanger.sccp.stan.repo.SlotRegionRepo;
+import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.SamplePositionResult;
-import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
-import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
-import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
+import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 /**
  * @author dr6
@@ -36,7 +32,7 @@ public class SlotRegionServiceImp implements SlotRegionService {
     @Override
     public List<SamplePositionResult> loadSamplePositionResultsForLabware(String barcode) {
         Labware lw = lwRepo.getByBarcode(barcode);
-        Map<Integer, Slot> slotIdMap = lw.getSlots().stream().collect(BasicUtils.inMap(Slot::getId));
+        Map<Integer, Slot> slotIdMap = lw.getSlots().stream().collect(inMap(Slot::getId));
         return getSamplePositionResultsForSlots(slotIdMap);
     }
 
@@ -54,7 +50,7 @@ public class SlotRegionServiceImp implements SlotRegionService {
     public List<SamplePositionResult> loadSamplePositionResultsForLabware(Collection<Labware> labware) {
         Map<Integer, Slot> slotIdMap = labware.stream()
                 .flatMap(lw -> lw.getSlots().stream())
-                .collect(BasicUtils.inMap(Slot::getId));
+                .collect(inMap(Slot::getId));
         return getSamplePositionResultsForSlots(slotIdMap);
     }
 
