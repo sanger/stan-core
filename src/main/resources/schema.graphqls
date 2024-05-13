@@ -1790,6 +1790,28 @@ input AnalyserRequest {
     cellSegmentationLot: String
 }
 
+"""A region of interest for a sample in an operation."""
+type Roi {
+    """The id of the slot."""
+    slotId: Int!
+    """The address of the slot."""
+    address: Address!
+    """The id of the sample."""
+    sampleId: Int!
+    """The id of the operation in which the ROI was recorded."""
+    operationId: Int!
+    """The description of the region of interest."""
+    roi: String!
+}
+
+"""The regions of interest recorded in a particular labware."""
+type LabwareRoi {
+    """The barcode of the labware."""
+    barcode: String!
+    """The regions of interest recorded in the labware, if any."""
+    rois: [Roi!]!
+}
+
 """A comment on a particular sample in a particular slot."""
 input QCSampleComment {
     """The address of the slot."""
@@ -2022,6 +2044,8 @@ type Query {
     labwareFlagDetails(barcodes: [String!]!): [FlagDetail!]!
     """Get named measurement values for each slot from the indicated labware or its parent labware."""
     measurementValueFromLabwareOrParent(barcode: String!, name: String!): [AddressString!]!
+    """Get regions of interest in the indicated labware."""
+    rois(barcodes: [String!]!): [LabwareRoi!]!
 
     """Get the specified storage location."""
     location(locationBarcode: String!): Location!

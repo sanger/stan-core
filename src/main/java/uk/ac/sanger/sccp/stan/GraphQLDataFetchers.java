@@ -75,6 +75,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final LabwareService labwareService;
     final FileStoreService fileStoreService;
     final SlotRegionService slotRegionService;
+    final RoiService roiService;
     final RecentOpService recentOpService;
     final CleanedOutSlotService cleanedOutSlotService;
     final FlagLookupService flagLookupService;
@@ -102,7 +103,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                WorkService workService, VisiumPermDataService visiumPermDataService,
                                NextReplicateService nextReplicateService, WorkSummaryService workSummaryService,
                                LabwareService labwareService, FileStoreService fileStoreService,
-                               SlotRegionService slotRegionService, RecentOpService recentOpService,
+                               SlotRegionService slotRegionService, RoiService roiService, RecentOpService recentOpService,
                                CleanedOutSlotService cleanedOutSlotService,
                                FlagLookupService flagLookupService, MeasurementService measurementService,
                                GraphService graphService, CommentRepo commentRepo) {
@@ -146,6 +147,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.labwareService = labwareService;
         this.fileStoreService = fileStoreService;
         this.slotRegionService = slotRegionService;
+        this.roiService = roiService;
         this.recentOpService = recentOpService;
         this.cleanedOutSlotService = cleanedOutSlotService;
         this.flagLookupService = flagLookupService;
@@ -351,6 +353,13 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
             String name = dfe.getArgument("name");
             var map = measurementService.getMeasurementsFromLabwareOrParent(barcode, name);
             return measurementService.toAddressStrings(map);
+        };
+    }
+
+    public DataFetcher<List<LabwareRoi>> labwareRois() {
+        return dfe -> {
+            List<String> barcodes = dfe.getArgument("barcodes");
+            return roiService.labwareRois(barcodes);
         };
     }
 

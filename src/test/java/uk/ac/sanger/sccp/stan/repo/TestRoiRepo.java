@@ -64,4 +64,13 @@ public class TestRoiRepo {
         assertThat(roiRepo.findAllByOperationIdIn(List.of(ids.getOperationId()+1))).isEmpty();
     }
 
+    @Test
+    @Transactional
+    public void testFindAllBySlotIdIn() {
+        assertThat(roiRepo.findAllBySlotIdIn(List.of(1, 2, ids.getSlotId()))).isEmpty();
+        Roi roi = roiRepo.save(new Roi(ids.getSlotId(), ids.getSampleId(), ids.getOperationId(), "Hello"));
+        assertThat(roiRepo.findAllBySlotIdIn(List.of(1,2,ids.getSlotId()))).containsExactly(roi);
+        assertThat(roiRepo.findAllBySlotIdIn(List.of(ids.getSlotId()+1))).isEmpty();
+    }
+
 }
