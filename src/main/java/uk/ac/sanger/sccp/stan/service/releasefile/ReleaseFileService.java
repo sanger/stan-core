@@ -684,22 +684,64 @@ public class ReleaseFileService {
             if (nullOrEmpty(opcoms)) {
                 continue;
             }
-            String commentText = joinComments(opcoms.stream()
-                    .filter(oc -> lwId.equals(oc.getLabwareId())));
-            entry.setXeniumComment(commentText);
+            Stream<String> commentDescs = opcoms.stream()
+                    .map(oc -> commentDescOrNull(oc, entry))
+                    .filter(Objects::nonNull);
+            entry.setXeniumComment(joinCommentDescs(commentDescs));
         }
+    }
+
+    /**
+     * Describes the given comment if it is applicable to the given entry. If it is not applicable, returns null.
+     * @param opcom the op-com
+     * @param entry the release entry
+     * @return a string describing the comment, or null
+     */
+    public String commentDescOrNull(OperationComment opcom, ReleaseEntry entry) {
+        if (opcom.getLabwareId()!=null && !opcom.getLabwareId().equals(entry.getLabware().getId())) {
+            return null;
+        }
+        if (opcom.getSampleId()!=null && entry.getSample()!=null && !opcom.getSampleId().equals(entry.getSample().getId())) {
+            return null;
+        }
+        if (opcom.getSlotId()!=null && entry.getSlot()!=null && !opcom.getSlotId().equals(entry.getSlot().getId())) {
+            return null;
+        }
+        if (opcom.getSlotId()!=null && opcom.getSampleId()!=null && (entry.getSlot()==null || entry.getSample()==null)) {
+            Slot slot = entry.getSlot();
+            if (slot==null) {
+                slot = entry.getLabware().getSlots().stream()
+                        .filter(s -> s.getId().equals(opcom.getSlotId()))
+                        .findAny()
+                        .orElse(null);
+            }
+            if (slot!=null) {
+                return String.format("(%s %s): %s", slot.getAddress(), opcom.getSampleId(), opcom.getComment().getText());
+            }
+        }
+        return opcom.getComment().getText();
     }
 
     /**
      * Join the distinct opcoms texts as sentences, adding a full stop where missing.
      * @param opcoms the operation comments to join
-     * @return a string combining the textx of the given comments
+     * @return a string combining the texts of the given comments
      */
     private static String joinComments(Stream<OperationComment> opcoms) {
         return opcoms.map(OperationComment::getComment)
                 .distinct()
                 .map(Comment::getText)
                 .map(s -> s.endsWith(".") ? s : (s + "."))
+                .collect(joining(" "));
+    }
+
+    /**
+     * Join the distinct strings  as sentences, adding a full stop where missing.
+     * @param strings the strings to join
+     * @return a string combining the given strings
+     */
+    private static String joinCommentDescs(Stream<String> strings) {
+        return strings.distinct().map(s -> s.endsWith(".") ? s : (s + "."))
                 .collect(joining(" "));
     }
 
