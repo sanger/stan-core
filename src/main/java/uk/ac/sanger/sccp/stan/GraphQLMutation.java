@@ -100,6 +100,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final LibraryPrepService libraryPrepService;
     final SegmentationService segmentationService;
     final CleanOutService cleanOutService;
+    final RoiMetricService roiMetricService;
     final UserAdminService userAdminService;
 
     @Autowired
@@ -133,7 +134,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            FlagLabwareService flagLabwareService,
                            QCLabwareService qcLabwareService, OrientationService orientationService, SSStudyService ssStudyService,
                            ReactivateService reactivateService, LibraryPrepService libraryPrepService,
-                           SegmentationService segmentationService, CleanOutService cleanOutService,
+                           SegmentationService segmentationService, CleanOutService cleanOutService, RoiMetricService roiMetricService,
                            UserAdminService userAdminService) {
         super(objectMapper, authComp, userRepo);
         this.authService = authService;
@@ -195,6 +196,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.libraryPrepService = libraryPrepService;
         this.segmentationService = segmentationService;
         this.cleanOutService = cleanOutService;
+        this.roiMetricService = roiMetricService;
         this.userAdminService = userAdminService;
     }
 
@@ -894,6 +896,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             CleanOutRequest request = arg(dfe, "request", CleanOutRequest.class);
             logRequest("Clean out", user, request);
             return cleanOutService.perform(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> recordSampleMetrics() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            SampleMetricsRequest request = arg(dfe, "request", SampleMetricsRequest.class);
+            logRequest("recordSampleMetrics", user, request);
+            return roiMetricService.perform(user, request);
         };
     }
 

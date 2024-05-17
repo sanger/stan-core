@@ -1906,6 +1906,28 @@ input CleanOutRequest {
     workNumber: String!
 }
 
+"""A key and value about a region of interest."""
+input SampleMetric {
+    """The region of interest for this metric."""
+    roi: String!
+    """The name of the metric."""
+    name: String!
+    """The value of the metric."""
+    value: String!
+}
+
+"""A request to save metrics."""
+input SampleMetricsRequest {
+    """The name of the operation to record."""
+    operationType: String!
+    """The labware barcode."""
+    barcode: String!
+    """The work number to link to the operation."""
+    workNumber: String!
+    """The metrics to save."""
+    metrics: [SampleMetric!]!
+}
+
 """Info about the app version."""
 type VersionInfo {
     """The output of git describe."""
@@ -2240,6 +2262,8 @@ type Mutation {
     segmentation(request: SegmentationRequest!): OperationResult!
     """Clean out a slot of a labware."""
     cleanOut(request: CleanOutRequest!) : OperationResult!
+    """Record metrics."""
+    recordSampleMetrics(request: SampleMetricsRequest!): OperationResult!
 
     """Create a new user for the application."""
     addUser(username: String!): User!
