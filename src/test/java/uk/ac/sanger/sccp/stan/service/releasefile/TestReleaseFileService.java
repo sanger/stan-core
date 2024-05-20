@@ -1086,6 +1086,41 @@ public class TestReleaseFileService {
         methods.forEach(method -> method.accept(verify(service), entries, slotIds));
     }
 
+    @ParameterizedTest
+    @MethodSource("commentDescOrNullArgs")
+    public void testCommentDescOrNull(OperationComment opcom, ReleaseEntry entry, String expected) {
+        assertEquals(expected, service.commentDescOrNull(opcom, entry));
+    }
+
+    static Stream<Arguments> commentDescOrNullArgs() {
+        Sample sample = EntityFactory.getSample();
+        Labware lw = EntityFactory.makeLabware(EntityFactory.getTubeType(), sample);
+        Slot slot = lw.getFirstSlot();
+        final String shortDesc = "Alpha";
+        final Comment com = new Comment(1, shortDesc, "cat");
+        OperationComment vagueOpCom = new OperationComment(1, com, null, null, null, lw.getId());
+        OperationComment wrongLwOpCom = new OperationComment(1, com, null, null, null, lw.getId()+1);
+        OperationComment ssOpCom = new OperationComment(1, com, null, sample.getId(), slot.getId(), null);
+        OperationComment wrongSampleOpCom = new OperationComment(1, com, null, sample.getId()+1, slot.getId(), null);
+        OperationComment wrongSlotOpCom = new OperationComment(1, com, null, sample.getId(), slot.getId()+1, null);
+
+        String fullDesc = String.format("(A1 %s): Alpha", sample.getId());
+
+        return Arrays.stream(new Object[][] {
+                {vagueOpCom, new ReleaseEntry(lw, null, null), shortDesc},
+                {vagueOpCom, new ReleaseEntry(lw, slot, sample), shortDesc},
+                {wrongLwOpCom, new ReleaseEntry(lw, null, null), null},
+                {wrongLwOpCom, new ReleaseEntry(lw, slot, sample), null},
+                {ssOpCom, new ReleaseEntry(lw, null, null), fullDesc},
+                {ssOpCom, new ReleaseEntry(lw, slot, sample), shortDesc},
+                {ssOpCom, new ReleaseEntry(lw, slot, null), fullDesc},
+                {ssOpCom, new ReleaseEntry(lw, null, sample), fullDesc},
+                {wrongSampleOpCom, new ReleaseEntry(lw, null, sample), null},
+                {wrongSampleOpCom, new ReleaseEntry(lw, slot, sample), null},
+                {wrongSlotOpCom, new ReleaseEntry(lw, slot, sample), null},
+        }).map(Arguments::of);
+    }
+
     @Test
     public void testLoadProbeHybridisation() {
         OperationType opType = EntityFactory.makeOperationType("Probe hybridisation Xenium", null);

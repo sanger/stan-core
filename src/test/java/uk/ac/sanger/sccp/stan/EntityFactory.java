@@ -127,6 +127,14 @@ public class EntityFactory {
         return sample;
     }
 
+    public static Sample[] makeSamples(int n) {
+        final Tissue tissue = getTissue();
+        final BioState bs = getBioState();
+        return IntStream.range(0, n)
+                .mapToObj(i -> new Sample(++idCounter, null, tissue, bs))
+                .toArray(Sample[]::new);
+    }
+
     public static Medium getMedium() {
         if (medium==null) {
             medium = new Medium(160, "Butter");

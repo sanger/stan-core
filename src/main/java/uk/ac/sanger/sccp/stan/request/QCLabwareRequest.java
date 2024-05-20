@@ -1,5 +1,7 @@
 package uk.ac.sanger.sccp.stan.request;
 
+import uk.ac.sanger.sccp.stan.model.Address;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
@@ -23,14 +25,17 @@ public class QCLabwareRequest {
         private String workNumber;
         private LocalDateTime completion;
         private List<Integer> comments = List.of();
+        private List<QCSampleComment> sampleComments = List.of();
 
         public QCLabware() {}
 
-        public QCLabware(String barcode, String workNumber, LocalDateTime completion, List<Integer> comments) {
+        public QCLabware(String barcode, String workNumber, LocalDateTime completion, List<Integer> comments,
+                         List<QCSampleComment> sampleComments) {
             setBarcode(barcode);
             setWorkNumber(workNumber);
             setCompletion(completion);
             setComments(comments);
+            setSampleComments(sampleComments);
         }
 
         /**
@@ -77,9 +82,18 @@ public class QCLabwareRequest {
             this.comments = nullToEmpty(comments);
         }
 
+        /* Zero or more comments on individual samples in particular slots. */
+        public List<QCSampleComment> getSampleComments() {
+            return this.sampleComments;
+        }
+
+        public void setSampleComments(List<QCSampleComment> sampleComments) {
+            this.sampleComments = nullToEmpty(sampleComments);
+        }
+
         @Override
         public String toString() {
-            return String.format("(%s, %s, %s, %s)", repr(barcode), repr(workNumber), completion, comments);
+            return String.format("(%s, %s, %s, %s, %s)", repr(barcode), repr(workNumber), completion, comments, sampleComments);
         }
 
         @Override
@@ -90,12 +104,80 @@ public class QCLabwareRequest {
             return (Objects.equals(this.barcode, that.barcode)
                     && Objects.equals(this.workNumber, that.workNumber)
                     && Objects.equals(this.completion, that.completion)
-                    && Objects.equals(this.comments, that.comments));
+                    && Objects.equals(this.comments, that.comments)
+                    && Objects.equals(this.sampleComments, that.sampleComments)
+            );
         }
 
         @Override
         public int hashCode() {
             return (barcode==null ? 0 : barcode.hashCode());
+        }
+    }
+
+    /**
+     * A comment on a particular sample in a particular slot.
+     */
+    public static class QCSampleComment {
+        private Address address;
+        private Integer sampleId;
+        private Integer commentId;
+
+        // deserialisation constructor
+        public QCSampleComment() {}
+
+        public QCSampleComment(Address address, Integer sampleId, Integer commentId) {
+            this.address = address;
+            this.sampleId = sampleId;
+            this.commentId = commentId;
+        }
+
+        /** The address of the slot. */
+        public Address getAddress() {
+            return this.address;
+        }
+
+        public void setAddress(Address address) {
+            this.address = address;
+        }
+
+        /** The ID of the sample. */
+        public Integer getSampleId() {
+            return this.sampleId;
+        }
+
+        public void setSampleId(Integer sampleId) {
+            this.sampleId = sampleId;
+        }
+
+        /** The ID of the comment. */
+        public Integer getCommentId() {
+            return this.commentId;
+        }
+
+        public void setCommentId(Integer commentId) {
+            this.commentId = commentId;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("(%s %s: %s)", address, sampleId, commentId);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || o.getClass() != this.getClass()) return false;
+            QCSampleComment that = (QCSampleComment) o;
+            return (Objects.equals(this.address, that.address)
+                    && Objects.equals(this.sampleId, that.sampleId)
+                    && Objects.equals(this.commentId, that.commentId)
+            );
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(address, sampleId, commentId);
         }
     }
     // endregion

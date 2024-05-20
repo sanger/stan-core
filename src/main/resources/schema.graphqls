@@ -1790,6 +1790,38 @@ input AnalyserRequest {
     cellSegmentationLot: String
 }
 
+"""A region of interest for a sample in an operation."""
+type Roi {
+    """The id of the slot."""
+    slotId: Int!
+    """The address of the slot."""
+    address: Address!
+    """The id of the sample."""
+    sampleId: Int!
+    """The id of the operation in which the ROI was recorded."""
+    operationId: Int!
+    """The description of the region of interest."""
+    roi: String!
+}
+
+"""The regions of interest recorded in a particular labware."""
+type LabwareRoi {
+    """The barcode of the labware."""
+    barcode: String!
+    """The regions of interest recorded in the labware, if any."""
+    rois: [Roi!]!
+}
+
+"""A comment on a particular sample in a particular slot."""
+input QCSampleComment {
+    """The address of the slot."""
+    address: Address!
+    """The ID of the sample."""
+    sampleId: Int!
+    """The ID of the comment."""
+    commentId: Int!
+}
+
 """Labware to be QC'd with comments and a completion time."""
 input QCLabware {
     """The barcode of the labware."""
@@ -1800,6 +1832,16 @@ input QCLabware {
     completion: Timestamp
     """Zero or more comments applied to this labware in this operation."""
     comments: [Int!]!
+    """Zero or more comments on individual samples in particular slots."""
+    sampleComments: [QCSampleComment!]
+}
+
+"""Request to record QC and completion time for one or more labware."""
+input QCLabwareRequest {
+    """The name of the operation to record."""
+    operationType: String!
+    """The specifications of labware to QC."""
+    labware: [QCLabware!]!
 }
 
 """Raise a flag on a piece of labware."""
@@ -1810,14 +1852,6 @@ input FlagLabwareRequest {
     description: String!
     """Work number to link to the flag."""
     workNumber: String
-}
-
-"""Request to record QC and completion time for one or more labware."""
-input QCLabwareRequest {
-    """The name of the operation to record."""
-    operationType: String!
-    """The specifications of labware to QC."""
-    labware: [QCLabware!]!
 }
 
 """Record the orientation state of labware."""
@@ -1870,6 +1904,28 @@ input CleanOutRequest {
     addresses: [Address!]!
     """The work number to link to the operation."""
     workNumber: String!
+}
+
+"""A key and value about a region of interest."""
+input SampleMetric {
+    """The region of interest for this metric."""
+    roi: String!
+    """The name of the metric."""
+    name: String!
+    """The value of the metric."""
+    value: String!
+}
+
+"""A request to save metrics."""
+input SampleMetricsRequest {
+    """The name of the operation to record."""
+    operationType: String!
+    """The labware barcode."""
+    barcode: String!
+    """The work number to link to the operation."""
+    workNumber: String!
+    """The metrics to save."""
+    metrics: [SampleMetric!]!
 }
 
 """Info about the app version."""
@@ -2010,6 +2066,8 @@ type Query {
     labwareFlagDetails(barcodes: [String!]!): [FlagDetail!]!
     """Get named measurement values for each slot from the indicated labware or its parent labware."""
     measurementValueFromLabwareOrParent(barcode: String!, name: String!): [AddressString!]!
+    """Get regions of interest in the indicated labware."""
+    rois(barcodes: [String!]!): [LabwareRoi!]!
 
     """Get the specified storage location."""
     location(locationBarcode: String!): Location!
@@ -2204,6 +2262,8 @@ type Mutation {
     segmentation(request: SegmentationRequest!): OperationResult!
     """Clean out a slot of a labware."""
     cleanOut(request: CleanOutRequest!) : OperationResult!
+    """Record metrics."""
+    recordSampleMetrics(request: SampleMetricsRequest!): OperationResult!
 
     """Create a new user for the application."""
     addUser(username: String!): User!

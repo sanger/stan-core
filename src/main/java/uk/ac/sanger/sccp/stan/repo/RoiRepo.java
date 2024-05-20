@@ -8,5 +8,7 @@ import java.util.Collection;
 import java.util.List;
 
 public interface RoiRepo extends CrudRepository<Roi, SlotIdSampleIdOpId> {
-    List<Roi> findAllByOperationIdIn(Collection<Integer> opId);
+    List<Roi> findAllByOperationIdIn(Collection<Integer> opIds);
+
+    List<Roi> findAllBySlotIdIn(Collection<Integer> slotIds);
 }

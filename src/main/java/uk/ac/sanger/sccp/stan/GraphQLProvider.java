@@ -116,6 +116,7 @@ public class GraphQLProvider {
                         .dataFetcher("cleanedOutAddresses", graphQLDataFetchers.cleanedOutAddresses())
                         .dataFetcher("labwareFlagDetails", graphQLDataFetchers.getFlagDetails())
                         .dataFetcher("measurementValueFromLabwareOrParent", graphQLDataFetchers.getMeasurementValueFromLabwareOrParent())
+                        .dataFetcher("rois", graphQLDataFetchers.labwareRois())
 
                         .dataFetcher("users", graphQLDataFetchers.getUsers())
                         .dataFetcher("planData", graphQLDataFetchers.getPlanData())
@@ -226,6 +227,7 @@ public class GraphQLProvider {
                         .dataFetcher("libraryPrep", graphQLMutation.libraryPrep()) // internal transaction
                         .dataFetcher("segmentation", transact(graphQLMutation.segmentation()))
                         .dataFetcher("cleanOut", transact(graphQLMutation.cleanOut()))
+                        .dataFetcher("recordSampleMetrics", transact(graphQLMutation.recordSampleMetrics()))
 
                         .dataFetcher("addUser", transact(graphQLMutation.addUser()))
                         .dataFetcher("setUserRole", transact(graphQLMutation.setUserRole()))

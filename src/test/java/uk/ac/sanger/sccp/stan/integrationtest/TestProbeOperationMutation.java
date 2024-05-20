@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGet;
+import static uk.ac.sanger.sccp.utils.BasicUtils.stream;
 
 /**
  * Tests recordProbeOperation mutation
@@ -48,6 +49,8 @@ public class TestProbeOperationMutation {
     LabwareNoteRepo lwNoteRepo;
     @Autowired
     private EquipmentRepo equipmentRepo;
+    @Autowired
+    private RoiMetricRepo roiMetricRepo;
 
     @Test
     @Transactional
@@ -74,14 +77,14 @@ public class TestProbeOperationMutation {
         assertEquals(opType, op.getOperationType());
         List<LabwareProbe> lwProbes = lwProbeRepo.findAllByOperationIdIn(List.of(opId));
         assertThat(lwProbes).hasSize(2);
-        if (lwProbes.get(0).getProbePanel().getName().equals("probe2")) {
+        if (lwProbes.getFirst().getProbePanel().getName().equals("probe2")) {
             lwProbes = IntStream.of(lwProbes.size()-1,-1,-1).mapToObj(lwProbes::get).collect(toList());
         }
         for (LabwareProbe lwp : lwProbes) {
             assertEquals(opId, lwp.getOperationId());
             assertEquals(lw.getId(), lwp.getLabwareId());
         }
-        LabwareProbe lwp = lwProbes.get(0);
+        LabwareProbe lwp = lwProbes.getFirst();
         assertEquals("probe1", lwp.getProbePanel().getName());
         assertEquals(1, lwp.getPlex());
         assertEquals("LOT1", lwp.getLotNumber());
@@ -94,6 +97,7 @@ public class TestProbeOperationMutation {
 
         testCompletion(lw, work, sample);
         testAnalyser(lw, work, sample);
+        testSampleMetrics(lw, work);
     }
 
     private void testCompletion(Labware lw, Work work, Sample sample) throws Exception {
@@ -108,7 +112,7 @@ public class TestProbeOperationMutation {
         assertEquals(opType, op.getOperationType());
         List<OperationComment> opcoms = opComRepo.findAllByOperationIdIn(List.of(opId));
         assertThat(opcoms).hasSize(1);
-        OperationComment opcom = opcoms.get(0);
+        OperationComment opcom = opcoms.getFirst();
         assertEquals(lw.getFirstSlot().getId(), opcom.getSlotId());
         assertEquals(sample.getId(), opcom.getSampleId());
         assertEquals(1, opcom.getComment().getId());
@@ -144,5 +148,33 @@ public class TestProbeOperationMutation {
         Operation op = opRepo.findById(opId).orElseThrow();
         assertEquals(op.getEquipment(), equipment);
 
+    }
+
+    private void testSampleMetrics(Labware lw, Work work) throws Exception {
+        entityCreator.createOpType("Xenium metrics", null, OperationTypeFlag.IN_PLACE);
+        String mutation = tester.readGraphQL("recordsamplemetrics.graphql")
+                .replace("BC", lw.getBarcode())
+                .replace("WORK", work.getWorkNumber());
+        Object result = tester.post(mutation);
+        assertEquals(lw.getBarcode(), chainGet(result, "data", "recordSampleMetrics", "labware", 0, "barcode"));
+        Integer opId = chainGet(result, "data", "recordSampleMetrics", "operations", 0, "id");
+        assertNotNull(opId);
+        List<RoiMetric> roiMetrics = stream(roiMetricRepo.findAll())
+                .filter(rm -> rm.getOperationId().equals(opId))
+                .toList();
+        assertThat(roiMetrics).hasSize(2);
+        if (roiMetrics.getFirst().getName().equalsIgnoreCase("N2")) {
+            roiMetrics = roiMetrics.reversed();
+        }
+        for (int i = 0; i < roiMetrics.size(); i++) {
+            int j = i+1;
+            RoiMetric rm = roiMetrics.get(i);
+            assertNotNull(rm.getId());
+            assertEquals(opId, rm.getOperationId());
+            assertEquals(lw.getId(), rm.getLabwareId());
+            assertEquals("roi1", rm.getRoi());
+            assertEquals("n"+j, rm.getName());
+            assertEquals("v"+j, rm.getValue());
+        }
     }
 }

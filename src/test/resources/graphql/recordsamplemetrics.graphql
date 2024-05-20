@@ -1,0 +1,23 @@
+mutation {
+    recordSampleMetrics(request: {
+        barcode: "BC"
+        workNumber: "WORK"
+        operationType: "Xenium metrics"
+        metrics: [{
+            roi: "ROI1"
+            name: "n1"
+            value: "v1"
+        },{
+            roi: "roi1"
+            name: "n2"
+            value: "v2"
+        }]
+    }) {
+        operations {
+            id
+        }
+        labware {
+            barcode
+        }
+    }
+}

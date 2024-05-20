@@ -1,0 +1,51 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <changeSet id="2.43.0" author="dr6">
+        <createIndex tableName="roi" indexName="ix_roi_roi" unique="false">
+            <column name="roi"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="2.43.1" author="dr6">
+        <createTable tableName="roi_metric">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="labware_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_roi_metric_labware" referencedTableName="labware" referencedColumnNames="id"/>
+            </column>
+            <column name="operation_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_roi_metric_operation" referencedTableName="operation" referencedColumnNames="id"/>
+            </column>
+            <column name="roi" type="VARCHAR(64)">
+                <constraints nullable="false" foreignKeyName="fk_roi_metric_roi" referencedTableName="roi" referencedColumnNames="roi"/>
+            </column>
+            <column name="name" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="value" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="deprecated" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="roi_metric" indexName="ix_roi_metric_name" unique="false">
+            <column name="name"/>
+        </createIndex>
+        <rollback>
+            <dropAllForeignKeyConstraints baseTableName="roi_metric"/>
+            <dropTable tableName="roi_metric"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
