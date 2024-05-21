@@ -597,7 +597,7 @@ public class ReleaseFileService {
                 continue;
             }
             entry.setHybridEnd(op.getPerformed());
-            if (!nullOrEmpty(opIdComs)) {
+            if (!nullOrEmpty(opIdComs.get(op.getId()))) {
                 String comment = joinComments(opIdComs.get(op.getId()).stream()
                         .filter(oc -> lwId.equals(oc.getLabwareId())));
                 if (!nullOrEmpty(comment)) {

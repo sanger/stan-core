@@ -58,7 +58,10 @@ public class ReleaseFileController {
         }
         EnumSet<ReleaseFileOption> options = EnumSet.noneOf(ReleaseFileOption.class);
         for (String groupName : groupNames) {
-            options.add(ReleaseFileOption.forParameterName(groupName));
+            // Handle slightly malformed urls with empty group names
+            if (!groupName.isEmpty()) {
+                options.add(ReleaseFileOption.forParameterName(groupName));
+            }
         }
         return options;
     }
