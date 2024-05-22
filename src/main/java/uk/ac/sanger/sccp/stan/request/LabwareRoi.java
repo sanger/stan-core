@@ -1,6 +1,7 @@
 package uk.ac.sanger.sccp.stan.request;
 
 import uk.ac.sanger.sccp.stan.model.Address;
+import uk.ac.sanger.sccp.stan.model.Sample;
 
 import java.util.List;
 import java.util.Objects;
@@ -72,28 +73,28 @@ public class LabwareRoi {
     public static class RoiResult {
         private Integer slotId;
         private Address address;
-        private Integer sampleId;
+        private Sample sample;
         private Integer operationId;
         private String roi;
 
         // Deserialisation constructor
         public RoiResult() {}
 
-        public RoiResult(Integer slotId, Address address, Integer sampleId, Integer operationId, String roi) {
-            this.sampleId = sampleId;
+        public RoiResult(Integer slotId, Address address, Sample sample, Integer operationId, String roi) {
             this.slotId = slotId;
             this.address = address;
+            this.sample = sample;
             this.operationId = operationId;
             this.roi = roi;
         }
 
-        /** The id of the sample. */
-        public Integer getSampleId() {
-            return this.sampleId;
+        /** The sample in the ROI */
+        public Sample getSample() {
+            return this.sample;
         }
 
-        public void setSampleId(Integer sampleId) {
-            this.sampleId = sampleId;
+        public void setSample(Sample sample) {
+            this.sample = sample;
         }
 
         /** The id of the slot. */
@@ -135,7 +136,7 @@ public class LabwareRoi {
         @Override
         public String toString() {
             return describe(this)
-                    .add("sampleId", sampleId)
+                    .add("sample", sample==null ? "null": "["+sample.getId()+"]")
                     .add("slotId", slotId)
                     .add("address", address)
                     .add("operationId", operationId)
@@ -148,7 +149,7 @@ public class LabwareRoi {
             if (this == o) return true;
             if (o == null || o.getClass() != this.getClass()) return false;
             RoiResult that = (RoiResult) o;
-            return (Objects.equals(this.sampleId, that.sampleId)
+            return (Objects.equals(this.sample, that.sample)
                     && Objects.equals(this.slotId, that.slotId)
                     && Objects.equals(this.address, that.address)
                     && Objects.equals(this.operationId, that.operationId)
@@ -158,7 +159,7 @@ public class LabwareRoi {
 
         @Override
         public int hashCode() {
-            return Objects.hash(sampleId, slotId, address, operationId, roi);
+            return Objects.hash(sample, slotId, address, operationId, roi);
         }
     }
 }
