@@ -1796,8 +1796,8 @@ type Roi {
     slotId: Int!
     """The address of the slot."""
     address: Address!
-    """The id of the sample."""
-    sampleId: Int!
+    """The sample in the ROI."""
+    sample: Sample!
     """The id of the operation in which the ROI was recorded."""
     operationId: Int!
     """The description of the region of interest."""
