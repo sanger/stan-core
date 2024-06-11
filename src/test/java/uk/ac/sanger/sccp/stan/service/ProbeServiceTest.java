@@ -48,6 +48,8 @@ public class ProbeServiceTest {
     @Mock
     private LabwareProbeRepo mockLwProbeRepo;
     @Mock
+    private LabwareNoteRepo mockNoteRepo;
+    @Mock
     private OperationService mockOpService;
     @Mock
     private WorkService mockWorkService;
@@ -87,6 +89,7 @@ public class ProbeServiceTest {
         UCMap<ProbePanel> ppMap = UCMap.from(ProbePanel::getName, new ProbePanel("bananas"));
         doReturn(ppMap).when(service).validateProbes(any(), any());
         doNothing().when(service).validateTimestamp(any(), any(), any());
+        doNothing().when(service).checkKitCostings(any(), any());
 
         if (nullOrEmpty(expectedProblems)) {
             OperationResult opres = new OperationResult(List.of(), List.of(lw));
@@ -117,6 +120,7 @@ public class ProbeServiceTest {
                 .map(ProbeOperationLabware::getWorkNumber)
                 .collect(toList())));
         verify(service).validateProbes(any(), eq(pols));
+        verify(service).checkKitCostings(any(), eq(pols));
         if (request.getPerformed()==null) {
             verify(service, never()).validateTimestamp(any(), any(), any());
         } else {
@@ -135,11 +139,12 @@ public class ProbeServiceTest {
         UCMap<ProbePanel> ppMap = UCMap.from(ProbePanel::getName, new ProbePanel("pp1"));
         doAnswer(addProblem("Bad probe", ppMap)).when(service).validateProbes(any(), any());
         doAnswer(addProblem("Bad time")).when(service).validateTimestamp(any(), any(), any());
+        doAnswer(addProblem("Bad costing")).when(service).checkKitCostings(any(), any());
         User user = EntityFactory.getUser();
         ProbeOperationRequest request = new ProbeOperationRequest("optype", LocalDateTime.now(),
-                List.of(new ProbeOperationLabware("Alpha", "Beta", List.of())));
+                List.of(new ProbeOperationLabware("Alpha", "Beta", SlideCosting.SGP, List.of())));
         Matchers.assertValidationException(() -> service.recordProbeOperation(user, request),
-                List.of("Bad labware", "Bad op type", "Bad work", "Bad probe", "Bad time"));
+                List.of("Bad labware", "Bad op type", "Bad work", "Bad probe", "Bad time", "Bad costing"));
         ArgumentCaptor<Stream<String>> streamCaptor = Matchers.streamCaptor();
         verify(service).validateLabware(any(), streamCaptor.capture());
         assertThat(streamCaptor.getValue()).containsExactly("Alpha");
@@ -147,13 +152,14 @@ public class ProbeServiceTest {
         verify(mockWorkService).validateUsableWorks(any(), eq(List.of("Beta")));
         verify(service).validateProbes(any(), same(request.getLabware()));
         verify(service).validateTimestamp(any(), same(request.getPerformed()), same(lwMap));
+        verify(service).checkKitCostings(any(), same(request.getLabware()));
         verify(service, never()).perform(any(), any(), any(), any(), any(), any(), any());
     }
 
     static Stream<Arguments> recordProbeOperationArgs() {
         User user = EntityFactory.getUser();
         ProbeOperationRequest emptyRequest = new ProbeOperationRequest();
-        ProbeOperationLabware pol = new ProbeOperationLabware("STAN-A1", "SGP-1", List.of());
+        ProbeOperationLabware pol = new ProbeOperationLabware("STAN-A1", "SGP-1", SlideCosting.SGP, List.of());
         LocalDateTime time = LocalDateTime.now();
         ProbeOperationRequest completeRequest = new ProbeOperationRequest("optype", time, List.of(pol));
         return Arrays.stream(new Object[][] {
@@ -231,13 +237,33 @@ public class ProbeServiceTest {
         assertProblem(problems, expectedProblem);
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testCheckKitCostings(boolean anyMissing) {
+        List<SlideCosting> costings;
+        String expectedProblem;
+        if (anyMissing) {
+            costings = Arrays.asList(SlideCosting.SGP, SlideCosting.Faculty, null, SlideCosting.SGP, null);
+            expectedProblem = "Missing kit costing for labware.";
+        } else {
+            costings = List.of(SlideCosting.SGP, SlideCosting.Faculty, SlideCosting.SGP);
+            expectedProblem = null;
+        }
+        List<ProbeOperationLabware> pols = costings.stream()
+                .map(costing -> new ProbeOperationLabware(null, null, costing, null))
+                .toList();
+        List<String> problems = new ArrayList<>(anyMissing ? 1 : 0);
+        service.checkKitCostings(problems, pols);
+        assertProblem(problems, expectedProblem);
+    }
+
     @Test
     public void testValidateProbes() {
         List<ProbeOperationLabware> pols = List.of(
-                new ProbeOperationLabware("BC1", "SGP1",
+                new ProbeOperationLabware("BC1", "SGP1", SlideCosting.SGP,
                         List.of(new ProbeLot("p1", "lot1", 1, SlideCosting.SGP),
                                 new ProbeLot("p2", "lot2", 2, SlideCosting.SGP))),
-                new ProbeOperationLabware("BC2", "SGP2",
+                new ProbeOperationLabware("BC2", "SGP2", SlideCosting.Faculty,
                         List.of(new ProbeLot("p2", "lot3", 3, SlideCosting.Faculty),
                                 new ProbeLot("p3", "lot4", 4, SlideCosting.SGP)))
         );
@@ -258,9 +284,9 @@ public class ProbeServiceTest {
     @Test
     public void testValidateNoProbes() {
         List<ProbeOperationLabware> pols = List.of(
-                new ProbeOperationLabware("BC1", "SGP1",
+                new ProbeOperationLabware("BC1", "SGP1", SlideCosting.SGP,
                         List.of(new ProbeLot("p1", "lot1", 1, SlideCosting.Faculty))),
-                new ProbeOperationLabware("BC2", "SGP2",
+                new ProbeOperationLabware("BC2", "SGP2", SlideCosting.Faculty,
                         List.of())
         );
         List<ProbePanel> probes = List.of(new ProbePanel(1, "p1"));
@@ -285,7 +311,7 @@ public class ProbeServiceTest {
             "p1, lot2, 2, , Probe costing is missing.",
     })
     public void testValidateProbes_problems(String probeName, String lot, Integer plex, SlideCosting costing, String expectedProblem) {
-        ProbeOperationLabware pol = new ProbeOperationLabware("BC", "SGP1",
+        ProbeOperationLabware pol = new ProbeOperationLabware("BC", "SGP1", SlideCosting.SGP,
                 List.of(new ProbeLot(probeName, lot, plex, costing)));
         when(mockProbeLotValidator.validate(any(), any())).then(invocation -> {
             String lotArg = invocation.getArgument(0);
@@ -350,6 +376,7 @@ public class ProbeServiceTest {
         doReturn(lwOps).when(service).makeOps(any(), any(), any(), any(), any());
         doNothing().when(service).linkWork(any(), any(), any());
         doNothing().when(service).saveProbes(any(), any(), any(), any());
+        doNothing().when(service).saveKitCostings(any(), any(), any());
         OperationResult opres = new OperationResult(List.of(), List.of());
         doReturn(opres).when(service).assembleResult(any(), any(), any());
 
@@ -357,6 +384,7 @@ public class ProbeServiceTest {
         verify(service).makeOps(user, opType, pols, lwMap, time);
         verify(service).linkWork(pols, lwOps, workMap);
         verify(service).saveProbes(pols, lwOps, lwMap, ppMap);
+        verify(service).saveKitCostings(pols, lwMap, lwOps);
         verify(service).assembleResult(pols, lwMap, lwOps);
     }
 
@@ -366,8 +394,8 @@ public class ProbeServiceTest {
         User user = EntityFactory.getUser();
         OperationType optype = EntityFactory.makeOperationType("opname", null);
         List<ProbeOperationLabware> pols = List.of(
-                new ProbeOperationLabware("STAN-1", null, null),
-                new ProbeOperationLabware("STAN-2", null, null)
+                new ProbeOperationLabware("STAN-1", null, SlideCosting.SGP, null),
+                new ProbeOperationLabware("STAN-2", null, SlideCosting.Faculty, null)
         );
         LabwareType lt = EntityFactory.getTubeType();
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, EntityFactory.makeEmptyLabware(lt, "STAN-1"),
@@ -398,9 +426,9 @@ public class ProbeServiceTest {
     @Test
     public void testLinkWork() {
         List<ProbeOperationLabware> pols = List.of(
-                new ProbeOperationLabware("STAN-1", "SGP1", null),
-                new ProbeOperationLabware("STAN-2", "SGP1", null),
-                new ProbeOperationLabware("STAN-3", "SGP2", null)
+                new ProbeOperationLabware("STAN-1", "SGP1", SlideCosting.SGP, null),
+                new ProbeOperationLabware("STAN-2", "SGP1", SlideCosting.SGP, null),
+                new ProbeOperationLabware("STAN-3", "SGP2", SlideCosting.Faculty, null)
         );
         Operation[] ops = IntStream.range(1, 4)
                 .mapToObj(i -> {
@@ -424,13 +452,42 @@ public class ProbeServiceTest {
     }
 
     @Test
+    public void testSaveKitCostings() {
+        LabwareType lt = EntityFactory.getTubeType();
+        Labware lw1 = EntityFactory.makeEmptyLabware(lt);
+        Labware lw2 = EntityFactory.makeEmptyLabware(lt);
+        UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lw1, lw2);
+        Operation op1 = new Operation();
+        op1.setId(501);
+        Operation op2 = new Operation();
+        op2.setId(502);
+        UCMap<Operation> opMap = new UCMap<>(2);
+        opMap.put(lw1.getBarcode(), op1);
+        opMap.put(lw2.getBarcode(), op2);
+        final String noteName = ProbeServiceImp.KIT_COSTING_NAME;
+
+        List<ProbeOperationLabware> pols = List.of(
+                new ProbeOperationLabware(lw1.getBarcode(), null, SlideCosting.SGP, null),
+                new ProbeOperationLabware(lw2.getBarcode(), null, SlideCosting.Faculty, null)
+        );
+
+        service.saveKitCostings(pols, lwMap, opMap);
+
+        List<LabwareNote> expectedNotes = List.of(
+                new LabwareNote(null, lw1.getId(), op1.getId(), noteName, "SGP"),
+                new LabwareNote(null, lw2.getId(), op2.getId(), noteName, "Faculty")
+        );
+        verify(mockNoteRepo).saveAll(expectedNotes);
+    }
+
+    @Test
     public void testSaveProbes() {
         List<ProbeOperationLabware> pols = List.of(
-                new ProbeOperationLabware("STAN-1", null, List.of(
+                new ProbeOperationLabware("STAN-1", null, SlideCosting.Faculty, List.of(
                         new ProbeLot("probe1", "lot1", 1, SlideCosting.SGP),
                         new ProbeLot("probe2", "lot2", 2, SlideCosting.SGP)
                 )),
-                new ProbeOperationLabware("STAN-2", null, List.of(
+                new ProbeOperationLabware("STAN-2", null, SlideCosting.SGP, List.of(
                         new ProbeLot("probe1", "lot3", 3, SlideCosting.Faculty)
                 ))
         );
@@ -466,8 +523,8 @@ public class ProbeServiceTest {
         Labware[] labware = { EntityFactory.makeEmptyLabware(lt, "STAN-1"), EntityFactory.makeEmptyLabware(lt, "STAN-2")};
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, labware);
         List<ProbeOperationLabware> pols = List.of(
-                new ProbeOperationLabware("STAN-1", null, null),
-                new ProbeOperationLabware("STAN-2", null, null)
+                new ProbeOperationLabware("STAN-1", null, SlideCosting.SGP, null),
+                new ProbeOperationLabware("STAN-2", null, SlideCosting.Faculty, null)
         );
         Operation[] ops = { new Operation(), new Operation()};
         ops[0].setId(1);

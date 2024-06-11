@@ -23,13 +23,15 @@ public class ProbeOperationRequest {
     public static class ProbeOperationLabware {
         private String barcode;
         private String workNumber;
+        private SlideCosting kitCosting;
         private List<ProbeLot> probes = List.of();
 
         public ProbeOperationLabware() {}
 
-        public ProbeOperationLabware(String barcode, String workNumber, List<ProbeLot> probes) {
+        public ProbeOperationLabware(String barcode, String workNumber, SlideCosting kitCosting, List<ProbeLot> probes) {
             setBarcode(barcode);
             setWorkNumber(workNumber);
+            setKitCosting(kitCosting);
             setProbes(probes);
         }
 
@@ -56,6 +58,15 @@ public class ProbeOperationRequest {
             this.workNumber = workNumber;
         }
 
+        /** The costing for the kit used on this labware. */
+        public SlideCosting getKitCosting() {
+            return this.kitCosting;
+        }
+
+        public void setKitCosting(SlideCosting kitCosting) {
+            this.kitCosting = kitCosting;
+        }
+
         /**
          * The probes used on this labware.
          */
@@ -73,8 +84,10 @@ public class ProbeOperationRequest {
             if (o == null || getClass() != o.getClass()) return false;
             ProbeOperationLabware that = (ProbeOperationLabware) o;
             return (Objects.equals(this.barcode, that.barcode)
+                    && Objects.equals(this.workNumber, that.workNumber)
+                    && this.kitCosting==that.kitCosting
                     && Objects.equals(this.probes, that.probes)
-                    && Objects.equals(this.workNumber, that.workNumber));
+            );
         }
 
         @Override
@@ -84,7 +97,7 @@ public class ProbeOperationRequest {
 
         @Override
         public String toString() {
-            return String.format("(%s, workNumber: %s, probes: %s)", repr(barcode), repr(workNumber), probes);
+            return String.format("(%s, %s, workNumber: %s, probes: %s)", repr(barcode), kitCosting, repr(workNumber), probes);
         }
     }
 
@@ -99,6 +112,7 @@ public class ProbeOperationRequest {
 
         private SlideCosting costing;
 
+        // Deserialisation constructor
         public ProbeLot() {}
 
         public ProbeLot(String name, String lot, Integer plex, SlideCosting costing) {
