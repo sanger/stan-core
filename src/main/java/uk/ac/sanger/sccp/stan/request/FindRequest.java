@@ -21,9 +21,11 @@ public class FindRequest {
     private String labwareTypeName;
     private LocalDate createdMin;
     private LocalDate createdMax;
+    private String species;
 
     private int maxRecords = -1;
 
+    // deserialisation constructor
     public FindRequest() {}
 
     public FindRequest(String labwareBarcode, List<String> donorNames, List<String> tissueExternalNames, String tissueTypeName,
@@ -154,6 +156,14 @@ public class FindRequest {
         this.createdMax = createdMax;
     }
 
+    public String getSpecies() {
+        return this.species;
+    }
+
+    public void setSpecies(String species) {
+        this.species = species;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -164,8 +174,10 @@ public class FindRequest {
                 && Objects.equals(this.tissueExternalNames, that.tissueExternalNames)
                 && Objects.equals(this.tissueTypeName, that.tissueTypeName)
                 && Objects.equals(this.labwareTypeName, that.labwareTypeName)
-                && this.maxRecords==that.maxRecords)
-                && Objects.equals(this.workNumber, that.workNumber);
+                && this.maxRecords==that.maxRecords
+                && Objects.equals(this.workNumber, that.workNumber)
+                && Objects.equals(this.species, that.species)
+        );
     }
 
     @Override
@@ -185,6 +197,7 @@ public class FindRequest {
                 .add("workNumber", workNumber)
                 .add("createdMin", createdMin)
                 .add("createdMax", createdMax)
+                .add("species", species)
                 .omitNullValues()
                 .reprStringValues()
                 .toString();
