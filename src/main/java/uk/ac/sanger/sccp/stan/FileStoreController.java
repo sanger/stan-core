@@ -16,8 +16,8 @@ import uk.ac.sanger.sccp.stan.model.StanFile;
 import uk.ac.sanger.sccp.stan.model.User;
 import uk.ac.sanger.sccp.stan.service.FileStoreService;
 
-import java.net.URI;
-import java.net.URISyntaxException;
+import java.net.*;
+import java.nio.charset.Charset;
 import java.util.Collection;
 import java.util.List;
 
@@ -55,6 +55,10 @@ public class FileStoreController {
     public ResponseEntity<?> receiveFile(@RequestParam("file") MultipartFile file,
                                          @RequestParam("workNumber") List<String> workNumbers) throws URISyntaxException {
         User user = checkUserForUpload();
+        final Charset cs = Charset.defaultCharset();
+        workNumbers = workNumbers.stream()
+                .map(s -> URLDecoder.decode(s, cs))
+                .toList();
         Collection<StanFile> sfs = asCollection(fileService.save(user, file, workNumbers));
         log.info("Saved files "+sfs);
         StanFile firstSf = sfs.iterator().next();

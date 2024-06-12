@@ -14,6 +14,7 @@ import uk.ac.sanger.sccp.stan.GraphQLTester;
 import uk.ac.sanger.sccp.stan.config.StanFileConfig;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.WorkEventRepo;
+import uk.ac.sanger.sccp.stan.repo.WorkRepo;
 
 import javax.transaction.Transactional;
 import java.io.IOException;
@@ -48,6 +49,8 @@ public class TestFileStore {
     private EntityCreator entityCreator;
     @Autowired
     private WorkEventRepo workEventRepo;
+    @Autowired
+    private WorkRepo workRepo;
 
     private Path directory;
 
@@ -72,6 +75,9 @@ public class TestFileStore {
         Work work = entityCreator.createWork(null, null, null, null, null);
         String workNumber = work.getWorkNumber();
         Work work2 = entityCreator.createWorkLike(work);
+
+        work2.setWorkNumber("R&D44"); // Make sure this works with R&D work numbers
+        workRepo.save(work2);
         String workNumber2 = work2.getWorkNumber();
 
         assertThat(listFiles(workNumber)).isEmpty();
@@ -94,15 +100,15 @@ public class TestFileStore {
         var filesData2 = listFiles(workNumber2);
         assertThat(filesData2).hasSize(1);
         String url1, url1b;
-        if (filesData.get(0).get("url").equals(url)) {
+        if (filesData.getFirst().get("url").equals(url)) {
             url1 = url;
             url1b = nextFileUrl(url);
         } else {
             url1b = url;
             url1 = nextFileUrl(url);
         }
-        assertFileData(filesData.get(0), filename1, url1, username, workNumber);
-        assertFileData(filesData2.get(0), filename1, url1b, username, workNumber2);
+        assertFileData(filesData.getFirst(), filename1, url1, username, workNumber);
+        assertFileData(filesData2.getFirst(), filename1, url1b, username, workNumber2);
 
         String fileContent2 = "Alabama\nAlaska";
         final String filename2 = "stanfile2.txt";
@@ -125,7 +131,7 @@ public class TestFileStore {
         assertEquals(fileContentB, download(url, filename1));
         filesData = listFiles(workNumber);
         assertThat(filesData).hasSize(2);
-        int index0 = filesData.get(0).get("name").equals(filename1) ? 0 : 1;
+        int index0 = filesData.getFirst().get("name").equals(filename1) ? 0 : 1;
 
         assertFileData(filesData.get(index0), filename1, url, username, workNumber);
         assertFileData(filesData.get(1-index0), filename2, url2, username, workNumber);
