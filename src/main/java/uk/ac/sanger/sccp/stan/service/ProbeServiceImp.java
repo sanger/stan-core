@@ -16,7 +16,6 @@ import java.time.*;
 import java.util.*;
 import java.util.stream.Stream;
 
-import static java.util.stream.Collectors.toList;
 import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 /**
@@ -24,12 +23,15 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.*;
  */
 @Service
 public class ProbeServiceImp implements ProbeService {
+    public static final String KIT_COSTING_NAME = "kit costing";
+
     private final LabwareValidatorFactory lwValFac;
     private final LabwareRepo lwRepo;
     private final OperationTypeRepo opTypeRepo;
     private final OperationRepo opRepo;
     private final ProbePanelRepo probePanelRepo;
     private final LabwareProbeRepo lwProbeRepo;
+    private final LabwareNoteRepo noteRepo;
     private final OperationService opService;
     private final WorkService workService;
     private final Validator<String> probeLotValidator;
@@ -37,8 +39,8 @@ public class ProbeServiceImp implements ProbeService {
 
     @Autowired
     public ProbeServiceImp(LabwareValidatorFactory lwValFac,
-                           LabwareRepo lwRepo, OperationTypeRepo opTypeRepo,
-                           OperationRepo opRepo, ProbePanelRepo probePanelRepo, LabwareProbeRepo lwProbeRepo,
+                           LabwareRepo lwRepo, OperationTypeRepo opTypeRepo, OperationRepo opRepo,
+                           ProbePanelRepo probePanelRepo, LabwareProbeRepo lwProbeRepo, LabwareNoteRepo noteRepo,
                            OperationService opService, WorkService workService,
                            @Qualifier("probeLotNumberValidator") Validator<String> probeLotValidator,
                            Clock clock) {
@@ -48,6 +50,7 @@ public class ProbeServiceImp implements ProbeService {
         this.opRepo = opRepo;
         this.probePanelRepo = probePanelRepo;
         this.lwProbeRepo = lwProbeRepo;
+        this.noteRepo = noteRepo;
         this.opService = opService;
         this.workService = workService;
         this.probeLotValidator = probeLotValidator;
@@ -73,8 +76,9 @@ public class ProbeServiceImp implements ProbeService {
         OperationType opType = validateOpType(problems, request.getOperationType());
         List<String> workNumbers = request.getLabware().stream()
                 .map(ProbeOperationLabware::getWorkNumber)
-                .collect(toList());
+                .toList();
         UCMap<Work> work = workService.validateUsableWorks(problems, workNumbers);
+        checkKitCostings(problems, request.getLabware());
         UCMap<ProbePanel> probes = validateProbes(problems, request.getLabware());
         if (request.getPerformed()!=null) {
             validateTimestamp(problems, request.getPerformed(), labware);
@@ -146,6 +150,17 @@ public class ProbeServiceImp implements ProbeService {
     }
 
     /**
+     * Checks that kit costings are supplied in the request
+     * @param problems receptacle for problems
+     * @param pols request details
+     */
+    public void checkKitCostings(Collection<String> problems, Collection<ProbeOperationLabware> pols) {
+        if (pols!=null && pols.stream().anyMatch(pos -> pos.getKitCosting()==null)) {
+            problems.add("Missing kit costing for labware.");
+        }
+    }
+
+    /**
      * Loads and checks the probes indicated in the request, their lot numbers and plexes.
      * @param problems receptacle for problems
      * @param pols the relevant parts of the request
@@ -185,7 +200,7 @@ public class ProbeServiceImp implements ProbeService {
         UCMap<ProbePanel> probes = UCMap.from(probePanelRepo.findAllByNameIn(probeNames), ProbePanel::getName);
         List<String> missingProbeNames = probeNames.stream()
                 .filter(name -> probes.get(name)==null)
-                .collect(toList());
+                .toList();
         if (!missingProbeNames.isEmpty()) {
             problems.add("Unknown probe panels: "+reprCollection(missingProbeNames));
         }
@@ -224,6 +239,7 @@ public class ProbeServiceImp implements ProbeService {
                                    LocalDateTime time, UCMap<Labware> lwMap, UCMap<ProbePanel> probeMap,
                                    UCMap<Work> workMap) {
         UCMap<Operation> lwOps = makeOps(user, opType, pols, lwMap, time);
+        saveKitCostings(pols, lwMap, lwOps);
         linkWork(pols, lwOps, workMap);
         saveProbes(pols, lwOps, lwMap, probeMap);
         return assembleResult(pols, lwMap, lwOps);
@@ -253,6 +269,22 @@ public class ProbeServiceImp implements ProbeService {
             opRepo.saveAll(opMap.values());
         }
         return opMap;
+    }
+
+    /**
+     * Saves the kit costings specified as labware notes
+     * @param pols the request details
+     * @param lwMap the labware mapped from barcode
+     * @param lwOps the operations recorded for each labware
+     */
+    public void saveKitCostings(Collection<ProbeOperationLabware> pols, UCMap<Labware> lwMap, UCMap<Operation> lwOps) {
+        List<LabwareNote> notes = pols.stream()
+                .map(pol -> {
+                    String barcode = pol.getBarcode();
+                    return new LabwareNote(null, lwMap.get(barcode).getId(), lwOps.get(barcode).getId(),
+                            KIT_COSTING_NAME, pol.getKitCosting().name());
+                }).toList();
+        noteRepo.saveAll(notes);
     }
 
     /**

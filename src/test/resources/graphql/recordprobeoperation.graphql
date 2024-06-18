@@ -3,6 +3,7 @@ mutation {
         operationType: "Probe hybridisation Xenium"
         labware: [{
             barcode: "STAN-1"
+            kitCosting: Faculty
             probes: [{
                 name: "probe1"
                 lot: "lot1"
