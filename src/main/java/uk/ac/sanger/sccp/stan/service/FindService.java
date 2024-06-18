@@ -37,6 +37,7 @@ public class FindService {
     private final TissueTypeRepo tissueTypeRepo;
     private final WorkRepo workRepo;
     private final SlotRepo slotRepo;
+
     @Autowired
     public FindService(LabwareService labwareService, StoreService storeService,
                        LabwareRepo labwareRepo, DonorRepo donorRepo, TissueRepo tissueRepo, SampleRepo sampleRepo,
@@ -282,6 +283,11 @@ public class FindService {
         if (!nullOrEmpty(labwareTypeName)) {
             predicate = andPredicate(predicate,
                     ls -> ls.getLabware().getLabwareType().getName().equalsIgnoreCase(labwareTypeName));
+        }
+        final String speciesName = request.getSpecies();
+        if (!nullOrEmpty(speciesName)) {
+            predicate = andPredicate(predicate,
+                    ls -> ls.getSample().getTissue().getDonor().getSpecies().getName().equalsIgnoreCase(speciesName));
         }
         predicate = andPredicate(predicate, datePredicate(request.getCreatedMin(), request.getCreatedMax()));
         return predicate;

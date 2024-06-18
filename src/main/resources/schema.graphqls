@@ -968,6 +968,8 @@ input FindRequest {
     createdMin: Date
     """The maximum creation date for the labware."""
     createdMax: Date
+    """The species of the samples."""
+    species: String
 }
 
 """An entry in the history: the IDs refer to objects that should also be included in the History."""

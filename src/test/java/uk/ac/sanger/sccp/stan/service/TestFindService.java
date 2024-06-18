@@ -380,11 +380,11 @@ public class TestFindService {
         Tissue tissue1 = sample1.getTissue();
         Donor donor1 = tissue1.getDonor();
         TissueType tt1 = tissue1.getTissueType();
-        Species species = new Species(1, "Human");
+        Species hamster = new Species(2, "Hamster");
 
         TissueType tt2 = new TissueType(200, "Jelly", "JLY");
         SpatialLocation sl2 = new SpatialLocation(201, "SL2", 2, tt2);
-        Donor donor2 = new Donor(null, "DONOR2", LifeStage.fetal, species);
+        Donor donor2 = new Donor(null, "DONOR2", LifeStage.fetal, hamster);
         Tissue tissue2 = new Tissue(201, "TISSUE2", "4", sl2, donor2, tissue1.getMedium(),
                 tissue1.getFixative(), tissue1.getHmdmc(), null, null);
         Sample sample2 = new Sample(202, 2, tissue2, EntityFactory.getBioState());
@@ -403,6 +403,10 @@ public class TestFindService {
         );
         List<LabwareSample> firstTwo = lss.subList(0,2);
         List<LabwareSample> lastTwo = lss.subList(2,4);
+        FindRequest hamsterRequest = new FindRequest();
+        hamsterRequest.setSpecies("Hamster");
+        FindRequest humanRequest = new FindRequest();
+        humanRequest.setSpecies("HUMAN");
 
         return Stream.of(
                 Arguments.of(lss, new FindRequest(null, null, null, null, 0, null, null, null, null), lss),
@@ -438,7 +442,9 @@ public class TestFindService {
                 Arguments.of(lss, requestDate(tuesday, tuesday), firstTwo),
                 Arguments.of(lss, requestDate(wednesday, wednesday), List.of()),
                 Arguments.of(lss, requestDate(friday, null), List.of()),
-                Arguments.of(lss, requestDate(null, monday), List.of())
+                Arguments.of(lss, requestDate(null, monday), List.of()),
+                Arguments.of(lss, hamsterRequest, List.of(lss.get(1), lss.get(3))),
+                Arguments.of(lss, humanRequest, List.of(lss.get(0), lss.get(2)))
         );
     }
 
