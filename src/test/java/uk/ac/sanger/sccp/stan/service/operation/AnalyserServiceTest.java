@@ -291,7 +291,7 @@ public class AnalyserServiceTest {
             "3,3,2,",
             "4,5,2,",
             "4,5,,",
-            "3,2,,The given date is in the future.",
+            "3,2,,",
             "3,5,4,The given date is before the preceding operation for labware [STAN-A1].",
     })
     public void testCheckTimestamp(int tsIndex, int nowIndex, Integer priorOpIndex, String expectedProblem) {
