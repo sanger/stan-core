@@ -16,7 +16,8 @@ import uk.ac.sanger.sccp.stan.service.validation.ValidationHelperFactory;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
-import java.time.*;
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Consumer;
 
@@ -191,13 +192,6 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
      */
     public void checkTimestamp(Collection<String> problems, @NotNull LocalDateTime timestamp,
                                Map<Integer, Operation> priorOps, Collection<Labware> labware) {
-
-        LocalDate today = LocalDate.now(clock);
-        if (timestamp.toLocalDate().isAfter(today)) {
-            problems.add("The given date is in the future.");
-            return;
-        }
-
         List<String> tooEarlyBarcodes = labware.stream()
                 .map(lw -> {
                     Operation op = priorOps.get(lw.getId());
