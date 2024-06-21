@@ -479,7 +479,7 @@ public class AnalyserServiceTest {
                 new SampleROI(A1, samId, null),
                 new SampleROI(A1, samId, null)
         );
-        final List<String> problems = new ArrayList<>(0);
+        final List<String> problems = new ArrayList<>(5);
         service.checkLabwareSamples(problems, lw, srs);
         assertThat(problems).containsExactlyInAnyOrder(
                 "Address not specified in request.",
