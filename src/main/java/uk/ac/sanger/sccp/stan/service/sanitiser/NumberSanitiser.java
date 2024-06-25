@@ -11,7 +11,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 public abstract class NumberSanitiser<N extends Comparable<N>> implements Sanitiser<String> {
     public static final int MAX_MEASUREMENT_VALUE_LENGTH = 16;
 
-    private final String fieldName;
+    protected final String fieldName;
     private final N lowerBound;
     private final N upperBound;
 
@@ -27,6 +27,15 @@ public abstract class NumberSanitiser<N extends Comparable<N>> implements Saniti
         return num.toString();
     }
 
+    /**
+     * Supplies the error message explaining the invalid value
+     * @param value the invalid value
+     * @return a problem message
+     */
+    public String errorMessage(String value) {
+        return "Invalid value for "+fieldName+": " + repr(value);
+    }
+
     @Override
     public String sanitise(Collection<String> problems, String value) {
         if (value==null || value.isEmpty()) {
@@ -40,7 +49,10 @@ public abstract class NumberSanitiser<N extends Comparable<N>> implements Saniti
             number = parse(value);
         } catch (RuntimeException e) {
             if (problems!=null) {
-                problems.add("Invalid value for "+fieldName+": " + repr(value));
+                String problem = errorMessage(value);
+                if (problem!=null) {
+                    problems.add(problem);
+                }
             }
             return null;
         }

@@ -57,15 +57,17 @@ public class TestDecimalSanitiser {
     }
 
     @ParameterizedTest
-    @CsvSource({
-            "bananas,Invalid value for X: \"bananas\"",
-            "-0.1,Value outside the expected bounds for X: \"-0.1\"",
-            "10.1,Value outside the expected bounds for X: \"10.1\"",
-            "1.251,Invalid value for X: \"1.251\"",
-    })
-    public void testBoundedSanitiseInvalid(String input, String expectedProblem) {
+    @CsvSource(value={
+            "2;bananas;Invalid value for X: \"bananas\"",
+            "2;-0.1;Value outside the expected bounds for X: \"-0.1\"",
+            "2;10.1;Value outside the expected bounds for X: \"10.1\"",
+            "2;1.251;Invalid value for X, expected up to 2 decimal places: \"1.251\"",
+            "1;1.35;Invalid value for X, expected only 1 decimal place: \"1.35\"",
+            "0;5.2;Invalid value for X, expected no decimal places: \"5.2\"",
+    }, delimiter=';')
+    public void testBoundedSanitiseInvalid(int numDecimalPlaces, String input, String expectedProblem) {
         List<String> problems = new ArrayList<>(1);
-        Sanitiser<String> san = new DecimalSanitiser("X", 2, BigDecimal.ZERO, BigDecimal.TEN);
+        Sanitiser<String> san = new DecimalSanitiser("X", numDecimalPlaces, BigDecimal.ZERO, BigDecimal.TEN);
         assertNull(san.sanitise(problems, input));
         assertThat(problems).containsExactly(expectedProblem);
     }
