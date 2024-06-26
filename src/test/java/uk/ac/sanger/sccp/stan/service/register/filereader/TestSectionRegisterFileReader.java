@@ -129,7 +129,7 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
         Row row = mockRow("work number", "slide type", "external slide id", "xenium barcode",
                 "section address", "fixative", "embedding medium", "donor id", "life stage",
                 "species", "humfre", "tissue type", "spatial location", "replicate number",
-                "section external id", "section number", "section thickness", "if bla bla bla position", null, "");
+                "section external id", "section number", "section thickness", "date sectioned", "if bla bla bla position", null, "");
         List<String> problems = new ArrayList<>();
         var result = reader.indexColumns(problems, row);
         assertThat(problems).isEmpty();

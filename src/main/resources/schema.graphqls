@@ -336,6 +336,8 @@ input SectionRegisterContent {
     sectionThickness: Int
     """The region of this sample in this slot, if any."""
     region: String
+    """The date the sample was sectioned."""
+    dateSectioned: Date
 }
 
 """A request to register one or more sections into one piece of labware."""

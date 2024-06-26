@@ -17,6 +17,7 @@ import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.Ancestry;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
 
 import javax.persistence.EntityNotFoundException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.*;
@@ -576,12 +577,14 @@ public class TestReleaseFileService {
         Labware lw1 = EntityFactory.makeLabware(lt, sample);
         Labware lw2 = EntityFactory.makeLabware(lt, sample);
         Labware lw3 = EntityFactory.makeLabware(lt, sample);
+        Labware lw4 = EntityFactory.makeLabware(lt, sample);
         Ancestry ancestry = makeAncestry(lw2, sample, lw1, sample, lw1, sample, lw1, sample, lw3, sample, lw3, sample);
         OperationType opType = EntityFactory.makeOperationType("Section", null);
         when(mockOpTypeRepo.getByName(any())).thenReturn(opType);
 
         List<ReleaseEntry> entries = List.of(new ReleaseEntry(lw2, lw2.getFirstSlot(), sample),
-                new ReleaseEntry(lw3, lw3.getFirstSlot(), sample));
+                new ReleaseEntry(lw3, lw3.getFirstSlot(), sample),
+                new ReleaseEntry(lw4, lw4.getFirstSlot(), sample));
 
         Operation op = new Operation();
         op.setPerformed(LocalDateTime.of(2022,1,2, 12, 0));
@@ -592,16 +595,78 @@ public class TestReleaseFileService {
         doReturn(lwSectionOpMap).when(service).labwareIdToOp(any());
         doReturn(Map.of(entries.getFirst(), op)).when(service).findEntryOps(any(), any(), any());
 
+        List<Measurement> measurements = List.of(new Measurement(10, "Date sectioned", "2024-01-01", sample.getId(), 100, lw4.getFirstSlot().getId()));
+        when(mockMeasurementRepo.findAllBySlotIdInAndName(any(), any())).thenReturn(measurements);
+
+        Map<SlotIdSampleId, LocalDate> slotSampleDates = Map.of(
+                new SlotIdSampleId(lw4.getFirstSlot(), sample), LocalDate.of(2024,1,2)
+        );
+        doReturn(slotSampleDates).when(service).findSlotSampleDates(any());
+        LocalDate lw4Date = LocalDate.of(2024,1,13);
+        doReturn(null).when(service).findEntrySectionDate(any(), any(), any());
+        doReturn(lw4Date).when(service).findEntrySectionDate(entries.get(2), slotSampleDates, ancestry);
+
         service.loadSectionDate(entries, ancestry);
 
         assertEquals(op.getPerformed().toLocalDate(), entries.get(0).getSectionDate());
         assertNull(entries.get(1).getSectionDate());
+        assertEquals(lw4Date, entries.get(2).getSectionDate());
 
         verify(mockOpTypeRepo).getByName("Section");
         Set<Integer> slotIds = Stream.of(lw1, lw2, lw3).map(lw -> lw.getFirstSlot().getId()).collect(toSet());
         verify(mockOpRepo).findAllByOperationTypeAndDestinationSlotIdIn(opType, slotIds);
         verify(service).labwareIdToOp(ops);
         verify(service).findEntryOps(entries, lwSectionOpMap, ancestry);
+        verify(mockMeasurementRepo).findAllBySlotIdInAndName(slotIds, "Date sectioned");
+        verify(service).findSlotSampleDates(measurements);
+        verify(service).findEntrySectionDate(entries.get(2), slotSampleDates, ancestry);
+    }
+
+    @Test
+    public void testFindSlotSampleDates() {
+        List<Measurement> measurements = List.of(
+                new Measurement(1, "Date sectioned", "2024-01-13", 10, 1, 11),
+                new Measurement(2, "Date sectioned", "2024-01-14", 10, 1, 12),
+                new Measurement(3, "Date sectioned", "2024-01-15", 11, 1, 11),
+                new Measurement(4, "Date sectioned", "2024-01-16", 11, 1, 11)
+        );
+        Map<SlotIdSampleId, LocalDate> map = service.findSlotSampleDates(measurements);
+        assertThat(map).hasSize(3);
+        assertEquals(LocalDate.of(2024,1,13), map.get(new SlotIdSampleId(11, 10)));
+        assertEquals(LocalDate.of(2024,1,14), map.get(new SlotIdSampleId(12, 10)));
+        assertEquals(LocalDate.of(2024,1,16), map.get(new SlotIdSampleId(11, 11)));
+    }
+
+    @ParameterizedTest
+    @MethodSource("findEntrySectionDateArgs")
+    public void testFindEntrySectionDate(ReleaseEntry entry, Map<SlotIdSampleId, LocalDate> slotSampleDates,
+                                         Ancestry ancestry, LocalDate expectedDate) {
+        assertEquals(expectedDate, service.findEntrySectionDate(entry, slotSampleDates, ancestry));
+    }
+
+    static Stream<Arguments> findEntrySectionDateArgs() {
+        Sample[] samples = EntityFactory.makeSamples(4);
+        LabwareType lt = EntityFactory.getTubeType();
+        Labware[] labware = Arrays.stream(samples)
+                .map(sam -> EntityFactory.makeLabware(lt, sam))
+                .toArray(Labware[]::new);
+        Slot[] slots = Arrays.stream(labware)
+                .map(Labware::getFirstSlot)
+                .toArray(Slot[]::new);
+        Ancestry ancestry = makeAncestry(labware[0], samples[0], labware[1], samples[1]);
+        LocalDate[] dates = IntStream.of(13,14)
+                .mapToObj(d -> LocalDate.of(2024,1,d))
+                .toArray(LocalDate[]::new);
+        Map<SlotIdSampleId, LocalDate> dateMap = Map.of(
+                new SlotIdSampleId(slots[1], samples[1]), dates[0],
+                new SlotIdSampleId(slots[2], samples[2]), dates[1]
+        );
+        ReleaseEntry[] entries = IntStream.range(0, labware.length)
+                .mapToObj(i -> new ReleaseEntry(labware[i], slots[i], samples[i]))
+                .toArray(ReleaseEntry[]::new);
+        LocalDate[] expected = { dates[0], dates[0], dates[1], null };
+        return IntStream.range(0, expected.length)
+                .mapToObj(i -> Arguments.of(entries[i], dateMap, ancestry, expected[i]));
     }
 
     @Test
@@ -1428,7 +1493,7 @@ public class TestReleaseFileService {
         return new Operation(id, opType, time, List.of(action), null);
     }
 
-    private Ancestry makeAncestry(Object... args) {
+    private static Ancestry makeAncestry(Object... args) {
         Ancestry ancestry = new Ancestry();
         for (int i = 0; i < args.length; i += 4) {
             ancestry.put(slotSample(args[i], args[i+1]), Set.of(slotSample(args[i+2], args[i+3])));
@@ -1436,11 +1501,11 @@ public class TestReleaseFileService {
         return ancestry;
     }
 
-    private SlotSample slotSample(Object arg1, Object arg2) {
+    private static SlotSample slotSample(Object arg1, Object arg2) {
         return new SlotSample(slot(arg1), (Sample) arg2);
     }
 
-    private Slot slot(Object arg) {
+    private static Slot slot(Object arg) {
         if (arg instanceof Labware) {
             return ((Labware) arg).getFirstSlot();
         }
