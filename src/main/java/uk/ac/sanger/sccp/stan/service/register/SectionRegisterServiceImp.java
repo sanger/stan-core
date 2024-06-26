@@ -248,14 +248,23 @@ public class SectionRegisterServiceImp implements IRegisterService<SectionRegist
      * @return the measurements created
      */
     public Iterable<Measurement> createMeasurements(SectionRegisterLabware srl, Labware lw, Operation op,
-                                                UCMap<Sample> sampleMap) {
-        List<Measurement> measurements = srl.getContents().stream()
-                .filter(content -> content.getSectionThickness() != null)
-                .map(content -> new Measurement(
-                        null, "Thickness", content.getSectionThickness().toString(),
-                        sampleMap.get(content.getExternalIdentifier()).getId(), op.getId(),
-                        lw.getSlot(content.getAddress()).getId()))
-                .collect(toList());
+                                                    UCMap<Sample> sampleMap) {
+        List<Measurement> measurements = new ArrayList<>();
+        for (var src : srl.getContents()) {
+            if (src.getDateSectioned() == null && src.getSectionThickness() == null) {
+                continue;
+            }
+            Sample sample = sampleMap.get(src.getExternalIdentifier());
+            Slot slot = lw.getSlot(src.getAddress());
+            if (src.getSectionThickness() != null) {
+                measurements.add(new Measurement(null, "Thickness", src.getSectionThickness().toString(),
+                        sample.getId(), op.getId(), slot.getId()));
+            }
+            if (src.getDateSectioned() != null) {
+                measurements.add(new Measurement(null, "Date sectioned", src.getDateSectioned().toString(),
+                        sample.getId(), op.getId(), slot.getId()));
+            }
+        }
         return (measurements.isEmpty() ? measurements : measurementRepo.saveAll(measurements));
     }
 

@@ -1,8 +1,6 @@
 package uk.ac.sanger.sccp.stan.service.register;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
@@ -10,20 +8,13 @@ import org.mockito.MockitoAnnotations;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.register.RegisterResult;
-import uk.ac.sanger.sccp.stan.request.register.SectionRegisterContent;
-import uk.ac.sanger.sccp.stan.request.register.SectionRegisterLabware;
-import uk.ac.sanger.sccp.stan.request.register.SectionRegisterRequest;
-import uk.ac.sanger.sccp.stan.service.LabwareService;
-import uk.ac.sanger.sccp.stan.service.OperationService;
-import uk.ac.sanger.sccp.stan.service.ValidationException;
+import uk.ac.sanger.sccp.stan.request.register.*;
+import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
+import java.time.LocalDate;
+import java.util.*;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -429,8 +420,10 @@ public class TestSectionRegisterService {
                 content(A1, xns[0], 14),
                 content(A1, xns[1], 15),
                 content(B1, xns[2]),
-                content(B2, xns[3], 16)
+                content(B2, xns[3])
         );
+        contents.get(1).setDateSectioned(LocalDate.of(2024,1,13));
+        contents.get(3).setDateSectioned(LocalDate.of(2024,2,14));
 
         UCMap<Sample> sampleMap = UCMap.from((Sample sam) -> sam.getTissue().getExternalName(), samples);
         SectionRegisterLabware srl = new SectionRegisterLabware(lw.getExternalBarcode(), lt.getName(), contents);
@@ -447,7 +440,8 @@ public class TestSectionRegisterService {
         verify(mockMeasurementRepo).saveAll(List.of(
                 new Measurement(null, "Thickness", "14", samples[0].getId(), opId, slotA1.getId()),
                 new Measurement(null, "Thickness", "15", samples[1].getId(), opId, slotA1.getId()),
-                new Measurement(null, "Thickness", "16", samples[3].getId(), opId, slotB2.getId())
+                new Measurement(null, "Date sectioned", "2024-01-13", samples[1].getId(), opId, slotA1.getId()),
+                new Measurement(null, "Date sectioned", "2024-02-14", samples[3].getId(), opId, slotB2.getId())
         ));
     }
 

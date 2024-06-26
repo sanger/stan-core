@@ -9,6 +9,7 @@ import uk.ac.sanger.sccp.stan.service.register.filereader.SectionRegisterFileRea
 
 import java.io.IOException;
 import java.nio.file.*;
+import java.time.LocalDate;
 import java.util.*;
 
 import static java.util.stream.Collectors.toList;
@@ -39,7 +40,7 @@ public class SectionRegisterFileReaderImp extends BaseRegisterFileReader<Section
         String groupx = null;
         String workNumber = getUniqueString(rows.stream().map(row -> (String) row.get(Column.Work_number)),
                 () -> problems.add("Multiple work numbers specified."));
-        if(nullOrEmpty(workNumber)) {
+        if (nullOrEmpty(workNumber)) {
             problems.add("Missing work number.");
         }
 
@@ -114,6 +115,7 @@ public class SectionRegisterFileReaderImp extends BaseRegisterFileReader<Section
         content.setTissueType((String) row.get(Column.Tissue_type));
         content.setSpatialLocation((Integer) row.get(Column.Spatial_location));
         content.setRegion((String) row.get(Column.Section_position));
+        content.setDateSectioned((LocalDate) row.get(Column.Date_sectioned));
         return content;
     }
 

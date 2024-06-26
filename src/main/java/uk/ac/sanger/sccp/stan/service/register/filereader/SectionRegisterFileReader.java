@@ -6,6 +6,7 @@ import uk.ac.sanger.sccp.stan.request.register.SectionRegisterRequest;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -34,6 +35,7 @@ public interface SectionRegisterFileReader extends MultipartFileReader<SectionRe
         Section_external_ID,
         Section_number(Integer.class),
         Section_thickness(Integer.class),
+        Date_sectioned(LocalDate.class, Pattern.compile("date.*sectioned|section.*date", Pattern.CASE_INSENSITIVE), false),
         Section_position(Pattern.compile("(if.+)?(section\\s+)?position", Pattern.CASE_INSENSITIVE)),
         ;
 
@@ -64,7 +66,7 @@ public interface SectionRegisterFileReader extends MultipartFileReader<SectionRe
             return this.name().replace('_',' ');
         }
 
-        /** The data type (String or Integer) expected in the column. */
+        /** The data type (e.g. String or Integer) expected in the column. */
         @Override
         public Class<?> getDataType() {
             return this.dataType;
