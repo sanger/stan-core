@@ -1816,6 +1816,18 @@ type LabwareRoi {
     rois: [Roi!]!
 }
 
+"""Information to show when a user scans in labware for the analyser op."""
+type AnalyserScanData {
+    """The barcode of the labware."""
+    barcode: String!
+    """The work numbers linked to the labware."""
+    workNumbers: [String!]!
+    """The names of probes recorded on the labware."""
+    probes: [String!]!
+    """Has cell segmentation been recorded?"""
+    cellSegmentationRecorded: Boolean!
+}
+
 """A comment on a particular sample in a particular slot."""
 input QCSampleComment {
     """The address of the slot."""
@@ -2072,6 +2084,8 @@ type Query {
     measurementValueFromLabwareOrParent(barcode: String!, name: String!): [AddressString!]!
     """Get regions of interest in the indicated labware."""
     rois(barcodes: [String!]!): [LabwareRoi!]!
+    """Data shown when scanning in labware for analyser op."""
+    analyserScanData(barcode: String!): AnalyserScanData!
 
     """Get the specified storage location."""
     location(locationBarcode: String!): Location!

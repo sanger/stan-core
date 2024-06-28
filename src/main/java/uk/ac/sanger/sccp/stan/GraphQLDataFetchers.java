@@ -82,6 +82,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final MeasurementService measurementService;
     final GraphService graphService;
     final CommentRepo commentRepo;
+    final AnalyserScanDataService analyserScanDataService;
 
     @Autowired
     public GraphQLDataFetchers(ObjectMapper objectMapper, AuthenticationComponent authComp, UserRepo userRepo,
@@ -106,7 +107,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                SlotRegionService slotRegionService, RoiService roiService, RecentOpService recentOpService,
                                CleanedOutSlotService cleanedOutSlotService,
                                FlagLookupService flagLookupService, MeasurementService measurementService,
-                               GraphService graphService, CommentRepo commentRepo) {
+                               GraphService graphService, CommentRepo commentRepo,
+                               AnalyserScanDataService analyserScanDataService) {
         super(objectMapper, authComp, userRepo);
         this.sessionConfig = sessionConfig;
         this.versionInfo = versionInfo;
@@ -154,6 +156,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.measurementService = measurementService;
         this.graphService = graphService;
         this.commentRepo = commentRepo;
+        this.analyserScanDataService = analyserScanDataService;
     }
 
     public DataFetcher<User> getUser() {
@@ -477,6 +480,13 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
             List<String> programNames = dfe.getArgument("programs");
             List<String> requesterNames = dfe.getArgument("requesters");
             return workProgressService.getProgress(workNumber, workTypeNames, programNames, statuses, requesterNames);
+        };
+    }
+
+    public DataFetcher<AnalyserScanData> analyserScanData() {
+        return dfe -> {
+            String barcode = dfe.getArgument("barcode");
+            return analyserScanDataService.load(barcode);
         };
     }
 

@@ -316,6 +316,13 @@ public class TestWorkRepo {
 
         works = workRepo.findWorkForSampleIdAndSlotId(samples[2].getId(), labware[2].getSlots().get(0).getId());
         assertThat(works).isEmpty();
+
+        // findWorkIdsForLabwareId
+
+        List<Integer> workIds = workRepo.findWorkIdsForLabwareId(labware[0].getId());
+        assertThat(workIds).containsExactlyInAnyOrder(work1.getId(), work2.getId());
+        workIds = workRepo.findWorkIdsForLabwareId(labware[1].getId());
+        assertThat(workIds).containsExactly(work2.getId());
     }
 
     @Transactional

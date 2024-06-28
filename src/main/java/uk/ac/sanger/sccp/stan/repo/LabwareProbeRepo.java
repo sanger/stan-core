@@ -8,4 +8,6 @@ import java.util.List;
 
 public interface LabwareProbeRepo extends CrudRepository<LabwareProbe, Integer> {
     List<LabwareProbe> findAllByOperationIdIn(Collection<Integer> opIds);
+
+    List<LabwareProbe> findAllByLabwareIdIn(Collection<Integer> labwareIds);
 }

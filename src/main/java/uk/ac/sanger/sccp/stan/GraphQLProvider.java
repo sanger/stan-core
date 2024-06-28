@@ -130,6 +130,7 @@ public class GraphQLProvider {
                         .dataFetcher("historyGraph", graphQLDataFetchers.historyGraph())
                         .dataFetcher("eventTypes", graphQLDataFetchers.eventTypes())
                         .dataFetcher("workProgress", graphQLDataFetchers.workProgress())
+                        .dataFetcher("analyserScanData", graphQLDataFetchers.analyserScanData())
 
                         .dataFetcher("location", graphQLStore.getLocation())
                         .dataFetcher("stored", graphQLStore.getStored())
