@@ -131,6 +131,12 @@ public interface WorkRepo extends CrudRepository<Work, Integer> {
             "   JOIN work ON (wo.work_id=work.id)", nativeQuery = true)
     Integer findLatestWorkIdForLabwareId(Integer labwareId);
 
+    @Query(value="SELECT DISTINCT ws.work_id " +
+            "FROM slot " +
+            "JOIN work_sample ws ON (ws.slot_id=slot.id) " +
+            "WHERE slot.labware_id=?1", nativeQuery = true)
+    List<Integer> findWorkIdsForLabwareId(Integer labwareId);
+
     /**
      * Gets set of work numbers based on sample and slot id
      * @param sampleId id of sample to search

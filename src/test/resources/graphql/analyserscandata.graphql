@@ -1,0 +1,8 @@
+query {
+    analyserScanData(barcode: "STAN-1") {
+        barcode
+        probes
+        workNumbers
+        cellSegmentationRecorded
+    }
+}
