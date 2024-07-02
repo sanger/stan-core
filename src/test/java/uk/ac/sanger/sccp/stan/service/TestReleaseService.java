@@ -216,8 +216,7 @@ public class TestReleaseService {
                                         Object repoResult,
                                         boolean anyRepeats,
                                         String expectedError) {
-        if (repoResult instanceof Exception) {
-            Exception dbException = (Exception) repoResult;
+        if (repoResult instanceof Exception dbException) {
             when(mockRecipientRepo.getAllByUsernameIn(any())).thenThrow(dbException);
             assertSame(dbException, assertThrows(Exception.class, () -> service.loadOtherRecipients(usernames)));
             verify(mockRecipientRepo).getAllByUsernameIn(usernames);
@@ -542,16 +541,16 @@ public class TestReleaseService {
         lw.getSlots().get(0).getSamples().add(sample1);
         lw.getSlots().get(1).getSamples().add(sample1);
         BasicLocation loc;
+        String expectedName = locBarcode==null ? null : "Name "+locBarcode;
         if (locBarcode==null) {
             loc = null;
         } else {
-            loc = new BasicLocation(locBarcode, address);
-            loc.setAddressIndex(addressIndex);
+            loc = new BasicLocation(locBarcode, expectedName, address, addressIndex);
         }
 
         final int releaseId = 10;
         Release release = new Release(releaseId, lw, user, destination, recipient, 1, LocalDateTime.now(),
-                locBarcode, expectedAddressDesc, otherRecs);
+                locBarcode, expectedName, expectedAddressDesc, otherRecs);
 
         when(mockReleaseRepo.save(any())).thenReturn(release);
 
@@ -564,6 +563,7 @@ public class TestReleaseService {
         final Release expectedNewRelease = new Release(lw, user, destination, recipient, snap.getId());
         if (loc!=null) {
             expectedNewRelease.setLocationBarcode(loc.getBarcode());
+            expectedNewRelease.setLocationName(loc.getName());
             expectedNewRelease.setStorageAddress(expectedAddressDesc);
         }
         expectedNewRelease.setOtherRecipients(otherRecs);

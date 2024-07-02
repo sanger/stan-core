@@ -298,13 +298,14 @@ public class StoreService {
             if (locationBarcode==null) {
                 continue;
             }
+            String locationName = locationData.get("name").textValue();
             String addressString = sd.get("address").textValue();
             Address address = null;
             if (addressString!=null && !addressString.isEmpty()) {
                 address = Address.valueOf(addressString);
             }
             Integer addressIndex = integerFromNode(sd.get("addressIndex"));
-            map.put(itemBarcode, new BasicLocation(locationBarcode, address, addressIndex));
+            map.put(itemBarcode, new BasicLocation(locationBarcode, locationName, address, addressIndex));
         }
         return map;
     }

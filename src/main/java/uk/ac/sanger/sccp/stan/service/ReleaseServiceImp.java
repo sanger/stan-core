@@ -391,6 +391,7 @@ public class ReleaseServiceImp implements ReleaseService {
         final Release newRelease = new Release(labware, user, destination, recipient, snapshot.getId());
         if (location!=null) {
             newRelease.setLocationBarcode(location.getBarcode());
+            newRelease.setLocationName(location.getName());
             if (location.getAddressIndex()!=null) {
                 newRelease.setStorageAddress(location.getAddressIndex().toString());
             } else if (location.getAddress()!=null) {

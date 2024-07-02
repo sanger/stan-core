@@ -109,8 +109,8 @@ public class TestReleaseMutation {
 
         stubStorelightUnstore(mockStorelightClient);
         UCMap<BasicLocation> basicLocationMap = new UCMap<>(2);
-        basicLocationMap.put("STAN-001", new BasicLocation("STO-1", new Address(1,2)));
-        basicLocationMap.put("STAN-002", new BasicLocation("STO-1", new Address(3,4)));
+        basicLocationMap.put("STAN-001", new BasicLocation("STO-1", "Box 1", new Address(1,2), 4));
+        basicLocationMap.put("STAN-002", new BasicLocation("STO-1", "Box 1", new Address(3,4), null));
         stubStorelightBasicLocation(mockStorelightClient, basicLocationMap);
 
         Object result = tester.post(mutation);
@@ -155,7 +155,11 @@ public class TestReleaseMutation {
         assertMapValue(row0, ReleaseColumn.Released_labware_barcode, block.getBarcode());
         assertMapValue(row0, ReleaseColumn.Labware_type, block.getLabwareType().getName());
         assertMapValue(row0, ReleaseColumn.Last_section_number, "6");
-        assertMapValue(row0, ReleaseColumn.Released_from_box_location, "A2");
+        assertMapValue(row0, ReleaseColumn.Released_from_box_name, "Box 1");
+        assertMapValue(row0, ReleaseColumn.Released_from_box_location, "4");
+        var row1 = tsvMaps.get(1);
+        assertMapValue(row1, ReleaseColumn.Released_from_box_name, "Box 1");
+        assertMapValue(row1, ReleaseColumn.Released_from_box_location, "C4");
         String bsName = sample.getBioState().getName();
         for (int i = 1; i < 4; ++i) {
             var row = tsvMaps.get(i);

@@ -47,19 +47,19 @@ public class Release {
     private Integer snapshotId;
 
     private String locationBarcode;
-
+    private String locationName;
     private String storageAddress;
 
     public Release() {}
 
     public Release(Labware labware, User user, ReleaseDestination destination, ReleaseRecipient recipient, Integer snapshotId) {
-        this(null, labware, user, destination, recipient, snapshotId, null, null, null, null);
+        this(null, labware, user, destination, recipient, snapshotId, null, null, null, null, null);
     }
     public Release(Integer id, Labware labware, User user, ReleaseDestination destination, ReleaseRecipient recipient, Integer snapshotId, LocalDateTime released) {
-        this(id, labware, user, destination, recipient, snapshotId, released, null, null, null);
+        this(id, labware, user, destination, recipient, snapshotId, released, null, null, null, null);
     }
     public Release(Integer id, Labware labware, User user, ReleaseDestination destination, ReleaseRecipient recipient,
-                   Integer snapshotId, LocalDateTime released, String locationBarcode, String storageAddress,
+                   Integer snapshotId, LocalDateTime released, String locationBarcode, String locationName, String storageAddress,
                    List<ReleaseRecipient> otherRecipients) {
         this.id = id;
         this.labware = labware;
@@ -69,6 +69,7 @@ public class Release {
         this.released = released;
         this.snapshotId = snapshotId;
         this.locationBarcode = locationBarcode;
+        this.locationName = locationName;
         this.storageAddress = storageAddress;
         setOtherRecipients(otherRecipients);
     }
@@ -140,6 +141,14 @@ public class Release {
         this.locationBarcode = locationBarcode;
     }
 
+    public String getLocationName() {
+        return this.locationName;
+    }
+
+    public void setLocationName(String locationName) {
+        this.locationName = locationName;
+    }
+
     public String getStorageAddress() {
         return this.storageAddress;
     }
@@ -170,6 +179,7 @@ public class Release {
                 && Objects.equals(this.user, that.user)
                 && Objects.equals(this.snapshotId, that.snapshotId)
                 && Objects.equals(this.locationBarcode, that.locationBarcode)
+                && Objects.equals(this.locationName, that.locationName)
                 && Objects.equals(this.storageAddress, that.storageAddress)
                 && Objects.equals(this.otherRecipients, that.otherRecipients)
         );
@@ -192,6 +202,7 @@ public class Release {
                 .add("released", released)
                 .add("snapshotId", snapshotId)
                 .addReprIfNotNull("locationBarcode", locationBarcode)
+                .addReprIfNotNull("locationName", locationName)
                 .addIfNotNull("storageAddress", storageAddress)
                 .toString();
     }
