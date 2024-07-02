@@ -16,8 +16,13 @@ public class BasicLocation {
     public BasicLocation() {}
 
     public BasicLocation(String barcode, Address address) {
+        this(barcode, address, null);
+    }
+
+    public BasicLocation(String barcode, Address address, Integer addressIndex) {
         this.barcode = barcode;
         this.address = address;
+        this.addressIndex = addressIndex;
     }
 
     public String getBarcode() {
