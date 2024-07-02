@@ -451,12 +451,14 @@ public class TestStoreService {
                 .set("stored", objectMapper.createArrayNode()
                         .add(objectMapper.createObjectNode()
                                 .put("barcode", "ITEM-1")
-                                .put("address", "B3"))
+                                .put("address", "B3")
+                                .put("addressIndex", 6))
                         .add(objectMapper.createObjectNode()
                                 .put("barcode", "ITEM-2")));
         foundItems.add(objectMapper.createObjectNode()
                 .put("barcode", "ITEM-1")
                 .put("address", "B3")
+                .put("addressIndex", 6)
                 .set("location", locationNode))
                 .add(objectMapper.createObjectNode()
                         .put("barcode", "ITEM-2")
@@ -471,6 +473,7 @@ public class TestStoreService {
             return si;
         }).collect(toList());
         expectedItems.get(0).setAddress(new Address(2,3));
+        expectedItems.get(0).setAddressIndex(6);
         Location location = new Location();
         location.setBarcode("STO-001F");
         location.setStored(expectedItems);
@@ -478,8 +481,8 @@ public class TestStoreService {
 
         assertEquals(expectedItems, results);
         for (StoredItem item : results) {
-            assertEquals(item.getLocation(), location);
-            assertEquals(item.getLocation().getStored(), expectedItems);
+            assertEquals(location, item.getLocation());
+            assertEquals(expectedItems, item.getLocation().getStored());
         }
         
         verifyQueryMatches("{" +
@@ -495,7 +498,7 @@ public class TestStoreService {
                 "            size { numRows numColumns}" +
                 "            children { barcode name address }" +
                 "            parent { barcode name address }" +
-                "            stored { barcode address }" +
+                "            stored { barcode address addressIndex }" +
                 "            direction" +
                 "            qualifiedNameWithFirstBarcode" +
                 "        }}}",
@@ -520,6 +523,7 @@ public class TestStoreService {
             itemsNode.add(objectMapper.createObjectNode()
                             .put("barcode", "STAN-1")
                             .put("address", "A2")
+                            .put("addressIndex", 4)
                             .set("location", objectMapper.createObjectNode().put("barcode", "STO-1"))
                     )
                     .add(objectMapper.createObjectNode()
@@ -531,7 +535,7 @@ public class TestStoreService {
             when(mockClient.postQuery(anyString(), isNull())).thenReturn(response);
             locations = service.loadBasicLocationsOfItems(stanBarcodes);
             assertThat(locations).hasSize(2);
-            assertEquals(new BasicLocation("STO-1", new Address(1,2)), locations.get("STAN-1"));
+            assertEquals(new BasicLocation("STO-1", new Address(1,2), 4), locations.get("STAN-1"));
             assertEquals(new BasicLocation("STO-2", null), locations.get("STAN-2"));
             assertNull(locations.get("STAN-3"));
             verify(service).checkErrors(response);

@@ -303,9 +303,24 @@ public class StoreService {
             if (addressString!=null && !addressString.isEmpty()) {
                 address = Address.valueOf(addressString);
             }
-            map.put(itemBarcode, new BasicLocation(locationBarcode, address));
+            Integer addressIndex = integerFromNode(sd.get("addressIndex"));
+            map.put(itemBarcode, new BasicLocation(locationBarcode, address, addressIndex));
         }
         return map;
+    }
+
+    /**
+     * Reads a non-negative integer or null from the given node.
+     * If the node is null, non-numeric, or has a negative value, returns null.
+     * @param node the node to read
+     * @return the non-negative integer value from the node, or null
+     */
+    private static Integer integerFromNode(JsonNode node) {
+        if (node==null) {
+            return null;
+        }
+        int value = node.asInt(-1);
+        return (value < 0 ? null : (Integer) value);
     }
 
     /**
@@ -340,7 +355,7 @@ public class StoreService {
         UCMap<Labware> lwMap = UCMap.from(labwareRepo.findByBarcodeIn(barcodes), Labware::getBarcode);
         List<String> missingBarcodes = barcodes.stream()
                 .filter(bc -> lwMap.get(bc)==null)
-                .collect(toList());
+                .toList();
         if (!missingBarcodes.isEmpty()) {
             throw new EntityNotFoundException("Unknown labware barcodes: "+missingBarcodes);
         }

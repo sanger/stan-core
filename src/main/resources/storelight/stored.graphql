@@ -11,7 +11,7 @@
             size { numRows numColumns}
             children { barcode name address }
             parent { barcode name address }
-            stored { barcode address }
+            stored { barcode address addressIndex }
             direction
             qualifiedNameWithFirstBarcode
         }
