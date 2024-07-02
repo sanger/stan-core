@@ -22,6 +22,7 @@ public class ReleaseEntry {
     private String sourceBarcode;
     private String sectionThickness;
     private Address sourceAddress;
+    private String locationName;
     private String storageAddress;
     private String stainType;
     private String bondBarcode;
@@ -54,14 +55,15 @@ public class ReleaseEntry {
     private String equipment;
 
     public ReleaseEntry(Labware labware, Slot slot, Sample sample) {
-        this(labware, slot, sample, null);
+        this(labware, slot, sample, null, null);
     }
 
-    public ReleaseEntry(Labware labware, Slot slot, Sample sample, String storageAddress) {
+    public ReleaseEntry(Labware labware, Slot slot, Sample sample, String storageAddress, String locationName) {
         this.labware = labware;
         this.slot = slot;
         this.sample = sample;
         this.storageAddress = storageAddress;
+        this.locationName = locationName;
     }
 
     public Labware getLabware() {
@@ -106,6 +108,14 @@ public class ReleaseEntry {
 
     public void setSourceAddress(Address sourceAddress) {
         this.sourceAddress = sourceAddress;
+    }
+
+    public String getLocationName() {
+        return this.locationName;
+    }
+
+    public void setLocationName(String locationName) {
+        this.locationName = locationName;
     }
 
     public String getStorageAddress() {
@@ -410,6 +420,7 @@ public class ReleaseEntry {
                 && Objects.equals(this.sourceBarcode, that.sourceBarcode)
                 && Objects.equals(this.sectionThickness, that.sectionThickness)
                 && Objects.equals(this.sourceAddress, that.sourceAddress)
+                && Objects.equals(this.locationName, that.locationName)
                 && Objects.equals(this.storageAddress, that.storageAddress)
                 && Objects.equals(this.stainType, that.stainType)
                 && Objects.equals(this.bondBarcode, that.bondBarcode)
@@ -463,6 +474,7 @@ public class ReleaseEntry {
                 .add("lastSection", lastSection)
                 .add("sourceBarcode", sourceBarcode)
                 .add("sectionThickness", sectionThickness)
+                .add("locationName", locationName)
                 .add("sourceAddress", sourceAddress)
                 .add("storageAddress", storageAddress)
                 .add("stainType", stainType)

@@ -12,6 +12,7 @@ import java.util.function.Function;
 import static java.util.stream.Collectors.toList;
 
 public enum ReleaseColumn implements TsvColumn<ReleaseEntry> {
+    Released_from_box_name(ReleaseEntry::getLocationName),
     Released_from_box_location(ReleaseEntry::getStorageAddress),
     Released_labware_barcode(Compose.labware, Labware::getBarcode),
     Biological_state(Compose.sample, Sample::getBioState),

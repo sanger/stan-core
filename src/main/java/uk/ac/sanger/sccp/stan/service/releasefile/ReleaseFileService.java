@@ -13,14 +13,12 @@ import uk.ac.sanger.sccp.stan.service.history.ReagentActionDetailService;
 import uk.ac.sanger.sccp.stan.service.operation.AnalyserServiceImp;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.Ancestry;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
-import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.UCMap;
 import uk.ac.sanger.sccp.utils.tsv.TsvColumn;
 
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.*;
@@ -32,6 +30,10 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.*;
  */
 @Service
 public class ReleaseFileService {
+    public enum StorageDetail {
+        NONE, NAME, BARCODE
+    }
+
     Logger log = LoggerFactory.getLogger(ReleaseFileService.class);
 
     private final ReleaseRepo releaseRepo;
@@ -101,10 +103,10 @@ public class ReleaseFileService {
         Map<Integer, Sample> samples = loadSamples(releases, snapshots);
         ReleaseFileMode mode = checkMode(samples.values());
 
-        final boolean includeStorageAddress = shouldIncludeStorageAddress(releases);
+        final StorageDetail detail = storageDetail(releases);
 
         List<ReleaseEntry> entries = releases.stream()
-                .flatMap(r -> toReleaseEntries(r, samples, snapshots, includeStorageAddress))
+                .flatMap(r -> toReleaseEntries(r, samples, snapshots, detail))
                 .collect(toList());
 
         loadLastSection(entries);
@@ -131,20 +133,37 @@ public class ReleaseFileService {
         return new ReleaseFileContent(mode, entries, options);
     }
 
-    public boolean shouldIncludeStorageAddress(Collection<Release> releases) {
-        String consistentLocationBarcode = null;
+    /**
+     * What level of detail should be included about storage locations?
+     * <ul>
+     *   <li>If none of the labware has a storage address, {@link StorageDetail#NONE NONE}.
+     *   <li>If the labware with addresses can have their locations identified by name, {@link StorageDetail#NAME NAME}.
+     *   <li>If the location names are inadequate to distinguish them, {@link StorageDetail#BARCODE BARCODE}
+     * </ul>
+     * @param releases the info about the releases
+     * @return the level of storage detail to include
+     */
+    public StorageDetail storageDetail(Collection<Release> releases) {
+        boolean anyAddress = false;
+        UCMap<String> nameToBarcode = new UCMap<>();
         for (Release release : releases) {
-            String locBarcode = release.getLocationBarcode();
-            if (locBarcode==null || release.getStorageAddress()==null) {
-                return false;
+            if (nullOrEmpty(release.getStorageAddress())) {
+                continue;
             }
-            if (consistentLocationBarcode==null) {
-                consistentLocationBarcode = locBarcode;
-            } else if (!consistentLocationBarcode.equalsIgnoreCase(locBarcode)) {
-                return false;
+            anyAddress = true;
+            String name = release.getLocationName();
+            if (nullOrEmpty(name)) {
+                return StorageDetail.BARCODE;
+            }
+            String bc = release.getLocationBarcode();
+            String previousBc = nameToBarcode.get(name);
+            if (previousBc==null) {
+                nameToBarcode.put(name, bc);
+            } else if (!previousBc.equalsIgnoreCase(bc)) {
+                return StorageDetail.BARCODE;
             }
         }
-        return (consistentLocationBarcode!=null);
+        return anyAddress ? StorageDetail.NAME : StorageDetail.NONE;
     }
 
     /**
@@ -260,18 +279,40 @@ public class ReleaseFileService {
      * @param release the release
      * @param sampleIdMap a map to look up samples in
      * @param snapshots a map to look up snapshots in
-     * @param includeStorageAddress whether or not to fill in the storage address field
+     * @param detail level of detail to include about storage
      * @return a stream of release entries
      */
     public Stream<ReleaseEntry> toReleaseEntries(final Release release, Map<Integer, Sample> sampleIdMap,
-                                                 Map<Integer, Snapshot> snapshots, boolean includeStorageAddress) {
+                                                 Map<Integer, Snapshot> snapshots, StorageDetail detail) {
         final Labware labware = release.getLabware();
         final Map<Integer, Slot> slotIdMap = labware.getSlots().stream()
                 .collect(toMap(Slot::getId, slot -> slot));
-        final String storageAddress = (includeStorageAddress ? release.getStorageAddress() : null);
+        final String storageAddress = detail==StorageDetail.NONE ? null : release.getStorageAddress();
+        final String locationName;
+        if (nullOrEmpty(storageAddress)) {
+            locationName = null;
+        } else {
+            locationName = switch (detail) {
+                //noinspection DataFlowIssue
+                case NONE -> null;
+                case NAME -> release.getLocationName();
+                case BARCODE -> joinNullStrings(release.getLocationName(), release.getLocationBarcode(), " ");
+            };
+        }
         return snapshots.get(release.getSnapshotId()).getElements().stream()
                 .map(el -> new ReleaseEntry(release.getLabware(), slotIdMap.get(el.getSlotId()),
-                        sampleIdMap.get(el.getSampleId()), storageAddress));
+                        sampleIdMap.get(el.getSampleId()), storageAddress, locationName));
+    }
+
+    /**
+     * Joins two strings, omitting null or empty
+     * @param a the first string
+     * @param b the second string
+     * @param joint the string to use to join the two strings
+     * @return a combined string
+     */
+    private static String joinNullStrings(String a, String b, String joint) {
+        return (nullOrEmpty(a) ? b : nullOrEmpty(b) ? a : (a + joint + b));
     }
 
     /**
@@ -394,8 +435,8 @@ public class ReleaseFileService {
             return;
         }
         final Set<Integer> solutionIds = allOpSols.stream().map(OperationSolution::getSolutionId).collect(toSet());
-        Map<Integer, Solution> idSolutions = BasicUtils.stream(solutionRepo.findAllById(solutionIds))
-                .collect(BasicUtils.inMap(Solution::getId));
+        Map<Integer, Solution> idSolutions = stream(solutionRepo.findAllById(solutionIds))
+                .collect(inMap(Solution::getId));
 
         Map<Integer, List<OperationSolution>> lwSols = allOpSols.stream()
                 .collect(groupingBy(OperationSolution::getLabwareId));
@@ -994,7 +1035,7 @@ public class ReleaseFileService {
                     String radString = rads.stream()
                             .map(rad -> rad.reagentPlateBarcode+" : "+rad.reagentSlotAddress)
                             .distinct()
-                            .collect(Collectors.joining(", "));
+                            .collect(joining(", "));
                     entry.setReagentSource(radString);
                     String radTypeString = rads.stream()
                             .map(rad -> rad.reagentPlateType)
