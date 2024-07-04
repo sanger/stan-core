@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGet;
+import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGetList;
 import static uk.ac.sanger.sccp.utils.BasicUtils.stream;
 
 /**
@@ -148,6 +149,9 @@ public class TestProbeOperationMutation {
         Operation op = opRepo.findById(opId).orElseThrow();
         assertEquals(op.getEquipment(), equipment);
 
+        String runNamesQuery = String.format("query { runNames(barcode: \"%s\") }", lw.getBarcode());
+        Object queryResult = tester.post(runNamesQuery);
+        assertThat(chainGetList(queryResult, "data", "runNames")).containsExactly("RUN1");
     }
 
     private void testSampleMetrics(Labware lw, Work work) throws Exception {

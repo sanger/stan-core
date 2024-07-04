@@ -22,6 +22,7 @@ public class QCLabwareRequest {
      */
     public static class QCLabware {
         private String barcode;
+        private String runName;
         private String workNumber;
         private LocalDateTime completion;
         private List<Integer> comments = List.of();
@@ -29,9 +30,10 @@ public class QCLabwareRequest {
 
         public QCLabware() {}
 
-        public QCLabware(String barcode, String workNumber, LocalDateTime completion, List<Integer> comments,
-                         List<QCSampleComment> sampleComments) {
+        public QCLabware(String barcode, String runName, String workNumber, LocalDateTime completion,
+                         List<Integer> comments, List<QCSampleComment> sampleComments) {
             setBarcode(barcode);
+            setRunName(runName);
             setWorkNumber(workNumber);
             setCompletion(completion);
             setComments(comments);
@@ -47,6 +49,15 @@ public class QCLabwareRequest {
 
         public void setBarcode(String barcode) {
             this.barcode = barcode;
+        }
+
+        /** The run name to link the operation with */
+        public String getRunName() {
+            return this.runName;
+        }
+
+        public void setRunName(String runName) {
+            this.runName = runName;
         }
 
         /**
@@ -93,7 +104,7 @@ public class QCLabwareRequest {
 
         @Override
         public String toString() {
-            return String.format("(%s, %s, %s, %s, %s)", repr(barcode), repr(workNumber), completion, comments, sampleComments);
+            return String.format("(%s, %s, %s, %s, %s, %s)", repr(barcode), repr(runName), repr(workNumber), completion, comments, sampleComments);
         }
 
         @Override
@@ -102,6 +113,7 @@ public class QCLabwareRequest {
             if (o == null || getClass() != o.getClass()) return false;
             QCLabware that = (QCLabware) o;
             return (Objects.equals(this.barcode, that.barcode)
+                    && Objects.equals(this.runName, that.runName)
                     && Objects.equals(this.workNumber, that.workNumber)
                     && Objects.equals(this.completion, that.completion)
                     && Objects.equals(this.comments, that.comments)

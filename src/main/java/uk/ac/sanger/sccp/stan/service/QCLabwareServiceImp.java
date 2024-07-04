@@ -20,6 +20,8 @@ import java.util.*;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
+import static uk.ac.sanger.sccp.stan.service.operation.AnalyserServiceImp.RUN_NAME;
 import static uk.ac.sanger.sccp.utils.BasicUtils.containsDupes;
 import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 
@@ -34,19 +36,21 @@ public class QCLabwareServiceImp implements QCLabwareService {
     private final OperationCommentRepo opComRepo;
     private final WorkService workService;
     private final OperationService opService;
+    private final LabwareNoteService lwNoteService;
 
     @Autowired
     public QCLabwareServiceImp(Clock clock, ValidationHelperFactory valFactory,
                                OperationRepo opRepo, OperationCommentRepo opComRepo,
-                               WorkService workService, OperationService opService) {
+                               WorkService workService, OperationService opService,
+                               LabwareNoteService lwNoteService) {
         this.clock = clock;
         this.valFactory = valFactory;
         this.opRepo = opRepo;
         this.opComRepo = opComRepo;
         this.workService = workService;
         this.opService = opService;
+        this.lwNoteService = lwNoteService;
     }
-
 
     @Override
     public OperationResult perform(User user, QCLabwareRequest request) throws ValidationException {
@@ -63,6 +67,7 @@ public class QCLabwareServiceImp implements QCLabwareService {
         checkTimestamps(val, qcls, lwMap, clock);
         Map<Integer, Comment> commentMap = checkComments(val, qcls);
         checkSampleComments(val, qcls, lwMap);
+        checkRunNames(val.getProblems(), qcls, lwMap);
         if (!val.getProblems().isEmpty()) {
             throw new ValidationException(val.getProblems());
         }
@@ -141,6 +146,33 @@ public class QCLabwareServiceImp implements QCLabwareService {
     }
 
     /**
+     * Checks that run-names (if supplied) are valid for the indicated labware
+     * @param problems receptacle for problems
+     * @param qcls request
+     * @param lwMap map of labware from barcode
+     */
+    public void checkRunNames(Collection<String> problems, List<QCLabware> qcls, UCMap<Labware> lwMap) {
+        Set<Labware> notedLabware = qcls.stream()
+                .filter(qcl -> !nullOrEmpty(qcl.getRunName()))
+                .map(qcl -> lwMap.get(qcl.getBarcode()))
+                .filter(Objects::nonNull)
+                .collect(toSet());
+        if (notedLabware.isEmpty()) {
+            return;
+        }
+        var bcValues = lwNoteService.findNoteValuesForLabware(notedLabware, RUN_NAME);
+        for (QCLabware qcl : qcls) {
+            if (!nullOrEmpty(qcl.getRunName())) {
+                Labware lw = lwMap.get(qcl.getBarcode());
+                Set<String> values = bcValues.get(qcl.getBarcode());
+                if (lw!=null && (values == null || !values.contains(qcl.getRunName()))) {
+                    problems.add(String.format("%s is not a recorded run-name for labware %s.", qcl.getRunName(), lw.getBarcode()));
+                }
+            }
+        }
+    }
+
+    /**
      * Records the operations
      * @param user user responsible for request
      * @param opType type of operation to record
@@ -168,6 +200,7 @@ public class QCLabwareServiceImp implements QCLabwareService {
         }
         linkWorks(qcls, workMap, lwOps);
         linkComments(qcls, commentMap, lwOps, lwMap);
+        saveNotes(qcls, lwOps, lwMap);
         return assembleResult(qcls, lwOps, lwMap);
     }
 
@@ -224,6 +257,22 @@ public class QCLabwareServiceImp implements QCLabwareService {
     }
 
     /**
+     * Saves run names as notes
+     * @param qcls the request
+     * @param lwOps the new operations, mapped from lw barcode
+     * @param lwMap the labware, mapped from barcode
+     */
+    public void saveNotes(List<QCLabware> qcls, UCMap<Operation> lwOps, UCMap<Labware> lwMap) {
+        UCMap<String> noteValues = new UCMap<>();
+        qcls.stream()
+                .filter(qcl -> !nullOrEmpty(qcl.getRunName()))
+                .forEach(qcl -> noteValues.put(qcl.getBarcode(), qcl.getRunName()));
+        if (!noteValues.isEmpty()) {
+            lwNoteService.createNotes(RUN_NAME, lwMap, lwOps, noteValues);
+        }
+    }
+
+    /**
      * Assembles an OperationResult from the operations and labware.
      * @param qcls the request that describes the operations
      * @param lwOps the created operations mapped from labware barcodes
@@ -239,5 +288,4 @@ public class QCLabwareServiceImp implements QCLabwareService {
         }
         return new OperationResult(ops, lws);
     }
-
 }

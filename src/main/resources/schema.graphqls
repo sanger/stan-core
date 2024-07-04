@@ -1842,6 +1842,8 @@ input QCSampleComment {
 input QCLabware {
     """The barcode of the labware."""
     barcode: String!
+    """The run-name to record."""
+    runName: String
     """The work number to link to the operation."""
     workNumber: String!
     """The time at which the process was completed."""
@@ -2086,6 +2088,8 @@ type Query {
     rois(barcodes: [String!]!): [LabwareRoi!]!
     """Data shown when scanning in labware for analyser op."""
     analyserScanData(barcode: String!): AnalyserScanData!
+    """Run names recorded for the specified labware."""
+    runNames(barcode: String!): [String!]!
 
     """Get the specified storage location."""
     location(locationBarcode: String!): Location!

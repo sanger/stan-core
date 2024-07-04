@@ -3,6 +3,7 @@ package uk.ac.sanger.sccp.stan.service;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.*;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
@@ -29,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.Matchers.*;
+import static uk.ac.sanger.sccp.stan.service.operation.AnalyserServiceImp.RUN_NAME;
 import static uk.ac.sanger.sccp.utils.BasicUtils.inMap;
 
 /**
@@ -47,6 +49,8 @@ public class TestQCLabwareService {
     private WorkService mockWorkService;
     @Mock
     private OperationService mockOpService;
+    @Mock
+    private LabwareNoteService mockLwNoteService;
     @Mock
     private ValidationHelper mockVal;
     private Set<String> problems;
@@ -78,7 +82,7 @@ public class TestQCLabwareService {
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lw);
         UCMap<Work> workMap = UCMap.from(Work::getWorkNumber, EntityFactory.makeWork("SGP1"));
         Map<Integer, Comment> commentMap = Map.of(5, new Comment(5, "A", "B"));
-        QCLabware qcl = new QCLabware(lw.getBarcode(), null, null, null, null);
+        QCLabware qcl = new QCLabware(lw.getBarcode(), null, null, null, null, null);
         QCLabwareRequest request = new QCLabwareRequest(opType.getName(), List.of(qcl));
         List<QCLabware> qcls = request.getLabware();
 
@@ -88,6 +92,7 @@ public class TestQCLabwareService {
         doNothing().when(service).checkTimestamps(any(), any(), any(), any());
         doReturn(commentMap).when(mockVal).checkCommentIds(any());
         doNothing().when(service).checkSampleComments(any(), any(), any());
+        doNothing().when(service).checkRunNames(any(), any(), any());
 
         OperationResult opres = new OperationResult(List.of(new Operation()), List.of(lw));
         doReturn(opres).when(service).record(any(), any(), any(), any(), any(), any());
@@ -99,6 +104,7 @@ public class TestQCLabwareService {
         verify(service).checkTimestamps(mockVal, qcls, lwMap, mockClock);
         verify(service).checkComments(mockVal, qcls);
         verify(service).checkSampleComments(mockVal, qcls, lwMap);
+        verify(service).checkRunNames(problems, qcls, lwMap);
 
         verify(service).record(user, opType, qcls, lwMap, workMap, commentMap);
     }
@@ -119,6 +125,7 @@ public class TestQCLabwareService {
         verify(service, never()).checkTimestamps(any(), any(), any(), any());
         verify(service, never()).checkComments(any(), any());
         verify(service, never()).checkSampleComments(any(), any(), any());
+        verify(service, never()).checkRunNames(any(), any(), any());
         verify(service, never()).record(any(), any(), any(), any(), any(), any());
     }
 
@@ -130,7 +137,7 @@ public class TestQCLabwareService {
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lw);
         UCMap<Work> workMap = UCMap.from(Work::getWorkNumber, EntityFactory.makeWork("SGP1"));
         Map<Integer, Comment> commentMap = Map.of(5, new Comment(5, "A", "B"));
-        QCLabware qcl = new QCLabware(lw.getBarcode(), "SGP1", null, null, null);
+        QCLabware qcl = new QCLabware(lw.getBarcode(), null, "SGP1", null, null, null);
         QCLabwareRequest request = new QCLabwareRequest(opType.getName(), List.of(qcl));
         List<QCLabware> qcls = request.getLabware();
         problems.add("Problem A.");
@@ -142,15 +149,17 @@ public class TestQCLabwareService {
 
         doAnswer(addProblem("Bad time")).when(service).checkTimestamps(any(), any(), any(), any());
         doAnswer(addProblem("Bad comment", commentMap)).when(service).checkComments(any(), any());
+        doAnswer(addProblem("Bad run name")).when(service).checkRunNames(any(), any(), any());
 
         assertValidationException(() -> service.perform(user, request),
-                List.of("Problem A.", "Problem B.", "Bad time", "Bad comment"));
+                List.of("Problem A.", "Problem B.", "Bad time", "Bad comment", "Bad run name"));
 
         verify(mockVal).checkOpType(request.getOperationType(), OperationTypeFlag.IN_PLACE);
         verify(mockVal).checkLabware(List.of(lw.getBarcode()));
         verify(mockVal).checkWork(List.of("SGP1"));
         verify(service).checkTimestamps(any(), same(qcls), same(lwMap), same(mockClock));
         verify(service).checkComments(any(), same(qcls));
+        verify(service).checkRunNames(any(), same(qcls), same(lwMap));
 
         verify(service, never()).record(any(), any(), any(), any(), any(), any());
     }
@@ -169,7 +178,7 @@ public class TestQCLabwareService {
         times[times.length-1] = null;
 
         List<QCLabware> qcls = IntStream.range(0, lws.length)
-                .mapToObj(i -> new QCLabware(lws[i].getBarcode(), null, times[i], null, null))
+                .mapToObj(i -> new QCLabware(lws[i].getBarcode(), null, null, times[i], null, null))
                 .collect(toList());
 
         doNothing().when(mockVal).checkTimestamp(any(), any(), any());
@@ -199,7 +208,7 @@ public class TestQCLabwareService {
         );
         List<Integer> combinedCommentIds = Stream.concat(commentIds.stream(),
                 scs.stream().map(QCSampleComment::getCommentId)).toList();
-        QCLabware qcl = new QCLabware("STAN-1", null, null, commentIds, scs);
+        QCLabware qcl = new QCLabware("STAN-1", null, null, null, commentIds, scs);
         var qcls = List.of(qcl);
         Map<Integer, Comment> commentMap = Map.of(
                 1, new Comment(1, "A", "B"),
@@ -240,9 +249,9 @@ public class TestQCLabwareService {
         );
 
         List<QCLabware> qcls = List.of(
-                new QCLabware("STAN-10", null, null, null, scs1),
-                new QCLabware("STAN-11", null, null, null, scs2),
-                new QCLabware("STAN-12", null, null, null, List.of())
+                new QCLabware("STAN-10", null, null, null, null, scs1),
+                new QCLabware("STAN-11", null, null, null, null, scs2),
+                new QCLabware("STAN-12", null, null, null, null, List.of())
         );
 
         service.checkSampleComments(mockVal, qcls, lwMap);
@@ -262,7 +271,7 @@ public class TestQCLabwareService {
                 new QCSampleComment(A2, 1, 20),
                 new QCSampleComment(A1, null, 21)
         );
-        QCLabware qcl = new QCLabware(lw.getBarcode(), null, null, null, scs);
+        QCLabware qcl = new QCLabware(lw.getBarcode(), null, null, null, null, scs);
 
         service.checkSampleComments(mockVal, List.of(qcl), UCMap.from(Labware::getBarcode, lw));
 
@@ -271,6 +280,57 @@ public class TestQCLabwareService {
                 "Missing sample ID for sample comment.",
                 "Sample ID 1 is not present in slot A2 of labware STAN-10."
         );
+    }
+
+    @Test
+    public void testCheckRunNames_none() {
+        Labware lw = EntityFactory.getTube();
+        List<QCLabware> qcls = List.of(
+                new QCLabware(lw.getBarcode(), null, "SGP1", null, null, null)
+        );
+        UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lw);
+        List<String> problems = new ArrayList<>(0);
+        service.checkRunNames(problems, qcls, lwMap);
+        verifyNoInteractions(mockLwNoteService);
+        assertThat(problems).isEmpty();
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testCheckRunNames(boolean valid) {
+        LabwareType lt = EntityFactory.getTubeType();
+        Labware[] lws = IntStream.range(0,3).mapToObj(i -> EntityFactory.makeEmptyLabware(lt, "STAN-"+i)).toArray(Labware[]::new);
+        UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lws);
+        List<QCLabware> qcls = List.of(
+                new QCLabware(lws[0].getBarcode(), "run1", null, null, null, null),
+                new QCLabware(lws[1].getBarcode(), "run2", null, null, null, null),
+                new QCLabware(lws[2].getBarcode(), null, null, null, null, null)
+        );
+        UCMap<Set<String>> bcValues = new UCMap<>(2);
+        bcValues.put(lws[0].getBarcode(), Set.of("run1", "runA"));
+        bcValues.put(lws[1].getBarcode(), Set.of("run2", "runB"));
+        when(mockLwNoteService.findNoteValuesForLabware(any(), any())).thenReturn(bcValues);
+
+        Set<Labware> lwSet;
+        if (valid) {
+            lwSet = Set.of(lws[0], lws[1]);
+        } else {
+            lwSet = Set.of(lws[0], lws[1], lws[2]);
+            qcls.get(1).setRunName("runX");
+            qcls.get(2).setRunName("runY");
+        }
+
+        List<String> problems = new ArrayList<>(valid ? 0 : 2);
+        service.checkRunNames(problems, qcls, lwMap);
+        verify(mockLwNoteService).findNoteValuesForLabware(lwSet, RUN_NAME);
+        if (valid) {
+            assertThat(problems).isEmpty();
+        } else {
+            assertThat(problems).containsExactlyInAnyOrder(
+                    "runX is not a recorded run-name for labware STAN-1.",
+                    "runY is not a recorded run-name for labware STAN-2."
+            );
+        }
     }
 
     private static LocalDateTime ldt(int day) {
@@ -290,9 +350,9 @@ public class TestQCLabwareService {
         UCMap<Work> workMap = UCMap.from(Work::getWorkNumber, work);
         Map<Integer, Comment> commentMap = Map.of(5, new Comment(5, "A", "B"));
 
-        List<QCLabware> qcls = List.of(new QCLabware("STAN-1", "SGP1", ldt(1), List.of(1,2), null),
-                new QCLabware("STAN-2", "SGP1", ldt(2), null, null),
-                new QCLabware("STAN-3", null, null, List.of(3), null));
+        List<QCLabware> qcls = List.of(new QCLabware("STAN-1", null, "SGP1", ldt(1), List.of(1,2), null),
+                new QCLabware("STAN-2", null, "SGP1", ldt(2), null, null),
+                new QCLabware("STAN-3", null, null, null, List.of(3), null));
         Operation[] ops = IntStream.rangeClosed(1, lws.length)
                 .mapToObj(i -> new Operation(i, opType, null, null, null))
                 .toArray(Operation[]::new);
@@ -302,6 +362,7 @@ public class TestQCLabwareService {
         doNothing().when(service).linkWorks(any(), any(), any());
         doNothing().when(service).linkComments(any(), any(), any(), any());
         OperationResult opRes = new OperationResult(Arrays.asList(ops), Arrays.asList(lws));
+        doNothing().when(service).saveNotes(any(), any(), any());
         doReturn(opRes).when(service).assembleResult(any(), any(), any());
 
         assertSame(opRes, service.record(user, opType, qcls, lwMap, workMap, commentMap));
@@ -319,6 +380,7 @@ public class TestQCLabwareService {
         verify(mockOpRepo).saveAll(List.of(ops[0], ops[1]));
         verify(service).linkWorks(qcls, workMap, lwOps);
         verify(service).linkComments(qcls, commentMap, lwOps, lwMap);
+        verify(service).saveNotes(qcls, lwOps, lwMap);
         verify(service).assembleResult(qcls, lwOps, lwMap);
     }
 
@@ -336,9 +398,9 @@ public class TestQCLabwareService {
             lwOps.put("STAN-"+(i+1), ops[i]);
         }
         List<QCLabware> qcls = List.of(
-                new QCLabware("STAN-1", "SGP1", null, null, null),
-                new QCLabware("STAN-2", "SGP2", null, null, null),
-                new QCLabware("STAN-3", "SGP1", null, null, null)
+                new QCLabware("STAN-1", null, "SGP1", null, null, null),
+                new QCLabware("STAN-2", null, "SGP2", null, null, null),
+                new QCLabware("STAN-3", null, "SGP1", null, null, null)
         );
         service.linkWorks(qcls, workMap, lwOps);
 
@@ -375,9 +437,9 @@ public class TestQCLabwareService {
         final Address A1 = new Address(1,1), A2 = new Address(1,2);
 
         List<QCLabware> qcls = List.of(
-                new QCLabware("STAN-21", null, null, List.of(1,2,3), null),
-                new QCLabware("STAN-22", null, null, null, List.of(new QCSampleComment(A1, 10,1))),
-                new QCLabware("STAN-23", null, null, List.of(2), List.of(new QCSampleComment(A2, 11, 2)))
+                new QCLabware("STAN-21", null, null, null, List.of(1,2,3), null),
+                new QCLabware("STAN-22", null, null, null, null, List.of(new QCSampleComment(A1, 10,1))),
+                new QCLabware("STAN-23", null, null, null, List.of(2), List.of(new QCSampleComment(A2, 11, 2)))
         );
 
         service.linkComments(qcls, commentMap, lwOps, lwMap);
@@ -397,6 +459,40 @@ public class TestQCLabwareService {
     }
 
     @Test
+    public void testSaveNotes_none() {
+        LabwareType lt = EntityFactory.getTubeType();
+        Labware[] lws = IntStream.range(0,2).mapToObj(i -> EntityFactory.makeEmptyLabware(lt, "STAN-"+i)).toArray(Labware[]::new);
+        UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lws);
+        List<QCLabware> qcls = List.of(
+                new QCLabware("STAN-0", null, null, null, null, null),
+                new QCLabware("STAN-1", "", null, null, null, null)
+        );
+        UCMap<Operation> opsMap = new UCMap<>();
+        service.saveNotes(qcls, opsMap, lwMap);
+        verifyNoInteractions(mockLwNoteService);
+    }
+
+    @Test
+    public void testSaveNotes() {
+        LabwareType lt = EntityFactory.getTubeType();
+        Labware[] lws = IntStream.range(0,3).mapToObj(i -> EntityFactory.makeEmptyLabware(lt, "STAN-"+i)).toArray(Labware[]::new);
+        UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lws);
+        List<QCLabware> qcls = List.of(
+                new QCLabware("STAN-0", "run0", null, null, null, null),
+                new QCLabware("STAN-1", "run1", null, null, null, null),
+                new QCLabware("STAN-2", null, null, null, null, null)
+        );
+        UCMap<Operation> ops = new UCMap<>(1);
+        ops.put("STAN-0", new Operation());
+        service.saveNotes(qcls, ops, lwMap);
+        UCMap<String> noteValues = new UCMap<>(2);
+        noteValues.put("STAN-0", "run0");
+        noteValues.put("STAN-1", "run1");
+
+        verify(mockLwNoteService).createNotes(RUN_NAME, lwMap, ops, noteValues);
+    }
+
+    @Test
     public void testAssembleResult() {
         Labware[] lws = IntStream.rangeClosed(1,3)
                 .mapToObj(i -> new Labware(i, "STAN-"+i, null, null))
@@ -412,7 +508,7 @@ public class TestQCLabwareService {
                 })
                 .toArray(Operation[]::new);
         List<QCLabware> qcls = Arrays.stream(lws)
-                .map(lw -> new QCLabware(lw.getBarcode(), null, null, null, null))
+                .map(lw -> new QCLabware(lw.getBarcode(), null, null, null, null, null))
                 .collect(toList());
 
         OperationResult opres = service.assembleResult(qcls, lwOps, lwMap);
