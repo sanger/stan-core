@@ -17,6 +17,8 @@ import uk.ac.sanger.sccp.utils.UCMap;
 import uk.ac.sanger.sccp.utils.tsv.TsvColumn;
 
 import javax.persistence.EntityNotFoundException;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
@@ -555,6 +557,65 @@ public class ReleaseFileService {
                 }
             });
         }
+
+        Map<SlotIdSampleId, LocalDate> slotSampleSectionDates = findSlotSampleDates(
+                measurementRepo.findAllBySlotIdInAndName(slotIds, "Date sectioned")
+        );
+        if (!slotSampleSectionDates.isEmpty()) {
+            for (ReleaseEntry entry : entries) {
+                if (entry.getSlot() != null && entry.getSample() != null && entry.getSectionDate() == null) {
+                    entry.setSectionDate(findEntrySectionDate(entry, slotSampleSectionDates, ancestry));
+                }
+            }
+        }
+    }
+
+    /**
+     * Loads the section date for the given entry from the given map using the given ancestry
+     * @param entry the entry to load the date for
+     * @param slotSampleSectionDates map of slot/sample ids to section date
+     * @param ancestry the ancestry for the slot/samples
+     * @return the section date for the given entry
+     */
+    public LocalDate findEntrySectionDate(ReleaseEntry entry, Map<SlotIdSampleId, LocalDate> slotSampleSectionDates,
+                                          Ancestry ancestry) {
+        SlotSample entrySs = new SlotSample(entry.getSlot(), entry.getSample());
+        for (SlotSample ss : ancestry.ancestors(entrySs)) {
+            LocalDate date = slotSampleSectionDates.get(new SlotIdSampleId(ss.slotId(), ss.sampleId()));
+            if (date != null) {
+                return date;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Builds a map from slot/sample ids to the localdate in the given measurements
+     * @param measurements the measurements to look through
+     * @return a map from slot/sample ids to the relevant date in the measurements
+     */
+    public Map<SlotIdSampleId, LocalDate> findSlotSampleDates(Collection<Measurement> measurements) {
+        if (measurements.isEmpty()) {
+            return Map.of();
+        }
+        Map<SlotIdSampleId, LocalDate> map = new HashMap<>(measurements.size());
+        for (Measurement measurement : measurements) {
+            if (measurement.getSampleId()==null || measurement.getSlotId()==null || measurement.getValue()==null) {
+                continue;
+            }
+            LocalDate value;
+            try {
+                value = LocalDate.parse(measurement.getValue());
+            } catch (DateTimeParseException e) {
+                continue;
+            }
+            SlotIdSampleId key = new SlotIdSampleId(measurement.getSlotId(), measurement.getSampleId());
+            LocalDate oldValue = map.get(key);
+            if (oldValue==null || oldValue.isBefore(value)) {
+                map.put(key, value);
+            }
+        }
+        return map;
     }
 
     /**

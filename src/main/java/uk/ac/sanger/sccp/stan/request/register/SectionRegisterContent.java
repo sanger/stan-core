@@ -4,6 +4,7 @@ import uk.ac.sanger.sccp.stan.model.Address;
 import uk.ac.sanger.sccp.stan.model.LifeStage;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
+import java.time.LocalDate;
 import java.util.Objects;
 
 /**
@@ -25,6 +26,7 @@ public class SectionRegisterContent {
     private Integer sectionNumber;
     private Integer sectionThickness;
     private String region;
+    private LocalDate dateSectioned;
 
     public SectionRegisterContent() {}
 
@@ -147,6 +149,15 @@ public class SectionRegisterContent {
         this.region = region;
     }
 
+    /** The date the sample was sectioned */
+    public LocalDate getDateSectioned() {
+        return this.dateSectioned;
+    }
+
+    public void setDateSectioned(LocalDate dateSectioned) {
+        this.dateSectioned = dateSectioned;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -166,6 +177,7 @@ public class SectionRegisterContent {
                 && Objects.equals(this.sectionNumber, that.sectionNumber)
                 && Objects.equals(this.sectionThickness, that.sectionThickness)
                 && Objects.equals(this.region, that.region)
+                && Objects.equals(this.dateSectioned, that.dateSectioned)
         );
     }
 
@@ -191,6 +203,7 @@ public class SectionRegisterContent {
                 .add("sectionNumber", sectionNumber)
                 .add("sectionThickness", sectionThickness)
                 .add("region", region)
+                .add("dateSectioned", dateSectioned)
                 .reprStringValues()
                 .omitNullValues()
                 .toString();
