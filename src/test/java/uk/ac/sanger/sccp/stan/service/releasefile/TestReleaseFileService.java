@@ -15,11 +15,13 @@ import uk.ac.sanger.sccp.stan.service.history.ReagentActionDetailService.Reagent
 import uk.ac.sanger.sccp.stan.service.operation.AnalyserServiceImp;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.Ancestry;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
+import uk.ac.sanger.sccp.stan.service.releasefile.ReleaseFileService.StorageDetail;
 
 import javax.persistence.EntityNotFoundException;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.*;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -142,17 +144,20 @@ public class TestReleaseFileService {
     }
 
     @ParameterizedTest
-    @CsvSource({"false,false","true,false","true,true"})
-    public void testGetReleaseFileContent(boolean includeStorageAddresses, boolean includeVisium) {
+    @CsvSource({"NONE,false","NAME,false","BARCODE,false","NAME,true"})
+    public void testGetReleaseFileContent(StorageDetail detail, boolean includeVisium) {
         assertThat(service.getReleaseFileContent(List.of(), Set.of()).getEntries()).isEmpty();
 
         setupReleases();
-        if (includeStorageAddresses) {
+        if (detail != StorageDetail.NONE) {
             release1.setLocationBarcode("STO-A1");
+            release1.setLocationName("Box 1");
             release1.setStorageAddress("A1");
-            release2.setLocationBarcode("STO-A1");
+            release2.setLocationBarcode(detail==StorageDetail.BARCODE ? "STO-A2" : "STO-A1");
+            release2.setLocationName("Box 1");
             release2.setStorageAddress("42");
         }
+
         final Map<Integer, Snapshot> snapshots = snapMap();
         doReturn(snapshots).when(service).loadSnapshots(any());
         List<Release> releases = List.of(this.release1, release2);
@@ -163,9 +168,14 @@ public class TestReleaseFileService {
                 new ReleaseEntry(lw1, lw1.getFirstSlot(), sample1),
                 new ReleaseEntry(lw2, lw2.getFirstSlot(), sample)
         );
-        if (includeStorageAddresses) {
+        if (detail!=StorageDetail.NONE) {
             for (int i = 0; i < entries.size(); ++i) {
                 entries.get(i).setStorageAddress(i==0 ? "A1" : "42");
+                if (detail==StorageDetail.BARCODE) {
+                    entries.get(i).setLocationName(i==0 ? "Box 1 STO-A1" : "Box 1 STO-A2");
+                } else {
+                    entries.get(i).setLocationName("Box 1");
+                }
             }
         }
         Set<Integer> slotIds = entries.stream()
@@ -173,8 +183,8 @@ public class TestReleaseFileService {
                 .collect(toSet());
         Map<Integer, Sample> sampleMap = Map.of(sample.getId(), sample, sample1.getId(), sample1);
         doReturn(sampleMap).when(service).loadSamples(anyCollection(), any());
-        doReturn(entries.subList(0,2).stream()).when(service).toReleaseEntries(this.release1, sampleMap, snapshots, includeStorageAddresses);
-        doReturn(entries.subList(2,3).stream()).when(service).toReleaseEntries(release2, sampleMap, snapshots, includeStorageAddresses);
+        doReturn(entries.subList(0,2).stream()).when(service).toReleaseEntries(this.release1, sampleMap, snapshots, detail);
+        doReturn(entries.subList(2,3).stream()).when(service).toReleaseEntries(release2, sampleMap, snapshots, detail);
         var ancestry = makeAncestry(lw1, sample1, lw2, sample);
         doReturn(ancestry).when(service).findAncestry(any());
         ReleaseFileMode mode = ReleaseFileMode.NORMAL;
@@ -203,8 +213,8 @@ public class TestReleaseFileService {
 
         verify(service).getReleases(releaseIds);
         verify(service).loadSamples(releases, snapshots);
-        verify(service).toReleaseEntries(release1, sampleMap, snapshots, includeStorageAddresses);
-        verify(service).toReleaseEntries(release2, sampleMap, snapshots, includeStorageAddresses);
+        verify(service).toReleaseEntries(release1, sampleMap, snapshots, detail);
+        verify(service).toReleaseEntries(release2, sampleMap, snapshots, detail);
         verify(service).loadLastSection(entries);
         verify(service).findAncestry(entries);
         verify(service).loadSources(entries, ancestry, mode);
@@ -220,27 +230,36 @@ public class TestReleaseFileService {
     }
 
     @ParameterizedTest
-    @MethodSource("shouldIncludeStorageAddressArgs")
-    public void testShouldIncludeStorageAddresses(List<String> locationBarcodes, List<String> addresses, boolean expected) {
-        Iterator<String> addressIter = addresses.iterator();
+    @CsvSource(delimiter=';', value={
+            "null,null;null,null;null,null;NONE",
+            "STO-1,null;Box 1,null;A1,null;NAME",
+            "STO-1,STO-1,STO-2,null;Box 1,Box 1,Box 2,null;A1,A2,A3,null;NAME",
+            "STO-1,STO-1,STO-2,null;Box 1,Box 1,null,null;A1,A2,A3,null;BARCODE",
+            "STO-1,STO-2,null;Box 1,Box 1,null;A1,A2,null;BARCODE",
+    })
+    public void testStorageDetail(String locationBarcodesJoined,
+                                  String locationNamesJoined,
+                                  String addressesJoined,
+                                  StorageDetail expectedDetail) {
+        String[] barcodes = splitArg(locationBarcodesJoined);
+        String[] addresses = splitArg(addressesJoined);
+        String[] names = splitArg(locationNamesJoined);
         Labware lw = EntityFactory.getTube();
-        List<Release> releases = locationBarcodes.stream()
-                .map(bc -> new Release(100, lw, user, destination, recipient, 120, null, bc, addressIter.next(), null))
-                .collect(toList());
-        assertEquals(expected, service.shouldIncludeStorageAddress(releases));
+        List<Release> releases = IntStream.range(0, barcodes.length)
+                .mapToObj(i -> new Release(100, lw, user, destination, recipient, 120, null, barcodes[i], names[i], addresses[i], null))
+                .toList();
+        assertEquals(expectedDetail, service.storageDetail(releases));
     }
 
-    static Stream<Arguments> shouldIncludeStorageAddressArgs() {
-        final String A1 = "A1", A2 = "42";
-        return Arrays.stream(new Object[][] {
-                {List.of(), List.of(), false},
-                {List.of("STO-1"), List.of(A1), true},
-                {List.of("STO-1", "STO-1"), List.of(A1, A2), true},
-                {List.of("STO-1"), Collections.singletonList(null), false},
-                {List.of("STO-1", "STO-2"), List.of(A1, A2), false},
-                {Collections.singletonList(null), List.of(A1), false},
-                {Arrays.asList("STO-1", "STO-1", "STO-1"), Arrays.asList(A1, A2, null), false},
-        }).map(Arguments::of);
+    static String[] splitArg(String arg) {
+        String[] values = arg.split(",");
+        for (int i = 0; i < values.length; ++i) {
+            values[i] = values[i].trim();
+            if (values[i].equalsIgnoreCase("null")) {
+                values[i] = null;
+            }
+        }
+        return values;
     }
 
     @ParameterizedTest
@@ -364,19 +383,27 @@ public class TestReleaseFileService {
     }
 
     @ParameterizedTest
-    @ValueSource(booleans={false,true})
-    public void testToReleaseEntries(boolean includeStorageAddresses) {
+    @EnumSource(StorageDetail.class)
+    public void testToReleaseEntries(StorageDetail detail) {
         setupReleases();
         release1.setLocationBarcode("STO-1");
+        release1.setLocationName("locname");
         release1.setStorageAddress("42");
         Map<Integer, Sample> sampleMap = Stream.of(sample, sample1)
                 .collect(toMap(Sample::getId, s -> s));
 
-        List<ReleaseEntry> entries = service.toReleaseEntries(release1, sampleMap, snapMap(), includeStorageAddresses).collect(toList());
+        String expectedAddress = (detail==StorageDetail.NONE ? null : "42");
+        String expectedLocationName = switch (detail) {
+            case NONE -> null;
+            case NAME -> "locname";
+            case BARCODE -> "locname STO-1";
+        };
+
+        List<ReleaseEntry> entries = service.toReleaseEntries(release1, sampleMap, snapMap(), detail).collect(toList());
         assertThat(entries).containsOnly(
-                new ReleaseEntry(lw1, lw1.getFirstSlot(), sample, includeStorageAddresses ? "42" : null),
-                new ReleaseEntry(lw1, lw1.getFirstSlot(), sample1, includeStorageAddresses ? "42" : null),
-                new ReleaseEntry(lw1, lw1.getSlots().get(1), sample, includeStorageAddresses ? "42" : null)
+                new ReleaseEntry(lw1, lw1.getFirstSlot(), sample, expectedAddress, expectedLocationName),
+                new ReleaseEntry(lw1, lw1.getFirstSlot(), sample1, expectedAddress, expectedLocationName),
+                new ReleaseEntry(lw1, lw1.getSlots().get(1), sample, expectedAddress, expectedLocationName)
         );
     }
 
@@ -848,7 +875,7 @@ public class TestReleaseFileService {
     }
 
     private Map<Integer, List<Measurement>> measurementMap(Measurement... measurements) {
-        return Arrays.stream(measurements).collect(Collectors.groupingBy(Measurement::getSlotId));
+        return Arrays.stream(measurements).collect(groupingBy(Measurement::getSlotId));
     }
 
     @Test

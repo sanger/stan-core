@@ -101,7 +101,11 @@ public class IntegrationTestUtils {
                 ObjectNode node = objectMapper.createObjectNode()
                         .put("barcode", entry.getKey())
                         .put("address", loc.getAddress()!=null ? loc.getAddress().toString() : null)
-                        .set("location", objectMapper.createObjectNode().put("barcode", loc.getBarcode()));
+                        .put("addressIndex", loc.getAddressIndex()!=null ? loc.getAddressIndex().toString() : null)
+                        .set("location", objectMapper.createObjectNode()
+                                .put("barcode", loc.getBarcode())
+                                .put("name", loc.getName())
+                        );
                 itemArrayNode.add(node);
             }
             storelightDataNode = objectMapper.createObjectNode().set("stored", itemArrayNode);

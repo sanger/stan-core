@@ -206,8 +206,7 @@ public class TestStoreService {
     @ParameterizedTest
     @MethodSource("validateBarcodeForStorageArgs")
     public void testValidateBarcodeForStorage(Object labwareOrBarcode, String expectedErrorMessage) {
-        if (labwareOrBarcode instanceof String) {
-            String barcode = (String) labwareOrBarcode;
+        if (labwareOrBarcode instanceof String barcode) {
             when(mockLabwareRepo.getByBarcode(barcode)).thenThrow(new EntityNotFoundException(expectedErrorMessage));
             assertThat(assertThrows(EntityNotFoundException.class, () -> service.validateLabwareBarcodeForStorage(barcode)))
                     .hasMessage(expectedErrorMessage);
@@ -524,18 +523,26 @@ public class TestStoreService {
                             .put("barcode", "STAN-1")
                             .put("address", "A2")
                             .put("addressIndex", 4)
-                            .set("location", objectMapper.createObjectNode().put("barcode", "STO-1"))
+                            .set("location",
+                                    objectMapper.createObjectNode()
+                                            .put("barcode", "STO-1")
+                                            .put("name", "Box 1")
+                            )
                     )
                     .add(objectMapper.createObjectNode()
                             .put("barcode", "STAN-2")
                             .putNull("address")
-                            .set("location", objectMapper.createObjectNode().put("barcode", "STO-2"))
+                            .set("location",
+                                    objectMapper.createObjectNode()
+                                            .put("barcode", "STO-2")
+                                            .putNull("name")
+                            )
                     );
             GraphQLResponse response = setupResponse("stored", itemsNode);
             when(mockClient.postQuery(anyString(), isNull())).thenReturn(response);
             locations = service.loadBasicLocationsOfItems(stanBarcodes);
             assertThat(locations).hasSize(2);
-            assertEquals(new BasicLocation("STO-1", new Address(1,2), 4), locations.get("STAN-1"));
+            assertEquals(new BasicLocation("STO-1", "Box 1", new Address(1,2), 4), locations.get("STAN-1"));
             assertEquals(new BasicLocation("STO-2", null), locations.get("STAN-2"));
             assertNull(locations.get("STAN-3"));
             verify(service).checkErrors(response);
@@ -551,7 +558,7 @@ public class TestStoreService {
                 "  barcode" +
                 "  address" +
                 "  addressIndex" +
-                "  location { barcode }" +
+                "  location { barcode name }" +
                 "}}", null);
     }
 
