@@ -28,6 +28,11 @@ public class OmeroProjectAdminService extends BaseAdminService<OmeroProject, Ome
     }
 
     @Override
+    public String notificationName() {
+        return "omero project";
+    }
+
+    @Override
     protected Optional<OmeroProject> findEntity(OmeroProjectRepo repo, String name) {
         return repo.findByName(name);
     }

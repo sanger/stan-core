@@ -485,7 +485,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     }
 
     public DataFetcher<OmeroProject> addOmeroProject() {
-        return adminAdd(omeroProjectAdminService::addNew, "AddOmeroProject", "name");
+        return adminAdd(omeroProjectAdminService::addNew, "AddOmeroProject", "name", User.Role.enduser);
     }
 
     public DataFetcher<OmeroProject> setOmeroProjectEnabled() {
