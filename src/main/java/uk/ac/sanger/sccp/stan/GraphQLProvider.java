@@ -131,6 +131,7 @@ public class GraphQLProvider {
                         .dataFetcher("eventTypes", graphQLDataFetchers.eventTypes())
                         .dataFetcher("workProgress", graphQLDataFetchers.workProgress())
                         .dataFetcher("analyserScanData", graphQLDataFetchers.analyserScanData())
+                        .dataFetcher("runNames", graphQLDataFetchers.runNames())
 
                         .dataFetcher("location", graphQLStore.getLocation())
                         .dataFetcher("stored", graphQLStore.getStored())

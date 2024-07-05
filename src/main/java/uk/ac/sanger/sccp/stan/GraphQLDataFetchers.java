@@ -18,6 +18,7 @@ import uk.ac.sanger.sccp.stan.service.flag.FlagLookupService;
 import uk.ac.sanger.sccp.stan.service.graph.GraphService;
 import uk.ac.sanger.sccp.stan.service.history.HistoryService;
 import uk.ac.sanger.sccp.stan.service.label.print.LabelPrintService;
+import uk.ac.sanger.sccp.stan.service.operation.AnalyserServiceImp;
 import uk.ac.sanger.sccp.stan.service.operation.RecentOpService;
 import uk.ac.sanger.sccp.stan.service.operation.plan.PlanService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
@@ -83,6 +84,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final GraphService graphService;
     final CommentRepo commentRepo;
     final AnalyserScanDataService analyserScanDataService;
+    final LabwareNoteService lwNoteService;
 
     @Autowired
     public GraphQLDataFetchers(ObjectMapper objectMapper, AuthenticationComponent authComp, UserRepo userRepo,
@@ -108,7 +110,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                CleanedOutSlotService cleanedOutSlotService,
                                FlagLookupService flagLookupService, MeasurementService measurementService,
                                GraphService graphService, CommentRepo commentRepo,
-                               AnalyserScanDataService analyserScanDataService) {
+                               AnalyserScanDataService analyserScanDataService, LabwareNoteService lwNoteService) {
         super(objectMapper, authComp, userRepo);
         this.sessionConfig = sessionConfig;
         this.versionInfo = versionInfo;
@@ -157,6 +159,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.graphService = graphService;
         this.commentRepo = commentRepo;
         this.analyserScanDataService = analyserScanDataService;
+        this.lwNoteService = lwNoteService;
     }
 
     public DataFetcher<User> getUser() {
@@ -487,6 +490,13 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         return dfe -> {
             String barcode = dfe.getArgument("barcode");
             return analyserScanDataService.load(barcode);
+        };
+    }
+
+    public DataFetcher<Set<String>> runNames() {
+        return dfe -> {
+            String barcode = dfe.getArgument("barcode");
+            return lwNoteService.findNoteValuesForBarcode(barcode, AnalyserServiceImp.RUN_NAME);
         };
     }
 
