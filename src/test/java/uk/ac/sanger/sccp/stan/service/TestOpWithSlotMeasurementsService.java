@@ -41,7 +41,7 @@ public class TestOpWithSlotMeasurementsService {
     @Mock
     private OperationCommentRepo mockOpComRepo;
     @Mock
-    private Sanitiser<String> mockCqSan, mockConcSan, mockCycSan;
+    private Sanitiser<String> mockCqSan, mockConcSan, mockCycSan, mockSizeSan;
     @Mock
     private WorkService mockWorkService;
     @Mock
@@ -62,7 +62,7 @@ public class TestOpWithSlotMeasurementsService {
         mocking = MockitoAnnotations.openMocks(this);
 
         service = spy(new OpWithSlotMeasurementsServiceImp(mockMeasRepo, mockOpComRepo,
-                mockCqSan, mockConcSan, mockCycSan, mockWorkService, mockOpService,
+                mockCqSan, mockConcSan, mockCycSan, mockSizeSan, mockWorkService, mockOpService,
                 mockCommentValidationService, mockMeasurementService, mockValHelperFactory));
     }
 
@@ -441,11 +441,15 @@ public class TestOpWithSlotMeasurementsService {
             "Sploop,20,,",
             "Cq value,20,x!,,Bad value",
             "Cycles,024,24,",
+            "Minimum size,20,20,",
+            "Maximum size,40,40,",
+            "Main peak size,30,30,",
     })
     public void testSanitiseMeasurementValue(String name, String value, String sanValue, String problem) {
         List<Sanitiser<String>> sans = List.of(mockConcSan, mockCqSan, mockCycSan);
         Sanitiser<String> san = switch (name) {
             case "cDNA concentration", "Library concentration" -> mockConcSan;
+            case "Minimum size", "Maximum size", "Main peak size" -> mockSizeSan;
             case "Cq value" -> mockCqSan;
             case "Cycles" -> mockCycSan;
             default -> null;

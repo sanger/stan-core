@@ -275,6 +275,11 @@ public class FieldValidation {
     }
 
     @Bean
+    public Sanitiser<String> sizeBpSanitiser() {
+        return new IntSanitiser("Size", 0, null);
+    }
+
+    @Bean
     public Sanitiser<String> tissueCoverageSanitiser() {
         return new IntSanitiser("Tissue coverage", 0, 100);
     }
