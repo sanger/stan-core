@@ -18,6 +18,7 @@ public enum MeasurementType {
     Tissue_coverage(MeasurementValueType.INT, "%"),
     Cq_value(MeasurementValueType.DECIMAL),
     Cycles(MeasurementValueType.INT),
+    Size_bp(MeasurementValueType.INT, "bp"),
     ;
 
     private final MeasurementValueType valueType;

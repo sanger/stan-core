@@ -29,6 +29,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 public class HistoryServiceImp implements HistoryService {
     static final String RELEASE_EVENT_TYPE = "Release", DESTRUCTION_EVENT_TYPE = "Destruction",
             SOLUTION_TRANSFER_OP_NAME = "Solution transfer";
+    static final Pattern SIZE_BP_PTN = Pattern.compile("^M((in|ax)imum|ain peak) size$", Pattern.CASE_INSENSITIVE);
 
     private final OperationRepo opRepo;
     private final OperationTypeRepo opTypeRepo;
@@ -680,6 +681,8 @@ public class HistoryServiceImp implements HistoryService {
         MeasurementType mt = MeasurementType.forName(measurement.getName());
         if (mt==null && BasicUtils.startsWithIgnoreCase(measurement.getName(), "DV200")) {
             mt = MeasurementType.DV200;
+        } else if (mt==null && SIZE_BP_PTN.matcher(measurement.getName()).matches()) {
+            mt = MeasurementType.Size_bp;
         }
         MeasurementValueType vt = (mt==null ? null : mt.getValueType());
         String detail = measurement.getName() + ": ";
