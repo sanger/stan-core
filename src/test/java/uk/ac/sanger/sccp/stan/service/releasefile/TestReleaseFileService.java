@@ -68,7 +68,6 @@ public class TestReleaseFileService {
     private Release release1, release2;
     private Snapshot snap1, snap2;
 
-
     @BeforeEach
     void setup() {
         mockReleaseRepo = mock(ReleaseRepo.class);
@@ -189,7 +188,8 @@ public class TestReleaseFileService {
         var ancestry = makeAncestry(lw1, sample1, lw2, sample);
         doReturn(ancestry).when(service).findAncestry(any());
         ReleaseFileMode mode = ReleaseFileMode.NORMAL;
-        doReturn(mode).when(service).checkMode(any());
+        Set<ReleaseFileMode> modes = EnumSet.of(mode);
+        doReturn(modes).when(service).checkModes(any());
         doNothing().when(service).loadLastSection(any());
         doNothing().when(service).loadSources(any(), any(), any());
         doNothing().when(service).loadMeasurements(any(), any());
@@ -209,7 +209,7 @@ public class TestReleaseFileService {
         List<Integer> releaseIds = List.of(this.release1.getId(), release2.getId());
         ReleaseFileContent rfc = service.getReleaseFileContent(releaseIds, options);
         assertEquals(entries, rfc.getEntries());
-        assertEquals(mode, rfc.getMode());
+        assertThat(rfc.getModes()).containsExactly(mode);
         assertSame(options, rfc.getOptions());
 
         verify(service).getReleases(releaseIds);
@@ -218,7 +218,7 @@ public class TestReleaseFileService {
         verify(service).toReleaseEntries(release2, sampleMap, snapshots, detail);
         verify(service).loadLastSection(entries);
         verify(service).findAncestry(entries);
-        verify(service).loadSources(entries, ancestry, mode);
+        verify(service).loadSources(entries, ancestry, modes);
         verify(service).loadMeasurements(entries, ancestry);
         verify(service).loadStains(entries, ancestry);
         verify(service).loadReagentSources(entries);
@@ -266,19 +266,18 @@ public class TestReleaseFileService {
     @ParameterizedTest
     @MethodSource("checkModeArgs")
     public void testCheckMode(Collection<Sample> samples, Object expectedOutcome) {
-        if (expectedOutcome instanceof String expectedErrorMessage) {
-            assertThat(
-                    assertThrows(IllegalArgumentException.class, () -> service.checkMode(samples))
-            ).hasMessage(expectedErrorMessage);
+        Set<ReleaseFileMode> expectedModes;
+        if (expectedOutcome instanceof ReleaseFileMode m) {
+            expectedModes = EnumSet.of(m);
         } else {
-            assertEquals(expectedOutcome, service.checkMode(samples));
+            //noinspection unchecked
+            expectedModes = (Set<ReleaseFileMode>) expectedOutcome;
         }
+        assertEquals(expectedModes, service.checkModes(samples));
     }
 
     static Stream<Arguments> checkModeArgs() {
         Tissue tissue = EntityFactory.getTissue();
-        String errorMessage = "Cannot create a release file with a mix of " +
-                "cDNA and other bio states.";
         BioState[] bss = IntStream.range(1, 4)
                 .mapToObj(i -> new BioState(i, i==1 ? "Tissue" : i==2 ? "RNA" : "cDNA"))
                 .toArray(BioState[]::new);
@@ -288,7 +287,7 @@ public class TestReleaseFileService {
         return Stream.of(
                 Arguments.of(List.of(samples[0], samples[1]), ReleaseFileMode.NORMAL),
                 Arguments.of(List.of(samples[2], samples[3]), ReleaseFileMode.CDNA),
-                Arguments.of(List.of(samples[0], samples[2]), errorMessage)
+                Arguments.of(List.of(samples[0], samples[2]), EnumSet.of(ReleaseFileMode.CDNA, ReleaseFileMode.NORMAL))
         );
     }
 
@@ -430,7 +429,7 @@ public class TestReleaseFileService {
         );
         doNothing().when(service).loadOriginalBarcodes(any(), any());
         doNothing().when(service).loadSourcesForCDNA(any(), any());
-        service.loadSources(entries, ancestry, mode);
+        service.loadSources(entries, ancestry, EnumSet.of(mode));
         verify(service, times(mode==ReleaseFileMode.NORMAL ? 1 : 0)).loadOriginalBarcodes(entries, ancestry);
         verify(service, times(mode==ReleaseFileMode.CDNA ? 1 : 0)).loadSourcesForCDNA(entries, ancestry);
     }
@@ -1144,12 +1143,13 @@ public class TestReleaseFileService {
                 new ReleaseEntry(null, null, null)
         );
         ReleaseFileMode mode = ReleaseFileMode.CDNA;
+        Set<ReleaseFileMode> modes = EnumSet.of(mode);
         if (anyTagData) {
             entries.get(1).setTagData(orderedMap("Alpha", "A", "Beta", "B"));
             entries.get(2).setTagData(orderedMap("Beta", "8", "Gamma", "9"));
         }
-        var columns = service.computeColumns(new ReleaseFileContent(mode, entries, options));
-        List modeColumns = ReleaseColumn.forModeAndOptions(mode, options);
+        var columns = service.computeColumns(new ReleaseFileContent(EnumSet.of(mode), entries, options));
+        List modeColumns = ReleaseColumn.forModesAndOptions(modes, options);
         if (!anyTagData || !options.contains(ReleaseFileOption.Visium)) {
             assertThat(columns).containsExactlyElementsOf(modeColumns);
             return;

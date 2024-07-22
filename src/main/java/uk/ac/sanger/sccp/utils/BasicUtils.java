@@ -225,6 +225,16 @@ public class BasicUtils {
     }
 
     /**
+     * Collector of enums into an enumset
+     * @param cls the class of the enum
+     * @return a collector
+     * @param <E> the type of enum
+     */
+    public static <E extends Enum<E>> Collector<E, ?, EnumSet<E>> toEnumSet(Class<E> cls) {
+        return Collectors.toCollection(() -> EnumSet.noneOf(cls));
+    }
+
+    /**
      * Collector to a map where the values are the input objects
      * @param keyMapper a mapping function to produce keys
      * @param mapFactory a supplier providing a new empty {@code Map}

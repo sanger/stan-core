@@ -97,7 +97,7 @@ public class TestReleaseService {
     @MethodSource("releaseAndUnstoreArgs")
     public void testReleaseAndUnstore(ReleaseRequest request, ReleaseRecipient recipient,
                                       ReleaseDestination destination, List<Labware> labware,
-                                      String loadLabwareError, String labwareValidationError, String labwareContentsError,
+                                      String loadLabwareError, String labwareValidationError,
                                       String expectedExceptionMessage) {
         if (recipient!=null) {
             when(mockRecipientRepo.getByUsername(request.getRecipient())).thenReturn(recipient);
@@ -120,11 +120,6 @@ public class TestReleaseService {
                 doThrow(new IllegalArgumentException(labwareValidationError)).when(service).validateLabware(any());
             } else {
                 doNothing().when(service).validateLabware(any());
-                if (labwareContentsError!=null) {
-                    doThrow(new IllegalArgumentException(labwareContentsError)).when(service).validateContents(any());
-                } else {
-                    doNothing().when(service).validateContents(any());
-                }
             }
         }
 
@@ -171,7 +166,6 @@ public class TestReleaseService {
 
         verify(service).loadLabware(sameElements(expectedBarcodes, true));
         verify(service).validateLabware(labware);
-        verify(service).validateContents(labware);
         verify(service).loadWork(request.getReleaseLabware());
         verify(service).loadOtherRecipients(request.getOtherRecipients());
         verify(mockEmailService).tryReleaseEmail(recEmail, List.of("ford@sanger.ac.uk"), List.of("SGP1"), releaseFilePath);
@@ -196,17 +190,16 @@ public class TestReleaseService {
                 request.getRecipient(), request.getOtherRecipients());
         requestWithOptions.setColumnOptions(List.of("visium", "xenium"));
         return Arrays.stream(new Object[][] {
-                {request, rec, dest, lws, null, null, null, null},
-                {requestWithOptions, rec, dest, lws, null, null, null, null},
-                {request, null, dest, null, null, null, null, "Recipient not found."},
-                {request, rec, null, null, null, null, null, "Destination not found."},
+                {request, rec, dest, lws, null, null, null},
+                {requestWithOptions, rec, dest, lws, null, null, null},
+                {request, null, dest, null, null, null, "Recipient not found."},
+                {request, rec, null, null, null, null, "Destination not found."},
                 {new ReleaseRequest(List.of(), dest.getName(), rec.getUsername()),
-                   rec, dest, null, null, null, null, "No labware specified to release."},
-                {request, rec, disDest, null, null, null, null, "Release destination Moon is not enabled."},
-                {request, disRec, dest, null, null, null, null, "Release recipient dr6 is not enabled."},
-                {request, rec, dest, null, "Bad barcodes.", null, null, "Bad barcodes."},
-                {request, rec, dest, lws, null, "Bad labware.", null, "Bad labware."},
-                {request, rec, dest, lws, null, null, "Bad contents.", "Bad contents."},
+                   rec, dest, null, null, null, "No labware specified to release."},
+                {request, rec, disDest, null, null, null, "Release destination Moon is not enabled."},
+                {request, disRec, dest, null, null, null, "Release recipient dr6 is not enabled."},
+                {request, rec, dest, null, "Bad barcodes.", null, "Bad barcodes."},
+                {request, rec, dest, lws, null, "Bad labware.", "Bad labware."},
         }).map(Arguments::of);
     }
 
@@ -325,7 +318,6 @@ public class TestReleaseService {
         UCMap<BasicLocation> locations = new UCMap<>(1);
         locations.put(lws.get(0).getBarcode(), new BasicLocation("STO-A1", new Address(1,2)));
         doNothing().when(service).validateLabware(any());
-        doNothing().when(service).validateContents(any());
         doNothing().when(service).link(any(), any());
         doReturn(lws).when(service).updateReleasedLabware(lws);
         UCMap<Work> workMap = new UCMap<>(1);
@@ -335,7 +327,6 @@ public class TestReleaseService {
         assertSame(releases, service.release(user, recipient, otherRecs, destination, lws, locations, workMap));
         lws.forEach(lw -> verify(mockEntityManager).refresh(lw));
         verify(service).validateLabware(lws);
-        verify(service).validateContents(lws);
         verify(service).updateReleasedLabware(lws);
         verify(service).link(releases, workMap);
         verify(service).recordReleases(user, destination, recipient, otherRecs, lws, locations);
@@ -470,34 +461,6 @@ public class TestReleaseService {
                 Arguments.of(List.of(good, destroyed), destroyedError),
                 Arguments.of(List.of(released), releasedError),
                 Arguments.of(List.of(discarded), discardedError)
-        );
-    }
-
-    @ParameterizedTest
-    @MethodSource("validateContentsArgs")
-    public void testValidateContents(Collection<Labware> labware, String expectedErrorMessage) {
-        if (expectedErrorMessage==null) {
-            service.validateContents(labware);
-        } else {
-            assertThat(assertThrows(IllegalArgumentException.class, () -> service.validateContents(labware)))
-                    .hasMessage(expectedErrorMessage);
-        }
-    }
-
-    static Stream<Arguments> validateContentsArgs() {
-        LabwareType lt = EntityFactory.getTubeType();
-        Tissue tissue = EntityFactory.getTissue();
-        BioState bs1 = new BioState(1, "Tissue");
-        BioState bs2 = new BioState(2, "RNA");
-        BioState cdna = new BioState(3, "cDNA");
-        Labware[] lw = IntStream.range(1, 5).mapToObj(i -> {
-            Sample sample = new Sample(i, i, tissue, i==1 ? bs1 : i==2 ? bs2 : cdna);
-            return EntityFactory.makeLabware(lt, sample);
-        }).toArray(Labware[]::new);
-        return Stream.of(
-                Arguments.of(List.of(lw[0], lw[1]), null),
-                Arguments.of(List.of(lw[2], lw[3]), null),
-                Arguments.of(List.of(lw[0], lw[2]), "Cannot release a mix of cDNA and other bio states.")
         );
     }
 

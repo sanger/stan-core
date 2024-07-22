@@ -98,12 +98,12 @@ public class ReleaseFileService {
      */
     public ReleaseFileContent getReleaseFileContent(Collection<Integer> releaseIds, Set<ReleaseFileOption> options) {
         if (releaseIds.isEmpty()) {
-            return new ReleaseFileContent(ReleaseFileMode.NORMAL, List.of(), options);
+            return new ReleaseFileContent(EnumSet.of(ReleaseFileMode.NORMAL), List.of(), options);
         }
         List<Release> releases = getReleases(releaseIds);
         Map<Integer, Snapshot> snapshots = loadSnapshots(releases);
         Map<Integer, Sample> samples = loadSamples(releases, snapshots);
-        ReleaseFileMode mode = checkMode(samples.values());
+        Set<ReleaseFileMode> modes = checkModes(samples.values());
 
         final StorageDetail detail = storageDetail(releases);
 
@@ -118,7 +118,7 @@ public class ReleaseFileService {
                 .map(s -> s==null ? null : s.getId())
                 .filter(Objects::nonNull)
                 .collect(toSet());
-        loadSources(entries, ancestry, mode);
+        loadSources(entries, ancestry, modes);
         loadMeasurements(entries, ancestry);
         loadSectionDate(entries, ancestry);
         loadStains(entries, ancestry);
@@ -132,7 +132,7 @@ public class ReleaseFileService {
 
         loadXeniumFields(entries, slotIds);
         loadFlags(entries);
-        return new ReleaseFileContent(mode, entries, options);
+        return new ReleaseFileContent(modes, entries, options);
     }
 
     /**
@@ -169,19 +169,18 @@ public class ReleaseFileService {
     }
 
     /**
-     * Checks that all the samples can be listed together in one release file.
-     * Samples of cDNA cannot be listed together with samples in other bio states.
+     * Checks whether the release contains cdna and/or normal samples.
      * @param samples the samples
-     * @return the single mode valid with all the samples
-     * @exception IllegalArgumentException if the samples cannot be listed together in one release file
+     * @return the modes for the samples
      */
-    public ReleaseFileMode checkMode(Collection<Sample> samples) {
-        Set<ReleaseFileMode> modes = samples.stream().map(this::mode).collect(toSet());
-        if (modes.size() > 1) {
-            throw new IllegalArgumentException("Cannot create a release file with a mix of " +
-                    "cDNA and other bio states.");
+    public Set<ReleaseFileMode> checkModes(Collection<Sample> samples) {
+        EnumSet<ReleaseFileMode> modes = samples.stream()
+                .map(this::mode)
+                .collect(toEnumSet(ReleaseFileMode.class));
+        if (modes.isEmpty()) {
+            modes.add(ReleaseFileMode.NORMAL);
         }
-        return modes.stream().findAny().orElse(ReleaseFileMode.NORMAL);
+        return modes;
     }
 
     /**
@@ -330,12 +329,13 @@ public class ReleaseFileService {
      * Loads the "sources", whatever that means for the release mode.
      * @param entries the contents of the things that were released
      * @param ancestry the ancestors of the released things
-     * @param mode the release file mode
+     * @param modes the release file mode
      */
-    public void loadSources(Collection<ReleaseEntry> entries, Ancestry ancestry, ReleaseFileMode mode) {
-        if (mode==ReleaseFileMode.CDNA) {
+    public void loadSources(Collection<ReleaseEntry> entries, Ancestry ancestry, Set<ReleaseFileMode> modes) {
+        if (modes.contains(ReleaseFileMode.CDNA)) {
             loadSourcesForCDNA(entries, ancestry);
-        } else {
+        }
+        if (modes.contains(ReleaseFileMode.NORMAL)) {
             loadOriginalBarcodes(entries, ancestry);
         }
     }
@@ -390,6 +390,9 @@ public class ReleaseFileService {
             labwareIdBarcode.put(lw.getId(), lw.getBarcode());
         }
         for (ReleaseEntry entry : entries) {
+            if (mode(entry.getSample())==ReleaseFileMode.CDNA) {
+                continue;
+            }
             SlotSample slotSample = new SlotSample(entry.getSlot(), entry.getSample());
             Set<SlotSample> roots = ancestry.getRoots(slotSample);
             SlotSample root = roots.stream()
@@ -413,6 +416,9 @@ public class ReleaseFileService {
     public void loadSourcesForCDNA(Collection<ReleaseEntry> entries, Ancestry ancestry) {
         Map<Integer, String> labwareIdBarcode = new HashMap<>();
         for (ReleaseEntry entry : entries) {
+            if (mode(entry.getSample()) != ReleaseFileMode.CDNA) {
+                continue;
+            }
             SlotSample ss = selectSourceForCDNA(entry, ancestry);
             if (ss!=null) {
                 Slot slot = ss.slot();
@@ -1268,7 +1274,7 @@ public class ReleaseFileService {
     }
 
     public List<? extends TsvColumn<ReleaseEntry>> computeColumns(ReleaseFileContent rfc) {
-        List<ReleaseColumn> modeColumns = ReleaseColumn.forModeAndOptions(rfc.getMode(), rfc.getOptions());
+        List<ReleaseColumn> modeColumns = ReleaseColumn.forModesAndOptions(rfc.getModes(), rfc.getOptions());
         int dualColumnIndex = modeColumns.indexOf(ReleaseColumn.Dual_index_plate_name);
         if (dualColumnIndex < 0 || rfc.getEntries().stream().allMatch(e -> nullOrEmpty(e.getTagData()))) {
             return modeColumns;

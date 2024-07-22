@@ -115,20 +115,20 @@ public enum ReleaseColumn implements TsvColumn<ReleaseEntry> {
         return this.name().replace('_',' ');
     }
 
-    public static List<ReleaseColumn> forModeAndOptions(ReleaseFileMode mode, @NotNull Collection<ReleaseFileOption> options) {
-        return Arrays.stream(values()).filter(rc -> rc.include(mode, options)).collect(toList());
+    public static List<ReleaseColumn> forModesAndOptions(@NotNull Collection<ReleaseFileMode> modes, @NotNull Collection<ReleaseFileOption> options) {
+        return Arrays.stream(values()).filter(rc -> rc.include(modes, options)).collect(toList());
     }
 
-    public boolean modeFilter(ReleaseFileMode mode) {
-        return (this.mode==null || this.mode==mode);
+    public boolean modeFilter(Collection<ReleaseFileMode> modes) {
+        return (this.mode==null || modes.contains(this.mode));
     }
 
     public boolean optionFilter(@NotNull Collection<ReleaseFileOption> selectedOptions) {
         return (this.options==null || selectedOptions.stream().anyMatch(this.options::contains));
     }
 
-    public boolean include(ReleaseFileMode mode, @NotNull Collection<ReleaseFileOption> selectedOptions) {
-        return this.modeFilter(mode) && this.optionFilter(selectedOptions);
+    public boolean include(Collection<ReleaseFileMode> modes, @NotNull Collection<ReleaseFileOption> selectedOptions) {
+        return this.modeFilter(modes) && this.optionFilter(selectedOptions);
     }
 
     private static class Compose {
