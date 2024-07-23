@@ -31,7 +31,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
             OP_QPCR = "qPCR results";
     public static final String MEAS_CQ = "Cq value", MEAS_CDNA = "cDNA concentration",
             MEAS_LIBR = "Library concentration", MEAS_CYC = "Cycles",
-            MEAS_MIN_SIZE = "Minimum size", MEAS_MAX_SIZE = "Maximum size", MEAS_PEAK_SIZE = "Main peak size"
+            AVERAGE_SIZE = "Average size", MEAS_PEAK_SIZE = "Main peak size"
     ;
 
     private final MeasurementRepo measurementRepo;
@@ -66,7 +66,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
         this.valHelperFactory = valHelperFactory;
         UCMap<List<String>> opTypeMeasurements = new UCMap<>(3);
         opTypeMeasurements.put(OP_AMP, List.of(MEAS_CQ, MEAS_CYC));
-        opTypeMeasurements.put(OP_VISIUM_CONC, List.of(MEAS_CDNA, MEAS_LIBR, MEAS_MIN_SIZE, MEAS_MAX_SIZE, MEAS_PEAK_SIZE));
+        opTypeMeasurements.put(OP_VISIUM_CONC, List.of(MEAS_CDNA, MEAS_LIBR, AVERAGE_SIZE, MEAS_PEAK_SIZE));
         opTypeMeasurements.put(OP_QPCR, List.of(MEAS_CQ));
         this.opTypeMeasurements = Collections.unmodifiableMap(opTypeMeasurements);
     }
@@ -268,7 +268,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
     public String sanitiseMeasurementValue(Collection<String> problems, String name, String value) {
         return switch (name) {
             case MEAS_CDNA, MEAS_LIBR -> concentrationSanitiser.sanitise(problems, value);
-            case MEAS_MIN_SIZE, MEAS_MAX_SIZE, MEAS_PEAK_SIZE -> sizeSanitiser.sanitise(problems, value);
+            case AVERAGE_SIZE, MEAS_PEAK_SIZE -> sizeSanitiser.sanitise(problems, value);
             case MEAS_CQ -> cqSanitiser.sanitise(problems, value);
             case MEAS_CYC -> cycleSanitiser.sanitise(problems, value);
             default -> null;
