@@ -16,7 +16,6 @@ import uk.ac.sanger.sccp.utils.UCMap;
 
 import javax.persistence.EntityManager;
 import java.util.*;
-import java.util.function.Predicate;
 
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.*;
@@ -80,7 +79,6 @@ public class ReleaseServiceImp implements ReleaseService {
         List<Labware> labware = loadLabware(barcodes);
         UCMap<Work> workMap = loadWork(request.getReleaseLabware());
         validateLabware(labware);
-        validateContents(labware);
         List<ReleaseRecipient> otherRecs = loadOtherRecipients(request.getOtherRecipients());
         Set<ReleaseFileOption> options = loadFileOptions(request.getColumnOptions());
 
@@ -172,7 +170,6 @@ public class ReleaseServiceImp implements ReleaseService {
         labware.forEach(entityManager::refresh);
         // Revalidate inside the transaction, in case anything has happened
         validateLabware(labware);
-        validateContents(labware);
 
         // execution
         labware = updateReleasedLabware(labware);
@@ -300,29 +297,6 @@ public class ReleaseServiceImp implements ReleaseService {
                 .toList();
         if (!discardedLabwareBarcodes.isEmpty()) {
             throw new IllegalArgumentException("Labware cannot be released because it is discarded: "+discardedLabwareBarcodes);
-        }
-    }
-
-    /**
-     * Checks that all the labware given is allowed to be released in one batch.
-     * You're not allowed to release a mix of cDNA and other.
-     * <p>Technically there's no reason not to allow this, as long as each individual labware
-     * contains only one bio state. But it would cause confusion to the user if they
-     * cannot go on to download a release file for all the labware just released.
-     * @param labware the labware being released
-     * @exception IllegalArgumentException if the contents of the labware cannot be released together
-     */
-    public void validateContents(Collection<Labware> labware) {
-        Set<BioState> bioStates = labware.stream()
-                .flatMap(lw -> lw.getSlots().stream())
-                .flatMap(slot -> slot.getSamples().stream())
-                .map(Sample::getBioState)
-                .collect(toSet());
-        if (bioStates.size() > 1) {
-            final Predicate<BioState> isCdna = bs -> bs.getName().equalsIgnoreCase("cDNA");
-            if (bioStates.stream().anyMatch(isCdna) && !bioStates.stream().allMatch(isCdna)) {
-                throw new IllegalArgumentException("Cannot release a mix of cDNA and other bio states.");
-            }
         }
     }
 

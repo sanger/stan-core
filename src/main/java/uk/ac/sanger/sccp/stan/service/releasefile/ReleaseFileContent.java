@@ -8,18 +8,18 @@ import java.util.*;
  * @author dr6
  */
 public class ReleaseFileContent {
-    private final ReleaseFileMode mode;
+    private final Set<ReleaseFileMode> modes;
     private final List<ReleaseEntry> entries;
     private final Set<ReleaseFileOption> options;
 
-    public ReleaseFileContent(ReleaseFileMode mode, List<ReleaseEntry> entries, Set<ReleaseFileOption> options) {
-        this.mode = mode;
+    public ReleaseFileContent(Set<ReleaseFileMode> modes, List<ReleaseEntry> entries, Set<ReleaseFileOption> options) {
+        this.modes = modes==null ? Set.of() : modes;
         this.entries = entries;
         this.options = options;
     }
 
-    public ReleaseFileMode getMode() {
-        return this.mode;
+    public Set<ReleaseFileMode> getModes() {
+        return this.modes;
     }
 
     public List<ReleaseEntry> getEntries() {
@@ -35,7 +35,7 @@ public class ReleaseFileContent {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ReleaseFileContent that = (ReleaseFileContent) o;
-        return (this.mode == that.mode
+        return (this.modes.equals(that.modes)
                 && Objects.equals(this.entries, that.entries)
                 && Objects.equals(this.options, that.options)
         );
@@ -43,6 +43,6 @@ public class ReleaseFileContent {
 
     @Override
     public int hashCode() {
-        return Objects.hash(mode, entries, options);
+        return Objects.hash(modes, entries, options);
     }
 }
