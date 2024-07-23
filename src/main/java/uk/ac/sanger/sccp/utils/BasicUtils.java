@@ -42,16 +42,12 @@ public class BasicUtils {
      * @return a string
      */
     public static String repr(Object o) {
-        if (o==null) {
-            return "null";
-        }
-        if (o instanceof CharSequence) {
-            return StringRepr.repr((CharSequence) o);
-        }
-        if (o instanceof Character) {
-            return StringRepr.repr((char) o);
-        }
-        return o.toString();
+        return switch (o) {
+            case null -> "null";
+            case CharSequence cs -> StringRepr.repr(cs);
+            case Character c -> StringRepr.repr(c);
+            default -> o.toString();
+        };
     }
 
     /**
