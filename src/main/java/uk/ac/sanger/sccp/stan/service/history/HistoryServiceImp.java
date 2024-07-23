@@ -29,7 +29,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 public class HistoryServiceImp implements HistoryService {
     static final String RELEASE_EVENT_TYPE = "Release", DESTRUCTION_EVENT_TYPE = "Destruction",
             SOLUTION_TRANSFER_OP_NAME = "Solution transfer";
-    static final Pattern SIZE_BP_PTN = Pattern.compile("^M((in|ax)imum|ain peak) size$", Pattern.CASE_INSENSITIVE);
+    static final Pattern SIZE_BP_PTN = Pattern.compile("^(Average|Main peak) size$", Pattern.CASE_INSENSITIVE);
 
     private final OperationRepo opRepo;
     private final OperationTypeRepo opTypeRepo;
