@@ -98,7 +98,7 @@ public class StringValidator implements Validator<String> {
         if (invalidCharacterSet!=null && !invalidCharacterSet.isEmpty()) {
             StringBuilder sb = new StringBuilder(invalidCharacterSet.size());
             invalidCharacterSet.stream().sorted().forEach(sb::append);
-            addProblem(problemConsumer, string, "contains invalid characters \""+sb+"\".");
+            addProblem(problemConsumer, string, "contains invalid characters "+repr(sb)+".");
             ok = false;
         }
         if (!isBadSpaceAllowed() && characterTypes!=null && characterTypes.contains(CharacterType.SPACE)) {
