@@ -192,7 +192,7 @@ public class FieldValidation {
                 CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN, CharacterType.SPACE,
                 CharacterType.SLASH, CharacterType.PAREN, CharacterType.FULL_STOP, CharacterType.APOSTROPHE
         );
-        return new StringValidator("Project name", 2, 64, charTypes);
+        return new StringValidator("Project name", 2, 128, charTypes);
     }
 
     @Bean
