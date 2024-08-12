@@ -158,7 +158,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
             } else {
                 if (lt.indexOf(address) < 0) {
                     invalidAddresses.add(address);
-                } else if (!filledSlotAddresses.contains(address)){
+                } else if (!filledSlotAddresses.contains(address)) {
                     emptyAddresses.add(address);
                 }
             }

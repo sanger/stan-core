@@ -25,7 +25,7 @@ public class TestAnalysisMeasurementValidator {
             return null;
         }
         if (value.indexOf('!') >= 0) {
-            if (problems != null){
+            if (problems != null) {
                 problems.add("Bad value: "+value);
             }
             return null;

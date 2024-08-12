@@ -84,7 +84,7 @@ public class TestFindService {
             mode = 1;
         } else if (request.getDonorNames()!=null) {
             mode = 2;
-        } else if (request.getTissueTypeName()!=null){
+        } else if (request.getTissueTypeName()!=null) {
             mode = 3;
         } else {
             mode = 4;

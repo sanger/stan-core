@@ -36,7 +36,7 @@ public class SlotRegionServiceImp implements SlotRegionService {
         return getSamplePositionResultsForSlots(slotIdMap);
     }
 
-    private List<SamplePositionResult> getSamplePositionResultsForSlots(Map<Integer, Slot> slotIdMap){
+    private List<SamplePositionResult> getSamplePositionResultsForSlots(Map<Integer, Slot> slotIdMap) {
         List<SamplePosition> sps = samplePositionRepo.findAllBySlotIdIn(slotIdMap.keySet());
         if (sps.isEmpty()) {
             return List.of();

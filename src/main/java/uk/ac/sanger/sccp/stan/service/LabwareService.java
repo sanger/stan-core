@@ -153,7 +153,7 @@ public class LabwareService {
     public LabelType calculateLabelType(Labware lw) {
         if (lw.getLabwareType().getName().equalsIgnoreCase("4 Slot Slide")) {
             int sampleCount = 0;
-            for(Slot slot : lw.getSlots()) {
+            for (Slot slot : lw.getSlots()) {
                 sampleCount += slot.getSamples().size();
             }
             if (sampleCount < 4 ) {

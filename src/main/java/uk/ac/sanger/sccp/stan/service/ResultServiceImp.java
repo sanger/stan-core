@@ -367,7 +367,7 @@ public class ResultServiceImp extends BaseResultService implements ResultService
                 Integer refersToOpId = referredToOpIds.get(lw.getId());
                 Comment singleComment = (sr.getCommentId()!=null ? commentMap.get(sr.getCommentId()) : null);
                 for (Sample sample : slot.getSamples()) {
-                    if(sr.getResult()!=null) {
+                    if (sr.getResult()!=null) {
                         ResultOp resOp = new ResultOp(null, sr.getResult(), op.getId(), sample.getId(), slot.getId(), refersToOpId);
                         resultOps.add(resOp);
                     }

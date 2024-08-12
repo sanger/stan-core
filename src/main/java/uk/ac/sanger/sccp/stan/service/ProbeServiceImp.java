@@ -188,7 +188,7 @@ public class ProbeServiceImp implements ProbeService {
                     } else if (pl.getPlex() < 1) {
                         problems.add("Probe plex should be a positive number.");
                     }
-                    if(pl.getCosting() == null){
+                    if (pl.getCosting() == null) {
                         problems.add("Probe costing is missing.");
                     }
                 }
