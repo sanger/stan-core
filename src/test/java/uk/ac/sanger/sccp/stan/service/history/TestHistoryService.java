@@ -1069,7 +1069,7 @@ public class TestHistoryService {
                 "Probe panel: probe1",
                 "Lot: LOT1",
                 "Plex: 21",
-                "Costing: SGP"
+                "Probe costing: SGP"
         );
     }
 
@@ -1372,7 +1372,7 @@ public class TestHistoryService {
                 new HistoryEntry(opIds[1], opTypeName1, ops.get(1).getPerformed(), labware[0].getId(),
                         labware[3].getId(), samples[2].getId(), username, null,
                         List.of("Stain type: Coffee, Blood", "Epsilon: Zeta", "Probe panel: probe1", "Lot: LOT1",
-                                "Plex: 5", "Costing: SGP", "Solution: Solution 100", "Arizona"),
+                                "Plex: 5", "Probe costing: SGP", "Solution: Solution 100", "Arizona"),
                         "A1", null)
         );
         final List<HistoryEntry> actualEntries = service.createEntriesForOps(ops, sampleIds, labwareList, opWork, null);

@@ -727,7 +727,7 @@ public class HistoryServiceImp implements HistoryService {
                 "Probe panel: "+lwProbe.getProbePanel().getName(),
                 "Lot: "+lwProbe.getLotNumber(),
                 "Plex: "+lwProbe.getPlex(),
-                "Costing: "+lwProbe.getCosting()
+                "Probe costing: "+lwProbe.getCosting()
         );
     }
 
