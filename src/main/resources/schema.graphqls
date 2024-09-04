@@ -1944,6 +1944,8 @@ input SampleMetricsRequest {
     barcode: String!
     """The work number to link to the operation."""
     workNumber: String!
+    """The run name to link to the operation."""
+    runName: String
     """The metrics to save."""
     metrics: [SampleMetric!]!
 }

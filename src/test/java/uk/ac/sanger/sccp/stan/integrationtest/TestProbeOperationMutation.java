@@ -180,5 +180,13 @@ public class TestProbeOperationMutation {
             assertEquals("n"+j, rm.getName());
             assertEquals("v"+j, rm.getValue());
         }
+
+        List<LabwareNote> notes = lwNoteRepo.findAllByOperationIdIn(List.of(opId));
+        assertThat(notes).hasSize(1);
+        LabwareNote note = notes.getFirst();
+        assertEquals(lw.getId(), note.getLabwareId());
+        assertEquals(opId, note.getOperationId());
+        assertEquals("run", note.getName());
+        assertEquals("RUN1", note.getValue());
     }
 }

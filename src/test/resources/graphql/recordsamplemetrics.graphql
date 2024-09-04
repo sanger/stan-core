@@ -3,6 +3,7 @@ mutation {
         barcode: "BC"
         workNumber: "WORK"
         operationType: "Xenium metrics"
+        runName: "RUN1"
         metrics: [{
             roi: "ROI1"
             name: "n1"
