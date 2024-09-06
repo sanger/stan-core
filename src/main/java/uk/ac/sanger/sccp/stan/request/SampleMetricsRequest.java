@@ -13,15 +13,17 @@ public class SampleMetricsRequest {
     private String operationType;
     private String barcode;
     private String workNumber;
+    private String runName;
     private List<SampleMetric> metrics = List.of();
 
     // Deserialisation constructor
     public SampleMetricsRequest() {}
 
-    public SampleMetricsRequest(String operationType, String barcode, String workNumber, List<SampleMetric> metrics) {
+    public SampleMetricsRequest(String operationType, String barcode, String workNumber, String runName, List<SampleMetric> metrics) {
         setOperationType(operationType);
         setBarcode(barcode);
         setWorkNumber(workNumber);
+        setRunName(runName);
         setMetrics(metrics);
     }
 
@@ -52,6 +54,15 @@ public class SampleMetricsRequest {
         this.workNumber = workNumber;
     }
 
+    /** The run name to link to the operation. */
+    public String getRunName() {
+        return this.runName;
+    }
+
+    public void setRunName(String runName) {
+        this.runName = runName;
+    }
+
     /** The metrics to save. */
     public List<SampleMetric> getMetrics() {
         return this.metrics;
@@ -67,6 +78,7 @@ public class SampleMetricsRequest {
                 .add("operationType", operationType)
                 .add("barcode", barcode)
                 .add("workNumber", workNumber)
+                .add("runName", runName)
                 .add("metrics", metrics)
                 .reprStringValues()
                 .toString();
@@ -80,13 +92,14 @@ public class SampleMetricsRequest {
         return (Objects.equals(this.operationType, that.operationType)
                 && Objects.equals(this.barcode, that.barcode)
                 && Objects.equals(this.workNumber, that.workNumber)
+                && Objects.equals(this.runName, that.runName)
                 && Objects.equals(this.metrics, that.metrics)
         );
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(operationType, barcode, workNumber, metrics);
+        return barcode==null ? 0 : barcode.hashCode();
     }
 
     /**

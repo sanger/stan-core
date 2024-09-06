@@ -309,7 +309,7 @@ public class TestQCLabwareService {
         UCMap<Set<String>> bcValues = new UCMap<>(2);
         bcValues.put(lws[0].getBarcode(), Set.of("run1", "runA"));
         bcValues.put(lws[1].getBarcode(), Set.of("run2", "runB"));
-        when(mockLwNoteService.findNoteValuesForLabware(any(), any())).thenReturn(bcValues);
+        when(mockLwNoteService.findNoteValuesForLabware(anyCollection(), any())).thenReturn(bcValues);
 
         Set<Labware> lwSet;
         if (valid) {

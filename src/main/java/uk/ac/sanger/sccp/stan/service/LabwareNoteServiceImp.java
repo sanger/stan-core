@@ -30,9 +30,7 @@ public class LabwareNoteServiceImp implements LabwareNoteService {
     @Override
     public Set<String> findNoteValuesForBarcode(String barcode, String name) throws EntityNotFoundException {
         Labware lw = lwRepo.getByBarcode(barcode);
-        return lwNoteRepo.findAllByLabwareIdInAndName(List.of(lw.getId()), name).stream()
-                .map(LabwareNote::getValue)
-                .collect(toLinkedHashSet());
+        return findNoteValuesForLabware(lw, name);
     }
 
     @Override
@@ -48,6 +46,14 @@ public class LabwareNoteServiceImp implements LabwareNoteService {
                         idToLw.get(note.getLabwareId()).getBarcode(), k -> new HashSet<>()
                 ).add(note.getValue()));
         return bcNotes;
+    }
+
+    @Override
+    public Set<String> findNoteValuesForLabware(Labware lw, String name) {
+        List<LabwareNote> notes = lwNoteRepo.findAllByLabwareIdInAndName(List.of(lw.getId()), name);
+        return notes.stream()
+                .map(LabwareNote::getValue)
+                .collect(toLinkedHashSet());
     }
 
     @Override
@@ -67,5 +73,10 @@ public class LabwareNoteServiceImp implements LabwareNoteService {
             return List.of();
         }
         return lwNoteRepo.saveAll(notes);
+    }
+
+    @Override
+    public LabwareNote createNote(String name, Labware lw, Operation op, String value) {
+        return lwNoteRepo.save(new LabwareNote(null, lw.getId(), op.getId(), name, value));
     }
 }

@@ -14,6 +14,7 @@ import java.util.stream.IntStream;
 
 import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.Matchers.sameElements;
 
@@ -53,6 +54,19 @@ class TestLabwareNoteService {
         when(mockLwNoteRepo.findAllByLabwareIdInAndName(List.of(lw.getId()), name)).thenReturn(notes);
 
         assertThat(service.findNoteValuesForBarcode(bc, name)).containsExactly("val1", "val2");
+    }
+
+    @Test
+    void testFindNoteValuesForLabware_single() {
+        Labware lw = EntityFactory.getTube();
+        String name = "Bananas";
+        List<LabwareNote> notes = List.of(
+                new LabwareNote(1, lw.getId(), 11, name, "val1"),
+                new LabwareNote(2, lw.getId(), 12, name, "val2"),
+                new LabwareNote(3, lw.getId(), 13, name, "val1")
+        );
+        when(mockLwNoteRepo.findAllByLabwareIdInAndName(List.of(lw.getId()), name)).thenReturn(notes);
+        assertThat(service.findNoteValuesForLabware(lw, name)).containsExactly("val1", "val2");
     }
 
     @Test
@@ -114,5 +128,18 @@ class TestLabwareNoteService {
     void testCreateNotes_none() {
         service.createNotes("Bananas", new UCMap<>(), new UCMap<>(), new UCMap<>());
         verifyNoInteractions(mockLwNoteRepo);
+    }
+
+    @Test
+    void testCreateNote() {
+        String name = "Bananas";
+        String value = "Alpha";
+        Labware lw = EntityFactory.getTube();
+        Operation op = new Operation();
+        op.setId(10);
+        LabwareNote createdNote = mock(LabwareNote.class);
+        when(mockLwNoteRepo.save(any())).thenReturn(createdNote);
+        assertSame(createdNote, service.createNote(name, lw, op, value));
+        verify(mockLwNoteRepo).save(new LabwareNote(null, lw.getId(), op.getId(), name, value));
     }
 }
