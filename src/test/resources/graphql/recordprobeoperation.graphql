@@ -16,6 +16,7 @@ mutation {
                 costing: SGP
             }]
             workNumber: "SGP1"
+            samplePrepReagentLot: "123456"
         }]
     }) {
         labware { barcode }

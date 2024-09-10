@@ -24,14 +24,16 @@ public class ProbeOperationRequest {
         private String barcode;
         private String workNumber;
         private SlideCosting kitCosting;
+        private String samplePrepReagentLot;
         private List<ProbeLot> probes = List.of();
 
         public ProbeOperationLabware() {}
 
-        public ProbeOperationLabware(String barcode, String workNumber, SlideCosting kitCosting, List<ProbeLot> probes) {
+        public ProbeOperationLabware(String barcode, String workNumber, SlideCosting kitCosting, String samplePrepReagentLot, List<ProbeLot> probes) {
             setBarcode(barcode);
             setWorkNumber(workNumber);
             setKitCosting(kitCosting);
+            setSamplePrepReagentLot(samplePrepReagentLot);
             setProbes(probes);
         }
 
@@ -67,6 +69,15 @@ public class ProbeOperationRequest {
             this.kitCosting = kitCosting;
         }
 
+        /** Sample prep reagent lot number. */
+        public String getSamplePrepReagentLot() {
+            return this.samplePrepReagentLot;
+        }
+
+        public void setSamplePrepReagentLot(String samplePrepReagentLot) {
+            this.samplePrepReagentLot = samplePrepReagentLot;
+        }
+
         /**
          * The probes used on this labware.
          */
@@ -86,6 +97,7 @@ public class ProbeOperationRequest {
             return (Objects.equals(this.barcode, that.barcode)
                     && Objects.equals(this.workNumber, that.workNumber)
                     && this.kitCosting==that.kitCosting
+                    && Objects.equals(this.samplePrepReagentLot, that.samplePrepReagentLot)
                     && Objects.equals(this.probes, that.probes)
             );
         }
@@ -97,7 +109,8 @@ public class ProbeOperationRequest {
 
         @Override
         public String toString() {
-            return String.format("(%s, %s, workNumber: %s, probes: %s)", repr(barcode), kitCosting, repr(workNumber), probes);
+            return String.format("(%s, %s, workNumber: %s, samplePrepReagentLot: %s, probes: %s)",
+                    repr(barcode), kitCosting, repr(workNumber), repr(samplePrepReagentLot), probes);
         }
     }
 

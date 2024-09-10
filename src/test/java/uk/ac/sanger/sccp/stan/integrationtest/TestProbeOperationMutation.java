@@ -12,6 +12,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.service.CompletionServiceImp;
 import uk.ac.sanger.sccp.stan.service.operation.AnalyserServiceImp;
+import uk.ac.sanger.sccp.utils.UCMap;
 
 import javax.transaction.Transactional;
 import java.util.*;
@@ -79,7 +80,7 @@ public class TestProbeOperationMutation {
         List<LabwareProbe> lwProbes = lwProbeRepo.findAllByOperationIdIn(List.of(opId));
         assertThat(lwProbes).hasSize(2);
         if (lwProbes.getFirst().getProbePanel().getName().equals("probe2")) {
-            lwProbes = IntStream.of(lwProbes.size()-1,-1,-1).mapToObj(lwProbes::get).collect(toList());
+            lwProbes = IntStream.of(lwProbes.size() - 1, -1, -1).mapToObj(lwProbes::get).collect(toList());
         }
         for (LabwareProbe lwp : lwProbes) {
             assertEquals(opId, lwp.getOperationId());
@@ -95,7 +96,13 @@ public class TestProbeOperationMutation {
         assertEquals(2, lwp.getPlex());
         assertEquals("LOT2", lwp.getLotNumber());
         assertEquals(SlideCosting.SGP, lwp.getCosting());
-
+        List<LabwareNote> notes = lwNoteRepo.findAllByOperationIdIn(List.of(opId));
+        assertThat(notes).hasSize(2);
+        notes.forEach(note -> assertEquals(lw.getId(), note.getLabwareId()));
+        UCMap<String> noteValues = notes.stream()
+                .collect(UCMap.toUCMap(LabwareNote::getName, LabwareNote::getValue));
+        assertEquals("Faculty", noteValues.get("kit costing"));
+        assertEquals("123456", noteValues.get("sample prep reagent lot"));
         testCompletion(lw, work, sample);
         testAnalyser(lw, work, sample);
         testSampleMetrics(lw, work);

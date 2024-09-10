@@ -1738,6 +1738,8 @@ input ProbeOperationLabware {
     workNumber: String!
     """The costing for the kit used on this labware."""
     kitCosting: SlideCosting!
+    """Sample prep reagent lot number."""
+    samplePrepReagentLot: String
     """The probes used on this labware."""
     probes: [ProbeLot!]!
 }

@@ -14,6 +14,7 @@ import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.time.*;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import static uk.ac.sanger.sccp.utils.BasicUtils.*;
@@ -24,6 +25,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 @Service
 public class ProbeServiceImp implements ProbeService {
     public static final String KIT_COSTING_NAME = "kit costing";
+    public static final String SAMPLE_PREP_REAGENT_LOT_NAME = "sample prep reagent lot";
 
     private final LabwareValidatorFactory lwValFac;
     private final LabwareRepo lwRepo;
@@ -35,6 +37,7 @@ public class ProbeServiceImp implements ProbeService {
     private final OperationService opService;
     private final WorkService workService;
     private final Validator<String> probeLotValidator;
+    private final Validator<String> samplePrepReagentLotValidator;
     private final Clock clock;
 
     @Autowired
@@ -43,6 +46,7 @@ public class ProbeServiceImp implements ProbeService {
                            ProbePanelRepo probePanelRepo, LabwareProbeRepo lwProbeRepo, LabwareNoteRepo noteRepo,
                            OperationService opService, WorkService workService,
                            @Qualifier("probeLotNumberValidator") Validator<String> probeLotValidator,
+                           @Qualifier("samplePrepReagentLotValidator") Validator<String> samplePrepReagentLotValidator,
                            Clock clock) {
         this.lwValFac = lwValFac;
         this.lwRepo = lwRepo;
@@ -54,6 +58,7 @@ public class ProbeServiceImp implements ProbeService {
         this.opService = opService;
         this.workService = workService;
         this.probeLotValidator = probeLotValidator;
+        this.samplePrepReagentLotValidator = samplePrepReagentLotValidator;
         this.clock = clock;
     }
 
@@ -79,6 +84,7 @@ public class ProbeServiceImp implements ProbeService {
                 .toList();
         UCMap<Work> work = workService.validateUsableWorks(problems, workNumbers);
         checkKitCostings(problems, request.getLabware());
+        checkSamplePrepReagentLots(problems, request.getLabware());
         UCMap<ProbePanel> probes = validateProbes(problems, request.getLabware());
         if (request.getPerformed()!=null) {
             validateTimestamp(problems, request.getPerformed(), labware);
@@ -157,6 +163,28 @@ public class ProbeServiceImp implements ProbeService {
     public void checkKitCostings(Collection<String> problems, Collection<ProbeOperationLabware> pols) {
         if (pols!=null && pols.stream().anyMatch(pos -> pos.getKitCosting()==null)) {
             problems.add("Missing kit costing for labware.");
+        }
+    }
+
+    /**
+     * Checks sample prep reagent lots.
+     * Lots are trimmed; empty lots are nulled; missing lots are skipped.
+     * @param problems receptacle for problems
+     * @param pols details of the request
+     */
+    public void checkSamplePrepReagentLots(Collection<String> problems, Collection<ProbeOperationLabware> pols) {
+        if (pols != null) {
+            final Consumer<String> addProblem = problems::add;
+            for (ProbeOperationLabware pol : pols) {
+                String lot = pol.getSamplePrepReagentLot();
+                if (lot != null) {
+                    lot = emptyToNull(lot.trim());
+                    pol.setSamplePrepReagentLot(lot);
+                    if (lot != null) {
+                        samplePrepReagentLotValidator.validate(lot, addProblem);
+                    }
+                }
+            }
         }
     }
 
@@ -240,6 +268,7 @@ public class ProbeServiceImp implements ProbeService {
                                    UCMap<Work> workMap) {
         UCMap<Operation> lwOps = makeOps(user, opType, pols, lwMap, time);
         saveKitCostings(pols, lwMap, lwOps);
+        saveSamplePrepReagentLots(pols, lwMap, lwOps);
         linkWork(pols, lwOps, workMap);
         saveProbes(pols, lwOps, lwMap, probeMap);
         return assembleResult(pols, lwMap, lwOps);
@@ -322,6 +351,29 @@ public class ProbeServiceImp implements ProbeService {
             }
         }
         lwProbeRepo.saveAll(lwProbes);
+    }
+
+    /**
+     * Saves the indicated sample prep reagent lots against the indicated labware and ops
+     * @param pols request details
+     * @param lwMap map to look up labware by barcode
+     * @param lwOps map to look up operation by labware barcode
+     */
+    public void saveSamplePrepReagentLots(Collection<ProbeOperationLabware> pols,
+                                          UCMap<Labware> lwMap, UCMap<Operation> lwOps) {
+        List<LabwareNote> notes = new ArrayList<>();
+        for (ProbeOperationLabware pol : pols) {
+            String lot = pol.getSamplePrepReagentLot();
+            if (!nullOrEmpty(lot)) {
+                String barcode = pol.getBarcode();
+                Labware lw = lwMap.get(barcode);
+                Operation op = lwOps.get(barcode);
+                notes.add(new LabwareNote(null, lw.getId(), op.getId(), SAMPLE_PREP_REAGENT_LOT_NAME, lot));
+            }
+        }
+        if (!notes.isEmpty()) {
+            noteRepo.saveAll(notes);
+        }
     }
 
     /**
