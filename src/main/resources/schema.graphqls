@@ -1908,6 +1908,8 @@ input SegmentationLabware {
     costing: SlideCosting
     """The time with which the operation should be recorded."""
     performed: Timestamp
+    """The reagent lot number."""
+    reagentLot: String
 }
 
 """A request to record segmentation on one or more labware."""

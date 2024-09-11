@@ -1,5 +1,6 @@
 package uk.ac.sanger.sccp.stan.service;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
@@ -14,11 +15,11 @@ import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.time.*;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toSet;
-import static uk.ac.sanger.sccp.utils.BasicUtils.inMap;
-import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
+import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 /**
  * @author dr6
@@ -39,10 +40,13 @@ public class SegmentationServiceImp implements SegmentationService {
     private final OperationCommentRepo opComRepo;
     private final LabwareNoteRepo noteRepo;
 
+    private final Validator<String> reagentLotValidator;
+
     public SegmentationServiceImp(Clock clock, ValidationHelperFactory valHelperFactory,
                                   OperationService opService, WorkService workService,
                                   OperationRepo opRepo, OperationTypeRepo opTypeRepo,
-                                  OperationCommentRepo opComRepo, LabwareNoteRepo noteRepo) {
+                                  OperationCommentRepo opComRepo, LabwareNoteRepo noteRepo,
+                                  @Qualifier("reagentLotValidator") Validator<String> reagentLotValidator) {
         this.clock = clock;
         this.valHelperFactory = valHelperFactory;
         this.opService = opService;
@@ -51,6 +55,7 @@ public class SegmentationServiceImp implements SegmentationService {
         this.opTypeRepo = opTypeRepo;
         this.opComRepo = opComRepo;
         this.noteRepo = noteRepo;
+        this.reagentLotValidator = reagentLotValidator;
     }
 
     @Override
@@ -92,6 +97,7 @@ public class SegmentationServiceImp implements SegmentationService {
         checkCostings(problems, data.opType, request.getLabware());
         UCMap<LocalDateTime> priorOpTimes = checkPriorOps(problems, data.opType, data.labware.values());
         checkTimestamps(val, clock, request.getLabware(), data.labware, priorOpTimes);
+        checkReagentLots(problems, request.getLabware());
         return data;
     }
 
@@ -222,6 +228,25 @@ public class SegmentationServiceImp implements SegmentationService {
     }
 
     /**
+     * Checks the reagent lots
+     * @param problems receptacle for problems
+     * @param lwReqs details of the request
+     */
+    void checkReagentLots(final Collection<String> problems, final Collection<SegmentationLabware> lwReqs) {
+        final Consumer<String> problemAdd = problems::add;
+        for (SegmentationLabware lwReq : lwReqs) {
+            String lot = lwReq.getReagentLot();
+            if (lot != null) {
+                lot = emptyToNull(lot.trim());
+                lwReq.setReagentLot(lot);
+            }
+            if (lot != null) {
+                reagentLotValidator.validate(lot, problemAdd);
+            }
+        }
+    }
+
+    /**
      * Records the operations and all associated information for the request
      * @param lwReqs details of the request
      * @param user the user responsible
@@ -280,6 +305,9 @@ public class SegmentationServiceImp implements SegmentationService {
         if (lwReq.getCosting()!=null) {
             newNotes.add(new LabwareNote(null, lw.getId(), op.getId(), "costing",
                     lwReq.getCosting().name()));
+        }
+        if (lwReq.getReagentLot()!=null) {
+            newNotes.add(new LabwareNote(null, lw.getId(), op.getId(), "reagent lot", lwReq.getReagentLot()));
         }
         if (!lwReq.getCommentIds().isEmpty()) {
             lwReq.getCommentIds().stream()

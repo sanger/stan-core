@@ -17,9 +17,11 @@ import uk.ac.sanger.sccp.stan.service.validation.ValidationHelperFactory;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService.WorkOp;
 import uk.ac.sanger.sccp.utils.UCMap;
+import uk.ac.sanger.sccp.utils.Zip;
 
 import java.time.*;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -52,6 +54,8 @@ class TestSegmentationService {
     private OperationCommentRepo mockOpComRepo;
     @Mock
     private LabwareNoteRepo mockNoteRepo;
+    @Mock
+    private Validator<String> mockReagentLotValidator;
 
     @InjectMocks
     private SegmentationServiceImp service;
@@ -363,6 +367,35 @@ class TestSegmentationService {
     }
 
     @Test
+    public void testCheckReagentLots() {
+        final List<String> problems = new ArrayList<>(2);
+        when(mockReagentLotValidator.validate(any(), any())).then(invocation -> {
+            String lot = invocation.getArgument(0);
+            if (lot != null && lot.indexOf('!') >= 0) {
+                Consumer<String> addProblem = invocation.getArgument(1);
+                addProblem.accept("Bad lot: "+lot);
+                return false;
+            }
+            return true;
+        });
+        String[] inputLots = {null, "   ", "", "123456", "  23456  ", "Alpha!", "Beta!  "};
+        String[] expectedLots = {null, null, null, "123456", "23456", "Alpha!", "Beta!"};
+        List<SegmentationLabware> sls = Arrays.stream(inputLots)
+                .map(lot -> {
+                    SegmentationLabware sl = new SegmentationLabware();
+                    sl.setReagentLot(lot);
+                    return sl;
+                })
+                .toList();
+        service.checkReagentLots(problems, sls);
+        verify(mockReagentLotValidator, times(4)).validate(any(), any());
+        Arrays.stream(expectedLots).filter(Objects::nonNull)
+                .forEach(lot -> verify(mockReagentLotValidator).validate(eq(lot), any()));
+        Zip.forEach(sls.stream(), Arrays.stream(expectedLots), (sl, lot) -> assertEquals(lot, sl.getReagentLot()));
+        assertThat(problems).containsExactlyInAnyOrder("Bad lot: Alpha!", "Bad lot: Beta!");
+    }
+
+    @Test
     void testGreater() {
         for (Object[] args : new Object[][]{
                 {null,null,false},
@@ -480,12 +513,13 @@ class TestSegmentationService {
 
     @ParameterizedTest
     @CsvSource({
-            "false,false,false,false",
-            "false,true,false,true",
-            "false,false,true,true",
-            "true,true,false,false",
+            "false,false,false,false,false",
+            "false,true,false,true,false",
+            "false,false,true,true,false",
+            "true,true,false,false,false",
+            "true,true,false,false,true",
     })
-    void testRecordOp(boolean hasTime, boolean hasCosting, boolean hasCommentIds, boolean hasWork) {
+    void testRecordOp(boolean hasTime, boolean hasCosting, boolean hasCommentIds, boolean hasWork, boolean hasLot) {
         SegmentationLabware lwReq = new SegmentationLabware();
         SegmentationData data = new SegmentationData(List.of());
         data.opType = EntityFactory.makeOperationType("opname", null);
@@ -519,6 +553,9 @@ class TestSegmentationService {
         } else {
             work = null;
         }
+        if (hasLot) {
+            lwReq.setReagentLot("123456");
+        }
 
         when(mockOpService.createOperationInPlace(data.opType, user, lw, null, null)).thenReturn(op);
 
@@ -531,7 +568,14 @@ class TestSegmentationService {
         verify(mockOpService).createOperationInPlace(data.opType, user, lw, null, null);
 
         assertMayContain(opsToUpdate, hasTime ? op : null);
-        assertMayContain(newNotes, hasCosting ? new LabwareNote(null, lw.getId(), op.getId(), "costing", "Faculty") : null);
+        final List<LabwareNote> expectedNotes = new ArrayList<>(2);
+        if (hasCosting) {
+            expectedNotes.add(new LabwareNote(null, lw.getId(), op.getId(), "costing", "Faculty"));
+        }
+        if (hasLot) {
+            expectedNotes.add(new LabwareNote(null, lw.getId(), op.getId(), "reagent lot", "123456"));
+        }
+        assertThat(newNotes).containsExactlyInAnyOrderElementsOf(expectedNotes);
         assertMayContain(newWorkOps, hasWork ? new WorkOp(work, op) : null);
         if (hasCommentIds) {
             final int slotId = lw.getFirstSlot().getId();

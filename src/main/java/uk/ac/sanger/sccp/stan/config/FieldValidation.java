@@ -296,6 +296,11 @@ public class FieldValidation {
     }
 
     @Bean
+    public Validator<String> reagentLotValidator() {
+        return new StringValidator("Reagent lot", 6, 6, CharacterType.DIGIT);
+    }
+
+    @Bean
     public Validator<String> cytAssistBarcodeValidator() {
         Set<CharacterType> charTypes = EnumSet.of(CharacterType.DIGIT, CharacterType.ALPHA, CharacterType.HYPHEN);
         Pattern pattern = Pattern.compile("[A-Z]\\d{2}[A-Z]\\d{2}-\\d{7}-\\d{2}-\\d{2}|[A-Z0-9]{2}-[A-Z0-9]{7}", Pattern.CASE_INSENSITIVE);
