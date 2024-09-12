@@ -141,17 +141,18 @@ public class TestProbeOperationMutation {
 
         assertThat(rois).containsExactly(new Roi(lw.getFirstSlot().getId(), sample.getId(), opId, "roi1"));
         List<LabwareNote> notes = lwNoteRepo.findAllByOperationIdIn(List.of(opId));
-        Map<String, String> noteValues = new HashMap<>(3);
+        Map<String, String> noteValues = new HashMap<>(5);
         notes.forEach(note -> {
             assertEquals(lw.getId(), note.getLabwareId());
             assertEquals(opId, note.getOperationId());
             noteValues.put(note.getName(), note.getValue());
         });
-        assertThat(noteValues).hasSize(4);
+        assertThat(noteValues).hasSize(5);
         assertEquals("RUN1", noteValues.get("run"));
         assertEquals("LOT1", noteValues.get("decoding reagent A lot"));
         assertEquals("LOT2", noteValues.get("decoding reagent B lot"));
         assertEquals("left", noteValues.get("cassette position"));
+        assertEquals("123456", noteValues.get("decoding consumables lot"));
 
         Operation op = opRepo.findById(opId).orElseThrow();
         assertEquals(op.getEquipment(), equipment);

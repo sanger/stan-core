@@ -18,8 +18,8 @@ import uk.ac.sanger.sccp.stan.service.validation.ValidationHelper;
 import uk.ac.sanger.sccp.stan.service.validation.ValidationHelperFactory;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
+import uk.ac.sanger.sccp.utils.Zip;
 
-import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Consumer;
@@ -55,8 +55,6 @@ public class AnalyserServiceTest {
     @Mock
     private OperationRepo mockOpRepo;
     @Mock
-    private Clock mockClock;
-    @Mock
     private LabwareNoteRepo mockLwNoteRepo;
     @Mock
     private RoiRepo mockRoiRepo;
@@ -68,6 +66,8 @@ public class AnalyserServiceTest {
     private Validator<String> mockRoiValidator;
     @Mock(name="cellSegmentationLotValidator")
     private Validator<String> mockCSLotValidator;
+    @Mock(name="decodingConsumablesLotValidator")
+    private Validator<String> mockDecodingConsumablesLotValidator;
     @Mock
     private ValidationHelperFactory mockValFactory;
     @Mock
@@ -81,8 +81,9 @@ public class AnalyserServiceTest {
     public void setup() {
         mocking = MockitoAnnotations.openMocks(this);
         service = spy(new AnalyserServiceImp(mockLwValFactory, mockOpSearcher, mockOpService, mockWorkService,
-                mockLwRepo, mockOpTypeRepo, mockOpRepo, mockClock, mockLwNoteRepo, mockRoiRepo,
+                mockLwRepo, mockOpTypeRepo, mockOpRepo, mockLwNoteRepo, mockRoiRepo,
                 mockDecodingReagentLotValidator, mockRunNameValidator, mockRoiValidator, mockCSLotValidator,
+                mockDecodingConsumablesLotValidator,
                 mockValFactory));
     }
 
@@ -113,6 +114,7 @@ public class AnalyserServiceTest {
         doNothing().when(service).validateLot(any(), any());
         doNothing().when(service).validateRunName(any(), any());
         doNothing().when(service).validateCellSegmentationLot(any(), any());
+        doNothing().when(service).validateDecodingConsumablesLot(any(), any());
         doReturn(mockVal).when(mockValFactory).getHelper();
         doReturn(new HashSet<>()).when(mockVal).getProblems();
         doReturn(equipment).when(mockVal).checkEquipment(any(), any(), anyBoolean());
@@ -146,15 +148,16 @@ public class AnalyserServiceTest {
         doAnswer(addProblem("bad sample")).when(service).checkSamples(any(), any(), any());
         doAnswer(addProblem("bad lot")).when(service).validateLot(any(), any());
         doAnswer(addProblem("bad cslot")).when(service).validateCellSegmentationLot(any(), any());
+        doAnswer(addProblem("bad dclot")).when(service).validateDecodingConsumablesLot(any(), any());
         doAnswer(addProblem("bad run")).when(service).validateRunName(any(), any());
         doReturn(mockVal).when(mockValFactory).getHelper();
-        doReturn(Set.of("Bad equipment")).when(mockVal).getProblems();
+        doReturn(Set.of("bad equipment")).when(mockVal).getProblems();
 
         AnalyserRequest request = new AnalyserRequest("opname", "lotA", "lotB", "run", LocalDateTime.now(), List.of(new AnalyserLabware()), null, "cslot");
 
         assertValidationException(() -> service.perform(user, request), List.of(
-                        "bad lw", "bad optype", "bad prior ops", "bad time", "bad work",
-                        "bad position", "bad roi", "bad sample", "bad lot", "bad cslot", "bad run", "Bad equipment"
+                        "bad lw", "bad optype", "bad prior ops", "bad time", "bad work", "bad position",
+                "bad roi", "bad sample", "bad lot", "bad cslot", "bad dclot", "bad run", "bad equipment"
         ));
         verify(mockValFactory, times(1)).getHelper();
         verifyValidation(request, opType, lwMap, priorOps, mockVal);
@@ -175,6 +178,7 @@ public class AnalyserServiceTest {
         verify(service).validateLot(any(), eq(request.getLotNumberA()));
         verify(service).validateLot(any(), eq(request.getLotNumberB()));
         verify(service).validateCellSegmentationLot(any(), eq(request.getCellSegmentationLot()));
+        verify(service).validateDecodingConsumablesLot(any(), same(request.getLabware()));
         verify(service).validateRunName(any(), eq(request.getRunName()));
         verify(mockVal).checkEquipment(request.getEquipmentId(), EQUIPMENT_CATEGORY, true);
     }
@@ -202,7 +206,7 @@ public class AnalyserServiceTest {
                 }
             }
             als = Arrays.stream(splitBarcodes)
-                    .map(bc -> new AnalyserLabware(bc, null, null, null))
+                    .map(bc -> new AnalyserLabware(bc, null, null, null, null))
                     .collect(toList());
             bcs = Arrays.stream(splitBarcodes)
                     .filter(bc -> bc!=null && !bc.isEmpty())
@@ -288,14 +292,13 @@ public class AnalyserServiceTest {
 
     @ParameterizedTest
     @CsvSource({
-            "3,3,2,",
-            "4,5,2,",
-            "4,5,,",
-            "3,2,,",
-            "3,5,4,The given date is before the preceding operation for labware [STAN-A1].",
+            "3,2,",
+            "4,2,",
+            "4,,",
+            "3,,",
+            "3,4,The given date is before the preceding operation for labware [STAN-A1].",
     })
-    public void testCheckTimestamp(int tsIndex, int nowIndex, Integer priorOpIndex, String expectedProblem) {
-        setMockClock(mockClock, LocalDateTime.of(2023,1,nowIndex,12,0));
+    public void testCheckTimestamp(int tsIndex, Integer priorOpIndex, String expectedProblem) {
         LocalDateTime ts = LocalDateTime.of(2023,1,tsIndex, 12,0);
         Labware lw = EntityFactory.makeEmptyLabware(EntityFactory.getTubeType());
         lw.setBarcode("STAN-A1");
@@ -321,7 +324,7 @@ public class AnalyserServiceTest {
         mayAddProblem(workProblem, workMap).when(mockWorkService).validateUsableWorks(any(), any());
         List<String> workNumbers = List.of("SGP1", "SGP2");
         List<AnalyserLabware> als = workNumbers.stream()
-                .map(wn -> new AnalyserLabware(null, wn, null, null))
+                .map(wn -> new AnalyserLabware(null, wn, null, null, null))
                 .collect(toList());
         List<String> problems = new ArrayList<>(anyProblem ? 1 : 0);
         assertSame(workMap, service.loadWork(problems, als));
@@ -340,7 +343,7 @@ public class AnalyserServiceTest {
         String[] positionsSplit = positionsJoined.split("-", -1);
         List<AnalyserLabware> als = Arrays.stream(positionsSplit)
                 .map(s -> s.isEmpty() ? null : CassettePosition.valueOf(s))
-                .map(pos -> new AnalyserLabware(null, null, pos, null))
+                .map(pos -> new AnalyserLabware(null, null, pos, null, null))
                 .collect(toList());
         List<String> problems = new ArrayList<>(expectedProblem==null ? 0 : 1);
         service.checkCassettePositions(problems, als);
@@ -359,7 +362,7 @@ public class AnalyserServiceTest {
         List<SampleROI> srs = Arrays.stream(roisSplit)
                 .map(s -> new SampleROI(null, null, s))
                 .collect(toList());
-        List<AnalyserLabware> als = List.of(new AnalyserLabware(null, null, null, srs));
+        List<AnalyserLabware> als = List.of(new AnalyserLabware(null, null, null, null, srs));
 
         doAnswer(invocation -> {
             String string = invocation.getArgument(0);
@@ -411,8 +414,8 @@ public class AnalyserServiceTest {
         }
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lw1, lw2);
         List<AnalyserLabware> als = List.of(
-                new AnalyserLabware(lw1.getBarcode(), null, null, srs1),
-                new AnalyserLabware(lw2.getBarcode(), null, null, srs2)
+                new AnalyserLabware(lw1.getBarcode(), null, null, null, srs1),
+                new AnalyserLabware(lw2.getBarcode(), null, null, null, srs2)
         );
         final List<String> problems = new ArrayList<>(anyProblem ? 5 : 0);
         service.checkSamples(problems, als, lwMap);
@@ -537,6 +540,35 @@ public class AnalyserServiceTest {
         assertProblem(problems, expectedProblem);
     }
 
+    @Test
+    public void testValidateDecodingConsumablesLot() {
+        String[] inputLots = {null, "   ", "", "  Alpha  ", "Beta", "Gamma!", "  Delta!  "};
+        String[] expectedLots = {null, null, null, "Alpha", "Beta", "Gamma!", "Delta!"};
+        final int numExpected = 4;
+        List<AnalyserLabware> als = Arrays.stream(inputLots)
+                .map(lot -> new AnalyserLabware(null, null, null, lot, null))
+                .toList();
+        when(mockDecodingConsumablesLotValidator.validate(any(), any())).then(invocation -> {
+            String lot = invocation.getArgument(0);
+            if (lot.indexOf('!') >= 0) {
+                Consumer<String> addProblem = invocation.getArgument(1);
+                addProblem.accept("Bad lot: "+lot);
+                return false;
+            }
+            return true;
+        });
+        List<String> problems = new ArrayList<>(numExpected);
+        service.validateDecodingConsumablesLot(problems, als);
+        Zip.forEach(Arrays.stream(expectedLots), als.stream(), (lot, al) ->
+                assertEquals(lot, al.getDecodingConsumablesLot())
+        );
+        verify(mockDecodingConsumablesLotValidator, times(numExpected)).validate(any(), any());
+        for (int i = 3; i < 7; ++i) {
+            verify(mockDecodingConsumablesLotValidator).validate(eq(expectedLots[i]), any());
+        }
+        assertThat(problems).containsExactlyInAnyOrder("Bad lot: Gamma!", "Bad lot: Delta!");
+    }
+
     @ParameterizedTest
     @CsvSource({
             "run1,true,false,",
@@ -583,8 +615,8 @@ public class AnalyserServiceTest {
         final Address A1 = new Address(1,1);
         List<SampleROI> srs1 = List.of(new SampleROI(A1, 1, "roi1"));
         List<SampleROI> srs2 = List.of(new SampleROI(A1, 2, "roi2"));
-        AnalyserLabware al1 = new AnalyserLabware("STAN-1", "SGP1", CassettePosition.left, srs1);
-        AnalyserLabware al2 = new AnalyserLabware("STAN-2", "SGP2", CassettePosition.right, srs2);
+        AnalyserLabware al1 = new AnalyserLabware("STAN-1", "SGP1", CassettePosition.left, "dc1", srs1);
+        AnalyserLabware al2 = new AnalyserLabware("STAN-2", "SGP2", CassettePosition.right, null, srs2);
         Equipment equipment = new Equipment(1, "Xenium 1", EQUIPMENT_CATEGORY, true);
         AnalyserRequest request = new AnalyserRequest(opType.getName(), "lot1", "lot2", "run1",
                 LocalDateTime.of(2023,1,1,12,0), List.of(al1, al2), equipment.getId(), cslot);
@@ -608,14 +640,14 @@ public class AnalyserServiceTest {
                 new LabwareNote(null, lw1.getId(), op1.getId(), "decoding reagent B lot", "lot2"),
                 new LabwareNote(null, lw2.getId(), op2.getId(), "decoding reagent B lot", "lot2"),
                 new LabwareNote(null, lw1.getId(), op1.getId(), "cassette position", "left"),
-                new LabwareNote(null, lw2.getId(), op2.getId(), "cassette position", "right")
+                new LabwareNote(null, lw2.getId(), op2.getId(), "cassette position", "right"),
+                new LabwareNote(null, lw1.getId(), op1.getId(), "decoding consumables lot", "dc1")
         );
         if (!nullOrEmpty(cslot)) {
             expectedNotes = new ArrayList<>(expectedNotes);
             expectedNotes.add(new LabwareNote(null, lw1.getId(), op1.getId(), "cell segmentation lot", cslot));
             expectedNotes.add(new LabwareNote(null, lw2.getId(), op2.getId(), "cell segmentation lot", cslot));
         }
-
 
         verify(mockLwNoteRepo).saveAll(sameElements(expectedNotes, true));
 

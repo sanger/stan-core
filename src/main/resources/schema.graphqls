@@ -1774,6 +1774,8 @@ input AnalyserLabware {
     workNumber: String!
     """The cassette position for the labware."""
     position: CassettePosition!
+    """Decoding consumables lot number."""
+    decodingConsumablesLot: String
     """The sample regions of interest in this labware."""
     samples: [SampleROI!]!
 }
