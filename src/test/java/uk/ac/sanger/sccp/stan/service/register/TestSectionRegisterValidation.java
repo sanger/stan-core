@@ -859,19 +859,13 @@ public class TestSectionRegisterValidation {
 
     @SuppressWarnings("unchecked")
     private <V> UCMap<V> objToUCMap(Object obj, Function<V, String> keyFunction) {
-        if (obj==null) {
-            return new UCMap<>();
-        }
-        if (obj instanceof UCMap) {
-            return (UCMap<V>) obj;
-        }
-        if (obj instanceof Map) {
-            return new UCMap<>((Map<String, V>) obj);
-        }
-        if (obj instanceof Collection) {
-            return ((Collection<V>) obj).stream().collect(UCMap.toUCMap(keyFunction));
-        }
-        return UCMap.from(keyFunction, (V) obj);
+        return switch (obj) {
+            case null -> new UCMap<>();
+            case UCMap ucMap -> ucMap;
+            case Map map -> new UCMap<>(map);
+            case Collection collection -> ((Collection<V>) collection).stream().collect(UCMap.toUCMap(keyFunction));
+            default -> UCMap.from(keyFunction, (V) obj);
+        };
     }
 
     private <E> Answer<List<E>> findAllAnswer(Collection<E> items, Function<E, String> stringFunction) {

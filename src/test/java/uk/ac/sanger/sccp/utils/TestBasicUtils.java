@@ -144,7 +144,6 @@ public class TestBasicUtils {
     }
 
     static Stream<Arguments> newArrayListArgs() {
-        //noinspection FunctionalExpressionCanBeFolded
         return Stream.of(
                 null, new ArrayList<>(), List.of(), Set.of(),
                 new ArrayList<>(List.of("Bananas")), List.of("Bananas"), Set.of("Bananas"),
@@ -217,7 +216,6 @@ public class TestBasicUtils {
         assertSame(intList, asCollection(intList));
         Set<Integer> intSet = Set.of(2,3,5);
         assertSame(intSet, asCollection(intSet));
-        //noinspection FunctionalExpressionCanBeFolded
         Iterable<Integer> intIterable = intList::iterator;
         assertEquals(intList, asCollection(intIterable));
     }
@@ -227,7 +225,6 @@ public class TestBasicUtils {
         assertNull(asList(null));
         List<Integer> intList = List.of(2,3,5);
         assertSame(intList, asList(intList));
-        //noinspection FunctionalExpressionCanBeFolded
         Iterable<Integer> intIterable = intList::iterator;
         assertEquals(intList, asList(intIterable));
     }

@@ -8,7 +8,6 @@ import uk.ac.sanger.sccp.stan.request.ReagentTransferRequest.ReagentTransfer;
 import uk.ac.sanger.sccp.stan.request.SlotCopyRequest;
 import uk.ac.sanger.sccp.stan.request.SlotCopyRequest.SlotCopyContent;
 import uk.ac.sanger.sccp.stan.service.LibraryPrepServiceImp.RequestData;
-import uk.ac.sanger.sccp.stan.service.validation.ValidationHelper;
 
 import java.util.*;
 

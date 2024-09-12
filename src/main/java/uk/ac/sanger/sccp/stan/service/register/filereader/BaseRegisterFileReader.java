@@ -197,6 +197,7 @@ public abstract class BaseRegisterFileReader<RequestType, ColumnType extends Enu
      * @exception IllegalArgumentException if the specified type cannot be read from the given cell
      * @exception IllegalStateException may be thrown from the POI cells if they are of the wrong type
      */
+    @SuppressWarnings("unchecked")
     public <T> T cellValue(Class<T> type, Cell cell) {
         CellType cellType = (cell==null ? null : cell.getCellType());
         if (cellType==null || cellType==CellType.BLANK || type==Void.class) {

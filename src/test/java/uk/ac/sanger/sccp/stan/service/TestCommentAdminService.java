@@ -88,8 +88,7 @@ public class TestCommentAdminService {
     @MethodSource("addCommentArgs")
     public void testAddComment(String category, String text, Comment existingComment, Object expectedResult) {
         when(mockCommentRepo.findByCategoryAndText(any(), any())).thenReturn(Optional.ofNullable(existingComment));
-        if (expectedResult instanceof Comment) {
-            Comment expectedComment = (Comment) expectedResult;
+        if (expectedResult instanceof Comment expectedComment) {
             when(mockCommentRepo.save(any())).thenReturn(expectedComment);
             assertEquals(expectedComment, service.addComment(category, text));
             verify(mockCommentRepo).save(new Comment(null, expectedComment.getText(), expectedComment.getCategory()));

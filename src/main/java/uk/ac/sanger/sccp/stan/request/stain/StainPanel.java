@@ -5,5 +5,5 @@ package uk.ac.sanger.sccp.stan.request.stain;
  * @author dr6
  */
 public enum StainPanel {
-    positive, negative, marker;
+    positive, negative, marker
 }

@@ -98,9 +98,6 @@ public class TestPassFailQueryService {
         Labware lw = EntityFactory.makeEmptyLabware(lt);
 
         int[] sids = {50,51};
-//        Sample[] samples = IntStream.range(0,sids.length)
-//                .mapToObj(i -> new Sample(sids[i], 1+i, EntityFactory.getTissue(), EntityFactory.getBioState()))
-//                .toArray(Sample[]::new);
         int[] slotIds = lw.getSlots().stream().mapToInt(Slot::getId).toArray();
 
         var commentMap = Map.of(

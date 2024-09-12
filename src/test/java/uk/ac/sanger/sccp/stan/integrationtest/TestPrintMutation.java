@@ -89,17 +89,11 @@ public class TestPrintMutation {
 
 
     private static String getTissueDesc(Tissue tissue) {
-        String prefix;
-        switch (tissue.getDonor().getLifeStage()) {
-            case paediatric:
-                prefix = "P";
-                break;
-            case fetal:
-                prefix = "F";
-                break;
-            default:
-                prefix = "";
-        }
+        String prefix = switch (tissue.getDonor().getLifeStage()) {
+            case paediatric -> "P";
+            case fetal -> "F";
+            default -> "";
+        };
         return String.format("%s%s-%s", prefix, tissue.getTissueType().getCode(), tissue.getSpatialLocation().getCode());
     }
 }

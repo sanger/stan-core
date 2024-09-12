@@ -14,7 +14,6 @@ import uk.ac.sanger.sccp.stan.service.store.StoreService;
 
 import javax.persistence.EntityNotFoundException;
 import java.util.List;
-import java.util.function.Supplier;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -71,7 +70,6 @@ public class TestDestructionService {
         Iterable<Labware> updatedLabware;
         if (labware!=null) {
             doReturn(labware).when(destructionService).loadAndValidateLabware(any());
-            //noinspection FunctionalExpressionCanBeFolded
             updatedLabware = labware::iterator; // so verify can tell this one from labware
             doReturn(updatedLabware).when(destructionService).destroyLabware(any());
         } else {
@@ -166,7 +164,6 @@ public class TestDestructionService {
     public void testDestroyLabware() {
         List<Labware> labware = List.of(EntityFactory.makeEmptyLabware(EntityFactory.getTubeType()),
                 EntityFactory.makeEmptyLabware(EntityFactory.getTubeType()));
-        //noinspection FunctionalExpressionCanBeFolded
         Iterable<Labware> savedLw = labware::iterator;
         when(mockLabwareRepo.saveAll(any())).thenReturn(savedLw);
         assertSame(savedLw, destructionService.destroyLabware(labware));

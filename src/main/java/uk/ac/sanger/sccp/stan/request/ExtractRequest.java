@@ -49,7 +49,11 @@ public class ExtractRequest {
     }
 
     public Integer getEquipmentId() {
-        return equipmentId;
+        return this.equipmentId;
+    }
+
+    public void setEquipmentId(Integer equipmentId) {
+        this.equipmentId = equipmentId;
     }
 
     @Override
@@ -59,7 +63,9 @@ public class ExtractRequest {
         ExtractRequest that = (ExtractRequest) o;
         return (this.barcodes.equals(that.barcodes)
                 && Objects.equals(this.labwareType, that.labwareType)
-                && Objects.equals(this.workNumber, that.workNumber));
+                && Objects.equals(this.workNumber, that.workNumber)
+                && Objects.equals(this.equipmentId, that.equipmentId)
+        );
     }
 
     @Override
@@ -73,6 +79,7 @@ public class ExtractRequest {
                 .add("barcodes", barcodes)
                 .add("labwareType", labwareType)
                 .add("workNumber", workNumber)
+                .add("equipmentId", equipmentId)
                 .reprStringValues()
                 .toString();
     }

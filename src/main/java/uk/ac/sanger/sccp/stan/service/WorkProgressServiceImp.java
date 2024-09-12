@@ -294,13 +294,12 @@ public class WorkProgressServiceImp implements WorkProgressService {
      * @return the string with the associated comment's text, if any; otherwise null
      */
     public String getWorkComment(Work work) {
-        WorkEvent.Type neededType;
-        switch (work.getStatus()) {
-            case paused: neededType = WorkEvent.Type.pause; break;
-            case failed: neededType = WorkEvent.Type.fail; break;
-            case withdrawn: neededType = WorkEvent.Type.withdraw; break;
-            default: neededType = null;
-        }
+        WorkEvent.Type neededType = switch(work.getStatus()) {
+            case paused -> WorkEvent.Type.pause;
+            case failed -> WorkEvent.Type.fail;
+            case withdrawn -> WorkEvent.Type.withdraw;
+            default -> null;
+        };
         if (neededType != null) {
             Map<Integer, WorkEvent> workEvents = workEventService.loadLatestEvents(List.of(work.getId()));
             WorkEvent event = workEvents.get(work.getId());

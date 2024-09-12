@@ -15,16 +15,6 @@ public class AnalyserScanData {
     private List<String> workNumbers = List.of();
     private List<String> probes = List.of();
     private boolean cellSegmentationRecorded;
-//
-//    // Deserialisation constructor
-//    public AnalyserScanData() {}
-//
-//    public AnalyserScanData(String barcode, List<String> workNumbers, List<String> probes, boolean cellSegmentationRecorded) {
-//        setBarcode(barcode);
-//        setWorkNumbers(workNumbers);
-//        setProbes(probes);
-//        setCellSegmentationRecorded(cellSegmentationRecorded);
-//    }
 
     /** The barcode of the labware. */
     public String getBarcode() {

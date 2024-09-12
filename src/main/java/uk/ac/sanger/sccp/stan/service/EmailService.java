@@ -8,7 +8,6 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.config.MailConfig;
-import uk.ac.sanger.sccp.stan.service.store.StoreService;
 
 import java.util.Collection;
 import java.util.List;
@@ -21,7 +20,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
  */
 @Service
 public class EmailService {
-    Logger log = LoggerFactory.getLogger(StoreService.class);
+    Logger log = LoggerFactory.getLogger(EmailService.class);
 
     private final JavaMailSender mailSender;
     private final MailConfig mailConfig;

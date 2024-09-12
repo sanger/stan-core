@@ -46,7 +46,7 @@ public class FileStoreController {
         StanFile sf = fileService.lookUp(id);
 
         Resource resource = fileService.loadResource(sf);
-        log.debug("Serving file "+sf.getPath());
+        log.debug("Serving file {}", sf.getPath());
         return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION,
                 "attachment; filename=\"" + sf.getName() + "\"").body(resource);
     }
@@ -60,7 +60,7 @@ public class FileStoreController {
                 .map(s -> URLDecoder.decode(s, cs))
                 .toList();
         Collection<StanFile> sfs = asCollection(fileService.save(user, file, workNumbers));
-        log.info("Saved files "+sfs);
+        log.info("Saved files {}", sfs);
         StanFile firstSf = sfs.iterator().next();
         return ResponseEntity.created(new URI(firstSf.getUrl())).build();
     }

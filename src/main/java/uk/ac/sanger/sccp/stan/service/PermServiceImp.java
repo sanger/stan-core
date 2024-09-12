@@ -125,7 +125,6 @@ public class PermServiceImp implements PermService {
         var valErrors = lv.getErrors();
         if (!valErrors.isEmpty()) {
             problems.addAll(valErrors);
-            return;
         }
     }
 

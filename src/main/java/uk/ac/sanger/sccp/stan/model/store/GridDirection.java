@@ -20,5 +20,4 @@ public enum GridDirection {
      * Up the leftmost column, then right to the next column, etc.
      */
     UpRight,
-    ;
 }

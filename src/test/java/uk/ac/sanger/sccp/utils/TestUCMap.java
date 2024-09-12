@@ -39,7 +39,6 @@ public class TestUCMap {
         UCMap<Integer> map = Stream.of(0, 1, 2, 4)
                 .collect(UCMap.toUCMap(i -> "Hello".substring(i, i+1)));
         assertEquals(Map.of("H", 0, "E", 1, "L", 2, "O", 4), map);
-        //noinspection ResultOfMethodCallIgnored
         assertThrows(IllegalStateException.class, () -> Stream.of(1, 2, 3, 4).collect(UCMap.toUCMap(i -> "Hello".substring(i, i+1))));
     }
 }

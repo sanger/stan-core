@@ -34,7 +34,7 @@ public class LDAPService {
     public boolean verifyCredentials(String username, String password) {
         String bypassPassword = ldapConfig.getBypassPassword();
         if (bypassPassword!=null && !bypassPassword.isEmpty() && bypassPassword.equals(password)) {
-            log.info("Bypass password for username: "+username);
+            log.info("Bypass password for username: {}", username);
             return true;
         }
         Hashtable<String, String> environment = new Hashtable<>(5);

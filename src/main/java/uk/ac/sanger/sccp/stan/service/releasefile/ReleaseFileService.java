@@ -889,13 +889,13 @@ public class ReleaseFileService {
                 try {
                     opRnaPlex.put(opId, Integer.valueOf(value));
                 } catch (NumberFormatException e) {
-                    log.error("RNAscope plex should be an integer: "+note);
+                    log.error("RNAscope plex should be an integer: {}", note);
                 }
             } else if (name.equalsIgnoreCase(ComplexStainServiceImp.LW_NOTE_PLEX_IHC)) {
                 try {
                     opIhcPlex.put(opId, Integer.valueOf(value));
                 } catch (NumberFormatException e) {
-                    log.error("IHC plex should be an integer: "+note);
+                    log.error("IHC plex should be an integer: {}", note);
                 }
             }
         }
