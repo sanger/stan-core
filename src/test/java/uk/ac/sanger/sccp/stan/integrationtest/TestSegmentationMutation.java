@@ -9,9 +9,12 @@ import org.springframework.test.context.ActiveProfiles;
 import uk.ac.sanger.sccp.stan.EntityCreator;
 import uk.ac.sanger.sccp.stan.GraphQLTester;
 import uk.ac.sanger.sccp.stan.model.*;
+import uk.ac.sanger.sccp.stan.repo.LabwareNoteRepo;
+import uk.ac.sanger.sccp.utils.UCMap;
 
 import javax.persistence.EntityManager;
 import javax.transaction.Transactional;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -32,6 +35,8 @@ public class TestSegmentationMutation {
     private EntityCreator entityCreator;
     @Autowired
     private EntityManager entityManager;
+    @Autowired
+    private LabwareNoteRepo lwNoteRepo;
 
     @Test
     @Transactional
@@ -67,6 +72,13 @@ public class TestSegmentationMutation {
                 new Work.SampleSlotId(sam1.getId(), slot1.getId()),
                 new Work.SampleSlotId(sam2.getId(), slot2.getId())
         );
+
+        List<LabwareNote> notes = lwNoteRepo.findAllByOperationIdIn(List.of(opId));
+        assertThat(notes).hasSize(2);
+        notes.forEach(note -> assertEquals(lw.getId(), note.getLabwareId()));
+        UCMap<String> noteValues = notes.stream().collect(UCMap.toUCMap(LabwareNote::getName, LabwareNote::getValue));
+        assertEquals("Faculty", noteValues.get("costing"));
+        assertEquals("123456", noteValues.get("reagent lot"));
 
         testSegmentationQC(work, lw);
     }

@@ -6,6 +6,7 @@ mutation {
             workNumber: "[WORK]"
             commentIds: [1]
             costing: Faculty
+            reagentLot: "123456"
         }]
     }) {
         labware {

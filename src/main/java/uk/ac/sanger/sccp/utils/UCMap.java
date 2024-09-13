@@ -16,14 +16,17 @@ import java.util.stream.Collector;
 public class UCMap<V> implements Map<String, V> {
     private final Map<String, V> inner;
 
+    /** Creates a new UCMap backed by a hashmap with the given initial capacity */
     public UCMap(int initialCapacity) {
         inner = new HashMap<>(initialCapacity);
     }
 
+    /** Creates a new UCMap backed by a hashmap of the default capacity */
     public UCMap() {
         inner = new HashMap<>();
     }
 
+    /** Creates a new UCMap containing the contents of the given map */
     public UCMap(Map<String, V> contents) {
         this(contents.size());
         this.putAll(contents);
@@ -162,6 +165,13 @@ public class UCMap<V> implements Map<String, V> {
         return inner.hashCode();
     }
 
+    /**
+     * Converts a given key to upper case. If it's not a string,
+     * returns the key.
+     * @param key the key to upcase
+     * @return the upcased key
+     * @param <K> the type of the key, typically a string
+     */
     private static <K> K upcase(K key) {
         if (key instanceof String) {
             //noinspection unchecked
@@ -185,6 +195,26 @@ public class UCMap<V> implements Map<String, V> {
         return BasicUtils.inMap(keyMapper, UCMap::new);
     }
 
+    /**
+     * Collector to collect a {@code UCMap} from strings to values extracted from the input objects
+     * @param keyMapper mapper from input objects to strings
+     * @param valueMapper mapper from input objects to values in map
+     * @return a collector to collect to a {@code UCMap}
+     * @param <T> the type of input object
+     * @param <V> the type of value in the map
+     */
+    public static <T, V> Collector<T, ?, UCMap<V>> toUCMap(Function<? super T, String> keyMapper,
+                                                        Function<? super T, V> valueMapper) {
+        return BasicUtils.toMap(keyMapper, valueMapper, UCMap::new);
+    }
+
+    /**
+     * Creates a UCMap containing a single item
+     * @param keyMapper function to extract key from the item
+     * @param value the item to put into the map as a value
+     * @return a UCMap containing one item
+     * @param <T> the type of value to put in the map
+     */
     public static <T> UCMap<T> from(Function<T, String> keyMapper, T value) {
         UCMap<T> map = new UCMap<>(1);
         map.put(keyMapper.apply(value), value);
@@ -200,6 +230,13 @@ public class UCMap<V> implements Map<String, V> {
         return map;
     }
 
+    /**
+     * Creates a UCMap containing the items from a stream, using the keys from the given function
+     * @param items a stream or items to put into a map
+     * @param keyMapper function to get keys for items
+     * @return map containing the given items as values
+     * @param <T> type of items to put into the map
+     */
     public static <T> UCMap<T> from(Collection<? extends T> items, Function<T, String> keyMapper) {
         UCMap<T> map = new UCMap<>(items.size());
         for (T item : items) {

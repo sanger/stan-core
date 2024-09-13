@@ -78,6 +78,7 @@ public class SegmentationRequest {
         private List<Integer> commentIds = List.of();
         private SlideCosting costing;
         private LocalDateTime performed;
+        private String reagentLot;
 
         /**
          * The barcode of the labware.
@@ -134,6 +135,14 @@ public class SegmentationRequest {
             this.performed = performed;
         }
 
+        public String getReagentLot() {
+            return this.reagentLot;
+        }
+
+        public void setReagentLot(String reagentLot) {
+            this.reagentLot = reagentLot;
+        }
+
         @Override
         public String toString() {
             return BasicUtils.describe(this)
@@ -142,6 +151,7 @@ public class SegmentationRequest {
                     .add("commentIds", commentIds)
                     .add("costing", costing)
                     .add("performed", performed==null ? null : performed.toString())
+                    .add("reagentLot", reagentLot)
                     .reprStringValues()
                     .toString();
         }
@@ -155,7 +165,9 @@ public class SegmentationRequest {
                     && Objects.equals(this.workNumber, that.workNumber)
                     && Objects.equals(this.commentIds, that.commentIds)
                     && this.costing == that.costing
-                    && Objects.equals(this.performed, that.performed));
+                    && Objects.equals(this.performed, that.performed)
+                    && Objects.equals(this.reagentLot, that.reagentLot)
+            );
         }
 
         @Override

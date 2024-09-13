@@ -16,15 +16,13 @@ import uk.ac.sanger.sccp.stan.service.validation.ValidationHelperFactory;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
-import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Consumer;
 
 import static java.util.stream.Collectors.toList;
 import static org.apache.commons.lang3.StringUtils.isBlank;
-import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
-import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
+import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 /**
  * @author dr6
@@ -35,11 +33,11 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
     public static final String ANALYSER_OP_NAME = "Xenium analyser";
 
     public static final String LOT_A_NAME = "decoding reagent A lot", LOT_B_NAME = "decoding reagent B lot",
-            RUN_NAME = "run", POSITION_NAME = "cassette position", CELL_SEGMENTATION_LOT_NAME = "cell segmentation lot";
+            RUN_NAME = "run", POSITION_NAME = "cassette position", CELL_SEGMENTATION_LOT_NAME = "cell segmentation lot",
+            DECODING_CONSUMABLES_LOT_NAME = "decoding consumables lot";
 
     public static final String EQUIPMENT_CATEGORY = "xenium analyser";
 
-    private final Clock clock;
     private final OperationService opService;
     private final WorkService workService;
     private final LabwareNoteRepo lwNoteRepo;
@@ -48,6 +46,7 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
     private final Validator<String> runNameValidator;
     private final Validator<String> roiValidator;
     private final Validator<String> cellSegmentationLotValidator;
+    private final Validator<String> decodingConsumablesLotValidator;
     private final ValidationHelperFactory valFactory;
     // validators
 
@@ -55,23 +54,23 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
     public AnalyserServiceImp(LabwareValidatorFactory lwValFactory, OpSearcher opSearcher,
                               OperationService opService, WorkService workService,
                               LabwareRepo lwRepo, OperationTypeRepo opTypeRepo, OperationRepo opRepo,
-                              Clock clock,
                               LabwareNoteRepo lwNoteRepo, RoiRepo roiRepo,
                               @Qualifier("decodingReagentLotValidator") Validator<String> decodingReagentLotValidator,
                               @Qualifier("runNameValidator") Validator<String> runNameValidator,
                               @Qualifier("roiValidator") Validator<String> roiValidator,
                               @Qualifier("cellSegmentationLotValidator") Validator<String> cellSegmentationLotValidator,
+                              @Qualifier("decodingConsumablesLotValidator") Validator<String> decodingConsumablesLotValidator,
                               ValidationHelperFactory valFactory) {
         super(lwValFactory, opTypeRepo, opRepo, lwRepo, opSearcher);
         this.opService = opService;
         this.workService = workService;
-        this.clock = clock;
         this.lwNoteRepo = lwNoteRepo;
         this.roiRepo = roiRepo;
         this.decodingReagentLotValidator = decodingReagentLotValidator;
         this.runNameValidator = runNameValidator;
         this.roiValidator = roiValidator;
         this.cellSegmentationLotValidator = cellSegmentationLotValidator;
+        this.decodingConsumablesLotValidator = decodingConsumablesLotValidator;
         this.valFactory = valFactory;
     }
 
@@ -91,6 +90,7 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
         validateLot(problems, request.getLotNumberA());
         validateLot(problems, request.getLotNumberB());
         validateCellSegmentationLot(problems, request.getCellSegmentationLot());
+        validateDecodingConsumablesLot(problems, request.getLabware());
         validateRunName(problems, request.getRunName());
         ValidationHelper val = valFactory.getHelper();
         Equipment equipment = val.checkEquipment(request.getEquipmentId(), EQUIPMENT_CATEGORY, true);
@@ -356,6 +356,22 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
         }
     }
 
+    /** Sanitises and validates the decoding consumables lot number */
+    public void validateDecodingConsumablesLot(Collection<String> problems, Collection<AnalyserLabware> als) {
+        final Consumer<String> addProblem = problems::add;
+        for (AnalyserLabware al : als) {
+            String lot = al.getDecodingConsumablesLot();
+            if (lot==null) {
+                continue;
+            }
+            lot = emptyToNull(lot.trim());
+            al.setDecodingConsumablesLot(lot);
+            if (lot != null) {
+                decodingConsumablesLotValidator.validate(lot, addProblem);
+            }
+        }
+    }
+
     /** Validates the run name */
     public void validateRunName(Collection<String> problems, String runName) {
         if (isBlank(runName)) {
@@ -402,6 +418,9 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
             lwNotes.add(new LabwareNote(null, lw.getId(), op.getId(), LOT_B_NAME, lotB));
             if (cellSegmentationLot != null) {
                 lwNotes.add(new LabwareNote(null, lw.getId(), op.getId(), CELL_SEGMENTATION_LOT_NAME, cellSegmentationLot));
+            }
+            if (al.getDecodingConsumablesLot()!=null) {
+                lwNotes.add(new LabwareNote(null, lw.getId(), op.getId(), DECODING_CONSUMABLES_LOT_NAME, al.getDecodingConsumablesLot()));
             }
             lwNotes.add(new LabwareNote(null, lw.getId(), op.getId(), POSITION_NAME, al.getPosition().toString()));
             addRois(rois, op.getId(), lw, al.getSamples());

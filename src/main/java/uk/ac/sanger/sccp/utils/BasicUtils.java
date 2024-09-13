@@ -231,20 +231,36 @@ public class BasicUtils {
     }
 
     /**
-     * Collector to a map where the values are the input objects
+     * Collector to a map whose values are the items in the stream
      * @param keyMapper a mapping function to produce keys
      * @param mapFactory a supplier providing a new empty {@code Map}
      *                   into which the results will be inserted
      * @param <T> the type of the input elements
-     * @param <K> the output type of the key mapping function
+     * @param <K> the key type of the resulting {@code Map}
      * @param <M> the type of the resulting {@code Map}
      * @return a {@code Collector} which collects elements into a {@code Map}
-     *             whose keys are the result of applying a key mapping function to the input
-     *             elements, and whose values are input elements
      */
     public static <T, K, M extends Map<K, T>> Collector<T, ?, M> inMap(Function<? super T, ? extends K> keyMapper,
                                                                        Supplier<M> mapFactory) {
-        return Collectors.toMap(keyMapper, Function.identity(), illegalStateMerge(), mapFactory);
+        return toMap(keyMapper, Function.identity(), mapFactory);
+    }
+
+    /**
+     * Collector to a map
+     * @param keyMapper a mapping function to produce keys
+     * @param valueMapper a mapping function to produce values
+     * @param mapFactory a supplier providing a new empty {@code Map}
+     *                   into which the results will be inserted
+     * @param <T> the type of the input elements
+     * @param <K> the key type of the resulting {@code Map}
+     * @param <V> the value type of the resulting {@code Map}
+     * @param <M> the type of the resulting {@code Map}
+     * @return a {@code Collector} which collects elements into a {@code Map}
+     */
+    public static <T, K, V, M extends Map<K,V>> Collector<T, ?, M> toMap(Function<? super T, ? extends K> keyMapper,
+                                                                         Function<? super T, ? extends V> valueMapper,
+                                                                         Supplier<M> mapFactory) {
+        return Collectors.toMap(keyMapper, valueMapper, illegalStateMerge(), mapFactory);
     }
 
     /**

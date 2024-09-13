@@ -1738,6 +1738,8 @@ input ProbeOperationLabware {
     workNumber: String!
     """The costing for the kit used on this labware."""
     kitCosting: SlideCosting!
+    """Sample prep reagent lot number."""
+    samplePrepReagentLot: String
     """The probes used on this labware."""
     probes: [ProbeLot!]!
 }
@@ -1772,6 +1774,8 @@ input AnalyserLabware {
     workNumber: String!
     """The cassette position for the labware."""
     position: CassettePosition!
+    """Decoding consumables lot number."""
+    decodingConsumablesLot: String
     """The sample regions of interest in this labware."""
     samples: [SampleROI!]!
 }
@@ -1906,6 +1910,8 @@ input SegmentationLabware {
     costing: SlideCosting
     """The time with which the operation should be recorded."""
     performed: Timestamp
+    """The reagent lot number."""
+    reagentLot: String
 }
 
 """A request to record segmentation on one or more labware."""

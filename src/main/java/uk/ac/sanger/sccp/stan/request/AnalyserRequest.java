@@ -96,14 +96,17 @@ public class AnalyserRequest {
         private String barcode;
         private String workNumber;
         private CassettePosition position;
+        private String decodingConsumablesLot;
         private List<SampleROI> samples = List.of();
 
         public AnalyserLabware() {}
 
-        public AnalyserLabware(String barcode, String workNumber, CassettePosition position, List<SampleROI> samples) {
+        public AnalyserLabware(String barcode, String workNumber, CassettePosition position,
+                               String decodingConsumablesLot, List<SampleROI> samples) {
             this.barcode = barcode;
             this.workNumber = workNumber;
             this.position = position;
+            this.decodingConsumablesLot = decodingConsumablesLot;
             setSamples(samples);
         }
 
@@ -140,6 +143,15 @@ public class AnalyserRequest {
             this.position = position;
         }
 
+        /** The decoding consumables lot number. */
+        public String getDecodingConsumablesLot() {
+            return this.decodingConsumablesLot;
+        }
+
+        public void setDecodingConsumablesLot(String decodingConsumablesLot) {
+            this.decodingConsumablesLot = decodingConsumablesLot;
+        }
+
         /**
          * The sample regions of interest in this labware.
          */
@@ -153,7 +165,25 @@ public class AnalyserRequest {
 
         @Override
         public String toString() {
-            return String.format("{%s: %s, %s, %s}", position, repr(barcode), repr(workNumber), samples);
+            return String.format("{%s: %s, %s, %s, %s}", position, repr(barcode), repr(workNumber),
+                    repr(decodingConsumablesLot), samples);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            AnalyserLabware that = (AnalyserLabware) o;
+            return (Objects.equals(this.barcode, that.barcode)
+                    && Objects.equals(this.workNumber, that.workNumber)
+                    && this.position == that.position
+                    && Objects.equals(this.decodingConsumablesLot, that.decodingConsumablesLot)
+                    && Objects.equals(this.samples, that.samples));
+        }
+
+        @Override
+        public int hashCode() {
+            return barcode==null ? 0 : barcode.hashCode();
         }
     }
     // endregion
