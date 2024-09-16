@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.stan.service.SlotCopyServiceImp.EXECUTION_NOTE_NAME;
 
 /**
  * Tests {@link SlotCopyServiceImp}
@@ -213,28 +214,32 @@ public class TestSlotCopyService {
         doReturn(new OperationResult(List.of(op1), List.of(newLw1)),
                 new OperationResult(List.of(op2), List.of(newLw2)),
                 new OperationResult(List.of(op3), List.of(dest1)))
-                .when(service).executeOp(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                .when(service).executeOp(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
 
-        OperationResult result = service.executeOps(user, dests, opType, lwTypes, bsMap, sources, work, existingDests);
+        final ExecutionType exType = ExecutionType.manual;
+
+        OperationResult result = service.executeOps(user, dests, opType, lwTypes, bsMap, sources, work, existingDests, exType);
         assertThat(result.getOperations()).containsExactly(op1, op2, op3);
         assertThat(result.getLabware()).containsExactly(newLw1, newLw2, dest1);
 
-        verify(service).executeOp(user, dests.get(0).getContents(), opType, lt1, "pb1", sources, SlideCosting.SGP, "1234567", "777777", bs, null);
-        verify(service).executeOp(user, dests.get(1).getContents(), opType, lt2, null, sources, SlideCosting.Faculty, null, null, null, null);
-        verify(service).executeOp(user, dests.get(2).getContents(), opType, null, null, sources, null, null, null, null, dest1);
+        verify(service).executeOp(user, dests.get(0).getContents(), opType, lt1, "pb1", sources, SlideCosting.SGP, "1234567", "777777", bs, null, exType);
+        verify(service).executeOp(user, dests.get(1).getContents(), opType, lt2, null, sources, SlideCosting.Faculty, null, null, null, null, exType);
+        verify(service).executeOp(user, dests.get(2).getContents(), opType, null, null, sources, null, null, null, null, dest1, exType);
 
         verify(mockWorkService).link(work, result.getOperations());
     }
 
     @ParameterizedTest
-    @CsvSource({"false,false,false",
-            "false,true,false",
-            "false,false,true",
-            "false,true,true",
-            "true,false,false",
-            "true,true,true",
+    @CsvSource({"false,false,false,",
+            "false,true,false,",
+            "false,false,true,",
+            "false,true,true,",
+            "true,false,false,",
+            "true,true,true,",
+            "true,true,true,automated",
+            "true,true,true,manual",
     })
-    public void testExecuteOp(boolean existingDest, boolean bsInRequest, boolean bsInOpType) {
+    public void testExecuteOp(boolean existingDest, boolean bsInRequest, boolean bsInOpType, ExecutionType exType) {
         final User user = EntityFactory.getUser();
         final BioState rbs = bsInRequest ? new BioState(5, "requestbs") : null;
         final BioState obs = bsInOpType ? new BioState(6, "opbs") : null;
@@ -261,7 +266,7 @@ public class TestSlotCopyService {
         op.setId(50);
         doReturn(op).when(service).createOperation(any(), any(), any(), any(), any(), any());
 
-        OperationResult opres = service.executeOp(user, contents, opType, lt, preBarcode, sourceMap, costing, lotNumber, probeLotNumber, rbs, existingDest ? destLw : null);
+        OperationResult opres = service.executeOp(user, contents, opType, lt, preBarcode, sourceMap, costing, lotNumber, probeLotNumber, rbs, existingDest ? destLw : null, exType);
         assertThat(opres.getLabware()).containsExactly(filledLw);
         assertThat(opres.getOperations()).containsExactly(op);
 
@@ -281,6 +286,9 @@ public class TestSlotCopyService {
         verify(mockLwNoteRepo).save(new LabwareNote(null, filledLw.getId(), op.getId(), "costing", costing.name()));
         verify(mockLwNoteRepo).save(new LabwareNote(null, filledLw.getId(), op.getId(), "lot", lotNumber));
         verify(mockLwNoteRepo).save(new LabwareNote(null, filledLw.getId(), op.getId(), "probe lot", probeLotNumber));
+        if (exType!=null) {
+            verify(mockLwNoteRepo).save(new LabwareNote(null, filledLw.getId(), op.getId(), EXECUTION_NOTE_NAME, exType.toString()));
+        }
     }
 
     @ParameterizedTest

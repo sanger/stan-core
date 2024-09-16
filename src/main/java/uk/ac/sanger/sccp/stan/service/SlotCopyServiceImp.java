@@ -31,6 +31,7 @@ public class SlotCopyServiceImp implements SlotCopyService {
     static final String CYTASSIST_OP = "CytAssist";
     static final String CYTASSIST_SLIDE = "Visium LP CytAssist", CYTASSIST_SLIDE_XL = "Visium LP CytAssist XL",
             CYTASSIST_SLIDE_HD = "Visium LP CytAssist HD";
+    static final String EXECUTION_NOTE_NAME = "execution";
 
     static final String BS_PROBES = "Probes", BS_CDNA = "cDNA", BS_LIBRARY = "Library",
             BS_LIB_PRE_CLEAN = "Library pre-clean", BS_LIB_POST_CLEAN = "Library post-clean",
@@ -104,7 +105,7 @@ public class SlotCopyServiceImp implements SlotCopyService {
     @Override
     public OperationResult record(User user, Data data, final Set<String> barcodesToUnstore) {
         OperationResult opres = executeOps(user, data.request.getDestinations(), data.opType, data.lwTypes, data.bioStates,
-                data.sourceLabware, data.work, data.destLabware);
+                data.sourceLabware, data.work, data.destLabware, data.request.getExecutionType());
         final Labware.State newSourceState = (data.opType.discardSource() ? Labware.State.discarded
                 : data.opType.markSourceUsed() ? Labware.State.used : null);
         updateSources(data.request.getSources(), data.sourceLabware.values(), newSourceState, barcodesToUnstore);
@@ -114,13 +115,14 @@ public class SlotCopyServiceImp implements SlotCopyService {
 
     public OperationResult executeOps(User user, Collection<SlotCopyDestination> dests,
                                       OperationType opType, UCMap<LabwareType> lwTypes, UCMap<BioState> bioStates,
-                                      UCMap<Labware> sources, Work work, UCMap<Labware> existingDests) {
+                                      UCMap<Labware> sources, Work work, UCMap<Labware> existingDests,
+                                      ExecutionType executionType) {
         List<Operation> ops = new ArrayList<>(dests.size());
         List<Labware> destLabware = new ArrayList<>(dests.size());
         for (SlotCopyDestination dest : dests) {
             OperationResult opres = executeOp(user, dest.getContents(), opType, lwTypes.get(dest.getLabwareType()),
                     dest.getPreBarcode(), sources, dest.getCosting(), dest.getLotNumber(), dest.getProbeLotNumber(),
-                    bioStates.get(dest.getBioState()), existingDests.get(dest.getBarcode()));
+                    bioStates.get(dest.getBioState()), existingDests.get(dest.getBarcode()), executionType);
             ops.addAll(opres.getOperations());
             destLabware.addAll(opres.getLabware());
         }
@@ -145,12 +147,14 @@ public class SlotCopyServiceImp implements SlotCopyService {
      * @param probeLotNumber the transcriptome probe lot number, if specified
      * @param bioState the new bio state of the labware, if given
      * @param destLw existing destination labware, if applicable
+     * @param executionType the execution type of the operation, if given
      * @return the result of the operation
      */
     public OperationResult executeOp(User user, Collection<SlotCopyContent> contents,
                                      OperationType opType, LabwareType lwType, String preBarcode,
                                      UCMap<Labware> labwareMap, SlideCosting costing, String lotNumber,
-                                     String probeLotNumber, BioState bioState, Labware destLw) {
+                                     String probeLotNumber, BioState bioState, Labware destLw,
+                                     ExecutionType executionType) {
         if (destLw==null) {
             destLw = lwService.create(lwType, preBarcode, preBarcode);
         } else if (bioState==null) {
@@ -168,6 +172,9 @@ public class SlotCopyServiceImp implements SlotCopyService {
         }
         if (!nullOrEmpty(probeLotNumber)) {
             lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), "probe lot", probeLotNumber.toUpperCase()));
+        }
+        if (executionType!=null) {
+            lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), EXECUTION_NOTE_NAME, executionType.toString()));
         }
         return new OperationResult(List.of(op), List.of(filledLabware));
     }

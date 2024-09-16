@@ -96,7 +96,7 @@ class TestLibraryPrepValidationService {
         service.scValidate(data);
 
         SlotCopyRequest expectedScRequest = new SlotCopyRequest("Transfer", "SGP1",
-                request.getSources(), List.of(request.getDestination()));
+                null, request.getSources(), List.of(request.getDestination()));
         verify(mockScValService).validateRequest(user, expectedScRequest);
 
         if (existingDest) {

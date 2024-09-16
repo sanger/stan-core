@@ -49,7 +49,7 @@ public class LibraryPrepValidationServiceImp implements LibraryPrepValidationSer
     public void scValidate(RequestData data) {
         var request = data.request;
 
-        SlotCopyRequest scRequest = new SlotCopyRequest("Transfer", request.getWorkNumber(), request.getSources(),
+        SlotCopyRequest scRequest = new SlotCopyRequest("Transfer", request.getWorkNumber(), null, request.getSources(),
                 List.of(request.getDestination()));
         data.slotCopyData = scValService.validateRequest(data.user, scRequest);
         if (!nullOrEmpty(data.slotCopyData.destLabware)) {

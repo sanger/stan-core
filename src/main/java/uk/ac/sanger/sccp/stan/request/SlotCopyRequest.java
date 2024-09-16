@@ -16,24 +16,26 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 public class SlotCopyRequest {
     private String operationType;
     private String workNumber;
+    private ExecutionType executionType;
     private List<SlotCopySource> sources;
     private List<SlotCopyDestination> destinations;
 
     public SlotCopyRequest() {
-        this(null, null, null, null);
+        this(null, null, (ExecutionType) null, null, null);
     }
 
-    public SlotCopyRequest(String operationType, String workNumber, List<SlotCopySource> sources,
+    public SlotCopyRequest(String operationType, String workNumber, ExecutionType executionType, List<SlotCopySource> sources,
                            List<SlotCopyDestination> destinations) {
         this.operationType = operationType;
         this.workNumber = workNumber;
+        this.executionType = executionType;
         setSources(sources);
         setDestinations(destinations);
     }
 
     public SlotCopyRequest(String operationType, String labwareTypeName, List<SlotCopyContent> contents, String workNumber,
                            String preBarcode) {
-        this(operationType, workNumber, null, List.of(new SlotCopyDestination(labwareTypeName, preBarcode,
+        this(operationType, workNumber, null, null, List.of(new SlotCopyDestination(labwareTypeName, preBarcode,
                 null, null, null, contents, null)));
     }
 
@@ -63,6 +65,15 @@ public class SlotCopyRequest {
         return this.workNumber;
     }
 
+    /** Whether the operation was automated or manual  */
+    public ExecutionType getExecutionType() {
+        return this.executionType;
+    }
+
+    public void setExecutionType(ExecutionType executionType) {
+        this.executionType = executionType;
+    }
+
     /** The source labware and their new labware states (if specified). */
     public List<SlotCopySource> getSources() {
         return this.sources;
@@ -78,10 +89,12 @@ public class SlotCopyRequest {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         SlotCopyRequest that = (SlotCopyRequest) o;
-        return (Objects.equals(this.operationType, that.operationType)
+        return (this.executionType==that.executionType
+                && Objects.equals(this.operationType, that.operationType)
                 && Objects.equals(this.workNumber, that.workNumber)
                 && Objects.equals(this.sources, that.sources)
-                && Objects.equals(this.destinations, that.destinations));
+                && Objects.equals(this.destinations, that.destinations)
+        );
     }
 
     @Override
@@ -94,6 +107,7 @@ public class SlotCopyRequest {
         return BasicUtils.describe("SlotCopyRequest")
                 .add("operationType", operationType)
                 .add("workNumber", workNumber)
+                .add("executionType", executionType)
                 .add("sources", sources)
                 .add("destinations", destinations)
                 .reprStringValues()
