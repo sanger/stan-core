@@ -23,6 +23,7 @@ import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.*;
 import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
@@ -772,7 +773,7 @@ public class ReleaseFileService {
      * Loads timestamps and comments from Xenium QC ops.
      */
     public void loadXeniumQC(Collection<ReleaseEntry> entries, Set<Integer> slotIds) {
-        OperationType opType = opTypeRepo.getByName("Xenium QC");
+        OperationType opType = opTypeRepo.getByName("Xenium analyser QC");
         List<Operation> ops = opRepo.findAllByOperationTypeAndDestinationSlotIdIn(opType, slotIds);
         if (ops.isEmpty()) {
             return;

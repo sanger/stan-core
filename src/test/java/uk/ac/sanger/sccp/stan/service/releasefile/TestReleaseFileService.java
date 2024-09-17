@@ -24,6 +24,7 @@ import java.util.*;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
@@ -1352,7 +1353,7 @@ public class TestReleaseFileService {
 
     @Test
     public void testLoadXeniumQC() {
-        OperationType opType = EntityFactory.makeOperationType("Xenium QC", null);
+        OperationType opType = EntityFactory.makeOperationType("Xenium analyser QC", null);
         when(mockOpTypeRepo.getByName(any())).thenReturn(opType);
         Sample sample = EntityFactory.getSample();
         final LabwareType lt = EntityFactory.getTubeType();
