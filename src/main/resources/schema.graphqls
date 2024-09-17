@@ -63,6 +63,12 @@ enum CassettePosition {
     right
 }
 
+"""Whether an operation was automated or manual."""
+enum ExecutionType {
+    automated
+    manual
+}
+
 """A user, who is associated with performing actions in the application."""
 type User {
     username: String!
@@ -606,6 +612,8 @@ input SlotCopyRequest {
     operationType: String!
     """An optional work number to associate with this operation."""
     workNumber: String
+    """Whether the execution was automated or manual."""
+    executionType: ExecutionType
 }
 
 """A request to record an operation in place."""

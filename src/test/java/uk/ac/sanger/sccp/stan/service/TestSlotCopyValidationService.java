@@ -66,7 +66,7 @@ public class TestSlotCopyValidationService {
     public void testValidate_valid(boolean valid) {
         User user = valid ? EntityFactory.getUser() : null;
         SlotCopyRequest request = new SlotCopyRequest("optype", "sgp1",
-                List.of(new SlotCopySource("STAN-1", Labware.State.active)),
+                null, List.of(new SlotCopySource("STAN-1", Labware.State.active)),
                 List.of(new SlotCopyDestination("lt1", "pb1", SlideCosting.Faculty, "lot1",
                         "probelot1", List.of(new SlotCopyContent("STAN1", new Address(1,1), new Address(1,2))),
                         "bs1")));
