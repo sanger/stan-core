@@ -75,7 +75,7 @@ public class TestReleaseMutation {
         entityCreator.createOpType("Probe hybridisation Xenium", null, OperationTypeFlag.IN_PLACE);
         entityCreator.createOpType("Probe hybridisation QC", null, OperationTypeFlag.IN_PLACE);
         entityCreator.createOpType("Xenium analyser", null, OperationTypeFlag.IN_PLACE);
-        entityCreator.createOpType("Xenium QC", null, OperationTypeFlag.IN_PLACE);
+        entityCreator.createOpType("Xenium analyser QC", null, OperationTypeFlag.IN_PLACE);
         Work work1 = entityCreator.createWork(null, null, null, null, null);
         Donor donor = entityCreator.createDonor("DONOR1");
         Tissue tissue = entityCreator.createTissue(donor, "TISSUE1");
