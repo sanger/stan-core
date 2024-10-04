@@ -14,6 +14,7 @@ import uk.ac.sanger.sccp.stan.service.SlotCopyValidationService.Data;
 import uk.ac.sanger.sccp.stan.service.validation.ValidationHelper;
 import uk.ac.sanger.sccp.stan.service.validation.ValidationHelperFactory;
 import uk.ac.sanger.sccp.utils.UCMap;
+import uk.ac.sanger.sccp.utils.Zip;
 
 import java.util.*;
 import java.util.stream.IntStream;
@@ -69,7 +70,7 @@ public class TestSlotCopyValidationService {
                 null, List.of(new SlotCopySource("STAN-1", Labware.State.active)),
                 List.of(new SlotCopyDestination("lt1", "pb1", SlideCosting.Faculty, "lot1",
                         "probelot1", List.of(new SlotCopyContent("STAN1", new Address(1,1), new Address(1,2))),
-                        "bs1")));
+                        "bs1", "LP3")));
         Data data = new Data(request);
         ValidationHelper val = mock(ValidationHelper.class);
         when(mockValHelperFactory.getHelper()).thenReturn(val);
@@ -87,6 +88,7 @@ public class TestSlotCopyValidationService {
         mayAddProblem(valid ? null : "bad lot").when(service).validateLotNumbers(any(), any());
         mayAddProblem(valid ? null : "bad contents").when(service).validateContents(any(), any(), any(), any(), any());
         mayAddProblem(valid ? null : "bad ops").when(service).validateOps(any(), any(), any(), any());
+        mayAddProblem(valid ? null : "bad lp").when(service).validateLpNumbers(any(), any());
         UCMap<BioState> bsMap = UCMap.from(BioState::getName, EntityFactory.getBioState());
         mayAddProblem(valid ? null : "bad bs", bsMap).when(service).validateBioStates(any(), any());
         Work work = EntityFactory.makeWork("SGP1");
@@ -99,7 +101,7 @@ public class TestSlotCopyValidationService {
         } else {
             assertThat(problems).containsExactlyInAnyOrder(
                     "No user supplied.", "val problem", "bad lw type", "bad prebc", "bad source",
-                    "bad listed souce", "bad lot", "bad contents", "bad ops", "bad bs", "used prebc"
+                    "bad listed souce", "bad lot", "bad contents", "bad ops", "bad bs", "used prebc", "bad lp"
             );
         }
 
@@ -115,6 +117,7 @@ public class TestSlotCopyValidationService {
         verify(service).validateContents(problems, lwTypes, sourceLw, destLw, request);
         verify(service).validateOps(problems, scds, opType, lwTypes);
         verify(service).validateBioStates(problems, scds);
+        verify(service).validateLpNumbers(problems, scds);
         verify(val).checkWork(request.getWorkNumber());
         assertSame(data.destLabware, destLw);
         assertSame(data.sourceLabware, sourceLw);
@@ -149,7 +152,7 @@ public class TestSlotCopyValidationService {
         UCMap<LabwareType> ltMap = UCMap.from(lts, LabwareType::getName);
         List<String> problems = new ArrayList<>(expectedProblem==null ? 0 : 1);
         List<SlotCopyDestination> scds = Arrays.stream(ltNames)
-                .map(name -> new SlotCopyDestination(name, null, null, null, null, null, null))
+                .map(name -> new SlotCopyDestination(name, null, null, null, null, null, null, null))
                 .toList();
         assertEquals(ltMap, service.loadLabwareTypes(problems, scds));
         assertProblem(problems, expectedProblem);
@@ -228,10 +231,10 @@ public class TestSlotCopyValidationService {
         ltp.setPrebarcoded(true);
         ltu.setPrebarcoded(false);
         UCMap<LabwareType> lts = UCMap.from(LabwareType::getName, ltp, ltu);
-        SlotCopyDestination validp = new SlotCopyDestination("ltp", "prebc", null, null, null, null, null);
-        SlotCopyDestination validu = new SlotCopyDestination("ltu", null, null, null, null, null, null);
-        SlotCopyDestination invalidp = new SlotCopyDestination("ltp", null, null, null, null, null, null);
-        SlotCopyDestination invalidu = new SlotCopyDestination("ltu", "bananas", null, null, null, null, null);
+        SlotCopyDestination validp = new SlotCopyDestination("ltp", "prebc", null, null, null, null, null, null);
+        SlotCopyDestination validu = new SlotCopyDestination("ltu", null, null, null, null, null, null, null);
+        SlotCopyDestination invalidp = new SlotCopyDestination("ltp", null, null, null, null, null, null, null);
+        SlotCopyDestination invalidu = new SlotCopyDestination("ltu", "bananas", null, null, null, null, null, null);
 
         return Arrays.stream(new Object[][] {
                 {null, List.of(validp), List.of("PREBC")},
@@ -409,6 +412,30 @@ public class TestSlotCopyValidationService {
         scd.setLabwareType(ltName);
         scd.setContents(contents);
         return scd;
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testValidateLpNumbers(boolean valid) {
+        String[] givenLps, expectedLps;
+        String expectedProblem;
+        if (valid) {
+            givenLps = new String[] {null, "", "  ", "LP1", "   lp2  ", "3", "   4 "};
+            expectedLps = new String[] {null, null, null, "LP1", "LP2", "LP3", "LP4"};
+            expectedProblem = null;
+        } else {
+            givenLps = new String[] {null, "", "  LP1 ", "2", "  bananas", "L5", "-6", "lp123456789"};
+            expectedLps = new String[] {null, null, "LP1", "LP2", "  bananas", "L5", "-6", "lp123456789"};
+            expectedProblem = "Unrecognised format for LP number: [\"BANANAS\", \"L5\", \"-6\", \"LP123456789\"]";
+        }
+        List<SlotCopyDestination> scds = Arrays.stream(givenLps)
+                .map(lp -> new SlotCopyDestination(null, null, null, null, null, null, null, lp))
+                .toList();
+        List<String> problems = new ArrayList<>(valid ? 0 : 1);
+        service.validateLpNumbers(problems, scds);
+        assertThat(scds).hasSize(expectedLps.length);
+        Zip.forEach(scds.stream(), Arrays.stream(expectedLps), (scd, lp) -> assertEquals(lp, scd.getLpNumber()));
+        assertProblem(problems, expectedProblem);
     }
 
     @Test

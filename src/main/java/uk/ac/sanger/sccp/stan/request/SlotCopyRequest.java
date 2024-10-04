@@ -36,7 +36,7 @@ public class SlotCopyRequest {
     public SlotCopyRequest(String operationType, String labwareTypeName, List<SlotCopyContent> contents, String workNumber,
                            String preBarcode) {
         this(operationType, workNumber, null, null, List.of(new SlotCopyDestination(labwareTypeName, preBarcode,
-                null, null, null, contents, null)));
+                null, null, null, contents, null, null)));
     }
 
     public void setOperationType(String operationType) {
@@ -169,20 +169,23 @@ public class SlotCopyRequest {
         private String lotNumber;
         private String probeLotNumber;
         private String preBarcode;
+        private String lpNumber;
         private List<SlotCopyContent> contents;
 
         public SlotCopyDestination() {
-            this(null, null, null, null, null, null, null);
+            this(null, null, null, null, null, null, null, null);
         }
 
         public SlotCopyDestination(String labwareTypeName, String preBarcode, SlideCosting costing,
-                                   String lotNumber, String probeLotNumber, List<SlotCopyContent> contents, String bioState) {
+                                   String lotNumber, String probeLotNumber, List<SlotCopyContent> contents,
+                                   String bioState, String lpNumber) {
             this.labwareType = labwareTypeName;
             this.preBarcode = preBarcode;
             this.costing = costing;
             this.lotNumber = lotNumber;
             this.bioState = bioState;
             this.probeLotNumber = probeLotNumber;
+            this.lpNumber = lpNumber;
             setContents(contents);
         }
 
@@ -263,6 +266,15 @@ public class SlotCopyRequest {
             this.preBarcode = preBarcode;
         }
 
+        /** The LP number of this labware. **/
+        public String getLpNumber() {
+            return this.lpNumber;
+        }
+
+        public void setLpNumber(String lpNumber) {
+            this.lpNumber = lpNumber;
+        }
+
         /**
          * The specifications of which source slots are being copied into what addresses in the destination labware.
          */
@@ -285,14 +297,15 @@ public class SlotCopyRequest {
                     && Objects.equals(this.lotNumber, that.lotNumber)
                     && Objects.equals(this.probeLotNumber, that.probeLotNumber)
                     && Objects.equals(this.preBarcode, that.preBarcode)
-                    && Objects.equals(this.contents, that.contents)
                     && Objects.equals(this.barcode, that.barcode)
+                    && Objects.equals(this.lpNumber, that.lpNumber)
+                    && Objects.equals(this.contents, that.contents)
             );
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(labwareType, bioState, costing, lotNumber, probeLotNumber, preBarcode, contents, barcode);
+            return (barcode==null ? 0 : barcode.hashCode());
         }
 
         @Override
@@ -305,6 +318,7 @@ public class SlotCopyRequest {
                     .add("lotNumber", lotNumber)
                     .add("probeLotNumber", probeLotNumber)
                     .add("preBarcode", preBarcode)
+                    .add("lpNumber", lpNumber)
                     .add("contents", contents)
                     .reprStringValues()
                     .toString();

@@ -12,17 +12,18 @@ import uk.ac.sanger.sccp.stan.service.validation.ValidationHelperFactory;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
+import java.util.regex.Pattern;
 
 import static java.util.stream.Collectors.toSet;
 import static uk.ac.sanger.sccp.stan.service.SlotCopyServiceImp.*;
-import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
-import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
+import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 /**
  * @author dr6
  */
 @Service
 public class SlotCopyValidationServiceImp implements SlotCopyValidationService {
+    private final Pattern LP_NUMBER_PTN = Pattern.compile("^(?:LP)?\\d{1,8}$", Pattern.CASE_INSENSITIVE);
     private final LabwareTypeRepo lwTypeRepo;
     private final LabwareRepo lwRepo;
     private final BioStateRepo bsRepo;
@@ -73,6 +74,7 @@ public class SlotCopyValidationServiceImp implements SlotCopyValidationService {
         }
         checkListedSources(data.problems, request);
         validateLotNumbers(data.problems, request.getDestinations());
+        validateLpNumbers(data.problems, request.getDestinations());
         validateContents(data.problems, data.lwTypes, data.sourceLabware, data.destLabware, request);
         validateOps(data.problems, request.getDestinations(), data.opType, data.lwTypes);
         data.bioStates = validateBioStates(data.problems, request.getDestinations());
@@ -290,6 +292,39 @@ public class SlotCopyValidationServiceImp implements SlotCopyValidationService {
             if (!nullOrEmpty(scd.getProbeLotNumber())) {
                 lotNumberValidator.validate(scd.getProbeLotNumber(), problems::add);
             }
+        }
+    }
+
+    /**
+     * Checks LP numbers in the request, if given.
+     * The expected format is "LP#" where # is a positive integer.
+     * A sanitised version of the value will be stored back inside the request.
+     * @param problems receptacle for problems
+     * @param scds info from the request
+     */
+    public void validateLpNumbers(Collection<String> problems, Collection<SlotCopyDestination> scds) {
+        Set<String> invalidLpNumbers = new LinkedHashSet<>();
+        for (SlotCopyDestination scd : scds) {
+            String lpNumber = scd.getLpNumber();
+            if (lpNumber==null) {
+                continue;
+            }
+            lpNumber = lpNumber.trim().toUpperCase();
+            if (lpNumber.isEmpty()) {
+                scd.setLpNumber(null);
+                continue;
+            }
+            if (!LP_NUMBER_PTN.matcher(lpNumber).matches()) {
+                invalidLpNumbers.add(lpNumber);
+            } else {
+                if (!lpNumber.startsWith("LP")) {
+                    lpNumber = "LP" + lpNumber;
+                }
+                scd.setLpNumber(lpNumber);
+            }
+        }
+        if (!invalidLpNumbers.isEmpty()) {
+            problems.add("Unrecognised format for LP number: "+reprCollection(invalidLpNumbers));
         }
     }
 
