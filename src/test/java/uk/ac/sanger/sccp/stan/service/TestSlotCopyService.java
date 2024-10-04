@@ -179,9 +179,9 @@ public class TestSlotCopyService {
         final Address A1 = new Address(1,1);
         User user = EntityFactory.getUser();
         List<SlotCopyDestination> dests = List.of(
-                new SlotCopyDestination("lt1", "pb1", SlideCosting.SGP, "1234567", "777777", List.of(new SlotCopyContent("STAN-0", A1, A1)), "bs1"),
-                new SlotCopyDestination("lt2", null, SlideCosting.Faculty, null, null, List.of(new SlotCopyContent("STAN-1", A1, A1)), null),
-                new SlotCopyDestination(null, null, null, null, null, List.of(new SlotCopyContent("STAN-2", A1, A1)), "bs2")
+                new SlotCopyDestination("lt1", "pb1", SlideCosting.SGP, "1234567", "777777", List.of(new SlotCopyContent("STAN-0", A1, A1)), "bs1", "LP1"),
+                new SlotCopyDestination("lt2", null, SlideCosting.Faculty, null, null, List.of(new SlotCopyContent("STAN-1", A1, A1)), null, null),
+                new SlotCopyDestination(null, null, null, null, null, List.of(new SlotCopyContent("STAN-2", A1, A1)), "bs2", null)
         );
         OperationType opType = EntityFactory.makeOperationType("optype", null);
         final LabwareType lt1 = EntityFactory.makeLabwareType(1, 1, "lt1");
@@ -214,7 +214,7 @@ public class TestSlotCopyService {
         doReturn(new OperationResult(List.of(op1), List.of(newLw1)),
                 new OperationResult(List.of(op2), List.of(newLw2)),
                 new OperationResult(List.of(op3), List.of(dest1)))
-                .when(service).executeOp(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                .when(service).executeOp(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
 
         final ExecutionType exType = ExecutionType.manual;
 
@@ -222,24 +222,25 @@ public class TestSlotCopyService {
         assertThat(result.getOperations()).containsExactly(op1, op2, op3);
         assertThat(result.getLabware()).containsExactly(newLw1, newLw2, dest1);
 
-        verify(service).executeOp(user, dests.get(0).getContents(), opType, lt1, "pb1", sources, SlideCosting.SGP, "1234567", "777777", bs, null, exType);
-        verify(service).executeOp(user, dests.get(1).getContents(), opType, lt2, null, sources, SlideCosting.Faculty, null, null, null, null, exType);
-        verify(service).executeOp(user, dests.get(2).getContents(), opType, null, null, sources, null, null, null, null, dest1, exType);
+        verify(service).executeOp(user, dests.get(0).getContents(), opType, lt1, "pb1", sources, SlideCosting.SGP, "1234567", "777777", bs, "LP1", null, exType);
+        verify(service).executeOp(user, dests.get(1).getContents(), opType, lt2, null, sources, SlideCosting.Faculty, null, null, null, null, null, exType);
+        verify(service).executeOp(user, dests.get(2).getContents(), opType, null, null, sources, null, null, null, null, null, dest1, exType);
 
         verify(mockWorkService).link(work, result.getOperations());
     }
 
     @ParameterizedTest
-    @CsvSource({"false,false,false,",
-            "false,true,false,",
-            "false,false,true,",
-            "false,true,true,",
-            "true,false,false,",
-            "true,true,true,",
-            "true,true,true,automated",
-            "true,true,true,manual",
+    @CsvSource({"false,false,false,false,",
+            "false,false,false,true,",
+            "false,true,false,false,",
+            "false,false,true,false,",
+            "false,true,true,true,",
+            "true,false,false,true,",
+            "true,true,true,true,",
+            "true,true,true,true,automated",
+            "true,true,true,true,manual",
     })
-    public void testExecuteOp(boolean existingDest, boolean bsInRequest, boolean bsInOpType, ExecutionType exType) {
+    public void testExecuteOp(boolean existingDest, boolean bsInRequest, boolean bsInOpType, boolean hasLp, ExecutionType exType) {
         final User user = EntityFactory.getUser();
         final BioState rbs = bsInRequest ? new BioState(5, "requestbs") : null;
         final BioState obs = bsInOpType ? new BioState(6, "opbs") : null;
@@ -248,6 +249,7 @@ public class TestSlotCopyService {
         final SlideCosting costing = SlideCosting.SGP;
         final String lotNumber = "1234567";
         final String probeLotNumber = "777777";
+        final String lpNumber = (hasLp ? "LP2" : null);
         LabwareType lt = EntityFactory.getTubeType();
         UCMap<Labware> sourceMap = UCMap.from(Labware::getBarcode, EntityFactory.getTube());
         Labware destLw = EntityFactory.makeEmptyLabware(lt);
@@ -266,7 +268,7 @@ public class TestSlotCopyService {
         op.setId(50);
         doReturn(op).when(service).createOperation(any(), any(), any(), any(), any(), any());
 
-        OperationResult opres = service.executeOp(user, contents, opType, lt, preBarcode, sourceMap, costing, lotNumber, probeLotNumber, rbs, existingDest ? destLw : null, exType);
+        OperationResult opres = service.executeOp(user, contents, opType, lt, preBarcode, sourceMap, costing, lotNumber, probeLotNumber, rbs, lpNumber, existingDest ? destLw : null, exType);
         assertThat(opres.getLabware()).containsExactly(filledLw);
         assertThat(opres.getOperations()).containsExactly(op);
 
@@ -286,6 +288,9 @@ public class TestSlotCopyService {
         verify(mockLwNoteRepo).save(new LabwareNote(null, filledLw.getId(), op.getId(), "costing", costing.name()));
         verify(mockLwNoteRepo).save(new LabwareNote(null, filledLw.getId(), op.getId(), "lot", lotNumber));
         verify(mockLwNoteRepo).save(new LabwareNote(null, filledLw.getId(), op.getId(), "probe lot", probeLotNumber));
+        if (hasLp) {
+            verify(mockLwNoteRepo).save(new LabwareNote(null, filledLw.getId(), op.getId(), "LP number", lpNumber));
+        }
         if (exType!=null) {
             verify(mockLwNoteRepo).save(new LabwareNote(null, filledLw.getId(), op.getId(), EXECUTION_NOTE_NAME, exType.toString()));
         }

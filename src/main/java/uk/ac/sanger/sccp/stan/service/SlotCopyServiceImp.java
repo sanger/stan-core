@@ -111,8 +111,8 @@ public class SlotCopyServiceImp implements SlotCopyService {
         updateSources(data.request.getSources(), data.sourceLabware.values(), newSourceState, barcodesToUnstore);
         return opres;
     }
-    // region Executing
 
+    // region Executing
     public OperationResult executeOps(User user, Collection<SlotCopyDestination> dests,
                                       OperationType opType, UCMap<LabwareType> lwTypes, UCMap<BioState> bioStates,
                                       UCMap<Labware> sources, Work work, UCMap<Labware> existingDests,
@@ -122,7 +122,8 @@ public class SlotCopyServiceImp implements SlotCopyService {
         for (SlotCopyDestination dest : dests) {
             OperationResult opres = executeOp(user, dest.getContents(), opType, lwTypes.get(dest.getLabwareType()),
                     dest.getPreBarcode(), sources, dest.getCosting(), dest.getLotNumber(), dest.getProbeLotNumber(),
-                    bioStates.get(dest.getBioState()), existingDests.get(dest.getBarcode()), executionType);
+                    bioStates.get(dest.getBioState()), dest.getLpNumber(), existingDests.get(dest.getBarcode()),
+                    executionType);
             ops.addAll(opres.getOperations());
             destLabware.addAll(opres.getLabware());
         }
@@ -146,6 +147,7 @@ public class SlotCopyServiceImp implements SlotCopyService {
      * @param lotNumber the lot number of the new labware, if specified
      * @param probeLotNumber the transcriptome probe lot number, if specified
      * @param bioState the new bio state of the labware, if given
+     * @param lpNumber the lp number for the labware, if given
      * @param destLw existing destination labware, if applicable
      * @param executionType the execution type of the operation, if given
      * @return the result of the operation
@@ -153,7 +155,7 @@ public class SlotCopyServiceImp implements SlotCopyService {
     public OperationResult executeOp(User user, Collection<SlotCopyContent> contents,
                                      OperationType opType, LabwareType lwType, String preBarcode,
                                      UCMap<Labware> labwareMap, SlideCosting costing, String lotNumber,
-                                     String probeLotNumber, BioState bioState, Labware destLw,
+                                     String probeLotNumber, BioState bioState, String lpNumber, Labware destLw,
                                      ExecutionType executionType) {
         if (destLw==null) {
             destLw = lwService.create(lwType, preBarcode, preBarcode);
@@ -172,6 +174,9 @@ public class SlotCopyServiceImp implements SlotCopyService {
         }
         if (!nullOrEmpty(probeLotNumber)) {
             lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), "probe lot", probeLotNumber.toUpperCase()));
+        }
+        if (!nullOrEmpty(lpNumber)) {
+            lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), "LP number", lpNumber.toUpperCase()));
         }
         if (executionType!=null) {
             lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), EXECUTION_NOTE_NAME, executionType.toString()));
