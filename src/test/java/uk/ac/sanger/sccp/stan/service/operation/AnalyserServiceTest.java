@@ -26,6 +26,7 @@ import java.util.function.Consumer;
 import java.util.stream.IntStream;
 
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -115,17 +116,23 @@ public class AnalyserServiceTest {
         doNothing().when(service).validateRunName(any(), any());
         doNothing().when(service).validateCellSegmentationLot(any(), any());
         doNothing().when(service).validateDecodingConsumablesLot(any(), any());
+        doNothing().when(service).sanitiseRois(any(), any());
         doReturn(mockVal).when(mockValFactory).getHelper();
         doReturn(new HashSet<>()).when(mockVal).getProblems();
         doReturn(equipment).when(mockVal).checkEquipment(any(), any(), anyBoolean());
 
         doReturn(opres).when(service).record(any(), any(), any(), any(), any(), any());
 
-        AnalyserRequest request = new AnalyserRequest("opname", "lotA", "lotB", "run", LocalDateTime.now(), List.of(new AnalyserLabware()), equipment.getId(), "cslot");
+        AnalyserRequest request = new AnalyserRequest("opname", "lotA", "lotB",
+                "run", LocalDateTime.now(),
+                List.of(new AnalyserLabware(lw.getBarcode(), null, null, null, null)),
+                equipment.getId(), "cslot");
 
         assertSame(opres, service.perform(user, request));
 
         verifyValidation(request, opType, lwMap, priorOps, mockVal);
+
+        verify(service).sanitiseRois(request.getLabware().getFirst(), lw);
         verify(service).record(user, request, opType, lwMap, workMap, equipment);
     }
 
@@ -162,6 +169,7 @@ public class AnalyserServiceTest {
         verify(mockValFactory, times(1)).getHelper();
         verifyValidation(request, opType, lwMap, priorOps, mockVal);
 
+        verify(service, never()).sanitiseRois(any(), any());
         verify(service, never()).record(any(), any(), any(), any(), any(), any());
     }
 
@@ -592,6 +600,45 @@ public class AnalyserServiceTest {
         final List<String> problems = new ArrayList<>(expectedProblem==null ? 0 : 1);
         service.validateRunName(problems, string);
         assertProblem(problems, expectedProblem);
+    }
+
+    /** Splits a string on whitespace. Returns an empty array if the argument is null. */
+    private static String[] splitArg(String joined) {
+        return joined == null ? new String[0] : joined.split("\\s+");
+    }
+
+    @ParameterizedTest
+    @CsvSource(value = {
+            ",,",
+            "alpha beta, , alpha beta",
+            "alpha beta, gamma delta, alpha beta",
+            "ALphA BETA Gamma, Beta Alpha Delta, Alpha Beta Gamma",
+    })
+    public void testSanitiseRois_noRois(String newRois_joined, String oldRois_joined, String expectedRois_joined) {
+        Labware lw = EntityFactory.getTube();
+        String[] newRois = splitArg(newRois_joined);
+        String[] oldRois = splitArg(oldRois_joined);
+        String[] expectedRois = splitArg(expectedRois_joined);
+        List<SampleROI> srs = Arrays.stream(newRois)
+                .map(roi -> new SampleROI(null, null, roi))
+                .toList();
+        AnalyserLabware al = new AnalyserLabware(lw.getBarcode(), null, null,
+                null, srs);
+        if (newRois.length > 0) {
+            List<Roi> foundRois = Arrays.stream(oldRois)
+                    .map(roi -> new Roi(null, null, null, roi))
+                    .toList();
+            when(mockRoiRepo.findAllBySlotIdIn(any())).thenReturn(foundRois);
+        }
+        service.sanitiseRois(al, lw);
+        if (newRois.length==0) {
+            verifyNoInteractions(mockRoiRepo);
+        } else {
+            Set<Integer> slotIds = lw.getSlots().stream().map(Slot::getId).collect(toSet());
+            verify(mockRoiRepo).findAllBySlotIdIn(slotIds);
+        }
+        Zip.forEach(al.getSamples().stream(), Arrays.stream(expectedRois),
+                (sr, roi) -> assertEquals(roi, sr.getRoi()));
     }
 
     @ParameterizedTest
