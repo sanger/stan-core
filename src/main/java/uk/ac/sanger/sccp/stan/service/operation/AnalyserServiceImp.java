@@ -21,6 +21,7 @@ import java.util.*;
 import java.util.function.Consumer;
 
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
@@ -98,6 +99,9 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
 
         if (!problems.isEmpty()) {
             throw new ValidationException(problems);
+        }
+        for (AnalyserLabware al : request.getLabware()) {
+            sanitiseRois(al, lwMap.get(al.getBarcode()));
         }
 
         return record(user, request, opType, lwMap, workMap, equipment);
@@ -379,6 +383,35 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
         } else if (runNameValidator.validate(runName, problems::add)) {
             if (lwNoteRepo.existsByNameAndValue(RUN_NAME, runName)) {
                 problems.add("Run name already used: "+repr(runName));
+            }
+        }
+    }
+
+    /**
+     * Makes ROIs identically match similar ROIs in the same labware
+     * (i.e. makes the capitalisation consistent with previous ROIs).
+     * @param al details for one labware in the request
+     * @param lw labware used in the request
+     */
+    public void sanitiseRois(AnalyserLabware al, Labware lw) {
+        if (al.getSamples().stream().allMatch(sr -> nullOrEmpty(sr.getRoi()))) {
+            return;
+        }
+        Set<Integer> slotIds = lw.getSlots().stream()
+                .map(Slot::getId)
+                .collect(toSet());
+        List<Roi> foundRois = roiRepo.findAllBySlotIdIn(slotIds);
+        if (foundRois.isEmpty()) {
+            return;
+        }
+        UCMap<String> existingRois = new UCMap<>(foundRois.size());
+        for (Roi roi : foundRois) {
+            existingRois.put(roi.getRoi(), roi.getRoi());
+        }
+        for (SampleROI sr : al.getSamples()) {
+            String sanitised = existingRois.get(sr.getRoi());
+            if (sanitised != null) {
+                sr.setRoi(sanitised);
             }
         }
     }
