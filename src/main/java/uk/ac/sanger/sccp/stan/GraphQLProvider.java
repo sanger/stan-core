@@ -117,6 +117,7 @@ public class GraphQLProvider {
                         .dataFetcher("labwareFlagDetails", graphQLDataFetchers.getFlagDetails())
                         .dataFetcher("measurementValueFromLabwareOrParent", graphQLDataFetchers.getMeasurementValueFromLabwareOrParent())
                         .dataFetcher("rois", graphQLDataFetchers.labwareRois())
+                        .dataFetcher("runRois", graphQLDataFetchers.labwareRunRois())
 
                         .dataFetcher("users", graphQLDataFetchers.getUsers())
                         .dataFetcher("planData", graphQLDataFetchers.getPlanData())

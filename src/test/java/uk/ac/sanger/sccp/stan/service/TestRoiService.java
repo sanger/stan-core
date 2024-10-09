@@ -27,6 +27,8 @@ class TestRoiService {
     private RoiRepo mockRoiRepo;
     @Mock
     private SampleRepo mockSampleRepo;
+    @Mock
+    private LabwareNoteRepo mockLwNoteRepo;
 
     @InjectMocks
     private RoiServiceImp service;

@@ -12,6 +12,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.reagentplate.ReagentPlate;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.*;
+import uk.ac.sanger.sccp.stan.request.LabwareRoi.RoiResult;
 import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.extract.ExtractResultQueryService;
 import uk.ac.sanger.sccp.stan.service.flag.FlagLookupService;
@@ -366,6 +367,14 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         return dfe -> {
             List<String> barcodes = dfe.getArgument("barcodes");
             return roiService.labwareRois(barcodes);
+        };
+    }
+
+    public DataFetcher<List<RoiResult>> labwareRunRois() {
+        return dfe -> {
+            String barcode = dfe.getArgument("barcode");
+            String run = dfe.getArgument("run");
+            return roiService.labwareRunRois(barcode, run);
         };
     }
 
