@@ -15,18 +15,20 @@ public class BasicLocation {
     private String name;
     private Address address;
     private Integer addressIndex;
+    private int numStored;
 
     public BasicLocation() {}
 
     public BasicLocation(String barcode, Address address) {
-        this(barcode, null, address, null);
+        this(barcode, null, address, null, 0);
     }
 
-    public BasicLocation(String barcode, String name, Address address, Integer addressIndex) {
+    public BasicLocation(String barcode, String name, Address address, Integer addressIndex, int numStored) {
         this.barcode = barcode;
         this.name = name;
         this.address = address;
         this.addressIndex = addressIndex;
+        this.numStored = numStored;
     }
 
     public String getBarcode() {
@@ -61,6 +63,15 @@ public class BasicLocation {
         this.addressIndex = addressIndex;
     }
 
+    /** The number of items directly stored in this location */
+    public int getNumStored() {
+        return this.numStored;
+    }
+
+    public void setNumStored(int numStored) {
+        this.numStored = numStored;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -69,7 +80,8 @@ public class BasicLocation {
         return (Objects.equals(this.barcode, that.barcode)
                 && Objects.equals(this.name, that.name)
                 && Objects.equals(this.address, that.address)
-                && Objects.equals(this.addressIndex, that.addressIndex));
+                && Objects.equals(this.addressIndex, that.addressIndex)
+                && this.numStored==that.numStored);
     }
 
     @Override

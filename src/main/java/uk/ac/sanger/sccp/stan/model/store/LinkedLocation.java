@@ -16,6 +16,7 @@ public class LinkedLocation {
     private String barcode;
     private String name;
     private Address address;
+    private int numStored;
 
     public String getBarcode() {
         return this.barcode;
@@ -96,6 +97,14 @@ public class LinkedLocation {
         return string;
     }
 
+    public int getNumStored() {
+        return this.numStored;
+    }
+
+    public void setNumStored(int numStored) {
+        this.numStored = numStored;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -106,7 +115,9 @@ public class LinkedLocation {
     protected boolean equalsLinkedLocation(LinkedLocation that) {
         return (Objects.equals(this.barcode, that.barcode)
                 && Objects.equals(this.name, that.name)
-                && Objects.equals(this.address, that.address));
+                && Objects.equals(this.address, that.address)
+                && this.numStored == that.numStored
+        );
     }
 
     @Override
@@ -120,6 +131,7 @@ public class LinkedLocation {
                 .add("barcode", repr(barcode))
                 .add("name", repr(name))
                 .add("address", address)
+                .add("numStored", numStored)
                 .omitNullValues()
                 .toString();
     }

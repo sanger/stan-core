@@ -508,7 +508,7 @@ public class TestReleaseService {
         if (locBarcode==null) {
             loc = null;
         } else {
-            loc = new BasicLocation(locBarcode, expectedName, address, addressIndex);
+            loc = new BasicLocation(locBarcode, expectedName, address, addressIndex, 0);
         }
 
         final int releaseId = 10;
