@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
 import org.apache.commons.lang3.StringUtils;
@@ -269,7 +270,7 @@ public class StoreService {
             query = query.replace("[]", objectMapper.writeValueAsString(arrayNode));
             GraphQLResponse response = storelightClient.postQuery(query, null);
             checkErrors(response);
-            var objectData = response.getData();
+            ObjectNode objectData = response.getData();
             ArrayNode storedData = (ArrayNode) objectData.get("stored");
 
             return makeBasicLocations(storedData);
@@ -305,7 +306,8 @@ public class StoreService {
                 address = Address.valueOf(addressString);
             }
             Integer addressIndex = integerFromNode(sd.get("addressIndex"));
-            map.put(itemBarcode, new BasicLocation(locationBarcode, locationName, address, addressIndex));
+            int numStored = intFromNode(sd.get("numStored"), 0);
+            map.put(itemBarcode, new BasicLocation(locationBarcode, locationName, address, addressIndex, numStored));
         }
         return map;
     }
@@ -322,6 +324,17 @@ public class StoreService {
         }
         int value = node.asInt(-1);
         return (value < 0 ? null : (Integer) value);
+    }
+
+    /**
+     * Reads an int from the given node.
+     * If the node is null or non-numeric, returns the given default value.
+     * @param node the node to read
+     * @param defaultValue the value to return if an int cannot be read
+     * @return the int value from the node, or the default value
+     */
+    private static int intFromNode(JsonNode node, int defaultValue) {
+        return (node==null ? defaultValue : node.asInt(defaultValue));
     }
 
     /**
