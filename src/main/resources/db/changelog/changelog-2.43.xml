@@ -21,7 +21,7 @@
                 <constraints nullable="false" foreignKeyName="fk_roi_metric_operation" referencedTableName="operation" referencedColumnNames="id"/>
             </column>
             <column name="roi" type="VARCHAR(64)">
-                <constraints nullable="false" foreignKeyName="fk_roi_metric_roi" referencedTableName="roi" referencedColumnNames="roi"/>
+                <constraints nullable="false"/>
             </column>
             <column name="name" type="VARCHAR(64)">
                 <constraints nullable="false"/>
@@ -41,6 +41,9 @@
         </createTable>
         <createIndex tableName="roi_metric" indexName="ix_roi_metric_name" unique="false">
             <column name="name"/>
+        </createIndex>
+        <createIndex tableName="roi_metric" indexName="ix_roi_metric_roi" unique="false">
+            <column name="roi"/>
         </createIndex>
         <rollback>
             <dropAllForeignKeyConstraints baseTableName="roi_metric"/>
