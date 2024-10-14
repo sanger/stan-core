@@ -12,6 +12,7 @@ import java.util.*;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toSet;
+import static uk.ac.sanger.sccp.stan.service.operation.AnalyserServiceImp.RUN_NAME;
 import static uk.ac.sanger.sccp.utils.BasicUtils.inMap;
 
 /**
@@ -22,12 +23,14 @@ public class RoiServiceImp implements RoiService {
     private final LabwareRepo lwRepo;
     private final RoiRepo roiRepo;
     private final SampleRepo sampleRepo;
+    private final LabwareNoteRepo lwNoteRepo;
 
     @Autowired
-    public RoiServiceImp(LabwareRepo lwRepo, RoiRepo roiRepo, SampleRepo sampleRepo) {
+    public RoiServiceImp(LabwareRepo lwRepo, RoiRepo roiRepo, SampleRepo sampleRepo, LabwareNoteRepo lwNoteRepo) {
         this.lwRepo = lwRepo;
         this.roiRepo = roiRepo;
         this.sampleRepo = sampleRepo;
+        this.lwNoteRepo = lwNoteRepo;
     }
 
     @Override
@@ -48,6 +51,34 @@ public class RoiServiceImp implements RoiService {
         return labware.stream()
                 .map(lw -> new LabwareRoi(lw.getBarcode(), lwIdRoiResults.get(lw.getId())))
                 .toList();
+    }
+
+    @Override
+    public List<RoiResult> labwareRunRois(String barcode, String run) {
+        requireNonNull(barcode, "Barcode is null");
+        requireNonNull(run, "Run is null");
+        Labware lw = lwRepo.findByBarcode(barcode).orElse(null);
+        if (lw != null) {
+            Set<Integer> opIds = lwNoteRepo.findAllByLabwareIdInAndName(List.of(lw.getId()), RUN_NAME).stream()
+                    .filter(note -> note.getValue().equalsIgnoreCase(run))
+                    .map(LabwareNote::getOperationId)
+                    .collect(toSet());
+            if (!opIds.isEmpty()) {
+                List<Roi> rois = roiRepo.findAllByOperationIdIn(opIds);
+                if (!rois.isEmpty()) {
+                    final Map<Integer, Slot> slotIdMap = lw.getSlots().stream()
+                            .collect(inMap(Slot::getId));
+                    rois = rois.stream().filter(roi -> slotIdMap.containsKey(roi.getSlotId())).toList();
+                    if (!rois.isEmpty()) {
+                        final Map<Integer, Sample> sampleIdMap = loadSamples(List.of(lw), rois);
+                        return rois.stream()
+                                .map(roi -> toRoiResult(roi, slotIdMap, sampleIdMap))
+                                .toList();
+                    }
+                }
+            }
+        }
+        return List.of();
     }
 
     /**

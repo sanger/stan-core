@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.stan.service.operation.AnalyserServiceImp.RUN_NAME;
 import static uk.ac.sanger.sccp.utils.BasicUtils.inMap;
 
 /** Test {@link RoiServiceImp} */
@@ -27,6 +28,8 @@ class TestRoiService {
     private RoiRepo mockRoiRepo;
     @Mock
     private SampleRepo mockSampleRepo;
+    @Mock
+    private LabwareNoteRepo mockLwNoteRepo;
 
     @InjectMocks
     private RoiServiceImp service;
@@ -104,6 +107,117 @@ class TestRoiService {
                 new RoiResult(slotIds[2], A1, samples[1], 11, "Delta")
         );
         assertThat(lwRoiMap.get(lws[2].getBarcode()).getRois()).isEmpty();
+    }
+
+    @Test
+    void testLabwareRunRois_unknownBarcode() {
+        when(mockLwRepo.findByBarcode(any())).thenReturn(Optional.empty());
+        assertThat(service.labwareRunRois("404", "run")).isEmpty();
+        verify(mockLwRepo).findByBarcode("404");
+        verifyNoInteractions(mockLwNoteRepo);
+        verifyNoInteractions(mockRoiRepo);
+    }
+
+    @Test
+    void testLabwareRunRois_noRuns() {
+        Labware lw = EntityFactory.getTube();
+        String bc = lw.getBarcode();
+        when(mockLwRepo.findByBarcode(bc)).thenReturn(Optional.of(lw));
+        when(mockLwNoteRepo.findAllByLabwareIdInAndName(any(), any())).thenReturn(List.of());
+        assertThat(service.labwareRunRois(bc, "run")).isEmpty();
+        verify(mockLwRepo).findByBarcode(bc);
+        verify(mockLwNoteRepo).findAllByLabwareIdInAndName(List.of(lw.getId()), RUN_NAME);
+        verifyNoInteractions(mockRoiRepo);
+    }
+
+    @Test
+    void testLabwareRunRois_noMatchingRun() {
+        Labware lw = EntityFactory.getTube();
+        String bc = lw.getBarcode();
+        when(mockLwRepo.findByBarcode(bc)).thenReturn(Optional.of(lw));
+        List<LabwareNote> runNotes = List.of(
+                new LabwareNote(100, lw.getId(), 10, "run", "alpha"),
+                new LabwareNote(101, lw.getId(), 11, "run", "beta")
+        );
+        when(mockLwNoteRepo.findAllByLabwareIdInAndName(any(), any())).thenReturn(runNotes);
+        assertThat(service.labwareRunRois(bc, "gamma")).isEmpty();
+        verify(mockLwRepo).findByBarcode(bc);
+        verify(mockLwNoteRepo).findAllByLabwareIdInAndName(List.of(lw.getId()), RUN_NAME);
+        verifyNoInteractions(mockRoiRepo);
+    }
+
+
+    @Test
+    void testLabwareRunRois_noRois() {
+        Labware lw = EntityFactory.makeEmptyLabware(EntityFactory.makeLabwareType(1,2));
+        String bc = lw.getBarcode();
+        when(mockLwRepo.findByBarcode(bc)).thenReturn(Optional.of(lw));
+        List<LabwareNote> runNotes = List.of(
+                new LabwareNote(100, lw.getId(), 10, "run", "alpha"),
+                new LabwareNote(101, lw.getId(), 11, "run", "beta"),
+                new LabwareNote(102, lw.getId(), 12, "run", "ALPHA")
+        );
+        when(mockLwNoteRepo.findAllByLabwareIdInAndName(any(), any())).thenReturn(runNotes);
+        when(mockRoiRepo.findAllByOperationIdIn(any())).thenReturn(List.of());
+        assertThat(service.labwareRunRois(bc, "alpha")).isEmpty();
+        verify(mockLwRepo).findByBarcode(bc);
+        verify(mockLwNoteRepo).findAllByLabwareIdInAndName(List.of(lw.getId()), RUN_NAME);
+        verify(mockRoiRepo).findAllByOperationIdIn(Set.of(10,12));
+    }
+
+    @Test
+    void testLabwareRunRois_noMatchingRois() {
+        Labware lw = EntityFactory.makeEmptyLabware(EntityFactory.makeLabwareType(1,2));
+        String bc = lw.getBarcode();
+        when(mockLwRepo.findByBarcode(bc)).thenReturn(Optional.of(lw));
+        List<LabwareNote> runNotes = List.of(
+                new LabwareNote(100, lw.getId(), 10, "run", "alpha"),
+                new LabwareNote(101, lw.getId(), 11, "run", "beta")
+        );
+        when(mockLwNoteRepo.findAllByLabwareIdInAndName(any(), any())).thenReturn(runNotes);
+        when(mockRoiRepo.findAllByOperationIdIn(any())).thenReturn(List.of(
+                new Roi(-10, 20, 10, "roi1"),
+                new Roi(-11, 21, 10, "roi2")
+        ));
+        assertThat(service.labwareRunRois(bc, "alpha")).isEmpty();
+        verify(mockLwRepo).findByBarcode(bc);
+        verify(mockLwNoteRepo).findAllByLabwareIdInAndName(List.of(lw.getId()), RUN_NAME);
+        verify(mockRoiRepo).findAllByOperationIdIn(Set.of(10));
+    }
+
+    @Test
+    void testLabwareRunRois_matchingRois() {
+        final Address A1 = new Address(1,1), A2 = new Address(1,2);
+        Labware lw = EntityFactory.makeEmptyLabware(EntityFactory.makeLabwareType(1,2));
+        Integer slotId1 = lw.getFirstSlot().getId();
+        Integer slotId2 = lw.getSlot(A2).getId();
+        Sample[] sams = EntityFactory.makeSamples(2);
+        Map<Integer, Sample> sampleMap = Arrays.stream(sams).collect(inMap(Sample::getId));
+        String bc = lw.getBarcode();
+        when(mockLwRepo.findByBarcode(bc)).thenReturn(Optional.of(lw));
+        List<LabwareNote> runNotes = List.of(
+                new LabwareNote(100, lw.getId(), 10, "run", "alpha"),
+                new LabwareNote(101, lw.getId(), 11, "run", "beta")
+        );
+        when(mockLwNoteRepo.findAllByLabwareIdInAndName(any(), any())).thenReturn(runNotes);
+        final List<Roi> rois = List.of(
+                new Roi(slotId1, sams[0].getId(), 10, "roi1"),
+                new Roi(slotId2, sams[1].getId(), 10, "roi2")
+        );
+        when(mockRoiRepo.findAllByOperationIdIn(any())).thenReturn(rois);
+        doReturn(sampleMap).when(service).loadSamples(any(), any());
+        assertThat(service.labwareRunRois(bc, "alpha")).containsExactly(
+                new RoiResult(slotId1, A1, sams[0], 10, "roi1"),
+                new RoiResult(slotId2, A2, sams[1], 10, "roi2")
+        );
+        verify(mockLwRepo).findByBarcode(bc);
+        verify(mockLwNoteRepo).findAllByLabwareIdInAndName(List.of(lw.getId()), RUN_NAME);
+        verify(mockRoiRepo).findAllByOperationIdIn(Set.of(10));
+
+        Map<Integer, Slot> slotMap = lw.getSlots().stream().collect(inMap(Slot::getId));
+
+        verify(service).loadSamples(List.of(lw), rois);
+        rois.forEach(roi -> verify(service).toRoiResult(roi, slotMap, sampleMap));
     }
 
     @Test
