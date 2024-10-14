@@ -16,4 +16,12 @@ public interface RoiService {
      * @return details of the rois found in labware with the given barcodes
      */
     List<LabwareRoi> labwareRois(Collection<String> barcodes);
+
+    /**
+     * Loads the rois for a particular run in a particular labware
+     * @param barcode barcode of the labware
+     * @param run name of the run
+     * @return details of the rois found
+     */
+    List<LabwareRoi.RoiResult> labwareRunRois(String barcode, String run);
 }
