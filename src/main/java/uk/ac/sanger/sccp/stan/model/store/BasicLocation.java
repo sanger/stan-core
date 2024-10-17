@@ -1,5 +1,6 @@
 package uk.ac.sanger.sccp.stan.model.store;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import uk.ac.sanger.sccp.stan.model.Address;
 
 import java.util.Objects;
@@ -15,18 +16,21 @@ public class BasicLocation {
     private String name;
     private Address address;
     private Integer addressIndex;
+    private int numStored;
+    private int numChildren;
 
     public BasicLocation() {}
 
     public BasicLocation(String barcode, Address address) {
-        this(barcode, null, address, null);
+        this(barcode, null, address, null, 0, 0);
     }
 
-    public BasicLocation(String barcode, String name, Address address, Integer addressIndex) {
+    public BasicLocation(String barcode, String name, Address address, Integer addressIndex, int numStored, int numChildren) {
         this.barcode = barcode;
         this.name = name;
         this.address = address;
         this.addressIndex = addressIndex;
+        this.numStored = numStored;
     }
 
     public String getBarcode() {
@@ -61,6 +65,29 @@ public class BasicLocation {
         this.addressIndex = addressIndex;
     }
 
+    /** The number of items directly stored in this location */
+    public int getNumStored() {
+        return this.numStored;
+    }
+
+    public void setNumStored(int numStored) {
+        this.numStored = numStored;
+    }
+
+    /** The number of locations directly inside this location */
+    public int getNumChildren() {
+        return this.numChildren;
+    }
+
+    public void setNumChildren(int numChildren) {
+        this.numChildren = numChildren;
+    }
+
+    @JsonIgnore
+    public boolean isLeaf() {
+        return getNumChildren() == 0;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -69,7 +96,10 @@ public class BasicLocation {
         return (Objects.equals(this.barcode, that.barcode)
                 && Objects.equals(this.name, that.name)
                 && Objects.equals(this.address, that.address)
-                && Objects.equals(this.addressIndex, that.addressIndex));
+                && Objects.equals(this.addressIndex, that.addressIndex)
+                && this.numStored==that.numStored
+                && this.numChildren==that.numChildren
+        );
     }
 
     @Override

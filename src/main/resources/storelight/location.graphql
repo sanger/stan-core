@@ -5,10 +5,12 @@
         name
         address
         size { numRows numColumns}
-        children { barcode name address }
+        children { barcode name address numStored numChildren }
         stored { barcode address }
-        parent { barcode name address }
+        parent { barcode name address numStored numChildren }
         direction
         qualifiedNameWithFirstBarcode
+        numStored
+        numChildren
     }
 }

@@ -109,8 +109,8 @@ public class TestReleaseMutation {
 
         stubStorelightUnstore(mockStorelightClient);
         UCMap<BasicLocation> basicLocationMap = new UCMap<>(2);
-        basicLocationMap.put("STAN-001", new BasicLocation("STO-1", "Box 1", new Address(1,2), 4));
-        basicLocationMap.put("STAN-002", new BasicLocation("STO-1", "Box 1", new Address(3,4), null));
+        basicLocationMap.put("STAN-001", new BasicLocation("STO-1", "Box 1", new Address(1,2), 4, 0, 0));
+        basicLocationMap.put("STAN-002", new BasicLocation("STO-1", "Box 1", new Address(3,4), null, 0, 0));
         stubStorelightBasicLocation(mockStorelightClient, basicLocationMap);
 
         Object result = tester.post(mutation);

@@ -9,11 +9,13 @@
             name
             address
             size { numRows numColumns}
-            children { barcode name address }
-            parent { barcode name address }
+            children { barcode name address numStored numChildren }
+            parent { barcode name address numStored numChildren }
             stored { barcode address addressIndex }
             direction
             qualifiedNameWithFirstBarcode
+            numStored
+            numChildren
         }
     }
 }
