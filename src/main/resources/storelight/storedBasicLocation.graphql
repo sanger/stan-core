@@ -3,6 +3,6 @@
         barcode
         address
         addressIndex
-        location { barcode name numStored }
+        location { barcode name numStored numChildren }
     }
 }

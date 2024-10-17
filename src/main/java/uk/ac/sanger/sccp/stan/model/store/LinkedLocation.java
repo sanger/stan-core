@@ -1,5 +1,6 @@
 package uk.ac.sanger.sccp.stan.model.store;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.base.MoreObjects;
 import uk.ac.sanger.sccp.stan.model.Address;
 
@@ -17,6 +18,7 @@ public class LinkedLocation {
     private String name;
     private Address address;
     private int numStored;
+    private int numChildren;
 
     public String getBarcode() {
         return this.barcode;
@@ -105,6 +107,19 @@ public class LinkedLocation {
         this.numStored = numStored;
     }
 
+    public int getNumChildren() {
+        return this.numChildren;
+    }
+
+    public void setNumChildren(int numChildren) {
+        this.numChildren = numChildren;
+    }
+
+    @JsonIgnore
+    public boolean isLeaf() {
+        return getNumChildren() == 0;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -117,6 +132,7 @@ public class LinkedLocation {
                 && Objects.equals(this.name, that.name)
                 && Objects.equals(this.address, that.address)
                 && this.numStored == that.numStored
+                && this.numChildren == that.numChildren
         );
     }
 
@@ -132,6 +148,7 @@ public class LinkedLocation {
                 .add("name", repr(name))
                 .add("address", address)
                 .add("numStored", numStored)
+                .add("numChildren", numChildren)
                 .omitNullValues()
                 .toString();
     }

@@ -5,10 +5,11 @@ mutation {
         name
         address
         size { numRows numColumns }
-        children { barcode name address numStored }
+        children { barcode name address numStored numChildren }
         stored { barcode address }
-        parent { barcode name address numStored }
+        parent { barcode name address numStored numChildren }
         direction
         numStored
+        numChildren
     }
 }

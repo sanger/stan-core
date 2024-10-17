@@ -307,7 +307,8 @@ public class StoreService {
             }
             Integer addressIndex = integerFromNode(sd.get("addressIndex"));
             int numStored = intFromNode(sd.get("numStored"), 0);
-            map.put(itemBarcode, new BasicLocation(locationBarcode, locationName, address, addressIndex, numStored));
+            int numChildren = intFromNode(sd.get("numChildren"), 0);
+            map.put(itemBarcode, new BasicLocation(locationBarcode, locationName, address, addressIndex, numStored, numChildren));
         }
         return map;
     }

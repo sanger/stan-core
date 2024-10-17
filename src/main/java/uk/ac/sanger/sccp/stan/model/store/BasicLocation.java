@@ -1,5 +1,6 @@
 package uk.ac.sanger.sccp.stan.model.store;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import uk.ac.sanger.sccp.stan.model.Address;
 
 import java.util.Objects;
@@ -16,14 +17,15 @@ public class BasicLocation {
     private Address address;
     private Integer addressIndex;
     private int numStored;
+    private int numChildren;
 
     public BasicLocation() {}
 
     public BasicLocation(String barcode, Address address) {
-        this(barcode, null, address, null, 0);
+        this(barcode, null, address, null, 0, 0);
     }
 
-    public BasicLocation(String barcode, String name, Address address, Integer addressIndex, int numStored) {
+    public BasicLocation(String barcode, String name, Address address, Integer addressIndex, int numStored, int numChildren) {
         this.barcode = barcode;
         this.name = name;
         this.address = address;
@@ -72,6 +74,20 @@ public class BasicLocation {
         this.numStored = numStored;
     }
 
+    /** The number of locations directly inside this location */
+    public int getNumChildren() {
+        return this.numChildren;
+    }
+
+    public void setNumChildren(int numChildren) {
+        this.numChildren = numChildren;
+    }
+
+    @JsonIgnore
+    public boolean isLeaf() {
+        return getNumChildren() == 0;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -81,7 +97,9 @@ public class BasicLocation {
                 && Objects.equals(this.name, that.name)
                 && Objects.equals(this.address, that.address)
                 && Objects.equals(this.addressIndex, that.addressIndex)
-                && this.numStored==that.numStored);
+                && this.numStored==that.numStored
+                && this.numChildren==that.numChildren
+        );
     }
 
     @Override
