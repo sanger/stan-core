@@ -158,10 +158,10 @@ public class TestStoreService {
         verifyQueryMatches("mutation { storeBarcode(barcode: \""+itemBarcode+"\", location: {barcode: \""
                 + locationBarcode+"\"}, address: " + quote(address) + ") { barcode address location " +
                 "{ id barcode name address size { numRows numColumns } " +
-                "children { barcode name address } " +
+                "children { barcode name address numStored numChildren } " +
                 "stored { barcode address }" +
-                "parent { barcode name address }" +
-                "direction}}}");
+                "parent { barcode name address numStored numChildren }" +
+                "direction numStored numChildren }}}");
         verify(service).checkErrors(response);
         assertEquals(item, result);
     }
@@ -361,10 +361,10 @@ public class TestStoreService {
         verifyQueryMatches("mutation { editLocation(location:{barcode:"+json(barcode)
                 +"}, change: {name:"+json(alteredLocation.getName())+"}) {" +
                 "id barcode name address size {numRows numColumns } " +
-                "children { barcode name address }" +
+                "children { barcode name address numStored numChildren }" +
                 "stored { barcode address } " +
-                "parent { barcode name address }" +
-                "direction }}");
+                "parent { barcode name address numStored numChildren }" +
+                "direction numStored numChildren }}");
         verify(service).checkErrors(response);
         assertEquals(alteredLocation, result);
         assertEquals(newCustomName, alteredLocation.getCustomName());
@@ -402,12 +402,14 @@ public class TestStoreService {
                         "        barcode" +
                         "        name" +
                         "        address" +
-                        "        size { numRows numColumns}" +
-                        "        children { barcode name address }" +
+                        "        size { numRows numColumns }" +
+                        "        children { barcode name address numStored numChildren }" +
                         "        stored { barcode address }" +
-                        "        parent { barcode name address }" +
+                        "        parent { barcode name address numStored numChildren }" +
                         "        direction" +
                         "        qualifiedNameWithFirstBarcode" +
+                        "        numStored" +
+                        "        numChildren" +
                         "    }}",
 
                 null);
@@ -495,11 +497,13 @@ public class TestStoreService {
                 "            name" +
                 "            address" +
                 "            size { numRows numColumns}" +
-                "            children { barcode name address }" +
-                "            parent { barcode name address }" +
+                "            children { barcode name address numStored numChildren }" +
+                "            parent { barcode name address numStored numChildren }" +
                 "            stored { barcode address addressIndex }" +
                 "            direction" +
                 "            qualifiedNameWithFirstBarcode" +
+                "            numStored" +
+                "            numChildren" +
                 "        }}}",
                 null);
 
@@ -542,7 +546,7 @@ public class TestStoreService {
             when(mockClient.postQuery(anyString(), isNull())).thenReturn(response);
             locations = service.loadBasicLocationsOfItems(stanBarcodes);
             assertThat(locations).hasSize(2);
-            assertEquals(new BasicLocation("STO-1", "Box 1", new Address(1,2), 4), locations.get("STAN-1"));
+            assertEquals(new BasicLocation("STO-1", "Box 1", new Address(1,2), 4, 0, 0), locations.get("STAN-1"));
             assertEquals(new BasicLocation("STO-2", null), locations.get("STAN-2"));
             assertNull(locations.get("STAN-3"));
             verify(service).checkErrors(response);
@@ -558,7 +562,7 @@ public class TestStoreService {
                 "  barcode" +
                 "  address" +
                 "  addressIndex" +
-                "  location { barcode name }" +
+                "  location { barcode name numStored numChildren }" +
                 "}}", null);
     }
 

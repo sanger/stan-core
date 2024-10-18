@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentMatchers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -92,7 +94,7 @@ public class TestStoreMutations {
 
         List<Map<String, ?>> labwareListData = chainGet(result, "data", "labwareInLocation");
         assertThat(labwareListData).hasSize(1);
-        Map<String, ?> labwareData = labwareListData.get(0);
+        Map<String, ?> labwareData = labwareListData.getFirst();
         assertEquals("STAN-100", labwareData.get("barcode"));
         assertEquals(sample.getId(), chainGet(labwareData, "slots", 0, "samples", 0, "id"));
     }
@@ -205,6 +207,50 @@ public class TestStoreMutations {
         assertEquals("STO-5", chainGet(response, "data", "transfer", "barcode"));
 
         verifyStorelightQuery(mockStorelightClient, List.of("store", "STAN-100", "STAN-101", "STO-5"), user.getUsername());
+    }
+
+    @Transactional
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testQueryLocation(boolean leaf) throws Exception {
+        ObjectMapper objectMapper = new ObjectMapper();
+        ObjectNode locationNode = objectMapper.createObjectNode()
+                .put("barcode", "STO-A")
+                .put("name", "Alpha: Beta")
+                .putNull("address")
+                .put("numStored", 0)
+                .put("numChildren", 1)
+                .set("children", objectMapper.createArrayNode()
+                        .add(objectMapper.createObjectNode()
+                                .put("barcode", "STO-B")
+                                .put("name", "Gamma: Delta")
+                                .put("address", "B3")
+                                .put("numStored", 5)
+                                .put("numChildren", leaf ? 0 : 3)
+                        )
+                );
+        GraphQLResponse graphQLResponse = new GraphQLResponse(
+                objectMapper.createObjectNode().set("location", locationNode), null
+        );
+        when(mockStorelightClient.postQuery(anyString(), any())).thenReturn(graphQLResponse);
+        Object response = tester.post("query { location(locationBarcode: \"STO-A\") { " +
+                "barcode fixedName customName address numStored leaf " +
+                "children { barcode fixedName customName address numStored leaf } } }");
+        Map<String, ?> loc = chainGet(response, "data", "location");
+        assertEquals("STO-A", loc.get("barcode"));
+        assertEquals("Alpha", loc.get("fixedName"));
+        assertEquals("Beta", loc.get("customName"));
+        assertEquals(false, loc.get("leaf"));
+        assertNull(loc.get("address"));
+        assertEquals(0, loc.get("numStored"));
+        assertThat((List<?>) loc.get("children")).hasSize(1);
+        Map<String, ?> child = chainGet(loc, "children", 0);
+        assertEquals("STO-B", child.get("barcode"));
+        assertEquals("Gamma", child.get("fixedName"));
+        assertEquals("Delta", child.get("customName"));
+        assertEquals("B3", child.get("address"));
+        assertEquals(5, child.get("numStored"));
+        assertEquals(leaf, child.get("leaf"));
     }
 
     @Transactional

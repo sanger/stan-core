@@ -902,6 +902,10 @@ type Location {
     direction: GridDirection
     """A combination of this location's name and its parents' names and barcodes."""
     qualifiedNameWithFirstBarcode: String
+    """The number of items directly stored in this location."""
+    numStored: Int!
+    """Is this location a leaf (i.e. does not contain other locations)?"""
+    leaf: Boolean!
 }
 
 """Information about a storage location, without links to other locations and items."""
@@ -914,6 +918,10 @@ type LinkedLocation {
     customName: String
     """The row/column address (if any) of this location in its parent location."""
     address: Address
+    """The number of items directly stored in this location."""
+    numStored: Int!
+    """Is this location a leaf (i.e. does not contain other locations)?"""
+    leaf: Boolean!
 }
 
 """The result of a request to empty a location."""

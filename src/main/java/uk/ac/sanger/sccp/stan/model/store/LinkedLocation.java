@@ -1,5 +1,6 @@
 package uk.ac.sanger.sccp.stan.model.store;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.base.MoreObjects;
 import uk.ac.sanger.sccp.stan.model.Address;
 
@@ -16,6 +17,8 @@ public class LinkedLocation {
     private String barcode;
     private String name;
     private Address address;
+    private int numStored;
+    private int numChildren;
 
     public String getBarcode() {
         return this.barcode;
@@ -96,6 +99,27 @@ public class LinkedLocation {
         return string;
     }
 
+    public int getNumStored() {
+        return this.numStored;
+    }
+
+    public void setNumStored(int numStored) {
+        this.numStored = numStored;
+    }
+
+    public int getNumChildren() {
+        return this.numChildren;
+    }
+
+    public void setNumChildren(int numChildren) {
+        this.numChildren = numChildren;
+    }
+
+    @JsonIgnore
+    public boolean isLeaf() {
+        return getNumChildren() == 0;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -106,7 +130,10 @@ public class LinkedLocation {
     protected boolean equalsLinkedLocation(LinkedLocation that) {
         return (Objects.equals(this.barcode, that.barcode)
                 && Objects.equals(this.name, that.name)
-                && Objects.equals(this.address, that.address));
+                && Objects.equals(this.address, that.address)
+                && this.numStored == that.numStored
+                && this.numChildren == that.numChildren
+        );
     }
 
     @Override
@@ -120,6 +147,8 @@ public class LinkedLocation {
                 .add("barcode", repr(barcode))
                 .add("name", repr(name))
                 .add("address", address)
+                .add("numStored", numStored)
+                .add("numChildren", numChildren)
                 .omitNullValues()
                 .toString();
     }
