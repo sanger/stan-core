@@ -2114,6 +2114,8 @@ type Query {
     measurementValueFromLabwareOrParent(barcode: String!, name: String!): [AddressString!]!
     """Get regions of interest in the indicated labware."""
     rois(barcodes: [String!]!): [LabwareRoi!]!
+    """Get regions of interest for the indicated labware and run name."""
+    runRois(barcode: String!, run: String!): [Roi!]!
     """Data shown when scanning in labware for analyser op."""
     analyserScanData(barcode: String!): AnalyserScanData!
     """Run names recorded for the specified labware."""
