@@ -11,8 +11,7 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSectionLabware.AddressCommentId;
-import uk.ac.sanger.sccp.stan.service.OperationService;
-import uk.ac.sanger.sccp.stan.service.ValidationException;
+import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmSectionServiceImp.ConfirmLabwareResult;
 import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmSectionServiceImp.PlanActionKey;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
@@ -35,6 +34,7 @@ import static org.mockito.Mockito.*;
  */
 public class TestConfirmSectionService {
     private ConfirmSectionValidationService mockValidationService;
+    private BioRiskService mockBioRiskService;
     private OperationService mockOpService;
     private WorkService mockWorkService;
     private LabwareRepo mockLwRepo;
@@ -52,6 +52,7 @@ public class TestConfirmSectionService {
     @BeforeEach
     void setup() {
         mockValidationService = mock(ConfirmSectionValidationService.class);
+        mockBioRiskService = mock(BioRiskService.class);
         mockOpService = mock(OperationService.class);
         mockWorkService = mock(WorkService.class);
         mockLwRepo = mock(LabwareRepo.class);
@@ -63,7 +64,7 @@ public class TestConfirmSectionService {
         mockLwNoteRepo = mock(LabwareNoteRepo.class);
         mockSamplePositionRepo = mock(SamplePositionRepo.class);
         mockEntityManager = mock(EntityManager.class);
-        service = spy(new ConfirmSectionServiceImp(mockValidationService, mockOpService, mockWorkService,
+        service = spy(new ConfirmSectionServiceImp(mockValidationService, mockBioRiskService, mockOpService, mockWorkService,
                 mockLwRepo, mockSlotRepo, mockMeasurementRepo, mockSampleRepo, mockCommentRepo, mockOpCommentRepo,
                 mockLwNoteRepo, mockSamplePositionRepo, mockEntityManager));
     }
@@ -185,6 +186,7 @@ public class TestConfirmSectionService {
         verify(service).confirmLabware(user, csl2, lw2, plan2, regionMap, commentMap);
         verify(service).recordAddressComments(csl1, op1.getId(), lw1B);
         verify(service).recordAddressComments(csl2, null, lw2B);
+        verify(mockBioRiskService).copyOpSampleBioRisks(result.getOperations());
         verify(mockWorkService).link(request.getWorkNumber(), result.getOperations());
         verify(service).updateSourceBlocks(result.getOperations());
         verify(service).loadPlanNotes(Set.of(10,11));

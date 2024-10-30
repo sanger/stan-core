@@ -31,6 +31,7 @@ public class AliquotServiceImp implements AliquotService {
     private final LabwareValidatorFactory lwValFactory;
     private final WorkService workService;
     private final LabwareService lwService;
+    private final BioRiskService bioRiskService;
     private final OperationService opService;
     private final StoreService storeService;
     private final Transactor transactor;
@@ -39,7 +40,7 @@ public class AliquotServiceImp implements AliquotService {
     public AliquotServiceImp(LabwareRepo lwRepo, LabwareTypeRepo lwTypeRepo, SlotRepo slotRepo,
                              OperationTypeRepo opTypeRepo, SampleRepo sampleRepo,
                              LabwareValidatorFactory lwValFactory,
-                             WorkService workService, LabwareService lwService, OperationService opService,
+                             WorkService workService, LabwareService lwService, BioRiskService bioRiskService, OperationService opService,
                              StoreService storeService, Transactor transactor) {
         this.lwRepo = lwRepo;
         this.lwTypeRepo = lwTypeRepo;
@@ -49,6 +50,7 @@ public class AliquotServiceImp implements AliquotService {
         this.lwValFactory = lwValFactory;
         this.workService = workService;
         this.lwService = lwService;
+        this.bioRiskService = bioRiskService;
         this.opService = opService;
         this.storeService = storeService;
         this.transactor = transactor;
@@ -202,6 +204,7 @@ public class AliquotServiceImp implements AliquotService {
         List<Operation> ops = destLabware.stream()
                 .map(lw -> createOperation(user, opType, sourceSample, sourceSlot, destSample, lw.getFirstSlot()))
                 .collect(toList());
+        bioRiskService.copyOpSampleBioRisks(ops);
         if (work!=null) {
             workService.link(work, ops);
         }

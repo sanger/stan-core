@@ -46,6 +46,7 @@ public class TestRegisterMutation {
     @Test
     @Transactional
     public void testRegister() throws Exception {
+        entityCreator.createBioRisk("biorisk1");
         Work work = entityCreator.createWork(null, null, null, null, null);
         tester.setUser(entityCreator.createUser("dr6"));
         String mutation = tester.readGraphQL("register.graphql").replace("SGP1", work.getWorkNumber());

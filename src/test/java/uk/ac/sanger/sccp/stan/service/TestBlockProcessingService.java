@@ -61,6 +61,8 @@ public class TestBlockProcessingService {
     @Mock
     private LabwareService mockLwService;
     @Mock
+    private BioRiskService mockBioRiskService;
+    @Mock
     private WorkService mockWorkService;
     @Mock
     private StoreService mockStoreService;
@@ -77,7 +79,8 @@ public class TestBlockProcessingService {
         service = spy(new BlockProcessingServiceImp(mockLwValFactory, mockPrebarcodeValidator, mockReplicateValidator,
                 mockLwRepo, mockSlotRepo, mockOpTypeRepo, mockOpCommentRepo, mockLtRepo,
                 mockBsRepo, mockTissueRepo, mockSampleRepo,
-                mockCommentValidationService, mockOpService, mockLwService, mockWorkService, mockStoreService,
+                mockCommentValidationService, mockOpService, mockLwService, mockBioRiskService, mockWorkService,
+                mockStoreService,
                 mockTransactor));
     }
 
@@ -230,6 +233,7 @@ public class TestBlockProcessingService {
         verify(service, never()).createSamples(any(), any());
         verify(service, never()).createDestinations(any(), any(), any());
         verify(service, never()).createOperations(any(), any(), any(), any(), any());
+        verifyNoInteractions(mockBioRiskService);
         verify(mockWorkService, never()).link(any(Work.class), any());
         verify(service, never()).discardSources(any(), any());
     }
@@ -240,6 +244,7 @@ public class TestBlockProcessingService {
         verify(service).createSamples(same(request), same(sources));
         verify(service).createDestinations(same(request), same(samples), same(ltMap));
         verify(service).createOperations(same(request), same(user), same(sources), same(dests), same(commentMap));
+        verify(mockBioRiskService).copyOpSampleBioRisks(same(ops));
         if (work!=null) {
             verify(mockWorkService).link(same(work), same(ops));
         } else {

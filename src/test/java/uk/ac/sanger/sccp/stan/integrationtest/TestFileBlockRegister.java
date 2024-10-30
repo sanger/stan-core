@@ -134,6 +134,8 @@ public class TestFileBlockRegister {
     @Transactional
     public void testIgnoreExtNames() throws Exception {
         User user = creator.createUser("user1");
+        creator.createBioRisk("risk1");
+        creator.createBioRisk("risk2");
         tester.setUser(user);
         when(mockRegService.register(any(), any())).thenThrow(new ValidationException(List.of("Bad reg")));
         var response = upload("testdata/block_reg_existing.xlsx", null, List.of("Ext17"), false);
@@ -145,6 +147,7 @@ public class TestFileBlockRegister {
         BlockRegisterRequest br = request.getBlocks().getFirst();
         assertEquals("EXT18", br.getExternalIdentifier());
         assertEquals("Bad reg", getProblem(map));
+        assertEquals("risk1", br.getBioRiskCode());
     }
 
     private MockHttpServletResponse upload(String filename) throws Exception {

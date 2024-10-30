@@ -25,6 +25,7 @@ public interface BlockRegisterFileReader extends MultipartFileReader<RegisterReq
         Life_stage,
         Collection_date(LocalDate.class, Pattern.compile("(if.*)?(date.*collection|collection.*date).*", Pattern.CASE_INSENSITIVE)),
         Species,
+        Bio_risk(Pattern.compile("bio\\w*\\s+risk.*", Pattern.CASE_INSENSITIVE)),
         HuMFre(Pattern.compile("humfre\\s*(number)?", Pattern.CASE_INSENSITIVE)),
         Tissue_type,
         External_identifier(Pattern.compile("external\\s*id.*", Pattern.CASE_INSENSITIVE)),

@@ -57,6 +57,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final EquipmentAdminService equipmentAdminService;
     final DestructionReasonAdminService destructionReasonAdminService;
     final HmdmcAdminService hmdmcAdminService;
+    final BioRiskService bioRiskService;
     final ReleaseDestinationAdminService releaseDestinationAdminService;
     final ReleaseRecipientAdminService releaseRecipientAdminService;
     final SpeciesAdminService speciesAdminService;
@@ -114,7 +115,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            DestructionService destructionService, SlotCopyService slotCopyService, InPlaceOpService inPlaceOpService,
                            CommentAdminService commentAdminService, EquipmentAdminService equipmentAdminService,
                            DestructionReasonAdminService destructionReasonAdminService,
-                           HmdmcAdminService hmdmcAdminService, ReleaseDestinationAdminService releaseDestinationAdminService,
+                           HmdmcAdminService hmdmcAdminService, BioRiskService bioRiskService, ReleaseDestinationAdminService releaseDestinationAdminService,
                            ReleaseRecipientAdminService releaseRecipientAdminService, SpeciesAdminService speciesAdminService,
                            ProjectService projectService, ProgramService programService, CostCodeService costCodeService,
                            FixativeService fixativeService,
@@ -153,6 +154,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.equipmentAdminService = equipmentAdminService;
         this.destructionReasonAdminService = destructionReasonAdminService;
         this.hmdmcAdminService = hmdmcAdminService;
+        this.bioRiskService = bioRiskService;
         this.releaseDestinationAdminService = releaseDestinationAdminService;
         this.releaseRecipientAdminService = releaseRecipientAdminService;
         this.speciesAdminService = speciesAdminService;
@@ -398,6 +400,14 @@ public class GraphQLMutation extends BaseGraphQLResource {
 
     public DataFetcher<Hmdmc> setHmdmcEnabled() {
         return adminSetEnabled(hmdmcAdminService::setEnabled, "SetHmdmcEnabled", "hmdmc");
+    }
+
+    public DataFetcher<BioRisk> addBioRisk() {
+        return adminAdd(bioRiskService::addNew, "AddBioRisk", "code");
+    }
+
+    public DataFetcher<BioRisk> setBioRiskEnabled() {
+        return adminSetEnabled(bioRiskService::setEnabled, "SetBioRiskEnabled", "code");
     }
 
     public DataFetcher<ReleaseDestination> addReleaseDestination() {

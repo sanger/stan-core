@@ -34,6 +34,7 @@ public class TestFindLatestOpQuery {
     @Transactional
     @Test
     public void testFindLatestOp() throws Exception {
+        entityCreator.createBioRisk("biorisk1");
         Work work = entityCreator.createWork(null, null, null, null, null);
         String mutation = tester.readGraphQL("register.graphql").replace("SGP1", work.getWorkNumber());
         User user = entityCreator.createUser("user1");

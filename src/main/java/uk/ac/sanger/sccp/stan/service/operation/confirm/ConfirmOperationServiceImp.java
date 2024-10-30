@@ -6,8 +6,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.AddressCommentId;
 import uk.ac.sanger.sccp.stan.request.confirm.*;
-import uk.ac.sanger.sccp.stan.service.OperationService;
-import uk.ac.sanger.sccp.stan.service.ValidationException;
+import uk.ac.sanger.sccp.stan.service.*;
 
 import javax.persistence.EntityManager;
 import java.util.*;
@@ -24,6 +23,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.coalesce;
 public class ConfirmOperationServiceImp implements ConfirmOperationService {
     private final ConfirmOperationValidationFactory validationFactory;
     private final EntityManager entityManager;
+    private final BioRiskService bioRiskService;
     private final OperationService operationService;
     private final LabwareRepo labwareRepo;
     private final PlanOperationRepo planOpRepo;
@@ -35,12 +35,13 @@ public class ConfirmOperationServiceImp implements ConfirmOperationService {
 
     @Autowired
     public ConfirmOperationServiceImp(ConfirmOperationValidationFactory validationFactory, EntityManager entityManager,
-                                      OperationService operationService,
+                                      BioRiskService bioRiskService, OperationService operationService,
                                       LabwareRepo labwareRepo, PlanOperationRepo planOpRepo, SlotRepo slotRepo,
                                       SampleRepo sampleRepo, CommentRepo commentRepo,
                                       OperationCommentRepo opCommentRepo, MeasurementRepo measurementRepo) {
         this.validationFactory = validationFactory;
         this.entityManager = entityManager;
+        this.bioRiskService = bioRiskService;
         this.operationService = operationService;
         this.labwareRepo = labwareRepo;
         this.planOpRepo = planOpRepo;
@@ -96,6 +97,7 @@ public class ConfirmOperationServiceImp implements ConfirmOperationService {
             }
             resultLabware.add(clr.labware);
         }
+        bioRiskService.copyOpSampleBioRisks(resultOps);
         return new ConfirmOperationResult(resultOps, resultLabware);
     }
 
@@ -157,7 +159,7 @@ public class ConfirmOperationServiceImp implements ConfirmOperationService {
         }
         List<PlanAction> planActions = plan.getPlanActions().stream()
                 .filter(planActionFilter)
-                .collect(toList());
+                .toList();
         if (planActions.isEmpty()) {
             // effectively whole lw is cancelled
             lw.setDiscarded(true);
@@ -238,7 +240,7 @@ public class ConfirmOperationServiceImp implements ConfirmOperationService {
         if (commentIdMap.size() < commentIdSet.size()) {
             List<Integer> missing = commentIdSet.stream()
                     .filter(cmtId -> !commentIdMap.containsKey(cmtId))
-                    .collect(toList());
+                    .toList();
             throw new IllegalArgumentException("Invalid comment ids: "+missing);
         }
         List<OperationComment> opComments = col.getAddressComments().stream()

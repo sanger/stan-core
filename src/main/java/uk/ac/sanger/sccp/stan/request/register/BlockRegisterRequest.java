@@ -1,10 +1,11 @@
 package uk.ac.sanger.sccp.stan.request.register;
 
-import com.google.common.base.MoreObjects;
 import uk.ac.sanger.sccp.stan.model.LifeStage;
 
 import java.time.LocalDate;
 import java.util.Objects;
+
+import static uk.ac.sanger.sccp.utils.BasicUtils.describe;
 
 /**
  * The information required to register a block.
@@ -25,6 +26,7 @@ public class BlockRegisterRequest {
     private String species;
     private boolean existingTissue;
     private LocalDate sampleCollectionDate;
+    private String bioRiskCode;
 
     public String getDonorIdentifier() {
         return this.donorIdentifier;
@@ -138,6 +140,14 @@ public class BlockRegisterRequest {
         this.sampleCollectionDate = sampleCollectionDate;
     }
 
+    public String getBioRiskCode() {
+        return this.bioRiskCode;
+    }
+
+    public void setBioRiskCode(String bioRiskCode) {
+        this.bioRiskCode = bioRiskCode;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -157,6 +167,7 @@ public class BlockRegisterRequest {
                 && Objects.equals(this.fixative, that.fixative)
                 && Objects.equals(this.species, that.species)
                 && Objects.equals(this.sampleCollectionDate, that.sampleCollectionDate)
+                && Objects.equals(this.bioRiskCode, that.bioRiskCode)
         );
     }
 
@@ -167,7 +178,7 @@ public class BlockRegisterRequest {
 
     @Override
     public String toString() {
-        return MoreObjects.toStringHelper(this)
+        return describe(this)
                 .add("donorIdentifier", donorIdentifier)
                 .add("lifeStage", lifeStage)
                 .add("hmdmc", hmdmc)
@@ -182,6 +193,8 @@ public class BlockRegisterRequest {
                 .add("species", species)
                 .add("existingTissue", existingTissue)
                 .add("sampleCollectionDate", sampleCollectionDate)
+                .add("bioRiskCode", bioRiskCode)
+                .reprStringValues()
                 .toString();
     }
 }

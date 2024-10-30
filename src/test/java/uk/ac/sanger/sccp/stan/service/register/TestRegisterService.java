@@ -45,6 +45,8 @@ public class TestRegisterService {
     @Mock
     private SlotRepo mockSlotRepo;
     @Mock
+    private BioRiskRepo mockBioRiskRepo;
+    @Mock
     private OperationTypeRepo mockOpTypeRepo;
     @Mock
     private LabwareService mockLabwareService;
@@ -75,7 +77,7 @@ public class TestRegisterService {
         when(mockOpTypeRepo.getByName(opType.getName())).thenReturn(opType);
 
         registerService = spy(new RegisterServiceImp(mockEntityManager, mockValidationFactory, mockDonorRepo, mockTissueRepo,
-                mockSampleRepo, mockSlotRepo, mockOpTypeRepo, mockLabwareService, mockOpService, mockWorkService, mockClashChecker));
+                mockSampleRepo, mockSlotRepo, mockBioRiskRepo, mockOpTypeRepo, mockLabwareService, mockOpService, mockWorkService, mockClashChecker));
     }
 
     @AfterEach
@@ -450,6 +452,7 @@ public class TestRegisterService {
             hmdmc = null;
             hmdmcString = null;
         }
+        BioRisk br = new BioRisk(800, "biorisk");
 
         BlockRegisterRequest block = new BlockRegisterRequest();
         block.setDonorIdentifier(donor.getDonorName());
@@ -464,10 +467,17 @@ public class TestRegisterService {
         block.setReplicateNumber("2");
         block.setSpatialLocation(1);
         block.setSpecies(species.getName());
+        block.setBioRiskCode(br.getCode());
 
         Map<String, Donor> donorMap = Map.of(donor.getDonorName().toUpperCase(), donor);
         doReturn(donorMap).when(registerService).createDonors(any(), any());
         final SpatialLocation sl = new SpatialLocation(1, "SL0", 1, tissueType);
+
+        Operation op = new Operation();
+        op.setId(700);
+        when(mockOpService.createOperationInPlace(any(), any(), any(), any())).thenReturn(op);
+
+        when(mockValidation.getBioRisk(br.getCode())).thenReturn(br);
 
         when(mockValidation.getSpatialLocation(eqCi(tissueType.getName()), eq(1)))
                 .thenReturn(sl);
@@ -522,6 +532,7 @@ public class TestRegisterService {
         assertEquals(slot.getBlockSampleId(), sample.getId());
         verify(mockSlotRepo).save(slot);
         verify(mockOpService).createOperationInPlace(opType, user, slot, sample);
+        verify(mockBioRiskRepo).recordBioRisk(sample, br, op.getId());
     }
 
     static Stream<Arguments> createArgs() {

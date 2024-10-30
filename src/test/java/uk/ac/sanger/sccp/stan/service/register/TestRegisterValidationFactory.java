@@ -5,8 +5,7 @@ import org.junit.jupiter.api.Test;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.register.RegisterRequest;
 import uk.ac.sanger.sccp.stan.request.register.SectionRegisterRequest;
-import uk.ac.sanger.sccp.stan.service.SlotRegionService;
-import uk.ac.sanger.sccp.stan.service.Validator;
+import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -28,7 +27,8 @@ public class TestRegisterValidationFactory {
                 mock(FixativeRepo.class), mock(TissueRepo.class), mock(SpeciesRepo.class), mock(LabwareRepo.class),
                 mock(BioStateRepo.class), mockStringValidator, mockStringValidator, mockStringValidator,
                 mockStringValidator, mockStringValidator, mockStringValidator,
-                mock(TissueFieldChecker.class), mock(SlotRegionService.class), mock(WorkService.class));
+                mock(TissueFieldChecker.class), mock(SlotRegionService.class), mock(BioRiskService.class),
+                mock(WorkService.class));
     }
 
     @Test

@@ -41,6 +41,7 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
     private final CommentValidationService commentValidationService;
     private final OperationService opService;
     private final LabwareService lwService;
+    private final BioRiskService bioRiskService;
     private final WorkService workService;
     private final StoreService storeService;
 
@@ -54,7 +55,7 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
                                      OperationCommentRepo opCommentRepo, LabwareTypeRepo ltRepo,
                                      BioStateRepo bsRepo, TissueRepo tissueRepo, SampleRepo sampleRepo,
                                      CommentValidationService commentValidationService, OperationService opService,
-                                     LabwareService lwService, WorkService workService, StoreService storeService, Transactor transactor) {
+                                     LabwareService lwService, BioRiskService bioRiskService, WorkService workService, StoreService storeService, Transactor transactor) {
         this.lwValFactory = lwValFactory;
         this.prebarcodeValidator = prebarcodeValidator;
         this.replicateValidator = replicateValidator;
@@ -69,6 +70,7 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
         this.commentValidationService = commentValidationService;
         this.opService = opService;
         this.lwService = lwService;
+        this.bioRiskService = bioRiskService;
         this.workService = workService;
         this.storeService = storeService;
         this.transactor = transactor;
@@ -109,6 +111,7 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
         if (work!=null) {
             workService.link(work, ops);
         }
+        bioRiskService.copyOpSampleBioRisks(ops);
         discardSources(request.getDiscardSourceBarcodes(), sources);
 
         return new OperationResult(ops, destinations);
@@ -194,14 +197,14 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
             if (!existing.isEmpty()) {
                 List<String> existingBarcodes = existing.stream()
                         .map(Labware::getBarcode)
-                        .collect(toList());
+                        .toList();
                 problems.add("Barcode already in use: "+existingBarcodes);
             } else {
                 existing = lwRepo.findByExternalBarcodeIn(prebarcodes);
                 if (!existing.isEmpty()) {
                     List<String> existingBarcodes = existing.stream()
                             .map(Labware::getExternalBarcode)
-                            .collect(toList());
+                            .toList();
                     problems.add("External barcode already in use: " + existingBarcodes);
                 }
             }
@@ -263,7 +266,7 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
                 .filter(value -> entities.get(value)==null)
                 .filter(distinctUCSerial())
                 .map(BasicUtils::repr)
-                .collect(toList());
+                .toList();
         if (!unknown.isEmpty()) {
             problems.add(fieldName+" unknown: "+unknown);
         }
@@ -313,7 +316,7 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
         List<RepKey> alreadyExistRepKeys = repKeys.stream()
                 .filter(rp -> !tissueRepo.findByDonorIdAndSpatialLocationIdAndReplicate(
                         rp.donorId(), rp.spatialLocationId(), rp.replicate()).isEmpty()
-                ).collect(toList());
+                ).toList();
         if (!alreadyExistRepKeys.isEmpty()) {
             problems.add("Replicate already exists in the database: "+alreadyExistRepKeys);
         }

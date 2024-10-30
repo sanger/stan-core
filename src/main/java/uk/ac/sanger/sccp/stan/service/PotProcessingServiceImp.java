@@ -31,6 +31,7 @@ public class PotProcessingServiceImp implements PotProcessingService {
     private final Transactor transactor;
 
     private final LabwareService lwService;
+    private final BioRiskService bioRiskService;
     private final OperationService opService;
     private final LabwareRepo lwRepo;
     private final BioStateRepo bsRepo;
@@ -44,7 +45,7 @@ public class PotProcessingServiceImp implements PotProcessingService {
 
     public PotProcessingServiceImp(LabwareValidatorFactory lwValidatorFactory, WorkService workService,
                                    CommentValidationService commentValidationService, StoreService storeService,
-                                   Transactor transactor, LabwareService lwService, OperationService opService,
+                                   Transactor transactor, LabwareService lwService, BioRiskService bioRiskService, OperationService opService,
                                    LabwareRepo lwRepo, BioStateRepo bsRepo, FixativeRepo fixRepo,
                                    LabwareTypeRepo lwTypeRepo, TissueRepo tissueRepo, SampleRepo sampleRepo,
                                    SlotRepo slotRepo, OperationTypeRepo opTypeRepo, OperationCommentRepo opComRepo) {
@@ -64,6 +65,7 @@ public class PotProcessingServiceImp implements PotProcessingService {
         this.slotRepo = slotRepo;
         this.opTypeRepo = opTypeRepo;
         this.opComRepo = opComRepo;
+        this.bioRiskService = bioRiskService;
     }
 
     @Override
@@ -189,7 +191,7 @@ public class PotProcessingServiceImp implements PotProcessingService {
         List<String> unknown = strings.stream()
                 .filter(string -> entities.get(string)==null)
                 .map(BasicUtils::repr)
-                .collect(toList());
+                .toList();
         if (!unknown.isEmpty()) {
             problems.add(fieldName+" unknown: "+unknown);
         }
@@ -254,6 +256,7 @@ public class PotProcessingServiceImp implements PotProcessingService {
             source.setDiscarded(true);
             lwRepo.save(source);
         }
+        bioRiskService.copyOpSampleBioRisks(ops);
         if (work!=null) {
             workService.link(work, ops);
         }

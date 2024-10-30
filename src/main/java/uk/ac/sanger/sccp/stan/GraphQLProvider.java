@@ -70,6 +70,7 @@ public class GraphQLProvider {
                         .dataFetcher("user", graphQLDataFetchers.getUser())
                         .dataFetcher("tissueTypes", graphQLDataFetchers.getTissueTypes())
                         .dataFetcher("hmdmcs", graphQLDataFetchers.getHmdmcs())
+                        .dataFetcher("bioRisks", graphQLDataFetchers.getBioRisks())
                         .dataFetcher("labwareTypes", graphQLDataFetchers.getLabwareTypes())
                         .dataFetcher("mediums", graphQLDataFetchers.getMediums())
                         .dataFetcher("fixatives", graphQLDataFetchers.getFixatives())
@@ -164,6 +165,8 @@ public class GraphQLProvider {
                         .dataFetcher("renameEquipment", transact(graphQLMutation.renameEquipment()))
                         .dataFetcher("addHmdmc", graphQLMutation.addHmdmc()) // internal transaction
                         .dataFetcher("setHmdmcEnabled", transact(graphQLMutation.setHmdmcEnabled()))
+                        .dataFetcher("addBioRisk", graphQLMutation.addBioRisk()) // internal transaction
+                        .dataFetcher("setBioRiskEnabled", transact(graphQLMutation.setBioRiskEnabled()))
                         .dataFetcher("addDestructionReason", graphQLMutation.addDestructionReason()) // internal transaction
                         .dataFetcher("setDestructionReasonEnabled", transact(graphQLMutation.setDestructionReasonEnabled()))
                         .dataFetcher("addReleaseDestination", graphQLMutation.addReleaseDestination()) // internal transaction
