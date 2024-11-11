@@ -38,7 +38,7 @@ jobs:
         mysql -h 127.0.0.1 -P $MYSQL_PORT -uroot -prootpw -e "SHOW DATABASES"
       env:
         MYSQL_PORT: "${{ job.services.mysql.ports['3306'] }}"
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Set up Java 21
       uses: actions/setup-java@v1
       with:
