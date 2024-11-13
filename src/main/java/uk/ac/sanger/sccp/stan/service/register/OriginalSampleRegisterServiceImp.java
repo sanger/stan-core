@@ -49,6 +49,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
     private final LabwareService labwareService;
     private final OperationService opService;
     private final WorkService workService;
+    private final BioRiskService bioRiskService;
 
     @Autowired
     public OriginalSampleRegisterServiceImp(DonorRepo donorRepo, TissueRepo tissueRepo,
@@ -62,7 +63,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
                                             @Qualifier("hmdmcValidator") Validator<String> hmdmcValidator,
                                             @Qualifier("replicateValidator") Validator<String> replicateValidator,
                                             LabwareService labwareService, OperationService opService,
-                                            WorkService workService) {
+                                            WorkService workService, BioRiskService bioRiskService) {
         this.donorRepo = donorRepo;
         this.tissueRepo = tissueRepo;
         this.tissueTypeRepo = tissueTypeRepo;
@@ -84,6 +85,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
         this.labwareService = labwareService;
         this.opService = opService;
         this.workService = workService;
+        this.bioRiskService = bioRiskService;
     }
 
     @Override
@@ -123,6 +125,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
         checkExternalNamesUnique(problems, request);
         checkDonorFieldsAreConsistent(problems, datas);
         checkTissueTypesAndSpatialLocations(problems, datas);
+        checkBioRisks(problems, datas);
 
         if (!problems.isEmpty()) {
             throw new ValidationException("The request validation failed.", problems);
@@ -134,6 +137,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
         recordRegistrations(user, datas);
         recordSolutions(datas);
         linkWork(datas);
+        linkBioRisks(datas);
         return makeResult(datas);
     }
 
@@ -398,6 +402,48 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
     }
 
     /**
+     * Checks bio risk codes are specified and correspond to known bio risks
+     * @param problems receptacle for problems
+     * @param datas data in progress
+     */
+    void checkBioRisks(Collection<String> problems, List<DataStruct> datas) {
+        boolean anyMissing = false;
+        Set<String> codes = new LinkedHashSet<>();
+        for (DataStruct data : datas) {
+            String code = data.originalSampleData.getBioRiskCode();
+            if (code!=null) {
+                code = code.trim();
+                if (code.isEmpty()) {
+                    code = null;
+                }
+                data.originalSampleData.setBioRiskCode(code);
+            }
+            if (code==null) {
+                anyMissing = true;
+            } else {
+                codes.add(code);
+            }
+        }
+        if (anyMissing) {
+            problems.add("Missing biological risk number.");
+        }
+        if (codes.isEmpty()) {
+            return;
+        }
+        UCMap<BioRisk> risks = bioRiskService.loadBioRiskMap(codes);
+        List<String> unknown = codes.stream()
+                .filter(code -> risks.get(code)==null)
+                .map(BasicUtils::repr)
+                .toList();
+        if (!unknown.isEmpty()) {
+            problems.add("Unknown biological risk number: "+unknown);
+        }
+        for (DataStruct data : datas) {
+            data.setBioRisk(risks.get(data.originalSampleData.getBioRiskCode()));
+        }
+    }
+
+    /**
      * Loads any existing donors matching given donor names.
      * The donors are placed in the appropriate field in the DataStructs.
      * @param datas the data under construction
@@ -494,6 +540,16 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
     }
 
     /**
+     * Link samples and operations to the indicated bio risk
+     * @param datas created data
+     */
+    void linkBioRisks(List<DataStruct> datas) {
+        for (DataStruct data : datas) {
+            bioRiskService.recordSampleBioRisks(Map.of(data.sample.getId(), data.bioRisk), data.operation.getId());
+        }
+    }
+
+    /**
      * Creates labware for each data element
      * @param datas the data under construction
      */
@@ -548,6 +604,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
         Fixative fixative;
         Species species;
         Work work;
+        BioRisk bioRisk;
 
         Donor donor;
         Sample sample;
@@ -584,6 +641,10 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
 
         public void setWork(Work work) {
             this.work = work;
+        }
+
+        void setBioRisk(BioRisk risk) {
+            this.bioRisk = risk;
         }
     }
 }

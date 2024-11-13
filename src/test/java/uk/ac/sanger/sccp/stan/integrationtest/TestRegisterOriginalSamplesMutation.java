@@ -45,6 +45,8 @@ public class TestRegisterOriginalSamplesMutation {
     private OperationRepo opRepo;
     @Autowired
     private OperationSolutionRepo opSolRepo;
+    @Autowired
+    private BioRiskRepo bioRiskRepo;
     @MockBean
     private StorelightClient mockStorelight;
 
@@ -55,6 +57,7 @@ public class TestRegisterOriginalSamplesMutation {
         stubStorelightUnstore(mockStorelight);
 
         User user = entityCreator.createUser("user1");
+        BioRisk risk1 = entityCreator.createBioRisk("risk1");
         tester.setUser(user);
         Solution solution = solutionRepo.save(new Solution(null, "Glue"));
         String externalName = (hasExternalName ? "EXT1" : null);
@@ -105,6 +108,7 @@ public class TestRegisterOriginalSamplesMutation {
         Map<String, String> lwSol = lwSolData.get(0);
         assertEquals(lw.getBarcode(), lwSol.get("barcode"));
         assertEquals(solution.getName(), lwSol.get("solutionName"));
+        assertThat(bioRiskRepo.loadBioRiskForSampleId(sample.getId())).contains(risk1);
 
         Work work = entityCreator.createWork(null, null, null, null, null);
         Labware block = testBlockProcessing(barcode, work);

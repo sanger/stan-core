@@ -43,6 +43,7 @@ public class OriginalSampleRegisterFileReaderImp extends BaseRegisterFileReader<
         data.setLifeStage(valueToLifeStage(problems, (String) row.get(Column.Life_stage)));
         data.setSampleCollectionDate((LocalDate) row.get(Column.Collection_date));
         data.setSpecies((String) row.get(Column.Species));
+        data.setBioRiskCode((String) row.get(Column.Bio_risk));
         data.setHmdmc((String) row.get(Column.HuMFre));
         data.setTissueType((String) row.get(Column.Tissue_type));
         data.setExternalIdentifier((String) row.get(Column.External_identifier));

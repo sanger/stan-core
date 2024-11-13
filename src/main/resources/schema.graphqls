@@ -405,6 +405,8 @@ input OriginalSampleData {
     sampleCollectionDate: Date
     """The optional work number to link to the registration."""
     workNumber: String
+    """The biological risk number for this sample."""
+    bioRiskCode: String!
 }
 
 """A request to register one or more original samples of tissue."""

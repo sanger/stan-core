@@ -26,6 +26,7 @@ public interface OriginalSampleRegisterFileReader extends MultipartFileReader<Or
         Life_stage,
         Collection_date(LocalDate.class, Pattern.compile("(if.*)?(date.*collection|collection.*date).*", Pattern.CASE_INSENSITIVE), false),
         Species,
+        Bio_risk(Pattern.compile("bio\\w*\\s+risk.*", Pattern.CASE_INSENSITIVE)),
         HuMFre(Pattern.compile("humfre\\s*(number)?", Pattern.CASE_INSENSITIVE), false),
         Tissue_type,
         External_identifier(Pattern.compile("external\\s*id.*", Pattern.CASE_INSENSITIVE), false),
