@@ -27,6 +27,7 @@ public class SectionRegisterContent {
     private Integer sectionThickness;
     private String region;
     private LocalDate dateSectioned;
+    private String bioRiskCode;
 
     public SectionRegisterContent() {}
 
@@ -158,6 +159,15 @@ public class SectionRegisterContent {
         this.dateSectioned = dateSectioned;
     }
 
+    /** The biological risk code for this sample. */
+    public String getBioRiskCode() {
+        return this.bioRiskCode;
+    }
+
+    public void setBioRiskCode(String bioRiskCode) {
+        this.bioRiskCode = bioRiskCode;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -178,6 +188,7 @@ public class SectionRegisterContent {
                 && Objects.equals(this.sectionThickness, that.sectionThickness)
                 && Objects.equals(this.region, that.region)
                 && Objects.equals(this.dateSectioned, that.dateSectioned)
+                && Objects.equals(this.bioRiskCode, that.bioRiskCode)
         );
     }
 
@@ -204,6 +215,7 @@ public class SectionRegisterContent {
                 .add("sectionThickness", sectionThickness)
                 .add("region", region)
                 .add("dateSectioned", dateSectioned)
+                .add("bioRiskCode", bioRiskCode)
                 .reprStringValues()
                 .omitNullValues()
                 .toString();

@@ -128,7 +128,7 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
     void testIndexColumns() {
         Row row = mockRow("work number", "slide type", "external slide id", "xenium barcode",
                 "section address", "fixative", "embedding medium", "donor id", "life stage",
-                "species", "humfre", "tissue type", "spatial location", "replicate number",
+                "species", "bio risk", "humfre", "tissue type", "spatial location", "replicate number",
                 "section external id", "section number", "section thickness", "date sectioned", "if bla bla bla position", null, "");
         List<String> problems = new ArrayList<>();
         var result = reader.indexColumns(problems, row);
@@ -143,7 +143,7 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
     void testIndexColumnsProblems() {
         Row row = mockRow("work number", "slide type", "external slide id",
                 "section address", "fixative", "embedding medium", "donor id", "life stage",
-                "species", "humfre", "tissue type", "spatial location", "replicate number",
+                "species", "biological risk assessment number", "humfre", "tissue type", "spatial location", "replicate number",
                 "section external id", "section number", "section NUMBER", "bananas");
         List<String> problems = new ArrayList<>(3);
         reader.indexColumns(problems, row);
@@ -304,7 +304,7 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
         );
         List<SectionRegisterLabware> srls = IntStream.range(1, 3)
                 .mapToObj(i -> new SectionRegisterLabware("X"+i, null, null))
-                .collect(toList());
+                .toList();
 
         doReturn(srls.get(0)).when(reader).createRequestLabware(any(), eq(rows.subList(1,2)));
         Matchers.mayAddProblem("Bad stuff.", srls.get(1)).when(reader).createRequestLabware(any(), eq(rows.subList(2,3)));

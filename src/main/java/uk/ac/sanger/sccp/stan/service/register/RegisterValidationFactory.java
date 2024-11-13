@@ -80,7 +80,7 @@ public class RegisterValidationFactory {
     public SectionRegisterValidation createSectionRegisterValidation(SectionRegisterRequest request) {
         return new SectionRegisterValidation(request, donorRepo, speciesRepo, ltRepo, labwareRepo,
                 hmdmcRepo, ttRepo, fixativeRepo, mediumRepo, tissueRepo, bioStateRepo,
-                slotRegionService, workService,
+                slotRegionService, bioRiskService, workService,
                 externalBarcodeValidation, donorNameValidation, externalNameValidation, replicateValidator,
                 visiumLpSlideBarcodeValidation, xeniumBarcodeValidator);
     }

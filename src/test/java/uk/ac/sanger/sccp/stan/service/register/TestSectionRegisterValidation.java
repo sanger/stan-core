@@ -50,6 +50,7 @@ public class TestSectionRegisterValidation {
     @Mock private Validator<String> mockVisiumLpBarcodeValidation;
     @Mock private Validator<String> mockXeniumBarcodeValidator;
     @Mock private SlotRegionService mockSlotRegionService;
+    @Mock private BioRiskService mockBioRiskService;
     @Mock private WorkService mockWorkService;
     
     private AutoCloseable mocking;
@@ -87,7 +88,7 @@ public class TestSectionRegisterValidation {
         }
         return spy(new SectionRegisterValidation(request, mockDonorRepo, mockSpeciesRepo, mockLwTypeRepo, mockLwRepo,
                 mockHmdmcRepo, mockTissueTypeRepo, mockFixativeRepo, mockMediumRepo, mockTissueRepo, mockBioStateRepo,
-                mockSlotRegionService, mockWorkService,
+                mockSlotRegionService, mockBioRiskService, mockWorkService,
                 mockExternalBarcodeValidation, mockDonorNameValidation, mockExternalNameValidation,
                 mockReplicateValidator, mockVisiumLpBarcodeValidation, mockXeniumBarcodeValidator));
     }
@@ -154,12 +155,12 @@ public class TestSectionRegisterValidation {
 
         if (valid) {
             assertNotNull(vs);
-            assertSame(donors, vs.getDonorMap());
-            assertSame(lwTypes, vs.getLabwareTypes());
-            assertSame(samples, vs.getSampleMap());
-            assertSame(regions, vs.getSlotRegionMap());
+            assertSame(donors, vs.donorMap());
+            assertSame(lwTypes, vs.labwareTypes());
+            assertSame(samples, vs.sampleMap());
+            assertSame(regions, vs.slotRegionMap());
             assertThat(validation.getProblems()).isEmpty();
-            assertSame(work, vs.getWork());
+            assertSame(work, vs.work());
             validation.throwError();
         } else {
             assertNull(vs);
@@ -857,13 +858,13 @@ public class TestSectionRegisterValidation {
         return new SectionRegisterRequest(srls, "SGP1");
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked"})
     private <V> UCMap<V> objToUCMap(Object obj, Function<V, String> keyFunction) {
         return switch (obj) {
             case null -> new UCMap<>();
-            case UCMap ucMap -> ucMap;
-            case Map map -> new UCMap<>(map);
-            case Collection collection -> ((Collection<V>) collection).stream().collect(UCMap.toUCMap(keyFunction));
+            case UCMap<?> ucMap -> (UCMap<V>) ucMap;
+            case Map<?,?> map -> new UCMap<>((Map<String, V>) map);
+            case Collection<?> collection -> ((Collection<V>) collection).stream().collect(UCMap.toUCMap(keyFunction));
             default -> UCMap.from(keyFunction, (V) obj);
         };
     }
