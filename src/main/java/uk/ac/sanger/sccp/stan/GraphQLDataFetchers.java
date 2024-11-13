@@ -46,6 +46,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final FixativeRepo fixativeRepo;
     final SpeciesRepo speciesRepo;
     final HmdmcRepo hmdmcRepo;
+    final BioRiskRepo bioRiskRepo;
     final LabwareRepo labwareRepo;
     final ReleaseDestinationRepo releaseDestinationRepo;
     final ReleaseRecipientRepo releaseRecipientRepo;
@@ -92,7 +93,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                SessionConfig sessionConfig, VersionInfo versionInfo,
                                TissueTypeRepo tissueTypeRepo, LabwareTypeRepo labwareTypeRepo,
                                MediumRepo mediumRepo, FixativeRepo fixativeRepo,
-                               SpeciesRepo speciesRepo, HmdmcRepo hmdmcRepo, LabwareRepo labwareRepo,
+                               SpeciesRepo speciesRepo, HmdmcRepo hmdmcRepo, BioRiskRepo bioRiskRepo, LabwareRepo labwareRepo,
                                ReleaseDestinationRepo releaseDestinationRepo, ReleaseRecipientRepo releaseRecipientRepo,
                                DestructionReasonRepo destructionReasonRepo, ProjectRepo projectRepo,
                                ProgramRepo programRepo, CostCodeRepo costCodeRepo, DnapStudyRepo dnapStudyRepo,
@@ -121,6 +122,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.fixativeRepo = fixativeRepo;
         this.speciesRepo = speciesRepo;
         this.hmdmcRepo = hmdmcRepo;
+        this.bioRiskRepo = bioRiskRepo;
         this.labwareRepo = labwareRepo;
         this.dnapStudyRepo = dnapStudyRepo;
         this.solutionRepo = solutionRepo;
@@ -185,6 +187,10 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
 
     public DataFetcher<Iterable<Hmdmc>> getHmdmcs() {
         return allOrEnabled(hmdmcRepo::findAll, hmdmcRepo::findAllByEnabled);
+    }
+
+    public DataFetcher<Iterable<BioRisk>> getBioRisks() {
+        return allOrEnabled(bioRiskRepo::findAll, bioRiskRepo::findAllByEnabled);
     }
 
     public DataFetcher<Iterable<Fixative>> getFixatives() {

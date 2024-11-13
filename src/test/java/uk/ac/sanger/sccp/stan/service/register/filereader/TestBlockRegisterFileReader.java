@@ -119,7 +119,7 @@ class TestBlockRegisterFileReader extends BaseTestFileReader {
     void testIndexColumns() {
         Row row = mockRow("All information is needed",
                 "SGP number", "donor identifier", "life stage", "if then date of collection of stuff",
-                "species", "humfre", "tissue type", "external id", "spatial location", "replicate number",
+                "species", "biological risk assessment number", "humfre", "tissue type", "external id", "spatial location", "replicate number",
                 "last known banana section custard", "labware type", "fixative", "medium", "information", "comment");
         List<String> problems = new ArrayList<>();
         var result = reader.indexColumns(problems, row);
@@ -137,7 +137,7 @@ class TestBlockRegisterFileReader extends BaseTestFileReader {
         Row row = mockRow(
                 "SGP number", "work number", "donor identifier", "life stage",
                 "if then date of collection of stuff", "bananas",
-                "species", "humfre", "spatial location", "replicate number",
+                "species", "bio risk", "humfre", "spatial location", "replicate number",
                 "last known banana section custard", "labware type", "fixative", "medium", "information");
         List<String> problems = new ArrayList<>(3);
         reader.indexColumns(problems, row);
@@ -325,7 +325,7 @@ class TestBlockRegisterFileReader extends BaseTestFileReader {
         );
         List<BlockRegisterRequest> srls = IntStream.range(1, 3)
                 .mapToObj(i -> makeBlockRegisterRequest("X"+i))
-                .collect(toList());
+                .toList();
 
         doReturn(srls.get(0)).when(reader).createBlockRequest(any(), same(rows.get(0)));
         Matchers.mayAddProblem("Bad stuff.", srls.get(1)).when(reader).createBlockRequest(any(), same(rows.get(1)));

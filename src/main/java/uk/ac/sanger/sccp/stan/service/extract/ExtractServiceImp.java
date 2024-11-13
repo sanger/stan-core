@@ -32,6 +32,7 @@ public class ExtractServiceImp implements ExtractService {
     private final LabwareService labwareService;
     private final OperationService opService;
     private final StoreService storeService;
+    private final BioRiskService bioRiskService;
     private final WorkService workService;
 
     private final LabwareRepo labwareRepo;
@@ -46,7 +47,7 @@ public class ExtractServiceImp implements ExtractService {
     @Autowired
     public ExtractServiceImp(Transactor transactor, LabwareValidatorFactory labwareValidatorFactory,
                              LabwareService labwareService, OperationService opService,
-                             StoreService storeService, WorkService workService,
+                             StoreService storeService, BioRiskService bioRiskService, WorkService workService,
                              LabwareRepo labwareRepo, LabwareTypeRepo lwTypeRepo, OperationTypeRepo opTypeRepo,
                              SampleRepo sampleRepo, SlotRepo slotRepo, ValidationHelperFactory valFactory) {
         this.transactor = transactor;
@@ -54,6 +55,7 @@ public class ExtractServiceImp implements ExtractService {
         this.labwareService = labwareService;
         this.opService = opService;
         this.storeService = storeService;
+        this.bioRiskService = bioRiskService;
         this.workService = workService;
         this.labwareRepo = labwareRepo;
         this.lwTypeRepo = lwTypeRepo;
@@ -110,9 +112,11 @@ public class ExtractServiceImp implements ExtractService {
         Map<Integer, Sample> sampleMap = createSamples(labwareMap, bioState);
         Consumer<Operation> opModifier = (equipment==null ? null : (op -> op.setEquipment(equipment)));
         List<Operation> ops = createOperations(user, opType, labwareMap, sampleMap, opModifier);
+        bioRiskService.copyOpSampleBioRisks(ops);
         if (work!=null) {
             workService.link(work, ops);
         }
+
         return new OperationResult(ops, labwareMap.values());
     }
 

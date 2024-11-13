@@ -31,6 +31,7 @@ public class TestInPlaceOpService {
     private InPlaceOpServiceImp service;
 
     private LabwareValidatorFactory mockLabwareValidatorFactory;
+    private BioRiskService mockBioRiskService;
     private OperationService mockOpService;
     private WorkService mockWorkService;
     private BioStateReplacer mockBioStateReplacer;
@@ -42,6 +43,7 @@ public class TestInPlaceOpService {
     @BeforeEach
     void setup() {
         mockLabwareValidatorFactory = mock(LabwareValidatorFactory.class);
+        mockBioRiskService = mock(BioRiskService.class);
         mockOpService = mock(OperationService.class);
         mockWorkService = mock(WorkService.class);
         mockBioStateReplacer = mock(BioStateReplacer.class);
@@ -50,7 +52,8 @@ public class TestInPlaceOpService {
         valFactory = mock(ValidationHelperFactory.class);
         mockVal = mock(ValidationHelper.class);
 
-        service = spy(new InPlaceOpServiceImp(mockLabwareValidatorFactory, mockOpService, mockWorkService,
+        service = spy(new InPlaceOpServiceImp(mockLabwareValidatorFactory, mockOpService, mockBioRiskService,
+                mockWorkService,
                 mockBioStateReplacer, mockOpTypeRepo, mockLwRepo, valFactory));
     }
 
@@ -242,6 +245,7 @@ public class TestInPlaceOpService {
         } else {
             verify(mockWorkService).link(work, ops);
         }
+        verify(mockBioRiskService).copyOpSampleBioRisks(ops);
     }
 
     static Stream<Arguments> createOperationsArgs() {

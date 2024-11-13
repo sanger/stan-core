@@ -22,6 +22,7 @@ public class RegisterServiceImp implements IRegisterService<RegisterRequest> {
     private final TissueRepo tissueRepo;
     private final SampleRepo sampleRepo;
     private final SlotRepo slotRepo;
+    private final BioRiskRepo bioRiskRepo;
     private final OperationTypeRepo opTypeRepo;
     private final LabwareService labwareService;
     private final OperationService operationService;
@@ -31,7 +32,7 @@ public class RegisterServiceImp implements IRegisterService<RegisterRequest> {
     @Autowired
     public RegisterServiceImp(EntityManager entityManager, RegisterValidationFactory validationFactory,
                               DonorRepo donorRepo, TissueRepo tissueRepo, SampleRepo sampleRepo, SlotRepo slotRepo,
-                              OperationTypeRepo opTypeRepo,
+                              BioRiskRepo bioRiskRepo, OperationTypeRepo opTypeRepo,
                               LabwareService labwareService, OperationService operationService, WorkService workService,
                               RegisterClashChecker clashChecker) {
         this.entityManager = entityManager;
@@ -40,6 +41,7 @@ public class RegisterServiceImp implements IRegisterService<RegisterRequest> {
         this.tissueRepo = tissueRepo;
         this.sampleRepo = sampleRepo;
         this.slotRepo = slotRepo;
+        this.bioRiskRepo = bioRiskRepo;
         this.opTypeRepo = opTypeRepo;
         this.labwareService = labwareService;
         this.operationService = operationService;
@@ -162,7 +164,10 @@ public class RegisterServiceImp implements IRegisterService<RegisterRequest> {
             slot = slotRepo.save(slot);
             entityManager.refresh(labware);
             labwareList.add(labware);
-            ops.add(operationService.createOperationInPlace(opType, user, slot, sample));
+            final Operation op = operationService.createOperationInPlace(opType, user, slot, sample);
+            ops.add(op);
+            BioRisk bioRisk = validation.getBioRisk(block.getBioRiskCode());
+            bioRiskRepo.recordBioRisk(sample, bioRisk, op.getId());
         }
 
         if (!ops.isEmpty() && validation.getWorks()!=null && !validation.getWorks().isEmpty()) {

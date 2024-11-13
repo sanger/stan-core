@@ -35,6 +35,7 @@ public class TestAliquotService {
     private OperationTypeRepo mockOpTypeRepo;
     private SampleRepo mockSampleRepo;
     private LabwareValidatorFactory mockLwValFactory;
+    private BioRiskService mockBioRiskService;
     private WorkService mockWorkService;
     private LabwareService mockLwService;
     private OperationService mockOpService;
@@ -51,6 +52,7 @@ public class TestAliquotService {
         mockOpTypeRepo = mock(OperationTypeRepo.class);
         mockSampleRepo = mock(SampleRepo.class);
         mockLwValFactory = mock(LabwareValidatorFactory.class);
+        mockBioRiskService = mock(BioRiskService.class);
         mockWorkService = mock(WorkService.class);
         mockLwService = mock(LabwareService.class);
         mockOpService = mock(OperationService.class);
@@ -58,7 +60,8 @@ public class TestAliquotService {
         mockTransactor = mock(Transactor.class);
 
         service = spy(new AliquotServiceImp(mockLwRepo, mockLwTypeRepo, mockSlotRepo, mockOpTypeRepo, mockSampleRepo,
-                mockLwValFactory, mockWorkService, mockLwService, mockOpService, mockStoreService, mockTransactor));
+                mockLwValFactory, mockWorkService, mockLwService, mockBioRiskService, mockOpService, mockStoreService,
+                mockTransactor));
     }
 
     private static <R> Answer<R> addProblem(String problem, R returnValue) {
@@ -378,6 +381,7 @@ public class TestAliquotService {
         } else {
             verify(mockWorkService).link(work, ops);
         }
+        verify(mockBioRiskService).copyOpSampleBioRisks(ops);
     }
 
     @Test

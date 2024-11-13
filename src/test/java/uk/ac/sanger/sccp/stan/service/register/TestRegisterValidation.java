@@ -14,6 +14,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.register.BlockRegisterRequest;
 import uk.ac.sanger.sccp.stan.request.register.RegisterRequest;
+import uk.ac.sanger.sccp.stan.service.BioRiskService;
 import uk.ac.sanger.sccp.stan.service.Validator;
 import uk.ac.sanger.sccp.stan.service.register.RegisterValidationImp.StringIntKey;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
@@ -63,6 +64,8 @@ public class TestRegisterValidation {
     @Mock
     private TissueFieldChecker mockFieldChecker;
     @Mock
+    private BioRiskService mockBioRiskService;
+    @Mock
     private WorkService mockWorkService;
 
     private AutoCloseable mocking;
@@ -87,7 +90,8 @@ public class TestRegisterValidation {
     private RegisterValidationImp create(RegisterRequest request) {
         return spy(new RegisterValidationImp(request, mockDonorRepo, mockHmdmcRepo, mockTtRepo, mockLtRepo,
                 mockMediumRepo, mockFixativeRepo, mockTissueRepo, mockSpeciesRepo,
-                mockDonorNameValidation, mockExternalNameValidation, mockReplicateValidator, mockFieldChecker, mockWorkService));
+                mockDonorNameValidation, mockExternalNameValidation, mockReplicateValidator, mockFieldChecker,
+                mockBioRiskService, mockWorkService));
     }
 
     private void stubValidationMethods(RegisterValidationImp validation) {
@@ -100,6 +104,7 @@ public class TestRegisterValidation {
         doNothing().when(validation).validateNewTissues();
         doNothing().when(validation).validateFixatives();
         doNothing().when(validation).validateCollectionDates();
+        doNothing().when(validation).validateBioRisks();
         doNothing().when(validation).validateWorks();
     }
 
@@ -772,7 +777,7 @@ public class TestRegisterValidation {
         );
     }
 
-    private static class ValidateTissueTestData {
+    static class ValidateTissueTestData {
         String externalName;
         String replicate = "1";
         String donorName = "D";

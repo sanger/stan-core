@@ -361,6 +361,12 @@ public class FieldValidation {
     }
 
     @Bean
+    public Validator<String> bioRiskCodeValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.UNDERSCORE);
+        return new StringValidator("Bio risk code", 2, 20, charTypes);
+    }
+
+    @Bean
     public Clock clock() {
         return Clock.systemUTC();
     }

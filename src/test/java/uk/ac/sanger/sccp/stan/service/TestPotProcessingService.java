@@ -18,8 +18,10 @@ import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.time.LocalDate;
 import java.util.*;
-import java.util.function.*;
-import java.util.stream.*;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
@@ -36,6 +38,7 @@ public class TestPotProcessingService {
     private WorkService mockWorkService;
     private CommentValidationService mockCommentValidationService;
     private LabwareService mockLwService;
+    private BioRiskService mockBioRiskService;
     private OperationService mockOpService;
     private StoreService mockStoreService;
     private Transactor mockTransactor;
@@ -58,6 +61,7 @@ public class TestPotProcessingService {
         mockWorkService = mock(WorkService.class);
         mockCommentValidationService = mock(CommentValidationService.class);
         mockLwService = mock(LabwareService.class);
+        mockBioRiskService = mock(BioRiskService.class);
         mockOpService = mock(OperationService.class);
         mockLwRepo = mock(LabwareRepo.class);
         mockBsRepo = mock(BioStateRepo.class);
@@ -72,7 +76,7 @@ public class TestPotProcessingService {
         mockTransactor = mock(Transactor.class);
 
         service = spy(new PotProcessingServiceImp(mockLwValidatorFactory, mockWorkService, mockCommentValidationService,
-                mockStoreService, mockTransactor, mockLwService, mockOpService, mockLwRepo, mockBsRepo, mockFixRepo, mockLwTypeRepo, mockTissueRepo,
+                mockStoreService, mockTransactor, mockLwService, mockBioRiskService, mockOpService, mockLwRepo, mockBsRepo, mockFixRepo, mockLwTypeRepo, mockTissueRepo,
                 mockSampleRepo, mockSlotRepo, mockOpTypeRepo, mockOpComRepo));
     }
 
@@ -394,6 +398,7 @@ public class TestPotProcessingService {
         }
         assertEquals(discard, source.isDiscarded());
         verify(mockWorkService).link(work, ops);
+        verify(mockBioRiskService).copyOpSampleBioRisks(ops);
 
         assertEquals(opRes.getLabware(), destLabware);
         assertEquals(opRes.getOperations(), ops);

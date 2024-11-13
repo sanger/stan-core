@@ -50,6 +50,7 @@ public class BlockRegisterFileReaderImp extends BaseRegisterFileReader<RegisterR
         br.setDonorIdentifier((String) row.get(Column.Donor_identifier));
         br.setFixative((String) row.get(Column.Fixative));
         br.setHmdmc((String) row.get(Column.HuMFre));
+        br.setBioRiskCode((String) row.get(Column.Bio_risk));
         br.setMedium((String) row.get(Column.Embedding_medium));
         br.setExternalIdentifier((String) row.get(Column.External_identifier));
         br.setSpecies((String) row.get(Column.Species));

@@ -34,6 +34,7 @@ public class TestExtractService {
     private Transactor mockTransactor;
     private LabwareValidatorFactory mockLabwareValidatorFactory;
     private LabwareService mockLwService;
+    private BioRiskService mockBioRiskService;
     private OperationService mockOpService;
     private StoreService mockStoreService;
     private WorkService mockWorkService;
@@ -60,6 +61,7 @@ public class TestExtractService {
         mockTransactor = mock(Transactor.class);
         mockLabwareValidatorFactory = mock(LabwareValidatorFactory.class);
         mockLwService = mock(LabwareService.class);
+        mockBioRiskService = mock(BioRiskService.class);
         mockOpService = mock(OperationService.class);
         mockStoreService = mock(StoreService.class);
         mockWorkService = mock(WorkService.class);
@@ -76,7 +78,8 @@ public class TestExtractService {
         lwType = new LabwareType(6, "lwtype", 1, 1, EntityFactory.getLabelType(), false);
 
         service = spy(new ExtractServiceImp(mockTransactor, mockLabwareValidatorFactory, mockLwService, mockOpService,
-                mockStoreService, mockWorkService, mockLwRepo, mockLtRepo, mockOpTypeRepo, mockSampleRepo, mockSlotRepo, valFactory));
+                mockStoreService, mockBioRiskService, mockWorkService,
+                mockLwRepo, mockLtRepo, mockOpTypeRepo, mockSampleRepo, mockSlotRepo, valFactory));
     }
 
     @Test
@@ -173,6 +176,7 @@ public class TestExtractService {
         verify(service).createSamples(lwMap, rnaBioState);
         verify(service).createOperations(same(user), same(opType), same(lwMap), same(sampleMap), isNotNull());
         verify(mockWorkService).link(work, ops);
+        verify(mockBioRiskService).copyOpSampleBioRisks(ops);
     }
 
     @Test

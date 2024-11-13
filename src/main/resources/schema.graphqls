@@ -117,6 +117,13 @@ type Hmdmc {
     enabled: Boolean!
 }
 
+"""Biological risk assessment number."""
+type BioRisk {
+    """The alphanumeric code representing this risk assessment."""
+    code: String!
+    enabled: Boolean!
+}
+
 """A type of label that can be printed, typically including a barcode and some other information."""
 type LabelType {
     name: String!
@@ -304,6 +311,8 @@ input BlockRegisterRequest {
     existingTissue: Boolean
     """The date the original sample was collected, if known."""
     sampleCollectionDate: Date
+    """The biological risk number for this block."""
+    bioRiskCode: String!
 }
 
 """A request to register one or more blocks of tissue."""
@@ -1997,6 +2006,8 @@ type Query {
     labwareTypes: [LabwareType!]!
     """Get all the HMDMCs that are enabled, or get all including those that are disabled."""
     hmdmcs(includeDisabled: Boolean): [Hmdmc!]!
+    """Get all bio risks that are enabled, or get all including those that are disabled."""
+    bioRisks(includeDisabled: Boolean): [BioRisk!]!
     """Get all the mediums available."""
     mediums: [Medium!]!
     """Get all the fixatives that are enabled, or get all including those that are disabled."""
@@ -2182,6 +2193,10 @@ type Mutation {
     addHmdmc(hmdmc: String!): Hmdmc!
     """Enable or disable an HMDMC."""
     setHmdmcEnabled(hmdmc: String!, enabled: Boolean!): Hmdmc!
+    """Create a new Bio Risk."""
+    addBioRisk(code: String!): BioRisk!
+    """Enable or disable a Bio Risk."""
+    setBioRiskEnabled(code: String!, enabled: Boolean!): BioRisk!
     """Create a new release destination that can be associated with labware releases."""
     addReleaseDestination(name: String!): ReleaseDestination!
     """Enable or disable a release destination."""

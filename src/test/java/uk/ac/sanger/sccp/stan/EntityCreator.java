@@ -74,6 +74,8 @@ public class EntityCreator {
     private OperationRepo opRepo;
     @Autowired
     private ActionRepo actionRepo;
+    @Autowired
+    private BioRiskRepo bioRiskRepo;
 
     @Autowired
     private EntityManager entityManager;
@@ -285,6 +287,11 @@ public class EntityCreator {
     public ReleaseDestination createReleaseDestination(String name) {
         ReleaseDestination dest = new ReleaseDestination(null, name);
         return releaseDestinationRepo.save(dest);
+    }
+
+    public BioRisk createBioRisk(String code) {
+        BioRisk br = new BioRisk(code);
+        return bioRiskRepo.save(br);
     }
 
     public BioState anyBioState() {

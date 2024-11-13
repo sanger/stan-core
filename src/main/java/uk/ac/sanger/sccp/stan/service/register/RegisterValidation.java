@@ -21,5 +21,7 @@ public interface RegisterValidation {
 
     Tissue getTissue(String externalName);
 
+    BioRisk getBioRisk(String code);
+
     Collection<Work> getWorks();
 }

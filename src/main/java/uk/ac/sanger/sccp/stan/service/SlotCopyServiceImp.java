@@ -50,6 +50,7 @@ public class SlotCopyServiceImp implements SlotCopyService {
     private final LabwareNoteRepo lwNoteRepo;
     private final SlotCopyValidationService valService;
     private final LabwareService lwService;
+    private final BioRiskService bioRiskService;
     private final OperationService opService;
     private final StoreService storeService;
     private final WorkService workService;
@@ -58,7 +59,7 @@ public class SlotCopyServiceImp implements SlotCopyService {
 
     @Autowired
     public SlotCopyServiceImp(LabwareRepo lwRepo, SampleRepo sampleRepo, SlotRepo slotRepo, LabwareNoteRepo lwNoteRepo,
-                              SlotCopyValidationService valService, LabwareService lwService,
+                              SlotCopyValidationService valService, LabwareService lwService, BioRiskService bioRiskService,
                               OperationService opService, StoreService storeService, WorkService workService,
                               EntityManager entityManager, Transactor transactor) {
         this.lwRepo = lwRepo;
@@ -67,6 +68,7 @@ public class SlotCopyServiceImp implements SlotCopyService {
         this.lwNoteRepo = lwNoteRepo;
         this.valService = valService;
         this.lwService = lwService;
+        this.bioRiskService = bioRiskService;
         this.opService = opService;
         this.storeService = storeService;
         this.workService = workService;
@@ -127,6 +129,7 @@ public class SlotCopyServiceImp implements SlotCopyService {
             ops.addAll(opres.getOperations());
             destLabware.addAll(opres.getLabware());
         }
+        bioRiskService.copyOpSampleBioRisks(ops);
         if (work != null) {
             workService.link(work, ops);
         }

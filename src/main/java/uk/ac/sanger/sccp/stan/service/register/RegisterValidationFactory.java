@@ -6,8 +6,7 @@ import org.springframework.stereotype.Component;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.register.RegisterRequest;
 import uk.ac.sanger.sccp.stan.request.register.SectionRegisterRequest;
-import uk.ac.sanger.sccp.stan.service.SlotRegionService;
-import uk.ac.sanger.sccp.stan.service.Validator;
+import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 
 /**
@@ -34,6 +33,7 @@ public class RegisterValidationFactory {
     private final Validator<String> replicateValidator;
     private final TissueFieldChecker tissueFieldChecker;
     private final SlotRegionService slotRegionService;
+    private final BioRiskService bioRiskService;
     private final WorkService workService;
 
     @Autowired
@@ -48,7 +48,7 @@ public class RegisterValidationFactory {
                                      @Qualifier("xeniumBarcodeValidator") Validator<String> xeniumBarcodeValidator,
                                      @Qualifier("replicateValidator") Validator<String> replicateValidator,
                                      TissueFieldChecker tissueFieldChecker,
-                                     SlotRegionService slotRegionService, WorkService workService) {
+                                     SlotRegionService slotRegionService, BioRiskService bioRiskService, WorkService workService) {
         this.donorRepo = donorRepo;
         this.hmdmcRepo = hmdmcRepo;
         this.ttRepo = ttRepo;
@@ -68,12 +68,13 @@ public class RegisterValidationFactory {
         this.tissueFieldChecker = tissueFieldChecker;
         this.slotRegionService = slotRegionService;
         this.workService = workService;
+        this.bioRiskService = bioRiskService;
     }
 
     public RegisterValidation createRegisterValidation(RegisterRequest request) {
         return new RegisterValidationImp(request, donorRepo, hmdmcRepo, ttRepo, ltRepo, mediumRepo,
                 fixativeRepo, tissueRepo, speciesRepo, donorNameValidation, externalNameValidation, replicateValidator,
-                tissueFieldChecker, workService);
+                tissueFieldChecker, bioRiskService, workService);
     }
 
     public SectionRegisterValidation createSectionRegisterValidation(SectionRegisterRequest request) {

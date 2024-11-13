@@ -4,13 +4,16 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.register.BlockRegisterRequest;
 import uk.ac.sanger.sccp.stan.request.register.RegisterRequest;
+import uk.ac.sanger.sccp.stan.service.BioRiskService;
 import uk.ac.sanger.sccp.stan.service.Validator;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
+import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.time.LocalDate;
 import java.util.*;
 import java.util.function.Function;
 
+import static org.apache.commons.lang3.StringUtils.isBlank;
 import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 /**
@@ -31,6 +34,7 @@ public class RegisterValidationImp implements RegisterValidation {
     private final Validator<String> externalNameValidation;
     private final Validator<String> replicateValidator;
     private final TissueFieldChecker tissueFieldChecker;
+    private final BioRiskService bioRiskService;
     private final WorkService workService;
 
     final Map<String, Donor> donorMap = new HashMap<>();
@@ -41,16 +45,18 @@ public class RegisterValidationImp implements RegisterValidation {
     final Map<String, LabwareType> labwareTypeMap = new HashMap<>();
     final Map<String, Medium> mediumMap = new HashMap<>();
     final Map<String, Fixative> fixativeMap = new HashMap<>();
+    UCMap<BioRisk> bioRiskMap;
     Collection<Work> works;
     final LinkedHashSet<String> problems = new LinkedHashSet<>();
 
     public RegisterValidationImp(RegisterRequest request, DonorRepo donorRepo,
                                  HmdmcRepo hmdmcRepo, TissueTypeRepo ttRepo, LabwareTypeRepo ltRepo,
-                                 MediumRepo mediumRepo,
-                                 FixativeRepo fixativeRepo, TissueRepo tissueRepo, SpeciesRepo speciesRepo,
+                                 MediumRepo mediumRepo, FixativeRepo fixativeRepo, TissueRepo tissueRepo,
+                                 SpeciesRepo speciesRepo,
                                  Validator<String> donorNameValidation, Validator<String> externalNameValidation,
                                  Validator<String> replicateValidator,
-                                 TissueFieldChecker tissueFieldChecker, WorkService workService) {
+                                 TissueFieldChecker tissueFieldChecker,
+                                 BioRiskService bioRiskService, WorkService workService) {
         this.request = request;
         this.donorRepo = donorRepo;
         this.hmdmcRepo = hmdmcRepo;
@@ -64,6 +70,7 @@ public class RegisterValidationImp implements RegisterValidation {
         this.externalNameValidation = externalNameValidation;
         this.replicateValidator = replicateValidator;
         this.tissueFieldChecker = tissueFieldChecker;
+        this.bioRiskService = bioRiskService;
         this.workService = workService;
     }
 
@@ -81,6 +88,7 @@ public class RegisterValidationImp implements RegisterValidation {
         validateCollectionDates();
         validateExistingTissues();
         validateNewTissues();
+        validateBioRisks();
         validateWorks();
         return problems;
     }
@@ -353,6 +361,34 @@ public class RegisterValidationImp implements RegisterValidation {
         }
     }
 
+    public void validateBioRisks() {
+        Set<String> bioRiskCodes = new LinkedHashSet<>(blocks().size());
+        boolean missing = false;
+        for (BlockRegisterRequest block : blocks()) {
+            String bioRiskCode = block.getBioRiskCode();
+            if (isBlank(bioRiskCode)) {
+                block.setBioRiskCode(null);
+                missing = true;
+            } else {
+                bioRiskCode = bioRiskCode.trim();
+                block.setBioRiskCode(bioRiskCode);
+                bioRiskCodes.add(bioRiskCode);
+            }
+        }
+        if (missing) {
+            addProblem("Missing biological risk number.");
+        }
+        this.bioRiskMap = bioRiskService.loadBioRiskMap(bioRiskCodes);
+        if (!bioRiskCodes.isEmpty()) {
+            List<String> unknown = bioRiskCodes.stream()
+                    .filter(code -> bioRiskMap.get(code)==null)
+                    .toList();
+            if (!unknown.isEmpty()) {
+                addProblem("Unknown biological risk number: "+reprCollection(unknown));
+            }
+        }
+    }
+
     public void validateWorks() {
         if (request.getWorkNumbers().isEmpty()) {
             addProblem("No work number supplied.");
@@ -441,6 +477,11 @@ public class RegisterValidationImp implements RegisterValidation {
     @Override
     public Tissue getTissue(String externalName) {
         return ucGet(this.tissueMap, externalName);
+    }
+
+    @Override
+    public BioRisk getBioRisk(String code) {
+        return bioRiskMap.get(code);
     }
 
     @Override

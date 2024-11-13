@@ -62,6 +62,8 @@ public class TestAdminMutations {
     private SlotRegionRepo slotRegionRepo;
     @Autowired
     private ProbePanelRepo probePanelRepo;
+    @Autowired
+    private BioRiskRepo bioRiskRepo;
 
     @Test
     @Transactional
@@ -179,5 +181,11 @@ public class TestAdminMutations {
     @Transactional
     public void testAddNewSlotRegionAndSetEnabled() throws Exception {
         testGenericAddNewAndSetEnabled("SlotRegion", "name", "North", slotRegionRepo::findByName, SlotRegion::getName, "slotRegions");
+    }
+
+    @Test
+    @Transactional
+    public void testAddNewBioRiskAndSetEnabled() throws Exception {
+        testGenericAddNewAndSetEnabled("BioRisk", "code", "SIBAGMRA12_09v1", bioRiskRepo::findByCode, BioRisk::getCode, "bioRisks");
     }
 }

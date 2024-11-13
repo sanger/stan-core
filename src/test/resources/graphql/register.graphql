@@ -15,6 +15,7 @@ mutation {
                 fixative:"None",
                 highestSection:0,
                 sampleCollectionDate: "2021-02-03",
+                bioRiskCode: "biorisk1"
             }
         ]
         workNumbers: ["SGP1"]

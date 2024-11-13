@@ -45,6 +45,8 @@ public class TestSlotCopyService {
     @Mock
     LabwareService mockLwService;
     @Mock
+    BioRiskService mockBioRiskService;
+    @Mock
     OperationService mockOpService;
     @Mock
     StoreService mockStoreService;
@@ -78,7 +80,7 @@ public class TestSlotCopyService {
         user = EntityFactory.getUser();
 
         service = spy(new SlotCopyServiceImp(mockLwRepo, mockSampleRepo, mockSlotRepo, mockLwNoteRepo,
-                mockValService, mockLwService, mockOpService, mockStoreService, mockWorkService,
+                mockValService, mockLwService, mockBioRiskService, mockOpService, mockStoreService, mockWorkService,
                 mockEntityManager, mockTransactor));
     }
 
@@ -226,6 +228,7 @@ public class TestSlotCopyService {
         verify(service).executeOp(user, dests.get(1).getContents(), opType, lt2, null, sources, SlideCosting.Faculty, null, null, null, null, null, exType);
         verify(service).executeOp(user, dests.get(2).getContents(), opType, null, null, sources, null, null, null, null, null, dest1, exType);
 
+        verify(mockBioRiskService).copyOpSampleBioRisks(result.getOperations());
         verify(mockWorkService).link(work, result.getOperations());
     }
 

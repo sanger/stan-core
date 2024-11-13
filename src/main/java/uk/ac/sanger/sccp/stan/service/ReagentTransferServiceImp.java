@@ -32,6 +32,7 @@ public class ReagentTransferServiceImp implements ReagentTransferService {
     private final ReagentTransferValidatorService rtValidatorService;
     private final LabwareValidatorFactory lwValFactory;
 
+    private final BioRiskService bioRiskService;
     private final OperationService opService;
     private final ReagentPlateService reagentPlateService;
     private final WorkService workService;
@@ -41,7 +42,7 @@ public class ReagentTransferServiceImp implements ReagentTransferService {
     public ReagentTransferServiceImp(OperationTypeRepo opTypeRepo, ReagentActionRepo reagentActionRepo,
                                      LabwareRepo lwRepo,
                                      ReagentTransferValidatorService rtValidatorService,
-                                     LabwareValidatorFactory lwValFactory,
+                                     LabwareValidatorFactory lwValFactory, BioRiskService bioRiskService,
                                      OperationService opService, ReagentPlateService reagentPlateService,
                                      WorkService workService, BioStateReplacer bioStateReplacer) {
         this.opTypeRepo = opTypeRepo;
@@ -49,6 +50,7 @@ public class ReagentTransferServiceImp implements ReagentTransferService {
         this.lwRepo = lwRepo;
         this.rtValidatorService = rtValidatorService;
         this.lwValFactory = lwValFactory;
+        this.bioRiskService = bioRiskService;
         this.opService = opService;
         this.reagentPlateService = reagentPlateService;
         this.workService = workService;
@@ -197,6 +199,7 @@ public class ReagentTransferServiceImp implements ReagentTransferService {
         if (work!=null) {
             workService.link(work, List.of(op));
         }
+        bioRiskService.copyOpSampleBioRisks(op);
         return op;
     }
 

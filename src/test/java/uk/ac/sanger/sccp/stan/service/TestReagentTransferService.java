@@ -41,6 +41,8 @@ public class TestReagentTransferService {
     @Mock
     private LabwareValidatorFactory mockLwValFactory;
     @Mock
+    private BioRiskService mockBioRiskService;
+    @Mock
     private OperationService mockOpService;
     @Mock
     private ReagentPlateService mockReagentPlateService;
@@ -57,7 +59,7 @@ public class TestReagentTransferService {
     void setup() {
         mocking = MockitoAnnotations.openMocks(this);
         service = spy(new ReagentTransferServiceImp(mockOpTypeRepo, mockReagentActionRepo, mockLwRepo,
-                mockValService, mockLwValFactory, mockOpService, mockReagentPlateService,
+                mockValService, mockLwValFactory, mockBioRiskService, mockOpService, mockReagentPlateService,
                 mockWorkService, mockBioStateReplacer));
     }
 
@@ -345,6 +347,7 @@ public class TestReagentTransferService {
         } else {
             verifyNoInteractions(mockWorkService);
         }
+        verify(mockBioRiskService).copyOpSampleBioRisks(op);
     }
 
     @Test

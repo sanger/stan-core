@@ -24,6 +24,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 public class InPlaceOpServiceImp implements InPlaceOpService {
     private final LabwareValidatorFactory labwareValidatorFactory;
     private final OperationService opService;
+    private final BioRiskService bioRiskService;
     private final WorkService workService;
     private final BioStateReplacer bioStateReplacer;
 
@@ -32,10 +33,11 @@ public class InPlaceOpServiceImp implements InPlaceOpService {
     private final ValidationHelperFactory valFactory;
 
     public InPlaceOpServiceImp(LabwareValidatorFactory labwareValidatorFactory,
-                               OperationService opService, WorkService workService, BioStateReplacer bioStateReplacer,
+                               OperationService opService, BioRiskService bioRiskService, WorkService workService, BioStateReplacer bioStateReplacer,
                                OperationTypeRepo opTypeRepo, LabwareRepo lwRepo, ValidationHelperFactory valFactory) {
         this.labwareValidatorFactory = labwareValidatorFactory;
         this.opService = opService;
+        this.bioRiskService = bioRiskService;
         this.workService = workService;
         this.bioStateReplacer = bioStateReplacer;
         this.opTypeRepo = opTypeRepo;
@@ -146,6 +148,7 @@ public class InPlaceOpServiceImp implements InPlaceOpService {
         Consumer<Operation> opModifier = (equipment==null ? null : (op -> op.setEquipment(equipment)));
         List<Operation> ops = labware.stream().map(lw -> createOperation(user, lw, opType, opModifier))
                 .collect(toList());
+        bioRiskService.copyOpSampleBioRisks(ops);
         if (work!=null) {
             workService.link(work, ops);
         }

@@ -10,8 +10,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.AddressCommentId;
 import uk.ac.sanger.sccp.stan.request.confirm.*;
-import uk.ac.sanger.sccp.stan.service.OperationService;
-import uk.ac.sanger.sccp.stan.service.ValidationException;
+import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmOperationServiceImp.ConfirmLabwareResult;
 
 import javax.persistence.EntityManager;
@@ -32,6 +31,7 @@ import static uk.ac.sanger.sccp.stan.Matchers.sameElements;
 public class TestConfirmOperationService {
     private ConfirmOperationValidationFactory mockConfirmOperationValidationFactory;
     private EntityManager mockEntityManager;
+    private BioRiskService mockBioRiskService;
     private OperationService mockOperationService;
     private LabwareRepo mockLabwareRepo;
     private PlanOperationRepo mockPlanOperationRepo;
@@ -47,6 +47,7 @@ public class TestConfirmOperationService {
     void setup() {
         mockConfirmOperationValidationFactory = mock(ConfirmOperationValidationFactory.class);
         mockEntityManager = mock(EntityManager.class);
+        mockBioRiskService = mock(BioRiskService.class);
         mockOperationService = mock(OperationService.class);
         mockLabwareRepo = mock(LabwareRepo.class);
         mockPlanOperationRepo = mock(PlanOperationRepo.class);
@@ -57,8 +58,8 @@ public class TestConfirmOperationService {
         mockMeasurementRepo = mock(MeasurementRepo.class);
 
         service = spy(new ConfirmOperationServiceImp(mockConfirmOperationValidationFactory, mockEntityManager,
-                mockOperationService, mockLabwareRepo, mockPlanOperationRepo, mockSlotRepo, mockSampleRepo,
-                mockCommentRepo, mockOperationCommentRepo, mockMeasurementRepo));
+                mockBioRiskService, mockOperationService, mockLabwareRepo, mockPlanOperationRepo, mockSlotRepo,
+                mockSampleRepo, mockCommentRepo, mockOperationCommentRepo, mockMeasurementRepo));
     }
 
     @ParameterizedTest
@@ -125,6 +126,7 @@ public class TestConfirmOperationService {
 
         assertThat(result.getLabware()).hasSameElementsAs(labware);
         assertThat(result.getOperations()).containsOnly(op);
+        verify(mockBioRiskService).copyOpSampleBioRisks(result.getOperations());
 
         assertThat(assertThrows(IllegalArgumentException.class,
                 () -> service.recordConfirmation(user, new ConfirmOperationRequest(

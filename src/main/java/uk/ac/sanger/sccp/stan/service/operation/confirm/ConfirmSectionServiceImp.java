@@ -7,8 +7,7 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSectionLabware.AddressCommentId;
-import uk.ac.sanger.sccp.stan.service.OperationService;
-import uk.ac.sanger.sccp.stan.service.ValidationException;
+import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
@@ -27,6 +26,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 @Service
 public class ConfirmSectionServiceImp implements ConfirmSectionService {
     private final ConfirmSectionValidationService validationService;
+    private final BioRiskService bioRiskService;
     private final OperationService opService;
     private final WorkService workService;
     private final LabwareRepo lwRepo;
@@ -41,13 +41,14 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
     private final EntityManager entityManager;
 
     @Autowired
-    public ConfirmSectionServiceImp(ConfirmSectionValidationService validationService, OperationService opService,
-                                    WorkService workService,
+    public ConfirmSectionServiceImp(ConfirmSectionValidationService validationService, BioRiskService bioRiskService,
+                                    OperationService opService, WorkService workService,
                                     LabwareRepo lwRepo, SlotRepo slotRepo, MeasurementRepo measurementRepo,
                                     SampleRepo sampleRepo, CommentRepo commentRepo, OperationCommentRepo opCommentRepo,
                                     LabwareNoteRepo lwNoteRepo, SamplePositionRepo samplePositionRepo,
                                     EntityManager entityManager) {
         this.validationService = validationService;
+        this.bioRiskService = bioRiskService;
         this.opService = opService;
         this.workService = workService;
         this.lwRepo = lwRepo;
@@ -114,6 +115,7 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
         if (request.getWorkNumber()!=null) {
             workService.link(request.getWorkNumber(), operations);
         }
+        bioRiskService.copyOpSampleBioRisks(operations);
         updateSourceBlocks(operations);
         return new OperationResult(operations, resultLabware);
     }
@@ -275,7 +277,7 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
         if (commentIdMap.size() < commentIdSet.size()) {
             List<Integer> missing = commentIdSet.stream()
                     .filter(cmtId -> !commentIdMap.containsKey(cmtId))
-                    .collect(toList());
+                    .toList();
             throw new IllegalArgumentException("Invalid comment ids: "+missing);
         }
         List<OperationComment> opComments = csl.getAddressComments().stream()
