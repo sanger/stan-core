@@ -5,8 +5,7 @@ import com.google.common.collect.Streams;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.*;
 import org.mockito.verification.VerificationMode;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.Matchers;
@@ -30,6 +29,7 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.EntityFactory.objToList;
 import static uk.ac.sanger.sccp.stan.Matchers.assertProblem;
@@ -559,6 +559,35 @@ public class TestRegisterValidation {
         for (E item : expectedItems) {
             assertEquals(item, getter.apply(validation, stringFn.apply(item)));
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void testValidateBioRisks() {
+        BlockRegisterRequest block1 = new BlockRegisterRequest();
+        block1.setBioRiskCode("risk1");
+        BlockRegisterRequest block2 = new BlockRegisterRequest();
+        block2.setBioRiskCode("risk2");
+        RegisterRequest request = new RegisterRequest(List.of(block1, block2));
+        RegisterValidationImp val = create(request);
+        UCMap<BioRisk> returnedMap = UCMap.from(BioRisk::getCode, new BioRisk(1, "risk1"));
+        when(mockBioRiskService.loadAndValidateBioRisks(any(), any(), any(), any())).thenReturn(returnedMap);
+
+        val.validateBioRisks();
+
+        assertSame(returnedMap, val.bioRiskMap);
+        ArgumentCaptor<Stream<BlockRegisterRequest>> blockStreamCaptor = ArgumentCaptor.forClass(Stream.class);
+        ArgumentCaptor<Function<BlockRegisterRequest, String>> getterCaptor = ArgumentCaptor.forClass(Function.class);
+        ArgumentCaptor<BiConsumer<BlockRegisterRequest, String>> setterCaptor = ArgumentCaptor.forClass(BiConsumer.class);
+        verify(mockBioRiskService).loadAndValidateBioRisks(same(val.problems), blockStreamCaptor.capture(),
+                getterCaptor.capture(), setterCaptor.capture());
+
+        // Check that the getter and setter are the functions we expect
+        assertThat(blockStreamCaptor.getValue().map(getterCaptor.getValue())).containsExactly("risk1", "risk2");
+        BiConsumer<BlockRegisterRequest, String> setter = setterCaptor.getValue();
+        BlockRegisterRequest blk = new BlockRegisterRequest();
+        setter.accept(blk, "v1");
+        assertEquals("v1", blk.getBioRiskCode());
     }
 
     /** @see #testValidateDonors */
