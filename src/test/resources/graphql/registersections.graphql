@@ -20,6 +20,7 @@ mutation {
                         spatialLocation: 1
                         tissueType: "Heart"
                         region: "top"
+                        bioRiskCode: "risk1"
                     }
                     {
                         address: "A1"
@@ -35,6 +36,7 @@ mutation {
                         spatialLocation: 1
                         tissueType: "Lung"
                         region: "bottom"
+                        bioRiskCode: "risk1"
                     }
                     {
                         address: "B2"
@@ -50,6 +52,7 @@ mutation {
                         externalIdentifier: "TISSUE3"
                         spatialLocation: 1
                         tissueType: "Heart"
+                        bioRiskCode: "risk2"
                     }
                 ]
             }

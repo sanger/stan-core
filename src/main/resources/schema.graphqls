@@ -353,6 +353,8 @@ input SectionRegisterContent {
     region: String
     """The date the sample was sectioned."""
     dateSectioned: Date
+    """The biological risk code for this sample."""
+    bioRiskCode: String!
 }
 
 """A request to register one or more sections into one piece of labware."""

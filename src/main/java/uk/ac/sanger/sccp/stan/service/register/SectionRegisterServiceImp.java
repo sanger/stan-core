@@ -4,14 +4,14 @@ import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.register.*;
-import uk.ac.sanger.sccp.stan.service.LabwareService;
-import uk.ac.sanger.sccp.stan.service.OperationService;
+import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
 
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
 import static uk.ac.sanger.sccp.utils.BasicUtils.emptyToNull;
 import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 import static uk.ac.sanger.sccp.utils.UCMap.toUCMap;
@@ -34,11 +34,13 @@ public class SectionRegisterServiceImp implements IRegisterService<SectionRegist
     private final OperationService opService;
     private final LabwareService lwService;
     private final WorkService workService;
+    private final BioRiskService bioRiskService;
 
     public SectionRegisterServiceImp(RegisterValidationFactory validationFactory, DonorRepo donorRepo,
                                      TissueRepo tissueRepo, SampleRepo sampleRepo, MeasurementRepo measurementRepo,
                                      OperationTypeRepo opTypeRepo, SlotRepo slotRepo,
-                                     SamplePositionRepo samplePositionRepo, OperationService opService, LabwareService lwService, WorkService workService) {
+                                     SamplePositionRepo samplePositionRepo, OperationService opService,
+                                     LabwareService lwService, WorkService workService, BioRiskService bioRiskService) {
         this.validationFactory = validationFactory;
         this.donorRepo = donorRepo;
         this.tissueRepo = tissueRepo;
@@ -50,6 +52,7 @@ public class SectionRegisterServiceImp implements IRegisterService<SectionRegist
         this.opService = opService;
         this.lwService = lwService;
         this.workService = workService;
+        this.bioRiskService = bioRiskService;
     }
 
     @Override
@@ -69,11 +72,11 @@ public class SectionRegisterServiceImp implements IRegisterService<SectionRegist
      * @return the result of the registration
      */
     public RegisterResult execute(User user, SectionRegisterRequest request, ValidatedSections sections) {
-        UCMap<Donor> donorMap = createDonors(sections.getDonorMap().values());
-        UCMap<Tissue> tissueMap = createTissues(sections.getSampleMap().values(), donorMap);
-        UCMap<Sample> sampleMap = createSamples(sections.getSampleMap().values(), tissueMap);
-        UCMap<Labware> labwareMap = createAllLabware(request, sections.getLabwareTypes(), sampleMap);
-        recordOperations(user, request, labwareMap, sampleMap, sections.getSlotRegionMap(), sections.getWork());
+        UCMap<Donor> donorMap = createDonors(sections.donorMap().values());
+        UCMap<Tissue> tissueMap = createTissues(sections.sampleMap().values(), donorMap);
+        UCMap<Sample> sampleMap = createSamples(sections.sampleMap().values(), tissueMap);
+        UCMap<Labware> labwareMap = createAllLabware(request, sections.labwareTypes(), sampleMap);
+        recordOperations(user, request, labwareMap, sampleMap, sections.slotRegionMap(), sections.bioRiskMap(), sections.work());
         return assembleResult(request, labwareMap, tissueMap);
     }
 
@@ -207,7 +210,8 @@ public class SectionRegisterServiceImp implements IRegisterService<SectionRegist
      * @return a list of operations
      */
     public List<Operation> recordOperations(User user, SectionRegisterRequest request, UCMap<Labware> labwareMap,
-                                            UCMap<Sample> sampleMap, UCMap<SlotRegion> regionMap, Work work) {
+                                            UCMap<Sample> sampleMap, UCMap<SlotRegion> regionMap, UCMap<BioRisk> bioRiskMap,
+                                            Work work) {
         OperationType opType = opTypeRepo.getByName("Register");
         List<Operation> ops = new ArrayList<>(request.getLabware().size());
         for (SectionRegisterLabware srl : request.getLabware()) {
@@ -216,6 +220,7 @@ public class SectionRegisterServiceImp implements IRegisterService<SectionRegist
             ops.add(op);
             createMeasurements(srl, lw, op, sampleMap);
             createSamplePositions(srl, lw, op.getId(), sampleMap, regionMap);
+            linkBioRisks(srl, op.getId(), sampleMap, bioRiskMap);
         }
         if (work != null) {
             workService.link(work, ops);
@@ -286,5 +291,19 @@ public class SectionRegisterServiceImp implements IRegisterService<SectionRegist
                         regionMap.get(src.getRegion()), opId))
                 .collect(toList());
         return (samps.isEmpty() ? samps : samplePositionRepo.saveAll(samps));
+    }
+
+    /**
+     * Links the indicated bio risks to the new samples
+     * @param srl relevant part of the request
+     * @param opId operation id
+     * @param sampleMap samples mapped from external id
+     * @param bioRiskMap bio risks mapped from their codes
+     */
+    public void linkBioRisks(SectionRegisterLabware srl, Integer opId, UCMap<Sample> sampleMap,
+                             UCMap<BioRisk> bioRiskMap) {
+        Map<Integer, BioRisk> sampleBioRisks = srl.getContents().stream()
+                .collect(toMap(src -> sampleMap.get(src.getExternalIdentifier()).getId(), src -> bioRiskMap.get(src.getBioRiskCode())));
+        bioRiskService.recordSampleBioRisks(sampleBioRisks, opId);
     }
 }

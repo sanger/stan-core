@@ -34,6 +34,7 @@ public class SectionRegisterValidation {
     private final TissueRepo tissueRepo;
     private final BioStateRepo bioStateRepo;
     private final SlotRegionService slotRegionService;
+    private final BioRiskService bioRiskService;
     private final WorkService workService;
     private final Validator<String> externalBarcodeValidation;
     private final Validator<String> donorNameValidation;
@@ -47,7 +48,7 @@ public class SectionRegisterValidation {
                                      LabwareRepo lwRepo, HmdmcRepo hmdmcRepo,
                                      TissueTypeRepo tissueTypeRepo, FixativeRepo fixativeRepo, MediumRepo mediumRepo,
                                      TissueRepo tissueRepo, BioStateRepo bioStateRepo,
-                                     SlotRegionService slotRegionService, WorkService workService,
+                                     SlotRegionService slotRegionService, BioRiskService bioRiskService, WorkService workService,
                                      Validator<String> externalBarcodeValidation, Validator<String> donorNameValidation,
                                      Validator<String> externalNameValidation, Validator<String> replicateValidator,
                                      Validator<String> visiumLpBarcodeValidation, Validator<String> xeniumBarcodeValidator) {
@@ -63,6 +64,7 @@ public class SectionRegisterValidation {
         this.tissueRepo = tissueRepo;
         this.bioStateRepo = bioStateRepo;
         this.slotRegionService = slotRegionService;
+        this.bioRiskService = bioRiskService;
         this.workService = workService;
         this.externalBarcodeValidation = externalBarcodeValidation;
         this.donorNameValidation = donorNameValidation;
@@ -80,12 +82,13 @@ public class SectionRegisterValidation {
         UCMap<Tissue> tissues = validateTissues(donors);
         UCMap<Sample> samples = validateSamples(tissues);
         UCMap<SlotRegion> regions = validateRegions();
+        UCMap<BioRisk> risks = validateBioRisks();
         final String workNumber = request.getWorkNumber();
         Work work = workNumber==null ? null : workService.validateUsableWork(this.problems, workNumber);
         if (!problems.isEmpty()) {
             return null;
         }
-        return new ValidatedSections(lwTypes, donors, samples, regions, work);
+        return new ValidatedSections(lwTypes, donors, samples, regions, risks, work);
     }
 
     public void checkEmpty() {
@@ -421,6 +424,12 @@ public class SectionRegisterValidation {
             }
         }
         return sampleMap;
+    }
+
+    public UCMap<BioRisk> validateBioRisks() {
+        return bioRiskService.loadAndValidateBioRisks(problems,
+                request.getLabware().stream().flatMap(rl -> rl.getContents().stream()),
+                SectionRegisterContent::getBioRiskCode, SectionRegisterContent::setBioRiskCode);
     }
 
     public UCMap<SlotRegion> validateRegions() {

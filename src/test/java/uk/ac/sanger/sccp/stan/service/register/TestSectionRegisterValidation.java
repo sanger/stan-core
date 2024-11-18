@@ -1,7 +1,6 @@
 package uk.ac.sanger.sccp.stan.service.register;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
 import org.mockito.*;
@@ -50,6 +49,7 @@ public class TestSectionRegisterValidation {
     @Mock private Validator<String> mockVisiumLpBarcodeValidation;
     @Mock private Validator<String> mockXeniumBarcodeValidator;
     @Mock private SlotRegionService mockSlotRegionService;
+    @Mock private BioRiskService mockBioRiskService;
     @Mock private WorkService mockWorkService;
     
     private AutoCloseable mocking;
@@ -87,7 +87,7 @@ public class TestSectionRegisterValidation {
         }
         return spy(new SectionRegisterValidation(request, mockDonorRepo, mockSpeciesRepo, mockLwTypeRepo, mockLwRepo,
                 mockHmdmcRepo, mockTissueTypeRepo, mockFixativeRepo, mockMediumRepo, mockTissueRepo, mockBioStateRepo,
-                mockSlotRegionService, mockWorkService,
+                mockSlotRegionService, mockBioRiskService, mockWorkService,
                 mockExternalBarcodeValidation, mockDonorNameValidation, mockExternalNameValidation,
                 mockReplicateValidator, mockVisiumLpBarcodeValidation, mockXeniumBarcodeValidator));
     }
@@ -128,6 +128,7 @@ public class TestSectionRegisterValidation {
         UCMap<Tissue> tissues = UCMap.from(Tissue::getExternalName, EntityFactory.getTissue());
         UCMap<Sample> samples = UCMap.from(sam -> sam.getTissue().getExternalName(), EntityFactory.getSample());
         UCMap<SlotRegion> regions = UCMap.from(SlotRegion::getName, EntityFactory.getSlotRegion());
+        UCMap<BioRisk> risks = UCMap.from(BioRisk::getCode, new BioRisk(1, "risk1"));
         Work work = new Work();
         work.setId(16);
         when(mockWorkService.validateUsableWork(anyCollection(), anyString())).thenReturn(work);
@@ -147,6 +148,7 @@ public class TestSectionRegisterValidation {
         doReturn(tissues).when(validation).validateTissues(any());
         doReturn(samples).when(validation).validateSamples(any());
         doReturn(regions).when(validation).validateRegions();
+        doReturn(risks).when(validation).validateBioRisks();
 
         ValidatedSections vs = validation.validate();
 
@@ -154,12 +156,13 @@ public class TestSectionRegisterValidation {
 
         if (valid) {
             assertNotNull(vs);
-            assertSame(donors, vs.getDonorMap());
-            assertSame(lwTypes, vs.getLabwareTypes());
-            assertSame(samples, vs.getSampleMap());
-            assertSame(regions, vs.getSlotRegionMap());
+            assertSame(donors, vs.donorMap());
+            assertSame(lwTypes, vs.labwareTypes());
+            assertSame(samples, vs.sampleMap());
+            assertSame(regions, vs.slotRegionMap());
+            assertSame(risks, vs.bioRiskMap());
             assertThat(validation.getProblems()).isEmpty();
-            assertSame(work, vs.getWork());
+            assertSame(work, vs.work());
             validation.throwError();
         } else {
             assertNull(vs);
@@ -633,6 +636,40 @@ public class TestSectionRegisterValidation {
         );
     }
 
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testValidateBioRisks() {
+        UCMap<BioRisk> risks = UCMap.from(BioRisk::getCode, new BioRisk(1, "risk1"));
+        when(mockBioRiskService.loadAndValidateBioRisks(any(), any(), any(), any())).thenReturn(risks);
+        SectionRegisterRequest request = new SectionRegisterRequest(List.of(
+                srlWithBioRisks("risk1", null, "risk2"),
+                srlWithBioRisks("risk2")
+        ), "work1");
+        SectionRegisterValidation val = makeValidation(request);
+        assertSame(risks, val.validateBioRisks());
+        ArgumentCaptor<Stream<SectionRegisterContent>> streamCaptor = ArgumentCaptor.forClass(Stream.class);
+        ArgumentCaptor<Function<SectionRegisterContent, String>> getterCaptor = ArgumentCaptor.forClass(Function.class);
+        ArgumentCaptor<BiConsumer<SectionRegisterContent, String>> setterCaptor = ArgumentCaptor.forClass(BiConsumer.class);
+        verify(mockBioRiskService).loadAndValidateBioRisks(same(val.getProblems()), streamCaptor.capture(),
+                getterCaptor.capture(), setterCaptor.capture());
+        assertThat(streamCaptor.getValue().map(getterCaptor.getValue())).containsExactly("risk1", null, "risk2", "risk2");
+        BiConsumer<SectionRegisterContent, String> setter = setterCaptor.getValue();
+        SectionRegisterContent src = new SectionRegisterContent();
+        setter.accept(src, "v1");
+        assertEquals("v1", src.getBioRiskCode());
+    }
+
+    private static SectionRegisterLabware srlWithBioRisks(String... codes) {
+        List<SectionRegisterContent> contents = Arrays.stream(codes)
+                .map(code -> {
+                    SectionRegisterContent src = new SectionRegisterContent();
+                    src.setBioRiskCode(code);
+                    return src;
+                })
+                .toList();
+        return new SectionRegisterLabware(null, null, contents);
+    }
+
     @ParameterizedTest
     @CsvSource({"false,false,false",
             "false,true,false",
@@ -857,13 +894,13 @@ public class TestSectionRegisterValidation {
         return new SectionRegisterRequest(srls, "SGP1");
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked"})
     private <V> UCMap<V> objToUCMap(Object obj, Function<V, String> keyFunction) {
         return switch (obj) {
             case null -> new UCMap<>();
-            case UCMap ucMap -> ucMap;
-            case Map map -> new UCMap<>(map);
-            case Collection collection -> ((Collection<V>) collection).stream().collect(UCMap.toUCMap(keyFunction));
+            case UCMap<?> ucMap -> (UCMap<V>) ucMap;
+            case Map<?,?> map -> new UCMap<>((Map<String, V>) map);
+            case Collection<?> collection -> ((Collection<V>) collection).stream().collect(UCMap.toUCMap(keyFunction));
             default -> UCMap.from(keyFunction, (V) obj);
         };
     }

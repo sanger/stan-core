@@ -13,7 +13,6 @@ import java.time.LocalDate;
 import java.util.*;
 import java.util.function.Function;
 
-import static org.apache.commons.lang3.StringUtils.isBlank;
 import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 /**
@@ -362,31 +361,8 @@ public class RegisterValidationImp implements RegisterValidation {
     }
 
     public void validateBioRisks() {
-        Set<String> bioRiskCodes = new LinkedHashSet<>(blocks().size());
-        boolean missing = false;
-        for (BlockRegisterRequest block : blocks()) {
-            String bioRiskCode = block.getBioRiskCode();
-            if (isBlank(bioRiskCode)) {
-                block.setBioRiskCode(null);
-                missing = true;
-            } else {
-                bioRiskCode = bioRiskCode.trim();
-                block.setBioRiskCode(bioRiskCode);
-                bioRiskCodes.add(bioRiskCode);
-            }
-        }
-        if (missing) {
-            addProblem("Missing biological risk number.");
-        }
-        this.bioRiskMap = bioRiskService.loadBioRiskMap(bioRiskCodes);
-        if (!bioRiskCodes.isEmpty()) {
-            List<String> unknown = bioRiskCodes.stream()
-                    .filter(code -> bioRiskMap.get(code)==null)
-                    .toList();
-            if (!unknown.isEmpty()) {
-                addProblem("Unknown biological risk number: "+reprCollection(unknown));
-            }
-        }
+        this.bioRiskMap = bioRiskService.loadAndValidateBioRisks(problems, blocks().stream(),
+                BlockRegisterRequest::getBioRiskCode, BlockRegisterRequest::setBioRiskCode);
     }
 
     public void validateWorks() {

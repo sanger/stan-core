@@ -40,6 +40,7 @@ public class TestSectionRegisterService {
     @Mock private OperationService mockOpService;
     @Mock private LabwareService mockLwService;
     @Mock private WorkService mockWorkService;
+    @Mock private BioRiskService mockBioRiskService;
 
     private User user;
 
@@ -54,7 +55,8 @@ public class TestSectionRegisterService {
         user = EntityFactory.getUser();
 
         regService = spy(new SectionRegisterServiceImp(mockValidationFactory, mockDonorRepo, mockTissueRepo, mockSampleRepo,
-                mockMeasurementRepo, mockOpTypeRepo, mockSlotRepo, mockSamplePositionRepo, mockOpService, mockLwService, mockWorkService));
+                mockMeasurementRepo, mockOpTypeRepo, mockSlotRepo, mockSamplePositionRepo,
+                mockOpService, mockLwService, mockWorkService, mockBioRiskService));
     }
 
     @AfterEach
@@ -79,7 +81,7 @@ public class TestSectionRegisterService {
             verify(regService, never()).execute(any(), any(), any());
             return;
         }
-        ValidatedSections valSec = new ValidatedSections(new UCMap<>(), new UCMap<>(), new UCMap<>(), new UCMap<>(), new Work());
+        ValidatedSections valSec = new ValidatedSections(new UCMap<>(), new UCMap<>(), new UCMap<>(), new UCMap<>(), new UCMap<>(), new Work());
         when(mockValidation.validate()).thenReturn(valSec);
 
         RegisterResult result = new RegisterResult(List.of());
@@ -100,23 +102,24 @@ public class TestSectionRegisterService {
         Work work = new Work();
         work.setId(15);
         UCMap<SlotRegion> regionMap = UCMap.from(SlotRegion::getName, EntityFactory.getSlotRegion());
-        ValidatedSections valSec = new ValidatedSections(new UCMap<>(), new UCMap<>(), new UCMap<>(), regionMap, work);
+        UCMap<BioRisk> riskMap = UCMap.from(BioRisk::getCode, new BioRisk(100, "risk1"));
+        ValidatedSections valSec = new ValidatedSections(new UCMap<>(), new UCMap<>(), new UCMap<>(), regionMap, riskMap, work);
         UCMap<Donor> donorMap = UCMap.from(Donor::getDonorName, EntityFactory.getDonor());
         UCMap<Tissue> tissueMap = UCMap.from(Tissue::getExternalName, EntityFactory.getTissue());
         UCMap<Sample> sampleMap = UCMap.from(sam -> sam.getTissue().getExternalName(), EntityFactory.getSample());
         UCMap<Labware> lwMap = UCMap.from(Labware::getExternalBarcode, EntityFactory.getTube());
         RegisterResult regResult = new RegisterResult(List.of());
 
-        doReturn(donorMap).when(regService).createDonors(valSec.getDonorMap().values());
-        doReturn(tissueMap).when(regService).createTissues(valSec.getSampleMap().values(), donorMap);
-        doReturn(sampleMap).when(regService).createSamples(valSec.getSampleMap().values(), tissueMap);
-        doReturn(lwMap).when(regService).createAllLabware(request, valSec.getLabwareTypes(), sampleMap);
-        doReturn(List.of()).when(regService).recordOperations(user, request, lwMap, sampleMap, regionMap, work);
+        doReturn(donorMap).when(regService).createDonors(valSec.donorMap().values());
+        doReturn(tissueMap).when(regService).createTissues(valSec.sampleMap().values(), donorMap);
+        doReturn(sampleMap).when(regService).createSamples(valSec.sampleMap().values(), tissueMap);
+        doReturn(lwMap).when(regService).createAllLabware(request, valSec.labwareTypes(), sampleMap);
+        doReturn(List.of()).when(regService).recordOperations(user, request, lwMap, sampleMap, regionMap, riskMap, work);
         doReturn(regResult).when(regService).assembleResult(request, lwMap, tissueMap);
 
         assertSame(regResult, regService.execute(user, request, valSec));
 
-        verify(regService).recordOperations(user, request, lwMap, sampleMap, regionMap, work);
+        verify(regService).recordOperations(user, request, lwMap, sampleMap, regionMap, riskMap, work);
     }
 
     @Test
@@ -342,6 +345,7 @@ public class TestSectionRegisterService {
         UCMap<SlotRegion> regionMap = UCMap.from(SlotRegion::getName, EntityFactory.getSlotRegion());
         SectionRegisterRequest request = new SectionRegisterRequest(Arrays.asList(srls), "SGP1");
         UCMap<Labware> lwMap = UCMap.from(Labware::getExternalBarcode, labware);
+        UCMap<BioRisk> riskMap = UCMap.from(BioRisk::getCode, new BioRisk(1, "risk1"));
         for (int i = 0; i < labware.length; ++i) {
             doReturn(ops[i]).when(regService).createOp(user, opType, labware[i]);
         }
@@ -350,13 +354,14 @@ public class TestSectionRegisterService {
         Work work = new Work();
         work.setId(15);
 
-        List<Operation> operations = regService.recordOperations(user, request, lwMap, sampleMap, regionMap, work);
+        List<Operation> operations = regService.recordOperations(user, request, lwMap, sampleMap, regionMap, riskMap, work);
 
         for (int i = 0; i < labware.length; i++) {
             Labware lw = labware[i];
             verify(regService).createOp(user, opType, lw);
             verify(regService).createMeasurements(srls[i], lw, ops[i], sampleMap);
             verify(regService).createSamplePositions(srls[i], lw, ops[i].getId(), sampleMap, regionMap);
+            verify(regService).linkBioRisks(srls[i], ops[i].getId(), sampleMap, riskMap);
         }
         verify(mockWorkService).link(work, operations);
         assertThat(operations).containsExactly(ops);
