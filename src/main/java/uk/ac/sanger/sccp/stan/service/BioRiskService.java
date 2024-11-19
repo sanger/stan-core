@@ -6,12 +6,16 @@ import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.Transactor;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.BioRiskRepo;
+import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toMap;
+import static uk.ac.sanger.sccp.utils.BasicUtils.emptyToNull;
 
 /**
  * Service for dealing with {@link BioRisk}
@@ -101,5 +105,49 @@ public class BioRiskService extends BaseAdminService<BioRisk, BioRiskRepo> {
      */
     public void copyOpSampleBioRisks(Collection<Operation> ops) {
         copyActionSampleBioRisks(ops.stream().flatMap(op -> op.getActions().stream()));
+    }
+
+    /**
+     * Loads the indicated bio risks and validates that codes are provided and valid
+     * @param problems receptacle for problems
+     * @param dataStream stream of objects containing bio risk codes
+     * @param codeGetter function to get a code from the given objects
+     * @param codeSetter function to set a code on the given objects
+     * @return map of codes to bio risks
+     */
+    public <E> UCMap<BioRisk> loadAndValidateBioRisks(Collection<String> problems, Stream<E> dataStream,
+                                                      Function<E, String> codeGetter, BiConsumer<E, String> codeSetter) {
+        boolean anyMissing = false;
+        Iterable<E> datas = dataStream::iterator;
+        Set<String> codeSet = new LinkedHashSet<>();
+        for (E data : datas) {
+            String code = codeGetter.apply(data);
+            if (code!=null) {
+                code = emptyToNull(code.trim());
+                if (codeSetter!=null) {
+                    codeSetter.accept(data, code);
+                }
+            }
+            if (code==null) {
+                anyMissing = true;
+            } else {
+                codeSet.add(code);
+            }
+        }
+        if (anyMissing) {
+            problems.add("Biological risk number missing.");
+        }
+        if (codeSet.isEmpty()) {
+            return new UCMap<>(0);
+        }
+        UCMap<BioRisk> bioRisks = loadBioRiskMap(codeSet);
+        List<String> missing = codeSet.stream()
+                .filter(code -> bioRisks.get(code)==null)
+                .map(BasicUtils::repr)
+                .toList();
+        if (!missing.isEmpty()) {
+            problems.add("Unknown biological risk number: "+missing);
+        }
+        return bioRisks;
     }
 }

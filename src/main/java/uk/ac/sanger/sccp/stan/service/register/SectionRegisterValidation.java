@@ -5,7 +5,6 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.register.*;
 import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
-import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
@@ -427,6 +426,12 @@ public class SectionRegisterValidation {
         return sampleMap;
     }
 
+    public UCMap<BioRisk> validateBioRisks() {
+        return bioRiskService.loadAndValidateBioRisks(problems,
+                request.getLabware().stream().flatMap(rl -> rl.getContents().stream()),
+                SectionRegisterContent::getBioRiskCode, SectionRegisterContent::setBioRiskCode);
+    }
+
     public UCMap<SlotRegion> validateRegions() {
         if (request.getLabware().stream()
                 .anyMatch(this::anyMissingRegions)) {
@@ -445,40 +450,6 @@ public class SectionRegisterValidation {
         }
 
         return slotRegions;
-    }
-
-    public UCMap<BioRisk> validateBioRisks() {
-        boolean anyMissing = false;
-        Set<String> codes = new HashSet<>();
-        for (SectionRegisterLabware rl : request.getLabware()) {
-            for (SectionRegisterContent content : rl.getContents()) {
-                String code = content.getBioRiskCode();
-                if (code != null) {
-                    code = emptyToNull(code.trim());
-                    content.setBioRiskCode(code);
-                }
-                if (code == null) {
-                    anyMissing = true;
-                } else {
-                    codes.add(code);
-                }
-            }
-        }
-        if (anyMissing) {
-            addProblem("Missing bio risk.");
-        }
-        if (codes.isEmpty()) {
-            return new UCMap<>(0);
-        }
-        UCMap<BioRisk> riskMap = bioRiskService.loadBioRiskMap(codes);
-        List<String> unknown = codes.stream()
-                .filter(code -> riskMap.get(code) == null)
-                .map(BasicUtils::repr)
-                .toList();
-        if (!unknown.isEmpty()) {
-            addProblem("Unknown bio risks: " + unknown);
-        }
-        return riskMap;
     }
 
     public boolean anyMissingRegions(SectionRegisterLabware srl) {
