@@ -4,6 +4,8 @@ import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import java.util.*;
 
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullToEmpty;
+
 /**
  * A collection of information that may be printed onto a labware label.
  * @author dr6
@@ -13,16 +15,22 @@ public class LabwareLabelData {
     private final String externalBarcode;
     private final String medium;
     private final String date;
-
     private final List<LabelContent> contents;
+    private final Map<String, String> extraFields;
 
     public LabwareLabelData(String barcode, String externalBarcode, String medium, String date,
-                            List<LabelContent> contents) {
+                            List<LabelContent> contents, Map<String, String> extraFields) {
         this.barcode = barcode;
         this.externalBarcode = externalBarcode;
         this.medium = medium;
         this.date = date;
-        this.contents = List.copyOf(contents);
+        this.contents = nullToEmpty(contents);
+        this.extraFields = nullToEmpty(extraFields);
+    }
+
+    public LabwareLabelData(String barcode, String externalBarcode, String medium, String date,
+                            List<LabelContent> contents) {
+        this(barcode, externalBarcode, medium, date, contents, null);
     }
 
     public String getBarcode() {
@@ -45,6 +53,10 @@ public class LabwareLabelData {
         return this.contents;
     }
 
+    public Map<String, String> getExtraFields() {
+        return this.extraFields;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -54,7 +66,9 @@ public class LabwareLabelData {
                 && Objects.equals(this.externalBarcode, that.externalBarcode)
                 && Objects.equals(this.medium, that.medium)
                 && Objects.equals(this.date, that.date)
-                && Objects.equals(this.contents, that.contents));
+                && Objects.equals(this.contents, that.contents)
+                && Objects.equals(this.extraFields, that.extraFields)
+        );
     }
 
     @Override
@@ -70,6 +84,7 @@ public class LabwareLabelData {
                 .add("medium", medium)
                 .add("date", date)
                 .add("contents", contents)
+                .add("extraFields", extraFields)
                 .omitNullValues()
                 .reprStringValues()
                 .toString();
@@ -81,6 +96,7 @@ public class LabwareLabelData {
         fields.put("medium", getMedium());
         fields.put("date", getDate());
         fields.put("external", getExternalBarcode());
+        fields.putAll(getExtraFields());
         int index = 0;
         for (LabelContent content : contents) {
             addField(fields, "donor", index, content.donorName());

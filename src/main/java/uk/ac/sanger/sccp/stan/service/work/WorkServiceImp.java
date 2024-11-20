@@ -507,6 +507,17 @@ public class WorkServiceImp implements WorkService {
                 .collect(toList());
     }
 
+    @Override
+    public Map<SlotIdSampleId, Set<Work>> loadWorksForSlotsIn(Collection<Labware> labware) {
+        return loadWorksForSlots(labware.stream()
+                .flatMap(lw -> lw.getSlots().stream()));
+    }
+
+    public Map<SlotIdSampleId, Set<Work>> loadWorksForSlots(Stream<Slot> slots) {
+        List<Integer> slotIds = slots.map(Slot::getId).toList();
+        return workRepo.slotSampleWorksForSlotIds(slotIds);
+    }
+
     public void fillInComments(Collection<WorkWithComment> wcs, Map<Integer, WorkEvent> workEvents) {
         for (WorkWithComment wc : wcs) {
             Work work = wc.getWork();

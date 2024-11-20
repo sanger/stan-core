@@ -1,20 +1,24 @@
 package uk.ac.sanger.sccp.stan.service.label.print;
 
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.service.LabwareNoteService;
 import uk.ac.sanger.sccp.stan.service.LabwareService;
 import uk.ac.sanger.sccp.stan.service.label.*;
+import uk.ac.sanger.sccp.stan.service.work.WorkService;
+import uk.ac.sanger.sccp.utils.UCMap;
 
 import javax.persistence.EntityNotFoundException;
 import java.io.IOException;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 
-import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toSet;
+import static java.util.stream.Collectors.*;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
+import static uk.ac.sanger.sccp.utils.UCMap.toUCMap;
 
 /**
  * Service to perform and record labware label printing
@@ -29,11 +33,13 @@ public class LabelPrintService {
     private final LabwarePrintRepo labwarePrintRepo;
     private final LabelTypeRepo labelTypeRepo;
     private final LabwareService labwareService;
+    private final LabwareNoteService noteService;
+    private final WorkService workService;
 
     @Autowired
     public LabelPrintService(LabwareLabelDataService labwareLabelDataService, PrintClientFactory printClientFactory,
                              LabwareRepo labwareRepo, PrinterRepo printerRepo, LabwarePrintRepo labwarePrintRepo,
-                             LabelTypeRepo labelTypeRepo, LabwareService labwareService) {
+                             LabelTypeRepo labelTypeRepo, LabwareService labwareService, LabwareNoteService noteService, WorkService workService) {
         this.labwareLabelDataService = labwareLabelDataService;
         this.printClientFactory = printClientFactory;
         this.labwareRepo = labwareRepo;
@@ -41,6 +47,8 @@ public class LabelPrintService {
         this.labwarePrintRepo = labwarePrintRepo;
         this.labelTypeRepo = labelTypeRepo;
         this.labwareService = labwareService;
+        this.noteService = noteService;
+        this.workService = workService;
     }
 
     public void printLabwareBarcodes(User user, String printerName, List<String> barcodes) throws IOException {
@@ -66,18 +74,44 @@ public class LabelPrintService {
             throw new IllegalArgumentException("Cannot perform a print request incorporating multiple different label types.");
         }
         LabelType labelType = labelTypes.iterator().next();
-        final Function<Labware, LabwareLabelData> labelFunction;
-        if (labelType.getName().equalsIgnoreCase("adh")) {
-            labelFunction = labwareLabelDataService::getRowBasedLabelData;
+        List<LabwareLabelData> labelData;
+        if (labelType.getName().equalsIgnoreCase("strip")) {
+            // NB if we try and label empty strip tubes from planned actions, it won't work
+            labelData = stripLabwareLabelData(labware);
         } else {
-            labelFunction = labwareLabelDataService::getLabelData;
+            final Function<Labware, LabwareLabelData> labelFunction;
+            if (labelType.getName().equalsIgnoreCase("adh")) {
+                labelFunction = labwareLabelDataService::getRowBasedLabelData;
+            } else {
+                labelFunction = labwareLabelDataService::getLabelData;
+            }
+            labelData = labware.stream()
+                    .map(labelFunction)
+                    .toList();
         }
-        List<LabwareLabelData> labelData = labware.stream()
-                .map(labelFunction)
-                .collect(toList());
         LabelPrintRequest request = new LabelPrintRequest(labelType, labelData);
         print(printer, request);
         recordPrint(printer, user, labware);
+    }
+
+    /**
+     * Loads the strip label data for the given labware.
+     * Strip tube labware has multiple labels for each item of labware.
+     * @param labware the labware being labelled
+     * @return the label data for all the labware
+     */
+    @NotNull
+    List<LabwareLabelData> stripLabwareLabelData(List<Labware> labware) {
+        UCMap<String> lpNumbers = noteService.findNoteValuesForLabware(labware, "lp number").entrySet().stream()
+                .filter(e -> !nullOrEmpty(e.getValue()))
+                .collect(toUCMap(Map.Entry::getKey, e -> e.getValue().iterator().next()));
+        Map<SlotIdSampleId, Set<Work>> slotWorks = workService.loadWorksForSlotsIn(labware);
+        Map<SlotIdSampleId, String> slotWorkNumbers = slotWorks.entrySet().stream()
+                .filter(e -> !nullOrEmpty(e.getValue()))
+                .collect(toMap(Map.Entry::getKey, e -> e.getValue().iterator().next().getWorkNumber()));
+        return labware.stream()
+                .flatMap(lw -> labwareLabelDataService.getSplitLabelData(lw, slotWorkNumbers, lpNumbers.get(lw.getBarcode())).stream())
+                .toList();
     }
 
     public void print(Printer printer, LabelPrintRequest request) throws IOException {

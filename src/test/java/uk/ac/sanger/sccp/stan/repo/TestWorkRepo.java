@@ -323,6 +323,15 @@ public class TestWorkRepo {
         assertThat(workIds).containsExactlyInAnyOrder(work1.getId(), work2.getId());
         workIds = workRepo.findWorkIdsForLabwareId(labware[1].getId());
         assertThat(workIds).containsExactly(work2.getId());
+
+        List<Integer> slotIds = labware[0].getSlots().stream()
+                .map(Slot::getId)
+                .toList();
+
+        Map<SlotIdSampleId, Set<Work>> slotWorks = workRepo.slotSampleWorksForSlotIds(slotIds);
+        assertThat(slotWorks).hasSize(1);
+        assertThat(slotWorks.get(new SlotIdSampleId(labware[0].getFirstSlot(), samples[0])))
+                .containsExactlyInAnyOrder(work1, work2);
     }
 
     @Transactional

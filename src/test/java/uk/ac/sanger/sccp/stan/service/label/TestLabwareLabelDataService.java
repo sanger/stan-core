@@ -502,6 +502,33 @@ public class TestLabwareLabelDataService {
     }
 
     @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testGetSplitLabelData(boolean hasLp) {
+        String lp = (hasLp ? "LP1" : null);
+        LabwareType lt = EntityFactory.makeLabwareType(3,1);
+        Sample[] samples = EntityFactory.makeSamples(2);
+        Tissue tissue = samples[0].getTissue();
+        Donor donor = tissue.getDonor();
+        Labware lw = EntityFactory.makeLabware(lt, samples);
+        String state = samples[0].getBioState().getName();
+        Map<SlotIdSampleId, String> slotWork = Map.of(
+                new SlotIdSampleId(lw.getFirstSlot(), samples[0]), "SGP1",
+                new SlotIdSampleId(lw.getFirstSlot(), samples[1]), "SGP2"
+        );
+        List<LabwareLabelData> expectedLds = List.of(
+                new LabwareLabelData(lw.getBarcode(), lw.getExternalBarcode(), null, null,
+                        List.of(new LabelContent(donor.getDonorName(), tissue.getExternalName(), null, state)),
+                        hasLp ? Map.of("lp", "LP1", "address", "B1")
+                                : Map.of("address", "B1")),
+                new LabwareLabelData(lw.getBarcode(), lw.getExternalBarcode(), null, null,
+                        List.of(new LabelContent(donor.getDonorName(), tissue.getExternalName(), null, state)),
+                        hasLp ? Map.of("lp", "LP1", "address", "A1", "work", "SGP1")
+                                : Map.of("address", "A1", "work", "SGP1"))
+        );
+        assertThat(service.getSplitLabelData(lw, slotWork, lp)).containsExactlyElementsOf(expectedLds);
+    }
+
+    @ParameterizedTest
     @EnumSource(LifeStage.class)
     public void testGetTissueDesc(LifeStage lifeStage) {
         Donor donor = new Donor(null, "DONOR", lifeStage, species);

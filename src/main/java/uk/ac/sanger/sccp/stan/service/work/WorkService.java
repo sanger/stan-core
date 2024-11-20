@@ -6,8 +6,7 @@ import uk.ac.sanger.sccp.stan.request.SuggestedWorkResponse;
 import uk.ac.sanger.sccp.stan.request.WorkWithComment;
 import uk.ac.sanger.sccp.utils.UCMap;
 
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Stream;
 
 /**
@@ -221,6 +220,13 @@ public interface WorkService {
      * @return the works created by the user
      */
     List<Work> getWorksCreatedBy(User user);
+
+    /**
+     * Loads works linked to the slots in the given labware
+     * @param labware labware
+     * @return map of slot/sample ids to works
+     */
+    Map<SlotIdSampleId, Set<Work>> loadWorksForSlotsIn(Collection<Labware> labware);
 
     /**
      * struct-like container for a work and an operation
