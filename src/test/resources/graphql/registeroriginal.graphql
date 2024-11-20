@@ -6,6 +6,7 @@ mutation {
                 donorIdentifier:"DONOR1"
                 species: "Human"
                 lifeStage:adult
+                bioRiskCode: "risk1"
                 hmdmc:"20/0002"
                 spatialLocation:0
                 tissueType:"Bone"

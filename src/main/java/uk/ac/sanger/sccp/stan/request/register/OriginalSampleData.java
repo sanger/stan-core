@@ -24,13 +24,14 @@ public class OriginalSampleData {
     private String species;
     private LocalDate sampleCollectionDate;
     private String workNumber;
+    private String bioRiskCode;
 
     public OriginalSampleData() {}
 
     public OriginalSampleData(String donorIdentifier, LifeStage lifeStage, String hmdmc, String tissueType,
                               Integer spatialLocation, String replicateNumber, String externalIdentifier,
                               String labwareType, String solution, String fixative, String species,
-                              LocalDate sampleCollectionDate, String workNumber) {
+                              LocalDate sampleCollectionDate, String workNumber, String bioRiskCode) {
         this.donorIdentifier = donorIdentifier;
         this.lifeStage = lifeStage;
         this.hmdmc = hmdmc;
@@ -44,6 +45,7 @@ public class OriginalSampleData {
         this.species = species;
         this.sampleCollectionDate = sampleCollectionDate;
         this.workNumber = workNumber;
+        this.bioRiskCode = bioRiskCode;
     }
 
     /**
@@ -186,6 +188,14 @@ public class OriginalSampleData {
         this.workNumber = workNumber;
     }
 
+    public String getBioRiskCode() {
+        return this.bioRiskCode;
+    }
+
+    public void setBioRiskCode(String bioRiskCode) {
+        this.bioRiskCode = bioRiskCode;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -204,6 +214,7 @@ public class OriginalSampleData {
                 && Objects.equals(this.species, that.species)
                 && Objects.equals(this.sampleCollectionDate, that.sampleCollectionDate)
                 && Objects.equals(this.workNumber, that.workNumber)
+                && Objects.equals(this.bioRiskCode, that.bioRiskCode)
         );
     }
 
@@ -229,6 +240,7 @@ public class OriginalSampleData {
                 .add("species", species)
                 .add("sampleCollectionDate", sampleCollectionDate)
                 .add("workNumber", workNumber)
+                .add("bioRiskCode", bioRiskCode)
                 .reprStringValues()
                 .toString();
     }

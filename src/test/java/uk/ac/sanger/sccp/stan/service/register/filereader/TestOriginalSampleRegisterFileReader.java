@@ -36,7 +36,7 @@ public class TestOriginalSampleRegisterFileReader extends BaseTestFileReader {
     void testHeadings() {
         OriginalSampleRegisterFileReaderImp reader = spy(new OriginalSampleRegisterFileReaderImp());
         String[] headings = {"mandatory whatever", "SGP number", "donor identifier", "life stage",
-                "if such and such date of collection", "species", "humfre", "tissue type", "external identifier",
+                "if such and such date of collection", "species", "bio risk", "humfre", "tissue type", "external identifier",
                 "spatial location", "replicate", "labware type",
                 "fixative", "solution of things", "information about whatever"};
         Row row = mockRow(headings);
@@ -58,7 +58,7 @@ public class TestOriginalSampleRegisterFileReader extends BaseTestFileReader {
         final LocalDate date = LocalDate.of(2023, 1, 2);
         Object[] values = {
                 "junk", "SGP15", "DONOR1", "fetal", date,
-                "human", "12345", "tt1", "EXT1", 12, "11A", "bowl", "fix1", "sol1", "junkyjunk"
+                "human", "risk1", "12345", "tt1", "EXT1", 12, "11A", "bowl", "fix1", "sol1", "junkyjunk"
         };
         Column[] columns = Column.values();
         for (int i = 0; i < values.length; ++i) {
@@ -74,6 +74,7 @@ public class TestOriginalSampleRegisterFileReader extends BaseTestFileReader {
         assertEquals(LifeStage.fetal, data.getLifeStage());
         assertEquals(date, data.getSampleCollectionDate());
         assertEquals("human", data.getSpecies());
+        assertEquals("risk1", data.getBioRiskCode());
         assertEquals("12345", data.getHmdmc());
         assertEquals("tt1", data.getTissueType());
         assertEquals("EXT1", data.getExternalIdentifier());

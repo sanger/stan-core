@@ -49,6 +49,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
     private final LabwareService labwareService;
     private final OperationService opService;
     private final WorkService workService;
+    private final BioRiskService bioRiskService;
 
     @Autowired
     public OriginalSampleRegisterServiceImp(DonorRepo donorRepo, TissueRepo tissueRepo,
@@ -62,7 +63,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
                                             @Qualifier("hmdmcValidator") Validator<String> hmdmcValidator,
                                             @Qualifier("replicateValidator") Validator<String> replicateValidator,
                                             LabwareService labwareService, OperationService opService,
-                                            WorkService workService) {
+                                            WorkService workService, BioRiskService bioRiskService) {
         this.donorRepo = donorRepo;
         this.tissueRepo = tissueRepo;
         this.tissueTypeRepo = tissueTypeRepo;
@@ -84,6 +85,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
         this.labwareService = labwareService;
         this.opService = opService;
         this.workService = workService;
+        this.bioRiskService = bioRiskService;
     }
 
     @Override
@@ -123,6 +125,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
         checkExternalNamesUnique(problems, request);
         checkDonorFieldsAreConsistent(problems, datas);
         checkTissueTypesAndSpatialLocations(problems, datas);
+        checkBioRisks(problems, datas);
 
         if (!problems.isEmpty()) {
             throw new ValidationException("The request validation failed.", problems);
@@ -134,6 +137,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
         recordRegistrations(user, datas);
         recordSolutions(datas);
         linkWork(datas);
+        linkBioRisks(datas);
         return makeResult(datas);
     }
 
@@ -398,6 +402,21 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
     }
 
     /**
+     * Checks bio risk codes are specified and correspond to known bio risks
+     * @param problems receptacle for problems
+     * @param datas data in progress
+     */
+    void checkBioRisks(Collection<String> problems, List<DataStruct> datas) {
+        UCMap<BioRisk> riskMap = bioRiskService.loadAndValidateBioRisks(problems, datas.stream().map(DataStruct::getOriginalSampleData),
+                OriginalSampleData::getBioRiskCode, OriginalSampleData::setBioRiskCode);
+        if (!riskMap.isEmpty()) {
+            for (DataStruct data : datas) {
+                data.setBioRisk(riskMap.get(data.originalSampleData.getBioRiskCode()));
+            }
+        }
+    }
+
+    /**
      * Loads any existing donors matching given donor names.
      * The donors are placed in the appropriate field in the DataStructs.
      * @param datas the data under construction
@@ -494,6 +513,16 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
     }
 
     /**
+     * Link samples and operations to the indicated bio risk
+     * @param datas created data
+     */
+    void linkBioRisks(List<DataStruct> datas) {
+        for (DataStruct data : datas) {
+            bioRiskService.recordSampleBioRisks(Map.of(data.sample.getId(), data.bioRisk), data.operation.getId());
+        }
+    }
+
+    /**
      * Creates labware for each data element
      * @param datas the data under construction
      */
@@ -548,6 +577,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
         Fixative fixative;
         Species species;
         Work work;
+        BioRisk bioRisk;
 
         Donor donor;
         Sample sample;
@@ -584,6 +614,10 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
 
         public void setWork(Work work) {
             this.work = work;
+        }
+
+        void setBioRisk(BioRisk risk) {
+            this.bioRisk = risk;
         }
     }
 }

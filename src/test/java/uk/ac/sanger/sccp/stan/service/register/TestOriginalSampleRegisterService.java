@@ -74,6 +74,8 @@ public class TestOriginalSampleRegisterService {
     private OperationService mockOpService;
     @Mock
     private WorkService mockWorkService;
+    @Mock
+    private BioRiskService mockBioRiskService;
 
     OriginalSampleRegisterServiceImp service;
 
@@ -87,7 +89,8 @@ public class TestOriginalSampleRegisterService {
                 mockSampleRepo, mockBsRepo, mockSlotRepo, mockHmdmcRepo, mockSpeciesRepo, mockFixativeRepo,
                 mockMediumRepo, mockSolutionRepo, mockLtRepo, mockOpTypeRepo, mockOpSolRepo, mockDonorNameValidator,
                 mockExternalNameValidator,
-                mockHmdmcValidator, mockReplicateValidator, mockLabwareService, mockOpService, mockWorkService));
+                mockHmdmcValidator, mockReplicateValidator, mockLabwareService, mockOpService, mockWorkService,
+                mockBioRiskService));
     }
 
     @AfterEach
@@ -111,7 +114,7 @@ public class TestOriginalSampleRegisterService {
     @Test
     public void testRegister_validationErrors() {
         OriginalSampleData data = new OriginalSampleData("DONOR1", LifeStage.adult, "HMDMC1", "TISSUE1", 5,
-                "R1", "EXT1", "LT1", "SOL1", "FIX1", "SPEC1", LocalDate.of(2022,1,1), "TODO");
+                "R1", "EXT1", "LT1", "SOL1", "FIX1", "SPEC1", LocalDate.of(2022,1,1), "TODO", "RISK1");
         OriginalSampleRegisterRequest request = new OriginalSampleRegisterRequest(List.of(data));
 
         doAnswer(invocation -> {
@@ -134,6 +137,7 @@ public class TestOriginalSampleRegisterService {
 
         doNothing().when(service).checkExternalNamesUnique(any(), any());
         doNothing().when(service).checkDonorFieldsAreConsistent(any(), any());
+        doNothing().when(service).checkBioRisks(any(), any());
 
         User user = EntityFactory.getUser();
 
@@ -165,11 +169,12 @@ public class TestOriginalSampleRegisterService {
     public void testRegister_valid() {
         User user = EntityFactory.getUser();
         OriginalSampleData data = new OriginalSampleData("DONOR1", LifeStage.adult, "HMDMC1", "TISSUE1", 5,
-                "R1", "EXT1", "LT1", "SOL1", "FIX1", "SPEC1", LocalDate.of(2022,1,1), "TODO");
+                "R1", "EXT1", "LT1", "SOL1", "FIX1", "SPEC1", LocalDate.of(2022,1,1), "TODO", "risk1");
         OriginalSampleRegisterRequest request = new OriginalSampleRegisterRequest(List.of(data));
         doNothing().when(service).checkFormat(any(), any(), any(), any(), anyBoolean(), any());
         doNothing().when(service).checkHmdmcsForSpecies(any(), any());
         doNothing().when(service).checkCollectionDates(any(), any());
+        doNothing().when(service).checkBioRisks(any(), any());
 
         doNothing().when(service).checkExistence(any(), any(), any(), any(), any(), any());
 
@@ -184,6 +189,7 @@ public class TestOriginalSampleRegisterService {
         doNothing().when(service).createNewLabware(any());
         doNothing().when(service).recordRegistrations(any(), any());
         doNothing().when(service).recordSolutions(any());
+        doNothing().when(service).linkBioRisks(any());
         final RegisterResult expectedResult = new RegisterResult(List.of(EntityFactory.getTube()));
         doReturn(expectedResult).when(service).makeResult(any());
 
@@ -196,6 +202,7 @@ public class TestOriginalSampleRegisterService {
         verify(service).recordRegistrations(same(user), same(datas));
         verify(service).recordSolutions(same(datas));
         verify(service).linkWork(same(datas));
+        verify(service).linkBioRisks(same(datas));
         verify(service).makeResult(same(datas));
     }
 
@@ -229,6 +236,7 @@ public class TestOriginalSampleRegisterService {
         verify(service).checkDonorFieldsAreConsistent(same(problems), same(datas));
 
         verify(service).checkTissueTypesAndSpatialLocations(same(problems), same(datas));
+        verify(service).checkBioRisks(same(problems), same(datas));
         return datas;
     }
 
@@ -607,6 +615,36 @@ public class TestOriginalSampleRegisterService {
         verify(mockWorkService).validateUsableWorks(any(), eq(Set.of("SGP1", "SGP2")));
     }
 
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testCheckBioRisks() {
+        BioRisk risk1 = new BioRisk(1, "risk1");
+        BioRisk risk2 = new BioRisk(2, "risk2");
+        UCMap<BioRisk> riskMap = UCMap.from(BioRisk::getCode, risk1, risk2);
+        List<DataStruct> datas = Stream.of("RISK1","", "risk2")
+                .map(code -> {
+                    OriginalSampleData osd = new OriginalSampleData();
+                    osd.setBioRiskCode(code);
+                    return new DataStruct(osd);
+                })
+                .toList();
+        when(mockBioRiskService.loadAndValidateBioRisks(any(), any(), any(), any())).thenReturn(riskMap);
+
+        ArgumentCaptor<Function<OriginalSampleData, String>> getterCaptor = ArgumentCaptor.forClass(Function.class);
+        ArgumentCaptor<BiConsumer<OriginalSampleData, String>> setterCaptor = ArgumentCaptor.forClass(BiConsumer.class);
+        ArgumentCaptor<Stream<OriginalSampleData>> streamCaptor = ArgumentCaptor.forClass(Stream.class);
+        final List<String> problems = new ArrayList<>();
+        service.checkBioRisks(problems, datas);
+        verify(mockBioRiskService).loadAndValidateBioRisks(same(problems), streamCaptor.capture(), getterCaptor.capture(), setterCaptor.capture());
+        // Test the correct stream and getter were passed
+        assertThat(streamCaptor.getValue().map(getterCaptor.getValue())).containsExactly("RISK1","", "risk2");
+        OriginalSampleData osd = new OriginalSampleData();
+        // Test the correct setter was passed
+        setterCaptor.getValue().accept(osd, "Banana");
+        assertEquals("Banana", osd.getBioRiskCode());
+        assertThat(datas.stream().map(data -> data.bioRisk)).containsExactly(risk1, null, risk2);
+    }
+
     @Test
     public void testLoadDonors_none() {
         List<DataStruct> datas = Stream.of(osdWithDonor(""), osdWithDonor(null))
@@ -676,6 +714,37 @@ public class TestOriginalSampleRegisterService {
         data.donor = donor;
         data.species = species;
         data.getOriginalSampleData().setLifeStage(lifeStage);
+        return data;
+    }
+
+    @Test
+    public void testLinkBioRisks() {
+        Operation[] ops = IntStream.range(100,103)
+                .mapToObj(id -> {
+                    Operation op = new Operation();
+                    op.setId(id);
+                    return op;
+                }).toArray(Operation[]::new);
+        Sample[] samples = EntityFactory.makeSamples(ops.length);
+        BioRisk risk1 = new BioRisk(201, "risk1");
+        BioRisk risk2 = new BioRisk(202, "risk2");
+        List<DataStruct> datas = List.of(
+                dataForRisk(ops[0], samples[0], risk1),
+                dataForRisk(ops[1], samples[1], risk2),
+                dataForRisk(ops[2], samples[2], risk1)
+        );
+        service.linkBioRisks(datas);
+        verify(mockBioRiskService, times(datas.size())).recordSampleBioRisks(any(), any());
+        verify(mockBioRiskService).recordSampleBioRisks(Map.of(samples[0].getId(), risk1), ops[0].getId());
+        verify(mockBioRiskService).recordSampleBioRisks(Map.of(samples[1].getId(), risk2), ops[1].getId());
+        verify(mockBioRiskService).recordSampleBioRisks(Map.of(samples[2].getId(), risk1), ops[2].getId());
+    }
+
+    private static DataStruct dataForRisk(Operation op, Sample sample, BioRisk risk) {
+        DataStruct data = new DataStruct(null);
+        data.operation = op;
+        data.sample = sample;
+        data.bioRisk = risk;
         return data;
     }
 
