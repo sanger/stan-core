@@ -407,39 +407,12 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
      * @param datas data in progress
      */
     void checkBioRisks(Collection<String> problems, List<DataStruct> datas) {
-        boolean anyMissing = false;
-        Set<String> codes = new LinkedHashSet<>();
-        for (DataStruct data : datas) {
-            String code = data.originalSampleData.getBioRiskCode();
-            if (code!=null) {
-                code = code.trim();
-                if (code.isEmpty()) {
-                    code = null;
-                }
-                data.originalSampleData.setBioRiskCode(code);
+        UCMap<BioRisk> riskMap = bioRiskService.loadAndValidateBioRisks(problems, datas.stream().map(DataStruct::getOriginalSampleData),
+                OriginalSampleData::getBioRiskCode, OriginalSampleData::setBioRiskCode);
+        if (!riskMap.isEmpty()) {
+            for (DataStruct data : datas) {
+                data.setBioRisk(riskMap.get(data.originalSampleData.getBioRiskCode()));
             }
-            if (code==null) {
-                anyMissing = true;
-            } else {
-                codes.add(code);
-            }
-        }
-        if (anyMissing) {
-            problems.add("Missing biological risk number.");
-        }
-        if (codes.isEmpty()) {
-            return;
-        }
-        UCMap<BioRisk> risks = bioRiskService.loadBioRiskMap(codes);
-        List<String> unknown = codes.stream()
-                .filter(code -> risks.get(code)==null)
-                .map(BasicUtils::repr)
-                .toList();
-        if (!unknown.isEmpty()) {
-            problems.add("Unknown biological risk number: "+unknown);
-        }
-        for (DataStruct data : datas) {
-            data.setBioRisk(risks.get(data.originalSampleData.getBioRiskCode()));
         }
     }
 

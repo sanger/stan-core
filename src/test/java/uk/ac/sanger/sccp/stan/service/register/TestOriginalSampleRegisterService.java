@@ -12,7 +12,7 @@ import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.register.OriginalSampleRegisterServiceImp.DataStruct;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService.WorkOp;
-import uk.ac.sanger.sccp.utils.*;
+import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -27,7 +27,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.Matchers.*;
-import static uk.ac.sanger.sccp.utils.BasicUtils.toLinkedHashSet;
 
 /**
  * Tests {@link OriginalSampleRegisterServiceImp}
@@ -616,74 +615,34 @@ public class TestOriginalSampleRegisterService {
         verify(mockWorkService).validateUsableWorks(any(), eq(Set.of("SGP1", "SGP2")));
     }
 
-    @ParameterizedTest
-    @CsvSource(value = {
-            "null; true;;",
-            "'    '; true;;",
-            "null,null; true;;",
-            "risk1,  risk2; false;;risk1,risk2",
-            "x1,    x2; false;x1,x2;",
-            "null,x1,risk1,  risk2,RISK2; true;x1;risk1,risk2",
-    }, delimiter = ';')
-    public void testCheckBioRisks(String codesJoined, boolean anyMissing, String unknownJoined, String knownJoined) {
-        String[] codes = Arrays.stream(codesJoined.split(","))
-                .map(s -> s.equals("null") ? null : s)
-                .toArray(String[]::new);
-        String[] unknown = unknownJoined==null ? null : unknownJoined.split(",");
-        String[] known = knownJoined==null ? null : knownJoined.split(",");
-        List<DataStruct> datas = Arrays.stream(codes)
-                .map(TestOriginalSampleRegisterService::dataForRisk)
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testCheckBioRisks() {
+        BioRisk risk1 = new BioRisk(1, "risk1");
+        BioRisk risk2 = new BioRisk(2, "risk2");
+        UCMap<BioRisk> riskMap = UCMap.from(BioRisk::getCode, risk1, risk2);
+        List<DataStruct> datas = Stream.of("RISK1","", "risk2")
+                .map(code -> {
+                    OriginalSampleData osd = new OriginalSampleData();
+                    osd.setBioRiskCode(code);
+                    return new DataStruct(osd);
+                })
                 .toList();
-        final UCMap<BioRisk> riskMap = new UCMap<>();
-        if (known!=null) {
-            for (String code: known) {
-                riskMap.put(code, new BioRisk(code));
-            }
-        }
-        List<String> problems = new ArrayList<>();
-        if (known!=null || unknown!=null) {
-            doReturn(riskMap).when(mockBioRiskService).loadBioRiskMap(any());
-        }
-        service.checkBioRisks(problems, datas);
-        if (known!=null || unknown!=null) {
-            Set<String> combinedCodes = datas.stream()
-                    .map(data -> data.originalSampleData.getBioRiskCode())
-                    .filter(Objects::nonNull)
-                    .collect(toLinkedHashSet());
-            verify(mockBioRiskService).loadBioRiskMap(combinedCodes);
-        } else {
-            verifyNoInteractions(mockBioRiskService);
-        }
-        Set<String> unknownCodeSet = unknown==null ? Set.of() : new HashSet<>(Arrays.asList(unknown));
-        Zip.forEach(Arrays.stream(codes), datas.stream(), (originalCode, data) -> {
-            if (originalCode==null || originalCode.isBlank()) {
-                assertNull(data.getOriginalSampleData().getBioRiskCode());
-                assertNull(data.bioRisk);
-            } else {
-                String sanitised = originalCode.trim();
-                assertEquals(sanitised, data.getOriginalSampleData().getBioRiskCode());
-                if (unknownCodeSet.contains(sanitised)) {
-                    assertNull(data.bioRisk);
-                } else {
-                    assertNotNull(data.bioRisk);
-                    assertEquals(riskMap.get(sanitised), data.bioRisk);
-                }
-            }
-        });
-        List<String> expectedProblems = new ArrayList<>(problems.size());
-        if (anyMissing) {
-            expectedProblems.add("Missing biological risk number.");
-        }
-        if (unknown!=null) {
-            expectedProblems.add("Unknown biological risk number: "+unknownCodeSet.stream().map(BasicUtils::repr).toList());
-        }
-        assertThat(problems).containsExactlyInAnyOrderElementsOf(expectedProblems);
-    }
+        when(mockBioRiskService.loadAndValidateBioRisks(any(), any(), any(), any())).thenReturn(riskMap);
 
-    private static DataStruct dataForRisk(String code) {
+        ArgumentCaptor<Function<OriginalSampleData, String>> getterCaptor = ArgumentCaptor.forClass(Function.class);
+        ArgumentCaptor<BiConsumer<OriginalSampleData, String>> setterCaptor = ArgumentCaptor.forClass(BiConsumer.class);
+        ArgumentCaptor<Stream<OriginalSampleData>> streamCaptor = ArgumentCaptor.forClass(Stream.class);
+        final List<String> problems = new ArrayList<>();
+        service.checkBioRisks(problems, datas);
+        verify(mockBioRiskService).loadAndValidateBioRisks(same(problems), streamCaptor.capture(), getterCaptor.capture(), setterCaptor.capture());
+        // Test the correct stream and getter were passed
+        assertThat(streamCaptor.getValue().map(getterCaptor.getValue())).containsExactly("RISK1","", "risk2");
         OriginalSampleData osd = new OriginalSampleData();
-        osd.setBioRiskCode(code);
-        return new DataStruct(osd);
+        // Test the correct setter was passed
+        setterCaptor.getValue().accept(osd, "Banana");
+        assertEquals("Banana", osd.getBioRiskCode());
+        assertThat(datas.stream().map(data -> data.bioRisk)).containsExactly(risk1, null, risk2);
     }
 
     @Test
