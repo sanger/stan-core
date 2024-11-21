@@ -11,6 +11,9 @@ import java.util.*;
 import java.util.function.Function;
 
 import static java.util.stream.Collectors.toMap;
+import static java.util.stream.Collectors.toSet;
+import static uk.ac.sanger.sccp.utils.BasicUtils.inMap;
+import static uk.ac.sanger.sccp.utils.BasicUtils.stream;
 
 public interface WorkRepo extends CrudRepository<Work, Integer> {
     Optional<Work> findByWorkNumber(String workNumber);
@@ -145,6 +148,32 @@ public interface WorkRepo extends CrudRepository<Work, Integer> {
      */
     @Query(value="select * from work_sample ws join work on (ws.work_id=work.id) where ws.sample_id=(?1) and ws.slot_id = (?2)", nativeQuery = true)
     Set<Work> findWorkForSampleIdAndSlotId(Integer sampleId, Integer slotId);
+
+    @Query(value="select slot_id, sample_id, work_id from work_sample ws where ws.slot_id in (?1)", nativeQuery = true)
+    List<Object[]> slotSampleWorkIdsForSlotIds(Collection<Integer> slotIds);
+
+    /**
+     * Loads works linked to the given slot ids.
+     * @param slotIds slot ids to look for works
+     * @return a map from slot/sample ids to the set of linked works
+     */
+    default Map<SlotIdSampleId, Set<Work>> slotSampleWorksForSlotIds(Collection<Integer> slotIds) {
+        List<Object[]> rows = slotIds.isEmpty() ? List.of() : slotSampleWorkIdsForSlotIds(slotIds);
+        if (rows.isEmpty()) {
+            return Map.of();
+        }
+        Set<Integer> workIds = rows.stream()
+                .map(arr -> (Integer) arr[2])
+                .collect(toSet());
+        Map<Integer, Work> workMap = stream(findAllById(workIds))
+                .collect(inMap(Work::getId));
+        Map<SlotIdSampleId, Set<Work>> map = new HashMap<>();
+        for (Object[] row: rows) {
+            SlotIdSampleId key = new SlotIdSampleId((Integer) row[0], (Integer) row[1]);
+            map.computeIfAbsent(key, k -> new HashSet<>()).add(workMap.get((Integer) row[2]));
+        }
+        return map;
+    }
 
     default Set<Work> getSetByWorkNumberIn(Collection<String> workNumbers) throws EntityNotFoundException {
         return RepoUtils.getSetByField(this::findAllByWorkNumberIn, workNumbers, Work::getWorkNumber,

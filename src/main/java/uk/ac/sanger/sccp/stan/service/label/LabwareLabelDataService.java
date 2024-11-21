@@ -14,6 +14,7 @@ import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
+import static uk.ac.sanger.sccp.utils.BasicUtils.reverseIter;
 
 /**
  * Service for creating LabwareLabelData from labware.
@@ -94,6 +95,53 @@ public class LabwareLabelDataService {
         }
         String dateString = created.format(DateTimeFormatter.ISO_LOCAL_DATE);
         return new LabwareLabelData(labware.getBarcode(), labware.getExternalBarcode(), medium, dateString, content);
+    }
+
+    /**
+     * Label data for labware that has a label per slot
+     * @param lw the labware being labelled
+     * @param workNumbers the work number linked to each slot/sample combination
+     * @param lp the lp number linked to the labware, if any
+     * @return label data for the labware
+     */
+    public List<LabwareLabelData> getSplitLabelData(Labware lw, Map<SlotIdSampleId, String> workNumbers, String lp) {
+        List<LabwareLabelData> datas = new ArrayList<>(lw.getSlots().size());
+        // Iterate the slots in reverse order
+        for (Slot slot : reverseIter(lw.getSlots())) {
+            if (!slot.getSamples().isEmpty()) {
+                Sample sample = slot.getSamples().getFirst();
+                String workNumber = workNumbers.get(new SlotIdSampleId(slot, sample));
+                Tissue tissue = sample.getTissue();
+                LabelContent lc = new LabelContent(tissue.getDonor().getDonorName(), tissue.getExternalName(),
+                        null, sample.getBioState().toString());
+                Map<String, String> extra = filteredMap("lp", lp, "work", workNumber,
+                        "address", slot.getAddress().toString());
+                datas.add(new LabwareLabelData(lw.getBarcode(), lw.getExternalBarcode(), null, null,
+                        List.of(lc), extra));
+            }
+        }
+        return datas;
+    }
+
+    /**
+     * Returns a map containing the given keys and values, omitted null keys and null values
+     * @param data alternating keys and values
+     * @return a map containing the data, excluding null keys and values
+     * @param <B> type of data array given (base type of K and V)
+     * @param <K> key type
+     * @param <V> value type
+     */
+    @SuppressWarnings("unchecked")
+    static <B, K extends B, V extends B> Map<K,V> filteredMap(B... data) {
+        Map<K,V> map = new HashMap<>(data.length/2);
+        for (int i = 0; i < data.length; i+=2) {
+            K key = (K) data[i];
+            V value = (V) data[i+1];
+            if (key!=null && value!=null) {
+                map.put(key, value);
+            }
+        }
+        return map;
     }
 
     /**

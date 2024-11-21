@@ -1138,6 +1138,19 @@ public class TestWorkService {
                 workService.suggestLabwareForWorkNumber(work.getWorkNumber(), forRelease));
     }
 
+    @Test
+    public void testLoadWorksForSlotsIn() {
+        Sample sample = EntityFactory.getSample();
+        LabwareType lt = EntityFactory.makeLabwareType(3,1);
+        Labware lw = EntityFactory.makeLabware(lt, sample);
+        Map<SlotIdSampleId, Set<Work>> slotWorks = Map.of(new SlotIdSampleId(lw.getFirstSlot(), sample),
+                Set.of(EntityFactory.makeWork("SGP1")));
+        when(mockWorkRepo.slotSampleWorksForSlotIds(any())).thenReturn(slotWorks);
+        assertSame(slotWorks, workService.loadWorksForSlotsIn(List.of(lw)));
+        List<Integer> slotIds = lw.getSlots().stream().map(Slot::getId).toList();
+        verify(mockWorkRepo).slotSampleWorksForSlotIds(slotIds);
+    }
+
     private Operation makeOp(OperationType opType, int opId, Labware srcLw, Labware dstLw) {
         List<Action> actions = new ArrayList<>();
         int acId = 100*opId;
