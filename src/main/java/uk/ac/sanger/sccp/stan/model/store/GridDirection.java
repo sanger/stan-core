@@ -20,4 +20,9 @@ public enum GridDirection {
      * Up the leftmost column, then right to the next column, etc.
      */
     UpRight,
+
+    /** Down the rightmost column, then left to the next column, etc.
+     *  Rotate 180
+     */
+    DownLeft,
 }

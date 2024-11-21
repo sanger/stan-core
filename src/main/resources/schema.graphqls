@@ -889,6 +889,8 @@ enum GridDirection {
     RightUp
     """Up the leftmost column, then right to the next column, etc."""
     UpRight
+    """Down the rightmost column, then left to the next column, etc. - Rotate 180 """
+    DownLeft
 }
 
 """A location where items may be stored."""
