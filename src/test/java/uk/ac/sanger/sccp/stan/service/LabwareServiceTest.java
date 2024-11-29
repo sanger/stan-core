@@ -28,7 +28,7 @@ import static org.mockito.Mockito.*;
 public class LabwareServiceTest {
     private LabwareRepo mockLabwareRepo;
     private SlotRepo mockSlotRepo;
-    private BarcodeSeedRepo mockBarcodeSeedRepo;
+    private BarcodeIntRepo mockBarcodeIntRepo;
     private EntityManager mockEntityManager;
     private LabelTypeRepo mockLabelTypeRepo;
     private OperationRepo mockOperationRepo;
@@ -43,7 +43,7 @@ public class LabwareServiceTest {
     void setup() {
         mockLabwareRepo = mock(LabwareRepo.class);
         mockSlotRepo = mock(SlotRepo.class);
-        mockBarcodeSeedRepo = mock(BarcodeSeedRepo.class);
+        mockBarcodeIntRepo = mock(BarcodeIntRepo.class);
         mockEntityManager = mock(EntityManager.class);
         mockLabelTypeRepo = mock(LabelTypeRepo.class);
         mockOperationRepo = mock(OperationRepo.class);
@@ -54,7 +54,7 @@ public class LabwareServiceTest {
         mockSlotSave();
         mockRefresh();
 
-        labwareService = spy(new LabwareService(mockEntityManager, mockLabwareRepo, mockSlotRepo, mockBarcodeSeedRepo, mockLabelTypeRepo,
+        labwareService = spy(new LabwareService(mockEntityManager, mockLabwareRepo, mockSlotRepo, mockBarcodeIntRepo, mockLabelTypeRepo,
                                                 mockOperationRepo, mockOperationTypeRepo, mockNoteRepo));
         savedLabware = new ArrayList<>();
         savedSlots = new ArrayList<>();
@@ -110,7 +110,7 @@ public class LabwareServiceTest {
     @Test
     public void testCreateNoBarcode() {
         String barcode = "STAN-ABC";
-        when(mockBarcodeSeedRepo.createStanBarcode()).thenReturn(barcode);
+        when(mockBarcodeIntRepo.createStanBarcode()).thenReturn(barcode);
         Labware lw = EntityFactory.getTube();
         LabwareType lt = lw.getLabwareType();
         doReturn(lw).when(labwareService).create(any(Labware.class));
@@ -145,7 +145,7 @@ public class LabwareServiceTest {
     public void testCreateMultiple() {
         LabwareType lt = EntityFactory.makeLabwareType(1, 2);
         List<String> barcodes = List.of("STAN-AA", "STAN-BB", "STAN-CC");
-        when(mockBarcodeSeedRepo.createBarcodes(BarcodeSeedRepo.STAN, 3)).thenReturn(barcodes);
+        when(mockBarcodeIntRepo.createStanBarcodes(3)).thenReturn(barcodes);
         List<Labware> lws = labwareService.create(lt, 3);
         assertThat(lws).hasSize(3);
         assertThat(savedLabware).hasSameSizeAs(lws).hasSameElementsAs(lws);
