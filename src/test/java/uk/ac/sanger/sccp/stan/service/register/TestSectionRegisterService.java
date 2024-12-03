@@ -319,7 +319,7 @@ public class TestSectionRegisterService {
         SectionRegisterContent content = new SectionRegisterContent();
         content.setAddress(address);
         content.setExternalIdentifier(extName);
-        content.setSectionThickness(thickness);
+        content.setSectionThickness(thickness==null ? null : thickness.toString());
         return content;
     }
 

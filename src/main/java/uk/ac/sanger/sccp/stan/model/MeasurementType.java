@@ -5,7 +5,7 @@ package uk.ac.sanger.sccp.stan.model;
  * @author dr6
  */
 public enum MeasurementType {
-    Thickness(MeasurementValueType.INT, "μm"),
+    Thickness(MeasurementValueType.DECIMAL, "μm"),
     Haematoxylin(MeasurementValueType.TIME),
     Eosin(MeasurementValueType.TIME),
     Blueing(MeasurementValueType.TIME),

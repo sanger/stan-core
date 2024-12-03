@@ -14,7 +14,7 @@ mutation {
                         medium: "None"
                         replicateNumber: "7"
                         sectionNumber: 8
-                        sectionThickness: 12
+                        sectionThickness: "12"
                         lifeStage: adult
                         externalIdentifier: "TISSUE1"
                         spatialLocation: 1
@@ -30,7 +30,7 @@ mutation {
                         medium: "None"
                         replicateNumber: "9a"
                         sectionNumber: 10
-                        sectionThickness: 13
+                        sectionThickness: "13"
                         lifeStage: adult
                         externalIdentifier: "TISSUE2"
                         spatialLocation: 1
@@ -47,7 +47,7 @@ mutation {
                         medium: "None"
                         replicateNumber: "8"
                         sectionNumber: 11
-                        sectionThickness: 14
+                        sectionThickness: "14.5"
                         lifeStage: adult
                         externalIdentifier: "TISSUE3"
                         spatialLocation: 1

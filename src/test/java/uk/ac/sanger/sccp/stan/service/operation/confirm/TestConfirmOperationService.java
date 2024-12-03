@@ -259,9 +259,9 @@ public class TestConfirmOperationService {
 
         List<?>[] planActions = Arrays.stream(dests)
                 .map(dest -> List.of(
-                        new PlanAction(20, 10, srcSlot, dest.getSlot(A1), sample, 1, 4, null),
+                        new PlanAction(20, 10, srcSlot, dest.getSlot(A1), sample, 1, "4", null),
                         new PlanAction(21, 10, srcSlot, dest.getSlot(A1), sample, 2, null, null),
-                        new PlanAction(22, 10, srcSlot, dest.getSlot(A2), sample, 3, 7, null),
+                        new PlanAction(22, 10, srcSlot, dest.getSlot(A2), sample, 3, "7", null),
                         new PlanAction(23, 10, srcSlot, otherSlot, sample, 4, null, null)
                 ))
                 .toArray(List[]::new);

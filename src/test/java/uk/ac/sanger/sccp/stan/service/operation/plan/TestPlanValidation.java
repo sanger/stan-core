@@ -10,6 +10,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.plan.*;
 import uk.ac.sanger.sccp.stan.service.Validator;
+import uk.ac.sanger.sccp.stan.service.sanitiser.Sanitiser;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
@@ -43,6 +44,8 @@ public class TestPlanValidation {
     private Validator<String> mockXeniumValidator;
     @Mock
     private Validator<String> mockLotValidator;
+    @Mock
+    private Sanitiser<String> mockThicknessSanitiser;
 
     private AutoCloseable mocking;
 
@@ -58,7 +61,7 @@ public class TestPlanValidation {
 
     private PlanValidationImp makeValidation(PlanRequest request) {
         return spy(new PlanValidationImp(request, mockLabwareRepo, mockLabwareTypeRepo,
-                mockOpTypeRepo, mockVisiumValidator, mockXeniumValidator, mockLotValidator));
+                mockOpTypeRepo, mockVisiumValidator, mockXeniumValidator, mockLotValidator, mockThicknessSanitiser));
     }
 
     @Test
@@ -71,12 +74,14 @@ public class TestPlanValidation {
         UCMap<Labware> sourceLwMap = UCMap.from(Labware::getBarcode, lw);
         doReturn(sourceLwMap).when(validation).validateSources(any());
         doNothing().when(validation).validateDestinations(sourceLwMap);
+        doNothing().when(validation).validateThickness();
 
         assertSame(validation.validate(), validation.problems);
 
         verify(validation).validateOperation();
         verify(validation).validateSources(opType);
         verify(validation).validateDestinations(sourceLwMap);
+        verify(validation).validateThickness();
     }
 
     @Test
@@ -248,7 +253,7 @@ public class TestPlanValidation {
                     .collect(UCMap.toUCMap(LabwareType::getName));
             List<PlanRequestLabware> adhPrls = request.getLabware().stream()
                     .filter(prl -> adhLts.get(prl.getLabwareType())!=null)
-                    .collect(toList());
+                    .toList();
             verify(validation, times(adhPrls.size())).hasDividedLayout(any(), any(), any(), anyInt());
             for (PlanRequestLabware prl : adhPrls) {
                 final LabwareType lt = adhLts.get(prl.getLabwareType());
@@ -268,6 +273,48 @@ public class TestPlanValidation {
                 }
             }
         }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testValidateThickness(boolean ok) {
+        when(mockThicknessSanitiser.sanitise(any(), any())).then(invocation -> {
+            String string = invocation.getArgument(1);
+            if (string.indexOf('!')>=0) {
+                Collection<String> problems = invocation.getArgument(0);
+                problems.add("Bad value: "+string);
+                return null;
+            }
+            return string.trim();
+        });
+        String[] thicknesses = {
+                "  1.5 ", "2.0", "  3", null, "   ", "4  ",
+        };
+        String[] expectedThicknesses = {
+                "1.5", "2.0", "3", null, null, "4",
+        };
+        if (!ok) {
+            thicknesses[1] = "2.0!";
+            thicknesses[5] = "4!";
+            expectedThicknesses[1] = null;
+            expectedThicknesses[5] = null;
+        }
+        List<PlanRequestAction> pras = Arrays.stream(thicknesses)
+                .map(th -> new PlanRequestAction(null, 0, null, th))
+                .toList();
+        List<PlanRequestLabware> prlw = List.of(
+                new PlanRequestLabware(null, null, pras.subList(0,2)),
+                new PlanRequestLabware(null, null, pras.subList(2,6))
+        );
+        PlanRequest request = new PlanRequest("opname", prlw);
+        PlanValidationImp validation = makeValidation(request);
+        validation.validateThickness();
+        if (ok) {
+            assertThat(validation.problems).isEmpty();
+        } else {
+            assertThat(validation.problems).containsExactlyInAnyOrder("Bad value: 2.0!", "Bad value: 4!");
+        }
+        assertThat(pras.stream().map(PlanRequestAction::getSampleThickness)).containsExactly(expectedThicknesses);
     }
 
     @ParameterizedTest

@@ -4,6 +4,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.register.*;
 import uk.ac.sanger.sccp.stan.service.*;
+import uk.ac.sanger.sccp.stan.service.sanitiser.Sanitiser;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
@@ -42,6 +43,7 @@ public class SectionRegisterValidation {
     private final Validator<String> visiumLpBarcodeValidation;
     private final Validator<String> xeniumBarcodeValidator;
     private final Validator<String> replicateValidator;
+    private final Sanitiser<String> thicknessSanitiser;
 
     public SectionRegisterValidation(SectionRegisterRequest request,
                                      DonorRepo donorRepo, SpeciesRepo speciesRepo, LabwareTypeRepo lwTypeRepo,
@@ -51,7 +53,8 @@ public class SectionRegisterValidation {
                                      SlotRegionService slotRegionService, BioRiskService bioRiskService, WorkService workService,
                                      Validator<String> externalBarcodeValidation, Validator<String> donorNameValidation,
                                      Validator<String> externalNameValidation, Validator<String> replicateValidator,
-                                     Validator<String> visiumLpBarcodeValidation, Validator<String> xeniumBarcodeValidator) {
+                                     Validator<String> visiumLpBarcodeValidation, Validator<String> xeniumBarcodeValidator,
+                                     Sanitiser<String> thicknessSanitiser) {
         this.request = request;
         this.donorRepo = donorRepo;
         this.speciesRepo = speciesRepo;
@@ -72,6 +75,7 @@ public class SectionRegisterValidation {
         this.replicateValidator = replicateValidator;
         this.visiumLpBarcodeValidation = visiumLpBarcodeValidation;
         this.xeniumBarcodeValidator = xeniumBarcodeValidator;
+        this.thicknessSanitiser = thicknessSanitiser;
     }
 
     public ValidatedSections validate() {
@@ -405,10 +409,10 @@ public class SectionRegisterValidation {
                 addProblem("Section number cannot be negative.");
             }
             if (content.getSectionThickness()!=null) {
-                if (content.getSectionThickness()==0) {
-                    addProblem("Section thickness cannot be zero.");
-                } else if (content.getSectionThickness() < 0) {
-                    addProblem("Section thickness cannot be negative.");
+                if (content.getSectionThickness().isBlank()) {
+                    content.setSectionThickness(null);
+                } else {
+                    content.setSectionThickness(thicknessSanitiser.sanitise(problems, content.getSectionThickness()));
                 }
             }
             if (!problems.isEmpty()) {

@@ -305,8 +305,8 @@ public class TestPlanService {
                     lw.getSlot(A2).getSamples().add(nonSectionSample);
                     return lw;
                 })
-                .collect(toList());
-        List<String> sourceBarcodes = sources.stream().map(Labware::getBarcode).collect(toList());
+                .toList();
+        List<String> sourceBarcodes = sources.stream().map(Labware::getBarcode).toList();
         UCMap<Labware> sourceMap = UCMap.from(sources, Labware::getBarcode);
         Labware destination = EntityFactory.makeEmptyLabware(lt);
         int planId = 99;
@@ -315,12 +315,12 @@ public class TestPlanService {
                         new PlanRequestAction(A1, samples.get(0).getId(),
                                 new PlanRequestSource(sourceBarcodes.get(0), A1), null),
                         new PlanRequestAction(A2, samples.get(0).getId(),
-                                new PlanRequestSource(sourceBarcodes.get(0), null), 1)
+                                new PlanRequestSource(sourceBarcodes.get(0), null), "1")
                 ));
 
         List<PlanAction> expectedActions = List.of(
                 new PlanAction(21, planId, sources.get(0).getFirstSlot(), destination.getFirstSlot(), samples.get(0), null, null, bioState),
-                new PlanAction(22, planId, sources.get(0).getFirstSlot(), destination.getSlot(A2), samples.get(0), null, 1, bioState)
+                new PlanAction(22, planId, sources.get(0).getFirstSlot(), destination.getSlot(A2), samples.get(0), null, "1", bioState)
         );
 
         final int[] planActionIdCounter = {20};

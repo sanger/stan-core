@@ -6,7 +6,7 @@ mutation {
             barcode: "$BARCODE"
             commentId: 1
             workNumber: "SGP4000"
-            measurements: [{name:"RIN", value:"55"}]
+            measurements: [{name:"RIN", value:"55.5"}]
         }]
     }) {
         operations {

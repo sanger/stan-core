@@ -4,6 +4,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.plan.*;
 import uk.ac.sanger.sccp.stan.service.Validator;
+import uk.ac.sanger.sccp.stan.service.sanitiser.Sanitiser;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
@@ -26,13 +27,15 @@ public class PlanValidationImp implements PlanValidation {
     final Validator<String> visiumBarcodeValidator, xeniumBarcodeValidator;
 
     final Validator<String> lotValidator;
+    final Sanitiser<String> thicknessSanitiser;
 
     final PlanRequest request;
     final Set<String> problems = new LinkedHashSet<>();
 
     public PlanValidationImp(PlanRequest request, LabwareRepo labwareRepo, LabwareTypeRepo ltRepo,
                              OperationTypeRepo opTypeRepo, Validator<String> visiumBarcodeValidator,
-                             Validator<String> xeniumBarcodeValidator, Validator<String> lotValidator) {
+                             Validator<String> xeniumBarcodeValidator, Validator<String> lotValidator,
+                             Sanitiser<String> thicknessSanitiser) {
         this.labwareRepo = labwareRepo;
         this.ltRepo = ltRepo;
         this.opTypeRepo = opTypeRepo;
@@ -40,6 +43,7 @@ public class PlanValidationImp implements PlanValidation {
         this.visiumBarcodeValidator = visiumBarcodeValidator;
         this.xeniumBarcodeValidator = xeniumBarcodeValidator;
         this.lotValidator = lotValidator;
+        this.thicknessSanitiser = thicknessSanitiser;
     }
 
     @Override
@@ -47,6 +51,7 @@ public class PlanValidationImp implements PlanValidation {
         OperationType opType = validateOperation();
         UCMap<Labware> sourceLwMap = validateSources(opType);
         validateDestinations(sourceLwMap);
+        validateThickness();
         return problems;
     }
 
@@ -199,6 +204,21 @@ public class PlanValidationImp implements PlanValidation {
             addProblem("Unknown labware type%s: %s", unknownTypes.size()==1 ? "" : "s", unknownTypes);
         }
         validateLotAndCostings(labwareTypeMap);
+    }
+
+    public void validateThickness() {
+        for (PlanRequestLabware prlw : request.getLabware()) {
+            for (PlanRequestAction pra : prlw.getActions()) {
+                String thickness = pra.getSampleThickness();
+                if (thickness!=null) {
+                    if (thickness.isBlank()) {
+                        pra.setSampleThickness(null);
+                    } else {
+                        pra.setSampleThickness(thicknessSanitiser.sanitise(problems, thickness));
+                    }
+                }
+            }
+        }
     }
 
     private enum LotAndCostingProblem {

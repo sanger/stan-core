@@ -111,7 +111,7 @@ public class SectionRegisterFileReaderImp extends BaseRegisterFileReader<Section
         content.setDonorIdentifier((String) row.get(Column.Donor_ID));
         content.setLifeStage(valueToLifeStage(problems, (String) row.get(Column.Life_stage)));
         content.setReplicateNumber((String) row.get(Column.Replicate_number));
-        content.setSectionThickness((Integer) row.get(Column.Section_thickness));
+        content.setSectionThickness((String) row.get(Column.Section_thickness));
         content.setSpecies((String) row.get(Column.Species));
         content.setTissueType((String) row.get(Column.Tissue_type));
         content.setSpatialLocation((Integer) row.get(Column.Spatial_location));

@@ -292,7 +292,7 @@ public class TestConfirmSectionService {
         ConfirmSectionLabware csl = new ConfirmSectionLabware(lw1.getBarcode(), false, csecs, List.of());
         Map<PlanActionKey, PlanAction> planActionMap = Stream.of(
                 new PlanAction(1, 1, source, lw1.getSlot(A1), sample),
-                new PlanAction(2, 1, source, lw1.getSlot(B3), sample, 12, 50, null)
+                new PlanAction(2, 1, source, lw1.getSlot(B3), sample, 12, "50", null)
         ).collect(BasicUtils.inMap(PlanActionKey::new, HashMap::new));
         plan.setPlanActions(new ArrayList<>(planActionMap.values()));
 
