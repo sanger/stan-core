@@ -1,0 +1,29 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <changeSet id="3.1.0" author="dr6">
+        <createTable tableName="barcode_int">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="seed" type="INT">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="used" type="BOOLEAN" defaultValue="FALSE">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="barcode_int" indexName="ix_barcode_int_used" unique="false">
+            <column name="used"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="3.1.1" author="dr6">
+        <loadData tableName="barcode_int" file="db/barcode_int.tsv" separator="\t">
+            <column name="seed" header="seed" type="INT"/>
+        </loadData>
+    </changeSet>
+
+</databaseChangeLog>

@@ -22,7 +22,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 public class LabwareService {
     private final LabwareRepo labwareRepo;
     private final SlotRepo slotRepo;
-    private final BarcodeSeedRepo barcodeSeedRepo;
+    private final BarcodeIntRepo barcodeIntRepo;
     private final EntityManager entityManager;
     private final LabelTypeRepo labelTypeRepo;
     private final OperationRepo operationRepo;
@@ -31,11 +31,11 @@ public class LabwareService {
 
     @Autowired
     public LabwareService(EntityManager entityManager, LabwareRepo labwareRepo, SlotRepo slotRepo,
-                          BarcodeSeedRepo barcodeSeedRepo, LabelTypeRepo labelTypeRepo, OperationRepo operationRepo,
+                          BarcodeIntRepo barcodeIntRepo, LabelTypeRepo labelTypeRepo, OperationRepo operationRepo,
                           OperationTypeRepo operationTypeRepo, LabwareNoteRepo lwNoteRepo) {
         this.labwareRepo = labwareRepo;
         this.slotRepo = slotRepo;
-        this.barcodeSeedRepo = barcodeSeedRepo;
+        this.barcodeIntRepo = barcodeIntRepo;
         this.entityManager = entityManager;
         this.labelTypeRepo = labelTypeRepo;
         this.operationRepo = operationRepo;
@@ -85,7 +85,7 @@ public class LabwareService {
             return List.of();
         }
         requireNonNull(labwareType, "Labware type is null.");
-        List<String> barcodes = barcodeSeedRepo.createBarcodes(BarcodeSeedRepo.STAN, number);
+        List<String> barcodes = barcodeIntRepo.createStanBarcodes(number);
         List<Labware> newLabware = barcodes.stream()
                 .map(bc -> new Labware(null, bc, labwareType, null))
                 .collect(toList());
@@ -112,7 +112,7 @@ public class LabwareService {
      */
     public Labware create(Labware unsaved) {
         if (unsaved.getBarcode()==null) {
-            unsaved.setBarcode(barcodeSeedRepo.createStanBarcode());
+            unsaved.setBarcode(barcodeIntRepo.createStanBarcode());
         }
         Labware labware = labwareRepo.save(unsaved);
         LabwareType labwareType = unsaved.getLabwareType();
