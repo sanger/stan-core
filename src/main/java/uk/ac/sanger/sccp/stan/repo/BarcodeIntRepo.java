@@ -1,6 +1,7 @@
 package uk.ac.sanger.sccp.stan.repo;
 
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import uk.ac.sanger.sccp.stan.service.BarcodeUtils;
 
 import javax.persistence.*;
@@ -14,7 +15,7 @@ public class BarcodeIntRepo {
 
     /** Gets the next barcode seed and marks it as used */
     public int next() {
-        if (!entityManager.isJoinedToTransaction()) {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
             throw new TransactionRequiredException();
         }
         Query select = entityManager.createNativeQuery("select seed from barcode_int where not used order by id limit 1");
@@ -27,7 +28,7 @@ public class BarcodeIntRepo {
 
     /** Gets the next <tt>n</tt> barcode seeds and marks them used */
     public List<Integer> next(int n) {
-        if (!entityManager.isJoinedToTransaction()) {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
             throw new TransactionRequiredException();
         }
         Query select = entityManager.createNativeQuery("select seed from barcode_int where not used order by id limit ?1");
