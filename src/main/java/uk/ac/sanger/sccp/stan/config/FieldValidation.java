@@ -250,6 +250,11 @@ public class FieldValidation {
     }
 
     @Bean
+    public Sanitiser<String> thicknessSanitiser() {
+        return new DecimalSanitiser("thickness", 1, BigDecimal.ZERO, null);
+    }
+
+    @Bean
     public Sanitiser<String> concentrationSanitiser() {
         return new DecimalSanitiser("concentration", 2, null, null);
     }

@@ -35,7 +35,7 @@ public interface SectionRegisterFileReader extends MultipartFileReader<SectionRe
         Replicate_number,
         Section_external_ID,
         Section_number(Integer.class),
-        Section_thickness(Integer.class),
+        Section_thickness(String.class),
         Date_sectioned(LocalDate.class, Pattern.compile("date.*sectioned|section.*date", Pattern.CASE_INSENSITIVE), false),
         Section_position(Pattern.compile("(if.+)?(section\\s+)?position", Pattern.CASE_INSENSITIVE)),
         ;

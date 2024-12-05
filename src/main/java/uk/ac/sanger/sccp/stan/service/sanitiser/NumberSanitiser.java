@@ -62,7 +62,7 @@ public abstract class NumberSanitiser<N extends Comparable<N>> implements Saniti
         if (lowerBound!=null && number.compareTo(lowerBound) < 0
                 || upperBound!=null && number.compareTo(upperBound) > 0) {
             if (problems!=null) {
-                problems.add("Value outside the expected bounds for "+fieldName+": "+repr(value));
+                problems.add("Value outside the expected bounds for "+fieldName+": "+value);
             }
             return null;
         }

@@ -415,10 +415,10 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
         List<String> problems = new ArrayList<>(0);
         Map<Column, Object> row = new EnumMap<>(Column.class);
         row.put(Column.Donor_ID, "Donor1");
-        row.put(Column.Section_thickness, 41);
+        row.put(Column.Section_thickness, "41");
         SectionRegisterContent src = reader.createRequestContent(problems, row);
         assertEquals("Donor1", src.getDonorIdentifier());
-        assertEquals(41, src.getSectionThickness());
+        assertEquals("41", src.getSectionThickness());
         assertNull(src.getAddress());
         assertNull(src.getLifeStage());
         assertNull(src.getSpatialLocation());
@@ -431,7 +431,7 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
         List<String> problems = new ArrayList<>(0);
         Map<Column, Object> row = new EnumMap<>(Column.class);
         row.put(Column.Donor_ID, "Donor1");
-        row.put(Column.Section_thickness, 41);
+        row.put(Column.Section_thickness, "41");
         row.put(Column.Section_address, "A4");
         row.put(Column.Section_external_ID, "X1");
         row.put(Column.HuMFre, "12/234");
@@ -446,7 +446,7 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
         row.put(Column.Section_position, "Middle");
         SectionRegisterContent src = reader.createRequestContent(problems, row);
         assertEquals("Donor1", src.getDonorIdentifier());
-        assertEquals(41, src.getSectionThickness());
+        assertEquals("41", src.getSectionThickness());
         assertEquals(new Address(1,4), src.getAddress());
         assertEquals("X1", src.getExternalIdentifier());
         assertEquals("12/234", src.getHmdmc());

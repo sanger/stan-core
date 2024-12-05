@@ -348,7 +348,7 @@ input SectionRegisterContent {
     """The section number of this particular section from its original tissue block."""
     sectionNumber: Int!
     """The thickness, if known, of this section."""
-    sectionThickness: Int
+    sectionThickness: String
     """The region of this sample in this slot, if any."""
     region: String
     """The date the sample was sectioned."""
@@ -481,7 +481,7 @@ input PlanRequestAction {
     """The id of the existing sample."""
     sampleId: Int!
     """The thickness (if specified) of the new sample."""
-    sampleThickness: Int
+    sampleThickness: String
     """The source of the sample (describing a slot in some existing labware)."""
     source: PlanRequestSource!
 }

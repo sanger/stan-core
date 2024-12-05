@@ -13,11 +13,11 @@ public class PlanRequestAction {
     private Address address;
     private int sampleId;
     private PlanRequestSource source;
-    private Integer sampleThickness;
+    private String sampleThickness;
 
     public PlanRequestAction() {}
 
-    public PlanRequestAction(Address address, int sampleId, PlanRequestSource source, Integer sampleThickness) {
+    public PlanRequestAction(Address address, int sampleId, PlanRequestSource source, String sampleThickness) {
         this.address = address;
         this.sampleId = sampleId;
         this.source = source;
@@ -48,11 +48,11 @@ public class PlanRequestAction {
         this.source = source;
     }
 
-    public Integer getSampleThickness() {
+    public String getSampleThickness() {
         return this.sampleThickness;
     }
 
-    public void setSampleThickness(Integer sampleThickness) {
+    public void setSampleThickness(String sampleThickness) {
         this.sampleThickness = sampleThickness;
     }
 

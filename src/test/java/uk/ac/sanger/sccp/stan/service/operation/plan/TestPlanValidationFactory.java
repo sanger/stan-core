@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.plan.PlanRequest;
 import uk.ac.sanger.sccp.stan.service.Validator;
+import uk.ac.sanger.sccp.stan.service.sanitiser.Sanitiser;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -24,8 +25,9 @@ public class TestPlanValidationFactory {
         Validator<String> mockVisiumValidator = genericMock(Validator.class);
         Validator<String> mockLotValidator = genericMock(Validator.class);
         Validator<String> mockXeniumValidator = genericMock(Validator.class);
+        Sanitiser<String> mockThicknessSanitiser = genericMock(Sanitiser.class);
         PlanValidationFactory factory = new PlanValidationFactory(lwRepo, ltRepo, opTypeRepo,
-                mockVisiumValidator, mockXeniumValidator, mockLotValidator);
+                mockVisiumValidator, mockXeniumValidator, mockLotValidator, mockThicknessSanitiser);
         PlanRequest request = new PlanRequest();
         PlanValidation validation = factory.createPlanValidation(request);
         assertThat(validation).isInstanceOf(PlanValidationImp.class);
@@ -38,5 +40,6 @@ public class TestPlanValidationFactory {
         assertSame(validationImp.visiumBarcodeValidator, mockVisiumValidator);
         assertSame(validationImp.xeniumBarcodeValidator, mockXeniumValidator);
         assertSame(validationImp.lotValidator, mockLotValidator);
+        assertSame(validationImp.thicknessSanitiser, mockThicknessSanitiser);
     }
 }

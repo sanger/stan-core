@@ -11,9 +11,12 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.register.*;
 import uk.ac.sanger.sccp.stan.service.*;
+import uk.ac.sanger.sccp.stan.service.sanitiser.DecimalSanitiser;
+import uk.ac.sanger.sccp.stan.service.sanitiser.Sanitiser;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.function.*;
 import java.util.stream.IntStream;
@@ -48,6 +51,7 @@ public class TestSectionRegisterValidation {
     @Mock private Validator<String> mockReplicateValidator;
     @Mock private Validator<String> mockVisiumLpBarcodeValidation;
     @Mock private Validator<String> mockXeniumBarcodeValidator;
+    private Sanitiser<String> thicknessSanisiser;
     @Mock private SlotRegionService mockSlotRegionService;
     @Mock private BioRiskService mockBioRiskService;
     @Mock private WorkService mockWorkService;
@@ -56,6 +60,7 @@ public class TestSectionRegisterValidation {
 
     @BeforeEach
     void setup() {
+        thicknessSanisiser = new DecimalSanitiser("thickness", 1, BigDecimal.ZERO, null);
         mocking = MockitoAnnotations.openMocks(this);
     }
     
@@ -89,7 +94,7 @@ public class TestSectionRegisterValidation {
                 mockHmdmcRepo, mockTissueTypeRepo, mockFixativeRepo, mockMediumRepo, mockTissueRepo, mockBioStateRepo,
                 mockSlotRegionService, mockBioRiskService, mockWorkService,
                 mockExternalBarcodeValidation, mockDonorNameValidation, mockExternalNameValidation,
-                mockReplicateValidator, mockVisiumLpBarcodeValidation, mockXeniumBarcodeValidator));
+                mockReplicateValidator, mockVisiumLpBarcodeValidation, mockXeniumBarcodeValidator, thicknessSanisiser));
     }
 
     private void mockValidator(Validator<String> validator) {
@@ -623,15 +628,13 @@ public class TestSectionRegisterValidation {
                         "Missing section number.", null, bs),
                 Arguments.of(content("TISSUE1", -2, 4), tissues,
                         "Section number cannot be negative.", null, bs),
-                Arguments.of(content("TISSUE1", 4, 0), tissues,
-                        "Section thickness cannot be zero.", null, bs),
                 Arguments.of(content("TISSUE1", 4, -3), tissues,
-                        "Section thickness cannot be negative.", null, bs),
+                        "Value outside the expected bounds for thickness: -3", null, bs),
                 Arguments.of(content("TISSUE1", 2, 4), tissues,
                         "Bio state \"Tissue\" not found.", null, null),
 
-                Arguments.of(content("TISSUE1", null, 0), tissues,
-                        List.of("Missing section number.", "Section thickness cannot be zero.",
+                Arguments.of(content("TISSUE1", null, -1), tissues,
+                        List.of("Missing section number.", "Value outside the expected bounds for thickness: -1",
                                 "Bio state \"Tissue\" not found."), null, null)
         );
     }
@@ -766,7 +769,7 @@ public class TestSectionRegisterValidation {
         SectionRegisterContent content = new SectionRegisterContent();
         content.setExternalIdentifier(extName);
         content.setSectionNumber(section);
-        content.setSectionThickness(thickness);
+        content.setSectionThickness(thickness==null ? null : thickness.toString());
         return content;
     }
 

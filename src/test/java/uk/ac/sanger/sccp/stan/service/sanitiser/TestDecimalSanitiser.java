@@ -59,11 +59,11 @@ public class TestDecimalSanitiser {
     @ParameterizedTest
     @CsvSource(value={
             "2;bananas;Invalid value for X: \"bananas\"",
-            "2;-0.1;Value outside the expected bounds for X: \"-0.1\"",
-            "2;10.1;Value outside the expected bounds for X: \"10.1\"",
-            "2;1.251;Invalid value for X, expected up to 2 decimal places: \"1.251\"",
-            "1;1.35;Invalid value for X, expected only 1 decimal place: \"1.35\"",
-            "0;5.2;Invalid value for X, expected no decimal places: \"5.2\"",
+            "2;-0.1;Value outside the expected bounds for X: -0.1",
+            "2;10.1;Value outside the expected bounds for X: 10.1",
+            "2;1.251;Invalid value for X, expected up to 2 decimal places: 1.251",
+            "1;1.35;Invalid value for X, expected only 1 decimal place: 1.35",
+            "0;5.2;Invalid value for X, expected no decimal places: 5.2",
     }, delimiter=';')
     public void testBoundedSanitiseInvalid(int numDecimalPlaces, String input, String expectedProblem) {
         List<String> problems = new ArrayList<>(1);

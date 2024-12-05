@@ -4,8 +4,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.regex.Pattern;
 
-import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
-
 /**
  * Sanitiser for numbers including a decimal point, e.g. 12.345
  * @author dr6
@@ -33,7 +31,7 @@ public class DecimalSanitiser extends NumberSanitiser<BigDecimal> {
                 case 1 -> ", expected only 1 decimal place: ";
                 default -> ", expected up to "+ numDecimalPlaces +" decimal places: ";
             };
-            return "Invalid value for " + fieldName + expectation + repr(value);
+            return "Invalid value for " + fieldName + expectation + value;
         }
         return super.errorMessage(value);
     }

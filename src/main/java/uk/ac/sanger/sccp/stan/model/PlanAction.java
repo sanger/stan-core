@@ -27,7 +27,7 @@ public class PlanAction {
     @ManyToOne
     private Sample sample;
     private Integer newSection;
-    private Integer sampleThickness;
+    private String sampleThickness;
     @ManyToOne
     private BioState newBioState;
 
@@ -38,7 +38,7 @@ public class PlanAction {
     }
 
     public PlanAction(Integer id, Integer planOperationId, Slot source, Slot destination, Sample sample,
-                      Integer newSection, Integer sampleThickness, BioState newBioState) {
+                      Integer newSection, String sampleThickness, BioState newBioState) {
         this.id = id;
         this.planOperationId = planOperationId;
         this.source = source;
@@ -97,11 +97,11 @@ public class PlanAction {
         this.newSection = section;
     }
 
-    public Integer getSampleThickness() {
+    public String getSampleThickness() {
         return this.sampleThickness;
     }
 
-    public void setSampleThickness(Integer sampleThickness) {
+    public void setSampleThickness(String sampleThickness) {
         this.sampleThickness = sampleThickness;
     }
 

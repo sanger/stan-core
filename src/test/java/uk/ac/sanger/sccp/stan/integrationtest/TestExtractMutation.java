@@ -222,7 +222,6 @@ public class TestExtractMutation {
             assertEquals(dests[1].getFirstSlot().getId(), opCom.getSlotId());
         }
 
-
         result = tester.post(tester.readGraphQL("extractresult.graphql").replace("$BARCODE", dests[0].getBarcode()));
         extractData = chainGet(result, "data", "extractResult");
         assertEquals(dests[0].getBarcode(), chainGet(extractData, "labware", "barcode"));
@@ -245,7 +244,7 @@ public class TestExtractMutation {
         meas = measurements.get(0);
         assertEquals(dests[0].getFirstSlot().getId(), meas.getSlotId());
         assertEquals("RIN", meas.getName());
-        assertEquals("55.0", meas.getValue());
+        assertEquals("55.5", meas.getValue());
         Operation op = opRepo.findById(opId).orElseThrow();
         assertEquals(analysisEquipment, op.getEquipment());
     }

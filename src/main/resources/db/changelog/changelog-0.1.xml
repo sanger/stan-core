@@ -630,7 +630,7 @@
             <column name="new_section" type="INT">
                 <constraints nullable="true"/>
             </column>
-            <column name="sample_thickness" type="INT">
+            <column name="sample_thickness" type="VARCHAR(16)">
                 <constraints nullable="true"/>
             </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">

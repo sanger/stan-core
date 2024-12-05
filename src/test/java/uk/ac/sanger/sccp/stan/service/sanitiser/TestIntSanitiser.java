@@ -59,8 +59,8 @@ public class TestIntSanitiser {
             "-,Invalid value for X: \"-\"",
             "bananas,Invalid value for X: \"bananas\"",
             "999999999999,Invalid value for X: \"999999999999\"",
-            "-1,Value outside the expected bounds for X: \"-1\"",
-            "101,Value outside the expected bounds for X: \"101\"",
+            "-1,Value outside the expected bounds for X: -1",
+            "101,Value outside the expected bounds for X: 101",
     })
     public void testBoundedSanitiseInvalid(String input, String expectedProblem) {
         List<String> problems = new ArrayList<>(1);

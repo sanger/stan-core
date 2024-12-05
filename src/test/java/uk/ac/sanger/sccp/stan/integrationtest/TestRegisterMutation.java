@@ -158,7 +158,7 @@ public class TestRegisterMutation {
         Measurement measurement = measurements.get(0);
         assertNotNull(measurement.getId());
         assertEquals("Thickness", measurement.getName());
-        assertEquals("14", measurement.getValue());
+        assertEquals("14.5", measurement.getValue());
         assertEquals(sample.getId(), measurement.getSampleId());
         assertNotNull(measurement.getOperationId());
         Operation op = opRepo.findById(measurement.getOperationId()).orElseThrow();

@@ -24,7 +24,7 @@ public class SectionRegisterContent {
     private String fixative;
     private String medium;
     private Integer sectionNumber;
-    private Integer sectionThickness;
+    private String sectionThickness;
     private String region;
     private LocalDate dateSectioned;
     private String bioRiskCode;
@@ -133,11 +133,11 @@ public class SectionRegisterContent {
         this.sectionNumber = sectionNumber;
     }
 
-    public Integer getSectionThickness() {
+    public String getSectionThickness() {
         return this.sectionThickness;
     }
 
-    public void setSectionThickness(Integer sectionThickness) {
+    public void setSectionThickness(String sectionThickness) {
         this.sectionThickness = sectionThickness;
     }
 
