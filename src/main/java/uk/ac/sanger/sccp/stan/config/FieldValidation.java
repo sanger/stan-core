@@ -266,7 +266,7 @@ public class FieldValidation {
 
     @Bean
     public Sanitiser<String> dv200Sanitiser() {
-        return new DecimalSanitiser("DV200", 1, BigDecimal.ZERO, new BigDecimal(100));
+        return new DecimalSanitiser("DV200", 2, BigDecimal.ZERO, new BigDecimal(100));
     }
 
     @Bean
