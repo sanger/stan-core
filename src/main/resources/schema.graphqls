@@ -2135,6 +2135,8 @@ type Query {
     analyserScanData(barcode: String!): AnalyserScanData!
     """Run names recorded for the specified labware."""
     runNames(barcode: String!): [String!]!
+    """Bio risk codes for samples in the specified labware."""
+    labwareBioRiskCodes(barcode: String!): [String!]!
 
     """Get the specified storage location."""
     location(locationBarcode: String!): Location!

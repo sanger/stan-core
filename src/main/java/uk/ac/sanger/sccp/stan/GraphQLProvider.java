@@ -134,6 +134,7 @@ public class GraphQLProvider {
                         .dataFetcher("workProgress", graphQLDataFetchers.workProgress())
                         .dataFetcher("analyserScanData", graphQLDataFetchers.analyserScanData())
                         .dataFetcher("runNames", graphQLDataFetchers.runNames())
+                        .dataFetcher("labwareBioRiskCodes", graphQLDataFetchers.labwareBioRiskCodes())
 
                         .dataFetcher("location", graphQLStore.getLocation())
                         .dataFetcher("stored", graphQLStore.getStored())

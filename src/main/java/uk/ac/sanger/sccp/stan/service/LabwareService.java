@@ -28,11 +28,12 @@ public class LabwareService {
     private final OperationRepo operationRepo;
     private final OperationTypeRepo operationTypeRepo;
     private final LabwareNoteRepo lwNoteRepo;
+    private final BioRiskRepo bioRiskRepo;
 
     @Autowired
     public LabwareService(EntityManager entityManager, LabwareRepo labwareRepo, SlotRepo slotRepo,
                           BarcodeIntRepo barcodeIntRepo, LabelTypeRepo labelTypeRepo, OperationRepo operationRepo,
-                          OperationTypeRepo operationTypeRepo, LabwareNoteRepo lwNoteRepo) {
+                          OperationTypeRepo operationTypeRepo, LabwareNoteRepo lwNoteRepo, BioRiskRepo bioRiskRepo) {
         this.labwareRepo = labwareRepo;
         this.slotRepo = slotRepo;
         this.barcodeIntRepo = barcodeIntRepo;
@@ -41,6 +42,7 @@ public class LabwareService {
         this.operationRepo = operationRepo;
         this.operationTypeRepo = operationTypeRepo;
         this.lwNoteRepo = lwNoteRepo;
+        this.bioRiskRepo = bioRiskRepo;
     }
 
     /**
@@ -192,5 +194,21 @@ public class LabwareService {
                 .max(Comparator.comparing(LabwareNote::getId))
                 .map(note -> SlideCosting.valueOf(note.getValue()))
                 .orElse(null);
+    }
+
+    /**
+     * Loads bio risk codes for samples in the specified labware
+     * @param barcode labware barcode
+     * @return bio risk codes
+     */
+    public Set<String> getBioRiskCodes(String barcode) {
+        Labware lw = labwareRepo.getByBarcode(barcode);
+        Set<Integer> sampleIds = lw.getSlots().stream()
+                .flatMap(slot -> slot.getSamples().stream())
+                .map(Sample::getId)
+                .collect(toSet());
+        return bioRiskRepo.loadBioRisksForSampleIds(sampleIds).values().stream()
+                .map(BioRisk::getCode)
+                .collect(toSet());
     }
 }
