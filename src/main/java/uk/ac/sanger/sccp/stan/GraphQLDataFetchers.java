@@ -515,6 +515,13 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         };
     }
 
+    public DataFetcher<Set<String>> labwareBioRiskCodes() {
+        return dfe -> {
+            String barcode = dfe.getArgument("barcode");
+            return labwareService.getBioRiskCodes(barcode);
+        };
+    }
+
     public DataFetcher<WorkSummaryData> worksSummary() {
         return dfe -> workSummaryService.loadWorkSummary();
     }

@@ -17,6 +17,7 @@ import java.util.*;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -34,6 +35,7 @@ public class LabwareServiceTest {
     private OperationRepo mockOperationRepo;
     private OperationTypeRepo mockOperationTypeRepo;
     private LabwareNoteRepo mockNoteRepo;
+    private BioRiskRepo mockBioRiskRepo;
     private LabwareService labwareService;
     private int idCounter = 1000;
     private List<Labware> savedLabware;
@@ -49,13 +51,14 @@ public class LabwareServiceTest {
         mockOperationRepo = mock(OperationRepo.class);
         mockOperationTypeRepo = mock(OperationTypeRepo.class);
         mockNoteRepo = mock(LabwareNoteRepo.class);
+        mockBioRiskRepo = mock(BioRiskRepo.class);
 
         mockLabwareSave();
         mockSlotSave();
         mockRefresh();
 
         labwareService = spy(new LabwareService(mockEntityManager, mockLabwareRepo, mockSlotRepo, mockBarcodeIntRepo, mockLabelTypeRepo,
-                                                mockOperationRepo, mockOperationTypeRepo, mockNoteRepo));
+                                                mockOperationRepo, mockOperationTypeRepo, mockNoteRepo, mockBioRiskRepo));
         savedLabware = new ArrayList<>();
         savedSlots = new ArrayList<>();
     }
@@ -294,5 +297,27 @@ public class LabwareServiceTest {
                 {List.of(note2fac, note1sgp), SlideCosting.Faculty, lw},
                 {List.of(note1sgp), SlideCosting.SGP, lw},
         }).map(Arguments::of);
+    }
+
+    @Test
+    public void testGetBioRiskCodes() {
+        Sample[] samples = EntityFactory.makeSamples(3);
+        Set<Integer> sampleIds = Arrays.stream(samples).map(Sample::getId).collect(toSet());
+        LabwareType lt = EntityFactory.makeLabwareType(1,3);
+        Labware lw = EntityFactory.makeEmptyLabware(lt);
+        Slot slot = lw.getFirstSlot();
+        slot.addSample(samples[0]);
+        slot.addSample(samples[1]);
+        slot = lw.getSlots().get(2);
+        slot.addSample(samples[1]);
+        slot.addSample(samples[2]);
+        when(mockLabwareRepo.getByBarcode(any())).thenReturn(lw);
+        BioRisk[] risks = { new BioRisk(1, "risk1"), new BioRisk(2, "risk2")};
+        Map<Integer, BioRisk> sampleIdRisks = Map.of(samples[0].getId(), risks[0], samples[1].getId(), risks[0], samples[2].getId(), risks[1]);
+        when(mockBioRiskRepo.loadBioRisksForSampleIds(any())).thenReturn(sampleIdRisks);
+        Set<String> codes = labwareService.getBioRiskCodes(lw.getBarcode());
+        assertThat(codes).containsExactlyInAnyOrder("risk1", "risk2");
+        verify(mockLabwareRepo).getByBarcode(lw.getBarcode());
+        verify(mockBioRiskRepo).loadBioRisksForSampleIds(sampleIds);
     }
 }
