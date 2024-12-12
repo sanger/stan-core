@@ -124,6 +124,12 @@ type BioRisk {
     enabled: Boolean!
 }
 
+"""A link between a sample and a bio risk."""
+type SampleBioRisk {
+    sampleId: Int!
+    bioRiskCode: String!
+}
+
 """A type of label that can be printed, typically including a barcode and some other information."""
 type LabelType {
     name: String!
@@ -2136,7 +2142,7 @@ type Query {
     """Run names recorded for the specified labware."""
     runNames(barcode: String!): [String!]!
     """Bio risk codes for samples in the specified labware."""
-    labwareBioRiskCodes(barcode: String!): [String!]!
+    labwareBioRiskCodes(barcode: String!): [SampleBioRisk!]!
 
     """Get the specified storage location."""
     location(locationBarcode: String!): Location!

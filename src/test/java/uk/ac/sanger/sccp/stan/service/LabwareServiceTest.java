@@ -10,6 +10,7 @@ import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.service.LabwareService.SampleBioRisk;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityNotFoundException;
@@ -300,7 +301,7 @@ public class LabwareServiceTest {
     }
 
     @Test
-    public void testGetBioRiskCodes() {
+    public void testGetSampleBioRiskCodes() {
         Sample[] samples = EntityFactory.makeSamples(3);
         Set<Integer> sampleIds = Arrays.stream(samples).map(Sample::getId).collect(toSet());
         LabwareType lt = EntityFactory.makeLabwareType(1,3);
@@ -315,8 +316,12 @@ public class LabwareServiceTest {
         BioRisk[] risks = { new BioRisk(1, "risk1"), new BioRisk(2, "risk2")};
         Map<Integer, BioRisk> sampleIdRisks = Map.of(samples[0].getId(), risks[0], samples[1].getId(), risks[0], samples[2].getId(), risks[1]);
         when(mockBioRiskRepo.loadBioRisksForSampleIds(any())).thenReturn(sampleIdRisks);
-        Set<String> codes = labwareService.getBioRiskCodes(lw.getBarcode());
-        assertThat(codes).containsExactlyInAnyOrder("risk1", "risk2");
+        var results = labwareService.getSampleBioRisks(lw.getBarcode());
+        assertThat(results).containsExactlyInAnyOrder(
+                new SampleBioRisk(samples[0].getId(), "risk1"),
+                new SampleBioRisk(samples[1].getId(), "risk1"),
+                new SampleBioRisk(samples[2].getId(), "risk2")
+        );
         verify(mockLabwareRepo).getByBarcode(lw.getBarcode());
         verify(mockBioRiskRepo).loadBioRisksForSampleIds(sampleIds);
     }

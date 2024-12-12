@@ -12,8 +12,10 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.BioRiskRepo;
 
 import javax.transaction.Transactional;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGetList;
 
 /**
  * Tests the labwareBioRiskCodes graphql query
@@ -39,7 +41,8 @@ public class TestLabwareBioRiskCodesQuery {
         bioRiskRepo.recordBioRisk(sample.getId(), risk.getId(), null);
         LabwareType lt = entityCreator.getTubeType();
         Labware lw = entityCreator.createLabware("STAN-1", lt, sample);
-        Object response = tester.post(String.format("query { labwareBioRiskCodes(barcode: \"%s\") }", lw.getBarcode()));
-        assertThat(IntegrationTestUtils.chainGetList(response, "data", "labwareBioRiskCodes")).containsExactly(risk.getCode());
+        Object response = tester.post(String.format("query { labwareBioRiskCodes(barcode: \"%s\") { sampleId, bioRiskCode } }", lw.getBarcode()));
+        assertThat(chainGetList(response, "data", "labwareBioRiskCodes"))
+                .containsExactly(Map.of("sampleId", sample.getId(), "bioRiskCode", risk.getCode()));
     }
 }
