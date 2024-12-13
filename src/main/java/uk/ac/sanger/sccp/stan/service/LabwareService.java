@@ -201,14 +201,16 @@ public class LabwareService {
      * @param barcode labware barcode
      * @return bio risk codes
      */
-    public Set<String> getBioRiskCodes(String barcode) {
+    public List<SampleBioRisk> getSampleBioRisks(String barcode) {
         Labware lw = labwareRepo.getByBarcode(barcode);
         Set<Integer> sampleIds = lw.getSlots().stream()
                 .flatMap(slot -> slot.getSamples().stream())
                 .map(Sample::getId)
                 .collect(toSet());
-        return bioRiskRepo.loadBioRisksForSampleIds(sampleIds).values().stream()
-                .map(BioRisk::getCode)
-                .collect(toSet());
+        Map<Integer, BioRisk> riskMap = bioRiskRepo.loadBioRisksForSampleIds(sampleIds);
+        return riskMap.entrySet().stream().map(e -> new SampleBioRisk(e.getKey(), e.getValue().getCode())).toList();
     }
+
+    /** A linked sample and bio risk */
+    public record SampleBioRisk(int sampleId, String bioRiskCode) {}
 }
