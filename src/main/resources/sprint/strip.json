@@ -14,7 +14,7 @@
     },
     {
       "x": 32,
-      "y": 1,
+      "y": 0,
       "value": "#barcode#",
       "barcodeType": "datamatrix",
       "cellWidth": 0.25
@@ -23,13 +23,13 @@
   "textFields": [
     {
       "x": 20,
-      "y": 2,
+      "y": 1,
       "value": "#work#",
       "fontSize": 1.7
     },
     {
       "x": 27,
-      "y": 2,
+      "y": 1,
       "value": "#lp#",
       "fontSize": 1.7
     },
@@ -41,13 +41,13 @@
     },
     {
       "x": 20,
-      "y": 4,
+      "y": 3,
       "value": "#state[0]#",
       "fontSize": 1.4
     },
     {
       "x": 20,
-      "y": 7,
+      "y": 6,
       "value": "#tissue[0]#",
       "fontSize": 1.5
     },
