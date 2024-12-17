@@ -112,8 +112,12 @@ public class LabwareLabelDataService {
                 Sample sample = slot.getSamples().getFirst();
                 String workNumber = workNumbers.get(new SlotIdSampleId(slot, sample));
                 Tissue tissue = sample.getTissue();
+                String state = sample.getBioState().toString();
+                if (state.length() > 20 && state.startsWith("Library post-clean ")) {
+                    state = state.substring(19);
+                }
                 LabelContent lc = new LabelContent(tissue.getDonor().getDonorName(), tissue.getExternalName(),
-                        null, sample.getBioState().toString());
+                        null, state);
                 Map<String, String> extra = filteredMap("lp", lp, "work", workNumber,
                         "address", slot.getAddress().toString());
                 datas.add(new LabwareLabelData(lw.getBarcode(), lw.getExternalBarcode(), null, null,
