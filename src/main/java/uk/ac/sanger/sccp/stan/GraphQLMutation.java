@@ -103,6 +103,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final CleanOutService cleanOutService;
     final RoiMetricService roiMetricService;
     final UserAdminService userAdminService;
+    final SlotCopyRecordService slotCopyRecordService;
 
     @Autowired
     public GraphQLMutation(ObjectMapper objectMapper, AuthenticationComponent authComp,
@@ -136,7 +137,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            QCLabwareService qcLabwareService, OrientationService orientationService, SSStudyService ssStudyService,
                            ReactivateService reactivateService, LibraryPrepService libraryPrepService,
                            SegmentationService segmentationService, CleanOutService cleanOutService, RoiMetricService roiMetricService,
-                           UserAdminService userAdminService) {
+                           UserAdminService userAdminService, SlotCopyRecordService slotCopyRecordService) {
         super(objectMapper, authComp, userRepo);
         this.authService = authService;
         this.registerService = registerService;
@@ -200,6 +201,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.cleanOutService = cleanOutService;
         this.roiMetricService = roiMetricService;
         this.userAdminService = userAdminService;
+        this.slotCopyRecordService = slotCopyRecordService;
     }
 
     private void logRequest(String name, User user, Object request) {
@@ -915,6 +917,16 @@ public class GraphQLMutation extends BaseGraphQLResource {
             SampleMetricsRequest request = arg(dfe, "request", SampleMetricsRequest.class);
             logRequest("recordSampleMetrics", user, request);
             return roiMetricService.perform(user, request);
+        };
+    }
+
+    public DataFetcher<SlotCopySave> saveSlotCopy() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            SlotCopySave request = arg(dfe, "request", SlotCopySave.class);
+            logRequest("slotCopySave", user, request);
+            slotCopyRecordService.save(request);
+            return request;
         };
     }
 

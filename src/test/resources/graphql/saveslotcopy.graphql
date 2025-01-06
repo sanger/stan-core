@@ -1,0 +1,25 @@
+mutation {
+    saveSlotCopy(request: {
+        barcode: "STAN-A"
+        bioState: "bs"
+        costing: SGP
+        lotNumber: "lot1"
+        probeLotNumber: "probe1"
+        labwareType: "lt1"
+        operationType: "opname"
+        preBarcode: "pb1"
+        workNumber: "[WORK]"
+        lpNumber: "LP1"
+        executionType: manual
+        sources: [{barcode: "STAN-0", labwareState: active}]
+        contents: [
+            {sourceBarcode: "STAN-0", sourceAddress: "A2", destinationAddress: "A1"}
+            {sourceBarcode: "STAN-1", sourceAddress: "A1", destinationAddress: "A2"}
+        ]
+    }) {
+        barcode
+        workNumber
+        lpNumber
+        operationType
+    }
+}

@@ -155,6 +155,20 @@ public class SlotCopyRequest {
         public String toString() {
             return repr(barcode)+": "+labwareState;
         }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            SlotCopySource that = (SlotCopySource) o;
+            return (Objects.equals(this.barcode, that.barcode)
+                    && this.labwareState == that.labwareState);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(barcode, labwareState);
+        }
     }
 
     /**

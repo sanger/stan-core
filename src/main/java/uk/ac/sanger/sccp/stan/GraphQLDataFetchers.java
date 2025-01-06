@@ -87,6 +87,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final CommentRepo commentRepo;
     final AnalyserScanDataService analyserScanDataService;
     final LabwareNoteService lwNoteService;
+    final SlotCopyRecordService slotCopyRecordService;
 
     @Autowired
     public GraphQLDataFetchers(ObjectMapper objectMapper, AuthenticationComponent authComp, UserRepo userRepo,
@@ -112,7 +113,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                CleanedOutSlotService cleanedOutSlotService,
                                FlagLookupService flagLookupService, MeasurementService measurementService,
                                GraphService graphService, CommentRepo commentRepo,
-                               AnalyserScanDataService analyserScanDataService, LabwareNoteService lwNoteService) {
+                               AnalyserScanDataService analyserScanDataService, LabwareNoteService lwNoteService, SlotCopyRecordService slotCopyRecordService) {
         super(objectMapper, authComp, userRepo);
         this.sessionConfig = sessionConfig;
         this.versionInfo = versionInfo;
@@ -163,6 +164,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.commentRepo = commentRepo;
         this.analyserScanDataService = analyserScanDataService;
         this.lwNoteService = lwNoteService;
+        this.slotCopyRecordService = slotCopyRecordService;
     }
 
     public DataFetcher<User> getUser() {
@@ -519,6 +521,15 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         return dfe -> {
             String barcode = dfe.getArgument("barcode");
             return labwareService.getSampleBioRisks(barcode);
+        };
+    }
+
+    public DataFetcher<SlotCopySave> reloadSlotCopy() {
+        return dfe -> {
+            String opname = dfe.getArgument("operationType");
+            String workNumber = dfe.getArgument("workNumber");
+            String lpNumber = dfe.getArgument("lpNumber");
+            return slotCopyRecordService.load(opname, workNumber, lpNumber);
         };
     }
 
