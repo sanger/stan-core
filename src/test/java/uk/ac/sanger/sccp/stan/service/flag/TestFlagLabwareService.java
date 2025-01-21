@@ -7,6 +7,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.*;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
+import uk.ac.sanger.sccp.stan.model.LabwareFlag.Priority;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.FlagLabwareRequest;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
@@ -57,7 +58,7 @@ class TestFlagLabwareService {
         User user = EntityFactory.getUser();
         assertValidationException(() -> service.record(user, null),
                 List.of("No request supplied."));
-        verify(service, never()).create(any(), any(), any(), any(), any());
+        verify(service, never()).create(any(), any(), any(), any(), any(), any());
     }
 
     @ParameterizedTest
@@ -83,9 +84,9 @@ class TestFlagLabwareService {
         }
 
         OperationResult opres = new OperationResult(List.of(new Operation()), List.of(lw));
-        doReturn(opres).when(service).create(any(), any(), any(), any(), any());
+        doReturn(opres).when(service).create(any(), any(), any(), any(), any(), any());
 
-        assertSame(opres, service.record(user, new FlagLabwareRequest(lw.getBarcode(), desc, workNumber)));
+        assertSame(opres, service.record(user, new FlagLabwareRequest(lw.getBarcode(), desc, workNumber, Priority.note)));
 
         verify(service).loadLabware(any(), eq(lw.getBarcode()));
         verify(service).checkDescription(any(), eq(desc));
@@ -95,7 +96,7 @@ class TestFlagLabwareService {
         } else {
             verifyNoInteractions(mockWorkService);
         }
-        verify(service).create(user, opType, lw, "Alpha beta gamma.", work);
+        verify(service).create(user, opType, lw, "Alpha beta gamma.", work, Priority.note);
     }
 
     @Test
@@ -103,21 +104,21 @@ class TestFlagLabwareService {
         when(mockLwRepo.findByBarcode(any())).thenReturn(Optional.empty());
         when(mockOpTypeRepo.findByName(any())).thenReturn(Optional.empty());
 
-        assertValidationException(() -> service.record(null, new FlagLabwareRequest("STAN-404", null, null)),
+        assertValidationException(() -> service.record(null, new FlagLabwareRequest("STAN-404", null, null, null)),
                 List.of("No user specified.", "Unknown labware barcode: \"STAN-404\"", "Missing flag description.",
-                        "Flag labware operation type is missing."));
+                        "Flag labware operation type is missing.", "No priority specified."));
 
         verify(service).loadLabware(any(), eq("STAN-404"));
         verify(service).checkDescription(any(), isNull());
         verify(service).loadOpType(any());
-        verify(service, never()).create(any(), any(), any(), any(), any());
+        verify(service, never()).create(any(), any(), any(), any(), any(), any());
     }
 
     @Test
     void testRecord_badWork() {
         User user = EntityFactory.getUser();
         Labware lw = EntityFactory.getTube();
-        FlagLabwareRequest request = new FlagLabwareRequest(lw.getBarcode(), "flag desc", "SGP4");
+        FlagLabwareRequest request = new FlagLabwareRequest(lw.getBarcode(), "flag desc", "SGP4", Priority.flag);
         when(mockLwRepo.findByBarcode(lw.getBarcode())).thenReturn(Optional.of(lw));
         when(mockWorkService.validateUsableWork(any(), any())).then(addProblem("Bad work"));
         OperationType opType = EntityFactory.makeOperationType("Flag labware", null);
@@ -128,7 +129,7 @@ class TestFlagLabwareService {
         verify(service).checkDescription(any(), eq("flag desc"));
         verify(service).loadOpType(any());
         verify(mockWorkService).validateUsableWork(any(), eq("SGP4"));
-        verify(service, never()).create(any(), any(), any(), any(), any());
+        verify(service, never()).create(any(), any(), any(), any(), any(), any());
     }
 
     @ParameterizedTest
@@ -187,16 +188,17 @@ class TestFlagLabwareService {
         User user = EntityFactory.getUser();
         Work work = (hasWork ? EntityFactory.makeWork("SGP1") : null);
         String desc = "Alpha beta";
+        Priority priority = Priority.flag;
         OperationType opType = EntityFactory.makeOperationType("Flag labware", null, OperationTypeFlag.IN_PLACE);
 
         Operation op = new Operation();
         op.setId(500);
         when(mockOpService.createOperationInPlace(any(), any(), any(), any(), any())).thenReturn(op);
 
-        assertEquals(new OperationResult(List.of(op), List.of(lw)), service.create(user, opType, lw, desc, work));
+        assertEquals(new OperationResult(List.of(op), List.of(lw)), service.create(user, opType, lw, desc, work, priority));
 
         verify(mockOpService).createOperationInPlace(opType, user, lw, null, null);
-        verify(mockFlagRepo).save(new LabwareFlag(null, lw, desc, user, op.getId()));
+        verify(mockFlagRepo).save(new LabwareFlag(null, lw, desc, user, op.getId(), priority));
         if (hasWork) {
             verify(mockWorkService).link(work, List.of(op));
         } else {

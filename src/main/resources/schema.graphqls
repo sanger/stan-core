@@ -69,6 +69,12 @@ enum ExecutionType {
     manual
 }
 
+"""Priority of labware flags."""
+enum FlagPriority {
+    note
+    flag
+}
+
 """A user, who is associated with performing actions in the application."""
 type User {
     username: String!
@@ -261,6 +267,8 @@ type LabwareFlagged {
     created: Timestamp!
     """Is there a labware flag applicable to this labware?"""
     flagged: Boolean!
+    """The highest priority of flag on this labware, if any."""
+    flagPriority: FlagPriority
 }
 
 """A solution used in an operation."""
@@ -1037,6 +1045,14 @@ type HistoryEntry {
     region: String
 }
 
+"""A flag priority and a list of flagged barcodes."""
+type FlagBarcodes {
+    """The priority of flag linked to the barcodes."""
+    priority: FlagPriority!
+    """The barcodes linked with the flags."""
+    barcodes: [String!]!
+}
+
 """History as returned for a history query."""
 type History {
     """The entries found for the history."""
@@ -1046,7 +1062,7 @@ type History {
     """The samples referenced by the entries."""
     samples: [Sample!]!
     """The included labware barcodes that are flagged."""
-    flaggedBarcodes: [String!]!
+    flagBarcodes: [FlagBarcodes!]!
 }
 
 """The SVG of a graph."""
@@ -1181,6 +1197,8 @@ type FlagSummary {
     barcode: String!
     """The description of the flag."""
     description: String!
+    """The priority of the flag."""
+    priority: FlagPriority!
 }
 
 """Information about flags related to some labware."""
@@ -1913,6 +1931,8 @@ input FlagLabwareRequest {
     description: String!
     """Work number to link to the flag."""
     workNumber: String
+    """Priority of the flag."""
+    priority: FlagPriority!
 }
 
 """Record the orientation state of labware."""

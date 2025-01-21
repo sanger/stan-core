@@ -3,6 +3,7 @@ mutation {
         barcode: "[BC]"
         description: "[DESC]"
         workNumber: "[WORKNUM]"
+        priority: flag
     }) {
         operations { id }
     }

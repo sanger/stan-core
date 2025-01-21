@@ -1,5 +1,7 @@
 package uk.ac.sanger.sccp.stan.request;
 
+import uk.ac.sanger.sccp.stan.model.LabwareFlag.Priority;
+
 import java.util.List;
 import java.util.Objects;
 
@@ -17,10 +19,12 @@ public class FlagDetail {
     public static class FlagSummary {
         private String barcode;
         private String description;
+        private Priority priority;
 
-        public FlagSummary(String barcode, String description) {
+        public FlagSummary(String barcode, String description, Priority priority) {
             this.barcode = barcode;
             this.description = description;
+            this.priority = priority;
         }
 
         /**
@@ -45,13 +49,23 @@ public class FlagDetail {
             this.description = description;
         }
 
+        public Priority getPriority() {
+            return this.priority;
+        }
+
+        public void setPriority(Priority priority) {
+            this.priority = priority;
+        }
+
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             FlagSummary that = (FlagSummary) o;
             return (Objects.equals(this.barcode, that.barcode)
-                    && Objects.equals(this.description, that.description));
+                    && Objects.equals(this.description, that.description)
+                    && this.priority == that.priority
+            );
         }
 
         @Override
@@ -61,7 +75,7 @@ public class FlagDetail {
 
         @Override
         public String toString() {
-            return String.format("[%s: %s]", barcode, repr(description));
+            return String.format("[%s: %s: %s]", priority, barcode, repr(description));
         }
     }
 

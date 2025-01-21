@@ -1,6 +1,8 @@
 package uk.ac.sanger.sccp.stan.service.graph;
 
-import uk.ac.sanger.sccp.stan.request.*;
+import uk.ac.sanger.sccp.stan.request.GraphSVG;
+import uk.ac.sanger.sccp.stan.request.history.History;
+import uk.ac.sanger.sccp.stan.request.history.HistoryGraph;
 
 /**
  * Service to create history graphs.

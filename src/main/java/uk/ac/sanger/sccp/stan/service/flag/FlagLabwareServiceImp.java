@@ -3,6 +3,7 @@ package uk.ac.sanger.sccp.stan.service.flag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
+import uk.ac.sanger.sccp.stan.model.LabwareFlag.Priority;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.FlagLabwareRequest;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
@@ -54,13 +55,16 @@ public class FlagLabwareServiceImp implements FlagLabwareService {
 
         Labware lw = loadLabware(problems, request.getBarcode());
         String description = checkDescription(problems, request.getDescription());
+        if (request.getPriority()==null) {
+            problems.add("No priority specified.");
+        }
         OperationType opType = loadOpType(problems);
 
         if (!problems.isEmpty()) {
             throw new ValidationException(problems);
         }
 
-        return create(user, opType, lw, description, work);
+        return create(user, opType, lw, description, work, request.getPriority());
     }
 
     /**
@@ -131,9 +135,9 @@ public class FlagLabwareServiceImp implements FlagLabwareService {
      * @param work work to link to operation (or null)
      * @return the labware and operation
      */
-    OperationResult create(User user, OperationType opType, Labware lw, String description, Work work) {
+    OperationResult create(User user, OperationType opType, Labware lw, String description, Work work, Priority priority) {
         Operation op = opService.createOperationInPlace(opType, user, lw, null, null);
-        LabwareFlag flag = new LabwareFlag(null, lw, description, user, op.getId());
+        LabwareFlag flag = new LabwareFlag(null, lw, description, user, op.getId(), priority);
         flagRepo.save(flag);
         if (work!=null) {
             workService.link(work, List.of(op));

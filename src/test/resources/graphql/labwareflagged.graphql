@@ -2,5 +2,6 @@ query {
     labwareFlagged(barcode: "STAN-1") {
         barcode
         flagged
+        flagPriority
     }
 }

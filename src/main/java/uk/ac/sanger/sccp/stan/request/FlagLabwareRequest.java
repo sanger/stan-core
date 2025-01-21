@@ -1,5 +1,6 @@
 package uk.ac.sanger.sccp.stan.request;
 
+import uk.ac.sanger.sccp.stan.model.LabwareFlag.Priority;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import java.util.Objects;
@@ -12,11 +13,13 @@ public class FlagLabwareRequest {
     private String barcode;
     private String description;
     private String workNumber;
+    private Priority priority;
 
-    public FlagLabwareRequest(String barcode, String description, String workNumber) {
+    public FlagLabwareRequest(String barcode, String description, String workNumber, Priority priority) {
         this.barcode = barcode;
         this.description = description;
         this.workNumber = workNumber;
+        this.priority = priority;
     }
 
     // required for framework
@@ -53,6 +56,14 @@ public class FlagLabwareRequest {
         this.workNumber = workNumber;
     }
 
+    public Priority getPriority() {
+        return this.priority;
+    }
+
+    public void setPriority(Priority priority) {
+        this.priority = priority;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -60,7 +71,9 @@ public class FlagLabwareRequest {
         FlagLabwareRequest that = (FlagLabwareRequest) o;
         return (Objects.equals(this.barcode, that.barcode)
                 && Objects.equals(this.description, that.description)
-                && Objects.equals(this.workNumber, that.workNumber));
+                && Objects.equals(this.workNumber, that.workNumber)
+                && this.priority == that.priority
+        );
     }
 
     @Override
@@ -74,6 +87,7 @@ public class FlagLabwareRequest {
                 .add("barcode", barcode)
                 .add("description", description)
                 .addIfNotNull("workNumber", workNumber)
+                .add("priority", priority)
                 .reprStringValues()
                 .toString();
     }

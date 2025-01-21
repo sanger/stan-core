@@ -1,13 +1,10 @@
-package uk.ac.sanger.sccp.stan.request;
+package uk.ac.sanger.sccp.stan.request.history;
 
-import uk.ac.sanger.sccp.stan.model.Labware;
-import uk.ac.sanger.sccp.stan.model.Sample;
-import uk.ac.sanger.sccp.utils.BasicUtils;
+import uk.ac.sanger.sccp.stan.model.*;
 
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
-import static uk.ac.sanger.sccp.utils.BasicUtils.nullToEmpty;
+import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 /**
  * @author dr6
@@ -16,13 +13,14 @@ public class History {
     private List<HistoryEntry> entries;
     private List<Sample> samples;
     private List<Labware> labware;
-    private List<String> flaggedBarcodes;
+    private Map<LabwareFlag.Priority, List<String>> flagPriorityBarcodes;
 
-    public History(List<HistoryEntry> entries, List<Sample> samples, List<Labware> labware, List<String> flaggedBarcodes) {
+    public History(List<HistoryEntry> entries, List<Sample> samples, List<Labware> labware,
+                   Map<LabwareFlag.Priority, List<String>> flagPriorityBarcodes) {
         setEntries(entries);
         setSamples(samples);
         setLabware(labware);
-        setFlaggedBarcodes(flaggedBarcodes);
+        setFlagPriorityBarcodes(flagPriorityBarcodes);
     }
 
     public History(List<HistoryEntry> entries, List<Sample> samples, List<Labware> labware) {
@@ -30,7 +28,7 @@ public class History {
     }
 
     public History() {
-        this(null, null, null);
+        this(null, null, null, null);
     }
 
     public List<HistoryEntry> getEntries() {
@@ -57,12 +55,25 @@ public class History {
         this.labware = nullToEmpty(labware);
     }
 
-    public List<String> getFlaggedBarcodes() {
-        return this.flaggedBarcodes;
+    public Map<LabwareFlag.Priority, List<String>> getFlagPriorityBarcodes() {
+        return this.flagPriorityBarcodes;
     }
 
-    public void setFlaggedBarcodes(List<String> flaggedBarcodes) {
-        this.flaggedBarcodes = nullToEmpty(flaggedBarcodes);
+    public void setFlagPriorityBarcodes(Map<LabwareFlag.Priority, List<String>> flagPriorityBarcodes) {
+        this.flagPriorityBarcodes = nullToEmpty(flagPriorityBarcodes);
+    }
+
+    /**
+     * Gets flagged barcodes as a list pairing up a priority with a list of barcodes
+     * @return a list of {@code FlagBarcodes} objects
+     */
+    public List<FlagBarcodes> getFlagBarcodes() {
+        if (nullOrEmpty(flagPriorityBarcodes)) {
+            return List.of();
+        }
+        return flagPriorityBarcodes.entrySet().stream()
+                .map(e -> new FlagBarcodes(e.getKey(), e.getValue()))
+                .toList();
     }
 
     @Override
@@ -73,7 +84,7 @@ public class History {
         return (Objects.equals(this.entries, that.entries)
                 && Objects.equals(this.samples, that.samples)
                 && Objects.equals(this.labware, that.labware)
-                && Objects.equals(this.flaggedBarcodes, that.flaggedBarcodes));
+                && Objects.equals(this.flagPriorityBarcodes, that.flagPriorityBarcodes));
     }
 
     @Override
@@ -83,11 +94,11 @@ public class History {
 
     @Override
     public String toString() {
-        return BasicUtils.describe("History")
+        return describe("History")
                 .add("entries", entries)
                 .add("samples", samples)
                 .add("labware", labware)
-                .add("flaggedBarcodes", flaggedBarcodes)
+                .add("flagPriorityBarcodes", flagPriorityBarcodes)
                 .toString();
     }
 }

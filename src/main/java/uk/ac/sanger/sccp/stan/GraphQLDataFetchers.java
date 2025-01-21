@@ -13,6 +13,8 @@ import uk.ac.sanger.sccp.stan.model.reagentplate.ReagentPlate;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.request.LabwareRoi.RoiResult;
+import uk.ac.sanger.sccp.stan.request.history.History;
+import uk.ac.sanger.sccp.stan.request.history.HistoryGraph;
 import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.extract.ExtractResultQueryService;
 import uk.ac.sanger.sccp.stan.service.flag.FlagLookupService;
@@ -214,10 +216,10 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                 throw new IllegalArgumentException("No barcode supplied.");
             }
             Labware lw = labwareRepo.getByBarcode(barcode);
-            if (requestsField(dfe, "flagged")) {
+            if (requestsField(dfe, "flagged") || requestsField(dfe, "flagPriority")) {
                 return flagLookupService.getLabwareFlagged(lw);
             }
-            return new LabwareFlagged(lw, false);
+            return new LabwareFlagged(lw, null);
         };
     }
 

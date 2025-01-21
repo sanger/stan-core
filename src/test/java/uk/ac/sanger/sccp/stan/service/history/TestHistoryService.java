@@ -8,7 +8,9 @@ import org.mockito.MockitoAnnotations;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.*;
+import uk.ac.sanger.sccp.stan.request.LabwareFlagged;
+import uk.ac.sanger.sccp.stan.request.SamplePositionResult;
+import uk.ac.sanger.sccp.stan.request.history.*;
 import uk.ac.sanger.sccp.stan.service.SlotRegionService;
 import uk.ac.sanger.sccp.stan.service.flag.FlagLookupService;
 import uk.ac.sanger.sccp.stan.service.history.HistoryServiceImp.EventTypeFilter;
@@ -217,18 +219,19 @@ public class TestHistoryService {
         doReturn(entries.subList(1,2)).when(service).createEntriesForOps(ops, null, lws, null, work.getWorkNumber());
 
         doReturn(entries.subList(0,1)).when(service).createEntriesForReleases(releases, null, null, work.getWorkNumber());
-        List<String> flaggedBarcodes = List.of("alpha", "beta");
+        Map<LabwareFlag.Priority, List<String>> flaggedBcs = Map.of(LabwareFlag.Priority.flag, List.of("alpha", "beta"),
+                LabwareFlag.Priority.note, List.of("gamma"));
 
         List<Sample> samples = List.of(sam1,sam2);
         List<Labware> allLabware = BasicUtils.concat(lws, List.of(rlw1, rlw2));
         doReturn(samples).when(service).referencedSamples(sameElements(entries, true), sameElements(allLabware, true));
-        doReturn(flaggedBarcodes).when(service).loadFlaggedBarcodes(allLabware);
+        doReturn(flaggedBcs).when(service).loadFlaggedBarcodes(allLabware);
 
         History history = service.getHistoryForWorkNumber(workNumber);
         assertEquals(entries, history.getEntries());
         assertEquals(samples, history.getSamples());
         assertEquals(allLabware, history.getLabware());
-        assertEquals(flaggedBarcodes, history.getFlaggedBarcodes());
+        assertEquals(flaggedBcs, history.getFlagPriorityBarcodes());
     }
 
     @ParameterizedTest
@@ -407,14 +410,16 @@ public class TestHistoryService {
             doReturn(history).when(service).getHistoryForOpType(opType);
         }
 
-        List<String> flaggedBarcodes = List.of("alpha", "beta");
-        doReturn(flaggedBarcodes).when(service).loadFlaggedBarcodes(history.getLabware());
+        List<String> flagBcs = List.of("alpha", "beta");
+        final Map<LabwareFlag.Priority, List<String>> priorityBcs = Map.of(LabwareFlag.Priority.flag, flagBcs);
+        doReturn(priorityBcs).when(service).loadFlaggedBarcodes(history.getLabware());
 
         if (expectException) {
             assertThrows(EntityNotFoundException.class, () -> service.getHistoryForEventType(eventTypeName));
         } else {
             assertSame(history, service.getHistoryForEventType(eventTypeName));
-            assertEquals(flaggedBarcodes, history.getFlaggedBarcodes());
+            assertEquals(priorityBcs, history.getFlagPriorityBarcodes());
+            assertThat(history.getFlagBarcodes()).containsExactly(new FlagBarcodes(LabwareFlag.Priority.flag, flagBcs));
         }
     }
 
@@ -761,7 +766,12 @@ public class TestHistoryService {
         when(mockDestructionRepo.findAllByLabwareIdIn(labwareIds)).thenReturn(destructions);
         when(mockReleaseRepo.findAllByLabwareIdIn(labwareIds)).thenReturn(releases);
         when(mockLwRepo.findAllByIdIn(labwareIds)).thenReturn(labware);
-        List<String> flaggedBarcodes = List.of("Alpha", "Beta");
+        final List<String> flagBcs = List.of("Alpha", "Beta");
+        final List<String> noteBcs = List.of("Gamma");
+        Map<LabwareFlag.Priority, List<String>> flaggedBarcodes = Map.of(
+                LabwareFlag.Priority.flag, flagBcs,
+                LabwareFlag.Priority.note, noteBcs
+        );
         doReturn(flaggedBarcodes).when(service).loadFlaggedBarcodes(labware);
 
         doReturn(labwareIds).when(service).loadLabwareIdsForOpsAndSampleIds(ops, sampleIds);
@@ -776,7 +786,11 @@ public class TestHistoryService {
         assertEquals(entries, history.getEntries());
         assertEquals(samples, history.getSamples());
         assertEquals(labware, history.getLabware());
-        assertEquals(flaggedBarcodes, history.getFlaggedBarcodes());
+        assertEquals(flaggedBarcodes, history.getFlagPriorityBarcodes());
+        assertThat(history.getFlagBarcodes()).containsExactlyInAnyOrder(
+                new FlagBarcodes(LabwareFlag.Priority.flag, flagBcs),
+                new FlagBarcodes(LabwareFlag.Priority.note, noteBcs)
+        );
     }
 
     @ParameterizedTest
@@ -1109,8 +1123,8 @@ public class TestHistoryService {
         verifyNoInteractions(mockFlagRepo);
         Labware lw = EntityFactory.getTube();
         List<LabwareFlag> flags = List.of(
-                new LabwareFlag(10, lw, "Alpha", null, 2),
-                new LabwareFlag(11, lw, "Beta", null, 3)
+                new LabwareFlag(10, lw, "Alpha", null, 2, LabwareFlag.Priority.flag),
+                new LabwareFlag(11, lw, "Beta", null, 3, LabwareFlag.Priority.flag)
         );
         when(mockFlagRepo.findAllByOperationIdIn(List.of(2,3))).thenReturn(flags);
 
@@ -1292,7 +1306,7 @@ public class TestHistoryService {
         );
         doReturn(opStainTypes).when(mockStainTypeRepo).loadOperationStainTypes(any());
 
-        Map<Integer, List<LabwareFlag>> opFlags = Map.of(opIds[0], List.of(new LabwareFlag(100, labware[0], "Alpha", null, opIds[0])));
+        Map<Integer, List<LabwareFlag>> opFlags = Map.of(opIds[0], List.of(new LabwareFlag(100, labware[0], "Alpha", null, opIds[0], LabwareFlag.Priority.flag)));
         doReturn(opFlags).when(service).loadLabwareFlags(any());
 
         Map<Integer, List<ReagentActionDetail>> radMap = Map.of(opIds[0],
@@ -1603,9 +1617,13 @@ public class TestHistoryService {
         createLabware();
         List<Labware> labwares = Arrays.asList(this.labware);
         List<LabwareFlagged> lfs = IntStream.range(0, labwares.size())
-                .mapToObj(i -> new LabwareFlagged(labwares.get(i), i==1 || i==2))
+                .mapToObj(i -> new LabwareFlagged(labwares.get(i),
+                        i==1 || i==2 ? LabwareFlag.Priority.flag : i==3 ? LabwareFlag.Priority.note : null))
                 .toList();
         when(mockFlagLookupService.getLabwareFlagged(labwares)).thenReturn(lfs);
-        assertThat(service.loadFlaggedBarcodes(labwares)).containsExactlyInAnyOrder(labwares.get(1).getBarcode(), labwares.get(2).getBarcode());
+        var map = service.loadFlaggedBarcodes(labwares);
+        assertThat(map).hasSize(2);
+        assertThat(map.get(LabwareFlag.Priority.flag)).containsExactlyInAnyOrder(labwares.get(1).getBarcode(), labwares.get(2).getBarcode());
+        assertThat(map.get(LabwareFlag.Priority.note)).containsExactly(labwares.get(3).getBarcode());
     }
 }
