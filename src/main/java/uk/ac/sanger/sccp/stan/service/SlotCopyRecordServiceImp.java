@@ -105,17 +105,21 @@ public class SlotCopyRecordServiceImp implements SlotCopyRecordService {
         save.setExecutionType(nullableValueOf(singleNoteValue(noteMap, NOTE_EXECUTION), ExecutionType::valueOf));
         List<String> sourceBarcodes = noteMap.get(NOTE_SRC_BARCODE);
         List<String> sourceStates = noteMap.get(NOTE_SRC_STATE);
-        save.setSources(Zip.map(sourceBarcodes.stream(), sourceStates.stream(),
-                (bc, state) -> new SlotCopySource(bc, nullableValueOf(state, Labware.State::valueOf))
-        ).toList());
+        if (!nullOrEmpty(sourceBarcodes) && !nullOrEmpty(sourceStates)) {
+            save.setSources(Zip.map(sourceBarcodes.stream(), sourceStates.stream(),
+                    (bc, state) -> new SlotCopySource(bc, nullableValueOf(state, Labware.State::valueOf))
+            ).toList());
+        }
         List<String> contentSourceBarcodes = noteMap.get(NOTE_CON_SRCBC);
         List<String> contentSourceAddress = noteMap.get(NOTE_CON_SRCADDRESS);
         List<String> contentDestAddress = noteMap.get(NOTE_CON_DESTADDRESS);
-        save.setContents(IntStream.range(0, contentSourceBarcodes.size()).mapToObj(
-                i -> new SlotCopyContent(contentSourceBarcodes.get(i),
-                        nullableValueOf(contentSourceAddress.get(i), Address::valueOf),
-                        nullableValueOf(contentDestAddress.get(i), Address::valueOf))
-        ).toList());
+        if (!nullOrEmpty(contentSourceBarcodes)) {
+            save.setContents(IntStream.range(0, contentSourceBarcodes.size()).mapToObj(
+                    i -> new SlotCopyContent(contentSourceBarcodes.get(i),
+                            nullableValueOf(contentSourceAddress.get(i), Address::valueOf),
+                            nullableValueOf(contentDestAddress.get(i), Address::valueOf))
+            ).toList());
+        }
         return save;
     }
 
