@@ -49,7 +49,7 @@
             <column name="value_index" type="INT UNSIGNED" defaultValueNumeric="0">
                 <constraints nullable="false"/>
             </column>
-            <column name="value" type="VARCHAR(20)">
+            <column name="value" type="VARCHAR(64)">
                 <constraints nullable="false"/>
             </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
