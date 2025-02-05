@@ -10,11 +10,12 @@ import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.service.OperationService;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
+import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import java.util.*;
 
+import static java.util.stream.Collectors.toSet;
 import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
-import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
  * @author dr6
@@ -53,7 +54,7 @@ public class FlagLabwareServiceImp implements FlagLabwareService {
         Work work = (nullOrEmpty(request.getWorkNumber()) ? null
                 : workService.validateUsableWork(problems, request.getWorkNumber()));
 
-        Labware lw = loadLabware(problems, request.getBarcode());
+        List<Labware> lws = loadLabware(problems, request.getBarcodes());
         String description = checkDescription(problems, request.getDescription());
         if (request.getPriority()==null) {
             problems.add("No priority specified.");
@@ -64,30 +65,42 @@ public class FlagLabwareServiceImp implements FlagLabwareService {
             throw new ValidationException(problems);
         }
 
-        return create(user, opType, lw, description, work, request.getPriority());
+        return create(user, opType, lws, description, work, request.getPriority());
     }
 
     /**
      * Loads the labware indicated. The labware does not need to be active to be flagged.
      * @param problems receptacle for problems
-     * @param barcode the barcode of the labware to load
+     * @param barcodes the barcodes of the labware to load
      * @return the labware found, or null
      */
-    Labware loadLabware(Collection<String> problems, String barcode) {
-        if (nullOrEmpty(barcode)) {
-            problems.add("No labware barcode supplied.");
+    List<Labware> loadLabware(Collection<String> problems, List<String> barcodes) {
+        if (nullOrEmpty(barcodes)) {
+            problems.add("No labware barcodes supplied.");
             return null;
         }
-        var opt = lwRepo.findByBarcode(barcode);
-        if (opt.isEmpty()) {
-            problems.add("Unknown labware barcode: "+repr(barcode));
+        if (barcodes.stream().anyMatch(BasicUtils::nullOrEmpty)) {
+            problems.add("Barcodes array has missing elements.");
             return null;
         }
-        Labware lw = opt.get();
-        if (lw.isEmpty()) {
-            problems.add("Labware "+lw.getBarcode()+" is empty.");
+        List<Labware> labware = lwRepo.findByBarcodeIn(barcodes);
+        Set<String> foundBarcodes = labware.stream().map(lw -> lw.getBarcode().toUpperCase())
+                .collect(toSet());
+        List<String> missing = barcodes.stream()
+                .filter(bc -> !foundBarcodes.contains(bc.toUpperCase()))
+                .map(BasicUtils::repr)
+                .toList();
+        if (!missing.isEmpty()) {
+            problems.add("Unknown labware barcode: "+missing);
         }
-        return opt.get();
+        List<String> bcOfEmptyLabware = labware.stream()
+                .filter(Labware::isEmpty)
+                .map(Labware::getBarcode)
+                .toList();
+        if (!bcOfEmptyLabware.isEmpty()) {
+            problems.add("Labware is empty: "+bcOfEmptyLabware);
+        }
+        return labware;
     }
 
     /**
@@ -127,21 +140,27 @@ public class FlagLabwareServiceImp implements FlagLabwareService {
     }
 
     /**
-     * Records a flag labware operation and records the specified flag
+     * Records flag labware operations and records the specified flag
      * @param user the user responsible
      * @param opType the operation type to record
-     * @param lw the labware being flagged
+     * @param labware the labware being flagged
      * @param description the flag description
-     * @param work work to link to operation (or null)
-     * @return the labware and operation
+     * @param work work to link to operations (or null)
+     * @return the labware and operations
      */
-    OperationResult create(User user, OperationType opType, Labware lw, String description, Work work, Priority priority) {
-        Operation op = opService.createOperationInPlace(opType, user, lw, null, null);
-        LabwareFlag flag = new LabwareFlag(null, lw, description, user, op.getId(), priority);
-        flagRepo.save(flag);
-        if (work!=null) {
-            workService.link(work, List.of(op));
+    OperationResult create(User user, OperationType opType, List<Labware> labware, String description, Work work, Priority priority) {
+        List<Operation> ops = new ArrayList<>(labware.size());
+        List<LabwareFlag> flags = new ArrayList<>(labware.size());
+        for (Labware lw : labware) {
+            Operation op = opService.createOperationInPlace(opType, user, lw, null, null);
+            LabwareFlag flag = new LabwareFlag(null, lw, description, user, op.getId(), priority);
+            ops.add(op);
+            flags.add(flag);
         }
-        return new OperationResult(List.of(op), List.of(lw));
+        flagRepo.saveAll(flags);
+        if (work!=null) {
+            workService.link(work, ops);
+        }
+        return new OperationResult(ops, labware);
     }
 }

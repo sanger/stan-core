@@ -1925,8 +1925,8 @@ input QCLabwareRequest {
 
 """Raise a flag on a piece of labware."""
 input FlagLabwareRequest {
-    """The barcode of the flagged labware."""
-    barcode: String!
+    """The barcodes of the flagged labware."""
+    barcodes: [String!]!
     """The description of the flag."""
     description: String!
     """Work number to link to the flag."""

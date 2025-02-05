@@ -13,11 +13,12 @@ import uk.ac.sanger.sccp.stan.request.FlagLabwareRequest;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.service.OperationService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
+import uk.ac.sanger.sccp.utils.Zip;
 
 import java.util.*;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.Matchers.*;
 
@@ -65,13 +66,17 @@ class TestFlagLabwareService {
     @ValueSource(booleans={false,true})
     void testRecord_valid(boolean hasWork) {
         User user = EntityFactory.getUser();
-        Labware lw = EntityFactory.getTube();
+        Labware lw1 = EntityFactory.getTube();
+        Labware lw2 = EntityFactory.makeLabware(lw1.getLabwareType(), lw1.getFirstSlot().getSamples().getFirst());
+        List<Labware> labware = List.of(lw1, lw2);
+        List<String> barcodes = labware.stream().map(Labware::getBarcode).toList();
         Work work = hasWork ? EntityFactory.makeWork("SGP11") : null;
         String workNumber = work==null ? null : work.getWorkNumber();
         String desc = "  Alpha beta   gamma.  ";
-        when(mockLwRepo.findByBarcode(lw.getBarcode())).thenReturn(Optional.of(lw));
-        final Integer flagId = 500;
+        when(mockLwRepo.findByBarcodeIn(any())).thenReturn(labware);
+        int[] flagIdCounter = {500};
         when(mockFlagRepo.save(any())).then(invocation -> {
+            int flagId = flagIdCounter[0]++;
             LabwareFlag flag = invocation.getArgument(0);
             flag.setId(flagId);
             return flag;
@@ -83,12 +88,12 @@ class TestFlagLabwareService {
             when(mockWorkService.validateUsableWork(any(), any())).thenReturn(work);
         }
 
-        OperationResult opres = new OperationResult(List.of(new Operation()), List.of(lw));
+        OperationResult opres = new OperationResult(List.of(new Operation()), labware);
         doReturn(opres).when(service).create(any(), any(), any(), any(), any(), any());
 
-        assertSame(opres, service.record(user, new FlagLabwareRequest(lw.getBarcode(), desc, workNumber, Priority.note)));
+        assertSame(opres, service.record(user, new FlagLabwareRequest(barcodes, desc, workNumber, Priority.note)));
 
-        verify(service).loadLabware(any(), eq(lw.getBarcode()));
+        verify(service).loadLabware(any(), eq(barcodes));
         verify(service).checkDescription(any(), eq(desc));
         verify(service).loadOpType(any());
         if (hasWork) {
@@ -96,19 +101,21 @@ class TestFlagLabwareService {
         } else {
             verifyNoInteractions(mockWorkService);
         }
-        verify(service).create(user, opType, lw, "Alpha beta gamma.", work, Priority.note);
+        verify(service).create(user, opType, labware, "Alpha beta gamma.", work, Priority.note);
     }
 
     @Test
     void testRecord_invalid() {
-        when(mockLwRepo.findByBarcode(any())).thenReturn(Optional.empty());
+        Labware lw = EntityFactory.getTube();
+        when(mockLwRepo.findByBarcodeIn(any())).thenReturn(List.of(lw));
         when(mockOpTypeRepo.findByName(any())).thenReturn(Optional.empty());
-
-        assertValidationException(() -> service.record(null, new FlagLabwareRequest("STAN-404", null, null, null)),
-                List.of("No user specified.", "Unknown labware barcode: \"STAN-404\"", "Missing flag description.",
+        List<String> barcodes = List.of(lw.getBarcode().toLowerCase(), "STAN-404");
+        assertValidationException(() -> service.record(null, new FlagLabwareRequest(barcodes,
+                        null, null, null)),
+                List.of("No user specified.", "Unknown labware barcode: [\"STAN-404\"]", "Missing flag description.",
                         "Flag labware operation type is missing.", "No priority specified."));
 
-        verify(service).loadLabware(any(), eq("STAN-404"));
+        verify(service).loadLabware(any(), eq(barcodes));
         verify(service).checkDescription(any(), isNull());
         verify(service).loadOpType(any());
         verify(service, never()).create(any(), any(), any(), any(), any(), any());
@@ -118,14 +125,15 @@ class TestFlagLabwareService {
     void testRecord_badWork() {
         User user = EntityFactory.getUser();
         Labware lw = EntityFactory.getTube();
-        FlagLabwareRequest request = new FlagLabwareRequest(lw.getBarcode(), "flag desc", "SGP4", Priority.flag);
-        when(mockLwRepo.findByBarcode(lw.getBarcode())).thenReturn(Optional.of(lw));
+        List<String> barcodes = List.of(lw.getBarcode());
+        FlagLabwareRequest request = new FlagLabwareRequest(barcodes, "flag desc", "SGP4", Priority.flag);
+        when(mockLwRepo.findByBarcodeIn(barcodes)).thenReturn(List.of(lw));
         when(mockWorkService.validateUsableWork(any(), any())).then(addProblem("Bad work"));
         OperationType opType = EntityFactory.makeOperationType("Flag labware", null);
         when(mockOpTypeRepo.findByName(opType.getName())).thenReturn(Optional.of(opType));
 
         assertValidationException(() -> service.record(user, request), List.of("Bad work"));
-        verify(service).loadLabware(any(), eq(lw.getBarcode()));
+        verify(service).loadLabware(any(), eq(barcodes));
         verify(service).checkDescription(any(), eq("flag desc"));
         verify(service).loadOpType(any());
         verify(mockWorkService).validateUsableWork(any(), eq("SGP4"));
@@ -133,29 +141,43 @@ class TestFlagLabwareService {
     }
 
     @ParameterizedTest
-    @CsvSource({"STAN-1, true, true,",
-            "STAN-1, true, false, Labware STAN-1 is empty.",
-            "STAN-404, false, false, Unknown labware barcode: \"STAN-404\"",
-            ", false, false, No labware barcode supplied.",
+    @ValueSource(booleans={true,false})
+    void testLoadLabware_missingBarcode(boolean bcNull) {
+        List<String> barcodes = Arrays.asList("STAN-1", bcNull ? null : "");
+        List<String> problems = new ArrayList<>(1);
+        assertNull(service.loadLabware(problems, barcodes));
+        assertProblem(problems, "Barcodes array has missing elements.");
+    }
+
+    @ParameterizedTest
+    @CsvSource({"Stan-1, true,",
+            "STAN-1, false, Labware is empty: [STAN-1]",
+            "Stan-1/STAN-404, true, Unknown labware barcode: [\"STAN-404\"]",
+            ", false, No labware barcodes supplied.",
     })
-    void testLoadLabware(String barcode, boolean exists, boolean containsSample, String expectedProblem) {
-        Labware lw;
-        if (!exists) {
-            lw = null;
-        } else if (containsSample) {
-            lw = EntityFactory.makeLabware(EntityFactory.getTubeType(), EntityFactory.getSample());
-        } else {
-            lw = EntityFactory.makeEmptyLabware(EntityFactory.getTubeType());
-        }
-        if (barcode!=null && !barcode.isEmpty()) {
-            if (lw!=null) {
-                lw.setBarcode(barcode);
+    void testLoadLabware(String barcodesJoined, boolean containsSample, String expectedProblem) {
+        List<String> barcodes = (barcodesJoined == null ? null : Arrays.asList(barcodesJoined.split("/")));
+
+        String validBarcode = barcodes == null ? null
+                : barcodes.stream().filter(bc -> !bc.equalsIgnoreCase("STAN-404")).findAny().orElse(null);
+        List<Labware> lwList;
+        if (validBarcode!=null) {
+            Labware lw;
+            if (containsSample) {
+                lw = EntityFactory.makeLabware(EntityFactory.getTubeType(), EntityFactory.getSample());
+            } else {
+                lw = EntityFactory.makeEmptyLabware(EntityFactory.getTubeType());
             }
-            when(mockLwRepo.findByBarcode(barcode)).thenReturn(Optional.ofNullable(lw));
+            lw.setBarcode(validBarcode.toUpperCase());
+            when(mockLwRepo.findByBarcodeIn(barcodes)).thenReturn(List.of(lw));
+            lwList = List.of(lw);
+        } else {
+            when(mockLwRepo.findByBarcodeIn(any())).thenReturn(List.of());
+            lwList = null;
         }
 
         final List<String> problems = new ArrayList<>(expectedProblem==null ? 0 : 1);
-        assertSame(lw, service.loadLabware(problems, barcode));
+        assertEquals(lwList, service.loadLabware(problems, barcodes));
         assertProblem(problems, expectedProblem);
     }
 
@@ -184,23 +206,38 @@ class TestFlagLabwareService {
     @ParameterizedTest
     @ValueSource(booleans={false,true})
     void testCreate(boolean hasWork) {
-        Labware lw = EntityFactory.getTube();
+        Labware lw1 = EntityFactory.getTube();
+        Labware lw2 = EntityFactory.makeLabware(lw1.getLabwareType(), lw1.getFirstSlot().getSamples().getFirst());
+        List<Labware> labware = List.of(lw1, lw2);
         User user = EntityFactory.getUser();
         Work work = (hasWork ? EntityFactory.makeWork("SGP1") : null);
         String desc = "Alpha beta";
         Priority priority = Priority.flag;
         OperationType opType = EntityFactory.makeOperationType("Flag labware", null, OperationTypeFlag.IN_PLACE);
 
-        Operation op = new Operation();
-        op.setId(500);
-        when(mockOpService.createOperationInPlace(any(), any(), any(), any(), any())).thenReturn(op);
+        final int[] opIdCounter = {500};
+        final List<Operation> returnedOps = new ArrayList<>(labware.size());
+        when(mockOpService.createOperationInPlace(any(), any(), any(), any(), any())).then(invocation -> {
+            Operation op = new Operation();
+            op.setId(++opIdCounter[0]);
+            returnedOps.add(op);
+            return op;
+        });
+        final OperationResult result = service.create(user, opType, labware, desc, work, priority);
 
-        assertEquals(new OperationResult(List.of(op), List.of(lw)), service.create(user, opType, lw, desc, work, priority));
+        for (Labware lw : labware) {
+            verify(mockOpService).createOperationInPlace(opType, user, lw, null, null);
+        }
 
-        verify(mockOpService).createOperationInPlace(opType, user, lw, null, null);
-        verify(mockFlagRepo).save(new LabwareFlag(null, lw, desc, user, op.getId(), priority));
+        assertThat(returnedOps).hasSameSizeAs(labware);
+        assertEquals(new OperationResult(returnedOps, labware), result);
+
+        List<LabwareFlag> expectedFlags = Zip.map(labware.stream(), returnedOps.stream(),
+                        (lw, op) -> new LabwareFlag(null, lw, desc, user, op.getId(), priority))
+                .toList();
+        verify(mockFlagRepo).saveAll(expectedFlags);
         if (hasWork) {
-            verify(mockWorkService).link(work, List.of(op));
+            verify(mockWorkService).link(work, returnedOps);
         } else {
             verifyNoInteractions(mockWorkService);
         }

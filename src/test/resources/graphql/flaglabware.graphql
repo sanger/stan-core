@@ -1,6 +1,6 @@
 mutation {
     flagLabware(request: {
-        barcode: "[BC]"
+        barcodes: ["[BC]"]
         description: "[DESC]"
         workNumber: "[WORKNUM]"
         priority: flag
