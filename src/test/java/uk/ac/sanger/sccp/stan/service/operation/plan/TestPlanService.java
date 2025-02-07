@@ -362,8 +362,8 @@ public class TestPlanService {
             PlanOperation plan = plans.getFirst();
             List<Labware> sources = List.of(EntityFactory.makeEmptyLabware(lt));
             doReturn(sources).when(planService).getSources(any());
-            List<LabwareFlagged> lfSources = sources.stream().map(x -> new LabwareFlagged(x, false)).toList();
-            LabwareFlagged lfDest = new LabwareFlagged(lw, false);
+            List<LabwareFlagged> lfSources = sources.stream().map(x -> new LabwareFlagged(x, null)).toList();
+            LabwareFlagged lfDest = new LabwareFlagged(lw, null);
 
             assertEquals(new PlanData(plan, lfSources, lfDest), planService.getPlanData(barcode, false));
             verify(planService).getSources(plan);
@@ -378,6 +378,7 @@ public class TestPlanService {
     @ParameterizedTest
     @ValueSource(booleans={false,true})
     public void testGetPlanData_flags(boolean flagged) {
+        LabwareFlag.Priority priority = (flagged ? LabwareFlag.Priority.flag : null);
         LabwareType lt = EntityFactory.getTubeType();
         Labware lw = EntityFactory.makeEmptyLabware(lt);
         final String barcode = lw.getBarcode();
@@ -389,12 +390,12 @@ public class TestPlanService {
         when(mockPlanRepo.findAllByDestinationIdIn(any())).thenReturn(List.of(plan));
         List<Labware> sources = List.of(EntityFactory.makeEmptyLabware(lt));
         doReturn(sources).when(planService).getSources(any());
-        List<LabwareFlagged> lfSources = sources.stream().map(x -> new LabwareFlagged(x, flagged)).toList();
-        LabwareFlagged lfDest = new LabwareFlagged(lw, flagged);
+        List<LabwareFlagged> lfSources = sources.stream().map(x -> new LabwareFlagged(x, priority)).toList();
+        LabwareFlagged lfDest = new LabwareFlagged(lw, priority);
 
         when(mockFlagLookupService.getLabwareFlagged(anyCollection())).then(invocation -> {
             Collection<Labware> lws = invocation.getArgument(0);
-            return lws.stream().map(x -> new LabwareFlagged(x, flagged)).toList();
+            return lws.stream().map(x -> new LabwareFlagged(x, priority)).toList();
         });
 
         assertEquals(new PlanData(plan, lfSources, lfDest), planService.getPlanData(barcode, true));

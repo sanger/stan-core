@@ -59,6 +59,9 @@ public class TestHistoryQuery {
         String barcode = chainGet(lwData, "barcode");
         int sampleId = chainGet(lwData, "slots", 0, "samples", 0, "id");
 
+        entityCreator.createOpType("Flag labware", null, OperationTypeFlag.IN_PLACE);
+        recordFlag(barcode, work.getWorkNumber());
+
         String[] queryHeaders = {
                 "historyForSampleId(sampleId: "+sampleId+")",
                 "historyForLabwareBarcode(barcode: \""+barcode+"\")",
@@ -76,7 +79,7 @@ public class TestHistoryQuery {
             String queryName = queryHeader.substring(0, queryHeader.indexOf('('));
             Map<String, ?> historyData = chainGet(response, "data", queryName);
             List<Map<String,?>> entries = chainGetList(historyData, "entries");
-            assertThat(entries).hasSize(1);
+            assertThat(entries).hasSize(2);
             Map<String,?> entry = entries.getFirst();
             assertNotNull(entry.get("eventId"));
             assertEquals("Register", entry.get("type"));
@@ -102,7 +105,25 @@ public class TestHistoryQuery {
             assertEquals("Bone", chainGet(sampleData, "tissue", "spatialLocation", "tissueType", "name"));
             assertEquals("DONOR1", chainGet(sampleData, "tissue", "donor", "donorName"));
             assertNull(sampleData.get("section"));
+
+            List<Map<String,?>> flagBcs = chainGet(historyData, "flagBarcodes");
+            assertThat(flagBcs).hasSize(1);
+            Map<String,?> flagBc = flagBcs.getFirst();
+            assertEquals("flag", flagBc.get("priority"));
+            //noinspection unchecked
+            assertThat((List<String>) flagBc.get("barcodes")).containsExactly(barcode);
         }
+    }
+
+    private String recordFlag(String barcode, String workNumber) throws Exception {
+        String mutation = tester.readGraphQL("flaglabware.graphql");
+        String desc = "bananas";
+        mutation = mutation.replace("[BC]", barcode)
+                .replace("[WORKNUM]", workNumber)
+                .replace("[DESC]", desc);
+        Object response = tester.post(mutation);
+        assertNotNull(chainGet(response, "data", "flagLabware", "operations", 0, "id"));
+        return desc;
     }
 
     @Transactional

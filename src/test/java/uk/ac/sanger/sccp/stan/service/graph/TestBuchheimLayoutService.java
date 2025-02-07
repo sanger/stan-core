@@ -2,8 +2,8 @@ package uk.ac.sanger.sccp.stan.service.graph;
 
 import org.junit.jupiter.api.*;
 import org.mockito.*;
-import uk.ac.sanger.sccp.stan.request.HistoryGraph.Link;
-import uk.ac.sanger.sccp.stan.request.HistoryGraph.Node;
+import uk.ac.sanger.sccp.stan.request.history.HistoryGraph.Link;
+import uk.ac.sanger.sccp.stan.request.history.HistoryGraph.Node;
 
 import java.time.LocalDateTime;
 import java.util.*;

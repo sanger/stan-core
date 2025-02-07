@@ -1,6 +1,6 @@
 package uk.ac.sanger.sccp.stan.service.history;
 
-import uk.ac.sanger.sccp.stan.request.History;
+import uk.ac.sanger.sccp.stan.request.history.History;
 
 import java.util.List;
 

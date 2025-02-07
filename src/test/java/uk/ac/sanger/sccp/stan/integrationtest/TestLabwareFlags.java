@@ -96,7 +96,9 @@ public class TestLabwareFlags {
 
         query = tester.readGraphQL("labwareflagged.graphql");
         response = tester.post(query);
-        assertEquals("STAN-1", chainGet(response, "data", "labwareFlagged", "barcode"));
-        assertEquals(Boolean.TRUE, chainGet(response, "data", "labwareFlagged", "flagged"));
+        Map<String, ?> lf = chainGet(response, "data", "labwareFlagged");
+        assertEquals("STAN-1", lf.get("barcode"));
+        assertEquals(Boolean.TRUE, lf.get("flagged"));
+        assertEquals("flag", lf.get("flagPriority"));
     }
 }

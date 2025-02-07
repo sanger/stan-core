@@ -25,5 +25,9 @@ query {
             }
             section
         }
+        flagBarcodes {
+            priority
+            barcodes
+        }
     }
 }

@@ -210,9 +210,9 @@ public class PlanServiceImp implements PlanService {
             lfSources = lf.subList(0, lf.size()-1);
             lfDest = lf.getLast();
         } else {
-            lfDest = new LabwareFlagged(destination, false);
+            lfDest = new LabwareFlagged(destination, null);
             lfSources = sources.stream()
-                    .map(lw -> new LabwareFlagged(lw, false))
+                    .map(lw -> new LabwareFlagged(lw, null))
                     .toList();
         }
         return new PlanData(plan, lfSources, lfDest);
