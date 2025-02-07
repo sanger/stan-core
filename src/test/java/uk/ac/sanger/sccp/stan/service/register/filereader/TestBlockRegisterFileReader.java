@@ -13,6 +13,7 @@ import uk.ac.sanger.sccp.stan.model.LifeStage;
 import uk.ac.sanger.sccp.stan.request.register.BlockRegisterRequest;
 import uk.ac.sanger.sccp.stan.request.register.RegisterRequest;
 import uk.ac.sanger.sccp.stan.service.register.filereader.BlockRegisterFileReader.Column;
+import uk.ac.sanger.sccp.utils.Zip;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -302,18 +303,18 @@ class TestBlockRegisterFileReader extends BaseTestFileReader {
     @Test
     void testCreateRequest() {
         List<Map<Column, Object>> rows = List.of(
-                rowMap("SGP1", "X1"),
+                rowMap("SGP1, SGP2 sgp3,sgp2", "X1"),
+                rowMap("sgp1 sgp3 sgp2", "X2"),
                 rowMap(null, null)
         );
-        List<BlockRegisterRequest> brs = IntStream.range(1, 3)
+        List<BlockRegisterRequest> brs = IntStream.rangeClosed(1, rows.size())
                 .mapToObj(i -> makeBlockRegisterRequest("X"+i))
                 .collect(toList());
-        doReturn(brs.get(0)).when(reader).createBlockRequest(any(), same(rows.get(0)));
-        doReturn(brs.get(1)).when(reader).createBlockRequest(any(), same(rows.get(1)));
+        Zip.forEach(rows.stream(), brs.stream(), (row, br) -> doReturn(br).when(reader).createBlockRequest(any(), same(row)));
 
         final List<String> problems = new ArrayList<>();
         RegisterRequest request = reader.createRequest(problems, rows);
-        assertThat(request.getWorkNumbers()).containsExactly("SGP1");
+        assertThat(request.getWorkNumbers()).containsExactlyInAnyOrder("SGP1", "SGP2", "SGP3");
         assertEquals(brs, request.getBlocks());
     }
 
@@ -331,7 +332,7 @@ class TestBlockRegisterFileReader extends BaseTestFileReader {
         Matchers.mayAddProblem("Bad stuff.", srls.get(1)).when(reader).createBlockRequest(any(), same(rows.get(1)));
 
         assertValidationError(() -> reader.createRequest(new ArrayList<>(), rows),
-                "Multiple work numbers specified.",
+                "All rows must list the same work numbers.",
                 "Bad stuff.");
     }
 

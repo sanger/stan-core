@@ -10,6 +10,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.function.BiPredicate;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -96,7 +97,7 @@ public abstract class BaseRegisterFileReader<RequestType, ColumnType extends Enu
         List<String> missingColumns = getColumns()
                 .filter(c -> c.isRequired() && map.get(c)==null)
                 .map(Object::toString)
-                .collect(toList());
+                .toList();
         if (!missingColumns.isEmpty()) {
             problems.add("Missing columns: "+missingColumns);
         }
@@ -247,12 +248,42 @@ public abstract class BaseRegisterFileReader<RequestType, ColumnType extends Enu
      * @return the string found, or null if no string is found
      */
     public String getUniqueString(Stream<String> values, Runnable multipleValues) {
-        Iterable<String> iter = values::iterator;
-        String found = null;
-        for (String value : iter) {
+        return getUnique(values, multipleValues, String::equalsIgnoreCase);
+    }
+
+    /**
+     * Gets the unique value from the given stream. Null values are ignored.
+     * If multiple different values are found, the <tt>multipleValues</tt> function is called,
+     * and the first found value is returned.
+     * @param values the stream of values
+     * @param multipleValues callback to run if multiple different values are found
+     * @return the value found, or null if no value is found
+     * @param <V> the type of values
+     */
+    public <V> V getUnique(Stream<V> values, Runnable multipleValues) {
+        return getUnique(values, multipleValues, null);
+    }
+
+    /**
+     * Gets the unique value from the given stream. Null values are ignored.
+     * If multiple different values are found, the <tt>multipleValues</tt> function is called,
+     * and the first found value is returned.
+     * @param values the stream of values
+     * @param multipleValues callback to run if multiple different values are found
+     * @param equal predicate to test if two values count as equal
+     * @return the value found, or null if no value is found
+     * @param <V> the type of values
+     */
+    public <V> V getUnique(Stream<V> values, Runnable multipleValues, BiPredicate<V,V> equal) {
+        if (equal==null) {
+            equal = Object::equals;
+        }
+        Iterable<V> iter = values::iterator;
+        V found = null;
+        for (V value : iter) {
             if (found==null) {
                 found = value;
-            } else if (value != null && !found.equalsIgnoreCase(value)) {
+            } else if (value != null && !equal.test(found, value)) {
                 multipleValues.run();
                 break;
             }
