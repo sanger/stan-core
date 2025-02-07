@@ -5,10 +5,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.jdbc.Sql;
-import uk.ac.sanger.sccp.stan.EntityCreator;
 import uk.ac.sanger.sccp.stan.model.Address;
 import uk.ac.sanger.sccp.stan.model.reagentplate.ReagentPlate;
 import uk.ac.sanger.sccp.stan.model.taglayout.TagHeading;
@@ -30,18 +28,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 @SpringBootTest
 @ActiveProfiles(profiles = "test")
 @Sql("/testdata/tag_layout_test.sql")
-@Import(EntityCreator.class)
 public class TestTagLayoutRepo {
     @Autowired
     TagLayoutRepo tagLayoutRepo;
-    @Autowired
-    LabwareTypeRepo lwTypeRepo;
-    @Autowired
-    OperationRepo opRepo;
-    @Autowired
-    ReagentPlateRepo reagentPlateRepo;
-    @Autowired
-    EntityCreator entityCreator;
 
     @Test
     @Transactional
