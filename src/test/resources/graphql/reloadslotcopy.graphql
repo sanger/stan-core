@@ -1,0 +1,17 @@
+query {
+    reloadSlotCopy(operationType: "opname", workNumber: "[WORK]", lpNumber: "LP1") {
+        operationType
+        barcode
+        workNumber
+        lpNumber
+        costing
+        executionType
+        preBarcode
+        labwareType
+        lotNumber
+        probeLotNumber
+        bioState
+        sources { barcode labwareState }
+        contents { sourceBarcode sourceAddress destinationAddress }
+    }
+}

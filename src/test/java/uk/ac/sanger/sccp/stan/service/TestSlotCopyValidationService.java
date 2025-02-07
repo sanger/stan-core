@@ -607,12 +607,12 @@ public class TestSlotCopyValidationService {
 
     @ParameterizedTest
     @CsvSource({
-            ", Visium LP CytAssist, 1 4",
-            ", Visium LP CytAssist XL, 1 2",
+            ", Visium LP CytAssist 6.5, 1 4",
+            ", Visium LP CytAssist 11, 1 2",
             ", Visium LP CytAssist HD, 1 2",
             "Expected a CytAssist labware type for operation CytAssist., Bananas, 1",
-            "Slots B1 and C1 are disallowed for use in this operation., Visium LP CytAssist, 1 2",
-            "Slots B1 and C1 are disallowed for use in this operation., Visium LP CytAssist, 3 4",
+            "Slots B1 and C1 are disallowed for use in this operation., Visium LP CytAssist 6.5, 1 2",
+            "Slots B1 and C1 are disallowed for use in this operation., Visium LP CytAssist 6.5, 3 4",
     })
     public void testValidateCytOp(String expectedProblem, String lwTypeName, String joinedRows) {
         List<SlotCopyContent> contents = Arrays.stream(joinedRows.split("\\s+"))

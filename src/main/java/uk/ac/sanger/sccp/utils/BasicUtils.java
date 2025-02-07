@@ -531,6 +531,15 @@ public class BasicUtils {
     }
 
     /**
+     * Returns the given string trimmed, and null if the trimmed string is empty
+     * @param string the given string, or null
+     * @return the trimmed non-empty string, or null
+     */
+    public static String trimToNull(String string) {
+        return (string==null ? null : emptyToNull(string.trim()));
+    }
+
+    /**
      * If the given list is non-null, it is returned. Otherwise, returns the immutable empty list.
      * @param list list or null
      * @return a non-null list

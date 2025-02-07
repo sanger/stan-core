@@ -11,7 +11,7 @@
 	</parent>
 	<groupId>uk.ac.sanger.sccp</groupId>
 	<artifactId>stan</artifactId>
-	<version>3.2.2</version>
+	<version>3.4.0</version>
 	<name>stan</name>
 	<description>Spatial Genomics LIMS</description>
 
@@ -94,7 +94,7 @@
 		<dependency>
 			<groupId>com.mysql</groupId>
 			<artifactId>mysql-connector-j</artifactId>
-			<version>8.2.0</version>
+			<version>9.2.0</version>
 			<scope>runtime</scope>
 		</dependency>
 
