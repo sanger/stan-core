@@ -69,6 +69,12 @@ enum ExecutionType {
     manual
 }
 
+"""Priority of labware flags."""
+enum FlagPriority {
+    note
+    flag
+}
+
 """A user, who is associated with performing actions in the application."""
 type User {
     username: String!
@@ -261,6 +267,8 @@ type LabwareFlagged {
     created: Timestamp!
     """Is there a labware flag applicable to this labware?"""
     flagged: Boolean!
+    """The highest priority of flag on this labware, if any."""
+    flagPriority: FlagPriority
 }
 
 """A solution used in an operation."""
@@ -635,6 +643,84 @@ input SlotCopyRequest {
     workNumber: String
     """Whether the execution was automated or manual."""
     executionType: ExecutionType
+}
+
+"""Saved data for an incomplete slot copy operation."""
+input SlotCopySave {
+    """The source labware and their new labware states (if specified)."""
+    sources: [SlotCopySource!]!
+    """The name of the type of operation being recorded to describe the contents being copied."""
+    operationType: String!
+    """An optional work number to associate with this operation."""
+    workNumber: String!
+    """The LP number of the new labware, required."""
+    lpNumber: String!
+    """Whether the execution was automated or manual."""
+    executionType: ExecutionType
+    """The name of the type of the destination labware (if it is new labware)."""
+    labwareType: String
+    """The barcode of the existing piece of labware."""
+    barcode: String
+    """The bio state for samples in the destination (if specified)."""
+    bioState: String
+    """The costing of the slide, if specified."""
+    costing: SlideCosting
+    """The lot number of the slide, if specified."""
+    lotNumber: String
+    """The probe lot number of the slide, if specified."""
+    probeLotNumber: String
+    """The barcode of the new labware, if it is prebarcoded."""
+    preBarcode: String
+    """The specifications of which source slots are being copied into what addresses in the destination labware."""
+    contents: [SlotCopyContent!]!
+}
+
+"""Loaded data about a source labware for an incomplete slot copy operation."""
+type SlotCopyLoadSource {
+    """The barcode of the source."""
+    barcode: String!
+    """The new labware state of the source."""
+    labwareState: LabwareState!
+}
+
+"""Loaded data about a transfer in an incomplete slot copy operation."""
+type SlotCopyLoadContent {
+    """The barcode of the source labware."""
+    sourceBarcode: String!
+    """The address of the source slot in its labware."""
+    sourceAddress: Address!
+    """The address of the destination slot."""
+    destinationAddress: Address!
+}
+
+"""Loaded data for an incomplete slot copy operation."""
+type SlotCopyLoad {
+    """The source labware and their new labware states (if specified)."""
+    sources: [SlotCopyLoadSource!]!
+    """The name of the type of operation being recorded to describe the contents being copied."""
+    operationType: String!
+    """An optional work number to associate with this operation."""
+    workNumber: String!
+    """The LP number of the new labware, required."""
+    lpNumber: String!
+    """Whether the execution was automated or manual."""
+    executionType: ExecutionType
+    """The name of the type of the destination labware (if it is new labware)."""
+    labwareType: String
+    """The barcode of the existing piece of labware."""
+    barcode: String
+    """The bio state for samples in the destination (if specified)."""
+    bioState: String
+    """The costing of the slide, if specified."""
+    costing: SlideCosting
+    """The lot number of the slide, if specified."""
+    lotNumber: String
+    """The probe lot number of the slide, if specified."""
+    probeLotNumber: String
+    """The barcode of the new labware, if it is prebarcoded."""
+    preBarcode: String
+    """The specifications of which source slots are being copied into what addresses in the destination labware."""
+    contents: [SlotCopyLoadContent!]!
 }
 
 """A request to record an operation in place."""
@@ -1037,6 +1123,14 @@ type HistoryEntry {
     region: String
 }
 
+"""A flag priority and a list of flagged barcodes."""
+type FlagBarcodes {
+    """The priority of flag linked to the barcodes."""
+    priority: FlagPriority!
+    """The barcodes linked with the flags."""
+    barcodes: [String!]!
+}
+
 """History as returned for a history query."""
 type History {
     """The entries found for the history."""
@@ -1046,7 +1140,7 @@ type History {
     """The samples referenced by the entries."""
     samples: [Sample!]!
     """The included labware barcodes that are flagged."""
-    flaggedBarcodes: [String!]!
+    flagBarcodes: [FlagBarcodes!]!
 }
 
 """The SVG of a graph."""
@@ -1181,6 +1275,8 @@ type FlagSummary {
     barcode: String!
     """The description of the flag."""
     description: String!
+    """The priority of the flag."""
+    priority: FlagPriority!
 }
 
 """Information about flags related to some labware."""
@@ -1907,12 +2003,14 @@ input QCLabwareRequest {
 
 """Raise a flag on a piece of labware."""
 input FlagLabwareRequest {
-    """The barcode of the flagged labware."""
-    barcode: String!
+    """The barcodes of the flagged labware."""
+    barcodes: [String!]!
     """The description of the flag."""
     description: String!
     """Work number to link to the flag."""
     workNumber: String
+    """Priority of the flag."""
+    priority: FlagPriority!
 }
 
 """Record the orientation state of labware."""
@@ -2143,6 +2241,8 @@ type Query {
     runNames(barcode: String!): [String!]!
     """Bio risk codes for samples in the specified labware."""
     labwareBioRiskCodes(barcode: String!): [SampleBioRisk!]!
+    """Reloads saved slot copy information."""
+    reloadSlotCopy(operationType: String!, workNumber: String!, lpNumber: String!): SlotCopyLoad
 
     """Get the specified storage location."""
     location(locationBarcode: String!): Location!
@@ -2343,6 +2443,8 @@ type Mutation {
     cleanOut(request: CleanOutRequest!) : OperationResult!
     """Record metrics."""
     recordSampleMetrics(request: SampleMetricsRequest!): OperationResult!
+    """Save slot copy information for a future operation."""
+    saveSlotCopy(request: SlotCopySave!): SlotCopyLoad!
 
     """Create a new user for the application."""
     addUser(username: String!): User!

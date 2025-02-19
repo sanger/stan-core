@@ -5,7 +5,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.*;
+import uk.ac.sanger.sccp.stan.request.LabwareFlagged;
+import uk.ac.sanger.sccp.stan.request.SamplePositionResult;
+import uk.ac.sanger.sccp.stan.request.history.History;
+import uk.ac.sanger.sccp.stan.request.history.HistoryEntry;
 import uk.ac.sanger.sccp.stan.service.SlotRegionService;
 import uk.ac.sanger.sccp.stan.service.flag.FlagLookupService;
 import uk.ac.sanger.sccp.stan.service.history.ReagentActionDetailService.ReagentActionDetail;
@@ -19,6 +22,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.*;
 import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
@@ -129,7 +133,7 @@ public class HistoryServiceImp implements HistoryService {
         } else {
             history = getHistoryForOpType(opTypeRepo.getByName(eventType));
         }
-        history.setFlaggedBarcodes(loadFlaggedBarcodes(history.getLabware()));
+        history.setFlagPriorityBarcodes(loadFlaggedBarcodes(history.getLabware()));
         return history;
     }
 
@@ -1075,13 +1079,19 @@ public class HistoryServiceImp implements HistoryService {
     }
 
     /**
-     * Gets a list of the barcodes of the indicated labware that are flagged
+     * Gets a list of the barcodes of the indicated labware that are flagged, mapped from flag priority
      * @param labware the labware
-     * @return the barcodes of those labware that are flagged
+     * @return the barcodes of those labware that are flagged for each priority
      */
-    public List<String> loadFlaggedBarcodes(Collection<Labware> labware) {
-        List<LabwareFlagged> lfs = flagLookupService.getLabwareFlagged(labware);
-        return lfs.stream().filter(LabwareFlagged::isFlagged).map(lf -> lf.getLabware().getBarcode()).toList();
+    public Map<LabwareFlag.Priority, List<String>> loadFlaggedBarcodes(Collection<Labware> labware) {
+        Map<LabwareFlag.Priority, List<String>> priorityBarcodes = new EnumMap<>(LabwareFlag.Priority.class);
+        for (LabwareFlagged lf : flagLookupService.getLabwareFlagged(labware)) {
+            final LabwareFlag.Priority priority = lf.getFlagPriority();
+            if (priority != null) {
+                priorityBarcodes.computeIfAbsent(priority, k -> new ArrayList<>()).add(lf.getBarcode());
+            }
+        }
+        return priorityBarcodes;
     }
 
     /**

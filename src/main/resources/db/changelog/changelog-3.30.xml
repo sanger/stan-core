@@ -1,0 +1,68 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <changeSet id="3.3.0" author="dr6">
+        <createTable tableName="slot_copy_record">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="operation_type_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_slot_copy_record_operation_type" referencedTableName="operation_type" referencedColumnNames="id"/>
+            </column>
+            <column name="work_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_slot_copy_record_work" referencedTableName="work" referencedColumnNames="id"/>
+            </column>
+            <column name="lp_number" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="slot_copy_record" indexName="uk_slot_copy_record_operation_type_work_lp" unique="true">
+            <column name="operation_type_id"/>
+            <column name="work_id"/>
+            <column name="lp_number"/>
+        </createIndex>
+        <rollback>
+            <dropAllForeignKeyConstraints baseTableName="slot_copy_record"/>
+            <dropTable tableName="slot_copy_record"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="3.3.1" author="dr6">
+        <createTable tableName="slot_copy_record_note">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="slot_copy_record_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_slot_copy_record_note_slot_copy_record" referencedTableName="slot_copy_record" referencedColumnNames="id"/>
+            </column>
+            <column name="name" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="value_index" type="INT UNSIGNED" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="value" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <rollback>
+            <dropAllForeignKeyConstraints baseTableName="slot_copy_record_note"/>
+            <dropTable tableName="slot_copy_record_note"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -11,6 +11,10 @@ import java.util.Objects;
  */
 @Entity
 public class LabwareFlag {
+    public enum Priority implements Comparable<Priority> {
+        note, flag
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
@@ -23,12 +27,17 @@ public class LabwareFlag {
     private User user;
     private Integer operationId;
 
-    public LabwareFlag(Integer id, Labware labware, String description, User user, Integer operationId) {
+    @Column(columnDefinition = "enum('note', 'flag')")
+    @Enumerated(EnumType.STRING)
+    private Priority priority = Priority.flag;
+
+    public LabwareFlag(Integer id, Labware labware, String description, User user, Integer operationId, Priority priority) {
         this.id = id;
         this.labware = labware;
         this.description = description;
         this.user = user;
         this.operationId = operationId;
+        this.priority = priority;
     }
 
     public LabwareFlag() {}
@@ -77,6 +86,14 @@ public class LabwareFlag {
         this.operationId = operationId;
     }
 
+    public Priority getPriority() {
+        return this.priority;
+    }
+
+    public void setPriority(Priority priority) {
+        this.priority = priority;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -86,7 +103,9 @@ public class LabwareFlag {
                 && Objects.equals(this.labware, that.labware)
                 && Objects.equals(this.description, that.description)
                 && Objects.equals(this.user, that.user)
-                && Objects.equals(this.operationId, that.operationId));
+                && Objects.equals(this.operationId, that.operationId)
+                && this.priority==that.priority
+        );
     }
 
     @Override
@@ -102,6 +121,7 @@ public class LabwareFlag {
                 .addRepr("description", description)
                 .add("user", user==null ? null : user.getUsername())
                 .add("operationId", operationId)
+                .add("priority", priority)
                 .toString();
     }
 }

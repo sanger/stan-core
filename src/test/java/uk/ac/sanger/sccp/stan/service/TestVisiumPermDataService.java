@@ -50,7 +50,7 @@ public class TestVisiumPermDataService {
         LabwareType lt = EntityFactory.makeLabwareType(3,2);
         Sample sample = EntityFactory.getSample();
         Labware lw = EntityFactory.makeLabware(lt, sample, sample, sample);
-        LabwareFlagged lf = new LabwareFlagged(lw, false);
+        LabwareFlagged lf = new LabwareFlagged(lw, null);
         when(mockFlagLookupService.getLabwareFlagged(lw)).thenReturn(lf);
         final Slot slot = lw.getFirstSlot();
         Ancestry ancestry = new Ancestry();

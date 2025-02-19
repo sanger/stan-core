@@ -2,7 +2,7 @@ package uk.ac.sanger.sccp.stan.service.graph;
 
 import org.junit.jupiter.api.Test;
 import uk.ac.sanger.sccp.stan.request.GraphSVG;
-import uk.ac.sanger.sccp.stan.request.HistoryGraph;
+import uk.ac.sanger.sccp.stan.request.history.HistoryGraph;
 import uk.ac.sanger.sccp.stan.service.graph.render.*;
 
 import java.io.PrintStream;

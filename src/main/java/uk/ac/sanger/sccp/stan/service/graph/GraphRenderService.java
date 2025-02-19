@@ -2,7 +2,7 @@ package uk.ac.sanger.sccp.stan.service.graph;
 
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.request.GraphSVG;
-import uk.ac.sanger.sccp.stan.request.HistoryGraph;
+import uk.ac.sanger.sccp.stan.request.history.HistoryGraph;
 import uk.ac.sanger.sccp.stan.service.graph.render.*;
 
 import java.io.*;

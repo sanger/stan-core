@@ -135,6 +135,7 @@ public class GraphQLProvider {
                         .dataFetcher("analyserScanData", graphQLDataFetchers.analyserScanData())
                         .dataFetcher("runNames", graphQLDataFetchers.runNames())
                         .dataFetcher("labwareBioRiskCodes", graphQLDataFetchers.labwareBioRiskCodes())
+                        .dataFetcher("reloadSlotCopy", graphQLDataFetchers.reloadSlotCopy())
 
                         .dataFetcher("location", graphQLStore.getLocation())
                         .dataFetcher("stored", graphQLStore.getStored())
@@ -235,6 +236,7 @@ public class GraphQLProvider {
                         .dataFetcher("segmentation", transact(graphQLMutation.segmentation()))
                         .dataFetcher("cleanOut", transact(graphQLMutation.cleanOut()))
                         .dataFetcher("recordSampleMetrics", transact(graphQLMutation.recordSampleMetrics()))
+                        .dataFetcher("saveSlotCopy", transact(graphQLMutation.saveSlotCopy()))
 
                         .dataFetcher("addUser", transact(graphQLMutation.addUser()))
                         .dataFetcher("setUserRole", transact(graphQLMutation.setUserRole()))

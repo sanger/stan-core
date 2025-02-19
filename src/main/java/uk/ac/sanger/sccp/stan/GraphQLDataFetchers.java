@@ -13,6 +13,8 @@ import uk.ac.sanger.sccp.stan.model.reagentplate.ReagentPlate;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.request.LabwareRoi.RoiResult;
+import uk.ac.sanger.sccp.stan.request.history.History;
+import uk.ac.sanger.sccp.stan.request.history.HistoryGraph;
 import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.extract.ExtractResultQueryService;
 import uk.ac.sanger.sccp.stan.service.flag.FlagLookupService;
@@ -87,6 +89,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final CommentRepo commentRepo;
     final AnalyserScanDataService analyserScanDataService;
     final LabwareNoteService lwNoteService;
+    final SlotCopyRecordService slotCopyRecordService;
 
     @Autowired
     public GraphQLDataFetchers(ObjectMapper objectMapper, AuthenticationComponent authComp, UserRepo userRepo,
@@ -112,7 +115,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                CleanedOutSlotService cleanedOutSlotService,
                                FlagLookupService flagLookupService, MeasurementService measurementService,
                                GraphService graphService, CommentRepo commentRepo,
-                               AnalyserScanDataService analyserScanDataService, LabwareNoteService lwNoteService) {
+                               AnalyserScanDataService analyserScanDataService, LabwareNoteService lwNoteService, SlotCopyRecordService slotCopyRecordService) {
         super(objectMapper, authComp, userRepo);
         this.sessionConfig = sessionConfig;
         this.versionInfo = versionInfo;
@@ -163,6 +166,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.commentRepo = commentRepo;
         this.analyserScanDataService = analyserScanDataService;
         this.lwNoteService = lwNoteService;
+        this.slotCopyRecordService = slotCopyRecordService;
     }
 
     public DataFetcher<User> getUser() {
@@ -214,10 +218,10 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                 throw new IllegalArgumentException("No barcode supplied.");
             }
             Labware lw = labwareRepo.getByBarcode(barcode);
-            if (requestsField(dfe, "flagged")) {
+            if (requestsField(dfe, "flagged") || requestsField(dfe, "flagPriority")) {
                 return flagLookupService.getLabwareFlagged(lw);
             }
-            return new LabwareFlagged(lw, false);
+            return new LabwareFlagged(lw, null);
         };
     }
 
@@ -519,6 +523,15 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         return dfe -> {
             String barcode = dfe.getArgument("barcode");
             return labwareService.getSampleBioRisks(barcode);
+        };
+    }
+
+    public DataFetcher<SlotCopySave> reloadSlotCopy() {
+        return dfe -> {
+            String opname = dfe.getArgument("operationType");
+            String workNumber = dfe.getArgument("workNumber");
+            String lpNumber = dfe.getArgument("lpNumber");
+            return slotCopyRecordService.load(opname, workNumber, lpNumber);
         };
     }
 

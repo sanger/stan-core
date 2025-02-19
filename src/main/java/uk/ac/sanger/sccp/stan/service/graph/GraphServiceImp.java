@@ -3,9 +3,10 @@ package uk.ac.sanger.sccp.stan.service.graph;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.request.*;
-import uk.ac.sanger.sccp.stan.request.HistoryGraph.Link;
-import uk.ac.sanger.sccp.stan.request.HistoryGraph.Node;
+import uk.ac.sanger.sccp.stan.request.GraphSVG;
+import uk.ac.sanger.sccp.stan.request.history.*;
+import uk.ac.sanger.sccp.stan.request.history.HistoryGraph.Link;
+import uk.ac.sanger.sccp.stan.request.history.HistoryGraph.Node;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
 
 import java.time.LocalDateTime;

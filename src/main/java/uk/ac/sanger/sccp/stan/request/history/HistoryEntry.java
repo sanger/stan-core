@@ -1,4 +1,4 @@
-package uk.ac.sanger.sccp.stan.request;
+package uk.ac.sanger.sccp.stan.request.history;
 
 import uk.ac.sanger.sccp.stan.model.Operation;
 import uk.ac.sanger.sccp.utils.BasicUtils;

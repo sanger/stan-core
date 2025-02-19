@@ -6,6 +6,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.*;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
+import uk.ac.sanger.sccp.stan.model.LabwareFlag.Priority;
 import uk.ac.sanger.sccp.stan.repo.LabwareFlagRepo;
 import uk.ac.sanger.sccp.stan.repo.OperationRepo;
 import uk.ac.sanger.sccp.stan.request.LabwareFlagged;
@@ -23,6 +24,7 @@ import static java.util.stream.Collectors.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 
 /** Tests {@link FlagLookupServiceImp} */
 class TestFlagLookupService {
@@ -75,7 +77,7 @@ class TestFlagLookupService {
                 .map(slot -> new SlotSample(slot, sam))
                 .collect(toSet());
         when(mockAncestry.keySet()).thenReturn(slotSamples);
-        LabwareFlag flag = new LabwareFlag(100, lw3, "flag alpha", null, 200);
+        LabwareFlag flag = new LabwareFlag(100, lw3, "flag alpha", null, 200, Priority.flag);
         Map<SlotSample, List<LabwareFlag>> directFlags = Map.of(new SlotSample(lw3.getFirstSlot(), sam), List.of(flag));
         doReturn(directFlags).when(service).loadDirectFlags(any());
 
@@ -130,11 +132,11 @@ class TestFlagLookupService {
     @Test
     void testLoadDirectFlags() {
         List<Labware> labware = getLabware(2);
-        List<Integer> lwIds = labware.stream().map(Labware::getId).collect(toList());
+        List<Integer> lwIds = labware.stream().map(Labware::getId).toList();
         Set<SlotSample> slotSamples = labware.stream().flatMap(SlotSample::stream).collect(toSet());
-        List<LabwareFlag> flags = List.of(new LabwareFlag(100, labware.get(0), "flag0", null, 200),
-                new LabwareFlag(101, labware.get(0), "flag1", null, 201),
-                new LabwareFlag(102, labware.get(1), "flag2", null, 202));
+        List<LabwareFlag> flags = List.of(new LabwareFlag(100, labware.get(0), "flag0", null, 200, Priority.flag),
+                new LabwareFlag(101, labware.get(0), "flag1", null, 201, Priority.flag),
+                new LabwareFlag(102, labware.get(1), "flag2", null, 202, Priority.flag));
         when(mockFlagRepo.findAllByLabwareIdIn(any())).thenReturn(flags);
         Map<SlotSample, List<LabwareFlag>> ssFlagMap = Map.of(slotSamples.iterator().next(), flags);
         doReturn(ssFlagMap).when(service).makeSsFlagMap(any(), any());
@@ -164,14 +166,14 @@ class TestFlagLookupService {
         List<SlotSample> slotSamples = labware.stream()
                 .map(Labware::getFirstSlot)
                 .map(slot -> new SlotSample(slot, slot.getSamples().get(0)))
-                .collect(toList());
+                .toList();
         List<Operation> ops = labware.stream()
                 .map(List::of)
                 .map(lwList -> EntityFactory.makeOpForLabware(null, lwList, lwList))
                 .collect(toList());
         when(mockOpRepo.findAllById(any())).thenReturn(ops);
         List<LabwareFlag> flags = IntStream.range(0, labware.size())
-                .mapToObj(i -> new LabwareFlag(100+i, labware.get(i), "flag"+i, null, ops.get(i).getId()))
+                .mapToObj(i -> new LabwareFlag(100+i, labware.get(i), "flag"+i, null, ops.get(i).getId(), Priority.flag))
                 .collect(toList());
         Map<OpIdLwId, List<LabwareFlag>> opIdLwIdMap = flags.stream()
                 .collect(toMap(flag -> new OpIdLwId(flag.getOperationId(), flag.getLabware().getId()), List::of));
@@ -193,13 +195,13 @@ class TestFlagLookupService {
         Sample sam1 = EntityFactory.getSample();
         Sample sam2 = new Sample(sam1.getId()+1, null, sam1.getTissue(), sam1.getBioState());
         Labware lw = EntityFactory.makeLabware(lt, sam1, sam2);
-        List<SlotSample> lwSs = SlotSample.stream(lw).collect(toList());
+        List<SlotSample> lwSs = SlotSample.stream(lw).toList();
         Labware other = EntityFactory.makeLabware(lt, sam1, sam2);
         SlotSample ss1 = new SlotSample(other.getFirstSlot(), sam1);
         SlotSample ss2 = new SlotSample(other.getSlots().get(1), sam2);
         SlotSample ss3 = new SlotSample(other.getFirstSlot(), sam2);
         List<LabwareFlag> flags = IntStream.range(0,4)
-                .mapToObj(i -> new LabwareFlag(10+i, null, null, null, null))
+                .mapToObj(i -> new LabwareFlag(10+i, null, null, null, null, Priority.flag))
                 .collect(toList());
         Map<SlotSample, List<LabwareFlag>> ssFlags = Map.of(
                 ss1, List.of(flags.get(0), flags.get(1)),
@@ -214,18 +216,19 @@ class TestFlagLookupService {
     }
 
     @ParameterizedTest
-    @ValueSource(booleans={false,true})
-    void testGetLabwareFlagged(boolean flagged) {
+    @ValueSource(strings={"", "note", "flag"})
+    void testGetLabwareFlagged(String string) {
+        Priority priority = (nullOrEmpty(string) ? null : Priority.valueOf(string));
         Labware lw = EntityFactory.getTube();
-        doReturn(flagged).when(service).isFlagged(any());
+        doReturn(priority).when(service).labwareFlagPriority(any());
         LabwareFlagged lf = service.getLabwareFlagged(lw);
         assertSame(lw, lf.getLabware());
-        assertEquals(flagged, lf.isFlagged());
-        verify(service).isFlagged(lw);
+        assertEquals(priority, lf.getFlagPriority());
+        verify(service).labwareFlagPriority(lw);
     }
 
     @Test
-    void testIsFlagged_noflags() {
+    void testLabwareFlagPriority_noflags() {
         Labware lw = EntityFactory.getTube();
         final Sample sample = EntityFactory.getSample();
         SlotSample lwSs = new SlotSample(lw.getFirstSlot(), sample);
@@ -236,7 +239,7 @@ class TestFlagLookupService {
         when(anc.keySet()).thenReturn(ancestorSS);
         when(mockFlagRepo.findAllByLabwareIdIn(any())).thenReturn(List.of());
 
-        assertFalse(service.isFlagged(lw));
+        assertNull(service.labwareFlagPriority(lw));
 
         verify(mockAncestoriser).findAncestry(Set.of(lwSs));
         verify(mockFlagRepo).findAllByLabwareIdIn(Set.of(lw.getId(), otherLw.getId()));
@@ -245,7 +248,7 @@ class TestFlagLookupService {
 
     @ParameterizedTest
     @ValueSource(booleans={false,true})
-    void testIsFlagged(boolean relevant) {
+    void testLabwareFlagPriority(boolean relevant) {
         Labware lw = EntityFactory.getTube();
         final Sample sample = EntityFactory.getSample();
         SlotSample lwSs = new SlotSample(lw.getFirstSlot(), sample);
@@ -255,8 +258,8 @@ class TestFlagLookupService {
         Set<SlotSample> ancestorSS = Set.of(lwSs, new SlotSample(otherLw.getFirstSlot(), sample));
         when(anc.keySet()).thenReturn(ancestorSS);
         List<LabwareFlag> flags = List.of(
-                new LabwareFlag(100, otherLw, "Alpha", null, 10),
-                new LabwareFlag(101, otherLw, "Beta", null, 11)
+                new LabwareFlag(100, otherLw, "Alpha", null, 10, Priority.flag),
+                new LabwareFlag(101, otherLw, "Beta", null, 11, Priority.note)
         );
         when(mockFlagRepo.findAllByLabwareIdIn(any())).thenReturn(flags);
 
@@ -270,7 +273,7 @@ class TestFlagLookupService {
 
         when(mockOpRepo.findAllById(any())).thenReturn(List.of(op1, op2));
 
-        assertEquals(relevant, service.isFlagged(lw));
+        assertEquals(relevant ? Priority.note : null, service.labwareFlagPriority(lw));
 
         verify(mockAncestoriser).findAncestry(Set.of(lwSs));
         verify(mockFlagRepo).findAllByLabwareIdIn(Set.of(lw.getId(), otherLw.getId()));
@@ -290,7 +293,7 @@ class TestFlagLookupService {
         SlotSample blockSs = new SlotSample(otherLw.getFirstSlot(), sample);
         Set<SlotSample> ancSs = Set.of(lw1Ss, lw2Ss, blockSs);
         when(anc.keySet()).thenReturn(ancSs);
-        LabwareFlag flag = new LabwareFlag(100, otherLw, "Alpha", null, 10);
+        LabwareFlag flag = new LabwareFlag(100, otherLw, "Alpha", null, 10, Priority.flag);
         when(mockFlagRepo.findAllByLabwareIdIn(any())).thenReturn(List.of(flag));
 
         Action ac = new Action(200, 10, otherLw.getFirstSlot(), otherLw.getFirstSlot(), sample, sample);
@@ -300,7 +303,7 @@ class TestFlagLookupService {
         when(anc.ancestors(lw1Ss)).thenReturn(new LinkedHashSet<>(List.of(lw1Ss, blockSs)));
         when(anc.ancestors(lw2Ss)).thenReturn(new LinkedHashSet<>(List.of(lw2Ss)));
 
-        assertEquals(List.of(new LabwareFlagged(lw, true), new LabwareFlagged(lw2, false)),
+        assertEquals(List.of(new LabwareFlagged(lw, Priority.flag), new LabwareFlagged(lw2, null)),
                 service.getLabwareFlagged(List.of(lw, lw2)));
 
         verify(mockAncestoriser).findAncestry(Set.of(lw1Ss, lw2Ss));
