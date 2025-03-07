@@ -330,7 +330,7 @@ public class FieldValidation {
         Set<CharacterType> charTypes = EnumSet.of(
                 CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.UNDERSCORE
         );
-        return new StringValidator("Omero project name", 1, 16, charTypes);
+        return new StringValidator("Omero project name", 1, 32, charTypes);
     }
 
     @Bean
