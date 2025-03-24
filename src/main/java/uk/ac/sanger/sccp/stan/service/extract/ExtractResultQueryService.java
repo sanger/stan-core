@@ -66,7 +66,7 @@ public class ExtractResultQueryService {
         if (loadFlags) {
             lf = flagLookupService.getLabwareFlagged(lw);
         } else {
-            lf = new LabwareFlagged(lw, false);
+            lf = new LabwareFlagged(lw, null);
         }
         ExtractResult res = findExtractResult(lf);
         return res!=null ? res : new ExtractResult(lf, null, null);
@@ -125,7 +125,7 @@ public class ExtractResultQueryService {
         List<Integer> opIds = ops.stream().map(Operation::getId).collect(toList());
         List<ResultOp> resultOps = resultOpRepo.findAllByOperationIdIn(opIds).stream()
                 .filter(ro -> slotIdSet.contains(ro.getSlotId()))
-                .collect(toList());
+                .toList();
         if (resultOps.isEmpty()) {
             return null;
         }

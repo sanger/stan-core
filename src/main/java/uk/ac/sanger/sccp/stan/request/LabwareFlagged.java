@@ -2,6 +2,7 @@ package uk.ac.sanger.sccp.stan.request;
 
 import org.jetbrains.annotations.NotNull;
 import uk.ac.sanger.sccp.stan.model.*;
+import uk.ac.sanger.sccp.stan.model.LabwareFlag.Priority;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -15,11 +16,11 @@ import static java.util.Objects.requireNonNull;
 public class LabwareFlagged {
     @NotNull
     private final Labware labware;
-    private final boolean flagged;
+    private final Priority flagPriority;
 
-    public LabwareFlagged(Labware labware, boolean flagged) {
+    public LabwareFlagged(Labware labware, Priority priority) {
         this.labware = requireNonNull(labware, "labware is null");
-        this.flagged = flagged;
+        this.flagPriority = priority;
     }
 
     /**
@@ -108,7 +109,12 @@ public class LabwareFlagged {
      * Is there a labware flag applicable to this labware?
      */
     public boolean isFlagged() {
-        return this.flagged;
+        return this.flagPriority != null;
+    }
+
+    /** The highest priority of flag on the labware, if any */
+    public Priority getFlagPriority() {
+        return this.flagPriority;
     }
 
     @Override
@@ -116,7 +122,7 @@ public class LabwareFlagged {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         LabwareFlagged that = (LabwareFlagged) o;
-        return (this.flagged == that.flagged
+        return (this.flagPriority == that.flagPriority
                 && this.labware.equals(that.labware));
     }
 
@@ -127,6 +133,6 @@ public class LabwareFlagged {
 
     @Override
     public String toString() {
-        return String.format("LabwareFlagged(%s, %s)", labware.getBarcode(), flagged);
+        return String.format("LabwareFlagged(%s, %s)", labware.getBarcode(), flagPriority);
     }
 }

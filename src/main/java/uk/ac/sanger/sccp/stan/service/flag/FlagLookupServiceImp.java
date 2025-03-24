@@ -4,6 +4,7 @@ import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
+import uk.ac.sanger.sccp.stan.model.LabwareFlag.Priority;
 import uk.ac.sanger.sccp.stan.repo.LabwareFlagRepo;
 import uk.ac.sanger.sccp.stan.repo.OperationRepo;
 import uk.ac.sanger.sccp.stan.request.FlagDetail;
@@ -20,13 +21,14 @@ import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
-import static uk.ac.sanger.sccp.utils.BasicUtils.stream;
 
 /**
  * @author dr6
  */
 @Service
 public class FlagLookupServiceImp implements FlagLookupService {
+    static final Comparator<Priority> PRIORITY_COMPARATOR = Comparator.nullsFirst(Comparator.naturalOrder());
+
     private final Ancestoriser ancestoriser;
     private final LabwareFlagRepo flagRepo;
     private final OperationRepo opRepo;
@@ -152,7 +154,18 @@ public class FlagLookupServiceImp implements FlagLookupService {
                 .collect(toList());
     }
 
-    boolean isFlagged(Labware lw) {
+    Map<Integer, Priority> opIdPriority(Collection<LabwareFlag> flags) {
+        Map<Integer, Priority> map = new HashMap<>(flags.size());
+        for (LabwareFlag lf : flags) {
+            Integer opId = lf.getOperationId();
+            if (PRIORITY_COMPARATOR.compare(map.get(opId), lf.getPriority()) < 0) {
+                map.put(opId, lf.getPriority());
+            }
+        }
+        return map;
+    }
+
+    Priority labwareFlagPriority(Labware lw) {
         requireNonNull(lw, "Labware is null");
         Set<SlotSample> slotSamples = SlotSample.stream(lw).collect(toSet());
         Ancestry ancestry = ancestoriser.findAncestry(slotSamples);
@@ -160,13 +173,22 @@ public class FlagLookupServiceImp implements FlagLookupService {
         Set<Integer> labwareIds = ancestorSS.stream().map(ss -> ss.slot().getLabwareId()).collect(toSet());
         List<LabwareFlag> flags = flagRepo.findAllByLabwareIdIn(labwareIds);
         if (flags.isEmpty()) {
-            return false;
+            return null;
         }
-        Set<Integer> opIds = flags.stream().map(LabwareFlag::getOperationId).collect(toSet());
-        Iterable<Operation> ops = opRepo.findAllById(opIds);
-        return stream(ops).flatMap(op -> op.getActions().stream())
-                .map(ac -> new SlotSample(ac.getDestination(), ac.getSample()))
-                .anyMatch(ancestorSS::contains);
+        Map<Integer, Priority> opIdPriority = opIdPriority(flags);
+        Iterable<Operation> ops = opRepo.findAllById(opIdPriority.keySet());
+        Priority priority = null;
+        for (Operation op : ops) {
+            Priority opPriority = opIdPriority.get(op.getId());
+            if (PRIORITY_COMPARATOR.compare(priority, opPriority) < 0) {
+                for (Action ac : op.getActions()) {
+                    if (ancestorSS.contains(new SlotSample(ac.getDestination(), ac.getSample()))) {
+                        priority = opPriority;
+                    }
+                }
+            }
+        }
+        return priority;
     }
 
     @Override
@@ -183,25 +205,37 @@ public class FlagLookupServiceImp implements FlagLookupService {
         Set<Integer> labwareIds = ancestorSs.stream().map(ss -> ss.slot().getLabwareId()).collect(toSet());
         List<LabwareFlag> flags = flagRepo.findAllByLabwareIdIn(labwareIds);
         if (flags.isEmpty()) {
-            return labware.stream().map(lw -> new LabwareFlagged(lw, false)).toList();
+            return labware.stream().map(lw -> new LabwareFlagged(lw, null)).toList();
         }
+        Map<Integer, Priority> opIdPriority = opIdPriority(flags);
         Set<Integer> opIds = flags.stream().map(LabwareFlag::getOperationId).collect(toSet());
         Iterable<Operation> ops = opRepo.findAllById(opIds);
-        Set<SlotSample> flaggedSlotSamples = stream(ops).flatMap(op -> op.getActions().stream())
-                .map(ac -> new SlotSample(ac.getDestination(), ac.getSample()))
-                .collect(toSet());
+        Map<SlotSample, Priority> ssPriorities = new HashMap<>();
+        for (Operation op : ops) {
+            Priority opPriority = opIdPriority.get(op.getId());
+            for (Action ac : op.getActions()) {
+                SlotSample ss = new SlotSample(ac.getDestination(), ac.getSample());
+                if (PRIORITY_COMPARATOR.compare(ssPriorities.get(ss), opPriority) < 0) {
+                    ssPriorities.put(ss, opPriority);
+                }
+            }
+        }
         List<LabwareFlagged> lwFlagged = new ArrayList<>(labware.size());
         for (Labware lw : labware) {
-            boolean flagged = (SlotSample.stream(lw).flatMap(ss -> ancestry.ancestors(ss).stream())
-                    .anyMatch(flaggedSlotSamples::contains));
-            lwFlagged.add(new LabwareFlagged(lw, flagged));
+            Priority priority = SlotSample.stream(lw)
+                    .flatMap(ss -> ancestry.ancestors(ss).stream())
+                    .map(ssPriorities::get)
+                    .filter(Objects::nonNull)
+                    .max(Comparator.naturalOrder())
+                    .orElse(null);
+            lwFlagged.add(new LabwareFlagged(lw, priority));
         }
         return lwFlagged;
     }
 
     @Override
     public LabwareFlagged getLabwareFlagged(Labware lw) {
-        return new LabwareFlagged(lw, isFlagged(lw));
+        return new LabwareFlagged(lw, labwareFlagPriority(lw));
     }
 
     /**
@@ -212,7 +246,7 @@ public class FlagLookupServiceImp implements FlagLookupService {
      */
     FlagDetail toDetail(String barcode, List<LabwareFlag> flags) {
         List<FlagSummary> summaries = flags.stream()
-                .map(flag -> new FlagSummary(flag.getLabware().getBarcode(), flag.getDescription()))
+                .map(flag -> new FlagSummary(flag.getLabware().getBarcode(), flag.getDescription(), flag.getPriority()))
                 .collect(toList());
         return new FlagDetail(barcode, summaries);
     }

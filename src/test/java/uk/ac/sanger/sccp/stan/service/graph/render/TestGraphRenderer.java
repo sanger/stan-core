@@ -6,9 +6,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InOrder;
 import org.mockito.Mockito;
-import uk.ac.sanger.sccp.stan.request.HistoryGraph;
-import uk.ac.sanger.sccp.stan.request.HistoryGraph.Link;
-import uk.ac.sanger.sccp.stan.request.HistoryGraph.Node;
+import uk.ac.sanger.sccp.stan.request.history.HistoryGraph;
+import uk.ac.sanger.sccp.stan.request.history.HistoryGraph.Link;
+import uk.ac.sanger.sccp.stan.request.history.HistoryGraph.Node;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;

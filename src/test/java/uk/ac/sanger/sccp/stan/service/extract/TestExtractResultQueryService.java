@@ -65,10 +65,10 @@ public class TestExtractResultQueryService {
         boolean loadFlags = (flagged!=null);
         LabwareFlagged lf;
         if (loadFlags) {
-            lf = new LabwareFlagged(lw, flagged);
+            lf = new LabwareFlagged(lw, flagged ? LabwareFlag.Priority.flag : null);
             when(mockFlagLookupService.getLabwareFlagged(lw)).thenReturn(lf);
         } else {
-            lf = new LabwareFlagged(lw, false);
+            lf = new LabwareFlagged(lw, null);
         }
         String barcode = lw.getBarcode();
         when(mockLwRepo.getByBarcode(barcode)).thenReturn(lw);
@@ -92,7 +92,7 @@ public class TestExtractResultQueryService {
     public void testFindExtractResult_foundOnLabware() {
         setupOpTypes();
         Labware lw = EntityFactory.getTube();
-        LabwareFlagged lf = new LabwareFlagged(lw, false);
+        LabwareFlagged lf = new LabwareFlagged(lw, null);
         ResultOp ro = new ResultOp(20, PassFail.pass, 30, 40, 50, 60);
         doReturn(ro).when(service).selectExtractResult(List.of(lw));
         String conc = "20";
@@ -107,7 +107,7 @@ public class TestExtractResultQueryService {
     public void testFindExtractResult_noSources() {
         setupOpTypes();
         Labware lw = EntityFactory.getTube();
-        LabwareFlagged lf = new LabwareFlagged(lw, false);
+        LabwareFlagged lf = new LabwareFlagged(lw, null);
         doReturn(null).when(service).selectExtractResult(List.of(lw));
         when(mockActionRepo.findSourceLabwareIdsForDestinationLabwareIds(any())).thenReturn(List.of());
         assertNull(service.findExtractResult(lf));
@@ -121,7 +121,7 @@ public class TestExtractResultQueryService {
     public void testFindExtractResult_foundOnSources() {
         setupOpTypes();
         Labware lw = EntityFactory.getTube();
-        LabwareFlagged lf = new LabwareFlagged(lw, false);
+        LabwareFlagged lf = new LabwareFlagged(lw, null);
         final LabwareType lt = lw.getLabwareType();
         doReturn(null).when(service).selectExtractResult(List.of(lw));
         List<Labware> sourceLabware = List.of(EntityFactory.makeEmptyLabware(lt), EntityFactory.makeEmptyLabware(lt));
@@ -146,7 +146,7 @@ public class TestExtractResultQueryService {
     public void testFindExtractResult_notFoundOnSources() {
         setupOpTypes();
         Labware lw = EntityFactory.getTube();
-        LabwareFlagged lf = new LabwareFlagged(lw, false);
+        LabwareFlagged lf = new LabwareFlagged(lw, null);
         final LabwareType lt = lw.getLabwareType();
         doReturn(null).when(service).selectExtractResult(any());
         List<Labware> sourceLabware = List.of(EntityFactory.makeEmptyLabware(lt), EntityFactory.makeEmptyLabware(lt));

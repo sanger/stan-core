@@ -1405,8 +1405,8 @@ public class TestReleaseFileService {
         List<FlagDetail> details;
         if (anyFlags) {
             details = List.of(new FlagDetail(lws.getFirst().getBarcode(), List.of(
-                    new FlagDetail.FlagSummary("STAN-1", "Flag 1"),
-                    new FlagDetail.FlagSummary("STAN-2", "Flag 2"))));
+                    new FlagDetail.FlagSummary("STAN-1", "Flag 1", LabwareFlag.Priority.note),
+                    new FlagDetail.FlagSummary("STAN-2", "Flag 2", LabwareFlag.Priority.flag))));
         } else {
             details = List.of();
         }
@@ -1440,8 +1440,8 @@ public class TestReleaseFileService {
         List<FlagDetail.FlagSummary> summaries;
         if (anyFlags) {
             summaries = List.of(
-                    new FlagDetail.FlagSummary("STAN-1", "Flag 1."),
-                    new FlagDetail.FlagSummary("STAN-2", "Flag 2.")
+                    new FlagDetail.FlagSummary("STAN-1", "Flag 1.", LabwareFlag.Priority.note),
+                    new FlagDetail.FlagSummary("STAN-2", "Flag 2.", LabwareFlag.Priority.flag)
             );
         } else {
             summaries = List.of();
