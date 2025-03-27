@@ -13,7 +13,7 @@ mutation {
                 name: "probe2"
                 lot: "lot2"
                 plex: 2
-                costing: SGP
+                costing: Warranty_replacement
             }]
             workNumber: "SGP1"
             samplePrepReagentLot: "123456"
