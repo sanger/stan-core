@@ -54,7 +54,7 @@ enum LifeStage {
 
 """Some information about the costing of a slide."""
 enum SlideCosting {
-    Faculty, SGP
+    Faculty, SGP, Warranty_replacement
 }
 
 """Position of a cassette in an analyser."""

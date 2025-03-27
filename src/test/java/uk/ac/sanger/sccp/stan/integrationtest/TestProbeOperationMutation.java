@@ -95,7 +95,7 @@ public class TestProbeOperationMutation {
         assertEquals("probe2", lwp.getProbePanel().getName());
         assertEquals(2, lwp.getPlex());
         assertEquals("LOT2", lwp.getLotNumber());
-        assertEquals(SlideCosting.SGP, lwp.getCosting());
+        assertEquals(SlideCosting.Warranty_replacement, lwp.getCosting());
         List<LabwareNote> notes = lwNoteRepo.findAllByOperationIdIn(List.of(opId));
         assertThat(notes).hasSize(2);
         notes.forEach(note -> assertEquals(lw.getId(), note.getLabwareId()));
