@@ -938,7 +938,16 @@ public class GraphQLMutation extends BaseGraphQLResource {
             User user = checkUser(dfe, User.Role.normal);
             AddTissueTypeRequest request = arg(dfe, "request", AddTissueTypeRequest.class);
             logRequest("addTissueType", user, request);
-            return tissueTypeService.perform(request);
+            return tissueTypeService.performAddTissueType(request);
+        };
+    }
+
+    public DataFetcher<TissueType> addSpatialLocations() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            AddTissueTypeRequest request = arg(dfe, "request", AddTissueTypeRequest.class);
+            logRequest("addSpatialLocations", user, request);
+            return tissueTypeService.performAddSpatialLocations(request);
         };
     }
 

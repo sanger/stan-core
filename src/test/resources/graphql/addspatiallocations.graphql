@@ -1,0 +1,18 @@
+mutation {
+    addSpatialLocations(request: {
+        name: "Bananas"
+        spatialLocations: [{
+            code: 0
+            name: "No spatial information"
+        }, {
+            code: 1
+            name: "   SL1   "
+        }]
+    }) {
+        name
+        spatialLocations {
+            code
+            name
+        }
+    }
+}

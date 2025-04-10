@@ -2101,6 +2101,14 @@ input AddTissueTypeRequest {
     spatialLocations: [AddTissueTypeSpatialLocation!]!
 }
 
+"""Request to add spatial locations to an existing tissue type."""
+input AddSpatialLocationsRequest {
+    """The name of an existing tissue type."""
+    name: String!
+    """The new spatial locations."""
+    spatialLocations: [AddTissueTypeSpatialLocation!]!
+}
+
 """A spatial location for a new tissue type."""
 input AddTissueTypeSpatialLocation {
     """The int code for the spatial location."""
@@ -2398,6 +2406,8 @@ type Mutation {
     updateDnapStudies: [DnapStudy!]!
     """Add a new tissue type."""
     addTissueType(request: AddTissueTypeRequest!): TissueType!
+    """Add spatial location to an existing tissue type."""
+    addSpatialLocations(request: AddSpatialLocationsRequest!): TissueType!
 
     """Record a new stain with time measurements."""
     stain(request: StainRequest!): OperationResult!

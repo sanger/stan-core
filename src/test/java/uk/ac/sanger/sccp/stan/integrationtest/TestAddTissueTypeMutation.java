@@ -38,12 +38,40 @@ public class TestAddTissueTypeMutation {
 
     @Test
     @Transactional
-    public void testCleanOut() throws Exception {
+    public void testAddTissueType() throws Exception {
         User user = entityCreator.createUser("user1");
         tester.setUser(user);
         String mutation = tester.readGraphQL("addtissuetype.graphql");
         Object response = tester.post(mutation);
         Map<String, ?> ttData = chainGet(response, "data", "addTissueType");
+        assertEquals("Bananas", ttData.get("name"));
+        List<Map<String, ?>> slsData = chainGet(ttData, "spatialLocations");
+        assertThat(slsData).hasSize(2);
+        assertThat(slsData).containsExactly(Map.of("code", 0, "name", "No spatial information"),
+                Map.of("code", 1, "name", "SL1"));
+        TissueType tt = ttRepo.findByName("Bananas").orElseThrow();
+        assertNotNull(tt.getId());
+        assertEquals("Bananas", tt.getName());
+        assertEquals("BAN", tt.getCode());
+        List<SpatialLocation> sls = tt.getSpatialLocations();
+        assertThat(sls).hasSize(2);
+        for (int i = 0; i < sls.size(); i++) {
+            SpatialLocation sl = sls.get(i);
+            assertNotNull(sl.getId());
+            assertEquals(i, sl.getCode());
+            assertEquals(i==0 ? "No spatial information" : "SL1", sl.getName());
+        }
+    }
+
+    @Test
+    @Transactional
+    public void testAddSpatialLocations() throws Exception {
+        User user = entityCreator.createUser("user1");
+        tester.setUser(user);
+        ttRepo.save(new TissueType(null, "Bananas", "BAN"));
+        String mutation = tester.readGraphQL("addspatiallocations.graphql");
+        Object response = tester.post(mutation);
+        Map<String, ?> ttData = chainGet(response, "data", "addSpatialLocations");
         assertEquals("Bananas", ttData.get("name"));
         List<Map<String, ?>> slsData = chainGet(ttData, "spatialLocations");
         assertThat(slsData).hasSize(2);

@@ -10,5 +10,12 @@ public interface TissueTypeService {
      * @param request specification of new tissue type
      * @return the new tissue type
      */
-    TissueType perform(AddTissueTypeRequest request);
+    TissueType performAddTissueType(AddTissueTypeRequest request);
+
+    /**
+     * Adds spatial locations to an existing tissue type
+     * @param request specification of new spatial locations
+     * @return the updated tissue type
+     */
+    TissueType performAddSpatialLocations(AddTissueTypeRequest request);
 }
