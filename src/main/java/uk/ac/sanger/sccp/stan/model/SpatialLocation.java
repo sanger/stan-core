@@ -65,10 +65,18 @@ public class SpatialLocation {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         SpatialLocation that = (SpatialLocation) o;
+        if (this.getTissueType() != that.getTissueType()) {
+            if (this.getTissueType()==null || that.getTissueType()==null) {
+                return false;
+            }
+            if (!Objects.equals(this.getTissueType().getId(), that.getTissueType().getId())) {
+                return false;
+            }
+        }
         return (Objects.equals(this.id, that.id)
                 && Objects.equals(this.name, that.name)
                 && Objects.equals(this.code, that.code)
-                && Objects.equals(this.tissueType, that.tissueType));
+        );
     }
 
     @Override

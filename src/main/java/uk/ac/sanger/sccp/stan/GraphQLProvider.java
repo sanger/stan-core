@@ -205,6 +205,7 @@ public class GraphQLProvider {
                         .dataFetcher("updateWorkOmeroProject", transact(graphQLMutation.updateWorkOmeroProject()))
                         .dataFetcher("updateWorkDnapStudy", transact(graphQLMutation.updateWorkDnapStudy()))
                         .dataFetcher("updateDnapStudies", graphQLMutation.updateDnapStudies()) // transacted internally
+                        .dataFetcher("addTissueType", transact(graphQLMutation.addTissueType()))
                         .dataFetcher("stain", transact(graphQLMutation.stain()))
                         .dataFetcher("unrelease", transact(graphQLMutation.unrelease()))
                         .dataFetcher("recordStainResult", transact(graphQLMutation.recordStainResult()))

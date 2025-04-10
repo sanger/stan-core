@@ -104,6 +104,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final RoiMetricService roiMetricService;
     final UserAdminService userAdminService;
     final SlotCopyRecordService slotCopyRecordService;
+    final TissueTypeService tissueTypeService;
 
     @Autowired
     public GraphQLMutation(ObjectMapper objectMapper, AuthenticationComponent authComp,
@@ -137,7 +138,8 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            QCLabwareService qcLabwareService, OrientationService orientationService, SSStudyService ssStudyService,
                            ReactivateService reactivateService, LibraryPrepService libraryPrepService,
                            SegmentationService segmentationService, CleanOutService cleanOutService, RoiMetricService roiMetricService,
-                           UserAdminService userAdminService, SlotCopyRecordService slotCopyRecordService) {
+                           UserAdminService userAdminService, SlotCopyRecordService slotCopyRecordService,
+                           TissueTypeService tissueTypeService) {
         super(objectMapper, authComp, userRepo);
         this.authService = authService;
         this.registerService = registerService;
@@ -202,6 +204,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.roiMetricService = roiMetricService;
         this.userAdminService = userAdminService;
         this.slotCopyRecordService = slotCopyRecordService;
+        this.tissueTypeService = tissueTypeService;
     }
 
     private void logRequest(String name, User user, Object request) {
@@ -927,6 +930,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             logRequest("slotCopySave", user, request);
             slotCopyRecordService.save(request);
             return request;
+        };
+    }
+
+    public DataFetcher<TissueType> addTissueType() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            AddTissueTypeRequest request = arg(dfe, "request", AddTissueTypeRequest.class);
+            logRequest("addTissueType", user, request);
+            return tissueTypeService.perform(request);
         };
     }
 

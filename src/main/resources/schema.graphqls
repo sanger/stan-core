@@ -2091,6 +2091,24 @@ input SampleMetricsRequest {
     metrics: [SampleMetric!]!
 }
 
+"""A request to add a tissue type."""
+input AddTissueTypeRequest {
+    """The name of the tissue type."""
+    name: String!
+    """The short code for the tissue type."""
+    code: String!
+    """The spatial locations for the new tissue type."""
+    spatialLocations: [AddTissueTypeSpatialLocation!]!
+}
+
+"""A spatial location for a new tissue type."""
+input AddTissueTypeSpatialLocation {
+    """The int code for the spatial location."""
+    code: Int!
+    """The name of the spatial location."""
+    name: String!
+}
+
 """Info about the app version."""
 type VersionInfo {
     """The output of git describe."""
@@ -2378,6 +2396,8 @@ type Mutation {
     updateWorkDnapStudy(workNumber: String!, ssStudyId: Int): Work!
     """Updates Stan's internal list of Dnap Studies, and returns the enabled ones."""
     updateDnapStudies: [DnapStudy!]!
+    """Add a new tissue type."""
+    addTissueType(request: AddTissueTypeRequest!): TissueType!
 
     """Record a new stain with time measurements."""
     stain(request: StainRequest!): OperationResult!

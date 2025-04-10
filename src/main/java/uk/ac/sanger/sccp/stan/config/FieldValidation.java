@@ -372,6 +372,26 @@ public class FieldValidation {
     }
 
     @Bean
+    public Validator<String> tissueTypeNameValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.PAREN,
+                CharacterType.SPACE, CharacterType.COMMA, CharacterType.FULL_STOP, CharacterType.SLASH);
+        return new StringValidator("Tissue type name", 2, 64, charTypes);
+    }
+
+    @Bean
+    public Validator<String> tissueTypeCodeValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA);
+        return new StringValidator("Tissue type code", 2, 4, charTypes);
+    }
+
+    @Bean
+    public Validator<String> spatialLocationNameValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.PAREN,
+                CharacterType.SPACE, CharacterType.COMMA, CharacterType.FULL_STOP, CharacterType.SLASH);
+        return new StringValidator("Spatial location name", 1, 64, charTypes);
+    }
+
+    @Bean
     public Clock clock() {
         return Clock.systemUTC();
     }
