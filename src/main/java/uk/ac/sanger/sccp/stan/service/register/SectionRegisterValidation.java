@@ -224,6 +224,7 @@ public class SectionRegisterValidation {
         boolean missing = false;
         BiConsumer<String, String> bcProblem = (problem, bc) ->
                 bcProblemMap.computeIfAbsent(problem, k -> new LinkedHashSet<>()).add(bc);
+        checkForPrebarcodeMismatch();
         for (var lw : request.getLabware()) {
             String bc = lw.getExternalBarcode();
             if (nullOrEmpty(bc)) {
@@ -269,6 +270,27 @@ public class SectionRegisterValidation {
             String problem = entry.getKey();
             Set<String> bcs = entry.getValue();
             addProblem(pluralise(problem, bcs.size())+": "+bcs);
+        }
+    }
+
+    /** Add an explicit error message for disagreement between external barcode and prebarcode */
+    public void checkForPrebarcodeMismatch() {
+        Set<String> seenPrebarcodes = new HashSet<>(request.getLabware().size());
+        boolean foundDupe = false;
+        boolean isXenium = false;
+        for (var lw : request.getLabware()) {
+            String bc = lw.getPreBarcode();
+            if (!nullOrEmpty(bc) && !seenPrebarcodes.add(bc.toUpperCase())) {
+                foundDupe = true;
+                isXenium = (lw.getLabwareType()!=null && lw.getLabwareType().equalsIgnoreCase("xenium"));
+                break;
+            }
+        }
+        if (foundDupe) {
+            String prebarcodeDesc = isXenium ? "Xenium barcode" : "prebarcode";
+            addProblem("Entries referring to the same labware should have the same external slide ID and " +
+                    "the same %s. Entries referring to different labware should have different external " +
+                    "slide ID and different %s.", prebarcodeDesc, prebarcodeDesc);
         }
     }
 

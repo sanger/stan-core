@@ -28,6 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.EntityFactory.objToCollection;
+import static uk.ac.sanger.sccp.stan.Matchers.assertProblem;
 import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 /**
@@ -401,6 +402,7 @@ public class TestSectionRegisterValidation {
 
         SectionRegisterValidation validation = makeValidation(request);
         validation.validateBarcodes(lwTypes);
+        verify(validation).checkForPrebarcodeMismatch();
         assertThat(validation.getProblems()).containsExactlyInAnyOrderElementsOf(nullToEmpty(expectedProblems));
     }
 
@@ -421,7 +423,9 @@ public class TestSectionRegisterValidation {
                 {List.of("Alpha"), List.of("!Beta"), "Xenium", List.of("Bad xenium barcode: !Beta")},
                 {List.of("Alpha", "Beta", "ALPHA"), null, "lt", List.of("Repeated barcode: [ALPHA]")},
                 {List.of("Alpha", "Beta", "Gamma", "Delta", "Epsilon"), List.of("Alpha", "Alaska", "", "Beta", "ALASKA"), "xenium",
-                        List.of("Repeated barcodes: [Beta, ALASKA]")},
+                        List.of("Entries referring to the same labware should have the same external slide ID and the " +
+                                "same Xenium barcode. Entries referring to different labware should have different " +
+                                "external slide ID and different Xenium barcode.", "Repeated barcodes: [Beta, ALASKA]")},
         }).map(arr -> {
             Object[] arr2 = Arrays.copyOf(arr, 5);
             arr2[4] = lwTypes;
@@ -454,7 +458,7 @@ public class TestSectionRegisterValidation {
 
     @ParameterizedTest
     @MethodSource("validateTissuesArgs")
-    public void testValidateTissues(ValidateTissueTestData testData) {
+    void testValidateTissues(ValidateTissueTestData testData) {
         when(mockHmdmcRepo.findAllByHmdmcIn(any())).then(findAllAnswer(testData.hmdmcs, Hmdmc::getHmdmc));
         when(mockTissueTypeRepo.findAllByNameIn(any())).then(findAllAnswer(testData.tissueTypes, TissueType::getName));
         when(mockFixativeRepo.findAllByNameIn(any())).then(findAllAnswer(testData.fixatives, Fixative::getName));
@@ -593,6 +597,30 @@ public class TestSectionRegisterValidation {
                                 "Unknown fixative: [Stapler]", "Unknown HuMFre number: [2021/404]")
 
         );
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"xenium", "non-xenium", "ok"})
+    void testCheckForPrebarcodeMismatch(String mode) {
+        String lt = mode.equalsIgnoreCase("xenium") ? "xenium" : "plate";
+        List<SectionRegisterLabware> srls = List.of(
+                new SectionRegisterLabware("xb1", lt, List.of()),
+                new SectionRegisterLabware("xb2", lt, List.of())
+        );
+        srls.get(0).setPreBarcode("bc1");
+        srls.get(1).setPreBarcode(mode.equalsIgnoreCase("ok") ? "bc2" : "BC1");
+        var val = makeValidation(srls);
+        val.checkForPrebarcodeMismatch();
+        String expectedProblem = switch (mode) {
+            case "xenium" -> "Entries referring to the same labware should have the same external slide ID and " +
+                    "the same Xenium barcode. Entries referring to different labware should have different external " +
+                    "slide ID and different Xenium barcode.";
+            case "non-xenium" -> "Entries referring to the same labware should have the same external slide ID and " +
+                    "the same prebarcode. Entries referring to different labware should have different external " +
+                    "slide ID and different prebarcode.";
+            default -> null;
+        };
+        assertProblem(val.getProblems(), expectedProblem);
     }
 
     @ParameterizedTest
