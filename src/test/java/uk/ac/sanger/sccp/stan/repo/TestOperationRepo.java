@@ -10,8 +10,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 
 import javax.persistence.EntityManager;
 import javax.transaction.Transactional;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -105,6 +104,26 @@ public class TestOperationRepo {
         setUpOps();
         List<Operation> foundOps = opRepo.findAllByOperationTypeAndDestinationSlotIdIn(opType1, List.of(lws[0].getFirstSlot().getId(), lws[1].getFirstSlot().getId()));
         assertThat(foundOps).containsExactlyInAnyOrder(ops[0], ops[1]);
+    }
+
+    @Test
+    @Transactional
+    public void testFindOpSlotSampleIds() {
+        setUpOps();
+        int op0id = ops[0].getId();
+        int op1id = ops[1].getId();
+        int[] slotIds = Arrays.stream(lws).mapToInt(lw -> lw.getFirstSlot().getId()).toArray();
+        int[] sampleIds = Arrays.stream(samples).mapToInt(Sample::getId).toArray();
+        List<Integer> opIds = List.of(op0id, op1id);
+        Map<Integer, Set<SlotIdSampleId>> opSsids = opRepo.findOpSlotSampleIds(opIds);
+        assertThat(opSsids.keySet()).containsExactlyInAnyOrderElementsOf(opIds);
+        assertThat(opSsids.get(op0id)).containsExactly(
+                new SlotIdSampleId(slotIds[0], sampleIds[0])
+        );
+        assertThat(opSsids.get(op1id)).containsExactlyInAnyOrder(
+                new SlotIdSampleId(slotIds[1], sampleIds[1]),
+                new SlotIdSampleId(slotIds[2], sampleIds[2])
+        );
     }
 
     private Operation makeOp(OperationType opType, Labware... labware) {

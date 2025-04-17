@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.Work.Status;
+import uk.ac.sanger.sccp.utils.UCMap;
 
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
@@ -181,4 +182,9 @@ public interface WorkRepo extends CrudRepository<Work, Integer> {
     }
 
     List<Work> findAllByWorkRequesterIn(Collection<ReleaseRecipient> requesters);
+
+    default UCMap<Work> getMapByWorkNumberIn(Collection<String> workNumbers) throws EntityNotFoundException {
+        return RepoUtils.getUCMapByField(this::findAllByWorkNumberIn, workNumbers, Work::getWorkNumber,
+                "Missing work number{s} in database: ");
+    }
 }

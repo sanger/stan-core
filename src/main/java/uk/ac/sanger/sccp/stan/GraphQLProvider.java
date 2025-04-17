@@ -239,6 +239,7 @@ public class GraphQLProvider {
                         .dataFetcher("cleanOut", transact(graphQLMutation.cleanOut()))
                         .dataFetcher("recordSampleMetrics", transact(graphQLMutation.recordSampleMetrics()))
                         .dataFetcher("saveSlotCopy", transact(graphQLMutation.saveSlotCopy()))
+                        .dataFetcher("setOperationWork", transact(graphQLMutation.setOperationWork()))
 
                         .dataFetcher("addUser", transact(graphQLMutation.addUser()))
                         .dataFetcher("setUserRole", transact(graphQLMutation.setUserRole()))

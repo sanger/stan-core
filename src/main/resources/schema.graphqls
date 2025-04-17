@@ -2109,12 +2109,20 @@ input AddSpatialLocationsRequest {
     spatialLocations: [AddTissueTypeSpatialLocation!]!
 }
 
-"""A spatial location for a new tissue type."""
+"""A new spatial location for a particular tissue type."""
 input AddTissueTypeSpatialLocation {
     """The int code for the spatial location."""
     code: Int!
     """The name of the spatial location."""
     name: String!
+}
+
+"""A request to alter the work linked to existing operations."""
+input OpWorkRequest {
+    """The work number to link."""
+    workNumber: String!
+    """The IDs of the operations to update."""
+    opIds: [Int!]!
 }
 
 """Info about the app version."""
@@ -2475,6 +2483,8 @@ type Mutation {
     recordSampleMetrics(request: SampleMetricsRequest!): OperationResult!
     """Save slot copy information for a future operation."""
     saveSlotCopy(request: SlotCopySave!): SlotCopyLoad!
+    """Link a work number to prior operations."""
+    setOperationWork(request: OpWorkRequest!): [Operation!]!
 
     """Create a new user for the application."""
     addUser(username: String!): User!
