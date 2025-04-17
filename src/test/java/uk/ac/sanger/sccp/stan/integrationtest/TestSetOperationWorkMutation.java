@@ -136,6 +136,15 @@ public class TestSetOperationWorkMutation {
         return releaseRepo.save(release);
     }
 
+    private Set<SampleSlotId> ssIds(Sample[] samples, Labware lw, int... indexes) {
+        Set<SampleSlotId> ssIds = new HashSet<>(indexes.length);
+        final List<Slot> slots = lw.getSlots();
+        for (int index : indexes) {
+            ssIds.add(new SampleSlotId(samples[index].getId(), slots.get(index).getId()));
+        }
+        return ssIds;
+    }
+
     @Test
     @Transactional
     public void testSetOperationWork() throws Exception {
@@ -152,13 +161,10 @@ public class TestSetOperationWorkMutation {
         works[1].setOperationIds(hashSetOf(op1.getId()));
         Release release = makeRelease(lw, slots.get(1), samples[1], slots.get(3), samples[3]);
         works[1].setReleaseIds(hashSetOf(release.getId()));
-        works[0].setSampleSlotIds(hashSetOf(new SampleSlotId(samples[0].getId(), slots.get(0).getId()),
-                new SampleSlotId(samples[1].getId(), slots.get(1).getId()),
-                new SampleSlotId(samples[3].getId(), slots.get(3).getId())));
 
-        works[1].setSampleSlotIds(hashSetOf(new SampleSlotId(samples[1].getId(), slots.get(1).getId()),
-                new SampleSlotId(samples[2].getId(), slots.get(2).getId()),
-                new SampleSlotId(samples[3].getId(), slots.get(3).getId())));
+        works[0].setSampleSlotIds(ssIds(samples, lw, 0, 1, 3));
+
+        works[1].setSampleSlotIds(ssIds(samples, lw, 1, 2, 3));
 
         workRepo.saveAll(Arrays.asList(works));
 
@@ -176,23 +182,13 @@ public class TestSetOperationWorkMutation {
         Arrays.stream(works).forEach(entityManager::refresh);
 
         assertThat(works[2].getOperationIds()).containsExactlyInAnyOrder(op0.getId(), op1.getId());
-        assertThat(works[2].getSampleSlotIds()).containsExactlyInAnyOrder(
-                new SampleSlotId(samples[0].getId(), slots.get(0).getId()),
-                new SampleSlotId(samples[1].getId(), slots.get(1).getId()),
-                new SampleSlotId(samples[2].getId(), slots.get(2).getId())
-        );
+        assertThat(works[2].getSampleSlotIds()).containsExactlyInAnyOrderElementsOf(ssIds(samples, lw, 0, 1, 2));
 
         assertThat(works[0].getOperationIds()).containsExactlyInAnyOrder(op2.getId());
         assertThat(works[1].getOperationIds()).isEmpty();
         assertThat(works[1].getReleaseIds()).containsExactly(release.getId());
-        assertThat(works[0].getSampleSlotIds()).containsExactlyInAnyOrder(
-                new SampleSlotId(samples[0].getId(), slots.get(0).getId()),
-                new SampleSlotId(samples[3].getId(), slots.get(3).getId())
-        );
-        assertThat(works[1].getSampleSlotIds()).containsExactlyInAnyOrder(
-                new SampleSlotId(samples[1].getId(), slots.get(1).getId()),
-                new SampleSlotId(samples[3].getId(), slots.get(3).getId())
-        );
+        assertThat(works[0].getSampleSlotIds()).containsExactlyInAnyOrderElementsOf(ssIds(samples, lw, 0, 3));
+        assertThat(works[1].getSampleSlotIds()).containsExactlyInAnyOrderElementsOf(ssIds(samples, lw, 1, 3));
 
         // Adding work 2 to operations 0 -- slotsamples 0,0, 1,1 -- and 1 -- slotsamples 1,1, 2,2
         //  op 0 is already linked to work 0 (0-0 and 1-1)

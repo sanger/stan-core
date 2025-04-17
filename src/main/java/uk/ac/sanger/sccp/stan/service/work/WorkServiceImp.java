@@ -257,15 +257,15 @@ public class WorkServiceImp implements WorkService {
     @Override
     public Work link(String workNumber, Collection<Operation> operations) {
         Work work = workRepo.getByWorkNumber(workNumber);
-        return link(work, operations);
+        return link(work, operations, false);
     }
 
     @Override
-    public Work link(Work work, Collection<Operation> operations) {
+    public Work link(Work work, Collection<Operation> operations, boolean evenIfUnusable) {
         if (operations.isEmpty()) {
             return work;
         }
-        if (!work.isUsable()) {
+        if (!evenIfUnusable && !work.isUsable()) {
             throw new IllegalArgumentException(work.getWorkNumber()+" cannot be used because it is "+ work.getStatus()+".");
         }
         Set<Integer> opIds = work.getOperationIds();

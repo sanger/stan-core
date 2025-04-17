@@ -55,7 +55,7 @@ public class WorkChangeServiceImp implements WorkChangeService {
      */
     public List<Operation> execute(Work work, List<Operation> ops) {
         clearOutPriorWorks(ops);
-        workService.link(work, ops);
+        workService.link(work, ops, true);
         return ops;
     }
 

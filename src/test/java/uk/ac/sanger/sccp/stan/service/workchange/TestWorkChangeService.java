@@ -89,7 +89,7 @@ class TestWorkChangeService {
         service.execute(work, ops);
         InOrder inOrder = inOrder(service, mockWorkService);
         inOrder.verify(service).clearOutPriorWorks(ops);
-        inOrder.verify(mockWorkService).link(work, ops);
+        inOrder.verify(mockWorkService).link(work, ops, true);
     }
 
     @Test
