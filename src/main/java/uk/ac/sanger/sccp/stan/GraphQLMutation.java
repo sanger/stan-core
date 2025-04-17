@@ -28,6 +28,7 @@ import uk.ac.sanger.sccp.stan.service.operation.plan.PlanService;
 import uk.ac.sanger.sccp.stan.service.register.IRegisterService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.stan.service.work.WorkTypeService;
+import uk.ac.sanger.sccp.stan.service.workchange.WorkChangeService;
 
 import java.util.List;
 import java.util.function.BiFunction;
@@ -105,6 +106,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final UserAdminService userAdminService;
     final SlotCopyRecordService slotCopyRecordService;
     final TissueTypeService tissueTypeService;
+    final WorkChangeService workChangeService;
 
     @Autowired
     public GraphQLMutation(ObjectMapper objectMapper, AuthenticationComponent authComp,
@@ -139,7 +141,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            ReactivateService reactivateService, LibraryPrepService libraryPrepService,
                            SegmentationService segmentationService, CleanOutService cleanOutService, RoiMetricService roiMetricService,
                            UserAdminService userAdminService, SlotCopyRecordService slotCopyRecordService,
-                           TissueTypeService tissueTypeService) {
+                           TissueTypeService tissueTypeService, WorkChangeService workChangeService) {
         super(objectMapper, authComp, userRepo);
         this.authService = authService;
         this.registerService = registerService;
@@ -205,6 +207,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.userAdminService = userAdminService;
         this.slotCopyRecordService = slotCopyRecordService;
         this.tissueTypeService = tissueTypeService;
+        this.workChangeService = workChangeService;
     }
 
     private void logRequest(String name, User user, Object request) {
@@ -930,6 +933,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             logRequest("slotCopySave", user, request);
             slotCopyRecordService.save(request);
             return request;
+        };
+    }
+
+    public DataFetcher<List<Operation>> setOperationWork() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            OpWorkRequest request = arg(dfe, "request", OpWorkRequest.class);
+            logRequest("setOperationWork", user, request);
+            return workChangeService.perform(request);
         };
     }
 

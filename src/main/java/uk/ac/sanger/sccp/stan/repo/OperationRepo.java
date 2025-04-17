@@ -2,11 +2,9 @@ package uk.ac.sanger.sccp.stan.repo;
 
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
-import uk.ac.sanger.sccp.stan.model.Operation;
-import uk.ac.sanger.sccp.stan.model.OperationType;
+import uk.ac.sanger.sccp.stan.model.*;
 
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 
 public interface OperationRepo extends CrudRepository<Operation, Integer> {
     @Query("select distinct op from Operation op join Action a on (a.operationId=op.id) " +
@@ -26,4 +24,30 @@ public interface OperationRepo extends CrudRepository<Operation, Integer> {
     List<Operation> findAllByOperationTypeAndDestinationSlotIdIn(OperationType opType, Collection<Integer> slotIds);
 
     List<Operation> findAllByOperationType(OperationType opType);
+
+    @Query(value = "select distinct a.operation_id, a.dest_slot_id, a.sample_id " +
+            "from action a " +
+            "where a.operation_id in (?1)", nativeQuery = true)
+    int[][] _loadOpSlotSampleIds(Collection<Integer> opIds);
+
+    /**
+     * Gets the slot and sample ids for each each specified operation
+     * @param opIds operation ids to look up
+     * @return a map of operation id to the associated slot and sample ids
+     */
+    default Map<Integer, Set<SlotIdSampleId>> findOpSlotSampleIds(Collection<Integer> opIds) {
+        if (opIds.isEmpty()) {
+            return Map.of();
+        }
+        int[][] ossis = _loadOpSlotSampleIds(opIds);
+        if (ossis==null || ossis.length==0) {
+            return Map.of();
+        }
+        Map<Integer, Set<SlotIdSampleId>> opSlotSampleIds = new HashMap<>();
+        for (int[] ossi : ossis) {
+            opSlotSampleIds.computeIfAbsent(ossi[0], k -> new HashSet<>())
+                    .add(new SlotIdSampleId(ossi[1], ossi[2]));
+        }
+        return opSlotSampleIds;
+    }
 }

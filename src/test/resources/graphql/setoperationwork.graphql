@@ -1,0 +1,8 @@
+mutation {
+    setOperationWork(request: {
+        workNumber: "[WORK]"
+        opIds: [999]
+    }) {
+        id
+    }
+}

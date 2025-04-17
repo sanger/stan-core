@@ -118,7 +118,19 @@ public interface WorkService {
      * @return the updated and saved work
      * @exception IllegalArgumentException if the work is not active
      */
-    Work link(Work work, Collection<Operation> operations);
+    default Work link(Work work, Collection<Operation> operations) {
+        return link(work, operations, false);
+    }
+
+    /**
+     * Updates the existing work linking it to the given operations and samples in slots in the ops' actions
+     * @param work the work
+     * @param operations the operations to link
+     * @param evenIfUnusable pass true to let inactive work be linked
+     * @return the updated and saved work
+     * @exception IllegalArgumentException if the work is not active and <tt>evenIfUnusable</tt> if false
+     */
+    Work link(Work work, Collection<Operation> operations, boolean evenIfUnusable);
 
     /**
      * Links the indicated works to the indicated ops.

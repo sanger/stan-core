@@ -10,7 +10,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 
 import javax.persistence.EntityManager;
 import javax.transaction.Transactional;
-import java.util.List;
+import java.util.*;
 import java.util.stream.IntStream;
 
 import static java.util.stream.Collectors.toList;
@@ -121,6 +121,24 @@ public class TestReleaseRepo {
         assertThat(releaseRepo.findAllByIdIn(List.of(id0)))
                 .containsExactlyInAnyOrder(releases[0]);
         assertThat(releaseRepo.findAllByIdIn(List.of(id0+id1))).isEmpty();
+    }
+
+    @Test
+    @Transactional
+    public void testFindReleaseSlotSampleIds() {
+        Release[] releases = createReleases();
+        int r0id = releases[0].getId();
+        int r1id = releases[1].getId();
+        List<Integer> rids = List.of(r0id, r1id);
+        Map<Integer, Set<SlotIdSampleId>> rssids = releaseRepo.findReleaseSlotSampleIds(rids);
+        assertThat(rssids.keySet()).containsExactlyInAnyOrderElementsOf(rids);
+        Slot[] slots = Arrays.stream(releases).map(r -> r.getLabware().getFirstSlot()).toArray(Slot[]::new);
+        assertThat(rssids.get(r0id)).containsExactly(
+                new SlotIdSampleId(slots[0], slots[0].getSamples().get(0))
+        );
+        assertThat(rssids.get(r1id)).containsExactly(
+                new SlotIdSampleId(slots[1], slots[1].getSamples().get(0))
+        );
     }
 
 }
