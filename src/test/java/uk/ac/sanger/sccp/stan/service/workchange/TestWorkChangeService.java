@@ -14,8 +14,7 @@ import java.util.*;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.Matchers.assertValidationException;
@@ -35,6 +34,10 @@ class TestWorkChangeService {
     OperationRepo mockOpRepo;
     @Mock
     ReleaseRepo mockReleaseRepo;
+    @Mock
+    WorkChangeRepo mockWorkChangeRepo;
+    @Mock
+    WorkChangeLinkRepo mockLinkRepo;
 
     @InjectMocks
     WorkChangeServiceImp service;
@@ -61,35 +64,41 @@ class TestWorkChangeService {
     @Test
     void testPerform_invalid() {
         List<String> problems = List.of("Bad");
+        User user = EntityFactory.getUser();
         doThrow(new ValidationException(problems)).when(mockValidationService).validate(any());
         OpWorkRequest request = new OpWorkRequest("SGP1", List.of(1));
-        assertValidationException(() -> service.perform(request), problems);
-        verify(service, never()).execute(any(), any());
+        assertValidationException(() -> service.perform(user, request), problems);
+        verify(service, never()).execute(any(), any(), any());
     }
 
     @Test
     void testPerform_valid() {
+        User user = EntityFactory.getUser();
         Work work = EntityFactory.makeWork("SGP1");
         List<Operation> ops = List.of(opWithId(1), opWithId(2));
         WorkChangeData data = new WorkChangeData(work, ops);
         when(mockValidationService.validate(any())).thenReturn(data);
         OpWorkRequest request = new OpWorkRequest("SGP1", List.of(1, 2));
-        doReturn(ops).when(service).execute(any(), any());
+        doReturn(ops).when(service).execute(any(), any(), any());
 
-        assertSame(ops, service.perform(request));
+        assertSame(ops, service.perform(user, request));
         verify(mockValidationService).validate(request);
-        verify(service).execute(work, ops);
+        verify(service).execute(user, work, ops);
     }
 
     @Test
     void testExecute() {
-        Work work = EntityFactory.makeWork("SGP1");
+        User user = EntityFactory.getUser();
+        Work[] works = EntityFactory.makeWorks("SGP0", "SGP1", "SGP2");
         List<Operation> ops = List.of(opWithId(1), opWithId(2));
-        doNothing().when(service).clearOutPriorWorks(any());
-        service.execute(work, ops);
+        Map<Integer, Set<Work>> unlinks = Map.of(1, Set.of(works[1], works[2]));
+        doReturn(unlinks).when(service).clearOutPriorWorks(any());
+        doNothing().when(service).recordChanges(any(), any(), any(), any());
+        service.execute(user, works[0], ops);
         InOrder inOrder = inOrder(service, mockWorkService);
         inOrder.verify(service).clearOutPriorWorks(ops);
-        inOrder.verify(mockWorkService).link(work, ops, true);
+        inOrder.verify(mockWorkService).link(works[0], ops, true);
+        inOrder.verify(service).recordChanges(user, works[0], ops, unlinks);
     }
 
     @Test
@@ -235,7 +244,7 @@ class TestWorkChangeService {
         doReturn(opIdWorks).when(service).loadOpIdWorks(ops);
         doReturn(toRemove).when(service).findSampleSlotIdsToRemove(ops, workIdMap, opIdWorks);
 
-        service.clearOutPriorWorks(ops);
+        Map<Integer, Set<Work>> removed = service.clearOutPriorWorks(ops);
         verify(mockWorkRepo).saveAll(sameElements(workIdMap.values(), true));
 
         assertThat(works[0].getSampleSlotIds()).containsExactlyInAnyOrder(new Work.SampleSlotId(22,12));
@@ -243,5 +252,58 @@ class TestWorkChangeService {
 
         assertThat(works[0].getOperationIds()).containsExactlyInAnyOrder(3,4);
         assertThat(works[1].getOperationIds()).containsExactlyInAnyOrder(5);
+        assertEquals(opIdWorks, removed);
+    }
+
+    @Test
+    void testRecordChanges() {
+        User user = EntityFactory.getUser();
+        Work[] works = EntityFactory.makeWorks("SGP1", "SGP2", "SGP3");
+        Operation[] ops = IntStream.range(100,103).mapToObj(TestWorkChangeService::opWithId).toArray(Operation[]::new);
+        final int[] idCounter = {200};
+        final List<WorkChange> createdChanges = new ArrayList<>(1);
+        final List<WorkChangeLink> createdLinks = new ArrayList<>();
+        doAnswer(invocation -> {
+            WorkChange change = invocation.getArgument(0);
+            change.setId(idCounter[0]++);
+            createdChanges.add(change);
+            return change;
+        }).when(mockWorkChangeRepo).save(any());
+        doAnswer(invocation -> {
+            List<WorkChangeLink> links = invocation.getArgument(0);
+            for (WorkChangeLink link : links) {
+                link.setId(idCounter[0]++);
+            }
+            createdLinks.addAll(links);
+            return links;
+        }).when(mockLinkRepo).saveAll(any());
+        Map<Integer, Set<Work>> unlinks = Map.of(
+                100, Set.of(works[1], works[2]),
+                101, Set.of(works[2])
+        );
+
+        service.recordChanges(user, works[0], Arrays.asList(ops), unlinks);
+        verify(mockWorkChangeRepo).save(any());
+        verify(mockLinkRepo).saveAll(any());
+        assertThat(createdChanges).hasSize(1);
+        WorkChange change = createdChanges.getFirst();
+        Integer changeId = change.getId();
+        assertNotNull(changeId);
+        assertEquals(user.getId(), change.getUserId());
+        assertThat(createdLinks).hasSize(6);
+        List<int[]> changes = new ArrayList<>(6);
+        createdLinks.forEach(link -> {
+            assertNotNull(link.getId());
+            assertEquals(changeId, link.getWorkChangeId());
+            changes.add(new int[] {link.getOperationId(), link.getWorkId(), link.isLink() ? 1 : 0});
+        });
+        assertThat(changes).containsExactlyInAnyOrder(new int[][]{
+                {ops[0].getId(), works[0].getId(), 1},
+                {ops[1].getId(), works[0].getId(), 1},
+                {ops[2].getId(), works[0].getId(), 1},
+                {ops[0].getId(), works[1].getId(), 0},
+                {ops[0].getId(), works[2].getId(), 0},
+                {ops[1].getId(), works[2].getId(), 0},
+        });
     }
 }

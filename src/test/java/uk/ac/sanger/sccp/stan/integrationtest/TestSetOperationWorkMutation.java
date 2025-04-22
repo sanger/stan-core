@@ -18,7 +18,7 @@ import java.util.*;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGet;
 import static uk.ac.sanger.sccp.utils.BasicUtils.hashSetOf;
 
@@ -49,6 +49,10 @@ public class TestSetOperationWorkMutation {
     private SnapshotElementRepo snapshotElementRepo;
     @Autowired
     private ReleaseRepo releaseRepo;
+    @Autowired
+    private WorkChangeRepo workChangeRepo;
+    @Autowired
+    private WorkChangeLinkRepo workChangeLinkRepo;
 
     private OperationType opType;
     private User user;
@@ -198,5 +202,30 @@ public class TestSetOperationWorkMutation {
         // So after the update, work 2 should be linked to ops 1 and 2 with their ss,
         //   work 0 should only be linked to op 2, ss 0-0,3-3
         //   work 1 should only be linked to release 0, ss 1-1,3-3
+
+        WorkChange change = onlyItem(workChangeRepo.findAll());
+        assertNotNull(change.getId());
+        assertEquals(user.getId(), change.getUserId());
+        Iterable<WorkChangeLink> links = workChangeLinkRepo.findAll();
+        List<int[]> changes = new ArrayList<>(4);
+        links.forEach(link -> {
+            assertEquals(change.getId(), link.getWorkChangeId());
+            assertNotNull(link.getId());
+            changes.add(new int[] {link.getOperationId(), link.getWorkId(), link.isLink() ? 1 : 0});
+        });
+        assertThat(changes).hasSize(4);
+        assertThat(changes).containsExactlyInAnyOrder(new int[][] {
+                {op0.getId(), works[2].getId(), 1},
+                {op1.getId(), works[2].getId(), 1},
+                {op0.getId(), works[0].getId(), 0},
+                {op1.getId(), works[1].getId(), 0},
+        });
+    }
+
+    private static <E> E onlyItem(Iterable<E> items) {
+        Iterator<E> iter = items.iterator();
+        E item = iter.next();
+        assertFalse(iter.hasNext());
+        return item;
     }
 }

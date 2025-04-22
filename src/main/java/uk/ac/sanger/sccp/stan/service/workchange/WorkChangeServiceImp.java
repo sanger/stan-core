@@ -30,32 +30,39 @@ public class WorkChangeServiceImp implements WorkChangeService {
     private final WorkRepo workRepo;
     private final OperationRepo opRepo;
     private final ReleaseRepo releaseRepo;
+    private final WorkChangeRepo workChangeRepo;
+    private final WorkChangeLinkRepo linkRepo;
 
     @Autowired
     public WorkChangeServiceImp(WorkChangeValidationService validationService, WorkService workService,
-                                WorkRepo workRepo, OperationRepo opRepo, ReleaseRepo releaseRepo) {
+                                WorkRepo workRepo, OperationRepo opRepo, ReleaseRepo releaseRepo,
+                                WorkChangeRepo workChangeRepo, WorkChangeLinkRepo linkRepo) {
         this.validationService = validationService;
         this.workService = workService;
         this.workRepo = workRepo;
         this.opRepo = opRepo;
         this.releaseRepo = releaseRepo;
+        this.workChangeRepo = workChangeRepo;
+        this.linkRepo = linkRepo;
     }
 
     @Override
-    public List<Operation> perform(OpWorkRequest request) throws ValidationException {
+    public List<Operation> perform(User user, OpWorkRequest request) throws ValidationException {
         WorkChangeData data = validationService.validate(request);
-        return execute(data.work(), data.ops());
+        return execute(user, data.work(), data.ops());
     }
 
     /**
      * This is called after validation to perform the update
+     * @param user the user responsible for the change
      * @param work the work to link to the operations
      * @param ops the operations
      * @return the operations
      */
-    public List<Operation> execute(Work work, List<Operation> ops) {
-        clearOutPriorWorks(ops);
+    public List<Operation> execute(User user, Work work, List<Operation> ops) {
+        Map<Integer, Set<Work>> unlinks = clearOutPriorWorks(ops);
         workService.link(work, ops, true);
+        recordChanges(user, work, ops, unlinks);
         return ops;
     }
 
@@ -188,11 +195,12 @@ public class WorkChangeServiceImp implements WorkChangeService {
      *      </ul></li>
      *  </ul>
      * @param ops operations having their works removed
+     * @return map of ops to their previously linked works
      */
-    public void clearOutPriorWorks(List<Operation> ops) {
+    public Map<Integer, Set<Work>> clearOutPriorWorks(List<Operation> ops) {
         Map<Integer, Set<Work>> opIdWorks = loadOpIdWorks(ops);
         if (opIdWorks.isEmpty()) {
-            return; // nothing to do
+            return opIdWorks; // nothing to do
         }
         // A map from work id to work (the works having things removed)
         Map<Integer, Work> workIdMap = opIdWorks.values().stream()
@@ -217,5 +225,30 @@ public class WorkChangeServiceImp implements WorkChangeService {
             work.getOperationIds().removeAll(opIdWorks.keySet());
         }
         workRepo.saveAll(workIdMap.values());
+        return opIdWorks;
+    }
+
+    /**
+     * Records work changes (which user, which ops and works were links, which were unlinked)
+     * @param user responsible user
+     * @param work work being added
+     * @param ops ops being linked to work
+     * @param unlinks map from op id to works being unlinked
+     */
+    public void recordChanges(User user, Work work, List<Operation> ops, Map<Integer, Set<Work>> unlinks) {
+        WorkChange change = workChangeRepo.save(new WorkChange(null, user.getId()));
+        Integer changeId = change.getId();
+        Integer workId = work.getId();
+
+        List<WorkChangeLink> links = new ArrayList<>();
+        for (Operation op : ops) {
+            links.add(new WorkChangeLink(changeId, op.getId(), workId, true));
+        }
+        unlinks.forEach((opId, works) -> {
+            for (Work unwork : works) {
+                links.add(new WorkChangeLink(changeId, opId, unwork.getId(), false));
+            }
+        });
+        linkRepo.saveAll(links);
     }
 }

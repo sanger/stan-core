@@ -941,7 +941,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
             User user = checkUser(dfe, User.Role.normal);
             OpWorkRequest request = arg(dfe, "request", OpWorkRequest.class);
             logRequest("setOperationWork", user, request);
-            return workChangeService.perform(request);
+            return workChangeService.perform(user, request);
         };
     }
 
