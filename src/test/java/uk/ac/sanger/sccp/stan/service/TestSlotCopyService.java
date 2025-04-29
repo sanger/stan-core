@@ -4,8 +4,8 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
 import org.mockito.*;
-import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.*;
+import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.stan.Matchers.sameElements;
 import static uk.ac.sanger.sccp.stan.service.SlotCopyServiceImp.EXECUTION_NOTE_NAME;
 
 /**
@@ -195,6 +196,8 @@ public class TestSlotCopyService {
         lw2.setBarcode("STAN-1");
         Work work = new Work(50, "SGP50", null, null, null, null, null, null);
         UCMap<Labware> sources = UCMap.from(Labware::getBarcode, lw1, lw2);
+        UCMap<String> sourceLps = new UCMap<>(1);
+        sourceLps.put(lw1.getBarcode(), "LP99");
         final BioState bs = new BioState(10, "bs1");
         UCMap<BioState> bsMap = UCMap.from(BioState::getName, bs);
 
@@ -216,7 +219,8 @@ public class TestSlotCopyService {
         doReturn(new OperationResult(List.of(op1), List.of(newLw1)),
                 new OperationResult(List.of(op2), List.of(newLw2)),
                 new OperationResult(List.of(op3), List.of(dest1)))
-                .when(service).executeOp(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                .when(service).executeOp(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        doReturn(sourceLps).when(service).loadLpNumbers(any());
 
         final ExecutionType exType = ExecutionType.manual;
 
@@ -224,26 +228,28 @@ public class TestSlotCopyService {
         assertThat(result.getOperations()).containsExactly(op1, op2, op3);
         assertThat(result.getLabware()).containsExactly(newLw1, newLw2, dest1);
 
-        verify(service).executeOp(user, dests.get(0).getContents(), opType, lt1, "pb1", sources, SlideCosting.SGP, "1234567", "777777", bs, "LP1", null, exType);
-        verify(service).executeOp(user, dests.get(1).getContents(), opType, lt2, null, sources, SlideCosting.Faculty, null, null, null, null, null, exType);
-        verify(service).executeOp(user, dests.get(2).getContents(), opType, null, null, sources, null, null, null, null, null, dest1, exType);
+        verify(service).loadLpNumbers(sources.values());
+        verify(service).executeOp(user, dests.get(0).getContents(), opType, lt1, "pb1", sources, sourceLps, SlideCosting.SGP, "1234567", "777777", bs, "LP1", null, exType);
+        verify(service).executeOp(user, dests.get(1).getContents(), opType, lt2, null, sources, sourceLps, SlideCosting.Faculty, null, null, null, null, null, exType);
+        verify(service).executeOp(user, dests.get(2).getContents(), opType, null, null, sources, sourceLps, null, null, null, null, null, dest1, exType);
 
         verify(mockBioRiskService).copyOpSampleBioRisks(result.getOperations());
         verify(mockWorkService).link(work, result.getOperations());
     }
 
     @ParameterizedTest
-    @CsvSource({"false,false,false,false,",
-            "false,false,false,true,",
-            "false,true,false,false,",
-            "false,false,true,false,",
-            "false,true,true,true,",
-            "true,false,false,true,",
-            "true,true,true,true,",
-            "true,true,true,true,automated",
-            "true,true,true,true,manual",
+    @CsvSource({"false,false,false,false,false,",
+            "false,false,false,true,false,",
+            "false,true,false,false,false,",
+            "false,false,true,false,false,",
+            "false,true,true,true,false,",
+            "true,false,false,true,false,",
+            "true,true,true,true,false,",
+            "true,true,true,true,false,automated",
+            "true,true,true,true,false,manual",
+            "true,true,true,false,true,manual",
     })
-    public void testExecuteOp(boolean existingDest, boolean bsInRequest, boolean bsInOpType, boolean hasLp, ExecutionType exType) {
+    public void testExecuteOp(boolean existingDest, boolean bsInRequest, boolean bsInOpType, boolean hasLp, boolean sourceHasLp, ExecutionType exType) {
         final User user = EntityFactory.getUser();
         final BioState rbs = bsInRequest ? new BioState(5, "requestbs") : null;
         final BioState obs = bsInOpType ? new BioState(6, "opbs") : null;
@@ -254,7 +260,19 @@ public class TestSlotCopyService {
         final String probeLotNumber = "777777";
         final String lpNumber = (hasLp ? "LP2" : null);
         LabwareType lt = EntityFactory.getTubeType();
-        UCMap<Labware> sourceMap = UCMap.from(Labware::getBarcode, EntityFactory.getTube());
+        final Labware sourceTube = EntityFactory.getTube();
+        UCMap<Labware> sourceMap = UCMap.from(Labware::getBarcode, sourceTube);
+        UCMap<String> sourceLps;
+        String sourceLp;
+        if (sourceHasLp) {
+            sourceLp = "LP99";
+            sourceLps =new UCMap<>(1);
+            sourceLps.put(sourceTube.getBarcode(), sourceLp);
+            doReturn(sourceLp).when(service).inheritedLpNumber(any(), any());
+        } else {
+            sourceLp = null;
+            sourceLps = null;
+        }
         Labware destLw = EntityFactory.makeEmptyLabware(lt);
         if (!existingDest) {
             when(mockLwService.create(any(), any(), any())).thenReturn(destLw);
@@ -271,7 +289,7 @@ public class TestSlotCopyService {
         op.setId(50);
         doReturn(op).when(service).createOperation(any(), any(), any(), any(), any(), any());
 
-        OperationResult opres = service.executeOp(user, contents, opType, lt, preBarcode, sourceMap, costing, lotNumber, probeLotNumber, rbs, lpNumber, existingDest ? destLw : null, exType);
+        OperationResult opres = service.executeOp(user, contents, opType, lt, preBarcode, sourceMap, sourceLps, costing, lotNumber, probeLotNumber, rbs, lpNumber, existingDest ? destLw : null, exType);
         assertThat(opres.getLabware()).containsExactly(filledLw);
         assertThat(opres.getOperations()).containsExactly(op);
 
@@ -293,6 +311,9 @@ public class TestSlotCopyService {
         verify(mockLwNoteRepo).save(new LabwareNote(null, filledLw.getId(), op.getId(), "probe lot", probeLotNumber));
         if (hasLp) {
             verify(mockLwNoteRepo).save(new LabwareNote(null, filledLw.getId(), op.getId(), "LP number", lpNumber));
+        } else if (sourceHasLp) {
+            verify(service).inheritedLpNumber(contents, sourceLps);
+            verify(mockLwNoteRepo).save(new LabwareNote(null, filledLw.getId(), op.getId(), "LP number", sourceLp));
         }
         if (exType!=null) {
             verify(mockLwNoteRepo).save(new LabwareNote(null, filledLw.getId(), op.getId(), EXECUTION_NOTE_NAME, exType.toString()));
@@ -485,5 +506,50 @@ public class TestSlotCopyService {
         } else {
             assertThat(barcodesToUnstore).containsExactly("STAN-D");
         }
+    }
+
+    @Test
+    public void testLoadLpNumbers() {
+        String name = "LP number";
+        Labware[] lws = {EntityFactory.getTube(), null, null};
+        for (int i = 1; i < lws.length; i++) {
+            lws[i] = EntityFactory.makeEmptyLabware(lws[0].getLabwareType());
+        }
+        List<Integer> lwIds = Arrays.stream(lws).map(Labware::getId).toList();
+        when(mockLwNoteRepo.findAllByLabwareIdInAndName(any(), any())).thenReturn(
+                List.of(new LabwareNote(11, lws[1].getId(), 101, name, "LP2"),
+                        new LabwareNote(10, lws[0].getId(), 100, name, "LP1"))
+        );
+
+        UCMap<String> lps = service.loadLpNumbers(Arrays.asList(lws));
+        verify(mockLwNoteRepo).findAllByLabwareIdInAndName(sameElements(lwIds, true), eq(name));
+        assertThat(lps).hasSize(2);
+        assertEquals("LP1", lps.get(lws[0].getBarcode()));
+        assertEquals("LP2", lps.get(lws[1].getBarcode()));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"LP1,LP1,LP1",
+            "LP1,,",
+            ",LP2,",
+            "LP1,LP2,",
+            ",,",
+    })
+    public void testInheritedLpNumber(String lp0, String lp1, String expected) {
+        String[] bcs = {"STAN-1", "STAN-2"};
+        UCMap<String> sourceLps = new UCMap<>();
+        if (lp0!=null) {
+            sourceLps.put(bcs[0], lp0);
+        }
+        if (lp1!=null) {
+            sourceLps.put(bcs[1], lp1);
+        }
+        sourceLps.put("STAN-3", "LP3");
+        List<SlotCopyContent> contents = List.of(
+                new SlotCopyContent(bcs[0], null, null),
+                new SlotCopyContent(bcs[1], null, null),
+                new SlotCopyContent(bcs[0], null, null)
+        );
+        assertEquals(expected, service.inheritedLpNumber(contents, sourceLps));
     }
 }
