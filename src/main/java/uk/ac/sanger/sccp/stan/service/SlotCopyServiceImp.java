@@ -19,8 +19,7 @@ import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
-import static uk.ac.sanger.sccp.utils.BasicUtils.coalesce;
-import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
+import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 /**
  * Service to perform an operation copying the contents of slots to new labware
@@ -32,6 +31,7 @@ public class SlotCopyServiceImp implements SlotCopyService {
     static final String CYTASSIST_SLIDE = "Visium LP CytAssist 6.5", CYTASSIST_SLIDE_XL = "Visium LP CytAssist 11",
             CYTASSIST_SLIDE_HD = "Visium LP CytAssist HD";
     static final String EXECUTION_NOTE_NAME = "execution";
+    static final String LP_NOTE_NAME = "LP number";
 
     static final String BS_PROBES = "Probes", BS_CDNA = "cDNA", BS_LIBRARY = "Library",
             BS_LIB_PRE_CLEAN = "Library pre-clean", BS_LIB_POST_CLEAN = "Library post-clean",
@@ -114,6 +114,21 @@ public class SlotCopyServiceImp implements SlotCopyService {
         return opres;
     }
 
+    /** Loads lp numbers for given labware */
+    public UCMap<String> loadLpNumbers(Collection<Labware> sources) {
+        List<Integer> lwIds = sources.stream().map(Labware::getId).toList();
+        List<LabwareNote> notes = lwNoteRepo.findAllByLabwareIdInAndName(lwIds, LP_NOTE_NAME);
+        if (nullOrEmpty(notes)) {
+            return new UCMap<>(0);
+        }
+        Map<Integer, Labware> lwIdMap = sources.stream().collect(inMap(Labware::getId));
+        UCMap<String> lpNumbers = new UCMap<>(notes.size());
+        for (LabwareNote note : notes) {
+            lpNumbers.put(lwIdMap.get(note.getLabwareId()).getBarcode(), note.getValue());
+        }
+        return lpNumbers;
+    }
+
     // region Executing
     public OperationResult executeOps(User user, Collection<SlotCopyDestination> dests,
                                       OperationType opType, UCMap<LabwareType> lwTypes, UCMap<BioState> bioStates,
@@ -121,11 +136,17 @@ public class SlotCopyServiceImp implements SlotCopyService {
                                       ExecutionType executionType) {
         List<Operation> ops = new ArrayList<>(dests.size());
         List<Labware> destLabware = new ArrayList<>(dests.size());
+        UCMap<String> sourceLpNumbers;
+        if (dests.stream().anyMatch(dest -> nullOrEmpty(dest.getLpNumber()))) {
+            sourceLpNumbers = loadLpNumbers(sources.values());
+        } else {
+            sourceLpNumbers = null;
+        }
         for (SlotCopyDestination dest : dests) {
             OperationResult opres = executeOp(user, dest.getContents(), opType, lwTypes.get(dest.getLabwareType()),
-                    dest.getPreBarcode(), sources, dest.getCosting(), dest.getLotNumber(), dest.getProbeLotNumber(),
-                    bioStates.get(dest.getBioState()), dest.getLpNumber(), existingDests.get(dest.getBarcode()),
-                    executionType);
+                    dest.getPreBarcode(), sources,sourceLpNumbers,  dest.getCosting(), dest.getLotNumber(),
+                    dest.getProbeLotNumber(), bioStates.get(dest.getBioState()), dest.getLpNumber(),
+                    existingDests.get(dest.getBarcode()), executionType);
             ops.addAll(opres.getOperations());
             destLabware.addAll(opres.getLabware());
         }
@@ -134,6 +155,27 @@ public class SlotCopyServiceImp implements SlotCopyService {
             workService.link(work, ops);
         }
         return new OperationResult(ops, destLabware);
+    }
+
+    /** Finds the LP number for new labware where it can be inherited from the source */
+    public String inheritedLpNumber(Collection<SlotCopyContent> contents,
+                                    UCMap<String> sourceLps) {
+        if (nullOrEmpty(sourceLps)) {
+            return null;
+        }
+        String destLpNumber = null;
+        for (SlotCopyContent content : contents) {
+            String sourceLpNumber = sourceLps.get(content.getSourceBarcode());
+            if (nullOrEmpty(sourceLpNumber)) {
+                return null;
+            }
+            if (destLpNumber == null) {
+                destLpNumber = sourceLpNumber;
+            } else if (!sourceLpNumber.equalsIgnoreCase(destLpNumber)) {
+                return null;
+            }
+        }
+        return destLpNumber;
     }
 
     /**
@@ -145,7 +187,8 @@ public class SlotCopyServiceImp implements SlotCopyService {
      * @param opType the type of operation being performed
      * @param lwType the type of labware to create
      * @param preBarcode the prebarcode of the new labware, if it has one
-     * @param labwareMap a map of the source labware from their barcodes
+     * @param sourceMap a map of the source labware from their barcodes
+     * @param sourceLps map of source labware barcode to their LP numbers, if required
      * @param costing the costing of new labware, if specified
      * @param lotNumber the lot number of the new labware, if specified
      * @param probeLotNumber the transcriptome probe lot number, if specified
@@ -157,7 +200,8 @@ public class SlotCopyServiceImp implements SlotCopyService {
      */
     public OperationResult executeOp(User user, Collection<SlotCopyContent> contents,
                                      OperationType opType, LabwareType lwType, String preBarcode,
-                                     UCMap<Labware> labwareMap, SlideCosting costing, String lotNumber,
+                                     UCMap<Labware> sourceMap, UCMap<String> sourceLps,
+                                     SlideCosting costing, String lotNumber,
                                      String probeLotNumber, BioState bioState, String lpNumber, Labware destLw,
                                      ExecutionType executionType) {
         if (destLw==null) {
@@ -165,10 +209,11 @@ public class SlotCopyServiceImp implements SlotCopyService {
         } else if (bioState==null) {
             bioState = findBioStateInLabware(destLw);
         }
-        Map<Integer, Sample> oldSampleIdToNewSample = createSamples(contents, labwareMap,
+        Map<Integer, Sample> oldSampleIdToNewSample = createSamples(contents, sourceMap,
                 coalesce(bioState, opType.getNewBioState()));
-        Labware filledLabware = fillLabware(destLw, contents, labwareMap, oldSampleIdToNewSample);
-        Operation op = createOperation(user, contents, opType, labwareMap, filledLabware, oldSampleIdToNewSample);
+        lpNumber = (lpNumber==null ? inheritedLpNumber(contents, sourceLps) : lpNumber.toUpperCase());
+        Labware filledLabware = fillLabware(destLw, contents, sourceMap, oldSampleIdToNewSample);
+        Operation op = createOperation(user, contents, opType, sourceMap, filledLabware, oldSampleIdToNewSample);
         if (costing != null) {
             lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), "costing", costing.name()));
         }
@@ -179,7 +224,7 @@ public class SlotCopyServiceImp implements SlotCopyService {
             lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), "probe lot", probeLotNumber.toUpperCase()));
         }
         if (!nullOrEmpty(lpNumber)) {
-            lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), "LP number", lpNumber.toUpperCase()));
+            lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), LP_NOTE_NAME, lpNumber));
         }
         if (executionType!=null) {
             lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), EXECUTION_NOTE_NAME, executionType.toString()));
