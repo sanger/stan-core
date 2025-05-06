@@ -30,6 +30,7 @@ import java.util.*;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
@@ -532,6 +533,19 @@ public class StoreService {
                 .filter(item -> stanBarcodes.contains(item.getBarcode().toUpperCase()))
                 .map(item -> new StoreInput(item.getBarcode(), item.getAddress()))
                 .collect(toList());
+        Location destination = getLocation(destinationBarcode);
+        if (destination.getSize()!=null) {
+            final Size size = destination.getSize();
+            if (storeInputs.stream().anyMatch(si -> si.getAddress()==null || !size.contains(si.getAddress()))) {
+                throw new IllegalArgumentException("Items stored in "+destination.getBarcode()+" must have a suitable row/column address.");
+            }
+            Set<Address> requestedAddresses = storeInputs.stream().map(StoreInput::getAddress).collect(toSet());
+            if (!nullOrEmpty(destination.getStored()) && destination.getStored().stream().anyMatch(si -> requestedAddresses.contains(si.getAddress()))) {
+                throw new IllegalArgumentException("Cannot transfer items to "+destination.getBarcode()+" at their current row/column addresses because the positions are occupied.");
+            }
+        } else {
+            storeInputs.forEach(si -> si.setAddress(null));
+        }
         return store(user, storeInputs, destinationBarcode);
     }
 }
