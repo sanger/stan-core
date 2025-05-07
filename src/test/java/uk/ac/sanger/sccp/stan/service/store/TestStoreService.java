@@ -618,13 +618,17 @@ public class TestStoreService {
 
     @ParameterizedTest
     @CsvSource({
-            "STO-0, true, STO-1, STAN-A1 STAN-A2 BLARG,",
-            "STO-0, true, sto-0,, Source and destination cannot be the same location.",
-            "STO-0, false, STO-1,, No such location: STO-0",
-            "STO-0, true, STO-1,, Location STO-0 is empty.",
-            "STO-0, true, STO-1, BLARG1 BLARG2, None of the labware stored in that location belongs to Stan.",
+            "STO-0, true, true, STO-1, true, false, STAN-A1 STAN-A2 BLARG,",
+            "STO-0, true, true, STO-1, true, true, STAN-A1 STAN-A2 BLARG, Cannot transfer items to STO-1 at their current row/column addresses because the positions are occupied.",
+            "STO-0, false, true, STO-1, true, false, STAN-A1 STAN-A2 BLARG, Items stored in STO-1 must have a suitable row/column address.",
+            "STO-0, false, true, STO-1, false, false, STAN-A1 STAN-A2 BLARG,",
+            "STO-0, false, true, sto-0, false, false,, Source and destination cannot be the same location.",
+            "STO-0, false, false, STO-1, false, false,, No such location: STO-0",
+            "STO-0, false, true, STO-1, false, false,, Location STO-0 is empty.",
+            "STO-0, false, true, STO-1, false, false, BLARG1 BLARG2, None of the labware stored in that location belongs to Stan.",
     })
-    public void testTransfer(String sourceBarcode, boolean sourceExists, String destinationBarcode,
+    public void testTransfer(String sourceBarcode, boolean allInGrid, boolean sourceExists, String destinationBarcode, boolean destIsGrid,
+                             boolean gridClash,
                              String joinedItemBarcodes, String expectedError) {
         Location source;
         if (sourceExists) {
@@ -635,12 +639,21 @@ public class TestStoreService {
             source = null;
             doThrow(new RuntimeException("No such location: "+sourceBarcode)).when(service).getLocation(sourceBarcode);
         }
+        Location destination = new Location();
+        destination.setBarcode(destinationBarcode.toUpperCase());
+        doReturn(destination).when(service).getLocation(destinationBarcode);
+        if (destIsGrid) {
+            destination.setSize(new Size(5,5));
+            if (gridClash) {
+                destination.getStored().add(new StoredItem("STAN-X", destination, new Address(1,1)));
+            }
+        }
         List<StoredItem> stored;
         Set<String> stanBarcodes;
         if (joinedItemBarcodes!=null) {
             final String[] itemBarcodes = joinedItemBarcodes.split("\\s+");
             stored = IntStream.range(0, itemBarcodes.length)
-                    .mapToObj(i -> new StoredItem(itemBarcodes[i], source, i==0 ? new Address(1,1) : null))
+                    .mapToObj(i -> new StoredItem(itemBarcodes[i], source, i==0 || allInGrid ? new Address(1,i+1) : null))
                     .collect(toList());
             stanBarcodes = Arrays.stream(itemBarcodes)
                     .map(String::toUpperCase)
@@ -668,7 +681,7 @@ public class TestStoreService {
 
         List<StoreInput> expectedStoreInputs = stored.stream()
                 .filter(item -> stanBarcodes.contains(item.getBarcode().toUpperCase()))
-                .map(item -> new StoreInput(item.getBarcode(), item.getAddress()))
+                .map(item -> new StoreInput(item.getBarcode(), destIsGrid ? item.getAddress() : null))
                 .collect(toList());
 
         verify(service).store(user, expectedStoreInputs, destinationBarcode);

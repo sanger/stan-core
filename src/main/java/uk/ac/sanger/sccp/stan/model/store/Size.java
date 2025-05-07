@@ -1,5 +1,7 @@
 package uk.ac.sanger.sccp.stan.model.store;
 
+import uk.ac.sanger.sccp.stan.model.Address;
+
 /**
  * A grid size, number of rows and columns
  * @author dr6
@@ -45,6 +47,12 @@ public class Size {
     public Size numColumns(int numColumns) {
         this.numColumns = numColumns;
         return this;
+    }
+
+    /** Does the given address fit inside this size? */
+    public boolean contains(Address address) {
+        return (address != null && address.getRow() >= 1 && address.getRow() <= this.numRows
+                && address.getColumn() >= 1 && address.getColumn() <= this.numColumns);
     }
 
     @Override
