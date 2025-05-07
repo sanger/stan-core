@@ -102,7 +102,10 @@ type Fixative {
 
 """The type of tissue, typically an organ."""
 type TissueType {
+    """The name of the tissue type."""
     name: String!
+    """The short code for the tissue type."""
+    code: String!
     """The possible spatial locations for tissue of this type."""
     spatialLocations: [SpatialLocation!]!
 }
