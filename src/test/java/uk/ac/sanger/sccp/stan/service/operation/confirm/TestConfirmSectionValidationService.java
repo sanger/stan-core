@@ -1,22 +1,16 @@
 package uk.ac.sanger.sccp.stan.service.operation.confirm;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.*;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
 import uk.ac.sanger.sccp.stan.repo.PlanOperationRepo;
-import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSection;
-import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSectionLabware;
+import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSectionLabware.AddressCommentId;
-import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSectionRequest;
 import uk.ac.sanger.sccp.stan.service.CommentValidationService;
 import uk.ac.sanger.sccp.stan.service.SlotRegionService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
@@ -84,14 +78,16 @@ public class TestConfirmSectionValidationService {
     @ParameterizedTest
     public void testValidate(boolean valid) {
         Labware lw = EntityFactory.getTube();
-        ConfirmSectionRequest request = new ConfirmSectionRequest(List.of(new ConfirmSectionLabware(lw.getBarcode())),
-                "SGP9000");
+        final ConfirmSectionLabware csl = new ConfirmSectionLabware(lw.getBarcode());
+        csl.setWorkNumber("SGP1");
+        ConfirmSectionRequest request = new ConfirmSectionRequest(List.of(csl));
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lw);
 
         PlanOperation plan = EntityFactory.makePlanForLabware(opType, List.of(), List.of());
         Map<Integer, PlanOperation> planMap = Map.of(lw.getId(), plan);
         UCMap<SlotRegion> regionMap = UCMap.from(SlotRegion::getName, new SlotRegion(1, "Top"));
         Map<Integer, Comment> commentMap = Map.of(1, new Comment(1, "com", "cat"));
+        UCMap<Work> works = UCMap.from(Work::getWorkNumber, EntityFactory.makeWork("SGP1"));
 
         mayAddProblem(valid ? null : "lw problem", lwMap).when(service).validateLabware(any(), any());
         mayAddProblem(valid ? null : "plan problem", planMap).when(service).lookUpPlans(any(), any());
@@ -99,6 +95,7 @@ public class TestConfirmSectionValidationService {
         mayAddProblem(valid ? null : "region problem", regionMap).when(service).validateSlotRegions(any(), any());
         mayAddProblem(valid ? null : "missing region").when(service).requireRegionsForMultiSampleSlots(any(), any());
         mayAddProblem(valid ? null : "comment problem", commentMap).when(service).validateCommentIds(any(), any());
+        mayAddProblem(valid ? null : "work problem", works).when(mockWorkService).validateUsableWorks(any(), any());
 
         var validation = service.validate(request);
         if (valid) {
@@ -107,16 +104,17 @@ public class TestConfirmSectionValidationService {
             assertEquals(validation.getLabware(), lwMap);
             assertEquals(validation.getComments(), commentMap);
             assertEquals(validation.getSlotRegions(), regionMap);
+            assertEquals(validation.getWorks(), works);
         } else {
             assertThat(validation.getProblems()).containsExactlyInAnyOrder(
-                    "lw problem", "plan problem", "op problem", "region problem", "missing region", "comment problem"
+                    "lw problem", "plan problem", "op problem", "region problem", "missing region", "comment problem", "work problem"
             );
         }
 
         verify(service).validateCommentIds(any(), eq(request.getLabware()));
         verify(service).validateSlotRegions(any(), eq(request.getLabware()));
         verify(service).requireRegionsForMultiSampleSlots(any(), eq(request.getLabware()));
-        verify(mockWorkService).validateUsableWork(any(), eq(request.getWorkNumber()));
+        verify(mockWorkService).validateUsableWorks(any(), eq(Set.of("SGP1")));
         verify(service).validateLabware(any(), eq(request.getLabware()));
         verify(service).lookUpPlans(any(), eq(lwMap.values()));
         verify(service).validateOperations(any(), eq(request.getLabware()), eq(lwMap), eq(planMap));
@@ -131,10 +129,10 @@ public class TestConfirmSectionValidationService {
         cs.setCommentIds(List.of(10,11));
         List<ConfirmSectionLabware> csls = List.of(
                 new ConfirmSectionLabware("STAN-1"),
-                new ConfirmSectionLabware("STAN-2", false, List.of(cs), List.of()),
+                new ConfirmSectionLabware("STAN-2", false, List.of(cs), List.of(), null),
                 new ConfirmSectionLabware("STAN-3", false,
                         List.of(), List.of(new AddressCommentId(new Address(1,2), 11),
-                        new AddressCommentId(new Address(1,4), 12)))
+                        new AddressCommentId(new Address(1,4), 12)), null)
         );
         Map<Integer, Comment> commentMap = Map.of(10, new Comment(10, "com", "cat"),
                 11, new Comment(11, "com1", "cat"),
@@ -169,15 +167,15 @@ public class TestConfirmSectionValidationService {
         List<SlotRegion> allRegions = List.of(new SlotRegion(1, "Top"),
                 new SlotRegion(2, "Bottom"), new SlotRegion(3, "Middle"));
         ConfirmSectionLabware cslNoRegion = new ConfirmSectionLabware("STAN-1", false,
-                List.of(confirmSection(A1, null), confirmSection(A1, "")), List.of());
-        ConfirmSectionLabware cslNoBarcode = new ConfirmSectionLabware("", false, List.of(), List.of());
+                List.of(confirmSection(A1, null), confirmSection(A1, "")), List.of(), null);
+        ConfirmSectionLabware cslNoBarcode = new ConfirmSectionLabware("", false, List.of(), List.of(), null);
         ConfirmSectionLabware cslRegions = new ConfirmSectionLabware("STAN-2", false,
                 List.of(confirmSection(A1, "Top"), confirmSection(A1, "Bottom"),
-                        confirmSection(A2, "Top")), List.of());
+                        confirmSection(A2, "Top")), List.of(), null);
         ConfirmSectionLabware cslUnknownRegion = new ConfirmSectionLabware("STAN-3", false,
-                List.of(confirmSection(A1, "Spoon")), List.of());
+                List.of(confirmSection(A1, "Spoon")), List.of(), null);
         ConfirmSectionLabware cslRepeatedRegions = new ConfirmSectionLabware("STAN-4", false,
-                List.of(confirmSection(A1, "Top"), confirmSection(A1, "top")), List.of());
+                List.of(confirmSection(A1, "Top"), confirmSection(A1, "top")), List.of(), null);
         return Arrays.stream(new Object[][] {
                 {allRegions, List.of(), List.of(cslNoRegion, cslNoBarcode), List.of()},
                 {allRegions, allRegions, List.of(cslNoRegion, cslRegions), List.of()},
@@ -339,10 +337,10 @@ public class TestConfirmSectionValidationService {
         final Address A1 = new Address(1,1);
         final ConfirmSectionLabware csl1 = new ConfirmSectionLabware(lw1.getBarcode(), false,
                 List.of(new ConfirmSection(A1, sample.getId(), 12)),
-                List.of(new AddressCommentId(A1, 4)));
+                List.of(new AddressCommentId(A1, 4)), null);
         final ConfirmSectionLabware csl2 = new ConfirmSectionLabware(lw2.getBarcode(), false,
                 List.of(new ConfirmSection(A1, sample.getId(), 15)),
-                List.of(new AddressCommentId(A1, 5)));
+                List.of(new AddressCommentId(A1, 5)), null);
         List<ConfirmSectionLabware> csls = List.of(
                 csl1, csl2,
                 new ConfirmSectionLabware("STAN-404"),

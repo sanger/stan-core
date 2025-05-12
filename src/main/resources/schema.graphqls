@@ -578,6 +578,8 @@ input ConfirmSection {
 input ConfirmSectionLabware {
     """The barcode of the labware."""
     barcode: String!
+    """The work number to link to the operation."""
+    workNumber: String
     """Should the whole labware be cancelled? Default false."""
     cancelled: Boolean
     """What individual sections, if any, should be created in the labware?"""
@@ -590,8 +592,6 @@ input ConfirmSectionLabware {
 input ConfirmSectionRequest {
     """The specification of what to confirm or cancel in each labware."""
     labware: [ConfirmSectionLabware!]!
-    """An optional work number to associate with the operations."""
-    workNumber: String
 }
 
 """A specification that the contents of one slot should be copied to a particular address in new labware."""

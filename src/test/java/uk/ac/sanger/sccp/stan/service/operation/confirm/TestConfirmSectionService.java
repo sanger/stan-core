@@ -90,7 +90,7 @@ public class TestConfirmSectionService {
         Labware lw = EntityFactory.getTube();
         ConfirmSectionRequest request = new ConfirmSectionRequest(List.of(new ConfirmSectionLabware("STAN-01")));
         ConfirmSectionValidation validation = new ConfirmSectionValidation(UCMap.from(Labware::getBarcode, lw),
-                Map.of(), new UCMap<>(), Map.of());
+                Map.of(), new UCMap<>(), Map.of(), new UCMap<>());
         doReturn(validation).when(mockValidationService).validate(request);
         OperationResult opResult = new OperationResult(List.of(), List.of(lw));
         doReturn(opResult).when(service).perform(user, validation, request);
@@ -113,7 +113,7 @@ public class TestConfirmSectionService {
                 Arguments.of(makeValidation(lw),
                         new ConfirmSectionRequest(List.of(new ConfirmSectionLabware(lw.getBarcode()))),
                         "No plan found for labware "+lw.getBarcode()),
-                Arguments.of(new ConfirmSectionValidation(new UCMap<>(), Map.of(lw.getId(), plan), new UCMap<>(), Map.of()),
+                Arguments.of(new ConfirmSectionValidation(new UCMap<>(), Map.of(lw.getId(), plan), new UCMap<>(), Map.of(), new UCMap<>()),
                         new ConfirmSectionRequest(List.of(new ConfirmSectionLabware(lw.getBarcode()))),
                         "Invalid labware barcode: "+lw.getBarcode())
         );
@@ -121,7 +121,7 @@ public class TestConfirmSectionService {
 
     private static ConfirmSectionValidation makeValidation(Labware lw) {
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lw);
-        return new ConfirmSectionValidation(lwMap, Map.of(), new UCMap<>(0), Map.of());
+        return new ConfirmSectionValidation(lwMap, Map.of(), new UCMap<>(0), Map.of(), new UCMap<>(0));
     }
 
     private static LabwareNote planNote(Integer id, Integer lwId, Integer planId, String name, String value) {
@@ -156,6 +156,8 @@ public class TestConfirmSectionService {
         );
         UCMap<SlotRegion> regionMap = UCMap.from(SlotRegion::getName, new SlotRegion(1, "Top"));
         Map<Integer, Comment> commentMap = Map.of(1, new Comment(1, "com", "cat"));
+        Work work = EntityFactory.makeWork("SGP99");
+        UCMap<Work> works = UCMap.from(Work::getWorkNumber, work);
 
         when(mockLwNoteRepo.findAllByPlanIdIn(any())).thenReturn(planNotes);
 
@@ -165,7 +167,9 @@ public class TestConfirmSectionService {
         ConfirmLabwareResult clr2 = new ConfirmLabwareResult(null, lw2B);
 
         ConfirmSectionLabware csl1 = new ConfirmSectionLabware("STAN-01");
+        csl1.setWorkNumber("SGP99");
         ConfirmSectionLabware csl2 = new ConfirmSectionLabware("STAN-02");
+        csl2.setWorkNumber("SGP99");
 
         doReturn(clr1).when(service).confirmLabware(user, csl1, lw1, plan1, regionMap, commentMap);
         doReturn(clr2).when(service).confirmLabware(user, csl2, lw2, plan2, regionMap, commentMap);
@@ -174,9 +178,9 @@ public class TestConfirmSectionService {
         doNothing().when(service).updateSourceBlocks(any());
         doNothing().when(service).updateNotes(any(), any(), any());
 
-        ConfirmSectionRequest request = new ConfirmSectionRequest(List.of(csl1, csl2), "SGP9000");
+        ConfirmSectionRequest request = new ConfirmSectionRequest(List.of(csl1, csl2));
         ConfirmSectionValidation validation = new ConfirmSectionValidation(UCMap.from(Labware::getBarcode, lw1, lw2),
-                Map.of(lw1.getId(), plan1, lw2.getId(), plan2), regionMap, commentMap);
+                Map.of(lw1.getId(), plan1, lw2.getId(), plan2), regionMap, commentMap, works);
 
         OperationResult result = service.perform(user, validation, request);
         assertThat(result.getLabware()).containsExactly(lw1B, lw2B);
@@ -187,7 +191,7 @@ public class TestConfirmSectionService {
         verify(service).recordAddressComments(csl1, op1.getId(), lw1B);
         verify(service).recordAddressComments(csl2, null, lw2B);
         verify(mockBioRiskService).copyOpSampleBioRisks(result.getOperations());
-        verify(mockWorkService).link(request.getWorkNumber(), result.getOperations());
+        verify(service).linkWorks(Map.of(op1, "SGP99"), works);
         verify(service).updateSourceBlocks(result.getOperations());
         verify(service).loadPlanNotes(Set.of(10,11));
         verify(service).updateNotes(planNotes, op1.getId(), lw1.getId());
@@ -259,7 +263,7 @@ public class TestConfirmSectionService {
         UCMap<SlotRegion> regionMap = UCMap.from(SlotRegion::getName, new SlotRegion(1, "Top"));
         Map<Integer, Comment> commentMap = Map.of(1, new Comment(1, "com", "cat"));
         ConfirmSectionLabware csl = new ConfirmSectionLabware(lw.getBarcode(), false,
-                List.of(new ConfirmSection(A1, sample.getId(), 12)), null);
+                List.of(new ConfirmSection(A1, sample.getId(), 12)), null, null);
 
         assertThat(assertThrows(IllegalArgumentException.class,
                 () -> service.confirmLabware(EntityFactory.getUser(), csl, lw, plan, regionMap, commentMap)))
@@ -289,7 +293,7 @@ public class TestConfirmSectionService {
                 new ConfirmSection(A1, sample.getId(), 11, null, "top"),
                 new ConfirmSection(B3, sample.getId(), 12, null, "top")
         );
-        ConfirmSectionLabware csl = new ConfirmSectionLabware(lw1.getBarcode(), false, csecs, List.of());
+        ConfirmSectionLabware csl = new ConfirmSectionLabware(lw1.getBarcode(), false, csecs, List.of(), null);
         Map<PlanActionKey, PlanAction> planActionMap = Stream.of(
                 new PlanAction(1, 1, source, lw1.getSlot(A1), sample),
                 new PlanAction(2, 1, source, lw1.getSlot(B3), sample, 12, "50", null)
@@ -433,7 +437,7 @@ public class TestConfirmSectionService {
                 new AddressCommentId(A1, 1),
                 new AddressCommentId(B3, 1),
                 new AddressCommentId(B3, 2)
-        ));
+        ), null);
         final int opId = 909;
         final Comment comment1 = new Comment(1, "Tastes of pink", "Section");
         final Comment comment2 = new Comment(2, "Looks backwards", "Section");
@@ -451,6 +455,24 @@ public class TestConfirmSectionService {
                 new OperationComment(null, comment2, opId, null, slot2Id, null)
         );
         verify(mockOpCommentRepo).saveAll(Matchers.sameElements(expectedOpComments, true));
+    }
+
+    @Test
+    public void testLinkWorks() {
+        Work[] works = EntityFactory.makeWorks("SGP0", "SGP1");
+        UCMap<Work> workMap = UCMap.from(Work::getWorkNumber, works);
+        Operation[] ops = IntStream.range(100,103)
+                .mapToObj(i -> {
+                    Operation op = new Operation();
+                    op.setId(i);
+                    return op;
+                }).toArray(Operation[]::new);
+        Map<Operation, String> opWorkNumbers = Map.of(ops[0], works[0].getWorkNumber(),
+                ops[1], works[0].getWorkNumber(),
+                ops[2], works[1].getWorkNumber());
+        service.linkWorks(opWorkNumbers, workMap);
+        verify(mockWorkService).link(same(works[0]), Matchers.sameElements(List.of(ops[0], ops[1]), true));
+        verify(mockWorkService).link(works[1], List.of(ops[2]));
     }
 
     @Test
@@ -474,7 +496,7 @@ public class TestConfirmSectionService {
         };
 
         Map<PlanActionKey, PlanAction> map = service.getPlanActionMap(Arrays.asList(pas), 10);
-        assertEquals(map.size(), 3);
+        assertEquals(3, map.size());
         assertEquals(pas[0], map.get(new PlanActionKey(A1, samples[0].getId())));
         assertEquals(pas[1], map.get(new PlanActionKey(A1, samples[1].getId())));
         assertEquals(pas[2], map.get(new PlanActionKey(A2, samples[0].getId())));

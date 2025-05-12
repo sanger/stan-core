@@ -89,6 +89,7 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
                 .map(PlanOperation::getId)
                 .collect(toSet());
         var plansNotes = loadPlanNotes(planIds);
+        Map<Operation, String> opWork = new HashMap<>(request.getLabware().size());
         for (ConfirmSectionLabware csl : request.getLabware()) {
             Labware lw = labwareMap.get(csl.getBarcode());
             if (lw==null) {
@@ -109,15 +110,30 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
             recordAddressComments(csl, clr.operation==null ? null : clr.operation.getId(), clr.labware);
             if (clr.operation!=null) {
                 operations.add(clr.operation);
+                if (!nullOrEmpty(csl.getWorkNumber())) {
+                    opWork.put(clr.operation, csl.getWorkNumber());
+                }
             }
             resultLabware.add(clr.labware);
         }
-        if (request.getWorkNumber()!=null) {
-            workService.link(request.getWorkNumber(), operations);
-        }
+        linkWorks(opWork, validation.getWorks());
         bioRiskService.copyOpSampleBioRisks(operations);
         updateSourceBlocks(operations);
         return new OperationResult(operations, resultLabware);
+    }
+
+    /**
+     * Links ops to the specified works
+     * @param opWork map of op to work number
+     * @param works map of work number to work
+     */
+    public void linkWorks(Map<Operation, String> opWork, UCMap<Work> works) {
+        Map<Work, List<Operation>> workOps = new HashMap<>();
+        opWork.forEach((op, wn) -> {
+            Work work = works.get(wn);
+            workOps.computeIfAbsent(work, k -> new ArrayList<>()).add(op);
+        });
+        workOps.forEach(workService::link);
     }
 
     /**

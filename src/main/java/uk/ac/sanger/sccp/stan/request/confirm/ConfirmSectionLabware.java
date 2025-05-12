@@ -17,21 +17,23 @@ public class ConfirmSectionLabware {
     private boolean cancelled;
     private List<ConfirmSection> confirmSections;
     private List<AddressCommentId> addressComments;
+    private String workNumber;
 
     public ConfirmSectionLabware() {
-        this(null, false, null, null);
+        this(null, false, null, null, null);
     }
 
     public ConfirmSectionLabware(String barcode) {
-        this(barcode, false, null, null);
+        this(barcode, false, null, null, null);
     }
 
     public ConfirmSectionLabware(String barcode, boolean cancelled, Iterable<ConfirmSection> confirmSections,
-                                 Iterable<AddressCommentId> addressComments) {
+                                 Iterable<AddressCommentId> addressComments, String workNumber) {
         setBarcode(barcode);
         setCancelled(cancelled);
         setConfirmSections(confirmSections);
         setAddressComments(addressComments);
+        setWorkNumber(workNumber);
     }
 
     public String getBarcode() {
@@ -66,6 +68,14 @@ public class ConfirmSectionLabware {
         this.addressComments = newArrayList(addressComments);
     }
 
+    public String getWorkNumber() {
+        return this.workNumber;
+    }
+
+    public void setWorkNumber(String workNumber) {
+        this.workNumber = workNumber;
+    }
+
     @Override
     public String toString() {
         return BasicUtils.describe("ConfirmSectionLabware")
@@ -73,6 +83,8 @@ public class ConfirmSectionLabware {
                 .add("cancelled", cancelled)
                 .add("confirmSections", confirmSections)
                 .add("addressComments", addressComments)
+                .add("workNumber", workNumber)
+                .reprStringValues()
                 .toString();
     }
 
@@ -84,7 +96,9 @@ public class ConfirmSectionLabware {
         return (this.cancelled == that.cancelled
                 && Objects.equals(this.barcode, that.barcode)
                 && Objects.equals(this.confirmSections, that.confirmSections)
-                && Objects.equals(this.addressComments, that.addressComments));
+                && Objects.equals(this.addressComments, that.addressComments)
+                && Objects.equals(this.workNumber, that.workNumber)
+        );
     }
 
     @Override

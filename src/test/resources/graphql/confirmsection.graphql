@@ -3,6 +3,7 @@ mutation {
         labware: [
             {
                 barcode: "$BARCODE0",
+                workNumber: "SGP4000"
                 confirmSections: [
                     {
                         destinationAddress: "A1"
@@ -38,6 +39,7 @@ mutation {
             },
             {
                 barcode: "$BARCODE1"
+                workNumber: "SGP4000"
                 confirmSections: [
                     {
                         destinationAddress: "A1"
@@ -47,6 +49,7 @@ mutation {
             },
             {
                 barcode: "$BARCODE2"
+                workNumber: "SGP4000"
                 confirmSections: [
                     {
                         destinationAddress: "A1"
@@ -55,7 +58,6 @@ mutation {
                 ]
             }
         ]
-        workNumber: "SGP4000"
     }) {
         labware {
             id

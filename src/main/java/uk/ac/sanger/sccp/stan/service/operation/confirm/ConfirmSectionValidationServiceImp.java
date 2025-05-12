@@ -5,10 +5,8 @@ import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
 import uk.ac.sanger.sccp.stan.repo.PlanOperationRepo;
-import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSection;
-import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSectionLabware;
+import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSectionLabware.AddressCommentId;
-import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSectionRequest;
 import uk.ac.sanger.sccp.stan.service.CommentValidationService;
 import uk.ac.sanger.sccp.stan.service.SlotRegionService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
@@ -59,11 +57,15 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
         Map<Integer, PlanOperation> plans = lookUpPlans(problems, labware.values());
         validateOperations(problems, request.getLabware(), labware, plans);
         Map<Integer, Comment> commentIdMap = validateCommentIds(problems, request.getLabware());
-        workService.validateUsableWork(problems, request.getWorkNumber());
+        Set<String> workNumbers = request.getLabware().stream()
+                .map(ConfirmSectionLabware::getWorkNumber)
+                .filter(wn -> !nullOrEmpty(wn))
+                .collect(toSet());
+        UCMap<Work> works = workService.validateUsableWorks(problems, workNumbers);
         if (!problems.isEmpty()) {
             return new ConfirmSectionValidation(problems);
         }
-        return new ConfirmSectionValidation(labware, plans, slotRegions, commentIdMap);
+        return new ConfirmSectionValidation(labware, plans, slotRegions, commentIdMap, works);
     }
 
     /**
