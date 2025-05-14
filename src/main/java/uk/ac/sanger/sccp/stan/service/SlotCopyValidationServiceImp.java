@@ -452,7 +452,8 @@ public class SlotCopyValidationServiceImp implements SlotCopyValidationService {
                     && !lwType.getName().equalsIgnoreCase(CYTASSIST_SLIDE_HD)) {
                 problems.add(String.format("Expected a CytAssist labware type for operation %s.", CYTASSIST_OP));
             }
-            if (lwType.getName().equalsIgnoreCase(CYTASSIST_SLIDE) && contents != null && !contents.isEmpty()) {
+            if ((lwType.getName().equalsIgnoreCase(CYTASSIST_SLIDE) || lwType.getName().equalsIgnoreCase(CYTASSIST_SLIDE_HD))
+                    && contents != null && !contents.isEmpty()) {
                 for (SlotCopyContent content : contents) {
                     Address ad = content.getDestinationAddress();
                     if (ad != null && ad.getColumn()==1 && ad.getRow() > 1 && ad.getRow() < 4) {
