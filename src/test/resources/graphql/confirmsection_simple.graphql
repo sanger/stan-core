@@ -3,6 +3,7 @@ mutation {
         labware: [
             {
                 barcode: "BARCODE0",
+                workNumber: "SGP1"
                 confirmSections: [
                     {
                         destinationAddress: "A1"
@@ -12,7 +13,6 @@ mutation {
                 ]
             }
         ]
-        workNumber: "SGP1"
     }) {
         labware {
             barcode
