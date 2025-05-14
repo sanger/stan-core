@@ -4,7 +4,7 @@ mutation {
         workNumber: "SGP5000"
         destinations: [{
             preBarcode: "V42A20-3752023-10-20"
-            labwareType: "Visium LP CytAssist 6.5"
+            labwareType: "CytAssist 6.5 Visium LP"
             costing: Faculty
             lotNumber: "1234567"
             probeLotNumber: "7777777"
