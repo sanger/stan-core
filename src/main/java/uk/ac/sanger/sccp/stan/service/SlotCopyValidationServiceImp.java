@@ -15,7 +15,8 @@ import java.util.*;
 import java.util.regex.Pattern;
 
 import static java.util.stream.Collectors.toSet;
-import static uk.ac.sanger.sccp.stan.service.SlotCopyServiceImp.*;
+import static uk.ac.sanger.sccp.stan.service.SlotCopyServiceImp.CYTASSIST_OP;
+import static uk.ac.sanger.sccp.stan.service.SlotCopyServiceImp.VALID_BS_UPPER;
 import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 /**
@@ -447,13 +448,9 @@ public class SlotCopyValidationServiceImp implements SlotCopyValidationService {
      */
     public void validateCytOp(Collection<String> problems, Collection<SlotCopyContent> contents, LabwareType lwType) {
         if (lwType != null) {
-            if (!lwType.getName().equalsIgnoreCase(CYTASSIST_SLIDE)
-                    && !lwType.getName().equalsIgnoreCase(CYTASSIST_SLIDE_XL)
-                    && !lwType.getName().equalsIgnoreCase(CYTASSIST_SLIDE_HD)) {
+            if (!lwType.isCytAssist()) {
                 problems.add(String.format("Expected a CytAssist labware type for operation %s.", CYTASSIST_OP));
-            }
-            if ((lwType.getName().equalsIgnoreCase(CYTASSIST_SLIDE) || lwType.getName().equalsIgnoreCase(CYTASSIST_SLIDE_HD))
-                    && contents != null && !contents.isEmpty()) {
+            } else if (lwType.blockMiddleSlots() && contents != null && !contents.isEmpty()) {
                 for (SlotCopyContent content : contents) {
                     Address ad = content.getDestinationAddress();
                     if (ad != null && ad.getColumn()==1 && ad.getRow() > 1 && ad.getRow() < 4) {

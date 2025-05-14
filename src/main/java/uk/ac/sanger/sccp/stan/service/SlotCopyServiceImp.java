@@ -28,8 +28,6 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 @Service
 public class SlotCopyServiceImp implements SlotCopyService {
     static final String CYTASSIST_OP = "CytAssist";
-    static final String CYTASSIST_SLIDE = "CytAssist 6.5 Visium LP", CYTASSIST_SLIDE_XL = "CytAssist 11 Visium LP",
-            CYTASSIST_SLIDE_HD = "CytAssist HD 6.5 Visium LP";
     static final String EXECUTION_NOTE_NAME = "execution";
     static final String LP_NOTE_NAME = "LP number";
 
