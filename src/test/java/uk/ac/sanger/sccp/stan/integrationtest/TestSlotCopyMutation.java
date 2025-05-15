@@ -65,7 +65,7 @@ public class TestSlotCopyMutation {
     public void testSlotCopy(boolean cytAssist) throws Exception {
         OperationType cytOpType = null;
         if (cytAssist) {
-            lwTypeRepo.save(new LabwareType(null, "CytAssist 6.5 Visium LP", 4, 1, null, true));
+            lwTypeRepo.save(new LabwareType(null, "CytAssist 6.5", 4, 1, null, true));
             BioState bs = entityCreator.createBioState("Probes");
             cytOpType = entityCreator.createOpType("CytAssist", bs, OperationTypeFlag.MARK_SOURCE_USED);
         }

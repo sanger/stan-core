@@ -14,9 +14,9 @@ public class LabwareType implements HasIntId, HasName {
             PROVIASETTE_NAME = "Proviasette",
             CASSETTE_NAME = "Cassette",
             XENIUM_NAME = "Xenium",
-            CYTASSIST_SLIDE_NAME = "CytAssist 6.5 Visium LP",
-            CYTASSIST_SLIDE_XL_NAME = "CytAssist 11 Visium LP",
-            CYTASSIST_SLIDE_HD_NAME = "CytAssist HD 6.5 Visium LP";
+            CYTASSIST_SLIDE_NAME = "CytAssist 6.5",
+            CYTASSIST_SLIDE_XL_NAME = "CytAssist 11",
+            CYTASSIST_SLIDE_HD_NAME = "CytAssist HD 6.5";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
