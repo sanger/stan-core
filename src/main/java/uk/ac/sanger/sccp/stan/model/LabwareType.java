@@ -1,7 +1,10 @@
 package uk.ac.sanger.sccp.stan.model;
 
 import javax.persistence.*;
+import java.util.List;
 import java.util.Objects;
+
+import static uk.ac.sanger.sccp.utils.BasicUtils.containsIgnoreCase;
 
 /**
  * A type of labware. This indicates the layout of the labware, its name, what kind of labels it uses,
@@ -13,10 +16,10 @@ public class LabwareType implements HasIntId, HasName {
     public static final String FETAL_WASTE_NAME = "Fetal waste container",
             PROVIASETTE_NAME = "Proviasette",
             CASSETTE_NAME = "Cassette",
-            XENIUM_NAME = "Xenium",
-            CYTASSIST_SLIDE_NAME = "CytAssist 6.5",
-            CYTASSIST_SLIDE_XL_NAME = "CytAssist 11",
-            CYTASSIST_SLIDE_HD_NAME = "CytAssist HD 6.5";
+            XENIUM_NAME = "Xenium";
+    public static final List<String> CYTASSIST_BLOCK_MIDDLE_NAMES = List.of(
+            "CytAssist 6.5", "CytAssist HD 6.5", "CytAssist HD 3' 6.5"
+    );
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -107,15 +110,12 @@ public class LabwareType implements HasIntId, HasName {
     }
 
     public boolean isCytAssist() {
-        return (name != null && (name.equalsIgnoreCase(CYTASSIST_SLIDE_NAME)
-                || name.equalsIgnoreCase(CYTASSIST_SLIDE_XL_NAME)
-                || name.equalsIgnoreCase(CYTASSIST_SLIDE_HD_NAME)));
+        return (name != null && containsIgnoreCase(name, "CytAssist"));
     }
 
     /** Should slots B1 and C1 be blocked in cytassist op? */
     public boolean blockMiddleSlots() {
-        return (name != null && (name.equalsIgnoreCase(CYTASSIST_SLIDE_NAME)
-                || name.equalsIgnoreCase(CYTASSIST_SLIDE_HD_NAME)));
+        return (name != null && CYTASSIST_BLOCK_MIDDLE_NAMES.stream().anyMatch(name::equalsIgnoreCase));
     }
 
     /**
