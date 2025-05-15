@@ -609,9 +609,10 @@ public class TestSlotCopyValidationService {
     @CsvSource({
             ", CytAssist 6.5 Visium LP, 1 4",
             ", CytAssist 11 Visium LP, 1 2",
-            ", Visium LP CytAssist HD, 1 2",
+            ", CytAssist HD 6.5 Visium LP, 1 4",
             "Expected a CytAssist labware type for operation CytAssist., Bananas, 1",
             "Slots B1 and C1 are disallowed for use in this operation., CytAssist 6.5 Visium LP, 1 2",
+            "Slots B1 and C1 are disallowed for use in this operation., CytAssist HD 6.5 Visium LP, 1 2",
             "Slots B1 and C1 are disallowed for use in this operation., CytAssist 6.5 Visium LP, 3 4",
     })
     public void testValidateCytOp(String expectedProblem, String lwTypeName, String joinedRows) {

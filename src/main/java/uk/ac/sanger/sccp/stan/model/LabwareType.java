@@ -13,7 +13,10 @@ public class LabwareType implements HasIntId, HasName {
     public static final String FETAL_WASTE_NAME = "Fetal waste container",
             PROVIASETTE_NAME = "Proviasette",
             CASSETTE_NAME = "Cassette",
-            XENIUM_NAME = "Xenium";
+            XENIUM_NAME = "Xenium",
+            CYTASSIST_SLIDE_NAME = "CytAssist 6.5 Visium LP",
+            CYTASSIST_SLIDE_XL_NAME = "CytAssist 11 Visium LP",
+            CYTASSIST_SLIDE_HD_NAME = "CytAssist HD 6.5 Visium LP";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -101,6 +104,18 @@ public class LabwareType implements HasIntId, HasName {
 
     public boolean isXenium() {
         return (name!=null && name.equalsIgnoreCase(XENIUM_NAME));
+    }
+
+    public boolean isCytAssist() {
+        return (name != null && (name.equalsIgnoreCase(CYTASSIST_SLIDE_NAME)
+                || name.equalsIgnoreCase(CYTASSIST_SLIDE_XL_NAME)
+                || name.equalsIgnoreCase(CYTASSIST_SLIDE_HD_NAME)));
+    }
+
+    /** Should slots B1 and C1 be blocked in cytassist op? */
+    public boolean blockMiddleSlots() {
+        return (name != null && (name.equalsIgnoreCase(CYTASSIST_SLIDE_NAME)
+                || name.equalsIgnoreCase(CYTASSIST_SLIDE_HD_NAME)));
     }
 
     /**
