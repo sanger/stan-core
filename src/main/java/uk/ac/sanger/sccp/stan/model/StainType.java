@@ -6,13 +6,15 @@ import javax.persistence.*;
 import java.util.List;
 import java.util.Objects;
 
+import static uk.ac.sanger.sccp.utils.BasicUtils.startsWithIgnoreCase;
+
 /**
  * A type of stain
  * @author dr6
  */
 @Entity
 public class StainType implements HasEnabled, HasName, HasIntId {
-    /** The measurements supported for the {@code H&E} stain type. */
+    /** The measurements supported for the {@code H&E} stain types. */
     public static final List<String> H_AND_E_MEASUREMENTS = List.of("Haematoxylin", "Blueing", "Eosin");
 
     @Id
@@ -63,10 +65,15 @@ public class StainType implements HasEnabled, HasName, HasIntId {
 
     @JsonIgnore
     public List<String> getMeasurementTypes() {
-        if (name!=null && name.equalsIgnoreCase("H&E")) {
+        if (isHAndE()) {
             return H_AND_E_MEASUREMENTS;
         }
         return List.of();
+    }
+
+    @JsonIgnore
+    public boolean isHAndE() {
+        return startsWithIgnoreCase(name, "H&E");
     }
 
     @Override
