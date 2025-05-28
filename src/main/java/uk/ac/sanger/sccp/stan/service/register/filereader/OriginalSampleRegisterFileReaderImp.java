@@ -1,11 +1,15 @@
 package uk.ac.sanger.sccp.stan.service.register.filereader;
 
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.request.register.OriginalSampleData;
 import uk.ac.sanger.sccp.stan.request.register.OriginalSampleRegisterRequest;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
 import uk.ac.sanger.sccp.stan.service.register.filereader.OriginalSampleRegisterFileReader.Column;
 
+import java.io.IOException;
+import java.nio.file.*;
 import java.time.LocalDate;
 import java.util.*;
 
@@ -53,5 +57,26 @@ public class OriginalSampleRegisterFileReaderImp extends BaseRegisterFileReader<
         data.setFixative((String) row.get(Column.Fixative));
         data.setSolution((String) row.get(Column.Solution));
         return data;
+    }
+
+    /**
+     * Test function to read an Excel file
+     */
+    public static void main(String[] args) throws IOException {
+        OriginalSampleRegisterFileReader r = new OriginalSampleRegisterFileReaderImp();
+        final Path path = Paths.get("/Users/dr6/Desktop/regtest.xlsx");
+        OriginalSampleRegisterRequest request;
+        try (Workbook wb = WorkbookFactory.create(Files.newInputStream(path))) {
+            request = r.read(wb.getSheetAt(SHEET_INDEX));
+        } catch (ValidationException e) {
+            System.err.println("\n****\nException: "+e);
+            System.err.println("Problems:");
+            for (var problem : e.getProblems()) {
+                System.err.println(" "+problem);
+            }
+            System.err.println("****\n");
+            throw e;
+        }
+        System.out.println(request);
     }
 }
