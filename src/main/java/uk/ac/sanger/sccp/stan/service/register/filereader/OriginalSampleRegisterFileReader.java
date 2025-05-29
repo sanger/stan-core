@@ -21,7 +21,7 @@ public interface OriginalSampleRegisterFileReader extends MultipartFileReader<Or
     /** Columns expected in the excel file */
     enum Column implements IColumn {
         _preamble(Void.class, Pattern.compile("mand.tory.*", Pattern.CASE_INSENSITIVE), false),
-        Work_number(Pattern.compile("(work|sgp)\\s*number", Pattern.CASE_INSENSITIVE), false),
+        Work_number(Pattern.compile("(work|sgp)\\s*number.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL), false),
         Donor_identifier(Pattern.compile("donor\\s*id.*", Pattern.CASE_INSENSITIVE)),
         Life_stage,
         Collection_date(LocalDate.class, Pattern.compile("(if.*)?(date.*collection|collection.*date).*", Pattern.CASE_INSENSITIVE), false),
@@ -34,7 +34,7 @@ public interface OriginalSampleRegisterFileReader extends MultipartFileReader<Or
         Replicate_number(Pattern.compile("replicate.*", Pattern.CASE_INSENSITIVE), false),
         Labware_type,
         Fixative,
-        Solution(Pattern.compile("solution.*", Pattern.CASE_INSENSITIVE)),
+        Solution(Pattern.compile("(current\\s*)?solution.*", Pattern.CASE_INSENSITIVE)),
         _postramble(Void.class, Pattern.compile("info.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL), false),
         ;
 

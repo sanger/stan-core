@@ -18,9 +18,10 @@ public interface SectionRegisterFileReader extends MultipartFileReader<SectionRe
     int SHEET_INDEX = 3;
     /** Column headings expected in the Excel file. */
     enum Column implements IColumn {
-        Work_number(Pattern.compile("(work|sgp)\\s*number", Pattern.CASE_INSENSITIVE)),
+        _preamble(Void.class, Pattern.compile("mandatory.*", Pattern.CASE_INSENSITIVE), false),
+        Work_number(Pattern.compile("(work|sgp)\\s*number.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL)),
         Slide_type,
-        External_slide_ID,
+        External_slide_ID(Pattern.compile("(external )?(slide (barcode|id|identifier)|barcode.*slide)", Pattern.CASE_INSENSITIVE)),
         Prebarcode(String.class, Pattern.compile("(xenium( slide)?\\s*|pre)barcode", Pattern.CASE_INSENSITIVE), false),
         Section_address,
         Fixative,
@@ -37,7 +38,7 @@ public interface SectionRegisterFileReader extends MultipartFileReader<SectionRe
         Section_number(Integer.class),
         Section_thickness(String.class),
         Date_sectioned(LocalDate.class, Pattern.compile("date.*sectioned|section.*date", Pattern.CASE_INSENSITIVE), false),
-        Section_position(Pattern.compile("(if.+)?(section\\s+)?position", Pattern.CASE_INSENSITIVE)),
+        Section_position(Pattern.compile("(if.+)?(section\\s+)?position|position.*slot.*", Pattern.CASE_INSENSITIVE)),
         ;
 
         private final Pattern pattern;
