@@ -126,7 +126,7 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
 
     @Test
     void testIndexColumns() {
-        Row row = mockRow("work number", "slide type", "external slide id", "xenium barcode",
+        Row row = mockRow("mandatory nonsense", "work number", "slide type", "external slide id", "xenium barcode",
                 "section address", "fixative", "embedding medium", "donor id", "life stage",
                 "species", "bio risk", "humfre", "tissue type", "spatial location", "replicate number",
                 "section external id", "section number", "section thickness", "date sectioned", "if bla bla bla position", null, "");
@@ -134,8 +134,12 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
         var result = reader.indexColumns(problems, row);
         assertThat(problems).isEmpty();
         Column[] expectedOrder = Column.values();
-        for (int i = 0; i < expectedOrder.length; ++i) {
-            assertSame(i, result.get(expectedOrder[i]));
+        int counter = 0;
+        for (Column column : expectedOrder) {
+            if (column.getDataType()!=Void.class) {
+                assertEquals(counter, result.get(column));
+            }
+            ++counter;
         }
     }
 
