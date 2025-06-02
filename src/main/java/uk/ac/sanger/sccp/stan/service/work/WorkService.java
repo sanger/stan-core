@@ -185,10 +185,32 @@ public interface WorkService {
      * Adds a problem and returns null if the given string is null.
      * @param problems a receptacle for any problems found
      * @param workNumber the string representing an existing work number
-     * @return the active work corresponding to the given string
+     * @return the work corresponding to the given work number
      * @see Work#isUsable
      */
     Work validateUsableWork(Collection<String> problems, String workNumber);
+
+    /**
+     * Validates the specified work as open.
+     * If the work doesn't exist or is closed, adds a problem to the given problems receptacle.
+     * Adds a problem and returns null if the given string is null.
+     * @param problems a receptacle for any problems found
+     * @param workNumber the string representing an existing work number
+     * @return the work corresponding to the given work number
+     * @see Work#isOpen
+     */
+    Work validateOpenWork(Collection<String> problems, String workNumber);
+
+    /**
+     * Validates the specified work for the given operation type.
+     * If the op type is given and supports any open work, then the work should be open.
+     * Otherwise, the work should be active.
+     * @param problems receptacle for any problems found
+     * @param workNumber the string representing an existing work number
+     * @param opType the type operation being requested
+     * @return the work corresponding to the given work number
+     */
+    Work validateWorkForOpType(Collection<String> problems, String workNumber, OperationType opType);
 
     /**
      * Validates the specified work as usable.

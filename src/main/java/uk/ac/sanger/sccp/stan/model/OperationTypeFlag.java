@@ -22,6 +22,8 @@ public enum OperationTypeFlag {
     PROBES,
     /** The destination of the op can be an active piece of labware (i.e. not empty) */
     ACTIVE_DEST,
+    /** This op can be recorded against a paused or unstarted work number */
+    ANY_OPEN_WORK,
 
     // Current limit: 32 flags
     ;

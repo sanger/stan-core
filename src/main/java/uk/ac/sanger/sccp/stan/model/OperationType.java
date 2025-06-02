@@ -121,6 +121,11 @@ public class OperationType implements HasName, HasIntId {
     public boolean supportsActiveDest() {
         return this.has(OperationTypeFlag.ACTIVE_DEST);
     }
+
+    /** Can this operation be recorded against a paused or unstarted work? */
+    public boolean supportsAnyOpenWork() {
+        return this.has(OperationTypeFlag.ANY_OPEN_WORK);
+    }
     //endregion
 
     @Override
