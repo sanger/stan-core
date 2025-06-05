@@ -53,7 +53,7 @@ public class InPlaceOpServiceImp implements InPlaceOpService {
         ValidationHelper val = valFactory.getHelper();
         Equipment eq = val.checkEquipment(request.getEquipmentId(), null);
         problems.addAll(val.getProblems());
-        Work work = workService.validateUsableWork(problems, request.getWorkNumber());
+        Work work = workService.validateWorkForOpType(problems, request.getWorkNumber(), opType);
 
         if (!problems.isEmpty()) {
             throw new ValidationException("The request could not be validated.", problems);

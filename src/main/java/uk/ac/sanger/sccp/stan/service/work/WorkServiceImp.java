@@ -17,6 +17,7 @@ import uk.ac.sanger.sccp.utils.UCMap;
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import static java.util.Objects.requireNonNull;
@@ -386,8 +387,15 @@ public class WorkServiceImp implements WorkService {
         return workMap;
     }
 
-    @Override
-    public Work validateUsableWork(Collection<String> problems, String workNumber) {
+    /**
+     * Loads the validates the specified work using the given predicate.
+     * Adds a problem if the work is not found, or if it fails the given predicate.
+     * @param problems receptacle for problems
+     * @param workNumber the work number to load
+     * @param predicate a predicate to check against the work (may be null)
+     * @return the work corresponding to the given work number, if found
+     */
+    public Work validateWork(Collection<String> problems, String workNumber, Predicate<Work> predicate) {
         if (nullOrEmpty(workNumber)) {
             problems.add("Work number is not specified.");
             return null;
@@ -398,10 +406,29 @@ public class WorkServiceImp implements WorkService {
             return null;
         }
         Work work = optWork.get();
-        if (!work.isUsable()) {
+        if (predicate!=null && !predicate.test(work)) {
             problems.add(work.getWorkNumber()+" cannot be used because it is "+work.getStatus()+".");
         }
         return work;
+    }
+
+    @Override
+    public Work validateUsableWork(Collection<String> problems, String workNumber) {
+        return validateWork(problems, workNumber, Work::isUsable);
+    }
+
+    @Override
+    public Work validateOpenWork(Collection<String> problems, String workNumber) {
+        return validateWork(problems, workNumber, Work::isOpen);
+    }
+
+    @Override
+    public Work validateWorkForOpType(Collection<String> problems, String workNumber, OperationType opType) {
+        if (opType!=null && opType.supportsAnyOpenWork()) {
+            return validateOpenWork(problems, workNumber);
+        } else {
+            return validateUsableWork(problems, workNumber);
+        }
     }
 
     @Override

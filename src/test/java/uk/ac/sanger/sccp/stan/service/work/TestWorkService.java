@@ -26,8 +26,8 @@ import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
-import static uk.ac.sanger.sccp.utils.BasicUtils.hashSetOf;
-import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
+import static uk.ac.sanger.sccp.stan.Matchers.assertProblem;
+import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 /**
  * Tests {@link WorkServiceImp}
@@ -902,6 +902,80 @@ public class TestWorkService {
         } else {
             assertThat(problems).containsExactly(expectedErrorMessage);
         }
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            ",,[Not found]",
+            "SGPX,,Work number not recognised: \"SGPX\"",
+            "SGP1,active,",
+            "sgp2,unstarted,",
+            "Sgp3,paused,",
+            "Sgp3,withdrawn,SGP3 cannot be used because it is withdrawn.",
+            "Sgp3,failed,SGP3 cannot be used because it is failed.",
+            "Sgp3,completed,SGP3 cannot be used because it is completed.",
+    })
+    public void testValidateOpenWork(String workNumber, Status status, String expectedErrorMessage) {
+        List<String> problems = new ArrayList<>(1);
+        if (nullOrEmpty(workNumber)) {
+            assertNull(workService.validateUsableWork(problems, null));
+            assertThat(problems).containsExactly("Work number is not specified.");
+            verifyNoInteractions(mockWorkRepo);
+            return;
+        }
+        Work work;
+        if (status==null) {
+            work = null;
+        } else {
+            work = quickWork(status);
+            work.setWorkNumber(workNumber.toUpperCase());
+        }
+        when(mockWorkRepo.findByWorkNumber(workNumber)).thenReturn(Optional.ofNullable(work));
+        assertSame(work, workService.validateOpenWork(problems, workNumber));
+        verify(mockWorkRepo).findByWorkNumber(workNumber);
+        assertProblem(problems, expectedErrorMessage);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            ",,true,[Not found]",
+            "SGPX,,true,Work number not recognised: \"SGPX\"",
+            "SGP1,active,true,",
+            "sgp2,unstarted,true,",
+            "Sgp3,paused,true,",
+            "Sgp3,withdrawn,true,SGP3 cannot be used because it is withdrawn.",
+            "Sgp3,failed,true,SGP3 cannot be used because it is failed.",
+            "Sgp3,completed,true,SGP3 cannot be used because it is completed.",
+            "SGP1,active,false,",
+            "sgp2,unstarted,false,SGP2 cannot be used because it is unstarted.",
+            "Sgp3,paused,false,SGP3 cannot be used because it is paused.",
+            "Sgp3,withdrawn,false,SGP3 cannot be used because it is withdrawn.",
+            "Sgp3,failed,false,SGP3 cannot be used because it is failed.",
+            "Sgp3,completed,false,SGP3 cannot be used because it is completed.",
+    })
+    public void testValidateWorkForOpType(String workNumber, Status status, boolean anyOpen, String expectedErrorMessage) {
+        OperationType opType = EntityFactory.makeOperationType("opname", null);
+        if (anyOpen) {
+            opType.setFlags(opType.getFlags()|OperationTypeFlag.ANY_OPEN_WORK.bit());
+        }
+        List<String> problems = new ArrayList<>(1);
+        if (nullOrEmpty(workNumber)) {
+            assertNull(workService.validateWorkForOpType(problems, null, opType));
+            assertThat(problems).containsExactly("Work number is not specified.");
+            verifyNoInteractions(mockWorkRepo);
+            return;
+        }
+        Work work;
+        if (status==null) {
+            work = null;
+        } else {
+            work = quickWork(status);
+            work.setWorkNumber(workNumber.toUpperCase());
+        }
+        when(mockWorkRepo.findByWorkNumber(workNumber)).thenReturn(Optional.ofNullable(work));
+        assertSame(work, workService.validateWorkForOpType(problems, workNumber, opType));
+        verify(mockWorkRepo).findByWorkNumber(workNumber);
+        assertProblem(problems, expectedErrorMessage);
     }
 
     static Stream<Arguments> usableWorkArgs() {

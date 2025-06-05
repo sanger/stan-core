@@ -74,10 +74,10 @@ public class TestInPlaceOpService {
         doReturn(equipment).when(mockVal).checkEquipment(any(), any());
         final String problem = "Everything is bad.";
         if (successful) {
-            when(mockWorkService.validateUsableWork(any(), any())).thenReturn(work);
+            when(mockWorkService.validateWorkForOpType(any(), any(), any())).thenReturn(work);
             doReturn(Set.of()).when(mockVal).getProblems();
         } else {
-            when(mockWorkService.validateUsableWork(any(), any())).then(invocation -> {
+            when(mockWorkService.validateWorkForOpType(any(), any(), any())).then(invocation -> {
                 Collection<String> problems = invocation.getArgument(0);
                 problems.add(problem);
                 return work;
@@ -98,7 +98,7 @@ public class TestInPlaceOpService {
 
         verify(service).validateLabware(any(), eq(request.getBarcodes()));
         verify(service).validateOpType(any(), eq(request.getOperationType()), eq(labware));
-        verify(mockWorkService).validateUsableWork(any(), eq(request.getWorkNumber()));
+        verify(mockWorkService).validateWorkForOpType(any(), eq(request.getWorkNumber()), same(opType));
         verify(mockVal).checkEquipment(request.getEquipmentId(), null);
         verify(service, times(successful ? 1 : 0)).createOperations(user, labware, opType, equipment, work);
     }
