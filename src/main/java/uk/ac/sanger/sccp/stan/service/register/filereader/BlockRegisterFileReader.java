@@ -19,8 +19,8 @@ public interface BlockRegisterFileReader extends MultipartFileReader<RegisterReq
 
     /** Column headings expected in the Excel file. */
     enum Column implements IColumn {
-        _preamble(Void.class, Pattern.compile("all\\s*information.*needed", Pattern.CASE_INSENSITIVE)),
-        Work_number(Pattern.compile("(work|sgp)\\s*number", Pattern.CASE_INSENSITIVE)),
+        _preamble(Void.class, Pattern.compile("mandatory.*|all\\s*information.*needed", Pattern.CASE_INSENSITIVE)),
+        Work_number(Pattern.compile("(work|sgp)\\s*number.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL)),
         Donor_identifier(Pattern.compile("donor\\s*id.*", Pattern.CASE_INSENSITIVE)),
         Life_stage,
         Collection_date(LocalDate.class, Pattern.compile("(if.*)?(date.*collection|collection.*date).*", Pattern.CASE_INSENSITIVE)),
