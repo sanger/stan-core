@@ -2219,6 +2219,8 @@ type Query {
     stainTypes: [StainType!]!
     """Get the reagent types for H&E staining."""
     stainReagentTypes: [Comment!]!
+    """Operation types."""
+    opTypes: [String!]!
     """Event types."""
     eventTypes: [String!]!
     """Get an item of labware and the visium permeabilisation data recorded on it, if any."""

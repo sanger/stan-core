@@ -56,6 +56,9 @@ public interface HistoryService {
      */
     History getHistory(String workNumber, String barcode, List<String> externalNames, List<String> donorNames, String eventType);
 
+    /** Gets a list of operation types supported by Stan. */
+    List<String> getOpTypes();
+
     /**
      * Gets a list of the different event types used in history
      * @return the different event types

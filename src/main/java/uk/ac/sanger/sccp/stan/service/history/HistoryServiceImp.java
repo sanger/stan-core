@@ -22,8 +22,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.*;
+import static java.util.stream.Collectors.toMap;
 import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 /**
@@ -1107,6 +1107,11 @@ public class HistoryServiceImp implements HistoryService {
         }
         entries.sort(Comparator.comparing(HistoryEntry::getTime));
         return entries;
+    }
+
+    @Override
+    public List<String> getOpTypes() {
+        return stream(opTypeRepo.findAll()).map(OperationType::getName).toList();
     }
 
     @Override

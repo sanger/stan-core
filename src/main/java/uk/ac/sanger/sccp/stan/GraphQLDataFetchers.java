@@ -490,6 +490,10 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         };
     }
 
+    public DataFetcher<List<String>> opTypes() {
+        return dfe -> historyService.getOpTypes();
+    }
+
     public DataFetcher<List<String>> eventTypes() {
         return dfe -> historyService.getEventTypes();
     }
