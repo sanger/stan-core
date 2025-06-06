@@ -243,7 +243,7 @@ public class TestInPlaceOpService {
         if (work==null) {
             verifyNoInteractions(mockWorkService);
         } else {
-            verify(mockWorkService).link(work, ops);
+            verify(mockWorkService).link(work, ops, opType.supportsAnyOpenWork());
         }
         verify(mockBioRiskService).copyOpSampleBioRisks(ops);
     }

@@ -150,7 +150,7 @@ public class InPlaceOpServiceImp implements InPlaceOpService {
                 .collect(toList());
         bioRiskService.copyOpSampleBioRisks(ops);
         if (work!=null) {
-            workService.link(work, ops);
+            workService.link(work, ops, opType.supportsAnyOpenWork());
         }
         return new OperationResult(ops, labware);
     }
