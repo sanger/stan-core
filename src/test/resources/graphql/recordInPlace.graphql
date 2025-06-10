@@ -2,7 +2,7 @@ mutation {
     recordInPlace(request: {
         operationType: "OpTypeName"
         barcodes: ["STAN-50"]
-        workNumber: "WORKNUMBER"
+        workNumbers: ["WORKNUMBER"]
         equipmentId: 666
     }) {
         operations {

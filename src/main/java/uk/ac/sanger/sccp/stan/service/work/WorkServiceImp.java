@@ -433,9 +433,19 @@ public class WorkServiceImp implements WorkService {
 
     @Override
     public UCMap<Work> validateUsableWorks(Collection<String> problems, Collection<String> workNumbers) {
+        return validateWorks(problems, workNumbers, Work::isUsable);
+    }
+
+    @Override
+    public UCMap<Work> validateWorksForOpType(Collection<String> problems, Collection<String> workNumbers, OperationType opType) {
+        final Predicate<Work> predicate = (opType != null && opType.supportsAnyOpenWork()) ? Work::isOpen : Work::isUsable;
+        return validateWorks(problems, workNumbers, predicate);
+    }
+
+    UCMap<Work> validateWorks(Collection<String> problems, Collection<String> workNumbers, Predicate<Work> predicate) {
         List<String> nonNullWorkNumbers = workNumbers.stream()
                 .filter(Objects::nonNull)
-                .collect(toList());
+                .toList();
         if (nonNullWorkNumbers.isEmpty()) {
             problems.add("No work numbers given.");
             return new UCMap<>(0);
@@ -454,21 +464,23 @@ public class WorkServiceImp implements WorkService {
             problems.add((missing.size()==1 ? "Work number" : "Work numbers") +" not recognised: "+
                     BasicUtils.reprCollection(missing));
         }
-        List<String> unusable = new ArrayList<>();
-        Set<String> badStates = new LinkedHashSet<>();
-        for (Work work : workMap.values()) {
-            if (!work.isUsable()) {
-                unusable.add(work.getWorkNumber());
-                badStates.add(work.getStatus().name());
+        if (predicate != null) {
+            List<String> unusable = new ArrayList<>();
+            Set<String> badStates = new LinkedHashSet<>();
+            for (Work work : workMap.values()) {
+                if (!predicate.test(work)) {
+                    unusable.add(work.getWorkNumber());
+                    badStates.add(work.getStatus().name());
+                }
             }
-        }
-        if (!unusable.isEmpty()) {
-            String problem = String.format("Work %s cannot be used because %s %s: %s",
-                    unusable.size()==1 ? "number" : "numbers",
-                    unusable.size()==1 ? "it is" : "they are",
-                    BasicUtils.commaAndConjunction(badStates, "or"),
-                    unusable);
-            problems.add(problem);
+            if (!unusable.isEmpty()) {
+                String problem = String.format("Work %s cannot be used because %s %s: %s",
+                        unusable.size() == 1 ? "number" : "numbers",
+                        unusable.size() == 1 ? "it is" : "they are",
+                        BasicUtils.commaAndConjunction(badStates, "or"),
+                        unusable);
+                problems.add(problem);
+            }
         }
         return workMap;
     }

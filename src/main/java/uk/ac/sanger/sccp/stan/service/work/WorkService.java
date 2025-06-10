@@ -213,6 +213,17 @@ public interface WorkService {
     Work validateWorkForOpType(Collection<String> problems, String workNumber, OperationType opType);
 
     /**
+     * Validates the specified works for the given operation type.
+     * If the op type is given and supports any open work, then the works should be open.
+     * Otherwise, the work should be active.
+     * @param problems receptacle for any problems found
+     * @param workNumbers the strings representing existing work numbers
+     * @param opType the type operation being requested
+     * @return a map of the work numbers to the specified works
+     */
+    UCMap<Work> validateWorksForOpType(Collection<String> problems, Collection<String> workNumbers, OperationType opType);
+
+    /**
      * Validates the specified work as usable.
      * If any of the work doesn't exist or cannot be used, adds a problem to the given problems receptacle.
      * @param problems a receptacle for any problems found
