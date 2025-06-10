@@ -26,6 +26,7 @@ import uk.ac.sanger.sccp.utils.UCMap;
 import javax.persistence.EntityManager;
 import javax.transaction.Transactional;
 import java.util.*;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -72,10 +73,9 @@ public class TestReleaseMutation {
     @Test
     @Transactional
     public void testRelease() throws Exception {
-        entityCreator.createOpType("Probe hybridisation Xenium", null, OperationTypeFlag.IN_PLACE);
-        entityCreator.createOpType("Probe hybridisation QC", null, OperationTypeFlag.IN_PLACE);
-        entityCreator.createOpType("Xenium analyser", null, OperationTypeFlag.IN_PLACE);
-        entityCreator.createOpType("Xenium analyser QC", null, OperationTypeFlag.IN_PLACE);
+        Stream.of("Probe hybridisation Xenium", "Probe hybridisation QC", "Xenium analyser",
+                "Xenium analyser QC", "DV200 analysis", "RIN analysis", "Paraffin processing")
+                        .forEach(name -> entityCreator.createOpType(name, null, OperationTypeFlag.IN_PLACE));
         Work work1 = entityCreator.createWork(null, null, null, null, null);
         Donor donor = entityCreator.createDonor("DONOR1");
         Tissue tissue = entityCreator.createTissue(donor, "TISSUE1");
@@ -145,7 +145,7 @@ public class TestReleaseMutation {
 
         String tsvString = getReleaseFile(releaseIds, EnumSet.allOf(ReleaseFileOption.class));
         var tsvMaps = tsvToMap(tsvString);
-        assertEquals(tsvMaps.size(), 4);
+        assertEquals(4, tsvMaps.size());
         Set<String> expectedColumns = Arrays.stream(ReleaseColumn.values())
                 .filter(c -> c.getMode()!=ReleaseFileMode.CDNA)
                 .map(ReleaseColumn::toString)

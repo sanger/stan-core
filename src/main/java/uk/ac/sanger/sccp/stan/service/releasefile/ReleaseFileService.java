@@ -23,8 +23,10 @@ import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
-import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.*;
+import static java.util.stream.Collectors.toMap;
+import static uk.ac.sanger.sccp.stan.service.analysis.RNAAnalysisServiceImp.DV200_OP_NAME;
+import static uk.ac.sanger.sccp.stan.service.analysis.RNAAnalysisServiceImp.RIN_OP_NAME;
 import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 /**
@@ -130,7 +132,12 @@ public class ReleaseFileService {
         if (options.contains(ReleaseFileOption.Visium)) {
             loadVisiumBarcodes(entries, ancestry);
         }
-
+        if (options.contains(ReleaseFileOption.Histology)) {
+            loadRnaAnalysis(entries, slotIds);
+        }
+        if (options.contains(ReleaseFileOption.Sample_processing)) {
+            loadParaffinProcessingProgram(entries, slotIds);
+        }
         loadXeniumFields(entries, slotIds);
         loadFlags(entries);
         return new ReleaseFileContent(modes, entries, options);
@@ -1176,6 +1183,66 @@ public class ReleaseFileService {
                     .distinct()
                     .collect(joining("; "));
             entry.setSectionComment(sectionComment);
+        }
+    }
+
+    /**
+     * Loads RNA analysis data
+     * @param entries the entries about the items being released
+     */
+    public void loadRnaAnalysis(Collection<ReleaseEntry> entries, Set<Integer> slotIds) {
+        List<OperationType> opTypes = Stream.of(DV200_OP_NAME, RIN_OP_NAME)
+                .map(opTypeRepo::getByName)
+                .toList();
+        List<Operation> ops = opRepo.findAllByOperationTypeInAndDestinationSlotIdIn(opTypes, slotIds);
+        if (nullOrEmpty(ops)) {
+            return;
+        }
+        Set<Integer> opIds = ops.stream().map(Operation::getId).collect(toSet());
+        List<OperationComment> opcoms = opComRepo.findAllByOperationIdIn(opIds);
+        Map<SlotIdSampleId, Set<String>> ssComments = new HashMap<>();
+        List<Measurement> measurements = measurementRepo.findAllByOperationIdIn(opIds);
+        for (OperationComment oc : opcoms) {
+            ssComments.computeIfAbsent(new SlotIdSampleId(oc.getSlotId(), oc.getSampleId()), k -> new HashSet<>())
+                    .add(oc.getComment().getText());
+        }
+        Map<SlotIdSampleId, Set<String>> ssMeasurements = new HashMap<>();
+        for (Measurement m : measurements) {
+            ssMeasurements.computeIfAbsent(new SlotIdSampleId(m.getSlotId(), m.getSampleId()), k -> new HashSet<>())
+                    .add(m.getName()+": "+m.getValue());
+        }
+        for (ReleaseEntry entry : entries) {
+            Set<String> comments = ssComments.get(new SlotIdSampleId(entry.getSlot(), entry.getSample()));
+            if (!nullOrEmpty(comments)) {
+                entry.setRnaAnalysisComment(comments.stream().sorted().collect(joining(", ")));
+            }
+            Set<String> meas = ssMeasurements.get(new SlotIdSampleId(entry.getSlot(), entry.getSample()));
+            if (!nullOrEmpty(meas)) {
+                entry.setRnaAnalysisResult(meas.stream().sorted().collect(joining(", ")));
+            }
+        }
+    }
+
+    /**
+     * Loads paraffin processing program
+     * @param entries the entries about the items being released
+     */
+    public void loadParaffinProcessingProgram(Collection<ReleaseEntry> entries, Set<Integer> slotIds) {
+        OperationType opType = opTypeRepo.getByName("Paraffin processing");
+        List<OperationComment> opcoms = opComRepo.findAllBySlotAndOpType(slotIds, opType);
+        if (nullOrEmpty(opcoms)) {
+            return;
+        }
+        Map<SlotIdSampleId, Set<String>> ssComments = new HashMap<>();
+        for (OperationComment oc : opcoms) {
+            ssComments.computeIfAbsent(new SlotIdSampleId(oc.getSlotId(), oc.getSampleId()), k -> new HashSet<>())
+                    .add(oc.getComment().getText());
+        }
+        for (ReleaseEntry entry : entries) {
+            Set<String> comments = ssComments.get(new SlotIdSampleId(entry.getSlot(), entry.getSample()));
+            if (!nullOrEmpty(comments)) {
+                entry.setParaffinProcessingProgram(comments.stream().sorted().collect(joining(", ")));
+            }
         }
     }
 
