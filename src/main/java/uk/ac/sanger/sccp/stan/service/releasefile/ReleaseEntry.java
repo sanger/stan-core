@@ -51,6 +51,9 @@ public class ReleaseEntry {
     private String stainQcComment;
     private String amplificationCycles;
     private String flagDescription = "";
+    private String paraffinProcessingProgram;
+    private String rnaAnalysisResult;
+    private String rnaAnalysisComment;
 
     private String equipment;
 
@@ -408,6 +411,30 @@ public class ReleaseEntry {
         this.flagDescription = flagDescription;
     }
 
+    public String getParaffinProcessingProgram() {
+        return this.paraffinProcessingProgram;
+    }
+
+    public void setParaffinProcessingProgram(String paraffinProcessingProgram) {
+        this.paraffinProcessingProgram = paraffinProcessingProgram;
+    }
+
+    public String getRnaAnalysisResult() {
+        return this.rnaAnalysisResult;
+    }
+
+    public void setRnaAnalysisResult(String rnaAnalysisResult) {
+        this.rnaAnalysisResult = rnaAnalysisResult;
+    }
+
+    public String getRnaAnalysisComment() {
+        return this.rnaAnalysisComment;
+    }
+
+    public void setRnaAnalysisComment(String rnaAnalysisComment) {
+        this.rnaAnalysisComment = rnaAnalysisComment;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -457,6 +484,9 @@ public class ReleaseEntry {
                 && Objects.equals(this.amplificationCycles, that.amplificationCycles)
                 && Objects.equals(this.equipment, that.equipment)
                 && Objects.equals(this.flagDescription, that.flagDescription)
+                && Objects.equals(this.paraffinProcessingProgram, that.paraffinProcessingProgram)
+                && Objects.equals(this.rnaAnalysisResult, that.rnaAnalysisResult)
+                && Objects.equals(this.rnaAnalysisComment, that.rnaAnalysisComment)
         );
     }
 
@@ -512,6 +542,9 @@ public class ReleaseEntry {
                 .add("amplificationCycles", amplificationCycles)
                 .add("equipment", equipment)
                 .add("flagDescription", flagDescription)
+                .add("paraffinProcessingProgram", paraffinProcessingProgram)
+                .add("rnaAnalysisResult", rnaAnalysisResult)
+                .add("rnaAnalysisComment", rnaAnalysisComment)
                 .reprStringValues()
                 .omitNullValues()
                 .toString();

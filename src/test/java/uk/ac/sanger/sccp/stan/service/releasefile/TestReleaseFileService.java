@@ -24,8 +24,8 @@ import java.util.*;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.*;
+import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -1120,6 +1120,81 @@ public class TestReleaseFileService {
         assertNull(entries.get(2).getSectionComment());
     }
 
+    @Test
+    public void testLoadRnaAnalysis() {
+        setupLabware();
+        int[] slotIds = { lw1.getFirstSlot().getId(), lw2.getFirstSlot().getId() };
+        Set<Integer> slotIdSet = IntStream.of(slotIds).boxed().collect(toSet());
+        int[] sampleIds = { sample.getId(), sample1.getId() };
+        List<OperationType> opTypes = Stream.of("DV200 analysis", "RIN analysis")
+                .map(name -> EntityFactory.makeOperationType(name, null))
+                .toList();
+        opTypes.forEach(opType -> when(mockOpTypeRepo.getByName(opType.getName())).thenReturn(opType));
+        List<Operation> ops = IntStream.of(101, 102)
+                .mapToObj(id -> {
+                    Operation op = new Operation();
+                    op.setId(id);
+                    return op;
+                }).toList();
+        Set<Integer> opIds = ops.stream().map(Operation::getId).collect(toSet());
+        when(mockOpRepo.findAllByOperationTypeInAndDestinationSlotIdIn(any(), any())).thenReturn(ops);
+        List<OperationComment> opcoms = List.of(
+                new OperationComment(1, new Comment(1, "Bananas", "cat"), 101, sampleIds[0], slotIds[0], null),
+                new OperationComment(2, new Comment(2, "Apples", "cat"), 101, sampleIds[0], slotIds[0], null),
+                new OperationComment(3, new Comment(3, "Pears", "cat"), 101, sampleIds[0], slotIds[1], null),
+                new OperationComment(4, new Comment(4, "Oranges", "cat"), 102, sampleIds[1], slotIds[1], null)
+        );
+        when(mockOpComRepo.findAllByOperationIdIn(any())).thenReturn(opcoms);
+        List<Measurement> measurements = List.of(
+                new Measurement(1, "DV", "100", sampleIds[0], 101, slotIds[0]),
+                new Measurement(2, "RIN", "15", sampleIds[0], 101, slotIds[0]),
+                new Measurement(3, "Beep", "boop", sampleIds[1], 101, slotIds[0]),
+                new Measurement(4, "DV", "200", sampleIds[1], 102, slotIds[1])
+        );
+        when(mockMeasurementRepo.findAllByOperationIdIn(any())).thenReturn(measurements);
+
+        List<ReleaseEntry> entries = List.of(
+                new ReleaseEntry(lw1, lw1.getFirstSlot(), sample),
+                new ReleaseEntry(lw2, lw2.getFirstSlot(), sample1)
+        );
+        service.loadRnaAnalysis(entries, slotIdSet);
+        verify(mockOpRepo).findAllByOperationTypeInAndDestinationSlotIdIn(opTypes, slotIdSet);
+        verify(mockOpComRepo).findAllByOperationIdIn(opIds);
+        verify(mockMeasurementRepo).findAllByOperationIdIn(opIds);
+        String[] expectedResults = {"DV: 100, RIN: 15", "DV: 200"};
+        String[] expectedComments = {"Apples, Bananas", "Oranges"};
+        for (int i = 0; i < expectedResults.length; i++) {
+            assertEquals(expectedResults[i], entries.get(i).getRnaAnalysisResult());
+            assertEquals(expectedComments[i], entries.get(i).getRnaAnalysisComment());
+        }
+    }
+
+    @Test
+    public void testLoadParaffinProcessingProgram() {
+        setupLabware();
+        OperationType opType = EntityFactory.makeOperationType("Paraffin processing", null);
+        when(mockOpTypeRepo.getByName(opType.getName())).thenReturn(opType);
+        int[] slotIds = { lw1.getFirstSlot().getId(), lw2.getFirstSlot().getId() };
+        Set<Integer> slotIdSet = IntStream.of(slotIds).boxed().collect(toSet());
+        int[] sampleIds = { sample.getId(), sample1.getId() };
+        List<OperationComment> opcoms = List.of(
+                new OperationComment(11, new Comment(1, "Apples", "cat"), 101, sampleIds[0], slotIds[0], null),
+                new OperationComment(12, new Comment(2, "Bananas", "cat"), 102, sampleIds[0], slotIds[0], null),
+                new OperationComment(13, new Comment(3, "Oranges", "cat"), 103, sampleIds[1], slotIds[0], null),
+                new OperationComment(14, new Comment(4, "Pears", "cat"), 104, sampleIds[1], slotIds[1], null)
+        );
+        when(mockOpComRepo.findAllBySlotAndOpType(any(), any())).thenReturn(opcoms);
+        List<ReleaseEntry> entries = List.of(
+                new ReleaseEntry(lw1, lw1.getFirstSlot(), sample),
+                new ReleaseEntry(lw2, lw2.getFirstSlot(), sample1)
+        );
+        service.loadParaffinProcessingProgram(entries, slotIdSet);
+        verify(mockOpTypeRepo).getByName(opType.getName());
+        verify(mockOpComRepo).findAllBySlotAndOpType(slotIdSet, opType);
+        assertEquals("Apples, Bananas", entries.get(0).getParaffinProcessingProgram());
+        assertEquals("Pears", entries.get(1).getParaffinProcessingProgram());
+    }
+
     @SuppressWarnings({"unchecked", "rawtypes"})
     @ParameterizedTest
     @CsvSource({
@@ -1421,7 +1496,7 @@ public class TestReleaseFileService {
         service.loadFlags(entries);
         for (ReleaseEntry entry : entries) {
             if (anyFlags && entry.getLabware().equals(lws.getFirst())) {
-                assertEquals(entry.getFlagDescription(), "FLAG DESC");
+                assertEquals("FLAG DESC", entry.getFlagDescription());
             } else {
                 assertThat(entry.getFlagDescription()).isEmpty();
             }
