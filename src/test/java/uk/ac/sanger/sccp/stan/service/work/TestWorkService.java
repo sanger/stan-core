@@ -19,6 +19,7 @@ import uk.ac.sanger.sccp.utils.UCMap;
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -26,7 +27,7 @@ import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
-import static uk.ac.sanger.sccp.stan.Matchers.assertProblem;
+import static uk.ac.sanger.sccp.stan.Matchers.*;
 import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 /**
@@ -1039,6 +1040,28 @@ public class TestWorkService {
                         {new Matchers.DisorderedStringMatcher("Work numbers cannot be used because they are %, %, % or %: \\[%, %, %, %]".replace("%", "(\\S+)"),
                                 List.of("failed", "completed", "paused", "withdrawn", "SGP10", "SGP11", "SGP12", "SGP13"))}},
         }).map(Arguments::of);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans={true,false})
+    public void testValidateWorksForOpType(boolean anyOpen) {
+        OperationType opType = EntityFactory.makeOperationType("opname", null, OperationTypeFlag.IN_PLACE);
+        if (anyOpen) {
+            opType.setFlags(opType.getFlags()|OperationTypeFlag.ANY_OPEN_WORK.bit());
+        }
+        List<String> problems = new ArrayList<>(1);
+        ArgumentCaptor<Predicate<Work>> predicateCaptor = genericCaptor(Predicate.class);
+        List<String> workNumbers = List.of("SGP1");
+        final Work work = EntityFactory.makeWork("SGP1");
+        UCMap<Work> workMap = UCMap.from(Work::getWorkNumber, work);
+        mayAddProblem("Bad thing.", workMap).when(workService).validateWorks(any(), any(), any());
+
+        assertSame(workMap, workService.validateWorksForOpType(problems, workNumbers, opType));
+        verify(workService).validateWorks(same(problems), same(workNumbers), predicateCaptor.capture());
+        Predicate<Work> predicate = predicateCaptor.getValue();
+        assertTrue(predicate.test(work));
+        work.setStatus(Status.paused);
+        assertEquals(anyOpen, predicate.test(work));
     }
 
     @ParameterizedTest

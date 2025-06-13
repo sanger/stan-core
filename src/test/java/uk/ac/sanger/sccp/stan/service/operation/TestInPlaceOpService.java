@@ -14,6 +14,7 @@ import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.validation.ValidationHelper;
 import uk.ac.sanger.sccp.stan.service.validation.ValidationHelperFactory;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
+import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -66,21 +67,22 @@ public class TestInPlaceOpService {
         Work work = new Work(20, "SGP2000", null, null, null, null, null, Work.Status.active);
 
         InPlaceOpRequest request = new InPlaceOpRequest(opType.getName(), List.of(labware.get(0).getBarcode()),
-                equipment.getId(), work.getWorkNumber());
+                equipment.getId(), List.of(work.getWorkNumber()));
 
         doReturn(labware).when(service).validateLabware(any(), any());
         doReturn(opType).when(service).validateOpType(any(), any(), any());
         doReturn(mockVal).when(valFactory).getHelper();
         doReturn(equipment).when(mockVal).checkEquipment(any(), any());
         final String problem = "Everything is bad.";
+        UCMap<Work> workMap = UCMap.from(Work::getWorkNumber, work);
         if (successful) {
-            when(mockWorkService.validateWorkForOpType(any(), any(), any())).thenReturn(work);
+            when(mockWorkService.validateWorksForOpType(any(), any(), any())).thenReturn(workMap);
             doReturn(Set.of()).when(mockVal).getProblems();
         } else {
-            when(mockWorkService.validateWorkForOpType(any(), any(), any())).then(invocation -> {
+            when(mockWorkService.validateWorksForOpType(any(), any(), any())).then(invocation -> {
                 Collection<String> problems = invocation.getArgument(0);
                 problems.add(problem);
-                return work;
+                return workMap;
             });
             doReturn(Set.of("Bad equipment.")).when(mockVal).getProblems();
         }
@@ -98,9 +100,9 @@ public class TestInPlaceOpService {
 
         verify(service).validateLabware(any(), eq(request.getBarcodes()));
         verify(service).validateOpType(any(), eq(request.getOperationType()), eq(labware));
-        verify(mockWorkService).validateWorkForOpType(any(), eq(request.getWorkNumber()), same(opType));
+        verify(mockWorkService).validateWorksForOpType(any(), eq(request.getWorkNumbers()), same(opType));
         verify(mockVal).checkEquipment(request.getEquipmentId(), null);
-        verify(service, times(successful ? 1 : 0)).createOperations(user, labware, opType, equipment, work);
+        verify(service, times(successful ? 1 : 0)).createOperations(user, labware, opType, equipment, workMap.values());
     }
 
     @Test
@@ -231,7 +233,8 @@ public class TestInPlaceOpService {
         }).when(service).createOperation(any(), any(), any(), any());
 
         User user = EntityFactory.getUser();
-        OperationResult result = service.createOperations(user, labware, opType, equipment, work);
+        List<Work> works = (work==null ? List.of() : List.of(work));
+        OperationResult result = service.createOperations(user, labware, opType, equipment, works);
 
         for (Labware lw : labware) {
             verify(service).createOperation(eq(user), eq(lw), eq(opType), equipment==null ? isNull():isNotNull());

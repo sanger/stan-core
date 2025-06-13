@@ -5,6 +5,8 @@ import uk.ac.sanger.sccp.utils.BasicUtils;
 import java.util.List;
 import java.util.Objects;
 
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullToEmpty;
+
 /**
  * A request to record an operation in place
  * @author dr6
@@ -13,15 +15,15 @@ public class InPlaceOpRequest {
     private String operationType;
     private List<String> barcodes;
     private Integer equipmentId;
-    private String workNumber;
+    private List<String> workNumbers = List.of();
 
     public InPlaceOpRequest() {}
 
-    public InPlaceOpRequest(String operationType, List<String> barcodes, Integer equipmentId, String workNumber) {
+    public InPlaceOpRequest(String operationType, List<String> barcodes, Integer equipmentId, List<String> workNumbers) {
         this.operationType = operationType;
         this.barcodes = barcodes;
         this.equipmentId = equipmentId;
-        this.workNumber = workNumber;
+        setWorkNumbers(workNumbers);
     }
 
     public InPlaceOpRequest(String operationType, List<String> barcodes) {
@@ -52,12 +54,12 @@ public class InPlaceOpRequest {
         this.equipmentId = equipmentId;
     }
 
-    public String getWorkNumber() {
-        return this.workNumber;
+    public List<String> getWorkNumbers() {
+        return this.workNumbers;
     }
 
-    public void setWorkNumber(String workNumber) {
-        this.workNumber = workNumber;
+    public void setWorkNumbers(List<String> workNumbers) {
+        this.workNumbers = nullToEmpty(workNumbers);
     }
 
     @Override
@@ -68,12 +70,13 @@ public class InPlaceOpRequest {
         return (Objects.equals(this.operationType, that.operationType)
                 && Objects.equals(this.barcodes, that.barcodes)
                 && Objects.equals(this.equipmentId, that.equipmentId)
-                && Objects.equals(this.workNumber, that.workNumber));
+                && Objects.equals(this.workNumbers, that.workNumbers)
+        );
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(operationType, barcodes, equipmentId, workNumber);
+        return Objects.hash(operationType, barcodes, equipmentId, workNumbers);
     }
 
     @Override
@@ -82,7 +85,7 @@ public class InPlaceOpRequest {
                 .addRepr("operationType", operationType)
                 .add("barcodes", barcodes)
                 .addIfNotNull("equipmentId", equipmentId)
-                .addIfNotNull("workNumber", workNumber)
+                .addIfNotNull("workNumbers", workNumbers)
                 .toString();
     }
 }

@@ -734,8 +734,8 @@ input InPlaceOpRequest {
     barcodes: [String!]!
     """The id of the equipment (if any) being used in this operation."""
     equipmentId: Int
-    """An optional work number to associate with this operation."""
-    workNumber: String
+    """Optional work numbers to associate with this operation."""
+    workNumbers: [String!]
 }
 
 """A record of material being transferred from one slot to another as part of an operation."""

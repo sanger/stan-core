@@ -10,11 +10,13 @@ import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.validation.ValidationHelper;
 import uk.ac.sanger.sccp.stan.service.validation.ValidationHelperFactory;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
+import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
 import java.util.function.Consumer;
 
 import static java.util.stream.Collectors.toList;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
@@ -53,13 +55,13 @@ public class InPlaceOpServiceImp implements InPlaceOpService {
         ValidationHelper val = valFactory.getHelper();
         Equipment eq = val.checkEquipment(request.getEquipmentId(), null);
         problems.addAll(val.getProblems());
-        Work work = workService.validateWorkForOpType(problems, request.getWorkNumber(), opType);
+        UCMap<Work> works = workService.validateWorksForOpType(problems, request.getWorkNumbers(), opType);
 
         if (!problems.isEmpty()) {
             throw new ValidationException("The request could not be validated.", problems);
         }
 
-        return createOperations(user, labware, opType, eq, work);
+        return createOperations(user, labware, opType, eq, works.values());
     }
 
     /**
@@ -84,7 +86,7 @@ public class InPlaceOpServiceImp implements InPlaceOpService {
      * @return the operation type loaded, if any
      */
     public OperationType validateOpType(Collection<String> problems, String opTypeName, Collection<Labware> labware) {
-        if (opTypeName==null || opTypeName.isEmpty()) {
+        if (nullOrEmpty(opTypeName)) {
             problems.add("No operation type specified.");
             return null;
         }
@@ -140,17 +142,20 @@ public class InPlaceOpServiceImp implements InPlaceOpService {
      * @param labware the labware involved in the operations
      * @param opType the type of operation being recorded
      * @param equipment the equipment (if any) to link to the operations
-     * @param work the work (if any) to link to the operations
+     * @param works the works (if any) to link to the operations
      * @return the operations and labware
      */
     public OperationResult createOperations(User user, Collection<Labware> labware, OperationType opType,
-                                           Equipment equipment, Work work) {
+                                           Equipment equipment, Collection<Work> works) {
         Consumer<Operation> opModifier = (equipment==null ? null : (op -> op.setEquipment(equipment)));
         List<Operation> ops = labware.stream().map(lw -> createOperation(user, lw, opType, opModifier))
                 .collect(toList());
         bioRiskService.copyOpSampleBioRisks(ops);
-        if (work!=null) {
-            workService.link(work, ops, opType.supportsAnyOpenWork());
+        if (works!=null) {
+            final boolean anyOpen = opType.supportsAnyOpenWork();
+            for (Work work : works) {
+                workService.link(work, ops, anyOpen);
+            }
         }
         return new OperationResult(ops, labware);
     }
