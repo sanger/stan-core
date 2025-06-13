@@ -30,6 +30,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
  */
 @Service
 public class QCLabwareServiceImp implements QCLabwareService {
+    public static final String XENIUM_ANALYSER_QC_NAME="Xenium analyser QC";
     private final Clock clock;
     private final ValidationHelperFactory valFactory;
     private final OperationRepo opRepo;
@@ -67,6 +68,9 @@ public class QCLabwareServiceImp implements QCLabwareService {
         checkTimestamps(val, qcls, lwMap, clock);
         Map<Integer, Comment> commentMap = checkComments(val, qcls);
         checkSampleComments(val, qcls, lwMap);
+        if (opType != null && opType.getName().equals(XENIUM_ANALYSER_QC_NAME)) {
+            checkRunNamesPresent(val.getProblems(), qcls);
+        }
         checkRunNames(val.getProblems(), qcls, lwMap);
         if (!val.getProblems().isEmpty()) {
             throw new ValidationException(val.getProblems());
@@ -142,6 +146,17 @@ public class QCLabwareServiceImp implements QCLabwareService {
                             sc.getSampleId(), sc.getAddress(), lw.getBarcode()));
                 }
             }
+        }
+    }
+
+    /**
+     * Check that each qcl has a run-name
+     * @param problems receptacle for problems found
+     * @param qcls the details of the labware qc
+     */
+    public void checkRunNamesPresent(Collection<String> problems, Collection<QCLabware> qcls) {
+        if (qcls.stream().anyMatch(qcl -> nullOrEmpty(qcl.getRunName()))) {
+            problems.add("Missing run name.");
         }
     }
 
