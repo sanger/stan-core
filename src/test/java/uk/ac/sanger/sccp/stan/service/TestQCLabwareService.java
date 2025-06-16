@@ -74,10 +74,11 @@ public class TestQCLabwareService {
         mocking.close();
     }
 
-    @Test
-    public void testPerform_ok() {
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    public void testPerform_ok(boolean xen) {
         User user = EntityFactory.getUser();
-        OperationType opType = EntityFactory.makeOperationType("opname", null);
+        OperationType opType = EntityFactory.makeOperationType(xen ? QCLabwareServiceImp.XENIUM_ANALYSER_QC_NAME : "opname", null);
         Labware lw = EntityFactory.getTube();
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lw);
         UCMap<Work> workMap = UCMap.from(Work::getWorkNumber, EntityFactory.makeWork("SGP1"));
@@ -92,6 +93,7 @@ public class TestQCLabwareService {
         doNothing().when(service).checkTimestamps(any(), any(), any(), any());
         doReturn(commentMap).when(mockVal).checkCommentIds(any());
         doNothing().when(service).checkSampleComments(any(), any(), any());
+        doNothing().when(service).checkRunNamesPresent(any(), any());
         doNothing().when(service).checkRunNames(any(), any(), any());
 
         OperationResult opres = new OperationResult(List.of(new Operation()), List.of(lw));
@@ -105,6 +107,11 @@ public class TestQCLabwareService {
         verify(service).checkComments(mockVal, qcls);
         verify(service).checkSampleComments(mockVal, qcls, lwMap);
         verify(service).checkRunNames(problems, qcls, lwMap);
+        if (xen) {
+            verify(service).checkRunNamesPresent(problems, qcls);
+        } else {
+            verify(service, never()).checkRunNamesPresent(any(), any());
+        }
 
         verify(service).record(user, opType, qcls, lwMap, workMap, commentMap);
     }
@@ -280,6 +287,21 @@ public class TestQCLabwareService {
                 "Missing sample ID for sample comment.",
                 "Sample ID 1 is not present in slot A2 of labware STAN-10."
         );
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans={true, false})
+    public void testCheckRunNamesPresent(boolean ok) {
+        List<QCLabware> qcls = List.of(
+                new QCLabware("STAN-A1", "run1", null, null, null, null),
+                new QCLabware("STAN-A2", "run2", null, null, null, null)
+        );
+        if (!ok) {
+            qcls.getLast().setRunName("");
+        }
+        List<String> problems = new ArrayList<>(ok ? 0 : 1);
+        service.checkRunNamesPresent(problems, qcls);
+        assertProblem(problems, ok ? null : "Missing run name.");
     }
 
     @Test
