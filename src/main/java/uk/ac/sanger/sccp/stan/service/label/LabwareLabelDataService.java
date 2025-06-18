@@ -14,6 +14,7 @@ import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
+import static uk.ac.sanger.sccp.utils.BasicUtils.getSingleValue;
 import static uk.ac.sanger.sccp.utils.BasicUtils.reverseIter;
 
 /**
@@ -94,7 +95,10 @@ public class LabwareLabelDataService {
             created = LocalDateTime.now();
         }
         String dateString = created.format(DateTimeFormatter.ISO_LOCAL_DATE);
-        return new LabwareLabelData(labware.getBarcode(), labware.getExternalBarcode(), medium, dateString, content);
+        String externalName = getSingleValue(content.stream().map(LabelContent::externalName).iterator())
+                .orElse(null);
+        Map<String, String> extraFields = externalName != null ? Map.of("externalName", externalName) : null;
+        return new LabwareLabelData(labware.getBarcode(), labware.getExternalBarcode(), medium, dateString, content, extraFields);
     }
 
     /**
@@ -116,7 +120,7 @@ public class LabwareLabelDataService {
                 if (state.length() > 20 && state.startsWith("Library post-clean ")) {
                     state = state.substring(19);
                 }
-                LabelContent lc = new LabelContent(tissue.getDonor().getDonorName(), tissue.getExternalName(),
+                LabelContent lc = new LabelContent(tissue.getDonor().getDonorName(), null, tissue.getExternalName(),
                         null, state);
                 Map<String, String> extra = filteredMap("lp", lp, "work", workNumber,
                         "address", slot.getAddress().toString());
@@ -396,7 +400,7 @@ public class LabwareLabelDataService {
         } else if (stateDesc.equalsIgnoreCase(FW_LONG)) {
             stateDesc = FW_SHORT;
         }
-        return new LabelContent(tissue.getDonor().getDonorName(),
+        return new LabelContent(tissue.getDonor().getDonorName(), tissue.getExternalName(),
                 getTissueDesc(tissue), tissue.getReplicate(), stateDesc);
     }
 
@@ -448,6 +452,7 @@ public class LabwareLabelDataService {
         }
         return new LabelContent(
                 planAction.getSample().getTissue().getDonor().getDonorName(),
+                planAction.getSample().getTissue().getExternalName(),
                 getTissueDesc(planAction.getSample().getTissue()),
                 planAction.getSample().getTissue().getReplicate(),
                 stateDesc

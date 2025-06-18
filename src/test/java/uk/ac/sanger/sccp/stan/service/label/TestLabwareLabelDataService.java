@@ -196,7 +196,7 @@ public class TestLabwareLabelDataService {
         assertEquals(lw.getBarcode(), actual.getBarcode());
         assertEquals(medium.getName(), actual.getMedium());
         assertNotNull(actual.getDate());
-        LabelContent content = new LabelContent(donor.getDonorName(),
+        LabelContent content = new LabelContent(donor.getDonorName(), null,
                 sl.getTissueType().getCode()+"-"+sl.getCode(), tissue.getReplicate(), fix.getName());
         assertThat(actual.getContents()).containsExactly(content);
     }
@@ -410,10 +410,10 @@ public class TestLabwareLabelDataService {
         String[] reps = { tissues[0].getReplicate(), tissues[1].getReplicate(), null, tissues[3].getReplicate() };
 
         List<LabelContent> expectedContents = List.of(
-                new LabelContent(donorNames[0], tissueStrings[0], reps[0], "S001+"),
-                new LabelContent(donorNames[0], tissueStrings[1], reps[1], "S003"),
-                new LabelContent(null, null, null, (String) null),
-                new LabelContent(donorNames[1], tissueStrings[3], reps[3], "S005+")
+                new LabelContent(donorNames[0], null, tissueStrings[0], reps[0], "S001+"),
+                new LabelContent(donorNames[0], null, tissueStrings[1], reps[1], "S003"),
+                new LabelContent(null, null,null, null, (String) null),
+                new LabelContent(donorNames[1], null, tissueStrings[3], reps[3], "S005+")
         );
         assertEquals(expectedContents, ld.getContents());
     }
@@ -489,12 +489,12 @@ public class TestLabwareLabelDataService {
         String[] reps = { tissues[0].getReplicate(), tissues[1].getReplicate() };
 
         List<LabelContent> expectedContents = List.of(
-                new LabelContent(donorNames[0], tissueStrings[0], reps[0], "S001+"),
-                new LabelContent(donorNames[0], tissueStrings[0], reps[0], "S001"),
-                new LabelContent(donorNames[0], tissueStrings[0], reps[0], "S003+"),
+                new LabelContent(donorNames[0], null, tissueStrings[0], reps[0], "S001+"),
+                new LabelContent(donorNames[0], null, tissueStrings[0], reps[0], "S001"),
+                new LabelContent(donorNames[0], null, tissueStrings[0], reps[0], "S003+"),
                 new LabelContent(donorNames[0], tissueStrings[0], reps[0]),
                 new LabelContent(donorNames[1], tissueStrings[1], reps[1]),
-                new LabelContent(donorNames[1], tissueStrings[1], reps[1], "S004+"),
+                new LabelContent(donorNames[1], null, tissueStrings[1], reps[1], "S004+"),
                 new LabelContent(donorNames[1], tissueStrings[1], reps[1]),
                 new LabelContent(donorNames[1], tissueStrings[1], reps[1])
         );
@@ -517,11 +517,11 @@ public class TestLabwareLabelDataService {
         );
         List<LabwareLabelData> expectedLds = List.of(
                 new LabwareLabelData(lw.getBarcode(), lw.getExternalBarcode(), null, null,
-                        List.of(new LabelContent(donor.getDonorName(), tissue.getExternalName(), null, state)),
+                        List.of(new LabelContent(donor.getDonorName(), null, tissue.getExternalName(), null, state)),
                         hasLp ? Map.of("lp", "LP1", "address", "B1")
                                 : Map.of("address", "B1")),
                 new LabwareLabelData(lw.getBarcode(), lw.getExternalBarcode(), null, null,
-                        List.of(new LabelContent(donor.getDonorName(), tissue.getExternalName(), null, state)),
+                        List.of(new LabelContent(donor.getDonorName(), null, tissue.getExternalName(), null, state)),
                         hasLp ? Map.of("lp", "LP1", "address", "A1", "work", "SGP1")
                                 : Map.of("address", "A1", "work", "SGP1"))
         );
@@ -565,10 +565,10 @@ public class TestLabwareLabelDataService {
         String tissueDesc = "HEA-1";
 
         return Arrays.stream(new Object[][] {
-                {sam1, new LabelContent(donorName, tissueDesc, rep, "S005")},
-                {sam2, new LabelContent(donorName, tissueDesc, rep, "Original")},
-                {sam3, new LabelContent(donorName, tissueDesc, rep, custardState.getName())},
-                {sam4, new LabelContent(donorName, tissueDesc, rep, "F waste")},
+                {sam1, new LabelContent(donorName, tissue.getExternalName(), tissueDesc, rep, "S005")},
+                {sam2, new LabelContent(donorName, tissue.getExternalName(), tissueDesc, rep, "Original")},
+                {sam3, new LabelContent(donorName, tissue.getExternalName(), tissueDesc, rep, custardState.getName())},
+                {sam4, new LabelContent(donorName, tissue.getExternalName(), tissueDesc, rep, "F waste")},
         }).map(Arguments::of);
     }
 

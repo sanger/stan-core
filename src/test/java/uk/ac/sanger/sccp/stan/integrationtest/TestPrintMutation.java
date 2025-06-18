@@ -70,7 +70,7 @@ public class TestPrintMutation {
                                 new LabwareLabelData.LabelContent(donorName, tissueDesc, replicate, 1),
                                 new LabwareLabelData.LabelContent(donorName, tissueDesc, replicate, 2),
                                 new LabwareLabelData.LabelContent(donorName, tissueDesc, replicate, 3),
-                                new LabwareLabelData.LabelContent(donorName, tissueDesc, replicate, "RNA")
+                                new LabwareLabelData.LabelContent(donorName, tissue.getExternalName(), tissueDesc, replicate, "RNA")
                         ))
                 ))
         );

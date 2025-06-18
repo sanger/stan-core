@@ -654,4 +654,27 @@ public class BasicUtils {
                 .flatMap(i -> IntStream.range(i+1, n)
                         .mapToObj(j -> mapper.apply(items.get(i), items.get(j))));
     }
+
+    /**
+     * Looks for every value in the stream being the same value.
+     * If multiple values are in the stream, or if any are null, or of the stream is empty, returns null.
+     * @param iterator iterator of values
+     * @return an optional containing the single value, or empty if the values are not all a single value
+     * @param <E> the type of value
+     */
+    public static <E> Optional<E> getSingleValue(Iterator<? extends E> iterator) {
+        E singleValue = null;
+        while (iterator.hasNext()) {
+            E value = iterator.next();
+            if (value==null) {
+                return Optional.empty();
+            }
+            if (singleValue == null) {
+                singleValue = value;
+            } else if (!singleValue.equals(value)) {
+                return Optional.empty();
+            }
+        }
+        return Optional.ofNullable(singleValue);
+    }
 }

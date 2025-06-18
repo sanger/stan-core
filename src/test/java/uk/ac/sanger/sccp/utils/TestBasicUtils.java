@@ -10,6 +10,7 @@ import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.*;
 
+import static java.util.Collections.emptyIterator;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static uk.ac.sanger.sccp.utils.BasicUtils.*;
@@ -422,5 +423,23 @@ public class TestBasicUtils {
                         {22,303}, {22,44},
                         {303,44}
                 });
+    }
+
+    @ParameterizedTest
+    @CsvSource(value = {
+            "A;A",
+            "A,A,A;A",
+            "A,B;",
+            "A,,A;",
+            ";",
+    }, delimiter = ';')
+    public void testGetSingleValue(String values, String expected) {
+        Iterator<String> iter;
+        if (values==null) {
+            iter = emptyIterator();
+        } else {
+            iter = Arrays.stream(values.split(",")).map(s -> s.isEmpty() ? null : s).iterator();
+        }
+        assertEquals(Optional.ofNullable(expected), getSingleValue(iter));
     }
 }
