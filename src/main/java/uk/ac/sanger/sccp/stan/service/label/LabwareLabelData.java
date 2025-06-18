@@ -1,5 +1,6 @@
 package uk.ac.sanger.sccp.stan.service.label;
 
+import org.jetbrains.annotations.NotNull;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import java.util.*;
@@ -118,28 +119,34 @@ public class LabwareLabelData {
         }
     }
 
-    public record LabelContent(String donorName, String tissueDesc, String replicate, String stateDesc) {
+    public record LabelContent(String donorName, String externalName, String tissueDesc, String replicate, String stateDesc) {
         public LabelContent(String donorName, String tissueDesc, String replicate) {
-            this(donorName, tissueDesc, replicate, (String) null);
+            this(donorName, null, tissueDesc, replicate, (String) null);
+        }
+
+        public LabelContent(String donorName, String externalName, String tissueDesc, String replicate, Integer section) {
+            this(donorName, externalName, tissueDesc, replicate, section==null ? null : String.format("S%03d", section));
         }
 
         public LabelContent(String donorName, String tissueDesc, String replicate, Integer section) {
-            this(donorName, tissueDesc, replicate, section==null ? null : String.format("S%03d", section));
+            this(donorName, null, tissueDesc, replicate, section==null ? null : String.format("S%03d", section));
         }
 
         public LabelContent(String donorName, String tissueDesc, String replicate, Integer minSection, Integer maxSection) {
-            this(donorName, tissueDesc, replicate, minSection==null ? null :
+            this(donorName, null,  tissueDesc, replicate, minSection==null ? null :
                     String.format(maxSection==null || minSection.equals(maxSection) ? "S%03d" : "S%03d+", minSection));
         }
 
         public LabelContent withStateDesc(String newStateDesc) {
-            return new LabelContent(this.donorName, this.tissueDesc, this.replicate, newStateDesc);
+            return new LabelContent(this.donorName, null, this.tissueDesc, this.replicate, newStateDesc);
         }
 
+        @NotNull
         @Override
         public String toString() {
             return BasicUtils.describe(this)
                     .add("donorName", donorName)
+                    .add("externalName", externalName)
                     .add("tissueDesc", tissueDesc)
                     .add("replicate", replicate)
                     .add("stateDesc", stateDesc)
