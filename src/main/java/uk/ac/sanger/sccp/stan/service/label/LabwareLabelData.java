@@ -121,7 +121,11 @@ public class LabwareLabelData {
 
     public record LabelContent(String donorName, String externalName, String tissueDesc, String replicate, String stateDesc) {
         public LabelContent(String donorName, String tissueDesc, String replicate) {
-            this(donorName, null, tissueDesc, replicate, null);
+            this(donorName, null, tissueDesc, replicate, (String) null);
+        }
+
+        public LabelContent(String donorName, String externalName, String tissueDesc, String replicate, Integer section) {
+            this(donorName, externalName, tissueDesc, replicate, section==null ? null : String.format("S%03d", section));
         }
 
         public LabelContent(String donorName, String tissueDesc, String replicate, Integer section) {

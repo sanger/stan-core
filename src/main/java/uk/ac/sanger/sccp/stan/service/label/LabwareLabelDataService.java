@@ -392,7 +392,7 @@ public class LabwareLabelDataService {
         Tissue tissue = sample.getTissue();
         String stateDesc = sample.getBioState().getName();
         if (stateDesc.equalsIgnoreCase("Tissue")) {
-            return new LabelContent(tissue.getDonor().getDonorName(),
+            return new LabelContent(tissue.getDonor().getDonorName(), tissue.getExternalName(),
                     getTissueDesc(tissue), tissue.getReplicate(), sample.getSection());
         }
         if (stateDesc.equalsIgnoreCase("Original sample")) {

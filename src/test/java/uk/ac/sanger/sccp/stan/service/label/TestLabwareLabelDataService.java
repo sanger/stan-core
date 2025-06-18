@@ -58,10 +58,11 @@ public class TestLabwareLabelDataService {
         LabwareLabelData actual = service.getLabelData(lw);
 
         List<LabelContent> expectedContents = Stream.of(sample1, sample2)
-                .map(sam -> new LabelContent(sam.getTissue().getDonor().getDonorName(),
+                .map(sam -> new LabelContent(sam.getTissue().getDonor().getDonorName(), sam.getTissue().getExternalName(),
                         tissueString(sam.getTissue()), sam.getTissue().getReplicate(), sam.getSection()))
                 .collect(toList());
-        LabwareLabelData expected = new LabwareLabelData(lw.getBarcode(), lw.getExternalBarcode(), tissue.getMedium().getName(), "2021-03-17", expectedContents);
+        LabwareLabelData expected = new LabwareLabelData(lw.getBarcode(), lw.getExternalBarcode(), tissue.getMedium().getName(), "2021-03-17", expectedContents,
+                Map.of("externalName", tissue.getExternalName()));
         assertEquals(expected, actual);
 
         Labware emptyLabware = EntityFactory.makeEmptyLabware(EntityFactory.getTubeType());

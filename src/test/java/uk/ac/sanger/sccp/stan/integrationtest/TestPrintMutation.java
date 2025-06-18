@@ -67,11 +67,11 @@ public class TestPrintMutation {
                 lw.getLabwareType().getLabelType(),
                 List.of(new LabwareLabelData(lw.getBarcode(), lw.getExternalBarcode(), tissue.getMedium().getName(), "2021-03-17",
                         List.of(
-                                new LabwareLabelData.LabelContent(donorName, tissueDesc, replicate, 1),
-                                new LabwareLabelData.LabelContent(donorName, tissueDesc, replicate, 2),
-                                new LabwareLabelData.LabelContent(donorName, tissueDesc, replicate, 3),
+                                new LabwareLabelData.LabelContent(donorName, tissue.getExternalName(), tissueDesc, replicate, 1),
+                                new LabwareLabelData.LabelContent(donorName, tissue.getExternalName(), tissueDesc, replicate, 2),
+                                new LabwareLabelData.LabelContent(donorName, tissue.getExternalName(), tissueDesc, replicate, 3),
                                 new LabwareLabelData.LabelContent(donorName, tissue.getExternalName(), tissueDesc, replicate, "RNA")
-                        ))
+                        ), Map.of("externalName", tissue.getExternalName()))
                 ))
         );
 
