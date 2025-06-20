@@ -10,8 +10,6 @@ import java.util.*;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 public interface ProbePanelRepo extends CrudRepository<ProbePanel, Integer> {
-    Optional<ProbePanel> findByName(String name); // TODO remove
-
     boolean existsByTypeAndName(ProbeType type, String name);
 
     Optional<ProbePanel> findByTypeAndName(ProbeType type, String name);

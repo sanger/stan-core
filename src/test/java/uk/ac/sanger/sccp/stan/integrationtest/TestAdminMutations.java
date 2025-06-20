@@ -82,6 +82,31 @@ public class TestAdminMutations {
                 chainGet(result, "data", "setEquipmentEnabled"));
     }
 
+    @Test
+    @Transactional
+    public void testProbePanelAdmin() throws Exception {
+        String mutation = "mutation { addProbePanel(type: xenium, name: \"bananas\") { type, name, enabled }}";
+        tester.setUser(entityCreator.createUser("admo", User.Role.admin));
+        Object result = tester.post(mutation);
+        Map<String, ?> ppData = chainGet(result, "data", "addProbePanel");
+        assertEquals("bananas", ppData.get("name"));
+        assertEquals("xenium", ppData.get("type"));
+        assertEquals(Boolean.TRUE, ppData.get("enabled"));
+        ProbePanel pp = probePanelRepo.getByTypeAndName(ProbePanel.ProbeType.xenium, "bananas");
+        assertEquals("bananas", pp.getName());
+        assertEquals(ProbePanel.ProbeType.xenium, pp.getType());
+        assertTrue(pp.isEnabled());
+
+        mutation = "mutation { setProbePanelEnabled(type: xenium, name: \"bananas\", enabled: false) { type, name, enabled }}";
+        result = tester.post(mutation);
+        ppData = chainGet(result, "data", "setProbePanelEnabled");
+        assertEquals("bananas", ppData.get("name"));
+        assertEquals("xenium", ppData.get("type"));
+        assertEquals(Boolean.FALSE, ppData.get("enabled"));
+        pp = probePanelRepo.getByTypeAndName(ProbePanel.ProbeType.xenium, "bananas");
+        assertFalse(pp.isEnabled());
+    }
+
     private <E extends HasEnabled> void testGenericAddNewAndSetEnabled(String entityTypeName, String fieldName,
                                                                       String string,
                                                                       Function<String, Optional<E>> findFunction,
@@ -144,11 +169,6 @@ public class TestAdminMutations {
     @Transactional
     public void testAddNewCostCodeAndSetEnabled() throws Exception {
         testGenericAddNewAndSetEnabled("CostCode", "code", "S12345", costCodeRepo::findByCode, CostCode::getCode, "costCodes");
-    }
-    @Test
-    @Transactional
-    public void testAddNewProbePanelAndSetEnabled() throws Exception {
-        testGenericAddNewAndSetEnabled("ProbePanel", "name", "Alpha", probePanelRepo::findByName, ProbePanel::getName, "probePanels");
     }
     @Test
     @Transactional

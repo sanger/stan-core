@@ -5,13 +5,13 @@
 
     <changeSet id="3.12.0" author="dr6">
         <addColumn tableName="probe_panel">
-            <column name="probe_type" type="ENUM('xenium', 'cytassist', 'spike')" defaultValue="xenium">
+            <column name="type" type="ENUM('xenium', 'cytassist', 'spike')" defaultValue="xenium">
                 <constraints nullable="false"/>
             </column>
         </addColumn>
         <dropIndex indexName="name" tableName="probe_panel"/>
         <createIndex tableName="probe_panel" indexName="uk_probe_panel_type_name" unique="true">
-            <column name="probe_type"/>
+            <column name="type"/>
             <column name="name"/>
         </createIndex>
     </changeSet>

@@ -37,7 +37,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 /**
  * Tests {@link ProbeServiceImp}.
  */
-public class ProbeServiceTest {
+public class TestProbeService {
     @Mock
     private LabwareValidatorFactory mockLwValFac;
     @Mock
@@ -98,6 +98,7 @@ public class ProbeServiceTest {
         UCMap<ProbePanel> ppMap = UCMap.from(ProbePanel::getName, new ProbePanel(probeType, "bananas"));
         doReturn(ppMap).when(service).validateProbes(any(), any(), any());
         UCMap<ProbePanel> spikeMap = UCMap.from(ProbePanel::getName, new ProbePanel(ProbeType.spike, "william"));
+        doReturn(spikeMap).when(service).checkSpikes(any(), any());
         doNothing().when(service).validateTimestamp(any(), any(), any());
         doNothing().when(service).checkReagentLots(any(), any());
         doNothing().when(service).checkKitCostings(any(), any());
@@ -354,10 +355,10 @@ public class ProbeServiceTest {
     @ParameterizedTest
     @CsvSource({"p1, lot2, 3, SGP,",
             ", lot2, 3, Faculty, Probe panel name missing.",
-            "p!, lot2, 3, Faculty, Unknown probe panels: [\"p!\"]",
-            "p1, , 3, Faculty, Probe lot number missing.",
+            "p!, lot2, 3, Faculty, Unknown xenium probe panels: [\"p!\"]",
+            "p1, , 3, Faculty,",
             "p1, lot!, 3, SGP, Bad lot.",
-            "p1, lot2,,SGP, Probe plex missing.",
+            "p1, lot2,,SGP,",
             "p1, lot2, 0, SGP, Probe plex should be a positive number.",
             "p1, lot2, 2, , Probe costing is missing.",
     })
@@ -556,7 +557,7 @@ public class ProbeServiceTest {
         ProbePanel pp2 = new ProbePanel(probeType, "probe2");
         ProbePanel spike = new ProbePanel(ProbeType.spike, "william");
         UCMap<ProbePanel> ppMap = UCMap.from(ProbePanel::getName, pp1, pp2);
-        UCMap<ProbePanel> spikeMap = UCMap.from(ProbePanel::getName, pp1, pp2);
+        UCMap<ProbePanel> spikeMap = UCMap.from(ProbePanel::getName, spike);
 
         Operation op1 = new Operation();
         Operation op2 = new Operation();
