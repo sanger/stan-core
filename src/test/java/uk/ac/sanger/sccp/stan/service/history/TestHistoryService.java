@@ -973,8 +973,8 @@ public class TestHistoryService {
 
     @Test
     public void testLoadOpProbes() {
-        ProbePanel p1 = new ProbePanel(1, "probe1");
-        ProbePanel p2 = new ProbePanel(2, "probe2");
+        ProbePanel p1 = new ProbePanel(1, ProbePanel.ProbeType.xenium, "probe1");
+        ProbePanel p2 = new ProbePanel(2, ProbePanel.ProbeType.xenium, "probe2");
         LabwareProbe[] lwps = {
                 new LabwareProbe(1, p1, 10, 100, "LOT1", 1),
                 new LabwareProbe(2, p2, 10, 200, "LOT2", 2),
@@ -1078,7 +1078,7 @@ public class TestHistoryService {
 
     @Test
     public void testGetLabwareProbeDetails() {
-        LabwareProbe lwp = new LabwareProbe(1, new ProbePanel(1, "probe1"), 5, 6, "LOT1", 21, SlideCosting.SGP);
+        LabwareProbe lwp = new LabwareProbe(1, new ProbePanel(1, ProbePanel.ProbeType.xenium, "probe1"), 5, 6, "LOT1", 21, SlideCosting.SGP);
         assertThat(service.getLabwareProbeDetails(lwp)).containsExactly(
                 "Probe panel: probe1",
                 "Lot: LOT1",
@@ -1297,7 +1297,7 @@ public class TestHistoryService {
         ops.getFirst().setEquipment(new Equipment("Feeniks", "scanner"));
         int[] opIds = ops.stream().mapToInt(Operation::getId).toArray();
         final Set<Integer> opIdSet = Set.of(opIds[0], opIds[1]);
-        LabwareProbe lwp = new LabwareProbe(1, new ProbePanel("probe1"), opIds[1], labware[3].getId(), "LOT1", 5, SlideCosting.SGP);
+        LabwareProbe lwp = new LabwareProbe(1, new ProbePanel(ProbePanel.ProbeType.xenium, "probe1"), opIds[1], labware[3].getId(), "LOT1", 5, SlideCosting.SGP);
 
         StainType st1 = new StainType(1, "Coffee");
         StainType st2 = new StainType(2, "Blood");

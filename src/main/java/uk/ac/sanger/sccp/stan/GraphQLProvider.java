@@ -193,7 +193,7 @@ public class GraphQLProvider {
                         .dataFetcher("setOmeroProjectEnabled", transact(graphQLMutation.setOmeroProjectEnabled()))
                         .dataFetcher("addSlotRegion", graphQLMutation.addSlotRegion()) // internal transaction
                         .dataFetcher("setSlotRegionEnabled", transact(graphQLMutation.setSlotRegionEnabled()))
-                        .dataFetcher("addProbePanel", graphQLMutation.addProbePanel()) // internal transaction
+                        .dataFetcher("addProbePanel", transact(graphQLMutation.addProbePanel()))
                         .dataFetcher("setProbePanelEnabled", transact(graphQLMutation.setProbePanelEnabled()))
                         .dataFetcher("addWorkType", graphQLMutation.addWorkType()) // internal transaction
                         .dataFetcher("setWorkTypeEnabled", transact(graphQLMutation.setWorkTypeEnabled()))

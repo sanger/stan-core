@@ -296,11 +296,6 @@ public class FieldValidation {
     }
 
     @Bean
-    public Validator<String> samplePrepReagentLotValidator() {
-        return new StringValidator("Sample prep reagent lot", 6, 6, CharacterType.DIGIT);
-    }
-
-    @Bean
     public Validator<String> reagentLotValidator() {
         return new StringValidator("Reagent lot", 6, 6, CharacterType.DIGIT);
     }

@@ -104,7 +104,7 @@ class TestAnalyserScanDataService {
     @Test
     void testLoadProbes() {
         Labware lw = EntityFactory.getTube();
-        List<ProbePanel> probes = List.of(new ProbePanel(10, "Alpha"), new ProbePanel(11, "Beta"));
+        List<ProbePanel> probes = List.of(new ProbePanel(10, ProbePanel.ProbeType.xenium, "Alpha"), new ProbePanel(11, ProbePanel.ProbeType.xenium, "Beta"));
         List<LabwareProbe> lwProbes = List.of(
                 new LabwareProbe(100, probes.get(0), 200, lw.getId(), "lot1", 1),
                 new LabwareProbe(101, probes.get(1), 200, lw.getId(), "lot2", 2),
