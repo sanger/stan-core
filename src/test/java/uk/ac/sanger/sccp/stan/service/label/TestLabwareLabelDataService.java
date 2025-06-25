@@ -197,7 +197,7 @@ public class TestLabwareLabelDataService {
         assertEquals(lw.getBarcode(), actual.getBarcode());
         assertEquals(medium.getName(), actual.getMedium());
         assertNotNull(actual.getDate());
-        LabelContent content = new LabelContent(donor.getDonorName(), null,
+        LabelContent content = new LabelContent(donor.getDonorName(), tissue.getExternalName(),
                 sl.getTissueType().getCode()+"-"+sl.getCode(), tissue.getReplicate(), fix.getName());
         assertThat(actual.getContents()).containsExactly(content);
     }
