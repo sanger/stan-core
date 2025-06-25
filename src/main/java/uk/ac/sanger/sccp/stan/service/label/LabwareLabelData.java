@@ -138,7 +138,7 @@ public class LabwareLabelData {
         }
 
         public LabelContent withStateDesc(String newStateDesc) {
-            return new LabelContent(this.donorName, null, this.tissueDesc, this.replicate, newStateDesc);
+            return new LabelContent(this.donorName, this.externalName, this.tissueDesc, this.replicate, newStateDesc);
         }
 
         @NotNull
