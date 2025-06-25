@@ -99,10 +99,10 @@ public class TestLabwareLabelDataService {
 
         LabwareLabelData actual = service.getLabelData(labware);
         List<LabelContent> expectedContents = List.of(
-                new LabelContent(donor1.getDonorName(), tissueString(tissue1), tissue1.getReplicate()),
-                new LabelContent(donor1.getDonorName(), tissueString(tissue1), tissue1.getReplicate(), 7),
-                new LabelContent(donor2.getDonorName(), tissueString(tissue2), tissue2.getReplicate(), 5),
-                new LabelContent(donor2.getDonorName(), tissueString(tissue2), tissue2.getReplicate(), 14)
+                new LabelContent(donor1.getDonorName(), tissue1.getExternalName(), tissueString(tissue1), tissue1.getReplicate(), (String) null),
+                new LabelContent(donor1.getDonorName(), tissue1.getExternalName(), tissueString(tissue1), tissue1.getReplicate(), 7),
+                new LabelContent(donor2.getDonorName(), tissue2.getExternalName(), tissueString(tissue2), tissue2.getReplicate(), 5),
+                new LabelContent(donor2.getDonorName(), tissue2.getExternalName(), tissueString(tissue2), tissue2.getReplicate(), 14)
         );
         assertEquals(new LabwareLabelData(labware.getBarcode(), labware.getExternalBarcode(), tissue1.getMedium().getName(), "2021-03-17", expectedContents), actual);
     }
@@ -171,9 +171,9 @@ public class TestLabwareLabelDataService {
         when(mockPlanActionRepo.findAllByDestinationLabwareId(lw.getId())).thenReturn(planActions);
         LabwareLabelData actual = service.getLabelData(lw);
         List<LabelContent> expectedContents = List.of(
-                new LabelContent("DONOR1", tissueString(tissue1), tissue1.getReplicate(), 11),
-                new LabelContent("DONOR3", tissueString(tissue3), tissue3.getReplicate(), 21),
-                new LabelContent("DONOR2", tissueString(tissue2), tissue2.getReplicate(), 12)
+                new LabelContent("DONOR1", tissue1.getExternalName(), tissueString(tissue1), tissue1.getReplicate(), 11),
+                new LabelContent("DONOR3", tissue3.getExternalName(), tissueString(tissue3), tissue3.getReplicate(), 21),
+                new LabelContent("DONOR2", tissue2.getExternalName(), tissueString(tissue2), tissue2.getReplicate(), 12)
         );
         assertEquals(new LabwareLabelData(lw.getBarcode(), lw.getExternalBarcode(), tissue1.getMedium().getName(),
                 "2023-07-13", expectedContents), actual);
@@ -407,14 +407,15 @@ public class TestLabwareLabelDataService {
         assertEquals("2022-01-12", ld.getDate());
         assertEquals(sameMedium ? medium.getName() : null, ld.getMedium());
         String[] donorNames = { donors[0].getDonorName(), donors[1].getDonorName() };
+        String[] externalNames = {tissues[0].getExternalName(), tissues[1].getExternalName(), null, tissues[3].getExternalName() };
         String[] tissueStrings = { tissueString(tissues[0]), tissueString(tissues[1]), null, tissueString(tissues[3]) };
         String[] reps = { tissues[0].getReplicate(), tissues[1].getReplicate(), null, tissues[3].getReplicate() };
 
         List<LabelContent> expectedContents = List.of(
-                new LabelContent(donorNames[0], null, tissueStrings[0], reps[0], "S001+"),
-                new LabelContent(donorNames[0], null, tissueStrings[1], reps[1], "S003"),
-                new LabelContent(null, null,null, null, (String) null),
-                new LabelContent(donorNames[1], null, tissueStrings[3], reps[3], "S005+")
+                new LabelContent(donorNames[0], externalNames[0], tissueStrings[0], reps[0], "S001+"),
+                new LabelContent(donorNames[0], externalNames[1], tissueStrings[1], reps[1], "S003"),
+                new LabelContent(),
+                new LabelContent(donorNames[1], externalNames[3], tissueStrings[3], reps[3], "S005+")
         );
         assertEquals(expectedContents, ld.getContents());
     }
@@ -463,6 +464,7 @@ public class TestLabwareLabelDataService {
         Tissue[] tissues = IntStream.range(0,2)
                 .mapToObj(i -> EntityFactory.makeTissue(donors[i], sls[i]))
                 .toArray(Tissue[]::new);
+        String[] externalNames = Arrays.stream(tissues).map(Tissue::getExternalName).toArray(String[]::new);
         tissues[0].setReplicate("100");
         tissues[1].setReplicate("101b");
         Medium medium = EntityFactory.getMedium();
@@ -490,14 +492,14 @@ public class TestLabwareLabelDataService {
         String[] reps = { tissues[0].getReplicate(), tissues[1].getReplicate() };
 
         List<LabelContent> expectedContents = List.of(
-                new LabelContent(donorNames[0], null, tissueStrings[0], reps[0], "S001+"),
-                new LabelContent(donorNames[0], null, tissueStrings[0], reps[0], "S001"),
-                new LabelContent(donorNames[0], null, tissueStrings[0], reps[0], "S003+"),
-                new LabelContent(donorNames[0], tissueStrings[0], reps[0]),
-                new LabelContent(donorNames[1], tissueStrings[1], reps[1]),
-                new LabelContent(donorNames[1], null, tissueStrings[1], reps[1], "S004+"),
-                new LabelContent(donorNames[1], tissueStrings[1], reps[1]),
-                new LabelContent(donorNames[1], tissueStrings[1], reps[1])
+                new LabelContent(donorNames[0], externalNames[0], tissueStrings[0], reps[0], "S001+"),
+                new LabelContent(donorNames[0], externalNames[0], tissueStrings[0], reps[0], "S001"),
+                new LabelContent(donorNames[0], externalNames[0], tissueStrings[0], reps[0], "S003+"),
+                new LabelContent(donorNames[0], externalNames[0], tissueStrings[0], reps[0], (String) null),
+                new LabelContent(donorNames[1], externalNames[1], tissueStrings[1], reps[1], (String) null),
+                new LabelContent(donorNames[1], externalNames[1], tissueStrings[1], reps[1], "S004+"),
+                new LabelContent(donorNames[1], externalNames[1], tissueStrings[1], reps[1], (String) null),
+                new LabelContent(donorNames[1], externalNames[1], tissueStrings[1], reps[1], (String) null)
         );
         assertEquals(expectedContents, ld.getContents());
     }

@@ -41,10 +41,10 @@ public class TestSprintClient {
         final LabelType labelType = EntityFactory.getLabelType();
         LabelPrintRequest request = new LabelPrintRequest(labelType,
                 List.of(new LabwareLabelData("STAN-1", "123456", "None", "2021-03-17",
-                        List.of(new LabelContent("DONOR1", "TISSUE1", "1", 2),
-                                new LabelContent("DONOR2", "TISSUE2", "3", 4))),
+                        List.of(new LabelContent("DONOR1", "ext1", "TISSUE1", "1", 2),
+                                new LabelContent("DONOR2", "ext2", "TISSUE2", "3", 4))),
                         new LabwareLabelData("STAN-2", null, "None", "2021-03-16",
-                                List.of(new LabelContent("DONOR3", "TISSUE3", "5"))))
+                                List.of(new LabelContent("DONOR3", "ext3", "TISSUE3", "5", (String) null))))
         );
         StringTemplate template = new StringTemplate("{\"barcode\":\"#barcode#\", " +
                 "\"date\":\"#date#\", " +

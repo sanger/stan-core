@@ -17,8 +17,8 @@ public class TestLabwareLabelData {
         LabwareLabelData data = new LabwareLabelData(
                 "STAN-123", "123456", "Butter", "2021-03-17",
                 List.of(
-                        new LabelContent("DONOR1", "TISSUE1", "1"),
-                        new LabelContent("DONOR2", "TISSUE2", "2a", 3)
+                        new LabelContent("DONOR1", null, "TISSUE1", "1", (String) null),
+                        new LabelContent("DONOR2", null, "TISSUE2", "2a", 3)
                 )
         );
         Map<String, String> fields = data.getFields();

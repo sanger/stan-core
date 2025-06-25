@@ -82,11 +82,11 @@ public class TestLabelPrintService {
         when(mockPrinterRepo.getByName(printer.getName())).thenReturn(printer);
         List<LabwareLabelData> labelData = List.of(
                 new LabwareLabelData(labware.get(0).getBarcode(), labware.get(0).getExternalBarcode(), "None", "2021-03-17", List.of(
-                        new LabelContent("DONOR1", "TISSUE1", "2", 3),
-                        new LabelContent("DONOR2", "TISSUE2", "3", 4)
+                        new LabelContent("DONOR1", "ext1", "TISSUE1", "2", 3),
+                        new LabelContent("DONOR2", "ext2", "TISSUE2", "3", 4)
                 )),
                 new LabwareLabelData(labware.get(1).getBarcode(), labware.get(1).getExternalBarcode(), "None", "2021-03-16", List.of(
-                        new LabelContent("DONOR3", "TISSUE3", "4")
+                        new LabelContent("DONOR3", "ext3", "TISSUE3", "4", (String) null)
                 ))
         );
         LabelPrintRequest expectedRequest = new LabelPrintRequest(labware.get(0).getLabwareType().getLabelType(), labelData);
@@ -110,8 +110,8 @@ public class TestLabelPrintService {
         when(mockPrinterRepo.getByName(printer.getName())).thenReturn(printer);
         List<LabwareLabelData> labelData = List.of(
                 new LabwareLabelData(lw.getBarcode(), lw.getExternalBarcode(), "None", "2021-03-17", List.of(
-                        new LabelContent("DONOR1", "TISSUE1", "2", 3),
-                        new LabelContent("DONOR2", "TISSUE2", "3", 4)
+                        new LabelContent("DONOR1", "ext1", "TISSUE1", "2", 3),
+                        new LabelContent("DONOR2", "ext2", "TISSUE2", "3", 4)
                 ))
         );
         LabelPrintRequest expectedRequest = new LabelPrintRequest(lw.getLabwareType().getLabelType(), labelData);

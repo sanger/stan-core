@@ -169,6 +169,7 @@ public class LabwareLabelDataService {
 
         final int numTissues = tissues.length;
         String[] donorNames = new String[numTissues];
+        String[] externalNames = new String[numTissues];
         String[] tissueDescs = new String[numTissues];
         String[] reps = new String[numTissues];
         Set<String> mediums = new HashSet<>(numTissues);
@@ -177,6 +178,7 @@ public class LabwareLabelDataService {
             Tissue tissue = tissues[i];
             if (tissue != null) {
                 donorNames[i] = tissue.getDonor().getDonorName();
+                externalNames[i] = tissue.getExternalName();
                 tissueDescs[i] = getTissueDesc(tissue);
                 reps[i] = tissue.getReplicate();
                 mediums.add(tissue.getMedium().getName());
@@ -188,7 +190,7 @@ public class LabwareLabelDataService {
         for (int i = 0; i < numTissues; ++i) {
             Tissue tissue = tissues[i];
             if (tissue==null) {
-                content.add(new LabelContent(null, null, null));
+                content.add(new LabelContent());
             } else {
                 final int row = i+1;
                 Stream<SimpleContent> scStream =  IntStream.range(1, numCols+1)
@@ -196,7 +198,7 @@ public class LabwareLabelDataService {
                         .filter(Objects::nonNull)
                         .flatMap(Collection::stream);
                 Integer[] sectionRange = sectionRange(scStream.iterator());
-                content.add(new LabelContent(donorNames[i], tissueDescs[i], reps[i], sectionRange[0], sectionRange[1]));
+                content.add(new LabelContent(donorNames[i], externalNames[i], tissueDescs[i], reps[i], sectionRange[0], sectionRange[1]));
             }
         }
         return toLabelData(labware, content, mediums);
@@ -227,6 +229,7 @@ public class LabwareLabelDataService {
         Tissue[] tissues = checkDividedLayout(labware, map);
 
         String[] donorNames = new String[2];
+        String[] externalNames = new String[2];
         String[] tissueDescs = new String[2];
         String[] reps = new String[2];
         Set<String> mediums = new HashSet<>(2);
@@ -235,6 +238,7 @@ public class LabwareLabelDataService {
             Tissue tissue = tissues[i];
             if (tissue != null) {
                 donorNames[i] = tissue.getDonor().getDonorName();
+                externalNames[i] = tissue.getExternalName();
                 tissueDescs[i] = getTissueDesc(tissue);
                 reps[i] = tissue.getReplicate();
                 mediums.add(tissue.getMedium().getName());
@@ -247,10 +251,10 @@ public class LabwareLabelDataService {
             int tissueIndex = (row-1)/2;
             for (int col = 1; col <= numCols; ++col) {
                 if (tissues[tissueIndex]==null) {
-                    content.add(new LabelContent(null, null, null));
+                    content.add(new LabelContent());
                 } else {
                     Integer[] sectionRange = sectionRange(map.get(new Address(row, col)));
-                    content.add(new LabelContent(donorNames[tissueIndex], tissueDescs[tissueIndex], reps[tissueIndex],
+                    content.add(new LabelContent(donorNames[tissueIndex], externalNames[tissueIndex], tissueDescs[tissueIndex], reps[tissueIndex],
                             sectionRange[0], sectionRange[1]));
                 }
             }
@@ -442,6 +446,7 @@ public class LabwareLabelDataService {
 
             return new LabelContent(
                     planAction.getSample().getTissue().getDonor().getDonorName(),
+                    planAction.getSample().getTissue().getExternalName(),
                     getTissueDesc(planAction.getSample().getTissue()),
                     planAction.getSample().getTissue().getReplicate(),
                     section
