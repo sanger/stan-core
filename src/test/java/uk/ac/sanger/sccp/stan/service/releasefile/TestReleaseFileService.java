@@ -1306,8 +1306,8 @@ public class TestReleaseFileService {
         List<Operation> ops = List.of(op);
         when(mockOpRepo.findAllByOperationTypeAndDestinationSlotIdIn(any(), any())).thenReturn(ops);
         List<LabwareProbe> probes = List.of(
-                new LabwareProbe(10, new ProbePanel(1, "Alpha"), op.getId(), lws[0].getId(), "lot1", 8),
-                new LabwareProbe(11, new ProbePanel(2, "Beta"), op.getId(), lws[0].getId(), "lot2", 9)
+                new LabwareProbe(10, new ProbePanel(1, ProbePanel.ProbeType.xenium, "Alpha"), op.getId(), lws[0].getId(), "lot1", 8),
+                new LabwareProbe(11, new ProbePanel(2, ProbePanel.ProbeType.xenium, "Beta"), op.getId(), lws[0].getId(), "lot2", 9)
         );
         when(mockLwProbeRepo.findAllByOperationIdIn(any())).thenReturn(probes);
 

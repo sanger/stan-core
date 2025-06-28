@@ -1,9 +1,6 @@
 package uk.ac.sanger.sccp.stan.model;
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
+import javax.persistence.*;
 import java.util.Objects;
 
 /**
@@ -12,24 +9,32 @@ import java.util.Objects;
  */
 @Entity
 public class ProbePanel implements HasIntId, HasName, HasEnabled {
+    public enum ProbeType { xenium, cytassist, spike }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
+
+    @Column(columnDefinition = "enum('xenium', 'cytassist', 'spike')")
+    @Enumerated(EnumType.STRING)
+    private ProbeType type;
+
     private String name;
     private boolean enabled;
 
     public ProbePanel() {}
 
-    public ProbePanel(String name) {
-        this(null, name, true);
+    public ProbePanel(ProbeType type, String name) {
+        this(null, type, name, true);
     }
 
-    public ProbePanel(Integer id, String name) {
-        this(id, name, true);
+    public ProbePanel(Integer id, ProbeType type, String name) {
+        this(id, type, name, true);
     }
 
-    public ProbePanel(Integer id, String name, boolean enabled) {
+    public ProbePanel(Integer id, ProbeType type, String name, boolean enabled) {
         this.id = id;
+        this.type = type;
         this.name = name;
         this.enabled = enabled;
     }
@@ -44,6 +49,14 @@ public class ProbePanel implements HasIntId, HasName, HasEnabled {
 
     public void setId(Integer id) {
         this.id = id;
+    }
+
+    public ProbeType getType() {
+        return this.type;
+    }
+
+    public void setType(ProbeType type) {
+        this.type = type;
     }
 
     /**
@@ -77,6 +90,7 @@ public class ProbePanel implements HasIntId, HasName, HasEnabled {
         if (o == null || getClass() != o.getClass()) return false;
         ProbePanel that = (ProbePanel) o;
         return (this.enabled == that.enabled
+                && this.type == that.type
                 && Objects.equals(this.id, that.id)
                 && Objects.equals(this.name, that.name));
     }

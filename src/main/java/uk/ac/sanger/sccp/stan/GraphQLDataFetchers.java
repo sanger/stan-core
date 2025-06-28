@@ -300,7 +300,15 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     }
 
     public DataFetcher<Iterable<ProbePanel>> getProbePanels() {
-        return allOrEnabled(probePanelRepo::findAll, probePanelRepo::findAllByEnabled);
+        return dfe -> {
+            ProbePanel.ProbeType type = arg(dfe, "type", ProbePanel.ProbeType.class);
+            boolean includeDisabled = argOrFalse(dfe, "includeDisabled");
+            if (includeDisabled) {
+                return probePanelRepo.findAllByType(type);
+            } else {
+                return probePanelRepo.findAllByTypeAndEnabled(type, true);
+            }
+        };
     }
 
     public DataFetcher<Iterable<SamplePositionResult>> getSamplePositions() {

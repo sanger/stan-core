@@ -1,5 +1,5 @@
 mutation {
-    addProbePanel(name: "PROBENAME") {
+    addProbePanel(type: xenium, name: "PROBENAME") {
         name
     }
 }

@@ -49,7 +49,7 @@ public class TestAnalyserScanDataQuery {
         Work work = entityCreator.createWork(null, null, null, null, null);
         work.getSampleSlotIds().add(new Work.SampleSlotId(sample.getId(), lw.getFirstSlot().getId()));
         workRepo.save(work);
-        ProbePanel probe = probeRepo.save(new ProbePanel("Alpha"));
+        ProbePanel probe = probeRepo.save(new ProbePanel(ProbePanel.ProbeType.xenium, "Alpha"));
         lwProbeRepo.save(new LabwareProbe(null, probe, op.getId(), lw.getId(), "lot1", 1, SlideCosting.SGP));
 
         String query = tester.readGraphQL("analyserscandata.graphql");

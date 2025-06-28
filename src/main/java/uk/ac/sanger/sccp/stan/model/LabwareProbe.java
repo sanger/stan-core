@@ -24,7 +24,7 @@ public class LabwareProbe {
 
     @Column(columnDefinition = "enum('SGP', 'Faculty')")
     @Enumerated(EnumType.STRING)
-    private  SlideCosting costing;
+    private SlideCosting costing;
 
     public LabwareProbe() {}
 

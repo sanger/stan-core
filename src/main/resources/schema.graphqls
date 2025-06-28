@@ -75,6 +75,13 @@ enum FlagPriority {
     flag
 }
 
+"""Type of probe."""
+enum ProbeType {
+    xenium
+    cytassist
+    spike
+}
+
 """A user, who is associated with performing actions in the application."""
 type User {
     username: String!
@@ -294,6 +301,8 @@ type OmeroProject {
 type ProbePanel {
     """The name of the probe panel."""
     name: String!
+    """The type of probe."""
+    type: ProbeType!
     """Whether the probe panel is available for use."""
     enabled: Boolean!
 }
@@ -1874,10 +1883,12 @@ input ProbeOperationLabware {
     workNumber: String!
     """The costing for the kit used on this labware."""
     kitCosting: SlideCosting!
-    """Sample prep reagent lot number."""
-    samplePrepReagentLot: String
+    """Reagent lot number."""
+    reagentLot: String
     """The probes used on this labware."""
     probes: [ProbeLot!]!
+    """The name of the spike probe, if used."""
+    spike: String
 }
 
 """The probe used on a piece of labware in an operation."""
@@ -1887,7 +1898,7 @@ input ProbeLot {
     """The lot number of the probe."""
     lot: String!
     """The plex number."""
-    plex: Int!
+    plex: Int
     """The costing of the probe panel."""
     costing: SlideCosting!
 }
@@ -2159,8 +2170,8 @@ type Query {
     fixatives(includeDisabled: Boolean): [Fixative!]!
     """Get all the species that are enabled, or get all including those that are disabled."""
     species(includeDisabled: Boolean): [Species!]!
-    """Get all probe panels, optionally including the disabled."""
-    probePanels(includeDisabled: Boolean): [ProbePanel!]!
+    """Get all probe panels of a particular type, optionally including the disabled."""
+    probePanels(type: ProbeType!, includeDisabled: Boolean): [ProbePanel!]!
     """Get the labware with the given barcode."""
     labware(barcode: String!): Labware!
     """Get the labware and check if it is flagged."""
@@ -2395,9 +2406,9 @@ type Mutation {
     """Enable or disable a slot region."""
     setSlotRegionEnabled(name: String!, enabled: Boolean!): SlotRegion!
     """Add a new probe panel."""
-    addProbePanel(name: String!): ProbePanel!
+    addProbePanel(type: ProbeType!, name: String!): ProbePanel!
     """Enable or disable a probe panel."""
-    setProbePanelEnabled(name: String!, enabled: Boolean!): ProbePanel!
+    setProbePanelEnabled(type: ProbeType!, name: String!, enabled: Boolean!): ProbePanel!
 
     """Create a new work, which will be allocated a new work number with the given prefix."""
     createWork(prefix: String!, workType: String!, workRequester: String!, project: String!, program: String!, costCode: String!, numBlocks: Int, numSlides: Int, numOriginalSamples: Int, omeroProject: String, ssStudyId: Int): Work!

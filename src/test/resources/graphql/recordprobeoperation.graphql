@@ -12,11 +12,11 @@ mutation {
             }, {
                 name: "probe2"
                 lot: "lot2"
-                plex: 2
                 costing: Warranty_replacement
             }]
             workNumber: "SGP1"
-            samplePrepReagentLot: "123456"
+            reagentLot: "123456"
+            spike: "william"
         }]
     }) {
         labware { barcode }

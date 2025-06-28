@@ -24,17 +24,20 @@ public class ProbeOperationRequest {
         private String barcode;
         private String workNumber;
         private SlideCosting kitCosting;
-        private String samplePrepReagentLot;
+        private String reagentLot;
         private List<ProbeLot> probes = List.of();
+        private String spike;
 
         public ProbeOperationLabware() {}
 
-        public ProbeOperationLabware(String barcode, String workNumber, SlideCosting kitCosting, String samplePrepReagentLot, List<ProbeLot> probes) {
+        public ProbeOperationLabware(String barcode, String workNumber, SlideCosting kitCosting, String reagentLot,
+                                     List<ProbeLot> probes, String spike) {
             setBarcode(barcode);
             setWorkNumber(workNumber);
             setKitCosting(kitCosting);
-            setSamplePrepReagentLot(samplePrepReagentLot);
+            setReagentLot(reagentLot);
             setProbes(probes);
+            setSpike(spike);
         }
 
         /**
@@ -69,13 +72,13 @@ public class ProbeOperationRequest {
             this.kitCosting = kitCosting;
         }
 
-        /** Sample prep reagent lot number. */
-        public String getSamplePrepReagentLot() {
-            return this.samplePrepReagentLot;
+        /** Reagent lot number. */
+        public String getReagentLot() {
+            return this.reagentLot;
         }
 
-        public void setSamplePrepReagentLot(String samplePrepReagentLot) {
-            this.samplePrepReagentLot = samplePrepReagentLot;
+        public void setReagentLot(String reagentLot) {
+            this.reagentLot = reagentLot;
         }
 
         /**
@@ -89,6 +92,14 @@ public class ProbeOperationRequest {
             this.probes = nullToEmpty(probes);
         }
 
+        public String getSpike() {
+            return this.spike;
+        }
+
+        public void setSpike(String spike) {
+            this.spike = spike;
+        }
+
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
@@ -97,8 +108,9 @@ public class ProbeOperationRequest {
             return (Objects.equals(this.barcode, that.barcode)
                     && Objects.equals(this.workNumber, that.workNumber)
                     && this.kitCosting==that.kitCosting
-                    && Objects.equals(this.samplePrepReagentLot, that.samplePrepReagentLot)
+                    && Objects.equals(this.reagentLot, that.reagentLot)
                     && Objects.equals(this.probes, that.probes)
+                    && Objects.equals(this.spike, that.spike)
             );
         }
 
@@ -109,8 +121,8 @@ public class ProbeOperationRequest {
 
         @Override
         public String toString() {
-            return String.format("(%s, %s, workNumber: %s, samplePrepReagentLot: %s, probes: %s)",
-                    repr(barcode), kitCosting, repr(workNumber), repr(samplePrepReagentLot), probes);
+            return String.format("(%s, %s, workNumber: %s, reagentLot: %s, probes: %s, spike: %s)",
+                    repr(barcode), kitCosting, repr(workNumber), repr(reagentLot), probes, repr(spike));
         }
     }
 
