@@ -43,8 +43,8 @@ class TestLabwareProbeRepo {
         User user = entityCreator.createUser("user1");
         Operation op1 = entityCreator.simpleOp(opType, user, lw1, lw1);
         Operation op2 = entityCreator.simpleOp(opType, user, lw2, lw2);
-        ProbePanel panel1 = probeRepo.save(new ProbePanel("Banana"));
-        ProbePanel panel2 = probeRepo.save(new ProbePanel("Custard"));
+        ProbePanel panel1 = probeRepo.save(new ProbePanel(ProbePanel.ProbeType.xenium, "Banana"));
+        ProbePanel panel2 = probeRepo.save(new ProbePanel(ProbePanel.ProbeType.xenium, "Custard"));
 
         List<LabwareProbe> lwProbes = asList(lwProbeRepo.saveAll(List.of(
                 new LabwareProbe(null, panel1, op1.getId(), lw1.getId(), "lot1", 5, SlideCosting.SGP),

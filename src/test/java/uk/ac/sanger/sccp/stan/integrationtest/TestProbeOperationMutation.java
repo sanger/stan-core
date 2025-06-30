@@ -16,12 +16,9 @@ import uk.ac.sanger.sccp.utils.UCMap;
 
 import javax.transaction.Transactional;
 import java.util.*;
-import java.util.stream.IntStream;
 
-import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGet;
 import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGetList;
 import static uk.ac.sanger.sccp.utils.BasicUtils.stream;
@@ -64,6 +61,8 @@ public class TestProbeOperationMutation {
         assertEquals("probe1", chainGet(result, "data", "addProbePanel", "name"));
         result = tester.post(addProbeMutation.replace("PROBENAME", "probe2"));
         assertEquals("probe2", chainGet(result, "data", "addProbePanel", "name"));
+        result = tester.post(addProbeMutation.replace("PROBENAME", "william").replace("xenium", "spike"));
+        assertEquals("william", chainGet(result, "data", "addProbePanel", "name"));
 
         OperationType opType = entityCreator.createOpType(CompletionServiceImp.PROBE_HYBRIDISATION_NAME, null, OperationTypeFlag.PROBES, OperationTypeFlag.IN_PLACE);
         Sample sample = entityCreator.createSample(null, null);
@@ -78,10 +77,7 @@ public class TestProbeOperationMutation {
         Operation op = opRepo.findById(opId).orElseThrow();
         assertEquals(opType, op.getOperationType());
         List<LabwareProbe> lwProbes = lwProbeRepo.findAllByOperationIdIn(List.of(opId));
-        assertThat(lwProbes).hasSize(2);
-        if (lwProbes.getFirst().getProbePanel().getName().equals("probe2")) {
-            lwProbes = IntStream.of(lwProbes.size() - 1, -1, -1).mapToObj(lwProbes::get).collect(toList());
-        }
+        assertThat(lwProbes).hasSize(3);
         for (LabwareProbe lwp : lwProbes) {
             assertEquals(opId, lwp.getOperationId());
             assertEquals(lw.getId(), lwp.getLabwareId());
@@ -93,16 +89,21 @@ public class TestProbeOperationMutation {
         assertEquals(SlideCosting.Faculty, lwp.getCosting());
         lwp = lwProbes.get(1);
         assertEquals("probe2", lwp.getProbePanel().getName());
-        assertEquals(2, lwp.getPlex());
+        assertNull(lwp.getPlex());
         assertEquals("LOT2", lwp.getLotNumber());
         assertEquals(SlideCosting.Warranty_replacement, lwp.getCosting());
+        lwp = lwProbes.get(2);
+        assertEquals("william", lwp.getProbePanel().getName());
+        assertNull(lwp.getPlex());
+        assertNull(lwp.getLotNumber());
+        assertNull(lwp.getCosting());
         List<LabwareNote> notes = lwNoteRepo.findAllByOperationIdIn(List.of(opId));
         assertThat(notes).hasSize(2);
         notes.forEach(note -> assertEquals(lw.getId(), note.getLabwareId()));
         UCMap<String> noteValues = notes.stream()
                 .collect(UCMap.toUCMap(LabwareNote::getName, LabwareNote::getValue));
         assertEquals("Faculty", noteValues.get("kit costing"));
-        assertEquals("123456", noteValues.get("sample prep reagent lot"));
+        assertEquals("123456", noteValues.get("reagent lot"));
         testCompletion(lw, work, sample);
         testAnalyser(lw, work, sample);
         testSampleMetrics(lw, work);

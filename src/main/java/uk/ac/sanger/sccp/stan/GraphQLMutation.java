@@ -519,11 +519,25 @@ public class GraphQLMutation extends BaseGraphQLResource {
     }
 
     public DataFetcher<ProbePanel> addProbePanel() {
-        return adminAdd(probePanelService::addNew, "AddProbePanel", "name");
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.admin);
+            ProbePanel.ProbeType probeType = arg(dfe, "type", ProbePanel.ProbeType.class);
+            String name = dfe.getArgument("name");
+            logRequest("AddProbePanel", user, String.format("(probeType=%s, name=%s)", probeType, repr(name)));
+            return probePanelService.addProbePanel(probeType, name);
+        };
     }
 
     public DataFetcher<ProbePanel> setProbePanelEnabled() {
-        return adminSetEnabled(probePanelService::setEnabled, "SetProbePanelEnabled", "name");
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.admin);
+            ProbePanel.ProbeType probeType = arg(dfe, "type", ProbePanel.ProbeType.class);
+            String name = dfe.getArgument("name");
+            boolean enabled = dfe.getArgument("enabled");
+            logRequest("SetProbePanelEnabled", user, String.format("(probeType=%s, name=%s, enabled=%s)",
+                    probeType, repr(name), enabled));
+            return probePanelService.setProbePanelEnabled(probeType, name, enabled);
+        };
     }
 
     public DataFetcher<WorkType> addWorkType() {

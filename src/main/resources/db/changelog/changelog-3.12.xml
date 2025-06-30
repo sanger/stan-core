@@ -1,0 +1,24 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <changeSet id="3.12.0" author="dr6">
+        <addColumn tableName="probe_panel">
+            <column name="type" type="ENUM('xenium', 'cytassist', 'spike')" defaultValue="xenium">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <dropIndex indexName="name" tableName="probe_panel"/>
+        <createIndex tableName="probe_panel" indexName="uk_probe_panel_type_name" unique="true">
+            <column name="type"/>
+            <column name="name"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="3.12.1" author="dr6">
+        <dropNotNullConstraint tableName="labware_probe" columnName="lot_number" columnDataType="VARCHAR(25)"/>
+        <dropNotNullConstraint tableName="labware_probe" columnName="plex" columnDataType="INT"/>
+    </changeSet>
+
+</databaseChangeLog>
