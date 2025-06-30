@@ -572,6 +572,8 @@ input ConfirmSection {
     commentIds: [Int!]
     """The region of this sample in this slot, if any."""
     region: String
+    """The thickness of the section, overriding the thickness specified in the plan."""
+    thickness: String
 }
 
 """A specification of a particular piece of labware to confirm or cancel planned sectioning into."""
