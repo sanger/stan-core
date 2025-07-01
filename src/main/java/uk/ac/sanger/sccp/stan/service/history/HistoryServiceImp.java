@@ -19,8 +19,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import java.util.stream.*;
 
 import static java.util.stream.Collectors.*;
 import static java.util.stream.Collectors.toMap;
@@ -727,12 +726,16 @@ public class HistoryServiceImp implements HistoryService {
      * @return a list of strings describing the labware probe
      */
     public List<String> getLabwareProbeDetails(LabwareProbe lwProbe) {
-        return List.of(
-                "Probe panel: "+lwProbe.getProbePanel().getName(),
-                "Lot: "+lwProbe.getLotNumber(),
-                "Plex: "+lwProbe.getPlex(),
-                "Probe costing: "+lwProbe.getCosting()
-        );
+        String[] headings = {"Probe panel: ", "Lot: ", "Plex: ", "Probe costing: "};
+        if (lwProbe.getProbePanel().getType()== ProbePanel.ProbeType.spike) {
+            headings[0] = "Spike in panel: ";
+        }
+        Object[] values = {lwProbe.getProbePanel().getName(), lwProbe.getLotNumber(),
+                lwProbe.getPlex(), lwProbe.getCosting()};
+        return IntStream.range(0, headings.length)
+                .filter(i -> values[i] != null)
+                .mapToObj(i -> headings[i] + values[i])
+                .toList();
     }
 
     /**

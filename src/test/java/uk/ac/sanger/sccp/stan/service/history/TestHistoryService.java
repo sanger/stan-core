@@ -1076,15 +1076,16 @@ public class TestHistoryService {
         assertThat(map.get(22)).containsExactly(rois.get(2));
     }
 
-    @Test
-    public void testGetLabwareProbeDetails() {
-        LabwareProbe lwp = new LabwareProbe(1, new ProbePanel(1, ProbePanel.ProbeType.xenium, "probe1"), 5, 6, "LOT1", 21, SlideCosting.SGP);
-        assertThat(service.getLabwareProbeDetails(lwp)).containsExactly(
-                "Probe panel: probe1",
-                "Lot: LOT1",
-                "Plex: 21",
-                "Probe costing: SGP"
-        );
+    @ParameterizedTest
+    @CsvSource(value = {
+            "probe1; xenium; LOT1; 21; SGP; Probe panel: probe1,Lot: LOT1,Plex: 21,Probe costing: SGP",
+            "probe2; xenium; LOT1; 21;;Probe panel: probe2,Lot: LOT1,Plex: 21",
+            "probe3; cytassist; ; 21;Faculty;Probe panel: probe3,Plex: 21,Probe costing: Faculty",
+            "probe4; spike; ;;;Spike in panel: probe4",
+    }, delimiter=';')
+    public void testGetLabwareProbeDetails(String name, ProbePanel.ProbeType type, String lot, Integer plex, SlideCosting costing, String expectedJoined) {
+        LabwareProbe lwp = new LabwareProbe(1, new ProbePanel(1, type, name), 5, 6, lot, plex, costing);
+        assertThat(service.getLabwareProbeDetails(lwp)).containsExactly(expectedJoined.split(","));
     }
 
     @Test
