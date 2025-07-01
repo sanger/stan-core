@@ -20,6 +20,6 @@ values (10, 1, 1, 'AlphaA1')
 ;
 
 insert into reagent_plate_type_tag_layout (plate_type, tag_layout_id)
-values ('Fresh frozen - Dual Index TT Set A', 1)
-    , ('FFPE - Dual Index TS Set A', 2)
+values ('Dual Index TT Set A', 1)
+    , ('Dual Index TS Set A', 2)
 ;
