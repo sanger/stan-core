@@ -97,6 +97,9 @@ public class TestPlanAndRecordSectionMutations {
             assertEquals(expectedPlanDestAddresses[i], chainGet(resultAction, "destination", "address"));
             assertEquals((Integer) expectedPlanSampleId[i], chainGet(resultAction, "sample", "id"));
             assertNotNull(chainGet(resultAction, "destination", "labwareId"));
+            if (i == expectedPlanDestAddresses.length - 1) {
+                assertEquals("2.5", resultAction.get("sampleThickness"));
+            }
         }
 
         testRetrievePlanData(barcodes);

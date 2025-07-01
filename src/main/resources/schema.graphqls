@@ -481,6 +481,8 @@ type PlanAction {
     sample: Sample!
     """The new section number, if the source is a block and it is being sectioned."""
     newSection: Int
+    """The planned thickness of the sample, if any."""
+    sampleThickness: String
 }
 
 """A planned operation."""
