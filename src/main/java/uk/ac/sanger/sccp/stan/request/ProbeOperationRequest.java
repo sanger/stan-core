@@ -180,8 +180,13 @@ public class ProbeOperationRequest {
             this.plex = plex;
         }
 
+        /** Costing for the probe */
         public SlideCosting getCosting() {
             return costing;
+        }
+
+        public void setCosting(SlideCosting costing) {
+            this.costing = costing;
         }
 
         @Override
