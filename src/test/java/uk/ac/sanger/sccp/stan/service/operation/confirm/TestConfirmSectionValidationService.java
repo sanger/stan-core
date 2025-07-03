@@ -13,8 +13,10 @@ import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSectionLabware.AddressCommentId;
 import uk.ac.sanger.sccp.stan.service.CommentValidationService;
 import uk.ac.sanger.sccp.stan.service.SlotRegionService;
+import uk.ac.sanger.sccp.stan.service.sanitiser.Sanitiser;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
+import uk.ac.sanger.sccp.utils.Zip;
 
 import java.util.*;
 import java.util.function.Function;
@@ -27,6 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.EntityFactory.objToList;
+import static uk.ac.sanger.sccp.stan.Matchers.assertProblem;
 import static uk.ac.sanger.sccp.stan.Matchers.mayAddProblem;
 
 /**
@@ -46,6 +49,8 @@ public class TestConfirmSectionValidationService {
     SlotRegionService mockSlotRegionService;
     @Mock
     CommentValidationService mockCommentValidationService;
+    @Mock
+    Sanitiser<String> mockThicknessSanitiser;
 
     OperationType opType;
     AutoCloseable mocking;
@@ -54,7 +59,7 @@ public class TestConfirmSectionValidationService {
     void setup() {
         mocking = MockitoAnnotations.openMocks(this);
         service = spy(new ConfirmSectionValidationServiceImp(mockLwRepo, mockPlanRepo, mockWorkService,
-                mockSlotRegionService, mockCommentValidationService));
+                mockSlotRegionService, mockCommentValidationService, mockThicknessSanitiser));
         opType = new OperationType(2, "Section", OperationTypeFlag.SOURCE_IS_BLOCK.bit(),
                 EntityFactory.getBioState());
     }
@@ -96,6 +101,7 @@ public class TestConfirmSectionValidationService {
         mayAddProblem(valid ? null : "missing region").when(service).requireRegionsForMultiSampleSlots(any(), any());
         mayAddProblem(valid ? null : "comment problem", commentMap).when(service).validateCommentIds(any(), any());
         mayAddProblem(valid ? null : "work problem", works).when(mockWorkService).validateUsableWorks(any(), any());
+        mayAddProblem(valid ? null : "thickness problem").when(service).sanitiseThickness(any(), any());
 
         var validation = service.validate(request);
         if (valid) {
@@ -107,7 +113,8 @@ public class TestConfirmSectionValidationService {
             assertEquals(validation.getWorks(), works);
         } else {
             assertThat(validation.getProblems()).containsExactlyInAnyOrder(
-                    "lw problem", "plan problem", "op problem", "region problem", "missing region", "comment problem", "work problem"
+                    "lw problem", "plan problem", "op problem", "region problem", "missing region",
+                    "comment problem", "work problem", "thickness problem"
             );
         }
 
@@ -116,6 +123,7 @@ public class TestConfirmSectionValidationService {
         verify(service).requireRegionsForMultiSampleSlots(any(), eq(request.getLabware()));
         verify(mockWorkService).validateUsableWorks(any(), eq(Set.of("SGP1")));
         verify(service).validateLabware(any(), eq(request.getLabware()));
+        verify(service).sanitiseThickness(any(), eq(request.getLabware()));
         verify(service).lookUpPlans(any(), eq(lwMap.values()));
         verify(service).validateOperations(any(), eq(request.getLabware()), eq(lwMap), eq(planMap));
     }
@@ -281,6 +289,47 @@ public class TestConfirmSectionValidationService {
                         nonemptyLw.getBarcode()), List.of(destroyedLw, releasedLw, discardedLw, nonemptyLw, emptyLw),
                         List.of(missingMsg, repeatedMsg, unknownMsg, destroyedMsg, discardedMsg, releasedMsg, nonemptyMsg))
         );
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    public void testSanitiseThickness(boolean valid) {
+        setUpThicknessSanitiser();
+        List<ConfirmSection> css = List.of(
+                new ConfirmSection(), new ConfirmSection(), new ConfirmSection(), new ConfirmSection()
+        );
+        List<ConfirmSectionLabware> csls = List.of(
+                new ConfirmSectionLabware(), new ConfirmSectionLabware()
+        );
+        String[] values = {"56.00", valid ? "  5.0  " : "5!", null, "   "};
+        Zip.forEach(css.stream(), Arrays.stream(values), ConfirmSection::setThickness);
+        csls.get(0).setConfirmSections(css.subList(0,2));
+        csls.get(1).setConfirmSections(css.subList(2,4));
+        List<String> problems = new ArrayList<>(valid ? 0 : 1);
+        service.sanitiseThickness(problems, csls);
+        assertProblem(problems, valid ? null : "Bad thickness: 5!");
+        String[] expectedValues = { "56.0", "5.0", null, null };
+        if (!valid) {
+            expectedValues[1] = null;
+        }
+        Zip.forEach(css.stream(), Arrays.stream(expectedValues), (cs, e) -> assertEquals(e, cs.getThickness()));
+        verify(mockThicknessSanitiser, times(2)).sanitise(any(), any());
+    }
+
+    private void setUpThicknessSanitiser() {
+        when(mockThicknessSanitiser.sanitise(any(), any())).then( invocation -> {
+            Collection<String> problems = invocation.getArgument(0);
+            String value = invocation.getArgument(1);
+            if (value.indexOf('!') >= 0) {
+                problems.add("Bad thickness: " + value);
+                return null;
+            }
+            int i = value.indexOf('.');
+            if (i < value.length() - 2) {
+                value = value.substring(0, i + 2);
+            }
+            return value;
+        });
     }
 
     @MethodSource("lookUpPlansArgs")

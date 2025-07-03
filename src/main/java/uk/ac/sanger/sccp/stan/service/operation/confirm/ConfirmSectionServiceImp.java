@@ -200,8 +200,9 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
             final Sample sample = action.getSample();
             slot.getSamples().add(sample);
             slotsToSave.add(slot);
-            if (pa.getSampleThickness()!=null) {
-                measurements.add(new Measurement(null, "Thickness", String.valueOf(pa.getSampleThickness()),
+            String thickness = thickness(sec, pa);
+            if (!nullOrEmpty(thickness)) {
+                measurements.add(new Measurement(null, "Thickness", thickness,
                         sample.getId(), null, slot.getId()));
             }
             if (!nullOrEmpty(sec.getRegion())) {
@@ -230,6 +231,17 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
             opCommentRepo.saveAll(opComs);
         }
         return new ConfirmLabwareResult(op, lw);
+    }
+
+    /** Gets the thickness from the confirmation or the plan. */
+    public String thickness(ConfirmSection cs, PlanAction pa) {
+        if (!nullOrEmpty(cs.getThickness())) {
+            return cs.getThickness();
+        }
+        if (!nullOrEmpty(pa.getSampleThickness())) {
+            return pa.getSampleThickness();
+        }
+        return null;
     }
 
     /**

@@ -293,6 +293,7 @@ public class TestConfirmSectionService {
                 new ConfirmSection(A1, sample.getId(), 11, null, "top"),
                 new ConfirmSection(B3, sample.getId(), 12, null, "top")
         );
+        csecs.getFirst().setThickness("10.5");
         ConfirmSectionLabware csl = new ConfirmSectionLabware(lw1.getBarcode(), false, csecs, List.of(), null);
         Map<PlanActionKey, PlanAction> planActionMap = Stream.of(
                 new PlanAction(1, 1, source, lw1.getSlot(A1), sample),
@@ -340,11 +341,31 @@ public class TestConfirmSectionService {
         verify(mockEntityManager).refresh(lw1);
         verify(mockOpService).createOperation(opType, user, actions, plan.getId());
         final Integer opId = op.getId();
-        verify(mockMeasurementRepo).saveAll(List.of(new Measurement(null, "Thickness", "50", sections.get(2).getId(), opId, lw1.getSlot(B3).getId())));
+        verify(mockMeasurementRepo).saveAll(List.of(
+                new Measurement(null, "Thickness", "10.5", sections.get(0).getId(), opId, lw1.getSlot(A1).getId()),
+                new Measurement(null, "Thickness", "50", sections.get(2).getId(), opId, lw1.getSlot(B3).getId()))
+        );
         verify(mockSamplePositionRepo).saveAll(List.of(new SamplePosition(lw1.getFirstSlot().getId(), sections.get(1).getId(), top, opId),
                 new SamplePosition(lw1.getSlot(B3).getId(), sections.get(2).getId(), top, opId)));
         verify(mockOpCommentRepo).saveAll(List.of(new OperationComment(null, com0, opId, sections.get(0).getId(), lw1.getFirstSlot().getId(), null),
                 new OperationComment(null, com1, opId, sections.get(0).getId(), lw1.getFirstSlot().getId(), null)));
+        for (ConfirmSection csec : csecs) {
+            verify(service).thickness(csec, planActionMap.get(new PlanActionKey(csec.getDestinationAddress(), csec.getSampleId())));
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource({",,",
+            ",3.5,3.5",
+            "2.5,,2.5",
+            "5.5,6.5,5.5",
+    })
+    public void testThickness(String confirmThickness, String planThickness, String expected) {
+        ConfirmSection cs = new ConfirmSection();
+        PlanAction pa = new PlanAction();
+        cs.setThickness(confirmThickness);
+        pa.setSampleThickness(planThickness);
+        assertEquals(expected, service.thickness(cs, pa));
     }
 
     @Test

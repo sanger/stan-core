@@ -490,6 +490,8 @@ type PlanAction {
     sample: Sample!
     """The new section number, if the source is a block and it is being sectioned."""
     newSection: Int
+    """The planned thickness of the sample, if any."""
+    sampleThickness: String
 }
 
 """A planned operation."""
@@ -581,6 +583,8 @@ input ConfirmSection {
     commentIds: [Int!]
     """The region of this sample in this slot, if any."""
     region: String
+    """The thickness of the section, overriding the thickness specified in the plan."""
+    thickness: String
 }
 
 """A specification of a particular piece of labware to confirm or cancel planned sectioning into."""
