@@ -91,6 +91,7 @@ public class TestProbeService {
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lw);
         doReturn(lwMap).when(service).validateLabware(any(), any());
         OperationType opType = EntityFactory.makeOperationType("Alibobs", null);
+        doNothing().when(service).checkAllAddresses(any(), any(), any());
         doReturn(opType).when(service).validateOpType(any(), any());
         doReturn(probeType).when(service).opProbeType(opType);
         UCMap<Work> workMap = UCMap.from(Work::getWorkNumber, EntityFactory.makeWork("SGP1"));
@@ -133,6 +134,7 @@ public class TestProbeService {
         verify(mockWorkService).validateUsableWorks(any(), eq(pols.stream()
                 .map(ProbeOperationLabware::getWorkNumber)
                 .collect(toList())));
+        verify(service).checkAllAddresses(any(), any(), any());
         verify(service).opProbeType(opType);
         verify(service).validateProbes(any(), same(probeType), eq(pols));
         verify(service).checkSpikes(any(), same(pols));
@@ -224,6 +226,62 @@ public class TestProbeService {
             verify(val).loadLabware(mockLwRepo, numMissing==0 ? List.of("bc1", "bc2") : List.of("bc1"));
             verify(val).validateSources();
         }
+    }
+
+    @Test
+    public void testCheckAllAddresses() {
+        List<String> problems = new ArrayList<>();
+        LabwareType lt = EntityFactory.getTubeType();
+        List<Labware> lwList = IntStream.range(0, 2).mapToObj(i -> EntityFactory.makeEmptyLabware(lt)).toList();
+        UCMap<Labware> lwMap = UCMap.from(lwList, Labware::getBarcode);
+        List<ProbeOperationLabware> pols = List.of(
+                new ProbeOperationLabware(lwList.get(0).getBarcode(), null, null, null, null, null),
+                new ProbeOperationLabware(lwList.get(1).getBarcode(), null, null, null, null, null),
+                new ProbeOperationLabware("NO SUCH LW", null, null, null, null, null)
+        );
+        final Address A1 = new Address(1,1), A2 = new Address(2,2);
+        List<Address> addresses = List.of(A1, A2);
+        pols.get(0).setAddresses(addresses);
+        pols.get(2).setAddresses(List.of(A1));
+        doNothing().when(service).checkAddresses(any(), any(), any());
+
+        service.checkAllAddresses(problems, pols, lwMap);
+        verify(service, times(1)).checkAddresses(any(), any(), any());
+        verify(service).checkAddresses(same(problems), same(addresses), same(lwList.get(0)));
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "false,false,false",
+            "true,false,false",
+            "false,true,false",
+            "false,false,true",
+            "true,true,true",
+    })
+    public void testCheckAddresses(boolean addressNull, boolean empty, boolean invalid) {
+        List<Address> addresses = new ArrayList<>();
+        final Address A1 = new Address(1,1), A2 = new Address(1,2),  A3 = new Address(1,3);
+        Sample sample = EntityFactory.getSample();
+        LabwareType lt = EntityFactory.makeLabwareType(1,2);
+        Labware lw = EntityFactory.makeLabware(lt, sample);
+        lw.setBarcode("STAN-1");
+        addresses.add(A1);
+        List<String> expectedProblems = new ArrayList<>();
+        if (addressNull) {
+            addresses.add(null);
+            expectedProblems.add("Null address given for labware STAN-1.");
+        }
+        if (empty) {
+            addresses.add(A2);
+            expectedProblems.add("Slot contains no samples in labware STAN-1: [A2]");
+        }
+        if (invalid) {
+            addresses.add(A3);
+            expectedProblems.add("Slot not present in labware STAN-1: [A3]");
+        }
+        List<String> problems = new ArrayList<>();
+        service.checkAddresses(problems, addresses, lw);
+        assertThat(problems).containsExactlyInAnyOrderElementsOf(expectedProblems);
     }
 
     @ParameterizedTest
@@ -454,6 +512,8 @@ public class TestProbeService {
                 new ProbeOperationLabware("STAN-1", null, SlideCosting.SGP, null, null, null),
                 new ProbeOperationLabware("STAN-2", null, SlideCosting.Faculty, null, null, null)
         );
+        final List<Address> addresses = List.of(new Address(1, 2), new Address(3, 4));
+        pols.getFirst().setAddresses(addresses);
         LabwareType lt = EntityFactory.getTubeType();
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, EntityFactory.makeEmptyLabware(lt, "STAN-1"),
                 EntityFactory.makeEmptyLabware(lt, "STAN-2"));
@@ -461,11 +521,11 @@ public class TestProbeService {
         Operation[] ops = { new Operation(), new Operation() };
         ops[0].setId(1);
         ops[1].setId(2);
-        when(mockOpService.createOperationInPlace(any(), any(), any(), any(), any())).thenReturn(ops[0], ops[1]);
+        doReturn(ops[0], ops[1]).when(service).createOp(any(), any(), any(), any());
 
         UCMap<Operation> opMap = service.makeOps(user, optype, pols, lwMap, time);
-        verify(mockOpService).createOperationInPlace(optype, user, lwMap.get("STAN-1"), null, null);
-        verify(mockOpService).createOperationInPlace(optype, user, lwMap.get("STAN-2"), null, null);
+        verify(service).createOp(optype, user, lwMap.get("STAN-1"), addresses);
+        verify(service).createOp(optype, user, lwMap.get("STAN-2"), List.of());
 
         assertThat(opMap).hasSize(2);
         assertSame(ops[0], opMap.get("STAN-1"));
@@ -478,6 +538,44 @@ public class TestProbeService {
         } else {
             verifyNoInteractions(mockOpRepo);
         }
+    }
+
+    @Test
+    public void testCreateOp_noAddresses() {
+        OperationType opType = EntityFactory.makeOperationType("opname", null);
+        User user = EntityFactory.getUser();
+        Labware lw = EntityFactory.getTube();
+        Operation op = new Operation();
+        op.setId(1);
+        when(mockOpService.createOperationInPlace(any(), any(), any(), any(), any())).thenReturn(op);
+        assertSame(op, service.createOp(opType, user, lw, List.of()));
+        verify(mockOpService).createOperationInPlace(opType, user, lw, null, null);
+    }
+
+    @Test
+    public void testCreateOp_addresses() {
+        final Address A1 = new Address(1, 1), A2 = new Address(1,2), A3 = new Address(1,3);
+        OperationType opType = EntityFactory.makeOperationType("opname", null);
+        User user = EntityFactory.getUser();
+        List<Address> addresses = List.of(A1, A3);
+        LabwareType lt = EntityFactory.makeLabwareType(1,3);
+        Sample[] samples = EntityFactory.makeSamples(3);
+        Labware lw = EntityFactory.makeEmptyLabware(lt);
+        lw.getSlot(A1).setSamples(List.of(samples[0], samples[1]));
+        lw.getSlot(A2).setSamples(List.of(samples[2]));
+        lw.getSlot(A3).setSamples(List.of(samples[0]));
+        List<Slot> slots = lw.getSlots();
+        Operation op = new Operation();
+        op.setId(1);
+        when(mockOpService.createOperation(any(), any(), any(), any())).thenReturn(op);
+
+        assertSame(op, service.createOp(opType, user, lw, addresses));
+        List<Action> expectedActions = List.of(
+                new Action(null, null, slots.get(0), slots.get(0), samples[0], samples[0]),
+                new Action(null, null, slots.get(0), slots.get(0), samples[1], samples[1]),
+                new Action(null, null, slots.get(2), slots.get(2), samples[0], samples[0])
+        );
+        verify(mockOpService).createOperation(opType, user, expectedActions, null);
     }
 
     @Test

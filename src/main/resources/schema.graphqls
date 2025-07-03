@@ -1889,6 +1889,8 @@ input ProbeOperationLabware {
     probes: [ProbeLot!]!
     """The name of the spike probe, if used."""
     spike: String
+    """Optional list of slot addresses to include in operation."""
+    addresses: [Address!]
 }
 
 """The probe used on a piece of labware in an operation."""

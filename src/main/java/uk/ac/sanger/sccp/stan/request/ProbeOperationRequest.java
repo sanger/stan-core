@@ -1,5 +1,6 @@
 package uk.ac.sanger.sccp.stan.request;
 
+import uk.ac.sanger.sccp.stan.model.Address;
 import uk.ac.sanger.sccp.stan.model.SlideCosting;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
@@ -27,6 +28,7 @@ public class ProbeOperationRequest {
         private String reagentLot;
         private List<ProbeLot> probes = List.of();
         private String spike;
+        private List<Address> addresses = List.of();
 
         public ProbeOperationLabware() {}
 
@@ -100,6 +102,15 @@ public class ProbeOperationRequest {
             this.spike = spike;
         }
 
+        /** The slot addresses to record in this operation. If none are specified, use all addresses. */
+        public List<Address> getAddresses() {
+            return this.addresses;
+        }
+
+        public void setAddresses(List<Address> addresses) {
+            this.addresses = nullToEmpty(addresses);
+        }
+
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
@@ -111,6 +122,7 @@ public class ProbeOperationRequest {
                     && Objects.equals(this.reagentLot, that.reagentLot)
                     && Objects.equals(this.probes, that.probes)
                     && Objects.equals(this.spike, that.spike)
+                    && Objects.equals(this.addresses, that.addresses)
             );
         }
 
@@ -121,8 +133,8 @@ public class ProbeOperationRequest {
 
         @Override
         public String toString() {
-            return String.format("(%s, %s, workNumber: %s, reagentLot: %s, probes: %s, spike: %s)",
-                    repr(barcode), kitCosting, repr(workNumber), repr(reagentLot), probes, repr(spike));
+            return String.format("(%s, %s, workNumber: %s, reagentLot: %s, probes: %s, spike: %s, addresses: %s)",
+                    repr(barcode), kitCosting, repr(workNumber), repr(reagentLot), probes, repr(spike), addresses);
         }
     }
 
