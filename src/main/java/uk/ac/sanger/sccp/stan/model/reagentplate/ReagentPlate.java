@@ -14,8 +14,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
  */
 @Entity
 public class ReagentPlate implements HasIntId {
-    public static final String TYPE_FRESH_FROZEN = "Fresh frozen - Dual Index TT Set A", TYPE_FFPE = "FFPE - Dual Index TS Set A";
-
+    public static final List<String> REAGENT_PLATE_TYPES = List.of("Dual Index TT Set A", "Dual Index TS Set A");
     public static final ReagentPlateLayout PLATE_LAYOUT_96 = new ReagentPlateLayout("Dual index plate",8,12);
 
     @Id
@@ -153,12 +152,8 @@ public class ReagentPlate implements HasIntId {
      */
     public static String canonicalPlateType(String string) {
         if (string!=null) {
-            if (string.equalsIgnoreCase(TYPE_FFPE)) {
-                return TYPE_FFPE;
-            }
-            if (string.equalsIgnoreCase(TYPE_FRESH_FROZEN)) {
-                return TYPE_FRESH_FROZEN;
-            }
+            return REAGENT_PLATE_TYPES.stream().filter(string::equalsIgnoreCase)
+                    .findFirst().orElse(null);
         }
         return null;
     }

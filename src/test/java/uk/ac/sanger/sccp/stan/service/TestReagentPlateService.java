@@ -40,7 +40,7 @@ public class TestReagentPlateService {
     @Test
     public void testCreateReagentPlate_valid() {
         String barcode = "123";
-        String plateType = ReagentPlate.TYPE_FRESH_FROZEN;
+        String plateType = ReagentPlate.REAGENT_PLATE_TYPES.get(0);
         Integer layoutId = 700;
         ReagentPlate plate = new ReagentPlate(barcode, plateType);
         when(mockReagentPlateRepo.findByBarcode(barcode)).thenReturn(Optional.empty());
@@ -72,7 +72,7 @@ public class TestReagentPlateService {
 
     @Test
     public void testCreateSlots() {
-        ReagentPlate plate = new ReagentPlate(500, "123", ReagentPlate.TYPE_FFPE, null, null);
+        ReagentPlate plate = new ReagentPlate(500, "123", ReagentPlate.REAGENT_PLATE_TYPES.get(1), null, null);
         ReagentPlateLayout layout = plate.getPlateLayout();
         assertEquals(8, layout.getNumRows());
         assertEquals(12, layout.getNumColumns());
@@ -122,7 +122,7 @@ public class TestReagentPlateService {
 
         final String barcode = "123";
 
-        ReagentPlate plate = service.createReagentPlate(barcode, ReagentPlate.TYPE_FFPE);
+        ReagentPlate plate = service.createReagentPlate(barcode, ReagentPlate.REAGENT_PLATE_TYPES.get(1));
 
         assertEquals(barcode, plate.getBarcode());
         final Integer plateId = plate.getId();
@@ -148,8 +148,8 @@ public class TestReagentPlateService {
 
     @Test
     public void testLoadPlates() {
-        ReagentPlate plate1 = new ReagentPlate("001", ReagentPlate.TYPE_FFPE);
-        ReagentPlate plate2 = new ReagentPlate("002", ReagentPlate.TYPE_FRESH_FROZEN);
+        ReagentPlate plate1 = new ReagentPlate("001", ReagentPlate.REAGENT_PLATE_TYPES.get(1));
+        ReagentPlate plate2 = new ReagentPlate("002", ReagentPlate.REAGENT_PLATE_TYPES.get(0));
         List<String> barcodes = List.of("001", "002", "003");
         when(mockReagentPlateRepo.findAllByBarcodeIn(any())).thenReturn(List.of(plate1, plate2));
         UCMap<ReagentPlate> map = service.loadPlates(barcodes);

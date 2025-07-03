@@ -221,7 +221,7 @@ public class EntityFactory {
 
     public static ReagentPlate makeReagentPlate(String barcode) {
         int plateId = ++idCounter;
-        ReagentPlate rp = new ReagentPlate(barcode, ReagentPlate.TYPE_FFPE);
+        ReagentPlate rp = new ReagentPlate(barcode, ReagentPlate.REAGENT_PLATE_TYPES.get(1));
         rp.setId(plateId);
         ReagentPlateLayout rpLayout = rp.getPlateLayout();
         int[] slotId = {100*plateId};

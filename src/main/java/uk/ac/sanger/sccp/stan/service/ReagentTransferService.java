@@ -40,7 +40,7 @@ public interface ReagentTransferService {
 
     /**
      * Checks the given plate type is suitable.
-     * It must be equal to either {@link ReagentPlate#TYPE_FFPE} or {@link ReagentPlate#TYPE_FRESH_FROZEN}.
+     * It must be equal to a value from {@link ReagentPlate#REAGENT_PLATE_TYPES}.
      * It must match existing plates.
      * @param problems receptacle for problems
      * @param existingPlates the existing reagent plates (if any) referred to by the request

@@ -77,7 +77,7 @@ public class TestLibraryPrepMutation {
         LabwareType lt = entityCreator.createLabwareType("lt", 1, 2);
         Labware sourceLw = entityCreator.createLabware("STAN-1", lt, sample, sample);
         BioState bs = entityCreator.createBioState("Probes");
-        Integer layoutId = tagLayoutRepo.layoutIdForReagentPlateType(ReagentPlate.TYPE_FFPE);
+        Integer layoutId = tagLayoutRepo.layoutIdForReagentPlateType(ReagentPlate.REAGENT_PLATE_TYPES.get(1));
         assertNotNull(layoutId);
         Labware existingDest;
         if (variant) {
@@ -85,7 +85,7 @@ public class TestLibraryPrepMutation {
             LabwareType lt2 = entityCreator.createLabwareType("lt2", 2, 2);
             existingDest = entityCreator.createLabware("STAN-2", lt2, null, null, probeSample, probeSample);
             assertEquals(Labware.State.active, existingDest.getState());
-            createReagentPlate("012345678901234567890123", ReagentPlate.TYPE_FFPE, layoutId);
+            createReagentPlate("012345678901234567890123", ReagentPlate.REAGENT_PLATE_TYPES.get(1), layoutId);
         } else {
             existingDest = null;
         }
@@ -172,7 +172,7 @@ public class TestLibraryPrepMutation {
         List<ReagentAction> ras = reagentActionRepo.findAllByOperationIdIn(List.of(opId));
         assertThat(ras.stream().map(ReagentAction::getDestination)).containsExactlyInAnyOrder(transferSlots);
         ReagentPlate rp = reagentPlateRepo.getByBarcode("012345678901234567890123");
-        assertEquals(ReagentPlate.TYPE_FFPE, rp.getPlateType());
+        assertEquals(ReagentPlate.REAGENT_PLATE_TYPES.get(1), rp.getPlateType());
         assertEquals(layoutId, rp.getTagLayoutId());
         assertThat(ras.stream().map(ReagentAction::getReagentSlot)).containsExactly(rp.getSlot(A1), rp.getSlot(A2));
     }

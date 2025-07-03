@@ -73,7 +73,7 @@ public class TestReagentTransferService {
     public void testPerform(boolean valid) {
         User user = EntityFactory.getUser();
         Labware lw = valid ? EntityFactory.getTube() : null;
-        String plateType = ReagentPlate.TYPE_FRESH_FROZEN;
+        String plateType = ReagentPlate.REAGENT_PLATE_TYPES.get(0);
         ReagentPlate rp = new ReagentPlate("001", plateType);
         Work work = new Work(10, "SGP10", null, null, null, null, null, Work.Status.active);
         OperationType opType = valid ? EntityFactory.makeOperationType("Fry", null) : null;
@@ -200,7 +200,7 @@ public class TestReagentTransferService {
                 new ReagentTransfer("ABC", null, null),
                 new ReagentTransfer(null, null, null)
         );
-        UCMap<ReagentPlate> plateUCMap = UCMap.from(ReagentPlate::getBarcode, new ReagentPlate("123", ReagentPlate.TYPE_FFPE));
+        UCMap<ReagentPlate> plateUCMap = UCMap.from(ReagentPlate::getBarcode, new ReagentPlate("123", ReagentPlate.REAGENT_PLATE_TYPES.get(1)));
         when(mockReagentPlateService.loadPlates(any())).thenReturn(plateUCMap);
 
         assertSame(plateUCMap, service.loadReagentPlates(transfers));
@@ -223,20 +223,20 @@ public class TestReagentTransferService {
     }
 
     static Stream<Arguments> checkPlateTypeArgs() {
-        String ffpe = ReagentPlate.TYPE_FFPE.toLowerCase();
-        String ff = ReagentPlate.TYPE_FRESH_FROZEN.toLowerCase();
-        ReagentPlate ffpePlate = new ReagentPlate("RP1", ReagentPlate.TYPE_FFPE);
-        ReagentPlate frozenPlate = new ReagentPlate("RP2", ReagentPlate.TYPE_FRESH_FROZEN);
+        String ffpe = ReagentPlate.REAGENT_PLATE_TYPES.get(1).toLowerCase();
+        String ff = ReagentPlate.REAGENT_PLATE_TYPES.get(0).toLowerCase();
+        ReagentPlate ffpePlate = new ReagentPlate("RP1", ReagentPlate.REAGENT_PLATE_TYPES.get(1));
+        ReagentPlate frozenPlate = new ReagentPlate("RP2", ReagentPlate.REAGENT_PLATE_TYPES.get(0));
         return Arrays.stream(new Object[][]{
-                {ffpe, List.of(), ReagentPlate.TYPE_FFPE, null},
-                {ffpe, List.of(ffpePlate), ReagentPlate.TYPE_FFPE, null},
-                {ff, List.of(), ReagentPlate.TYPE_FRESH_FROZEN, null},
-                {ff, List.of(frozenPlate), ReagentPlate.TYPE_FRESH_FROZEN, null},
+                {ffpe, List.of(), ReagentPlate.REAGENT_PLATE_TYPES.get(1), null},
+                {ffpe, List.of(ffpePlate), ReagentPlate.REAGENT_PLATE_TYPES.get(1), null},
+                {ff, List.of(), ReagentPlate.REAGENT_PLATE_TYPES.get(0), null},
+                {ff, List.of(frozenPlate), ReagentPlate.REAGENT_PLATE_TYPES.get(0), null},
                 {null, List.of(), null, "Unknown plate type: null"},
                 {"bananas", List.of(ffpePlate), null, "Unknown plate type: \"bananas\""},
-                {ffpe, List.of(ffpePlate, frozenPlate), ReagentPlate.TYPE_FFPE, "The given plate type "+ReagentPlate.TYPE_FFPE+" does " +
+                {ffpe, List.of(ffpePlate, frozenPlate), ReagentPlate.REAGENT_PLATE_TYPES.get(1), "The given plate type "+ ReagentPlate.REAGENT_PLATE_TYPES.get(1) +" does " +
                         "not match the existing plate [RP2]."},
-                {ff, List.of(ffpePlate, frozenPlate), ReagentPlate.TYPE_FRESH_FROZEN, "The given plate type "+ReagentPlate.TYPE_FRESH_FROZEN+" does " +
+                {ff, List.of(ffpePlate, frozenPlate), ReagentPlate.REAGENT_PLATE_TYPES.get(0), "The given plate type "+ ReagentPlate.REAGENT_PLATE_TYPES.get(0) +" does " +
                         "not match the existing plate [RP1]."},
         }).map(Arguments::of);
     }
@@ -264,7 +264,7 @@ public class TestReagentTransferService {
         OperationType opType = EntityFactory.makeOperationType("Fry", EntityFactory.getBioState());
         Work work = new Work(1, "SGP1", null, null, null, null, null, Work.Status.active);
         List<ReagentTransfer> transfers = List.of(new ReagentTransfer("123", new Address(1,2), new Address(3,4)));
-        String plateType = ReagentPlate.TYPE_FFPE;
+        String plateType = ReagentPlate.REAGENT_PLATE_TYPES.get(1);
         UCMap<ReagentPlate> rpmap = UCMap.from(ReagentPlate::getBarcode, new ReagentPlate("123", plateType));
         Labware lw = EntityFactory.getTube();
         Sample sam = lw.getFirstSlot().getSamples().getFirst();
@@ -296,7 +296,7 @@ public class TestReagentTransferService {
                 new ReagentTransfer(rps[1].getBarcode(), null, null),
                 new ReagentTransfer(rps[2].getBarcode(), null, null)
         );
-        String plateType = ReagentPlate.TYPE_FFPE;
+        String plateType = ReagentPlate.REAGENT_PLATE_TYPES.get(1);
         for (int i = 1; i < 3; ++i) {
             when(mockReagentPlateService.createReagentPlate(rps[i].getBarcode(), plateType)).thenReturn(rps[i]);
         }
