@@ -99,6 +99,7 @@ public class ProbeServiceImp implements ProbeService {
         }
         UCMap<Labware> labware = validateLabware(problems, request.getLabware().stream()
                 .map(ProbeOperationLabware::getBarcode));
+        checkAllAddresses(problems, request.getLabware(), labware);
         OperationType opType = validateOpType(problems, request.getOperationType());
         ProbeType probeType = opProbeType(opType);
         if (probeType == null && opType != null && problems.isEmpty()) {
@@ -156,6 +157,55 @@ public class ProbeServiceImp implements ProbeService {
         val.validateSources();
         problems.addAll(val.getErrors());
         return UCMap.from(val.getLabware(), Labware::getBarcode);
+    }
+
+    /**
+     * Checks for problems with specified addresses in all labware.
+     * Where no addresses are specified, they are not checked.
+     * @param problems receptacle for problems
+     * @param pols details of labware in request
+     * @param lwMap labware looked up by barcode
+     */
+    public void checkAllAddresses(Collection<String> problems, List<ProbeOperationLabware> pols, UCMap<Labware> lwMap) {
+        for (ProbeOperationLabware pol : pols) {
+            Labware lw = lwMap.get(pol.getBarcode());
+            if (lw != null && !nullOrEmpty(pol.getAddresses())) {
+                checkAddresses(problems, pol.getAddresses(), lw);
+            }
+        }
+    }
+
+    /**
+     * Checks for problems with addresses in specified item of labware
+     * @param problems receptacle for problems
+     * @param addresses the addresses to check
+     * @param lw the labware to check the slots in
+     */
+    public void checkAddresses(Collection<String> problems, List<Address> addresses, Labware lw) {
+        Set<Address> invalidAddresses = new LinkedHashSet<>();
+        Set<Address> emptyAddresses = new LinkedHashSet<>();
+        boolean anyNull = false;
+        for (Address address : addresses) {
+            if (address == null) {
+                anyNull = true;
+            } else {
+                var optSlot = lw.optSlot(address);
+                if (optSlot.isEmpty()) {
+                    invalidAddresses.add(address);
+                } else if (optSlot.get().getSamples().isEmpty()) {
+                    emptyAddresses.add(address);
+                }
+            }
+        }
+        if (anyNull) {
+            problems.add(String.format("Null address given for labware %s.", lw.getBarcode()));
+        }
+        if (!invalidAddresses.isEmpty()) {
+            problems.add(String.format("Slot not present in labware %s: %s", lw.getBarcode(), invalidAddresses));
+        }
+        if (!emptyAddresses.isEmpty()) {
+            problems.add(String.format("Slot contains no samples in labware %s: %s", lw.getBarcode(), emptyAddresses));
+        }
     }
 
     /**
@@ -334,7 +384,7 @@ public class ProbeServiceImp implements ProbeService {
         UCMap<Operation> opMap = new UCMap<>(pols.size());
         for (ProbeOperationLabware pol : pols) {
             Labware lw = lwMap.get(pol.getBarcode());
-            Operation op = opService.createOperationInPlace(opType, user, lw, null, null);
+            Operation op = createOp(opType, user, lw, pol.getAddresses());
             opMap.put(lw.getBarcode(), op);
         }
         if (time!=null) {
@@ -344,6 +394,30 @@ public class ProbeServiceImp implements ProbeService {
             opRepo.saveAll(opMap.values());
         }
         return opMap;
+    }
+
+    /**
+     * Creates the operation in place.
+     * If addresses is null or empty, all nonempty slots of the labware are included
+     * @param opType the type of operation
+     * @param user the user responsible
+     * @param lw the labware
+     * @param addresses the addresses of the slots in the labware
+     * @return the created operation
+     */
+    public Operation createOp(OperationType opType, User user, Labware lw, List<Address> addresses) {
+        if (nullOrEmpty(addresses)) {
+            return opService.createOperationInPlace(opType, user, lw, null, null);
+        }
+        Set<Address> addressSet = new HashSet<>(addresses);
+        List<Slot> slots = lw.getSlots().stream()
+                .filter(slot -> addressSet.contains(slot.getAddress()))
+                .toList();
+        List<Action> actions = slots.stream()
+                .flatMap(slot -> slot.getSamples().stream()
+                        .map(sam -> new Action(null, null, slot, slot, sam, sam)))
+                .toList();
+        return opService.createOperation(opType, user, actions, null);
     }
 
     /**
