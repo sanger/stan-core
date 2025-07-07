@@ -1,6 +1,7 @@
 package uk.ac.sanger.sccp.stan.service.operation.confirm;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
@@ -9,6 +10,7 @@ import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSectionLabware.AddressCommentId;
 import uk.ac.sanger.sccp.stan.service.CommentValidationService;
 import uk.ac.sanger.sccp.stan.service.SlotRegionService;
+import uk.ac.sanger.sccp.stan.service.sanitiser.Sanitiser;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.UCMap;
@@ -31,16 +33,19 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
     private final WorkService workService;
     private final SlotRegionService slotRegionService;
     private final CommentValidationService commentValidationService;
+    private final Sanitiser<String> thicknessSanitiser;
 
     @Autowired
     public ConfirmSectionValidationServiceImp(LabwareRepo labwareRepo, PlanOperationRepo planOpRepo,
                                               WorkService workService, SlotRegionService slotRegionService,
-                                              CommentValidationService commentValidationService) {
+                                              CommentValidationService commentValidationService,
+                                              @Qualifier("thicknessSanitiser") Sanitiser<String> thicknessSanitiser) {
         this.labwareRepo = labwareRepo;
         this.planOpRepo = planOpRepo;
         this.workService = workService;
         this.slotRegionService = slotRegionService;
         this.commentValidationService = commentValidationService;
+        this.thicknessSanitiser = thicknessSanitiser;
     }
 
     @Override
@@ -61,6 +66,7 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
                 .map(ConfirmSectionLabware::getWorkNumber)
                 .filter(wn -> !nullOrEmpty(wn))
                 .collect(toSet());
+        sanitiseThickness(problems, request.getLabware());
         UCMap<Work> works = workService.validateUsableWorks(problems, workNumbers);
         if (!problems.isEmpty()) {
             return new ConfirmSectionValidation(problems);
@@ -276,6 +282,26 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
             } else if (!planAddresses.contains(ad)) {
                 addProblem(problems, "No planned action recorded for address %s in labware %s, specified in comments.",
                         ad, lw.getBarcode());
+            }
+        }
+    }
+
+    /**
+     * Validates and sanitises any thicknesses specified in the request
+     * @param problems receptacle for problems
+     * @param csls the labware in the request being validated
+     */
+    public void sanitiseThickness(Collection<String> problems, Collection<ConfirmSectionLabware> csls) {
+        for (ConfirmSectionLabware csl : csls) {
+            for (ConfirmSection cs : csl.getConfirmSections()) {
+                if (cs.getThickness()!=null) {
+                    String thickness = cs.getThickness().trim();
+                    if (thickness.isEmpty()) {
+                        cs.setThickness(null);
+                    } else {
+                        cs.setThickness(thicknessSanitiser.sanitise(problems, thickness));
+                    }
+                }
             }
         }
     }

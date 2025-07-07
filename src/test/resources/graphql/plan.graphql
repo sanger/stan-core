@@ -25,6 +25,7 @@ mutation {
                     source: { barcode: "STAN-B70D" }
                     address: "B2"
                     sampleId: 55556
+                    sampleThickness: "2.5"
                 }
             ]
         }, {
@@ -66,6 +67,7 @@ mutation {
                 }
                 sample { id }
                 newSection
+                sampleThickness
             }
         }
     }

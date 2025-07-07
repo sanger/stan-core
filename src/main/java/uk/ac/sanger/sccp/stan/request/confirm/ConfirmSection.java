@@ -18,6 +18,7 @@ public class ConfirmSection {
     private Integer newSection;
     private List<Integer> commentIds = List.of();
     private String region;
+    private String thickness;
 
     public ConfirmSection() {}
 
@@ -74,6 +75,14 @@ public class ConfirmSection {
         this.region = region;
     }
 
+    public String getThickness() {
+        return this.thickness;
+    }
+
+    public void setThickness(String thickness) {
+        this.thickness = thickness;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -83,7 +92,9 @@ public class ConfirmSection {
                 && Objects.equals(this.sampleId, that.sampleId)
                 && Objects.equals(this.newSection, that.newSection)
                 && Objects.equals(this.commentIds, that.commentIds)
-                && Objects.equals(this.region, that.region));
+                && Objects.equals(this.region, that.region)
+                && Objects.equals(this.thickness, that.thickness)
+        );
     }
 
     @Override
@@ -99,6 +110,7 @@ public class ConfirmSection {
                 .add("newSection", newSection)
                 .add("commentIds", commentIds)
                 .addRepr("region", region)
+                .addRepr("thickness", thickness)
                 .toString();
     }
 }
