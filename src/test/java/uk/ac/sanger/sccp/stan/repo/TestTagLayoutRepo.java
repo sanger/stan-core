@@ -65,14 +65,14 @@ public class TestTagLayoutRepo {
         Map<Integer, TagLayout> map = tagLayoutRepo.getMapByIdIn(List.of(1,2));
         assertThat(map).containsOnlyKeys(1,2);
         TagLayout ly1 = map.get(1);
-        assertEquals(ly1.getName(), "tag layout 1");
+        assertEquals("tag layout 1", ly1.getName());
         var headings = ly1.getHeadings();
         assertThat(headings).hasSize(3);
         assertTagHeading(headings.get(0), "Alpha", 1, 1, "AlphaA1", 1, 2, "AlphaA2");
         assertTagHeading(headings.get(1), "Beta", 1, 2, "BetaA2", 2, 1, "BetaB1");
         assertTagHeading(headings.get(2), "Gamma", 1, 1, "GammaA1", 1, 2, "GammaA2");
         TagLayout ly2 = map.get(2);
-        assertEquals(ly2.getName(), "tag layout 2");
+        assertEquals("tag layout 2", ly2.getName());
         headings = ly2.getHeadings();
         assertThat(headings).hasSize(1);
         assertTagHeading(headings.get(0), "Alpha", 1, 1, "OtherA1");
@@ -87,8 +87,8 @@ public class TestTagLayoutRepo {
 
     static Stream<Arguments> loadLayoutIdsForReagentPlateTypeArgs() {
         return Arrays.stream(new Object[][] {
-                { ReagentPlate.TYPE_FFPE, 2 },
-                { ReagentPlate.TYPE_FRESH_FROZEN, 1 },
+                {ReagentPlate.REAGENT_PLATE_TYPES.get(1), 2 },
+                {ReagentPlate.REAGENT_PLATE_TYPES.get(0), 1 },
                 { "Bananas", null },
         }).map(Arguments::of);
     }

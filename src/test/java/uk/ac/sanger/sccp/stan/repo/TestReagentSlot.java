@@ -42,7 +42,7 @@ public class TestReagentSlot {
     @Test
     @Transactional
     public void testReagentSlot() {
-        ReagentPlate plate = reagentPlateRepo.save(new ReagentPlate("123", ReagentPlate.TYPE_FFPE));
+        ReagentPlate plate = reagentPlateRepo.save(new ReagentPlate("123", ReagentPlate.REAGENT_PLATE_TYPES.get(1)));
         List<ReagentSlot> rslots = Address.stream(2,3)
                 .map(ad -> new ReagentSlot(null, plate.getId(), ad, false))
                 .collect(Collectors.toList());

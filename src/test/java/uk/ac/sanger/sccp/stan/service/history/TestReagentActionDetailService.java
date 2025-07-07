@@ -67,8 +67,8 @@ public class TestReagentActionDetailService {
         ReagentPlate rp2 = EntityFactory.makeReagentPlate("456");
         final int layoutId = 17;
         rp1.setTagLayoutId(layoutId);
-        rp1.setPlateType(ReagentPlate.TYPE_FRESH_FROZEN);
-        rp2.setPlateType(ReagentPlate.TYPE_FFPE);
+        rp1.setPlateType(ReagentPlate.REAGENT_PLATE_TYPES.get(0));
+        rp2.setPlateType(ReagentPlate.REAGENT_PLATE_TYPES.get(1));
         LabwareType lt = EntityFactory.makeLabwareType(2,2);
         Sample sample = EntityFactory.getSample();
         Labware lw1 = EntityFactory.makeLabware(lt, sample, sample, sample, sample);
@@ -156,8 +156,8 @@ public class TestReagentActionDetailService {
     public void testLoadReagentTransfersForSlots() {
         ReagentPlate rp1 = EntityFactory.makeReagentPlate("123");
         ReagentPlate rp2 = EntityFactory.makeReagentPlate("456");
-        rp1.setPlateType(ReagentPlate.TYPE_FFPE);
-        rp2.setPlateType(ReagentPlate.TYPE_FRESH_FROZEN);
+        rp1.setPlateType(ReagentPlate.REAGENT_PLATE_TYPES.get(1));
+        rp2.setPlateType(ReagentPlate.REAGENT_PLATE_TYPES.get(0));
         final int layoutId = 18;
         rp1.setTagLayoutId(layoutId);
         LabwareType lt = EntityFactory.makeLabwareType(2,2);

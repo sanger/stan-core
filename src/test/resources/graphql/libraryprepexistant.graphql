@@ -2,7 +2,7 @@ mutation {
     libraryPrep(request: {
         sources: [{barcode: "STAN-1", labwareState: used}]
         workNumber: "[WORK]"
-        reagentPlateType: "ffpe - dual index ts set a"
+        reagentPlateType: "dual index ts set a"
         reagentTransfers: [{
             reagentPlateBarcode: "012345678901234567890123"
             reagentSlotAddress: "A1"
