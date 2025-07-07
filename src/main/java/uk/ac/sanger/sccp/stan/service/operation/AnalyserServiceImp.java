@@ -30,8 +30,8 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.*;
  */
 @Service
 public class AnalyserServiceImp extends BaseResultService implements AnalyserService {
-    public static final String PROBE_HYBRIDISATION_NAME = CompletionServiceImp.PROBE_HYBRIDISATION_NAME;
     public static final String ANALYSER_OP_NAME = "Xenium analyser";
+    public static final String PROBE_HYBRIDISATION_NAME = "Probe hybridisation Xenium";
 
     public static final String LOT_A_NAME = "decoding reagent A lot", LOT_B_NAME = "decoding reagent B lot",
             RUN_NAME = "run", POSITION_NAME = "cassette position", CELL_SEGMENTATION_LOT_NAME = "cell segmentation lot",
@@ -184,7 +184,7 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
             problems.add("Operation type "+priorOpName+" is missing from the database.");
             return Map.of();
         }
-        return lookUpLatestOps(problems, priorOpType, labware, true);
+        return lookUpLatestOps(problems, List.of(priorOpType), labware, true);
     }
 
     /**
@@ -491,6 +491,7 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
 
     /** An address and a sample id, used for deduplication */
     record AddressAndSampleId(Address address, Integer sampleId) {
+        @NotNull
         @Override
         public String toString() {
             return String.format("{sampleId: %s, address: %s}", sampleId, address);
