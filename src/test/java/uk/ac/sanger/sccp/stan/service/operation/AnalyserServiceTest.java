@@ -294,7 +294,7 @@ public class AnalyserServiceTest {
         assertEquals(opMap, service.loadPriorOps(problems, opType, labware));
         assertProblem(problems, expectedProblem);
         if (priorOpType!=null) {
-            verify(service).lookUpLatestOps(problems, priorOpType, labware, true);
+            verify(service).lookUpLatestOps(problems, List.of(priorOpType), labware, true);
         }
     }
 

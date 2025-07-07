@@ -64,7 +64,7 @@ public class TestProbeOperationMutation {
         result = tester.post(addProbeMutation.replace("PROBENAME", "william").replace("xenium", "spike"));
         assertEquals("william", chainGet(result, "data", "addProbePanel", "name"));
 
-        OperationType opType = entityCreator.createOpType(CompletionServiceImp.PROBE_HYBRIDISATION_NAME, null, OperationTypeFlag.PROBES, OperationTypeFlag.IN_PLACE);
+        OperationType opType = entityCreator.createOpType(CompletionServiceImp.PROBE_HYBRIDISATION_NAMES.getFirst(), null, OperationTypeFlag.PROBES, OperationTypeFlag.IN_PLACE);
         Sample sample = entityCreator.createSample(null, null);
         Labware lw = entityCreator.createLabware("STAN-1", entityCreator.getTubeType(), sample);
         Work work = entityCreator.createWork(null, null, null, null, null);

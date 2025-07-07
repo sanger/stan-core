@@ -177,7 +177,7 @@ public class TestExtractResultService {
         when(mockCommentValidationService.validateCommentIds(any(), any())).then(invocation -> {
             Collection<String> problems = invocation.getArgument(0);
             Stream<Integer> ids = invocation.getArgument(1);
-            problems.add("Bad comment ids: "+ids.collect(toList()));
+            problems.add("Bad comment ids: "+ids.toList());
             return List.of(com1, com2);
         });
         List<String> problems = new ArrayList<>(1);
@@ -283,7 +283,7 @@ public class TestExtractResultService {
         }
 
         if (opTypeExists && anyLabware) {
-            verify(service).lookUpLatestOpIds(problems, opType, lwList, true);
+            verify(service).lookUpLatestOpIds(problems, List.of(opType), lwList, true);
         } else {
             verify(service, never()).lookUpLatestOpIds(any(), any(), any(), anyBoolean());
         }

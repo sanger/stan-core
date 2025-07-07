@@ -23,9 +23,9 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.pluralise;
 @Service
 public class CompletionServiceImp extends BaseResultService implements CompletionService {
     /** The name of the probe hybridisation qc op type */
-    public static final String PROBE_QC_NAME = "Probe hybridisation QC",
-    /** The name of the preceding probe hybridisation op type */
-        PROBE_HYBRIDISATION_NAME = "Probe hybridisation Xenium";
+    public static final String PROBE_QC_NAME = "Probe hybridisation QC";
+    /** The names of the preceding probe hybridisation op types */
+    public static final List<String> PROBE_HYBRIDISATION_NAMES = List.of("Probe hybridisation Xenium", "Probe hybridisation Cytassist");
 
     private final Clock clock;
 
@@ -63,10 +63,10 @@ public class CompletionServiceImp extends BaseResultService implements Completio
         Work work = workService.validateUsableWork(problems, request.getWorkNumber());
         OperationType opType = validateOpType(problems, request.getOperationType());
         UCMap<Labware> lwMap = loadLabware(problems, request.getLabware());
-        OperationType precedingOpType = getPrecedingOpType(problems, opType);
+        List<OperationType> precedingOpTypes = getPrecedingOpTypes(problems, opType);
         Map<Integer, Operation> priorOpMap;
-        if (precedingOpType!=null) {
-            priorOpMap = lookUpLatestOps(problems, precedingOpType, lwMap.values(), true);
+        if (precedingOpTypes!=null) {
+            priorOpMap = lookUpLatestOps(problems, precedingOpTypes, lwMap.values(), true);
         } else {
             priorOpMap = Map.of();
         }
@@ -96,28 +96,26 @@ public class CompletionServiceImp extends BaseResultService implements Completio
     }
 
     /**
-     * What is the type of op that must precede the given op type?
+     * What are the types of op that must precede the given op type?
      * @param problems receptacle for problems
      * @param opType the op type being recorded
-     * @return the required preceding op type
+     * @return the required preceding op types
      */
-    public OperationType getPrecedingOpType(Collection<String> problems, OperationType opType) {
+    public List<OperationType> getPrecedingOpTypes(Collection<String> problems, OperationType opType) {
         if (opType==null) {
             return null;
         }
-        String precedingOpName;
-        if (PROBE_QC_NAME.equalsIgnoreCase(opType.getName())) {
-            precedingOpName = PROBE_HYBRIDISATION_NAME;
-        } else {
+        if (!opType.getName().equalsIgnoreCase(PROBE_QC_NAME)) {
             problems.add("Operation type "+opType.getName()+" cannot be used in this operation.");
             return null;
         }
-        var opt = opTypeRepo.findByName(precedingOpName);
-        if (opt.isPresent()) {
-            return opt.get();
+        List<String> precedingOpNames = PROBE_HYBRIDISATION_NAMES;
+        List<OperationType> opTypes = opTypeRepo.findByNameIn(precedingOpNames);
+        if (opTypes.isEmpty()) {
+            problems.add("Operation type missing from database: "+precedingOpNames);
+            return null;
         }
-        problems.add("The operation type "+precedingOpName+" is missing from the database.");
-        return null;
+        return opTypes;
     }
 
     /**

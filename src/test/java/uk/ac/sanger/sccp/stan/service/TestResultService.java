@@ -603,7 +603,7 @@ public class TestResultService {
         op.setId(17);
         op.setOperationType(opType);
         List<Operation> ops = (anyStained ? List.of(op) : List.of());
-        when(mockOpRepo.findAllByOperationTypeAndDestinationLabwareIdIn(any(), any())).thenReturn(ops);
+        when(mockOpRepo.findAllByOperationTypeInAndDestinationLabwareIdIn(any(), any())).thenReturn(ops);
         Map<Integer, Operation> opsMap = (slw!=null ? Map.of(slw.getId(), op) : Map.of());
         Map<Integer, Integer> opIdMap = opsMap.entrySet().stream().collect(toMap(Map.Entry::getKey, e -> e.getValue().getId()));
 
@@ -625,7 +625,7 @@ public class TestResultService {
         if (ancestral) {
             verify(service).lookUpAncestralOpIds(any(), eq(opType), eq(labware), eq(required));
         } else {
-            verify(mockOpRepo).findAllByOperationTypeAndDestinationLabwareIdIn(opType, labwareIds);
+            verify(mockOpRepo).findAllByOperationTypeInAndDestinationLabwareIdIn(List.of(opType), labwareIds);
             verify(service).makeLabwareOpMap(ops);
         }
 

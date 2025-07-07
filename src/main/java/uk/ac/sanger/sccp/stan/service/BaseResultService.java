@@ -107,39 +107,40 @@ public abstract class BaseResultService {
      * Where multiple operations match for the same item of labware, {@link #supersedes} is used to determine
      * which should be kept.
      * @param problems receptacle for problems found
-     * @param opType the type of op to look up
+     * @param opTypes the types of ops to look up
      * @param labware the labware that is the destinations of the operations
      * @param required whether the operation being not found constitutes a problem
      * @return a map from labware id to operation id
      */
-    public Map<Integer, Integer> lookUpLatestOpIds(Collection<String> problems, OperationType opType,
+    public Map<Integer, Integer> lookUpLatestOpIds(Collection<String> problems, List<OperationType> opTypes,
                                                    Collection<Labware> labware, boolean required) {
-        return lookUpLatestOps(problems, opType, labware, required).entrySet().stream()
+        return lookUpLatestOps(problems, opTypes, labware, required).entrySet().stream()
                 .collect(toMap(Map.Entry::getKey, e -> e.getValue().getId()));
     }
 
     /**
-     * Looks up the latest operations of the given type on each of the given labware (as the destination).
+     * Looks up the latest operations of the given types on each of the given labware (as the destination).
      * If any labware do not have a matching operation, then a problem will be added that includes a list of those barcodes.
      * Where multiple operations match for the same item of labware, {@link #supersedes} is used to determine
      * which should be kept.
      * @param problems receptacle for problems found
-     * @param opType the type of op to look up
+     * @param opTypes the types of ops to look up
      * @param labware the labware that is the destinations of the operations
      * @param required whether the operation being not found constitutes a problem
      * @return a map from labware id to operation
      */
-    public Map<Integer, Operation> lookUpLatestOps(Collection<String> problems, OperationType opType,
+    public Map<Integer, Operation> lookUpLatestOps(Collection<String> problems, List<OperationType> opTypes,
                                                    Collection<Labware> labware, boolean required) {
         Set<Integer> labwareIds = labware.stream().map(Labware::getId).collect(toSet());
-        List<Operation> ops = opRepo.findAllByOperationTypeAndDestinationLabwareIdIn(opType, labwareIds);
+        List<Operation> ops = opRepo.findAllByOperationTypeInAndDestinationLabwareIdIn(opTypes, labwareIds);
         Map<Integer, Operation> opsMap = makeLabwareOpMap(ops);
         List<String> unmatchedBarcodes = labware.stream()
                 .filter(lw -> !opsMap.containsKey(lw.getId()))
                 .map(Labware::getBarcode)
-                .collect(toList());
+                .toList();
         if (required && !unmatchedBarcodes.isEmpty()) {
-            problems.add("No "+opType.getName()+" operation has been recorded on the following labware: "+unmatchedBarcodes);
+            String opnames = opTypes.stream().map(OperationType::getName).collect(joining(", "));
+            problems.add("No "+opnames+" operation has been recorded on the following labware: "+unmatchedBarcodes);
         }
         return opsMap;
     }
@@ -162,7 +163,7 @@ public abstract class BaseResultService {
             List<String> missing = labware.stream()
                     .filter(lw -> opMap.get(lw.getId())==null)
                     .map(Labware::getBarcode)
-                    .collect(toList());
+                    .toList();
             if (!missing.isEmpty()) {
                 problems.add("No "+opType.getName()+" operation found on labware: "+missing);
             }

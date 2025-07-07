@@ -329,7 +329,7 @@ public class ResultServiceImp extends BaseResultService implements ResultService
         if (ancestral) {
             return lookUpAncestralOpIds(problems, opType, labware, required);
         } else {
-            return lookUpLatestOpIds(problems, opType, labware, required);
+            return lookUpLatestOpIds(problems, List.of(opType), labware, required);
         }
     }
 

@@ -28,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.Matchers.*;
-import static uk.ac.sanger.sccp.stan.service.CompletionServiceImp.PROBE_HYBRIDISATION_NAME;
+import static uk.ac.sanger.sccp.stan.service.CompletionServiceImp.PROBE_HYBRIDISATION_NAMES;
 import static uk.ac.sanger.sccp.utils.BasicUtils.concat;
 
 /**
@@ -73,7 +73,9 @@ public class TestCompletionService {
                 List.of(new LabwareSampleComments("STAN-1", null, null)));
         Work work = EntityFactory.makeWork("SGP1");
         OperationType opType = EntityFactory.makeOperationType("comp", null, OperationTypeFlag.IN_PLACE);
-        OperationType precedingOpType = EntityFactory.makeOperationType("prev", null, OperationTypeFlag.IN_PLACE);
+        List<OperationType> precedingOpTypes = IntStream.range(0,2)
+                .mapToObj(i -> EntityFactory.makeOperationType("prev"+i, null, OperationTypeFlag.IN_PLACE))
+                .toList();
         Labware lw = EntityFactory.getTube();
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lw);
         Map<Integer, Operation> priorOps = Map.of(200, new Operation());
@@ -81,7 +83,7 @@ public class TestCompletionService {
         doReturn(work).when(mockWorkService).validateUsableWork(any(), any());
         doReturn(opType).when(service).loadOpType(any(),any());
         doReturn(lwMap).when(service).loadLabware(any(), ArgumentMatchers.<List<String>>any());
-        doReturn(precedingOpType).when(service).getPrecedingOpType(any(), any());
+        doReturn(precedingOpTypes).when(service).getPrecedingOpTypes(any(), any());
         doReturn(priorOps).when(service).lookUpLatestOps(any(), any(), any(), anyBoolean());
         doNothing().when(service).validateTimestamps(any(), any(), any(), any());
         doNothing().when(service).validateCommentLocations(any(), any(), any());
@@ -95,8 +97,8 @@ public class TestCompletionService {
         verify(mockWorkService).validateUsableWork(any(), eq("SGP1"));
         verify(service).validateOpType(any(), eq("comp"));
         verify(service).loadLabware(any(), same(request.getLabware()));
-        verify(service).getPrecedingOpType(any(), same(opType));
-        verify(service).lookUpLatestOps(any(), same(precedingOpType), eq(lwMap.values()), eq(true));
+        verify(service).getPrecedingOpTypes(any(), same(opType));
+        verify(service).lookUpLatestOps(any(), same(precedingOpTypes), eq(lwMap.values()), eq(true));
         verify(service).validateTimestamps(any(), same(request.getLabware()), same(lwMap), same(priorOps));
         verify(service).validateCommentLocations(any(), same(request.getLabware()), same(lwMap));
         verify(service).validateCommentIds(any(), same(request.getLabware()));
@@ -116,11 +118,11 @@ public class TestCompletionService {
     public void testPerform_problems(boolean precedingOpTypeExists) {
         when(mockWorkService.validateUsableWork(any(), any())).thenAnswer(addProblem("Bad work"));
         OperationType opType = EntityFactory.makeOperationType("Foozle", null);
-        OperationType precedingOpType = precedingOpTypeExists ? EntityFactory.makeOperationType("Fizzle", null) : null;
+        List<OperationType> precedingOpTypes = precedingOpTypeExists ? List.of(EntityFactory.makeOperationType("preceding", null, OperationTypeFlag.IN_PLACE)) : null;
         doAnswer(addProblem("Bad op type", opType)).when(service).validateOpType(any(), any());
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, EntityFactory.getTube());
         doAnswer(addProblem("Bad lw", lwMap)).when(service).loadLabware(any(), ArgumentMatchers.<List<LabwareSampleComments>>any());
-        doAnswer(addProblem("Bad preceding op type", precedingOpType)).when(service).getPrecedingOpType(any(), any());
+        doAnswer(addProblem("Bad preceding op type", precedingOpTypes)).when(service).getPrecedingOpTypes(any(), any());
 
         Map<Integer, Operation> precedingOps = precedingOpTypeExists ? Map.of(3, new Operation()) : Map.of();
         doAnswer(addProblem("Bad latest ops", precedingOps)).when(service).lookUpLatestOps(any(), any(), any(), anyBoolean());
@@ -148,8 +150,8 @@ public class TestCompletionService {
         verify(mockWorkService).validateUsableWork(any(), eq("SGP1"));
         verify(service).validateOpType(any(), eq("foozle"));
         verify(service).loadLabware(any(), same(request.getLabware()));
-        verify(service).getPrecedingOpType(any(), same(opType));
-        verify(service, times(precedingOpTypeExists ? 1 : 0)).lookUpLatestOps(any(), same(precedingOpType), eq(lwMap.values()), eq(true));
+        verify(service).getPrecedingOpTypes(any(), same(opType));
+        verify(service, times(precedingOpTypeExists ? 1 : 0)).lookUpLatestOps(any(), eq(precedingOpTypes), eq(lwMap.values()), eq(true));
         verify(service).validateTimestamps(any(), same(request.getLabware()), same(lwMap), same(precedingOps));
         verify(service).validateCommentLocations(any(), same(request.getLabware()), same(lwMap));
         verify(service).validateCommentIds(any(), same(request.getLabware()));
@@ -178,19 +180,27 @@ public class TestCompletionService {
     }
 
     @ParameterizedTest
-    @CsvSource({
-            "Probe hybridisation QC, true,",
-            "Probe hybridisation QC, false, The operation type Probe hybridisation Xenium is missing from the database.",
-            ",false,",
-            "foozle, false, Operation type foozle cannot be used in this operation.",
-    })
-    public void testGetPrecedingOpType(String opName, boolean priorExists, String expectedProblem) {
+    @CsvSource(value = {
+            "Probe hybridisation QC; true;",
+            "Probe hybridisation QC; false; Operation type missing from database: [Probe hybridisation Xenium, Probe hybridisation Cytassist]",
+            ";false;",
+            "foozle; false; Operation type foozle cannot be used in this operation.",
+    }, delimiter=';')
+    public void testGetPrecedingOpTypes(String opName, boolean priorExists, String expectedProblem) {
         OperationType opType = (opName == null ? null : EntityFactory.makeOperationType(opName, null));
-        OperationType priorOpType = priorExists ? EntityFactory.makeOperationType("Probe hybridisation Xenium", null) : null;
+        List<OperationType> priorOpTypes;
+        if (priorExists) {
+            priorOpTypes = PROBE_HYBRIDISATION_NAMES.stream()
+                    .map(name -> EntityFactory.makeOperationType(name, null))
+                    .toList();
+            when(mockOpTypeRepo.findByNameIn(PROBE_HYBRIDISATION_NAMES)).thenReturn(priorOpTypes);
+        } else {
+            priorOpTypes = null;
+            when(mockOpTypeRepo.findByNameIn(any())).thenReturn(List.of());
+        }
         List<String> problems = new ArrayList<>(expectedProblem==null ? 0 : 1);
-        when(mockOpTypeRepo.findByName(PROBE_HYBRIDISATION_NAME)).thenReturn(Optional.ofNullable(priorOpType));
 
-        assertSame(priorOpType, service.getPrecedingOpType(problems, opType));
+        assertSame(priorOpTypes, service.getPrecedingOpTypes(problems, opType));
         Matchers.assertProblem(problems, expectedProblem);
     }
 
