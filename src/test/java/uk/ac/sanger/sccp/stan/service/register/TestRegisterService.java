@@ -315,6 +315,7 @@ public class TestRegisterService {
         TissueType tissueType = EntityFactory.getTissueType();
         Medium medium = EntityFactory.getMedium();
         Fixative fixative = EntityFactory.getFixative();
+        CellClass cellClass = EntityFactory.getCellClass();
         Hmdmc[] hmdmcs = {new Hmdmc(20000, "20/000"), new Hmdmc(20001, "20/001")};
 
         BlockRegisterRequest block0 = new BlockRegisterRequest();
@@ -330,6 +331,7 @@ public class TestRegisterService {
         block0.setReplicateNumber("2");
         block0.setSpatialLocation(1);
         block0.setSpecies(donor1.getSpecies().getName());
+        block0.setCellClass("Tissue");
 
         BlockRegisterRequest block1 = new BlockRegisterRequest();
         block1.setDonorIdentifier(donor2.getDonorName());
@@ -343,8 +345,8 @@ public class TestRegisterService {
         block1.setHighestSection(0);
         block1.setExternalIdentifier("TISSUE1");
         block1.setSpecies(donor2.getSpecies().getName());
+        block1.setCellClass("Tissue");
         block1.setSampleCollectionDate(LocalDate.of(2020,4,6));
-
 
         Map<String, Donor> donorMap = Map.of(donor1.getDonorName().toUpperCase(), donor1,
                 donor2.getDonorName().toUpperCase(), donor2);
@@ -367,6 +369,7 @@ public class TestRegisterService {
                 .thenReturn(sls[1]);
         when(mockValidation.getMedium(eqCi(medium.getName()))).thenReturn(medium);
         when(mockValidation.getFixative(eqCi(fixative.getName()))).thenReturn(fixative);
+        when(mockValidation.getCellClass("Tissue")).thenReturn(cellClass);
         Arrays.stream(lts).forEach(lt -> when(mockValidation.getLabwareType(eqCi(lt.getName()))).thenReturn(lt));
         Arrays.stream(hmdmcs).forEach(h -> when(mockValidation.getHmdmc(eqCi(h.getHmdmc()))).thenReturn(h));
         RegisterRequest request = new RegisterRequest(List.of(block0, block1));
@@ -375,9 +378,9 @@ public class TestRegisterService {
 
         Tissue[] tissues = new Tissue[]{
                 new Tissue(5000, block0.getExternalIdentifier(), block0.getReplicateNumber(),
-                        sls[0], donor1, medium, fixative, hmdmcs[0], block0.getSampleCollectionDate(), null),
+                        sls[0], donor1, medium, fixative, cellClass, hmdmcs[0], block0.getSampleCollectionDate(), null),
                 new Tissue(5001, block1.getExternalIdentifier(), block1.getReplicateNumber(),
-                        sls[1], donor2, medium, fixative, null, block1.getSampleCollectionDate(), null),
+                        sls[1], donor2, medium, fixative, cellClass, null, block1.getSampleCollectionDate(), null),
         };
 
         BioState bioState = opType.getNewBioState();
@@ -417,6 +420,7 @@ public class TestRegisterService {
                             i==0 ? donor1 : donor2,
                             medium,
                             fixative,
+                            cellClass,
                             i==0 ? hmdmcs[i] : null,
                             block.getSampleCollectionDate(), null));
             verify(mockSampleRepo).save(new Sample(null, null, tissues[i], bioState));
@@ -440,6 +444,7 @@ public class TestRegisterService {
         TissueType tissueType = EntityFactory.getTissueType();
         Medium medium = EntityFactory.getMedium();
         Fixative fixative = EntityFactory.getFixative();
+        CellClass cellClass = EntityFactory.getCellClass();
         Hmdmc hmdmc;
         String hmdmcString;
         if (hmdmcObj instanceof Hmdmc) {
@@ -463,6 +468,7 @@ public class TestRegisterService {
         block.setLabwareType(lt.getName());
         block.setMedium(medium.getName());
         block.setFixative(fixative.getName());
+        block.setCellClass(cellClass.getName());
         block.setTissueType(tissueType.getName());
         block.setReplicateNumber("2");
         block.setSpatialLocation(1);
@@ -484,6 +490,7 @@ public class TestRegisterService {
         when(mockValidation.getMedium(eqCi(medium.getName()))).thenReturn(medium);
         when(mockValidation.getFixative(eqCi(fixative.getName()))).thenReturn(fixative);
         when(mockValidation.getLabwareType(eqCi(lt.getName()))).thenReturn(lt);
+        when(mockValidation.getCellClass(eq(cellClass.getName()))).thenReturn(cellClass);
         if (hmdmc != null) {
             when(mockValidation.getHmdmc(hmdmc.getHmdmc())).thenReturn(hmdmc);
         } else if (hmdmcString!=null) {
@@ -494,7 +501,7 @@ public class TestRegisterService {
         when(mockLabwareService.create(lt)).thenReturn(lw);
 
         final Tissue tissue = new Tissue(5000, block.getExternalIdentifier(), block.getReplicateNumber(),
-                sl, donor, medium, fixative, hmdmc, null, null);
+                sl, donor, medium, fixative, null, hmdmc, null, null);
 
         BioState bioState = opType.getNewBioState();
         Sample sample = new Sample(6000, null, tissue, bioState);
@@ -522,6 +529,7 @@ public class TestRegisterService {
                         donor,
                         medium,
                         fixative,
+                        cellClass,
                         hmdmc,
                         null, null));
         verify(mockSampleRepo).save(new Sample(null, null, tissue, bioState));

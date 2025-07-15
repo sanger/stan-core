@@ -31,6 +31,7 @@ public class EntityFactory {
     private static Printer printer;
     private static Species human;
     private static SlotRegion slotRegion;
+    private static CellClass tissueCellClass;
 
     private static int idCounter = 10_000;
 
@@ -115,7 +116,7 @@ public class EntityFactory {
     public static Tissue getTissue() {
         if (tissue==null) {
             tissue = new Tissue(80, "TISSUE1", "1", getSpatialLocation(), getDonor(),
-                    getMedium(), getFixative(), getHmdmc(), null, null);
+                    getMedium(), getFixative(), getCellClass(), getHmdmc(), null, null);
         }
         return tissue;
     }
@@ -214,9 +215,16 @@ public class EntityFactory {
         return new OperationType(++idCounter, name, flagbits, newBioState);
     }
 
+    public static CellClass getCellClass() {
+        if (tissueCellClass == null) {
+            tissueCellClass = new CellClass(1, "Tissue", true, true);
+        }
+        return tissueCellClass;
+    }
+
     public static Tissue makeTissue(Donor donor, SpatialLocation sl) {
         int id = ++idCounter;
-        return new Tissue(id, "TISSUE "+id, String.valueOf(id%7), sl, donor, getMedium(), getFixative(), getHmdmc(), null, null);
+        return new Tissue(id, "TISSUE "+id, String.valueOf(id%7), sl, donor, getMedium(), getFixative(), getCellClass(), getHmdmc(), null, null);
     }
 
     public static ReagentPlate makeReagentPlate(String barcode) {

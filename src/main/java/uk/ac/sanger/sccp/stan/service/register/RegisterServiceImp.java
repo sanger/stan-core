@@ -105,7 +105,8 @@ public class RegisterServiceImp implements IRegisterService<RegisterRequest> {
                     throw new IllegalArgumentException("Unknown HuMFre number: "+block.getHmdmc());
                 }
             }
-            if (donor.getSpecies().requiresHmdmc() && hmdmc==null) {
+            CellClass cellClass = validation.getCellClass(block.getCellClass());
+            if (hmdmc==null && donor.getSpecies().requiresHmdmc() && cellClass.isHmdmcRequired()) {
                 throw new IllegalArgumentException("No HuMFre number given for tissue "+block.getExternalIdentifier());
             }
             if (!donor.getSpecies().requiresHmdmc() && hmdmc!=null) {
@@ -115,7 +116,7 @@ public class RegisterServiceImp implements IRegisterService<RegisterRequest> {
                     validation.getSpatialLocation(block.getTissueType(), block.getSpatialLocation()),
                     donor,
                     validation.getMedium(block.getMedium()),
-                    validation.getFixative(block.getFixative()),
+                    validation.getFixative(block.getFixative()), cellClass,
                     hmdmc, block.getSampleCollectionDate(), null);
             tissueMap.put(tissueKey, tissueRepo.save(tissue));
         }

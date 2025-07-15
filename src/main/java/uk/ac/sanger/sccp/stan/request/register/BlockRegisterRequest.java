@@ -27,6 +27,7 @@ public class BlockRegisterRequest {
     private boolean existingTissue;
     private LocalDate sampleCollectionDate;
     private String bioRiskCode;
+    private String cellClass;
 
     public String getDonorIdentifier() {
         return this.donorIdentifier;
@@ -148,6 +149,14 @@ public class BlockRegisterRequest {
         this.bioRiskCode = bioRiskCode;
     }
 
+    public String getCellClass() {
+        return this.cellClass;
+    }
+
+    public void setCellClass(String cellClass) {
+        this.cellClass = cellClass;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -168,6 +177,7 @@ public class BlockRegisterRequest {
                 && Objects.equals(this.species, that.species)
                 && Objects.equals(this.sampleCollectionDate, that.sampleCollectionDate)
                 && Objects.equals(this.bioRiskCode, that.bioRiskCode)
+                && Objects.equals(this.cellClass, that.cellClass)
         );
     }
 
@@ -194,6 +204,7 @@ public class BlockRegisterRequest {
                 .add("existingTissue", existingTissue)
                 .add("sampleCollectionDate", sampleCollectionDate)
                 .add("bioRiskCode", bioRiskCode)
+                .add("cellClass", cellClass)
                 .reprStringValues()
                 .toString();
     }

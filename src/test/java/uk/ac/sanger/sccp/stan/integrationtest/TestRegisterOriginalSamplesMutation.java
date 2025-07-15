@@ -85,6 +85,7 @@ public class TestRegisterOriginalSamplesMutation {
         assertEquals("2022-05-19", tissueData.get("collectionDate"));
         assertEquals("None", chainGet(tissueData, "medium", "name"));
         assertEquals("None", chainGet(tissueData, "fixative", "name"));
+        assertEquals("Tissue", chainGet(tissueData, "cellClass", "name"));
         assertEquals((Integer) 0, chainGet(tissueData, "spatialLocation", "code"));
         assertEquals("Bone", chainGet(tissueData, "spatialLocation", "tissueType", "name"));
 

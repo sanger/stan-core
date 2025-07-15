@@ -23,5 +23,7 @@ public interface RegisterValidation {
 
     BioRisk getBioRisk(String code);
 
+    CellClass getCellClass(String name);
+
     Collection<Work> getWorks();
 }

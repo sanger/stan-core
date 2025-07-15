@@ -31,6 +31,7 @@ public class SectionRegisterValidation {
     private final HmdmcRepo hmdmcRepo;
     private final TissueTypeRepo tissueTypeRepo;
     private final FixativeRepo fixativeRepo;
+    private final CellClassRepo cellClassRepo;
     private final MediumRepo mediumRepo;
     private final TissueRepo tissueRepo;
     private final BioStateRepo bioStateRepo;
@@ -48,8 +49,8 @@ public class SectionRegisterValidation {
     public SectionRegisterValidation(SectionRegisterRequest request,
                                      DonorRepo donorRepo, SpeciesRepo speciesRepo, LabwareTypeRepo lwTypeRepo,
                                      LabwareRepo lwRepo, HmdmcRepo hmdmcRepo,
-                                     TissueTypeRepo tissueTypeRepo, FixativeRepo fixativeRepo, MediumRepo mediumRepo,
-                                     TissueRepo tissueRepo, BioStateRepo bioStateRepo,
+                                     TissueTypeRepo tissueTypeRepo, FixativeRepo fixativeRepo, CellClassRepo cellClassRepo,
+                                     MediumRepo mediumRepo, TissueRepo tissueRepo, BioStateRepo bioStateRepo,
                                      SlotRegionService slotRegionService, BioRiskService bioRiskService, WorkService workService,
                                      Validator<String> externalBarcodeValidation, Validator<String> donorNameValidation,
                                      Validator<String> externalNameValidation, Validator<String> replicateValidator,
@@ -64,6 +65,7 @@ public class SectionRegisterValidation {
         this.tissueTypeRepo = tissueTypeRepo;
         this.fixativeRepo = fixativeRepo;
         this.mediumRepo = mediumRepo;
+        this.cellClassRepo = cellClassRepo;
         this.tissueRepo = tissueRepo;
         this.bioStateRepo = bioStateRepo;
         this.slotRegionService = slotRegionService;
@@ -307,6 +309,8 @@ public class SectionRegisterValidation {
                 Medium::getName, mediumRepo::findAllByNameIn);
         UCMap<Tissue> existingTissueMap = loadAllFromSectionsToStringMap(request, SectionRegisterContent::getExternalIdentifier,
                 Tissue::getExternalName, tissueRepo::findAllByExternalNameIn);
+        UCMap<CellClass> cellClassMap = loadAllFromSectionsToStringMap(request, SectionRegisterContent::getCellClass,
+                CellClass::getName, cellClassRepo::findAllByNameIn);
 
         final Map<String, Set<String>> problemMap = new HashMap<>();
         BiConsumer<String, String> problemFn = (problem, bc) ->
@@ -315,12 +319,15 @@ public class SectionRegisterValidation {
         UCMap<Tissue> tissueMap = new UCMap<>();
         final Set<String> seenExternalNames = new HashSet<>();
         for (var content : contents()) {
+            CellClass cellClass = loadItem(content.getCellClass(), cellClassMap, "Missing cell class",
+                    "Unknown cell class{es}", problemFn);
             String hmdmcString = content.getHmdmc();
             boolean needHmdmc, needNoHmdmc;
-            if (content.getSpecies()==null || content.getSpecies().isEmpty()) {
+            if (nullOrEmpty(content.getSpecies())) {
                 needHmdmc = needNoHmdmc = false;
             } else {
-                needNoHmdmc = !(needHmdmc = content.getSpecies().equalsIgnoreCase("Human"));
+                needNoHmdmc = !content.getSpecies().equalsIgnoreCase("Human");
+                needHmdmc = !needNoHmdmc && cellClass!=null && cellClass.isHmdmcRequired();
             }
             Hmdmc hmdmc;
             if (hmdmcString==null || hmdmcString.isEmpty()) {
@@ -392,7 +399,7 @@ public class SectionRegisterValidation {
             }
 
             Tissue tissue = new Tissue(null, externalIdentifier, content.getReplicateNumber().toLowerCase(),
-                    spatialLocation, donor, medium, fixative, hmdmc, null, null);
+                    spatialLocation, donor, medium, fixative, cellClass, hmdmc, null, null);
             tissueMap.put(externalIdentifier, tissue);
         }
 

@@ -56,6 +56,7 @@ public class OriginalSampleRegisterFileReaderImp extends BaseRegisterFileReader<
         data.setLabwareType((String) row.get(Column.Labware_type));
         data.setFixative((String) row.get(Column.Fixative));
         data.setSolution((String) row.get(Column.Solution));
+        data.setCellClass((String) row.get(Column.Cell_class));
         return data;
     }
 

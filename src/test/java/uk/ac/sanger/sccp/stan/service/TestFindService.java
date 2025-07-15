@@ -386,7 +386,7 @@ public class TestFindService {
         SpatialLocation sl2 = new SpatialLocation(201, "SL2", 2, tt2);
         Donor donor2 = new Donor(null, "DONOR2", LifeStage.fetal, hamster);
         Tissue tissue2 = new Tissue(201, "TISSUE2", "4", sl2, donor2, tissue1.getMedium(),
-                tissue1.getFixative(), tissue1.getHmdmc(), null, null);
+                tissue1.getFixative(), null, tissue1.getHmdmc(), null, null);
         Sample sample2 = new Sample(202, 2, tissue2, EntityFactory.getBioState());
 
         Project pr = new Project(1, "project", true);

@@ -28,6 +28,7 @@ public class SectionRegisterContent {
     private String region;
     private LocalDate dateSectioned;
     private String bioRiskCode;
+    private String cellClass;
 
     public SectionRegisterContent() {}
 
@@ -168,6 +169,15 @@ public class SectionRegisterContent {
         this.bioRiskCode = bioRiskCode;
     }
 
+    /** The cell class for this sample */
+    public String getCellClass() {
+        return this.cellClass;
+    }
+
+    public void setCellClass(String cellClass) {
+        this.cellClass = cellClass;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -189,6 +199,7 @@ public class SectionRegisterContent {
                 && Objects.equals(this.region, that.region)
                 && Objects.equals(this.dateSectioned, that.dateSectioned)
                 && Objects.equals(this.bioRiskCode, that.bioRiskCode)
+                && Objects.equals(this.cellClass, that.cellClass)
         );
     }
 
@@ -216,6 +227,7 @@ public class SectionRegisterContent {
                 .add("region", region)
                 .add("dateSectioned", dateSectioned)
                 .add("bioRiskCode", bioRiskCode)
+                .add("cellClass", cellClass)
                 .reprStringValues()
                 .omitNullValues()
                 .toString();

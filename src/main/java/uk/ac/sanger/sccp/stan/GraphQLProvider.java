@@ -96,6 +96,7 @@ public class GraphQLProvider {
                         .dataFetcher("probePanels", graphQLDataFetchers.getProbePanels())
                         .dataFetcher("samplePositions", graphQLDataFetchers.getSamplePositions())
                         .dataFetcher("workTypes", graphQLDataFetchers.getWorkTypes())
+                        .dataFetcher("cellClasses", graphQLDataFetchers.getCellClasses())
                         .dataFetcher("works", graphQLDataFetchers.getWorks())
                         .dataFetcher("work", graphQLDataFetchers.getWork())
                         .dataFetcher("worksCreatedBy", graphQLDataFetchers.getWorksCreatedBy())
@@ -197,6 +198,9 @@ public class GraphQLProvider {
                         .dataFetcher("setProbePanelEnabled", transact(graphQLMutation.setProbePanelEnabled()))
                         .dataFetcher("addWorkType", graphQLMutation.addWorkType()) // internal transaction
                         .dataFetcher("setWorkTypeEnabled", transact(graphQLMutation.setWorkTypeEnabled()))
+                        .dataFetcher("addCellClass", transact(graphQLMutation.addCellClass()))
+                        .dataFetcher("setCellClassEnabled", transact(graphQLMutation.setCellClassEnabled()))
+
                         .dataFetcher("createWork", transact(graphQLMutation.createWork()))
                         .dataFetcher("updateWorkStatus", transact(graphQLMutation.updateWorkStatus()))
                         .dataFetcher("updateWorkNumBlocks", transact(graphQLMutation.updateWorkNumBlocks()))

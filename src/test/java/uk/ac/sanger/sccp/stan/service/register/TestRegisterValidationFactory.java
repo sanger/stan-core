@@ -27,7 +27,7 @@ public class TestRegisterValidationFactory {
                 mock(DonorRepo.class), mock(HmdmcRepo.class), mock(TissueTypeRepo.class),
                 mock(LabwareTypeRepo.class), mock(MediumRepo.class),
                 mock(FixativeRepo.class), mock(TissueRepo.class), mock(SpeciesRepo.class), mock(LabwareRepo.class),
-                mock(BioStateRepo.class), mockStringValidator, mockStringValidator, mockStringValidator,
+                mock(BioStateRepo.class), mock(CellClassRepo.class), mockStringValidator, mockStringValidator, mockStringValidator,
                 mockStringValidator, mockStringValidator, mockSanitiser, mockStringValidator,
                 mock(TissueFieldChecker.class), mock(SlotRegionService.class), mock(BioRiskService.class),
                 mock(WorkService.class));

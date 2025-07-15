@@ -67,6 +67,8 @@ public class EntityCreator {
     @Autowired
     private CostCodeRepo costCodeRepo;
     @Autowired
+    private CellClassRepo cellClassRepo;
+    @Autowired
     private WorkTypeRepo workTypeRepo;
     @Autowired
     private WorkRepo workRepo;
@@ -112,7 +114,7 @@ public class EntityCreator {
             sl = getAny(slRepo);
         }
         return tissueRepo.save(new Tissue(null, externalName, replicate, sl, donor,
-                getAny(mediumRepo), getAny(fixativeRepo), getAny(hmdmcRepo), null, null));
+                getAny(mediumRepo), getAny(fixativeRepo), getTissueCellClass(), getAny(hmdmcRepo), null, null));
 
     }
 
@@ -292,6 +294,10 @@ public class EntityCreator {
     public BioRisk createBioRisk(String code) {
         BioRisk br = new BioRisk(code);
         return bioRiskRepo.save(br);
+    }
+
+    public CellClass getTissueCellClass() {
+        return cellClassRepo.getByName("Tissue");
     }
 
     public BioState anyBioState() {
