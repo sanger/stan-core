@@ -308,6 +308,14 @@ public class SectionRegisterValidation {
         UCMap<Tissue> existingTissueMap = loadAllFromSectionsToStringMap(request, SectionRegisterContent::getExternalIdentifier,
                 Tissue::getExternalName, tissueRepo::findAllByExternalNameIn);
 
+        List<String> disabledTissueTypes = tissueTypeMap.values().stream()
+                .filter(tt -> !tt.isEnabled())
+                .map(TissueType::getName)
+                .toList();
+        if (!disabledTissueTypes.isEmpty()) {
+            addProblem("Tissue type is disabled: "+disabledTissueTypes);
+        }
+
         final Map<String, Set<String>> problemMap = new HashMap<>();
         BiConsumer<String, String> problemFn = (problem, bc) ->
                 problemMap.computeIfAbsent(problem, k -> new LinkedHashSet<>()).add(bc);
@@ -364,6 +372,8 @@ public class SectionRegisterValidation {
                         .orElse(null);
                 if (spatialLocation==null) {
                     problemFn.accept("Unknown spatial location{s}", slCode+" for "+tissueType.getName());
+                } else if (tissueType.isEnabled() && !spatialLocation.isEnabled()) {
+                    problemFn.accept("Disabled spatial location{s}", slCode+" for "+tissueType.getName());
                 }
             }
 

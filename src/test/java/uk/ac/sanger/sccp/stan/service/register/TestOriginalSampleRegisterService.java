@@ -535,7 +535,9 @@ public class TestOriginalSampleRegisterService {
     static Stream<Arguments> checkTissueTypesAndSpatialLocationsArgs() {
         final TissueType arm = new TissueType(1, "Arm", "ARM");
         final TissueType leg = new TissueType(2, "Leg", "LEG");
-        for (TissueType tt : List.of(arm, leg)) {
+        final TissueType tail = new TissueType(3, "Tail", "TAIL");
+        tail.setEnabled(false);
+        for (TissueType tt : List.of(arm, leg, tail)) {
             List<SpatialLocation> sls = List.of(
                     new SpatialLocation(10*tt.getId(), "Unknown", 0, tt),
                     new SpatialLocation(10*tt.getId()+1, "Alpha", 1, tt)
@@ -545,6 +547,8 @@ public class TestOriginalSampleRegisterService {
         final SpatialLocation arm0 = arm.getSpatialLocations().get(0);
         final SpatialLocation arm1 = arm.getSpatialLocations().get(1);
         final SpatialLocation leg0 = leg.getSpatialLocations().getFirst();
+        final SpatialLocation leg1 = leg.getSpatialLocations().getLast();
+        leg1.setEnabled(false);
 
         return Arrays.stream(new Object[][] {
                 { osdWithSL("Arm", 0), arm0,
@@ -563,6 +567,10 @@ public class TestOriginalSampleRegisterService {
                         osdWithSL("arm", 17), null,
                         osdWithSL("Floop", null), null,
                   arm, "There is no spatial location 17 for tissue type Arm.", "Unknown tissue type: [\"Floop\"]"},
+                { osdWithSL("tail", 0), tail.getSpatialLocations().getFirst(),
+                        tail, "Disabled tissue type: [Tail]"},
+                { osdWithSL("leg", 1), leg1,
+                        leg, "Spatial location 1 for tissue type Leg is disabled."},
         }).map(arr -> {
             List<DataStruct> datas = typeFilter(Arrays.stream(arr), OriginalSampleData.class)
                     .map(DataStruct::new)

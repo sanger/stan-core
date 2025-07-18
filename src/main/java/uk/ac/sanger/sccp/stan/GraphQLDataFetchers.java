@@ -174,7 +174,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     }
 
     public DataFetcher<Iterable<TissueType>> getTissueTypes() {
-        return dfe -> tissueTypeRepo.findAll();
+        return allOrEnabled(tissueTypeRepo::findAll, tissueTypeRepo::findAllByEnabled);
     }
 
     public DataFetcher<Iterable<LabwareType>> getLabwareTypes() {

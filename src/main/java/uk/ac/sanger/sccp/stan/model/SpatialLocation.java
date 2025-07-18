@@ -1,5 +1,7 @@
 package uk.ac.sanger.sccp.stan.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import javax.persistence.*;
 import java.util.Objects;
 
@@ -9,12 +11,13 @@ import java.util.Objects;
  * @author dr6
  */
 @Entity
-public class SpatialLocation {
+public class SpatialLocation implements HasName, HasIntId, HasEnabled {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
     private String name;
     private Integer code;
+    private boolean enabled = true;
     @ManyToOne
     private TissueType tissueType;
 
@@ -27,6 +30,7 @@ public class SpatialLocation {
         this.tissueType = tissueType;
     }
 
+    @Override
     public Integer getId() {
         return this.id;
     }
@@ -35,6 +39,7 @@ public class SpatialLocation {
         this.id = id;
     }
 
+    @Override
     public String getName() {
         return this.name;
     }
@@ -61,6 +66,21 @@ public class SpatialLocation {
     }
 
     @Override
+    public boolean isEnabled() {
+        return this.enabled;
+    }
+
+    @Override
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    @JsonIgnore
+    public boolean isUsable() {
+        return (this.isEnabled() && tissueType!=null && tissueType.isEnabled());
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
@@ -73,7 +93,8 @@ public class SpatialLocation {
                 return false;
             }
         }
-        return (Objects.equals(this.id, that.id)
+        return (this.enabled==that.enabled
+                && Objects.equals(this.id, that.id)
                 && Objects.equals(this.name, that.name)
                 && Objects.equals(this.code, that.code)
         );
