@@ -39,7 +39,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
     private final LabwareTypeRepo ltRepo;
     private final OperationTypeRepo opTypeRepo;
     private final OperationSolutionRepo opSolutionRepo;
-
+    private final CellClassRepo cellClassRepo;
 
     private final Validator<String> donorNameValidator;
     private final Validator<String> externalNameValidator;
@@ -58,6 +58,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
                                             HmdmcRepo hmdmcRepo, SpeciesRepo speciesRepo, FixativeRepo fixativeRepo,
                                             MediumRepo mediumRepo, SolutionRepo solutionRepo, LabwareTypeRepo ltRepo,
                                             OperationTypeRepo opTypeRepo, OperationSolutionRepo opSolutionRepo,
+                                            CellClassRepo cellClassRepo,
                                             @Qualifier("donorNameValidator") Validator<String> donorNameValidator,
                                             @Qualifier("externalNameValidator") Validator<String> externalNameValidator,
                                             @Qualifier("hmdmcValidator") Validator<String> hmdmcValidator,
@@ -77,6 +78,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
         this.ltRepo = ltRepo;
         this.opTypeRepo = opTypeRepo;
         this.opSolutionRepo = opSolutionRepo;
+        this.cellClassRepo = cellClassRepo;
         this.donorNameValidator = donorNameValidator;
         this.externalNameValidator = externalNameValidator;
         this.hmdmcValidator = hmdmcValidator;
@@ -110,7 +112,6 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
         checkFormat(problems, request, "Fixative", OriginalSampleData::getFixative, true, null);
         checkFormat(problems, request, "Solution", OriginalSampleData::getSolution, true, null);
         checkFormat(problems, request, "Labware type", OriginalSampleData::getLabwareType, true, null);
-        checkHmdmcsForSpecies(problems, request);
         checkCollectionDates(problems, request);
 
         List<DataStruct> datas = request.getSamples().stream().map(DataStruct::new).collect(toList());
@@ -119,7 +120,8 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
         checkExistence(problems, datas, "fixative", OriginalSampleData::getFixative, fixativeRepo::findByName, DataStruct::setFixative);
         checkExistence(problems, datas, "solution", OriginalSampleData::getSolution, solutionRepo::findByName, DataStruct::setSolution);
         checkExistence(problems, datas, "labware type", OriginalSampleData::getLabwareType, ltRepo::findByName, DataStruct::setLabwareType);
-
+        checkExistence(problems, datas, "cellular classification", OriginalSampleData::getCellClass, cellClassRepo::findByName, DataStruct::setCellClass);
+        checkHmdmcsForSpecies(problems, datas);
         checkWorks(problems, datas);
         loadDonors(datas);
         checkExternalNamesUnique(problems, request);
@@ -269,31 +271,30 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
     }
 
     /**
-     * Check that HMDMCs are given for human samples (and not for nonhuman samples)
+     * Check that HMDMCs are given for human tissue samples (and not for nonhuman samples)
      * @param problems receptacle for problems
-     * @param request the register request
+     * @param datas data for the register request
      */
-    public void checkHmdmcsForSpecies(Collection<String> problems, OriginalSampleRegisterRequest request) {
+    public void checkHmdmcsForSpecies(Collection<String> problems, Collection<DataStruct> datas) {
         boolean anyUnexpected = false;
         boolean anyMissing = false;
-        for (var data : request.getSamples()) {
-            if (nullOrEmpty(data.getSpecies())) {
+        for (var data : datas) {
+            if (data.species == null || data.cellClass == null) {
                 continue;
             }
-            boolean needHmdmc = data.getSpecies().equalsIgnoreCase("human");
-            boolean gotHmdmc = !nullOrEmpty(data.getHmdmc());
-            if (needHmdmc && !gotHmdmc) {
-                anyMissing = true;
-            }
-            if (gotHmdmc && !needHmdmc) {
+            boolean gotHmdmc = !nullOrEmpty(data.originalSampleData.getHmdmc());
+            if (gotHmdmc && !data.species.requiresHmdmc()) {
                 anyUnexpected = true;
+            }
+            if (!gotHmdmc && data.species.requiresHmdmc() && data.cellClass.isHmdmcRequired()) {
+                anyMissing = true;
             }
         }
         if (anyUnexpected) {
             problems.add("HuMFre number not expected for non-human samples.");
         }
         if (anyMissing) {
-            problems.add("HuMFre number missing for human samples.");
+            problems.add("HuMFre number missing for human tissue samples.");
         }
     }
 
@@ -482,7 +483,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
             Tissue createdTissue = tissueRepo.save(new Tissue(
                     null, emptyToNull(req.getExternalIdentifier()),
                     emptyToNull(req.getReplicateNumber()),
-                    data.spatialLocation, data.donor, medium, data.fixative, data.hmdmc,
+                    data.spatialLocation, data.donor, medium, data.fixative, data.cellClass, data.hmdmc,
                     req.getSampleCollectionDate(),null
             ));
             BioState bs = (data.labwareType.getName().equalsIgnoreCase("Cassette") ? cassetteBs : nonCassetteBs);
@@ -587,6 +588,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
         Species species;
         Work work;
         BioRisk bioRisk;
+        CellClass cellClass;
 
         Donor donor;
         Sample sample;
@@ -627,6 +629,10 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
 
         void setBioRisk(BioRisk risk) {
             this.bioRisk = risk;
+        }
+
+        void setCellClass(CellClass cellClass) {
+            this.cellClass = cellClass;
         }
     }
 }

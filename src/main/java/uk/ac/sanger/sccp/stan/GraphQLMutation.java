@@ -107,6 +107,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final SlotCopyRecordService slotCopyRecordService;
     final TissueTypeService tissueTypeService;
     final WorkChangeService workChangeService;
+    final CellClassService cellClassService;
 
     @Autowired
     public GraphQLMutation(ObjectMapper objectMapper, AuthenticationComponent authComp,
@@ -141,7 +142,8 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            ReactivateService reactivateService, LibraryPrepService libraryPrepService,
                            SegmentationService segmentationService, CleanOutService cleanOutService, RoiMetricService roiMetricService,
                            UserAdminService userAdminService, SlotCopyRecordService slotCopyRecordService,
-                           TissueTypeService tissueTypeService, WorkChangeService workChangeService) {
+                           TissueTypeService tissueTypeService, WorkChangeService workChangeService,
+                           CellClassService cellClassService) {
         super(objectMapper, authComp, userRepo);
         this.authService = authService;
         this.registerService = registerService;
@@ -208,6 +210,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.slotCopyRecordService = slotCopyRecordService;
         this.tissueTypeService = tissueTypeService;
         this.workChangeService = workChangeService;
+        this.cellClassService = cellClassService;
     }
 
     private void logRequest(String name, User user, Object request) {
@@ -546,6 +549,14 @@ public class GraphQLMutation extends BaseGraphQLResource {
 
     public DataFetcher<WorkType> setWorkTypeEnabled() {
         return adminSetEnabled(workTypeService::setEnabled, "SetWorkTypeEnabled", "name");
+    }
+
+    public DataFetcher<CellClass> addCellClass() {
+        return adminAdd(cellClassService::addNew, "AddCellClass", "name");
+    }
+
+    public DataFetcher<CellClass> setCellClassEnabled() {
+        return adminSetEnabled(cellClassService::setEnabled, "SetCellClassEnabled", "name");
     }
 
     public DataFetcher<Work> createWork() {

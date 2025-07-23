@@ -87,6 +87,7 @@ public class TestTissueFieldChecker {
                 Arguments.of(toBRR(tissue, br -> br.setReplicateNumber("-5")), tissue, "Expected replicate number to be "+tissue.getReplicate()+forTissue),
                 Arguments.of(toBRR(tissue, br -> br.setMedium("Custard")), tissue, "Expected medium to be "+tissue.getMedium().getName()+forTissue),
                 Arguments.of(toBRR(tissue, br -> br.setFixative("Glue")), tissue, "Expected fixative to be "+tissue.getFixative().getName()+forTissue),
+                Arguments.of(toBRR(tissue, br -> br.setCellClass("cc4")), tissue, "Expected cellular classification to be Tissue"+forTissue),
                 Arguments.of(toBRR(tissueWithDate, br -> br.setSampleCollectionDate(LocalDate.of(2020,1,2))), tissueWithDate, "Expected sample collection date to be "+tissueWithDate.getCollectionDate()+" for existing tissue "+tissueWithDate.getExternalName()+"."),
                 Arguments.of(toBRR(tissue, br -> {
                     br.setDonorIdentifier("Foo");
@@ -112,6 +113,7 @@ public class TestTissueFieldChecker {
         br.setMedium(tissue.getMedium().getName());
         br.setFixative(tissue.getFixative().getName());
         br.setSampleCollectionDate(tissue.getCollectionDate());
+        br.setCellClass(tissue.getCellClass().getName());
         if (adjuster!=null) {
             adjuster.accept(br);
         }

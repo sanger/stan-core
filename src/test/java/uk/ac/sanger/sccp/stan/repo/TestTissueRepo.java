@@ -65,11 +65,12 @@ public class TestTissueRepo {
         Medium med2 = mediumRepo.findByName("Paraffin").orElseThrow();
         Fixative fix1 = fixativeRepo.findByName("None").orElseThrow();
         Fixative fix2 = fixativeRepo.findByName("Formalin").orElseThrow();
+        CellClass cellClass = entityCreator.getTissueCellClass();
         String rep1 = "1";
         String rep2 = "2";
 
         Tissue tissue = tissueRepo.save(new Tissue(null, "TISSUE1", rep1, sl1, donor1,
-                med1, fix1, entityCreator.getAny(hmdmcRepo), null, null));
+                med1, fix1, cellClass, entityCreator.getAny(hmdmcRepo), null, null));
 
         assertThat(tissueRepo.findByDonorIdAndSpatialLocationIdAndMediumIdAndFixativeIdAndReplicate(donor1.getId(), sl1.getId(), med1.getId(), fix1.getId(), rep1))
                 .contains(tissue);
@@ -138,9 +139,10 @@ public class TestTissueRepo {
         Fixative fix = entityCreator.getAny(fixativeRepo);
         Medium med = entityCreator.getAny(mediumRepo);
         Hmdmc hmdmc = entityCreator.getAny(hmdmcRepo);
+        CellClass cellClass = entityCreator.getTissueCellClass();
         Tissue[] tissues = IntStream.range(0, 3)
                 .mapToObj(i -> tissueRepo.save(new Tissue(null, "TISSUE"+i, String.valueOf(i+1), sls[i],
-                        donor, med, fix, hmdmc, null, null)))
+                        donor, med, fix, cellClass, hmdmc, null, null)))
                 .toArray(Tissue[]::new);
         assertThat(tissueRepo.findByTissueTypeId(tt1.getId())).containsExactly(tissues[0], tissues[1]);
     }

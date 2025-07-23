@@ -20,6 +20,16 @@ import java.util.regex.Pattern;
 @Configuration
 public class FieldValidation {
     @Bean
+    public Validator<String> cellClassValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(
+                CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN,
+                CharacterType.SPACE, CharacterType.FULL_STOP, CharacterType.SLASH,
+                CharacterType.COMMA, CharacterType.COLON, CharacterType.SEMICOLON
+        );
+        return new StringValidator("Cell class", 2, 64, charTypes);
+    }
+
+    @Bean
     public Validator<String> donorNameValidator() {
         Set<CharacterType> charTypes = EnumSet.of(
                 CharacterType.ALPHA, CharacterType.DIGIT,

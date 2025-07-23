@@ -21,6 +21,7 @@ mutation {
                         tissueType: "Heart"
                         region: "top"
                         bioRiskCode: "risk1"
+                        cellClass: "tissue"
                     }
                     {
                         address: "A1"
@@ -37,6 +38,7 @@ mutation {
                         tissueType: "Lung"
                         region: "bottom"
                         bioRiskCode: "risk1"
+                        cellClass: "tissue"
                     }
                     {
                         address: "B2"
@@ -53,6 +55,7 @@ mutation {
                         spatialLocation: 1
                         tissueType: "Heart"
                         bioRiskCode: "risk2"
+                        cellClass: "tissue"
                     }
                 ]
             }

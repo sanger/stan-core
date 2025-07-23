@@ -120,7 +120,7 @@ class TestBlockRegisterFileReader extends BaseTestFileReader {
     void testIndexColumns() {
         Row row = mockRow("All information is needed",
                 "SGP number", "donor identifier", "life stage", "if then date of collection of stuff",
-                "species", "biological risk assessment number", "humfre", "tissue type", "external id", "spatial location", "replicate number",
+                "species", "cellular classification", "biological risk assessment number", "humfre", "tissue type", "external id", "spatial location", "replicate number",
                 "last known banana section custard", "labware type", "fixative", "medium", "information", "comment");
         List<String> problems = new ArrayList<>();
         var result = reader.indexColumns(problems, row);
@@ -138,7 +138,7 @@ class TestBlockRegisterFileReader extends BaseTestFileReader {
         Row row = mockRow(
                 "SGP number", "work number", "donor identifier", "life stage",
                 "if then date of collection of stuff", "bananas",
-                "species", "bio risk", "humfre", "spatial location", "replicate number",
+                "species", "cell class", "bio risk", "humfre", "spatial location", "replicate number",
                 "last known banana section custard", "labware type", "fixative", "medium", "information");
         List<String> problems = new ArrayList<>(3);
         reader.indexColumns(problems, row);

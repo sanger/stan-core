@@ -5,6 +5,7 @@ mutation {
                 labwareType:"proviasette"
                 donorIdentifier:"DONOR1"
                 species: "Human"
+                cellClass: "Tissue"
                 lifeStage:adult
                 bioRiskCode: "risk1"
                 hmdmc:"20/0002"
@@ -34,6 +35,7 @@ mutation {
                             code
                             tissueType { name }
                         }
+                        cellClass { name }
                     }
                 }
             }

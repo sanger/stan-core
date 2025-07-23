@@ -4,8 +4,8 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
 import org.mockito.*;
-import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.*;
+import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
@@ -578,7 +578,7 @@ public class TestBlockProcessingService {
     }
 
     static Tissue makeTissue(Integer id, String name, String replicate, SpatialLocation sl, Donor d) {
-        return new Tissue(id, name, replicate, sl, d, null, null, null, null, null);
+        return new Tissue(id, name, replicate, sl, d, null, null, null, null, null, null);
     }
 
     static TissueBlockRequest requestForReplicates(String... barcodesAndReplicates) {
@@ -692,7 +692,7 @@ public class TestBlockProcessingService {
         } else {
             assertEquals(500, tissue.getId());
             assertEquals(new Tissue(500, originalTissue.getExternalName(), "2c", originalTissue.getSpatialLocation(), originalTissue.getDonor(),
-                    originalTissue.getMedium(), originalTissue.getFixative(), originalTissue.getHmdmc(), originalTissue.getCollectionDate(),
+                    originalTissue.getMedium(), originalTissue.getFixative(), originalTissue.getCellClass(), originalTissue.getHmdmc(), originalTissue.getCollectionDate(),
                     originalTissue.getId()), tissue);
         }
         assertEquals(new Sample(600, null, tissue, bs), sample);

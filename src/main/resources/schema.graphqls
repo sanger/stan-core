@@ -183,6 +183,12 @@ type BioState {
     name: String!
 }
 
+"""A cellular classification."""
+type CellClass {
+    name: String!
+    enabled: Boolean!
+}
+
 """A piece of tissue from which multiple samples may originate."""
 type Tissue {
     externalName: String
@@ -197,6 +203,8 @@ type Tissue {
     medium: Medium!
     """The fixative used on this tissue."""
     fixative: Fixative!
+    """The cellular classification of the tissue."""
+    cellClass: CellClass!
     """The date the original sample was collected, if known."""
     collectionDate: Date
 }
@@ -335,6 +343,8 @@ input BlockRegisterRequest {
     fixative: String!
     """The species of the donor."""
     species: String!
+    """The cellular classification of the tissue."""
+    cellClass: String!
     """Is this a new block of tissue already in the application's database?"""
     existingTissue: Boolean
     """The date the original sample was collected, if known."""
@@ -355,6 +365,8 @@ input SectionRegisterContent {
     address: Address!
     """The species from which this section originates."""
     species: String!
+    """The cellular classification of the section."""
+    cellClass: String!
     """A HMDMC number, if any, to associate with this sample."""
     hmdmc: String
     """A name for the donor."""
@@ -429,6 +441,8 @@ input OriginalSampleData {
     fixative: String!
     """The species of the donor."""
     species: String!
+    """The cellular classification of the sample."""
+    cellClass: String!
     """The date the original sample was collected, if known."""
     sampleCollectionDate: Date
     """The optional work number to link to the registration."""
@@ -2172,6 +2186,8 @@ type Query {
     hmdmcs(includeDisabled: Boolean): [Hmdmc!]!
     """Get all bio risks that are enabled, or get all including those that are disabled."""
     bioRisks(includeDisabled: Boolean): [BioRisk!]!
+    """Get all cellular classifications that are enabled, or get all including disabled."""
+    cellClasses(includeDisabled: Boolean): [CellClass!]!
     """Get all the mediums available."""
     mediums: [Medium!]!
     """Get all the fixatives that are enabled, or get all including those that are disabled."""
@@ -2417,6 +2433,10 @@ type Mutation {
     addProbePanel(type: ProbeType!, name: String!): ProbePanel!
     """Enable or disable a probe panel."""
     setProbePanelEnabled(type: ProbeType!, name: String!, enabled: Boolean!): ProbePanel!
+    """Add a new cellular classification."""
+    addCellClass(name: String!): CellClass!
+    """Enable or disable a cellular classification."""
+    setCellClassEnabled(name: String!, enabled: Boolean!): CellClass!
 
     """Create a new work, which will be allocated a new work number with the given prefix."""
     createWork(prefix: String!, workType: String!, workRequester: String!, project: String!, program: String!, costCode: String!, numBlocks: Int, numSlides: Int, numOriginalSamples: Int, omeroProject: String, ssStudyId: Int): Work!

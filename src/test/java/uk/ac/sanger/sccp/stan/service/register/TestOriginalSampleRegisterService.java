@@ -61,6 +61,8 @@ public class TestOriginalSampleRegisterService {
     @Mock
     private OperationSolutionRepo mockOpSolRepo;
     @Mock
+    private CellClassRepo mockCellClassRepo;
+    @Mock
     private Validator<String> mockDonorNameValidator;
     @Mock
     private Validator<String> mockExternalNameValidator;
@@ -87,8 +89,8 @@ public class TestOriginalSampleRegisterService {
         mocking = MockitoAnnotations.openMocks(this);
         service = spy(new OriginalSampleRegisterServiceImp(mockDonorRepo, mockTissueRepo, mockTissueTypeRepo,
                 mockSampleRepo, mockBsRepo, mockSlotRepo, mockHmdmcRepo, mockSpeciesRepo, mockFixativeRepo,
-                mockMediumRepo, mockSolutionRepo, mockLtRepo, mockOpTypeRepo, mockOpSolRepo, mockDonorNameValidator,
-                mockExternalNameValidator,
+                mockMediumRepo, mockSolutionRepo, mockLtRepo, mockOpTypeRepo, mockOpSolRepo, mockCellClassRepo,
+                mockDonorNameValidator, mockExternalNameValidator,
                 mockHmdmcValidator, mockReplicateValidator, mockLabwareService, mockOpService, mockWorkService,
                 mockBioRiskService));
     }
@@ -114,7 +116,7 @@ public class TestOriginalSampleRegisterService {
     @Test
     public void testRegister_validationErrors() {
         OriginalSampleData data = new OriginalSampleData("DONOR1", LifeStage.adult, "HMDMC1", "TISSUE1", 5,
-                "R1", "EXT1", "LT1", "SOL1", "FIX1", "SPEC1", LocalDate.of(2022,1,1), "TODO", "RISK1");
+                "R1", "EXT1", "LT1", "SOL1", "FIX1", "SPEC1", LocalDate.of(2022,1,1), "TODO", "RISK1", "Tissue");
         OriginalSampleRegisterRequest request = new OriginalSampleRegisterRequest(List.of(data));
 
         doAnswer(invocation -> {
@@ -169,7 +171,7 @@ public class TestOriginalSampleRegisterService {
     public void testRegister_valid() {
         User user = EntityFactory.getUser();
         OriginalSampleData data = new OriginalSampleData("DONOR1", LifeStage.adult, "HMDMC1", "TISSUE1", 5,
-                "R1", "EXT1", "LT1", "SOL1", "FIX1", "SPEC1", LocalDate.of(2022,1,1), "TODO", "risk1");
+                "R1", "EXT1", "LT1", "SOL1", "FIX1", "SPEC1", LocalDate.of(2022,1,1), "TODO", "risk1", "Tissue");
         OriginalSampleRegisterRequest request = new OriginalSampleRegisterRequest(List.of(data));
         doNothing().when(service).checkFormat(any(), any(), any(), any(), anyBoolean(), any());
         doNothing().when(service).checkHmdmcsForSpecies(any(), any());
@@ -223,10 +225,10 @@ public class TestOriginalSampleRegisterService {
 
         ArgumentCaptor<List<DataStruct>> dataStructArgCaptor = genericCaptor(List.class);
 
-        verify(service).checkHmdmcsForSpecies(same(problems), same(request));
         verify(service).checkCollectionDates(same(problems), same(request));
         verify(service).checkExistence(same(problems), dataStructArgCaptor.capture(), eq("HuMFre number"), any(), any(), any());
         List<DataStruct> datas = dataStructArgCaptor.getValue();
+        verify(service).checkHmdmcsForSpecies(same(problems), same(datas));
         verify(service).checkExistence(same(problems), same(datas), eq("species"), any(), any(), any());
         verify(service).checkExistence(same(problems), same(datas), eq("fixative"), any(), any(), any());
         verify(service).checkExistence(same(problems), same(datas), eq("solution"), any(), any(), any());
@@ -413,32 +415,36 @@ public class TestOriginalSampleRegisterService {
     }
 
     @ParameterizedTest
-    @MethodSource("checkHmdmcsForSpeciesArgs")
-    public void testCheckHmdmcsForSpecies(OriginalSampleRegisterRequest request, Collection<String> expectedProblems) {
-        List<String> problems = new ArrayList<>(expectedProblems.size());
-        service.checkHmdmcsForSpecies(problems, request);
-        assertThat(problems).containsExactlyInAnyOrderElementsOf(expectedProblems);
+    @MethodSource("checkHmdmcsArgs")
+    public void testCheckHmdmcsForSpecies(Species species, CellClass cc, OriginalSampleData osd, String expectedProblem) {
+        List<String> problems = new ArrayList<>(expectedProblem==null ? 0 : 1);
+        DataStruct data = new DataStruct(osd);
+        data.species =species;
+        data.cellClass = cc;
+        service.checkHmdmcsForSpecies(problems, List.of(data));
+        assertProblem(problems, expectedProblem);
     }
 
-    static Stream<Arguments> checkHmdmcsForSpeciesArgs() {
-        OriginalSampleData humanWithHmdmc = osdWithHmdmc("HMDMC1", "Human");
-        OriginalSampleData bananaWithoutHmdmc = osdWithHmdmc(null, "Banana");
-        OriginalSampleData humanWithoutHmdmc = osdWithHmdmc(null, "Human");
-        OriginalSampleData humanWithEmptyHmdmc = osdWithHmdmc("", "Human");
-        OriginalSampleData bananaWithHmdmc = osdWithHmdmc("HMDMC1", "Banana");
-        OriginalSampleData nullWithNull = osdWithHmdmc(null, null);
-        OriginalSampleData nullWithHmdmc = osdWithHmdmc("HMDMC1", null);
-        final String HMDMC_MISSING = "HuMFre number missing for human samples.";
+    static Stream<Arguments> checkHmdmcsArgs() {
+        Species human = new Species(1, "Human");
+        Species cat = new Species(2, "Cat");
+        CellClass tissue = new CellClass(1, "Tissue", true, true);
+        CellClass cake = new CellClass(2, "Cake", false, true);
+        OriginalSampleData withHmdmc = osdWithHmdmc("HMDMC1");
+        OriginalSampleData withoutHmdmc = osdWithHmdmc("");
+        final String HMDMC_MISSING = "HuMFre number missing for human tissue samples.";
         final String HMDMC_UNEXPECTED = "HuMFre number not expected for non-human samples.";
-
-        return Arrays.stream(new Object[][] {
-                { humanWithHmdmc, bananaWithoutHmdmc, nullWithHmdmc, nullWithNull },
-                { humanWithoutHmdmc, HMDMC_MISSING },
-                { humanWithEmptyHmdmc, HMDMC_MISSING },
-                { bananaWithHmdmc, HMDMC_UNEXPECTED },
-                { humanWithHmdmc, bananaWithoutHmdmc, humanWithoutHmdmc, bananaWithHmdmc, HMDMC_MISSING, HMDMC_UNEXPECTED },
-        }).map(arr -> Arguments.of(new OriginalSampleRegisterRequest(typeFilterToList(arr, OriginalSampleData.class)),
-                typeFilterToList(arr, String.class)));
+        return Arrays.stream(new Object[][]{
+                {human, tissue, withHmdmc, null},
+                {human, cake, withHmdmc, null},
+                {human, tissue, withoutHmdmc, HMDMC_MISSING},
+                {human, cake, withoutHmdmc, null},
+                {cat, tissue, withHmdmc, HMDMC_UNEXPECTED},
+                {cat, cake, withHmdmc, HMDMC_UNEXPECTED},
+                {cat, tissue, withoutHmdmc, null},
+                {cat, cake, withoutHmdmc, null},
+                {null, null, withoutHmdmc, null},
+        }).map(Arguments::of);
     }
 
     @ParameterizedTest
@@ -471,7 +477,7 @@ public class TestOriginalSampleRegisterService {
     }
 
     static Stream<Arguments> checkExternalNamesUniqueArgs() {
-        Tissue tissue = new Tissue(1, "EXT1", null, null, null, null, null, null, null, null);
+        Tissue tissue = new Tissue(1, "EXT1", null, null, null, null, null, null, null, null, null);
         String name1 = tissue.getExternalName();
         List<Tissue> tissues = List.of(tissue);
         return Arrays.stream(new Object[][] {
@@ -1017,10 +1023,9 @@ public class TestOriginalSampleRegisterService {
         return data;
     }
 
-    static OriginalSampleData osdWithHmdmc(String hmdmc, String species) {
+    static OriginalSampleData osdWithHmdmc(String hmdmc) {
         OriginalSampleData data = new OriginalSampleData();
         data.setHmdmc(hmdmc);
-        data.setSpecies(species);
         return data;
     }
 

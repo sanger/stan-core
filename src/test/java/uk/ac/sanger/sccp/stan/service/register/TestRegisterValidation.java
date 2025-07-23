@@ -56,6 +56,8 @@ public class TestRegisterValidation {
     @Mock
     private SpeciesRepo mockSpeciesRepo;
     @Mock
+    private CellClassRepo mockCellClassRepo;
+    @Mock
     private Validator<String> mockDonorNameValidation;
     @Mock
     private Validator<String> mockExternalNameValidation;
@@ -89,7 +91,7 @@ public class TestRegisterValidation {
 
     private RegisterValidationImp create(RegisterRequest request) {
         return spy(new RegisterValidationImp(request, mockDonorRepo, mockHmdmcRepo, mockTtRepo, mockLtRepo,
-                mockMediumRepo, mockFixativeRepo, mockTissueRepo, mockSpeciesRepo,
+                mockMediumRepo, mockFixativeRepo, mockTissueRepo, mockSpeciesRepo, mockCellClassRepo,
                 mockDonorNameValidation, mockExternalNameValidation, mockReplicateValidator, mockFieldChecker,
                 mockBioRiskService, mockWorkService));
     }
@@ -106,6 +108,7 @@ public class TestRegisterValidation {
         doNothing().when(validation).validateCollectionDates();
         doNothing().when(validation).validateBioRisks();
         doNothing().when(validation).validateWorks();
+        doNothing().when(validation).validateCellClasses();
     }
 
     private void verifyValidateMethods(RegisterValidationImp validation, VerificationMode verificationMode) {
@@ -119,6 +122,8 @@ public class TestRegisterValidation {
         verify(validation, verificationMode).validateFixatives();
         verify(validation, verificationMode).validateCollectionDates();
         verify(validation, verificationMode).validateWorks();
+        verify(validation, verificationMode).validateBioRisks();
+        verify(validation, verificationMode).validateCellClasses();
     }
 
     @Test
@@ -586,6 +591,22 @@ public class TestRegisterValidation {
         BlockRegisterRequest blk = new BlockRegisterRequest();
         setter.accept(blk, "v1");
         assertEquals("v1", blk.getBioRiskCode());
+    }
+
+    @Test
+    void testValidateCellClasses() {
+        String[] ccNames = {"cc1", "cc2", null, "cc4"};
+        List<BlockRegisterRequest> blocks = IntStream.range(0, ccNames.length).mapToObj(i -> new BlockRegisterRequest()).toList();
+        Zip.forEach(Arrays.stream(ccNames), blocks.stream(), (name, block) -> block.setCellClass(name));
+        CellClass[] cellClasses = IntStream.rangeClosed(1, 2).mapToObj(i -> new CellClass(i, "cc"+i, false, true)).toArray(CellClass[]::new);
+        UCMap<CellClass> ccMap = UCMap.from(CellClass::getName, cellClasses);
+        when(mockCellClassRepo.findMapByNameIn(any())).thenReturn(ccMap);
+        RegisterRequest request = new RegisterRequest(blocks);
+        RegisterValidationImp val = create(request);
+        val.validateCellClasses();
+        assertThat(val.problems).containsExactlyInAnyOrder("Missing cell class name.", "Unknown cell class name: [\"cc4\"]");
+        verify(mockCellClassRepo).findMapByNameIn(Set.of("cc1", "cc2", "cc4"));
+        assertSame(ccMap, val.cellClassMap);
     }
 
     /** @see #testValidateDonors */

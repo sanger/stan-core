@@ -26,6 +26,8 @@ public class Tissue {
     @ManyToOne
     private Fixative fixative;
     @ManyToOne
+    private CellClass cellClass;
+    @ManyToOne
     private Hmdmc hmdmc;
     private LocalDate collectionDate;
     private Integer parentId;
@@ -33,7 +35,7 @@ public class Tissue {
     public Tissue() {}
 
     public Tissue(Integer id, String externalName, String replicate, SpatialLocation spatialLocation, Donor donor,
-                  Medium medium, Fixative fixative, Hmdmc hmdmc, LocalDate collectionDate,
+                  Medium medium, Fixative fixative, CellClass cellClass, Hmdmc hmdmc, LocalDate collectionDate,
                   Integer parentId) {
         this.id = id;
         this.externalName = externalName;
@@ -42,6 +44,7 @@ public class Tissue {
         this.donor = donor;
         this.medium = medium;
         this.fixative = fixative;
+        this.cellClass = cellClass;
         this.hmdmc = hmdmc;
         this.collectionDate = collectionDate;
         this.parentId = parentId;
@@ -107,6 +110,14 @@ public class Tissue {
         this.fixative = fixative;
     }
 
+    public CellClass getCellClass() {
+        return this.cellClass;
+    }
+
+    public void setCellClass(CellClass cellClass) {
+        this.cellClass = cellClass;
+    }
+
     public Hmdmc getHmdmc() {
         return this.hmdmc;
     }
@@ -135,6 +146,13 @@ public class Tissue {
         this.parentId = parentId;
     }
 
+    /** Creates a new tissue object similar to this (with no id), derived from this */
+    public Tissue derived() {
+        return new Tissue(null, this.getExternalName(), this.getReplicate(), this.getSpatialLocation(),
+                        this.getDonor(), this.getMedium(), this.getFixative(), this.getCellClass(),
+                        this.getHmdmc(), this.getCollectionDate(), this.getId());
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -148,6 +166,7 @@ public class Tissue {
                 && Objects.equals(this.donor, that.donor)
                 && Objects.equals(this.hmdmc, that.hmdmc)
                 && Objects.equals(this.fixative, that.fixative)
+                && Objects.equals(this.cellClass, that.cellClass)
                 && Objects.equals(this.collectionDate, that.collectionDate)
                 && Objects.equals(this.parentId, that.parentId)
         );
@@ -168,6 +187,7 @@ public class Tissue {
                 .add("donor", donor)
                 .add("medium", medium)
                 .add("fixative", fixative)
+                .add("cellClass", cellClass)
                 .add("hmdmc", hmdmc)
                 .add("collectionDate", collectionDate)
                 .add("parentId", parentId)

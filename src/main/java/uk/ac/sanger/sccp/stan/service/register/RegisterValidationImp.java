@@ -7,6 +7,7 @@ import uk.ac.sanger.sccp.stan.request.register.RegisterRequest;
 import uk.ac.sanger.sccp.stan.service.BioRiskService;
 import uk.ac.sanger.sccp.stan.service.Validator;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
+import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.time.LocalDate;
@@ -29,6 +30,7 @@ public class RegisterValidationImp implements RegisterValidation {
     private final FixativeRepo fixativeRepo;
     private final TissueRepo tissueRepo;
     private final SpeciesRepo speciesRepo;
+    private final CellClassRepo cellClassRepo;
     private final Validator<String> donorNameValidation;
     private final Validator<String> externalNameValidation;
     private final Validator<String> replicateValidator;
@@ -44,6 +46,7 @@ public class RegisterValidationImp implements RegisterValidation {
     final Map<String, LabwareType> labwareTypeMap = new HashMap<>();
     final Map<String, Medium> mediumMap = new HashMap<>();
     final Map<String, Fixative> fixativeMap = new HashMap<>();
+    UCMap<CellClass> cellClassMap;
     UCMap<BioRisk> bioRiskMap;
     Collection<Work> works;
     final LinkedHashSet<String> problems = new LinkedHashSet<>();
@@ -51,7 +54,7 @@ public class RegisterValidationImp implements RegisterValidation {
     public RegisterValidationImp(RegisterRequest request, DonorRepo donorRepo,
                                  HmdmcRepo hmdmcRepo, TissueTypeRepo ttRepo, LabwareTypeRepo ltRepo,
                                  MediumRepo mediumRepo, FixativeRepo fixativeRepo, TissueRepo tissueRepo,
-                                 SpeciesRepo speciesRepo,
+                                 SpeciesRepo speciesRepo, CellClassRepo cellClassRepo,
                                  Validator<String> donorNameValidation, Validator<String> externalNameValidation,
                                  Validator<String> replicateValidator,
                                  TissueFieldChecker tissueFieldChecker,
@@ -65,6 +68,7 @@ public class RegisterValidationImp implements RegisterValidation {
         this.fixativeRepo = fixativeRepo;
         this.tissueRepo = tissueRepo;
         this.speciesRepo = speciesRepo;
+        this.cellClassRepo = cellClassRepo;
         this.donorNameValidation = donorNameValidation;
         this.externalNameValidation = externalNameValidation;
         this.replicateValidator = replicateValidator;
@@ -89,6 +93,7 @@ public class RegisterValidationImp implements RegisterValidation {
         validateNewTissues();
         validateBioRisks();
         validateWorks();
+        validateCellClasses();
         return problems;
     }
 
@@ -372,6 +377,34 @@ public class RegisterValidationImp implements RegisterValidation {
                 BlockRegisterRequest::getBioRiskCode, BlockRegisterRequest::setBioRiskCode);
     }
 
+    public void validateCellClasses() {
+        Set<String> cellClassNames = new HashSet<>();
+        boolean anyMissing = false;
+        for (BlockRegisterRequest block : blocks()) {
+            String cellClassName = block.getCellClass();
+            if (nullOrEmpty(cellClassName)) {
+                anyMissing = true;
+            } else {
+                cellClassNames.add(cellClassName);
+            }
+        }
+        if (anyMissing) {
+            addProblem("Missing cell class name.");
+        }
+        if (cellClassNames.isEmpty()) {
+            cellClassMap = new UCMap<>(0);
+            return;
+        }
+        cellClassMap = cellClassRepo.findMapByNameIn(cellClassNames);
+        List<String> missing = cellClassNames.stream()
+                .filter(name -> cellClassMap.get(name) == null)
+                .map(BasicUtils::repr)
+                .toList();
+        if (!missing.isEmpty()) {
+            problems.add("Unknown cell class name: " + missing);
+        }
+    }
+
     public void validateWorks() {
         if (request.getWorkNumbers().isEmpty()) {
             addProblem("No work number supplied.");
@@ -470,6 +503,11 @@ public class RegisterValidationImp implements RegisterValidation {
     @Override
     public Collection<Work> getWorks() {
         return this.works;
+    }
+
+    @Override
+    public CellClass getCellClass(String name) {
+        return cellClassMap.get(name);
     }
 
     private static <E> E ucGet(Map<String, E> map, String key) {

@@ -29,6 +29,7 @@ public interface SectionRegisterFileReader extends MultipartFileReader<SectionRe
         Donor_ID,
         Life_stage,
         Species,
+        Cell_class(Pattern.compile("cell(ular)?\\s*class(ification)?", Pattern.CASE_INSENSITIVE)),
         Bio_risk(Pattern.compile("bio\\w*\\s+risk.*", Pattern.CASE_INSENSITIVE)),
         HuMFre(Pattern.compile("humfre\\s*(number)?", Pattern.CASE_INSENSITIVE)),
         Tissue_type,

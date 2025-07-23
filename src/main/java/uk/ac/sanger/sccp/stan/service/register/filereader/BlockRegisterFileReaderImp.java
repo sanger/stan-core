@@ -77,6 +77,7 @@ public class BlockRegisterFileReaderImp extends BaseRegisterFileReader<RegisterR
         br.setMedium((String) row.get(Column.Embedding_medium));
         br.setExternalIdentifier((String) row.get(Column.External_identifier));
         br.setSpecies((String) row.get(Column.Species));
+        br.setCellClass((String) row.get(Column.Cell_class));
         br.setSampleCollectionDate((LocalDate) row.get(Column.Collection_date));
         br.setLifeStage(valueToLifeStage(problems, (String) row.get(Column.Life_stage)));
         br.setTissueType((String) row.get(Column.Tissue_type));

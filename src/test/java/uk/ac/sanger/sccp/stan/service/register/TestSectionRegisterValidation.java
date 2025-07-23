@@ -46,6 +46,7 @@ public class TestSectionRegisterValidation {
     @Mock private MediumRepo mockMediumRepo;
     @Mock private BioStateRepo mockBioStateRepo;
     @Mock private TissueRepo mockTissueRepo;
+    @Mock private CellClassRepo mockCellClassRepo;
     @Mock private Validator<String> mockExternalBarcodeValidation;
     @Mock private Validator<String> mockDonorNameValidation;
     @Mock private Validator<String> mockExternalNameValidation;
@@ -92,7 +93,8 @@ public class TestSectionRegisterValidation {
             }
         }
         return spy(new SectionRegisterValidation(request, mockDonorRepo, mockSpeciesRepo, mockLwTypeRepo, mockLwRepo,
-                mockHmdmcRepo, mockTissueTypeRepo, mockFixativeRepo, mockMediumRepo, mockTissueRepo, mockBioStateRepo,
+                mockHmdmcRepo, mockTissueTypeRepo, mockFixativeRepo, mockCellClassRepo, mockMediumRepo, mockTissueRepo,
+                mockBioStateRepo,
                 mockSlotRegionService, mockBioRiskService, mockWorkService,
                 mockExternalBarcodeValidation, mockDonorNameValidation, mockExternalNameValidation,
                 mockReplicateValidator, mockVisiumLpBarcodeValidation, mockXeniumBarcodeValidator, thicknessSanisiser));
@@ -464,6 +466,7 @@ public class TestSectionRegisterValidation {
         when(mockFixativeRepo.findAllByNameIn(any())).then(findAllAnswer(testData.fixatives, Fixative::getName));
         when(mockMediumRepo.findAllByNameIn(any())).then(findAllAnswer(testData.mediums, Medium::getName));
         when(mockTissueRepo.findAllByExternalNameIn(any())).then(findAllAnswer(testData.existingTissues, Tissue::getExternalName));
+        when(mockCellClassRepo.findAllByNameIn(any())).then(findAllAnswer(testData.cellClasses, CellClass::getName));
         mockValidator(mockExternalNameValidation);
         mockValidator(mockReplicateValidator);
 
@@ -487,6 +490,7 @@ public class TestSectionRegisterValidation {
         final Hmdmc hmdmc4 = new Hmdmc(4, "2021/04");
         hmdmc3.setEnabled(false);
         hmdmc4.setEnabled(false);
+        final CellClass cellClass = EntityFactory.getCellClass();
         List<Hmdmc> hmdmcs = List.of(hmdmc1, hmdmc2, hmdmc3, hmdmc4);
         final TissueType ARM = makeTissueType(1, "Arm", "ARM");
         final TissueType LEG = makeTissueType(2, "Leg", "LEG");
@@ -500,107 +504,108 @@ public class TestSectionRegisterValidation {
         final Medium mediumNone = new Medium(20, "None");
         final Medium medium = new Medium(21, "Butter");
         List<Medium> mediums = List.of(mediumNone, medium);
+        List<CellClass> cellClasses = List.of(cellClass);
         final Donor DONOR1 = new Donor(1, "DONOR1", LifeStage.adult, EntityFactory.getHuman());
         final Donor DONOR2 = new Donor(null, "DONOR2", LifeStage.fetal, null);
         List<Donor> donors = List.of(DONOR1, DONOR2);
         Supplier<ValidateTissueTestData> testData = () ->
-                new ValidateTissueTestData(hmdmcs, tissueTypes, fixatives, mediums, donors);
+                new ValidateTissueTestData(hmdmcs, tissueTypes, fixatives, mediums, cellClasses, donors);
 
         return Stream.of(
                 // Good request
                 testData.get()
-                        .content("EXT1", "4", "Arm", 2, "Donor1", "None", "None", "2021/01", "human")
-                        .content("EXT2", "5", "Leg", 1, "Donor1", "butter", "Formalin", "2021/02", "human")
-                        .content("EXT3", "5", "Leg", 1, "Donor2", "butter", "Formalin", null, "hamster")
-                        .tissues(new Tissue(null, "EXT1", "4", ARM.getSpatialLocations().get(1), DONOR1, mediumNone, fixNone, hmdmc1, null, null),
-                                new Tissue(null, "EXT2", "5", LEG.getSpatialLocations().get(0), DONOR1, medium, fix, hmdmc2, null, null),
-                                new Tissue(null, "EXT3", "5", LEG.getSpatialLocations().get(0), DONOR2, medium, fix, null, null, null)),
+                        .content("EXT1", "4", "Arm", 2, "Donor1", "None", "None", "2021/01", "human", "tissue")
+                        .content("EXT2", "5", "Leg", 1, "Donor1", "butter", "Formalin", "2021/02", "human", "tissue")
+                        .content("EXT3", "5", "Leg", 1, "Donor2", "butter", "Formalin", null, "hamster", "tissue")
+                        .tissues(new Tissue(null, "EXT1", "4", ARM.getSpatialLocations().get(1), DONOR1, mediumNone, fixNone, cellClass, hmdmc1, null, null),
+                                new Tissue(null, "EXT2", "5", LEG.getSpatialLocations().get(0), DONOR1, medium, fix, cellClass, hmdmc2, null, null),
+                                new Tissue(null, "EXT3", "5", LEG.getSpatialLocations().get(0), DONOR2, medium, fix, cellClass, null, null, null)),
 
                 // Single problems
                 testData.get()
-                        .content("EXT1", "4", "ARM", 1, "Donor1", "None", "None", null, "human")
+                        .content("EXT1", "4", "ARM", 1, "Donor1", "None", "None", null, "human", "tissue")
                         .problem("Missing HuMFre number."),
                 testData.get()
-                        .content("EXT1", "4", "ARM", 1, "Donor1", "None", "None", "", "human")
-                        .content("EXT2", "4", "ARM", 1, "Donor1", "None", "None", "2021/01", "")
+                        .content("EXT1", "4", "ARM", 1, "Donor1", "None", "None", "", "human", "tissue")
+                        .content("EXT2", "4", "ARM", 1, "Donor1", "None", "None", "2021/01", "", "tissue")
                         .problem("Missing HuMFre number."),
                 testData.get()
-                        .content("EXT1", "4", "ARM", 1, "Donor1", "None", "None", "2021/404", "human")
-                        .content("EXT2", "4", "ARM", 1, "Donor1", "None", "None", "2021/405", "human")
-                        .content("EXT3", "4", "ARM", 1, "Donor1", "None", "None", "2021/405", "human")
+                        .content("EXT1", "4", "ARM", 1, "Donor1", "None", "None", "2021/404", "human", "tissue")
+                        .content("EXT2", "4", "ARM", 1, "Donor1", "None", "None", "2021/405", "human", "tissue")
+                        .content("EXT3", "4", "ARM", 1, "Donor1", "None", "None", "2021/405", "human", "tissue")
                         .problem("Unknown HuMFre numbers: [2021/404, 2021/405]"),
                 testData.get()
-                        .content("EXT1", "4", "ARM", 1, "Donor2", "None", "None", "2021/01", "Hamster")
+                        .content("EXT1", "4", "ARM", 1, "Donor2", "None", "None", "2021/01", "Hamster", "tissue")
                         .problem("Unexpected HuMFre number received for non-human tissue."),
                 testData.get()
-                        .content("EXT1", "4", "ARM", 1, "Donor2", "None", "None", "2021/03", "Human")
-                        .content("EXT2", "4", "ARM", 1, "Donor2", "None", "None", "2021/04", "Human")
+                        .content("EXT1", "4", "ARM", 1, "Donor2", "None", "None", "2021/03", "Human", "tissue")
+                        .content("EXT2", "4", "ARM", 1, "Donor2", "None", "None", "2021/04", "Human", "tissue")
                         .problem("HuMFre number not enabled: [2021/03, 2021/04]"),
                 testData.get()
-                        .content(null, "4", "ARM", 1, "Donor1", "None", "None", "2021/01", "Human")
+                        .content(null, "4", "ARM", 1, "Donor1", "None", "None", "2021/01", "Human", "tissue")
                         .problem("Missing external identifier."),
                 testData.get()
-                        .content("", "4", "ARM", 1, "Donor1", "None", "None", "2021/01", "Human")
+                        .content("", "4", "ARM", 1, "Donor1", "None", "None", "2021/01", "Human", "tissue")
                         .problem("Missing external identifier."),
                 testData.get()
-                        .content("!DN", "4", "ARM", 1, "Donor1", "none", "none", "2021/01", "human")
+                        .content("!DN", "4", "ARM", 1, "Donor1", "none", "none", "2021/01", "human", "tissue")
                         .problem("Bad external name: !DN"),
                 testData.get()
-                        .content("EXT1", "4", "ARM", 1, "Donor1", "None", "None", "2021/01", "Human")
-                        .content("EXT1", "5", "ARM", 1, "Donor1", "None", "None", "2021/01", "Human")
-                        .content("EXT2", "4", "ARM", 1, "Donor1", "None", "None", "2021/01", "Human")
-                        .content("EXT2", "5", "ARM", 1, "Donor1", "None", "None", "2021/01", "Human")
-                        .content("EXT3", "5", "ARM", 1, "Donor1", "None", "None", "2021/01", "Human")
+                        .content("EXT1", "4", "ARM", 1, "Donor1", "None", "None", "2021/01", "Human", "tissue")
+                        .content("EXT1", "5", "ARM", 1, "Donor1", "None", "None", "2021/01", "Human", "tissue")
+                        .content("EXT2", "4", "ARM", 1, "Donor1", "None", "None", "2021/01", "Human", "tissue")
+                        .content("EXT2", "5", "ARM", 1, "Donor1", "None", "None", "2021/01", "Human", "tissue")
+                        .content("EXT3", "5", "ARM", 1, "Donor1", "None", "None", "2021/01", "Human", "tissue")
                         .problem("Repeated external identifiers: [EXT1, EXT2]"),
                 testData.get()
-                        .content("TISSUE1", "4", "ARM", 1, "Donor1", "none", "none", "2021/01", "human")
-                        .content("TISSUE2", "4", "ARM", 1, "Donor1", "none", "none", "2021/01", "human")
-                        .content("TISSUE3", "4", "ARM", 1, "Donor1", "none", "none", "2021/01", "human")
-                        .existing(new Tissue(1, "TISSUE1", "3", ARM.getSpatialLocations().get(0), DONOR1, medium, fix, hmdmcs.get(0), null, null),
-                                new Tissue(2, "TISSUE2", "3", ARM.getSpatialLocations().get(0), DONOR1, medium, fix, hmdmcs.get(0), null, null))
+                        .content("TISSUE1", "4", "ARM", 1, "Donor1", "none", "none", "2021/01", "human", "tissue")
+                        .content("TISSUE2", "4", "ARM", 1, "Donor1", "none", "none", "2021/01", "human", "tissue")
+                        .content("TISSUE3", "4", "ARM", 1, "Donor1", "none", "none", "2021/01", "human", "tissue")
+                        .existing(new Tissue(1, "TISSUE1", "3", ARM.getSpatialLocations().get(0), DONOR1, medium, fix, null, hmdmcs.get(0), null, null),
+                                new Tissue(2, "TISSUE2", "3", ARM.getSpatialLocations().get(0), DONOR1, medium, fix, null, hmdmcs.get(0), null, null))
                         .problem("External identifiers already in use: [TISSUE1, TISSUE2]"),
                 testData.get()
-                        .content("EXT1", "4", null, 1, "Donor1", "None", "None", "2021/01", "Human")
+                        .content("EXT1", "4", null, 1, "Donor1", "None", "None", "2021/01", "Human", "tissue")
                         .problem("Missing tissue type."),
                 testData.get()
-                        .content("EXT1", "4", "Squirrel", 1, "Donor1", "None", "None", "2021/01", "Human")
+                        .content("EXT1", "4", "Squirrel", 1, "Donor1", "None", "None", "2021/01", "Human", "tissue")
                         .problem("Unknown tissue type: [Squirrel]"),
                 testData.get()
-                        .content("EXT1", "4", "ARM", null, "Donor1", "None", "None", "2021/01", "Human")
+                        .content("EXT1", "4", "ARM", null, "Donor1", "None", "None", "2021/01", "Human", "tissue")
                         .problem("Missing spatial location."),
                 testData.get()
-                        .content("EXT1", "4", "ARM", 5, "Donor1", "None", "None", "2021/01", "Human")
-                        .content("EXT2", "4", "LEG", 3, "Donor1", "None", "None", "2021/01", "Human")
+                        .content("EXT1", "4", "ARM", 5, "Donor1", "None", "None", "2021/01", "Human", "tissue")
+                        .content("EXT2", "4", "LEG", 3, "Donor1", "None", "None", "2021/01", "Human", "tissue")
                         .problem("Unknown spatial locations: [5 for Arm, 3 for Leg]"),
                 testData.get()
-                        .content("EXT1", null, "ARM", 1, "Donor1", "None", "None", "2021/01", "Human")
+                        .content("EXT1", null, "ARM", 1, "Donor1", "None", "None", "2021/01", "Human", "tissue")
                         .problem("Missing replicate number."),
 
                 testData.get()
-                        .content("EXT1", "!-4", "ARM", 1, "Donor1", "None", "None", "2021/01", "Human")
+                        .content("EXT1", "!-4", "ARM", 1, "Donor1", "None", "None", "2021/01", "Human", "tissue")
                         .problem("Bad replicate: !-4"),
                 testData.get()
-                        .content("EXT1", "4", "ARM", 1, "Donor1", "Custard", "None", "2021/01", "Human")
-                        .content("EXT2", "4", "ARM", 1, "Donor1", "Jelly", "None", "2021/01", "Human")
+                        .content("EXT1", "4", "ARM", 1, "Donor1", "Custard", "None", "2021/01", "Human", "tissue")
+                        .content("EXT2", "4", "ARM", 1, "Donor1", "Jelly", "None", "2021/01", "Human", "tissue")
                         .problem("Unknown mediums: [Custard, Jelly]"),
                 testData.get()
-                        .content("EXT1", "4", "ARM", 1, "Donor1", "None", "Glue", "2021/01", "Human")
-                        .content("EXT2", "4", "ARM", 1, "Donor1", "None", "Stapler", "2021/01", "Human")
+                        .content("EXT1", "4", "ARM", 1, "Donor1", "None", "Glue", "2021/01", "Human", "tissue")
+                        .content("EXT2", "4", "ARM", 1, "Donor1", "None", "Stapler", "2021/01", "Human", "tissue")
                         .problem("Unknown fixatives: [Glue, Stapler]"),
                 testData.get()
-                        .content("EXT1", "4", "TAIL", 1, "Donor1", "None", "None", "2021/01", "Human")
+                        .content("EXT1", "4", "TAIL", 1, "Donor1", "None", "None", "2021/01", "Human", "tissue")
                         .problem("Tissue type is disabled: [Tail]"),
                 testData.get()
-                        .content("EXT1", "4", "LEG", 2, "Donor1", "None", "None", "2021/01", "Human")
+                        .content("EXT1", "4", "LEG", 2, "Donor1", "None", "None", "2021/01", "Human", "tissue")
                         .problem("Disabled spatial location: [2 for Leg]"),
 
                 // Mixed problems
                 testData.get()
-                        .content(null, null, null, null, null, null, null, null, "Human")
+                        .content(null, null, null, null, null, null, null, null, "Human", "tissue")
                         .problems("Missing external identifier.", "Missing replicate number.", "Missing tissue type.", "Missing spatial location.", "Missing medium.",
                                 "Missing fixative.", "Missing HuMFre number."),
                 testData.get()
-                        .content("!X11", "!-1", "Squirrel", 2, null, "Custard", "Stapler", "2021/404", null)
+                        .content("!X11", "!-1", "Squirrel", 2, null, "Custard", "Stapler", "2021/404", null, "tissue")
                         .problems("Bad external name: !X11", "Bad replicate: !-1", "Unknown tissue type: [Squirrel]", "Unknown medium: [Custard]",
                                 "Unknown fixative: [Stapler]", "Unknown HuMFre number: [2021/404]")
 
@@ -828,11 +833,12 @@ public class TestSectionRegisterValidation {
         List<TissueType> tissueTypes;
         List<Fixative> fixatives;
         List<Medium> mediums;
+        List<CellClass> cellClasses;
         List<Tissue> existingTissues;
         List<Donor> donors;
 
         public ValidateTissueTestData(List<Hmdmc> hmdmcs, List<TissueType> tissueTypes, List<Fixative> fixatives,
-                                      List<Medium> mediums, List<Donor> donors) {
+                                      List<Medium> mediums, List<CellClass> cellClasses, List<Donor> donors) {
             this.expectedProblems = List.of();
             this.expectedTissues = List.of();
             this.contents = new ArrayList<>();
@@ -840,6 +846,7 @@ public class TestSectionRegisterValidation {
             this.tissueTypes = tissueTypes;
             this.fixatives = fixatives;
             this.mediums = mediums;
+            this.cellClasses = cellClasses;
             this.existingTissues = List.of();
             this.donors = donors;
         }
@@ -864,7 +871,7 @@ public class TestSectionRegisterValidation {
         }
 
         public ValidateTissueTestData content(String externalName, String replicate, String tissueType, Integer spatLoc,
-                                              String donorName, String medium, String fixative, String hmdmc, String species) {
+                                              String donorName, String medium, String fixative, String hmdmc, String species, String cellClass) {
             SectionRegisterContent content = new SectionRegisterContent();
             content.setDonorIdentifier(donorName);
             content.setExternalIdentifier(externalName);
@@ -875,6 +882,7 @@ public class TestSectionRegisterValidation {
             content.setMedium(medium);
             content.setSpatialLocation(spatLoc);
             content.setSpecies(species);
+            content.setCellClass(cellClass);
             this.contents.add(content);
             return this;
         }

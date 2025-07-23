@@ -61,6 +61,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final OmeroProjectRepo omeroProjectRepo;
     final ProbePanelRepo probePanelRepo;
     final WorkTypeRepo workTypeRepo;
+    final CellClassRepo cellClassRepo;
     final WorkRepo workRepo;
     final ReagentPlateRepo reagentPlateRepo;
     final LabelPrintService labelPrintService;
@@ -101,8 +102,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                DestructionReasonRepo destructionReasonRepo, ProjectRepo projectRepo,
                                ProgramRepo programRepo, CostCodeRepo costCodeRepo, DnapStudyRepo dnapStudyRepo,
                                SolutionRepo solutionRepo, OmeroProjectRepo omeroProjectRepo,
-                               ProbePanelRepo probePanelRepo, WorkTypeRepo workTypeRepo, WorkRepo workRepo,
-                               ReagentPlateRepo reagentPlateRepo,
+                               ProbePanelRepo probePanelRepo, WorkTypeRepo workTypeRepo, CellClassRepo cellClassRepo,
+                               WorkRepo workRepo, ReagentPlateRepo reagentPlateRepo,
                                LabelPrintService labelPrintService, FindService findService,
                                CommentAdminService commentAdminService, EquipmentAdminService equipmentAdminService,
                                HistoryService historyService, WorkProgressService workProgressService, PlanService planService,
@@ -140,6 +141,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.programRepo = programRepo;
         this.costCodeRepo = costCodeRepo;
         this.workTypeRepo = workTypeRepo;
+        this.cellClassRepo = cellClassRepo;
         this.workRepo = workRepo;
         this.labelPrintService = labelPrintService;
         this.findService = findService;
@@ -317,6 +319,10 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
 
     public DataFetcher<Iterable<WorkType>> getWorkTypes() {
         return allOrEnabled(workTypeRepo::findAll, workTypeRepo::findAllByEnabled);
+    }
+
+    public DataFetcher<Iterable<CellClass>> getCellClasses() {
+        return allOrEnabled(cellClassRepo::findAll, cellClassRepo::findAllByEnabled);
     }
 
     public DataFetcher<Iterable<Work>> getWorks() {

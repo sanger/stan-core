@@ -384,10 +384,9 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
         if (nullOrEmpty(block.getReplicate()) || block.getReplicate().equalsIgnoreCase(original.getReplicate())) {
             tissue = original;
         } else {
-            tissue = tissueRepo.save(new Tissue(null, original.getExternalName(), block.getReplicate().toLowerCase(),
-                    original.getSpatialLocation(), original.getDonor(), original.getMedium(),
-                    original.getFixative(), original.getHmdmc(), original.getCollectionDate(),
-                    original.getId()));
+            tissue = original.derived();
+            tissue.setReplicate(block.getReplicate().toLowerCase());
+            tissue = tissueRepo.save(tissue);
         }
         return sampleRepo.save(new Sample(null, null, tissue, bs));
     }

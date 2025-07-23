@@ -252,8 +252,8 @@ public class TestParaffinProcessingService {
         Tissue tissue0 = tissues.get(0);
         // Add another representation of the same tissue record, to make sure both get updated
         tissues.add(new Tissue(tissue0.getId(), tissue0.getExternalName(), tissue0.getReplicate(), tissue0.getSpatialLocation(),
-                tissue0.getDonor(), tissue0.getMedium(), tissue0.getFixative(), tissue0.getHmdmc(), tissue0.getCollectionDate(),
-                tissue0.getParentId()));
+                tissue0.getDonor(), tissue0.getMedium(), tissue0.getFixative(), tissue0.getCellClass(), tissue0.getHmdmc(),
+                tissue0.getCollectionDate(), tissue0.getParentId()));
         assertEquals(tissue0, tissues.get(3));
         assertEquals(tissue0.hashCode(), tissues.get(3).hashCode());
 

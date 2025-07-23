@@ -27,6 +27,7 @@ public class TissueFieldChecker {
         MEDIUM(Tissue::getMedium, Medium::getName, BlockRegisterRequest::getMedium, "medium"),
         FIXATIVE(Tissue::getFixative, Fixative::getName, BlockRegisterRequest::getFixative, "fixative"),
         COLLECTION_DATE(Tissue::getCollectionDate, BlockRegisterRequest::getSampleCollectionDate, "sample collection date", true),
+        CELL_CLASS(Tissue::getCellClass, CellClass::getName, BlockRegisterRequest::getCellClass, "cellular classification"),
         ;
 
         private final Function<Tissue, ?> tissueFunction;

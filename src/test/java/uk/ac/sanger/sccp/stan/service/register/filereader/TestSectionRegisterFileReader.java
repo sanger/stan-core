@@ -128,7 +128,7 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
     void testIndexColumns() {
         Row row = mockRow("mandatory nonsense", "work number", "slide type", "external slide id", "xenium barcode",
                 "section address", "fixative", "embedding medium", "donor id", "life stage",
-                "species", "bio risk", "humfre", "tissue type", "spatial location", "replicate number",
+                "species", "cell class", "bio risk", "humfre", "tissue type", "spatial location", "replicate number",
                 "section external id", "section number", "section thickness", "date sectioned", "if bla bla bla position", null, "");
         List<String> problems = new ArrayList<>();
         var result = reader.indexColumns(problems, row);
@@ -147,7 +147,7 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
     void testIndexColumnsProblems() {
         Row row = mockRow("work number", "slide type", "external slide id",
                 "section address", "fixative", "embedding medium", "donor id", "life stage",
-                "species", "biological risk assessment number", "humfre", "tissue type", "spatial location", "replicate number",
+                "species", "cell class", "biological risk assessment number", "humfre", "tissue type", "spatial location", "replicate number",
                 "section external id", "section number", "section NUMBER", "bananas");
         List<String> problems = new ArrayList<>(3);
         reader.indexColumns(problems, row);

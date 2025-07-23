@@ -25,13 +25,15 @@ public class OriginalSampleData {
     private LocalDate sampleCollectionDate;
     private String workNumber;
     private String bioRiskCode;
+    private String cellClass;
 
     public OriginalSampleData() {}
 
     public OriginalSampleData(String donorIdentifier, LifeStage lifeStage, String hmdmc, String tissueType,
                               Integer spatialLocation, String replicateNumber, String externalIdentifier,
                               String labwareType, String solution, String fixative, String species,
-                              LocalDate sampleCollectionDate, String workNumber, String bioRiskCode) {
+                              LocalDate sampleCollectionDate, String workNumber, String bioRiskCode,
+                              String cellClass) {
         this.donorIdentifier = donorIdentifier;
         this.lifeStage = lifeStage;
         this.hmdmc = hmdmc;
@@ -46,6 +48,7 @@ public class OriginalSampleData {
         this.sampleCollectionDate = sampleCollectionDate;
         this.workNumber = workNumber;
         this.bioRiskCode = bioRiskCode;
+        this.cellClass = cellClass;
     }
 
     /**
@@ -196,6 +199,14 @@ public class OriginalSampleData {
         this.bioRiskCode = bioRiskCode;
     }
 
+    public String getCellClass() {
+        return this.cellClass;
+    }
+
+    public void setCellClass(String cellClass) {
+        this.cellClass = cellClass;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -215,6 +226,7 @@ public class OriginalSampleData {
                 && Objects.equals(this.sampleCollectionDate, that.sampleCollectionDate)
                 && Objects.equals(this.workNumber, that.workNumber)
                 && Objects.equals(this.bioRiskCode, that.bioRiskCode)
+                && Objects.equals(this.cellClass, that.cellClass)
         );
     }
 
@@ -241,6 +253,7 @@ public class OriginalSampleData {
                 .add("sampleCollectionDate", sampleCollectionDate)
                 .add("workNumber", workNumber)
                 .add("bioRiskCode", bioRiskCode)
+                .add("cellClass", cellClass)
                 .reprStringValues()
                 .toString();
     }
