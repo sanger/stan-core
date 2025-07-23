@@ -490,7 +490,10 @@ public class TestSectionRegisterValidation {
         List<Hmdmc> hmdmcs = List.of(hmdmc1, hmdmc2, hmdmc3, hmdmc4);
         final TissueType ARM = makeTissueType(1, "Arm", "ARM");
         final TissueType LEG = makeTissueType(2, "Leg", "LEG");
-        List<TissueType> tissueTypes = List.of(ARM, LEG);
+        LEG.getSpatialLocations().get(1).setEnabled(false);
+        final TissueType TAIL = makeTissueType(3, "Tail", "TAIL");
+        TAIL.setEnabled(false);
+        List<TissueType> tissueTypes = List.of(ARM, LEG, TAIL);
         final Fixative fixNone = new Fixative(10, "None");
         final Fixative fix = new Fixative(11, "Formalin");
         List<Fixative> fixatives = List.of(fixNone, fix);
@@ -506,11 +509,11 @@ public class TestSectionRegisterValidation {
         return Stream.of(
                 // Good request
                 testData.get()
-                        .content("EXT1", "4", "Arm", 1, "Donor1", "None", "None", "2021/01", "human")
-                        .content("EXT2", "5", "Leg", 2, "Donor1", "butter", "Formalin", "2021/02", "human")
+                        .content("EXT1", "4", "Arm", 2, "Donor1", "None", "None", "2021/01", "human")
+                        .content("EXT2", "5", "Leg", 1, "Donor1", "butter", "Formalin", "2021/02", "human")
                         .content("EXT3", "5", "Leg", 1, "Donor2", "butter", "Formalin", null, "hamster")
-                        .tissues(new Tissue(null, "EXT1", "4", ARM.getSpatialLocations().get(0), DONOR1, mediumNone, fixNone, hmdmc1, null, null),
-                                new Tissue(null, "EXT2", "5", LEG.getSpatialLocations().get(1), DONOR1, medium, fix, hmdmc2, null, null),
+                        .tissues(new Tissue(null, "EXT1", "4", ARM.getSpatialLocations().get(1), DONOR1, mediumNone, fixNone, hmdmc1, null, null),
+                                new Tissue(null, "EXT2", "5", LEG.getSpatialLocations().get(0), DONOR1, medium, fix, hmdmc2, null, null),
                                 new Tissue(null, "EXT3", "5", LEG.getSpatialLocations().get(0), DONOR2, medium, fix, null, null, null)),
 
                 // Single problems
@@ -584,7 +587,12 @@ public class TestSectionRegisterValidation {
                         .content("EXT1", "4", "ARM", 1, "Donor1", "None", "Glue", "2021/01", "Human")
                         .content("EXT2", "4", "ARM", 1, "Donor1", "None", "Stapler", "2021/01", "Human")
                         .problem("Unknown fixatives: [Glue, Stapler]"),
-
+                testData.get()
+                        .content("EXT1", "4", "TAIL", 1, "Donor1", "None", "None", "2021/01", "Human")
+                        .problem("Tissue type is disabled: [Tail]"),
+                testData.get()
+                        .content("EXT1", "4", "LEG", 2, "Donor1", "None", "None", "2021/01", "Human")
+                        .problem("Disabled spatial location: [2 for Leg]"),
 
                 // Mixed problems
                 testData.get()

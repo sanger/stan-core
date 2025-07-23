@@ -10,4 +10,5 @@ public interface TissueTypeRepo extends CrudRepository<TissueType, Integer> {
     Optional<TissueType> findByCode(String code);
 
     List<TissueType> findAllByNameIn(Collection<String> names);
+    List<TissueType> findAllByEnabled(boolean enabled);
 }

@@ -175,6 +175,9 @@ public class RegisterValidationImp implements RegisterValidation {
                 }
                 tt = ttOpt.get();
                 tissueTypeMap.put(key.string, tt);
+                if (!tt.isEnabled()) {
+                    addProblem(String.format("Tissue type \"%s\" is disabled.", tt.getName()));
+                }
             }
             final int slCode = block.getSpatialLocation();
             Optional<SpatialLocation> slOpt = tt.getSpatialLocations().stream()
@@ -184,7 +187,11 @@ public class RegisterValidationImp implements RegisterValidation {
                 addProblem(String.format("Unknown spatial location %s for tissue type %s.", slCode, tt.getName()));
                 continue;
             }
-            spatialLocationMap.put(key, slOpt.get());
+            SpatialLocation sl = slOpt.get();
+            if (tt.isEnabled() && !sl.isEnabled()) {
+                addProblem(String.format("Spatial location is disabled: %s for tissue type %s.", sl.getCode(), tt.getName()));
+            }
+            spatialLocationMap.put(key, sl);
         }
         if (!unknownTissueTypes.isEmpty()) {
             if (unknownTissueTypes.size()==1) {
