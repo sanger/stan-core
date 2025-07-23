@@ -517,9 +517,9 @@ public class TestSectionRegisterValidation {
                         .content("EXT1", "4", "Arm", 2, "Donor1", "None", "None", "2021/01", "human", "tissue")
                         .content("EXT2", "5", "Leg", 1, "Donor1", "butter", "Formalin", "2021/02", "human", "tissue")
                         .content("EXT3", "5", "Leg", 1, "Donor2", "butter", "Formalin", null, "hamster", "tissue")
-                        .tissues(new Tissue(null, "EXT1", "4", ARM.getSpatialLocations().get(1), DONOR1, mediumNone, fixNone, hmdmc1, null, null),
-                                new Tissue(null, "EXT2", "5", LEG.getSpatialLocations().get(0), DONOR1, medium, fix, hmdmc2, null, null),
-                                new Tissue(null, "EXT3", "5", LEG.getSpatialLocations().get(0), DONOR2, medium, fix, null, null, null)),
+                        .tissues(new Tissue(null, "EXT1", "4", ARM.getSpatialLocations().get(1), DONOR1, mediumNone, fixNone, cellClass, hmdmc1, null, null),
+                                new Tissue(null, "EXT2", "5", LEG.getSpatialLocations().get(0), DONOR1, medium, fix, cellClass, hmdmc2, null, null),
+                                new Tissue(null, "EXT3", "5", LEG.getSpatialLocations().get(0), DONOR2, medium, fix, cellClass, null, null, null)),
 
                 // Single problems
                 testData.get()
