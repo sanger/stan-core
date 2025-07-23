@@ -115,6 +115,7 @@ type TissueType {
     code: String!
     """The possible spatial locations for tissue of this type."""
     spatialLocations: [SpatialLocation!]!
+    enabled: Boolean!
 }
 
 """A location in an organ that tissue was taken from."""
@@ -124,6 +125,7 @@ type SpatialLocation {
     code: Int!
     """The tissue type (organ) to which this location belongs."""
     tissueType: TissueType!
+    enabled: Boolean!
 }
 
 """A permission number that can be linked to tissue."""
@@ -2177,7 +2179,7 @@ type Query {
     """Get the current logged in user."""
     user: User
     """Get all the tissue types available."""
-    tissueTypes: [TissueType!]!
+    tissueTypes(includeDisabled: Boolean): [TissueType!]!
     """Get all the labware types available."""
     labwareTypes: [LabwareType!]!
     """Get all the HMDMCs that are enabled, or get all including those that are disabled."""

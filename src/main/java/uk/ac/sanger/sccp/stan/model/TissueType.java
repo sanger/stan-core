@@ -10,12 +10,13 @@ import java.util.Objects;
  * @author dr6
  */
 @Entity
-public class TissueType {
+public class TissueType implements HasIntId, HasEnabled, HasName {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
     private String name;
     private String code;
+    private boolean enabled = true;
 
     @OneToMany(fetch = FetchType.LAZY, mappedBy = "tissueType")
     private List<SpatialLocation> spatialLocations;
@@ -28,6 +29,7 @@ public class TissueType {
         this.code = code;
     }
 
+    @Override
     public Integer getId() {
         return this.id;
     }
@@ -36,6 +38,7 @@ public class TissueType {
         this.id = id;
     }
 
+    @Override
     public String getName() {
         return this.name;
     }
@@ -61,11 +64,22 @@ public class TissueType {
     }
 
     @Override
+    public boolean isEnabled() {
+        return this.enabled;
+    }
+
+    @Override
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         TissueType that = (TissueType) o;
-        return (Objects.equals(this.id, that.id)
+        return (this.enabled==that.enabled
+                && Objects.equals(this.id, that.id)
                 && Objects.equals(this.name, that.name)
                 && Objects.equals(this.code, that.code));
     }

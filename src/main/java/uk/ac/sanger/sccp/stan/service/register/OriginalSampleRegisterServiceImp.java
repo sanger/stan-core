@@ -365,6 +365,13 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
             return;
         }
         UCMap<TissueType> ttMap = UCMap.from(tissueTypeRepo.findAllByNameIn(tissueTypeNames), TissueType::getName);
+        List<String> disabledTissueTypeNames = ttMap.values().stream()
+                .filter(tt -> !tt.isEnabled())
+                .map(TissueType::getName)
+                .toList();
+        if (!disabledTissueTypeNames.isEmpty()) {
+            problems.add("Disabled tissue type: "+disabledTissueTypeNames);
+        }
         Set<String> unknownTissueTypeNames = new LinkedHashSet<>();
         for (DataStruct data : datas) {
             final String ttName = data.getOriginalSampleData().getTissueType();
@@ -378,6 +385,8 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
                 unknownTissueTypeNames.add(repr(ttName));
             } else if (slCode != null && sl==null) {
                 problems.add("There is no spatial location "+slCode+" for tissue type "+tt.getName()+".");
+            } else if (sl != null && !sl.isEnabled() && tt.isEnabled()) {
+                problems.add(String.format("Spatial location %s for tissue type %s is disabled.", sl.getCode(), tt.getName()));
             }
             data.spatialLocation = sl;
         }

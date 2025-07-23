@@ -1,7 +1,6 @@
 package uk.ac.sanger.sccp.stan.service.register;
 
 import com.google.common.base.MoreObjects;
-import com.google.common.collect.Streams;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
@@ -223,18 +222,17 @@ public class TestRegisterValidation {
 
     @ParameterizedTest
     @MethodSource("slData")
-    public void testSpatialLocations(List<String> tissueTypeNames, List<Integer> codes,
-                                     List<TissueType> knownTissueTypes, List<SpatialLocation> expectedSLs,
-                                     List<String> expectedProblems) {
-        @SuppressWarnings("UnstableApiUsage")
+    public void testValidateSpatialLocations(List<String> tissueTypeNames, List<Integer> codes,
+                                             List<TissueType> knownTissueTypes, List<SpatialLocation> expectedSLs,
+                                             List<String> expectedProblems) {
         RegisterRequest request = new RegisterRequest(
-                Streams.zip(tissueTypeNames.stream(), codes.stream(),
+                Zip.map(tissueTypeNames.stream(), codes.stream(),
                 (name, code) -> {
                     BlockRegisterRequest br = new BlockRegisterRequest();
                     br.setTissueType(name);
                     br.setSpatialLocation(code);
                     return br;
-                }).collect(toList()));
+                }).toList());
         when(mockTtRepo.findByName(any())).then(invocation -> {
             final String arg = invocation.getArgument(0);
             return knownTissueTypes.stream().filter(tt -> arg.equalsIgnoreCase(tt.getName())).findAny();
@@ -260,16 +258,15 @@ public class TestRegisterValidation {
             return knownHmdmcs.stream().filter(h -> arg.equalsIgnoreCase(h.getHmdmc())).findAny();
         });
 
-        //noinspection UnstableApiUsage
         RegisterRequest request = new RegisterRequest(
-                Streams.zip(givenHmdmcs.stream(), speciesNames.stream(),
+                Zip.map(givenHmdmcs.stream(), speciesNames.stream(),
                         (hmdmc, species) -> {
                             BlockRegisterRequest br = new BlockRegisterRequest();
                             br.setHmdmc(hmdmc);
                             br.setSpecies(species);
                             return br;
                         })
-                        .collect(toList())
+                        .toList()
         );
 
         RegisterValidationImp validation = create(request);
@@ -697,7 +694,13 @@ public class TestRegisterValidation {
         final String name = tt.getName();
         final SpatialLocation sl0 = new SpatialLocation(500, "Alpha", 0, tt);
         final SpatialLocation sl1 = new SpatialLocation(501, "Beta", 1, tt);
-        tt.setSpatialLocations(List.of(sl0, sl1));
+        final SpatialLocation sl2 = new SpatialLocation(502, "Gamma", 2, tt);
+        sl2.setEnabled(false);
+        tt.setSpatialLocations(List.of(sl0, sl1, sl2));
+        final TissueType tt2 = new TissueType(51, "Leg", "LEG");
+        tt2.setEnabled(false);
+        final SpatialLocation sl0a = new SpatialLocation(601, "Alabama", 0, tt2);
+        tt2.setSpatialLocations(List.of(sl0a));
         return Stream.of(
                 // Valid:
                 Arguments.of(List.of(name, name.toUpperCase(), name.toLowerCase()), List.of(0, 0, 1),
@@ -706,6 +709,10 @@ public class TestRegisterValidation {
                 // Invalid:
                 Arguments.of(List.of(name, "Plumbus", "Slime", "Slime"), List.of(1, 2, 3, 4),
                         List.of(tt), List.of(sl1), List.of("Unknown tissue types: [Plumbus, Slime]")),
+                Arguments.of(List.of(name, name, name), List.of(0,1,2), List.of(tt), List.of(sl0, sl1, sl2),
+                        List.of("Spatial location is disabled: 2 for tissue type Arm.")),
+                Arguments.of(List.of(tt2.getName()), List.of(0), List.of(tt2), List.of(sl0a),
+                        List.of("Tissue type \""+tt2.getName()+"\" is disabled.")),
                 Arguments.of(List.of(name, name, name, name, name, name), List.of(0, 0, 1, 3, 3, 4),
                         List.of(tt), List.of(sl0, sl1), List.of("Unknown spatial location 3 for tissue type Arm.",
                                 "Unknown spatial location 4 for tissue type Arm.")),
