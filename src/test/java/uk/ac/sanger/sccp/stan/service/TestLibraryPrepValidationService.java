@@ -165,7 +165,7 @@ class TestLibraryPrepValidationService {
 
         OperationType opType = EntityFactory.makeOperationType("Amplification", null);
         List<Comment> validatedComments = List.of(new Comment(1, "Bananas", "custard"));
-        List<SlotMeasurementRequest> sanitisedMeasurements = List.of(new SlotMeasurementRequest(A1, "Alpha", "Beta", 1));
+        List<SlotMeasurementRequest> sanitisedMeasurements = List.of(new SlotMeasurementRequest(A1, "Alpha", "Beta", List.of(1)));
 
         mayAddProblem("Bad address").when(mockOwsmService).validateAddresses(any(), any(), any(), any());
         when(mockOwsmService.loadOpType(any(), any())).thenReturn(opType);
