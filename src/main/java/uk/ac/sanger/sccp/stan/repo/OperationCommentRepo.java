@@ -14,4 +14,8 @@ public interface OperationCommentRepo extends CrudRepository<OperationComment, I
     @Query("select oc from OperationComment oc join Operation op on (oc.operationId=op.id) " +
             "where oc.slotId in (?1) and op.operationType=?2")
     List<OperationComment> findAllBySlotAndOpType(Collection<Integer> slotIds, OperationType opType);
+
+    @Query("select oc from OperationComment oc join Comment com on (oc.comment=com) " +
+            "where oc.slotId in (?1) and com.category=?2")
+    List<OperationComment> findAllBySlotIdInAndCommentCategory(Collection<Integer> slotIds, String category);
 }

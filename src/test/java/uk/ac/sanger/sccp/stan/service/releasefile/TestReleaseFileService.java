@@ -198,6 +198,7 @@ public class TestReleaseFileService {
         doNothing().when(service).loadSamplePositions(any());
         doNothing().when(service).loadSectionComments(any());
         doNothing().when(service).loadVisiumBarcodes(any(), any());
+        doNothing().when(service).loadSizeRanges(any(), any());
         doNothing().when(service).loadXeniumFields(any(), any());
         doNothing().when(service).loadSolutions(any());
         doNothing().when(service).loadFlags(any());
@@ -226,6 +227,7 @@ public class TestReleaseFileService {
         verify(service).loadSamplePositions(entries);
         verify(service).loadSectionComments(entries);
         verify(service, times(includeVisium ? 1 : 0)).loadVisiumBarcodes(entries, ancestry);
+        verify(service, times(includeVisium ? 1 : 0)).loadSizeRanges(entries, slotIds);
         verify(service).loadXeniumFields(entries, slotIds);
         verify(service).loadSolutions(entries);
         verify(service).loadFlags(entries);
@@ -1583,6 +1585,31 @@ public class TestReleaseFileService {
         assertNull(entries[0].getVisiumBarcode());
         assertEquals("VIS1", entries[1].getVisiumBarcode());
         assertEquals("VIS2", entries[2].getVisiumBarcode());
+    }
+
+    @Test
+    public void testLoadSizeRanges() {
+        Sample sample = EntityFactory.getSample();
+        Integer sampleId = sample.getId();
+        Integer opId = 10;
+        LabwareType lt = EntityFactory.makeLabwareType(1,3);
+        Labware lw = EntityFactory.makeLabware(lt, sample, sample);
+        Integer[] slotIds = lw.getSlots().stream().map(Slot::getId).toArray(Integer[]::new);
+        final String category = "size range";
+        List<OperationComment> opcoms = List.of(
+                new OperationComment(1, new Comment(1, "Alabama", category), opId, sampleId, slotIds[0], null),
+                new OperationComment(2, new Comment(2, "Alaska", category), opId, sampleId, slotIds[0], null),
+                new OperationComment(3, new Comment(3, "Arizona", category), opId, sampleId, slotIds[1], null)
+        );
+        Set<Integer> slotIdSet = new HashSet<>(Arrays.asList(slotIds));
+        List<ReleaseEntry> entries = lw.getSlots().stream()
+                .map(slot -> new ReleaseEntry(lw, slot, sample))
+                .toList();
+        when(mockOpComRepo.findAllBySlotIdInAndCommentCategory(slotIdSet, category)).thenReturn(opcoms);
+        service.loadSizeRanges(entries, slotIdSet);
+        assertThat(entries.get(0).getSizeRange()).isIn("Alabama,Alaska", "Alaska,Alabama");
+        assertEquals("Arizona", entries.get(1).getSizeRange());
+        assertNull(entries.get(2).getSizeRange());
     }
 
     private LocalDateTime time(int day) {
