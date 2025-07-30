@@ -1,6 +1,8 @@
 package uk.ac.sanger.sccp.stan.integrationtest;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -234,12 +236,21 @@ public class TestReleaseMutation {
                 .getContentAsString();
     }
 
-    @Test
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
     @Transactional
-    public void testReleaseFileOptionsQuery() throws Exception {
+    public void testReleaseFileOptionsQuery(boolean includeDisabled) throws Exception {
         String query = tester.readGraphQL("releasecolumnoptions.graphql");
+        if (!includeDisabled) {
+            query = query.replace("(includeDisabled: true)", "");
+        }
         List<Map<String, String>> maps = chainGet(tester.post(query), "data", "releaseColumnOptions");
         ReleaseFileOption[] options = ReleaseFileOption.values();
+        if (!includeDisabled) {
+            options = Arrays.stream(options)
+                    .filter(ReleaseFileOption::isEnabled)
+                    .toArray(ReleaseFileOption[]::new);
+        }
         assertThat(maps).hasSize(options.length);
         for (int i = 0; i < options.length; ++i) {
             ReleaseFileOption option = options[i];

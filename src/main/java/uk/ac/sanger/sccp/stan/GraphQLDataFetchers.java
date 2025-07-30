@@ -259,7 +259,16 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     }
 
     public DataFetcher<Iterable<ReleaseFileOption>> getReleaseColumnOptions() {
-        return dfe -> Arrays.asList(ReleaseFileOption.values());
+        return dfe -> {
+            boolean includeDisabled = argOrFalse(dfe, "includeDisabled");
+            if (includeDisabled) {
+                return Arrays.asList(ReleaseFileOption.values());
+            } else {
+                return Arrays.stream(ReleaseFileOption.values())
+                        .filter(ReleaseFileOption::isEnabled)
+                        .toList();
+            }
+        };
     }
 
     public DataFetcher<Iterable<DestructionReason>> getDestructionReasons() {
