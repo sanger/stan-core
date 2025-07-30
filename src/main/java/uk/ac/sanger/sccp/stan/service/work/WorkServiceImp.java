@@ -552,6 +552,11 @@ public class WorkServiceImp implements WorkService {
                 .flatMap(lw -> lw.getSlots().stream()));
     }
 
+    @Override
+    public Map<Integer, Set<String>> loadWorkNumbersForOpIds(Collection<Integer> opIds) {
+        return workRepo.findWorkNumbersForOpIds(opIds);
+    }
+
     public Map<SlotIdSampleId, Set<Work>> loadWorksForSlots(Stream<Slot> slots) {
         List<Integer> slotIds = slots.map(Slot::getId).toList();
         return workRepo.slotSampleWorksForSlotIds(slotIds);

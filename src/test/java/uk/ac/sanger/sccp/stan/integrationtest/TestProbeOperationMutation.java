@@ -106,6 +106,7 @@ public class TestProbeOperationMutation {
         assertEquals("123456", noteValues.get("reagent lot"));
         testCompletion(lw, work, sample);
         testAnalyser(lw, work, sample);
+        recordXeniumAnalyserQC(lw, work);
         testSampleMetrics(lw, work);
     }
 
@@ -161,6 +162,15 @@ public class TestProbeOperationMutation {
         String runNamesQuery = String.format("query { runNames(barcode: \"%s\") }", lw.getBarcode());
         Object queryResult = tester.post(runNamesQuery);
         assertThat(chainGetList(queryResult, "data", "runNames")).containsExactly("RUN1");
+    }
+
+    private void recordXeniumAnalyserQC(Labware lw, Work work) throws Exception {
+        entityCreator.createOpType("Xenium analyser QC", null, OperationTypeFlag.IN_PLACE);
+        String mutation = tester.readGraphQL("recordxeniumanalyserqc.graphql")
+                .replace("[WORK]", work.getWorkNumber())
+                .replace("[BC]",  lw.getBarcode());
+        Object result = tester.post(mutation);
+        assertNotNull(chainGet(result, "data", "recordQCLabware", "operations", 0, "id"));
     }
 
     private void testSampleMetrics(Labware lw, Work work) throws Exception {

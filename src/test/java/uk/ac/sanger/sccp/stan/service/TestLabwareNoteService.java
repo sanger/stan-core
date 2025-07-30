@@ -57,6 +57,18 @@ class TestLabwareNoteService {
     }
 
     @Test
+    void testFindNamedNotesForLabwareAndOperationType() {
+        Labware lw = EntityFactory.getTube();
+        OperationType opType = EntityFactory.makeOperationType("opname", null);
+        String name = "Bananas";
+        List<LabwareNote> notes = List.of(
+                new LabwareNote(10, lw.getId(), 100, name, "Custard")
+        );
+        when(mockLwNoteRepo.findAllByNameAndLabwareIdInAndOperationType(name, List.of(lw.getId()), opType)).thenReturn(notes);
+        assertSame(notes, service.findNamedNotesForLabwareAndOperationType(name, lw,  opType));
+    }
+
+    @Test
     void testFindNoteValuesForLabware_single() {
         Labware lw = EntityFactory.getTube();
         String name = "Bananas";

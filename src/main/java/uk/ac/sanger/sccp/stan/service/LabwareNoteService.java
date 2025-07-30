@@ -4,8 +4,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import javax.persistence.EntityNotFoundException;
-import java.util.Collection;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Service helping with {@link uk.ac.sanger.sccp.stan.model.LabwareNote labware notes}
@@ -19,6 +18,15 @@ public interface LabwareNoteService {
      * @exception EntityNotFoundException no such labware is found
      */
     Set<String> findNoteValuesForBarcode(String barcode, String name) throws EntityNotFoundException;
+
+    /**
+     * Finds notes with a specified name on specified labware for a specified operation type
+     * @param name the name of the note
+     * @param lw the noted labware
+     * @param opType the type of operation the note was recorded for
+     * @return matching labware notes (may be empty)
+     */
+    List<LabwareNote> findNamedNotesForLabwareAndOperationType(String name, Labware lw, OperationType opType);
 
     /**
      * Gets the values of notes for multiple labware and one note name

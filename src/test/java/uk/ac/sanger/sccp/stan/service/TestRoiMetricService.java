@@ -8,11 +8,11 @@ import org.mockito.*;
 import org.mockito.stubbing.Answer;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
+import uk.ac.sanger.sccp.stan.repo.OperationTypeRepo;
 import uk.ac.sanger.sccp.stan.repo.RoiMetricRepo;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.request.SampleMetricsRequest;
 import uk.ac.sanger.sccp.stan.request.SampleMetricsRequest.SampleMetric;
-import uk.ac.sanger.sccp.stan.service.RoiMetricServiceImp.MetricValidation;
 import uk.ac.sanger.sccp.stan.service.validation.ValidationHelper;
 import uk.ac.sanger.sccp.stan.service.validation.ValidationHelperFactory;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
@@ -23,17 +23,18 @@ import java.util.*;
 
 import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.Matchers.*;
-import static uk.ac.sanger.sccp.stan.service.RoiMetricServiceImp.RUN_NAME;
+import static uk.ac.sanger.sccp.stan.service.RoiMetricServiceImp.*;
 
 /** Test {@link RoiMetricServiceImp} */
 class TestRoiMetricService {
     @Mock
     private Clock mockClock;
+    @Mock
+    private OperationTypeRepo mockOpTypeRepo;
     @Mock
     private ValidationHelperFactory mockValFactory;
     @Mock
@@ -94,6 +95,7 @@ class TestRoiMetricService {
         final Set<String> problems = new LinkedHashSet<>();
         when(helper.getProblems()).thenReturn(problems);
         when(mockValFactory.getHelper()).thenReturn(helper);
+        doNothing().when(service).checkForPriorOp(any());
 
         User user = userSupplied ? EntityFactory.getUser() : null;
         MetricValidation val = service.validate(user, null);
@@ -101,6 +103,7 @@ class TestRoiMetricService {
         verifyNoMoreInteractions(helper);
         verifyNoInteractions(mockValService);
         verify(service, never()).validateRunName(any(), any(), any());
+        verify(service, never()).checkForPriorOp(any());
         assertSame(problems, val.problems);
         if (userSupplied) {
             assertThat(problems).containsExactly("No request supplied.");
@@ -131,6 +134,11 @@ class TestRoiMetricService {
         when(helper.checkWork(anyString())).then(addProblemAndReturn(helper, "Bad work", work));
         when(helper.checkOpType(any(), any(OperationTypeFlag.class))).then(addProblemAndReturn(helper, "Bad op type", opType));
         when(mockValService.validateMetrics(any(), any(), any())).then(addProblem("Bad metrics", sanitisedMetrics));
+        doAnswer(invocation -> {
+            MetricValidation val = new MetricValidation(problems);
+            val.addProblem("No prior op");
+            return null;
+        }).when(service).checkForPriorOp(any());
         doAnswer(addProblem("Bad run name", sanitisedRun))
                 .when(service).validateRunName(any(), any(), any());
         MetricValidation val = service.validate(user, request);
@@ -142,8 +150,10 @@ class TestRoiMetricService {
         verify(service).validateRunName(any(), same(lw), eq(initialRun));
         verifyNoMoreInteractions(helper);
         verify(mockValService).validateMetrics(problems, lw, initialMetrics);
+        verify(service).checkForPriorOp(val);
 
-        assertThat(problems).containsExactlyInAnyOrder("Bad lw", "Bad work", "Bad op type", "Bad metrics", "Bad run name");
+        assertThat(problems).containsExactlyInAnyOrder("Bad lw", "Bad work", "Bad op type", "Bad metrics",
+                "Bad run name", "No prior op");
         assertSame(problems, val.problems);
         assertSame(lw, val.labware);
         assertSame(work, val.work);
@@ -193,6 +203,7 @@ class TestRoiMetricService {
         when(mockValService.validateMetrics(any(), any(), any())).thenReturn(sanitisedMetrics);
 
         doReturn(sanitisedRun).when(service).validateRunName(any(), any(), any());
+        doNothing().when(service).checkForPriorOp(any());
 
         MetricValidation val = service.validate(user, request);
 
@@ -203,6 +214,7 @@ class TestRoiMetricService {
         verifyNoMoreInteractions(helper);
         verify(mockValService).validateMetrics(problems, lw, initialMetrics);
         verify(service).validateRunName(problems, lw, initialRun);
+        verify(service).checkForPriorOp(val);
 
         assertThat(problems).isEmpty();
         assertSame(problems, val.problems);
@@ -244,6 +256,83 @@ class TestRoiMetricService {
             expectedProblem = expectedProblem.replace("[BC]", lw.getBarcode());
         }
         assertProblem(problems, expectedProblem);
+    }
+
+    @Test
+    public void testCheckForPriorOp_noCheck() {
+        MetricValidation val = new MetricValidation(Set.of());
+        service.checkForPriorOp(val);
+        verify(service, never()).priorOpExists(any(), any(), any(), any());
+        assertThat(val.problems).isEmpty();
+    }
+
+    @Test
+    public void testCheckForPriorOp_notFound() {
+        doReturn(false).when(service).priorOpExists(any(), any(), any(), any());
+        MetricValidation val = new MetricValidation(new HashSet<>(1));
+        val.labware = EntityFactory.getTube();
+        val.runName = "run1";
+        val.work = EntityFactory.makeWork("SGP1");
+        val.opType = EntityFactory.makeOperationType(XEN_METRICS_OP, null, OperationTypeFlag.IN_PLACE);
+        OperationType priorOpType = EntityFactory.makeOperationType(XEN_QC_OP, null, OperationTypeFlag.IN_PLACE);
+        when(mockOpTypeRepo.getByName(XEN_QC_OP)).thenReturn(priorOpType);
+        service.checkForPriorOp(val);
+        assertThat(val.problems).containsExactly(String.format(
+                "%s has not been recorded for labware %s, work %s, run %s.",
+                XEN_QC_OP, val.labware.getBarcode(), val.work.getWorkNumber(), val.runName));
+        verify(service).priorOpExists(val.labware, priorOpType, val.runName, val.work);
+    }
+
+    @Test
+    public void testCheckForPriorOp_found() {
+        doReturn(true).when(service).priorOpExists(any(), any(), any(), any());
+        MetricValidation val = new MetricValidation(Set.of());
+        val.labware = EntityFactory.getTube();
+        val.runName = "run1";
+        val.work = EntityFactory.makeWork("SGP1");
+        val.opType = EntityFactory.makeOperationType(XEN_METRICS_OP, null, OperationTypeFlag.IN_PLACE);
+        OperationType priorOpType = EntityFactory.makeOperationType(XEN_QC_OP, null, OperationTypeFlag.IN_PLACE);
+        when(mockOpTypeRepo.getByName(XEN_QC_OP)).thenReturn(priorOpType);
+        service.checkForPriorOp(val);
+        assertThat(val.problems).isEmpty();
+        verify(service).priorOpExists(val.labware, priorOpType, val.runName, val.work);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false,true})
+    public void testPriorOpExists_noMatchingRuns(boolean anyNotes) {
+        Labware lw = EntityFactory.getTube();
+        OperationType opType = EntityFactory.makeOperationType(XEN_QC_OP, null, OperationTypeFlag.IN_PLACE);
+        Work work = EntityFactory.makeWork("SGP1");
+        List<LabwareNote> notes;
+        if (anyNotes) {
+            notes = List.of(new LabwareNote(1, lw.getId(), 100, RUN_NAME, "run2"));
+        } else {
+            notes = List.of();
+        }
+        when(mockLwNoteService.findNamedNotesForLabwareAndOperationType(any(), any(), any())).thenReturn(notes);
+        assertFalse(service.priorOpExists(lw, opType, "run1", work));
+        verify(mockLwNoteService).findNamedNotesForLabwareAndOperationType(RUN_NAME, lw, opType);
+        verifyNoInteractions(mockWorkService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false,true})
+    public void testPriorOpExists_opsFound(boolean workMatches) {
+        Labware lw = EntityFactory.getTube();
+        OperationType opType = EntityFactory.makeOperationType(XEN_QC_OP, null, OperationTypeFlag.IN_PLACE);
+        Work work = EntityFactory.makeWork("SGP1");
+        List<LabwareNote> notes = List.of(
+                new LabwareNote(1, lw.getId(), 100, RUN_NAME, "run1"),
+                new LabwareNote(2, lw.getId(), 101, RUN_NAME, "run1"),
+                new LabwareNote(3, lw.getId(), 102, RUN_NAME, "run2")
+        );
+        when(mockLwNoteService.findNamedNotesForLabwareAndOperationType(any(), any(), any())).thenReturn(notes);
+        when(mockWorkService.loadWorkNumbersForOpIds(any())).thenReturn(Map.of(100, Set.of("W1"),
+                101, Set.of("W2", workMatches ? work.getWorkNumber() : "W3")));
+        assertEquals(workMatches, service.priorOpExists(lw, opType, "run1", work));
+        verify(mockLwNoteService).findNamedNotesForLabwareAndOperationType(RUN_NAME, lw, opType);
+        verify(mockWorkService).loadWorkNumbersForOpIds(Set.of(100,101));
     }
 
     @ParameterizedTest

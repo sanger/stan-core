@@ -3,6 +3,7 @@ package uk.ac.sanger.sccp.stan.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
+import uk.ac.sanger.sccp.stan.repo.OperationTypeRepo;
 import uk.ac.sanger.sccp.stan.repo.RoiMetricRepo;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.request.SampleMetricsRequest;
@@ -24,8 +25,11 @@ import static java.util.stream.Collectors.toSet;
 @Service
 public class RoiMetricServiceImp implements RoiMetricService {
     public static final String RUN_NAME = "run";
+    public static final String XEN_METRICS_OP = "Xenium metrics",
+            XEN_QC_OP = "Xenium analyser QC";
 
     private final Clock clock;
+    private final OperationTypeRepo opTypeRepo;
     private final ValidationHelperFactory valFactory;
     private final RoiMetricValidationService valService;
     private final OperationService opService;
@@ -34,11 +38,13 @@ public class RoiMetricServiceImp implements RoiMetricService {
     private final LabwareNoteService lwNoteService;
 
     @Autowired
-    public RoiMetricServiceImp(Clock clock, ValidationHelperFactory valFactory,
+    public RoiMetricServiceImp(Clock clock, OperationTypeRepo opTypeRepo,
+                               ValidationHelperFactory valFactory,
                                RoiMetricValidationService valService, OperationService opService,
                                WorkService workService, LabwareNoteService lwNoteService,
                                RoiMetricRepo roiMetricRepo) {
         this.clock = clock;
+        this.opTypeRepo = opTypeRepo;
         this.valFactory = valFactory;
         this.valService = valService;
         this.opService = opService;
@@ -81,6 +87,7 @@ public class RoiMetricServiceImp implements RoiMetricService {
         val.work = helper.checkWork(request.getWorkNumber());
         val.opType = helper.checkOpType(request.getOperationType(), OperationTypeFlag.IN_PLACE);
         val.metrics = valService.validateMetrics(val.problems, val.labware, request.getMetrics());
+        checkForPriorOp(val);
         return val;
     }
 
@@ -105,6 +112,50 @@ public class RoiMetricServiceImp implements RoiMetricService {
                     runName, lw.getBarcode()));
         }
         return runName;
+    }
+
+    /**
+     * For xenium metrics, check that xenium qc has been recorded on the same labware with the same
+     * run name and work number. If any of those pieces of information is missing, the request
+     * has already failed validation, so do nothing. If the pieces of information exist and the
+     * prior operation is missing, add a problem.
+     * @param val loaded validation info
+     */
+    void checkForPriorOp(MetricValidation val) {
+        if (val.opType != null && val.opType.getName().equalsIgnoreCase(XEN_METRICS_OP)
+                && val.labware != null && val.runName != null && val.work != null) {
+            OperationType opType = opTypeRepo.getByName(XEN_QC_OP);
+            if (!priorOpExists(val.labware, opType, val.runName, val.work)) {
+                val.addProblem(String.format("%s has not been recorded for labware %s, work %s, run %s.",
+                        XEN_QC_OP, val.labware.getBarcode(), val.work.getWorkNumber(), val.runName));
+            }
+        }
+    }
+
+    /**
+     * Is there an operation of the given type with the given labware, work and run name?
+     * @param lw the labware
+     * @param opType the operation type to look for
+     * @param runName the run name required
+     * @param work the work required
+     * @return true if such an operation exists; false otherwise
+     */
+    boolean priorOpExists(Labware lw, OperationType opType, String runName, Work work) {
+        List<LabwareNote> notes = lwNoteService.findNamedNotesForLabwareAndOperationType(RUN_NAME, lw, opType);
+        if (notes.isEmpty()) {
+            return false;
+        }
+        Set<Integer> matchingOpIds = notes.stream()
+                .filter(note -> runName.equalsIgnoreCase(note.getValue()))
+                .map(LabwareNote::getOperationId)
+                .collect(toSet());
+        if (matchingOpIds.isEmpty()) {
+            return false;
+        }
+        Map<Integer, Set<String>> opWorkNumbers = workService.loadWorkNumbersForOpIds(matchingOpIds);
+        return opWorkNumbers.values().stream()
+                .flatMap(Set::stream)
+                .anyMatch(wn -> wn.equalsIgnoreCase(work.getWorkNumber()));
     }
 
     /**

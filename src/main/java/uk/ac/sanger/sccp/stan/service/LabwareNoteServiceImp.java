@@ -34,6 +34,11 @@ public class LabwareNoteServiceImp implements LabwareNoteService {
     }
 
     @Override
+    public List<LabwareNote> findNamedNotesForLabwareAndOperationType(String name, Labware lw, OperationType opType) {
+        return lwNoteRepo.findAllByNameAndLabwareIdInAndOperationType(name, List.of(lw.getId()), opType);
+    }
+
+    @Override
     public UCMap<Set<String>> findNoteValuesForLabware(Collection<Labware> labware, String name) {
         if (labware.isEmpty()) {
             return new UCMap<>(0);
