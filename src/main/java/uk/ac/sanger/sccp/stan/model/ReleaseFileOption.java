@@ -13,7 +13,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 public enum ReleaseFileOption {
     Sample_processing("Sample processing"),
     Histology,
-    RNAscope_IHC("RNAscope/IHC", false),
+    RNAscope_IHC("RNAscope/IHC", true),
     Visium,
     Xenium,
     ;
