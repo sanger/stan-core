@@ -274,6 +274,13 @@ public interface WorkService {
     Map<SlotIdSampleId, Set<Work>> loadWorksForSlotsIn(Collection<Labware> labware);
 
     /**
+     * Gets the work numbers linked to each of the given operation ids
+     * @param opIds operation ids
+     * @return the corresponding works
+     */
+    Map<Integer, Set<String>> loadWorkNumbersForOpIds(Collection<Integer> opIds);
+
+    /**
      * struct-like container for a work and an operation
      */
     record WorkOp(Work work, Operation op) {

@@ -35,6 +35,7 @@ public class TestLabwareNoteRepo {
     @Transactional
     public void testFindByOperationId() {
         OperationType opType = entityCreator.createOpType("Stir", null, OperationTypeFlag.IN_PLACE);
+        OperationType opType2 = entityCreator.createOpType("Stir2", null, OperationTypeFlag.IN_PLACE);
         User user = entityCreator.createUser("user1");
         Integer op1id = opRepo.save(new Operation(null, opType, null, null, user)).getId();
         Integer op2id = opRepo.save(new Operation(null, opType, null, null, user)).getId();
@@ -52,6 +53,13 @@ public class TestLabwareNoteRepo {
         assertThat(labwareNoteRepo.findAllByOperationIdIn(List.of(op1id))).containsExactlyInAnyOrder(note1, note2, note3);
         assertThat(labwareNoteRepo.findAllByOperationIdIn(List.of(op2id))).containsExactly(note4);
         assertThat(labwareNoteRepo.findAllByOperationIdIn(List.of(op1id, op2id))).containsExactlyInAnyOrder(note1, note2, note3, note4);
+
+        assertThat(labwareNoteRepo.findAllByNameAndLabwareIdInAndOperationType("Alpha", List.of(lw.getId()), opType))
+                .containsExactlyInAnyOrder(note1, note2);
+        assertThat(labwareNoteRepo.findAllByNameAndLabwareIdInAndOperationType("Alpha", List.of(lw.getId()), opType2))
+                .isEmpty();
+        assertThat(labwareNoteRepo.findAllByNameAndLabwareIdInAndOperationType("Alpha", List.of(-1), opType))
+                .isEmpty();
     }
 
     @Test

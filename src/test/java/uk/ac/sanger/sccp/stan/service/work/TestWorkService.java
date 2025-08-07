@@ -1236,6 +1236,14 @@ public class TestWorkService {
     }
 
     @Test
+    public void testLoadWorkNumbersForOpIds() {
+        Map<Integer, Set<String>> map = Map.of(2, Set.of("Alpha", "Beta"));
+        Set<Integer> opIds = Set.of(2,3);
+        when(mockWorkRepo.findWorkNumbersForOpIds(opIds)).thenReturn(map);
+        assertSame(map, workService.loadWorkNumbersForOpIds(opIds));
+    }
+
+    @Test
     public void testLoadWorksForSlotsIn() {
         Sample sample = EntityFactory.getSample();
         LabwareType lt = EntityFactory.makeLabwareType(3,1);

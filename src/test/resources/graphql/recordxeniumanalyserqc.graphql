@@ -1,0 +1,15 @@
+mutation {
+    recordQCLabware(request: {
+        operationType: "Xenium analyser QC"
+        labware: [
+            {
+                barcode: "[BC]"
+                runName: "RUN1"
+                comments: []
+                workNumber: "[WORK]"
+            }
+        ]
+    }) {
+        operations { id }
+    }
+}
