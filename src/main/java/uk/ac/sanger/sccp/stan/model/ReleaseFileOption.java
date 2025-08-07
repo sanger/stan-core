@@ -13,7 +13,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 public enum ReleaseFileOption {
     Sample_processing("Sample processing"),
     Histology,
-    RNAscope_IHC("RNAscope/IHC"),
+    RNAscope_IHC("RNAscope/IHC", false),
     Visium,
     Xenium,
     ;
@@ -21,9 +21,15 @@ public enum ReleaseFileOption {
     private static final UCMap<ReleaseFileOption> NAME_OPTIONS = UCMap.from(ReleaseFileOption::getQueryParamName, values());
 
     private final String displayName;
+    private final boolean enabled;
+
+    ReleaseFileOption(String displayName, boolean enabled) {
+        this.displayName = (displayName != null ? displayName : this.name());
+        this.enabled = enabled;
+    }
 
     ReleaseFileOption(String displayName) {
-        this.displayName = (displayName !=null ? displayName : this.name());
+        this(displayName, true);
     }
 
     ReleaseFileOption() {
@@ -36,6 +42,10 @@ public enum ReleaseFileOption {
 
     public String getQueryParamName() {
         return this.name();
+    }
+
+    public boolean isEnabled() {
+        return this.enabled;
     }
 
     @Override
