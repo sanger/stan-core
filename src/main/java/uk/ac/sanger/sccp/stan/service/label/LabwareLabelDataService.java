@@ -120,7 +120,7 @@ public class LabwareLabelDataService {
                 if (state.length() > 20 && state.startsWith("Library post-clean ")) {
                     state = state.substring(19);
                 }
-                LabelContent lc = new LabelContent(tissue.getDonor().getDonorName(), null, tissue.getExternalName(),
+                LabelContent lc = new LabelContent(tissue.getDonor().getDonorName(), tissue.getExternalName(), tissue.getExternalName(),
                         null, state);
                 Map<String, String> extra = filteredMap("lp", lp, "work", workNumber,
                         "address", slot.getAddress().toString());

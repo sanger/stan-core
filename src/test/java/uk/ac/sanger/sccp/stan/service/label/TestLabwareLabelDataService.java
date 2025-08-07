@@ -520,11 +520,11 @@ public class TestLabwareLabelDataService {
         );
         List<LabwareLabelData> expectedLds = List.of(
                 new LabwareLabelData(lw.getBarcode(), lw.getExternalBarcode(), null, null,
-                        List.of(new LabelContent(donor.getDonorName(), null, tissue.getExternalName(), null, state)),
+                        List.of(new LabelContent(donor.getDonorName(), tissue.getExternalName(), tissue.getExternalName(), null, state)),
                         hasLp ? Map.of("lp", "LP1", "address", "B1")
                                 : Map.of("address", "B1")),
                 new LabwareLabelData(lw.getBarcode(), lw.getExternalBarcode(), null, null,
-                        List.of(new LabelContent(donor.getDonorName(), null, tissue.getExternalName(), null, state)),
+                        List.of(new LabelContent(donor.getDonorName(), tissue.getExternalName(), tissue.getExternalName(), null, state)),
                         hasLp ? Map.of("lp", "LP1", "address", "A1", "work", "SGP1")
                                 : Map.of("address", "A1", "work", "SGP1"))
         );

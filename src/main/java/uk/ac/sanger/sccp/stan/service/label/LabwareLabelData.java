@@ -92,7 +92,7 @@ public class LabwareLabelData {
     }
 
     public Map<String, String> getFields() {
-        HashMap<String, String> fields = new HashMap<>(4 + 4 * contents.size());
+        HashMap<String, String> fields = new HashMap<>(4 + extraFields.size() + 5 * contents.size());
         fields.put("barcode", getBarcode());
         fields.put("medium", getMedium());
         fields.put("date", getDate());
@@ -102,6 +102,7 @@ public class LabwareLabelData {
         for (LabelContent content : contents) {
             addField(fields, "donor", index, content.donorName());
             addField(fields, "tissue", index, content.tissueDesc());
+            addField(fields, "externalName", index, content.externalName());
             if (content.replicate()!=null) {
                 addField(fields, "replicate", index, "R:"+content.replicate());
             }
