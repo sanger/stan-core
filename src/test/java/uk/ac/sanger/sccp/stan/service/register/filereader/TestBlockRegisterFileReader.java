@@ -310,7 +310,7 @@ class TestBlockRegisterFileReader extends BaseTestFileReader {
         List<BlockRegisterRequest> brs = IntStream.rangeClosed(1, rows.size())
                 .mapToObj(i -> makeBlockRegisterRequest("X"+i))
                 .collect(toList());
-        Zip.forEach(rows.stream(), brs.stream(), (row, br) -> doReturn(br).when(reader).createBlockRequest(any(), same(row)));
+        Zip.of(rows.stream(), brs.stream()).forEach((row, br) -> doReturn(br).when(reader).createBlockRequest(any(), same(row)));
 
         final List<String> problems = new ArrayList<>();
         RegisterRequest request = reader.createRequest(problems, rows);

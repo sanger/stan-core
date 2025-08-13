@@ -106,8 +106,8 @@ public class SlotCopyRecordServiceImp implements SlotCopyRecordService {
         List<String> sourceBarcodes = noteMap.get(NOTE_SRC_BARCODE);
         List<String> sourceStates = noteMap.get(NOTE_SRC_STATE);
         if (!nullOrEmpty(sourceBarcodes) && !nullOrEmpty(sourceStates)) {
-            save.setSources(Zip.map(sourceBarcodes.stream(), sourceStates.stream(),
-                    (bc, state) -> new SlotCopySource(bc, nullableValueOf(state, Labware.State::valueOf))
+            save.setSources(Zip.of(sourceBarcodes.stream(), sourceStates.stream())
+                    .map((bc, state) -> new SlotCopySource(bc, nullableValueOf(state, Labware.State::valueOf))
             ).toList());
         }
         List<String> contentSourceBarcodes = noteMap.get(NOTE_CON_SRCBC);

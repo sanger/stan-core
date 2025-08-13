@@ -567,9 +567,8 @@ public class AnalyserServiceTest {
         });
         List<String> problems = new ArrayList<>(numExpected);
         service.validateDecodingConsumablesLot(problems, als);
-        Zip.forEach(Arrays.stream(expectedLots), als.stream(), (lot, al) ->
-                assertEquals(lot, al.getDecodingConsumablesLot())
-        );
+        Zip.of(Arrays.stream(expectedLots), als.stream())
+                .forEach((lot, al) -> assertEquals(lot, al.getDecodingConsumablesLot()));
         verify(mockDecodingConsumablesLotValidator, times(numExpected)).validate(any(), any());
         for (int i = 3; i < 7; ++i) {
             verify(mockDecodingConsumablesLotValidator).validate(eq(expectedLots[i]), any());
@@ -637,8 +636,8 @@ public class AnalyserServiceTest {
             Set<Integer> slotIds = lw.getSlots().stream().map(Slot::getId).collect(toSet());
             verify(mockRoiRepo).findAllBySlotIdIn(slotIds);
         }
-        Zip.forEach(al.getSamples().stream(), Arrays.stream(expectedRois),
-                (sr, roi) -> assertEquals(roi, sr.getRoi()));
+        Zip.of(al.getSamples().stream(), Arrays.stream(expectedRois))
+                .forEach((sr, roi) -> assertEquals(roi, sr.getRoi()));
     }
 
     @ParameterizedTest

@@ -391,7 +391,7 @@ class TestSegmentationService {
         verify(mockReagentLotValidator, times(4)).validate(any(), any());
         Arrays.stream(expectedLots).filter(Objects::nonNull)
                 .forEach(lot -> verify(mockReagentLotValidator).validate(eq(lot), any()));
-        Zip.forEach(sls.stream(), Arrays.stream(expectedLots), (sl, lot) -> assertEquals(lot, sl.getReagentLot()));
+        Zip.of(sls.stream(), Arrays.stream(expectedLots)).forEach((sl, lot) -> assertEquals(lot, sl.getReagentLot()));
         assertThat(problems).containsExactlyInAnyOrder("Bad lot: Alpha!", "Bad lot: Beta!");
     }
 

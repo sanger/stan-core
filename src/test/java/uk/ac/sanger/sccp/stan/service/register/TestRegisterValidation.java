@@ -226,13 +226,13 @@ public class TestRegisterValidation {
                                              List<TissueType> knownTissueTypes, List<SpatialLocation> expectedSLs,
                                              List<String> expectedProblems) {
         RegisterRequest request = new RegisterRequest(
-                Zip.map(tissueTypeNames.stream(), codes.stream(),
-                (name, code) -> {
-                    BlockRegisterRequest br = new BlockRegisterRequest();
-                    br.setTissueType(name);
-                    br.setSpatialLocation(code);
-                    return br;
-                }).toList());
+                Zip.of(tissueTypeNames.stream(), codes.stream())
+                        .map((name, code) -> {
+                            BlockRegisterRequest br = new BlockRegisterRequest();
+                            br.setTissueType(name);
+                            br.setSpatialLocation(code);
+                            return br;
+                        }).toList());
         when(mockTtRepo.findByName(any())).then(invocation -> {
             final String arg = invocation.getArgument(0);
             return knownTissueTypes.stream().filter(tt -> arg.equalsIgnoreCase(tt.getName())).findAny();
@@ -259,8 +259,8 @@ public class TestRegisterValidation {
         });
 
         RegisterRequest request = new RegisterRequest(
-                Zip.map(givenHmdmcs.stream(), speciesNames.stream(),
-                        (hmdmc, species) -> {
+                Zip.of(givenHmdmcs.stream(), speciesNames.stream())
+                        .map((hmdmc, species) -> {
                             BlockRegisterRequest br = new BlockRegisterRequest();
                             br.setHmdmc(hmdmc);
                             br.setSpecies(species);
@@ -597,7 +597,7 @@ public class TestRegisterValidation {
     void testValidateCellClasses() {
         String[] ccNames = {"cc1", "cc2", null, "cc4"};
         List<BlockRegisterRequest> blocks = IntStream.range(0, ccNames.length).mapToObj(i -> new BlockRegisterRequest()).toList();
-        Zip.forEach(Arrays.stream(ccNames), blocks.stream(), (name, block) -> block.setCellClass(name));
+        Zip.of(Arrays.stream(ccNames), blocks.stream()).forEach((name, block) -> block.setCellClass(name));
         CellClass[] cellClasses = IntStream.rangeClosed(1, 2).mapToObj(i -> new CellClass(i, "cc"+i, false, true)).toArray(CellClass[]::new);
         UCMap<CellClass> ccMap = UCMap.from(CellClass::getName, cellClasses);
         when(mockCellClassRepo.findMapByNameIn(any())).thenReturn(ccMap);

@@ -16,7 +16,7 @@ public class TestZip {
         String[] a = {"Alpha", "Beta", "Gamma"};
         Integer[] b = {5,4,3,2,1};
         final List<String> results = new ArrayList<>(a.length);
-        Zip.forEach(Arrays.stream(a), Arrays.stream(b), (s, n) -> results.add(s+n));
+        Zip.of(Arrays.stream(a), Arrays.stream(b)).forEach((s, n) -> results.add(s+n));
         assertThat(results).containsExactly("Alpha5", "Beta4", "Gamma3");
     }
 
@@ -24,7 +24,7 @@ public class TestZip {
     public void testZipMap() {
         String[] a = {"Alpha", "Beta", "Gamma"};
         Integer[] b = {5,4,3,2,1};
-        List<String> results = Zip.map(Arrays.stream(a), Arrays.stream(b), (s,n) -> s+n).toList();
+        List<String> results = Zip.of(Arrays.stream(a), Arrays.stream(b)).map((s,n) -> s+n).toList();
         assertThat(results).containsExactly("Alpha5", "Beta4", "Gamma3");
     }
 
@@ -32,14 +32,14 @@ public class TestZip {
     public void testEnumerateForEach() {
         String[] array = {"Alpha", "Beta", "Gamma"};
         final List<String> results = new ArrayList<>(array.length);
-        Zip.enumerateForEach(Arrays.stream(array), (i,a) -> results.add(i+a));
+        Zip.enumerate(Arrays.stream(array)).forEach((i,a) -> results.add(i+a));
         assertThat(results).containsExactly("0Alpha", "1Beta", "2Gamma");
     }
 
     @Test
     public void testEnumerateMap() {
         String[] array = {"Alpha", "Beta", "Gamma"};
-        final List<String> results = Zip.enumerateMap(Arrays.stream(array), (i,a) -> i+a).toList();
+        final List<String> results = Zip.enumerate(Arrays.stream(array)).map((i,a) -> i+a).toList();
         assertThat(results).containsExactly("0Alpha", "1Beta", "2Gamma");
     }
 }

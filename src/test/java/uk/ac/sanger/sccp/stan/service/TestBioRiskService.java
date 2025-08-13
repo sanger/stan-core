@@ -139,7 +139,7 @@ class TestBioRiskService extends AdminServiceTestUtils<BioRisk, BioRiskRepo, Bio
         UCMap<BioRisk> map = service.loadAndValidateBioRisks(problems, datas.stream(), getter, setter);
         assertThat(problems).containsExactlyElementsOf(expectedProblems);
         assertEquals(riskMap, map);
-        Zip.forEach(datas.stream(), sanitisedCodes.stream(), (data, code) -> assertEquals(code, data[0]));
+        Zip.of(datas.stream(), sanitisedCodes.stream()).forEach((data, code) -> assertEquals(code, data[0]));
         if (sanitisedCodes.stream().anyMatch(Objects::nonNull)) {
             verify(service).loadBioRiskMap(sanitisedCodes.stream().filter(Objects::nonNull).collect(toSet()));
         }

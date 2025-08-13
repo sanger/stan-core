@@ -684,13 +684,13 @@ public class TestProbeService {
         Operation[] ops = Arrays.stream(lots).map(unused -> new Operation()).toArray(Operation[]::new);
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lws);
         UCMap<Operation> opMap = new UCMap<>(ops.length);
-        Zip.enumerateForEach(Arrays.stream(ops), (i, op) -> {
+        Zip.enumerate(Arrays.stream(ops)).forEach((i, op) -> {
             op.setId(100+i);
             opMap.put(lws[i].getBarcode(), op);
         });
 
-        List<ProbeOperationLabware> pols = Zip.map(Arrays.stream(lws), Arrays.stream(lots),
-                (lw, lot) -> new ProbeOperationLabware(lw.getBarcode(), null, null, lot, null, null)
+        List<ProbeOperationLabware> pols = Zip.of(Arrays.stream(lws), Arrays.stream(lots))
+                .map((lw, lot) -> new ProbeOperationLabware(lw.getBarcode(), null, null, lot, null, null)
         ).toList();
         service.saveReagentLots(pols, lwMap, opMap);
         if (anyLots) {

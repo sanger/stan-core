@@ -232,8 +232,8 @@ class TestFlagLabwareService {
         assertThat(returnedOps).hasSameSizeAs(labware);
         assertEquals(new OperationResult(returnedOps, labware), result);
 
-        List<LabwareFlag> expectedFlags = Zip.map(labware.stream(), returnedOps.stream(),
-                        (lw, op) -> new LabwareFlag(null, lw, desc, user, op.getId(), priority))
+        List<LabwareFlag> expectedFlags = Zip.of(labware.stream(), returnedOps.stream())
+                .map((lw, op) -> new LabwareFlag(null, lw, desc, user, op.getId(), priority))
                 .toList();
         verify(mockFlagRepo).saveAll(expectedFlags);
         if (hasWork) {

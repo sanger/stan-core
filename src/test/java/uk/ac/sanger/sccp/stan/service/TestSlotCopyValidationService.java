@@ -434,7 +434,7 @@ public class TestSlotCopyValidationService {
         List<String> problems = new ArrayList<>(valid ? 0 : 1);
         service.validateLpNumbers(problems, scds);
         assertThat(scds).hasSize(expectedLps.length);
-        Zip.forEach(scds.stream(), Arrays.stream(expectedLps), (scd, lp) -> assertEquals(lp, scd.getLpNumber()));
+        Zip.of(scds.stream(), Arrays.stream(expectedLps)).forEach((scd, lp) -> assertEquals(lp, scd.getLpNumber()));
         assertProblem(problems, expectedProblem);
     }
 

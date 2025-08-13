@@ -302,7 +302,7 @@ public class TestConfirmSectionValidationService {
                 new ConfirmSectionLabware(), new ConfirmSectionLabware()
         );
         String[] values = {"56.00", valid ? "  5.0  " : "5!", null, "   "};
-        Zip.forEach(css.stream(), Arrays.stream(values), ConfirmSection::setThickness);
+        Zip.of(css.stream(), Arrays.stream(values)).forEach(ConfirmSection::setThickness);
         csls.get(0).setConfirmSections(css.subList(0,2));
         csls.get(1).setConfirmSections(css.subList(2,4));
         List<String> problems = new ArrayList<>(valid ? 0 : 1);
@@ -312,7 +312,7 @@ public class TestConfirmSectionValidationService {
         if (!valid) {
             expectedValues[1] = null;
         }
-        Zip.forEach(css.stream(), Arrays.stream(expectedValues), (cs, e) -> assertEquals(e, cs.getThickness()));
+        Zip.of(css.stream(), Arrays.stream(expectedValues)).forEach((cs, e) -> assertEquals(e, cs.getThickness()));
         verify(mockThicknessSanitiser, times(2)).sanitise(any(), any());
     }
 
