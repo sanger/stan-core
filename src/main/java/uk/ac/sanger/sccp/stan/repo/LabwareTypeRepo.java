@@ -13,4 +13,6 @@ public interface LabwareTypeRepo extends CrudRepository<LabwareType, Integer> {
     }
 
     List<LabwareType> findAllByNameIn(Collection<String> names);
+
+    List<LabwareType> findAllByEnabled(boolean enabled);
 }

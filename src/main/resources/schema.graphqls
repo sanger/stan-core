@@ -2181,7 +2181,7 @@ type Query {
     """Get all the tissue types available."""
     tissueTypes(includeDisabled: Boolean): [TissueType!]!
     """Get all the labware types available."""
-    labwareTypes: [LabwareType!]!
+    labwareTypes(includeDisabled: Boolean): [LabwareType!]!
     """Get all the HMDMCs that are enabled, or get all including those that are disabled."""
     hmdmcs(includeDisabled: Boolean): [Hmdmc!]!
     """Get all bio risks that are enabled, or get all including those that are disabled."""
