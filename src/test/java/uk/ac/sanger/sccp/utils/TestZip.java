@@ -7,6 +7,7 @@ import java.util.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
+ * Tests {@link Zip}
  * @author dr6
  */
 public class TestZip {
@@ -41,5 +42,45 @@ public class TestZip {
         String[] array = {"Alpha", "Beta", "Gamma"};
         final List<String> results = Zip.enumerate(Arrays.stream(array)).map((i,a) -> i+a).toList();
         assertThat(results).containsExactly("0Alpha", "1Beta", "2Gamma");
+    }
+
+    @Test
+    public void testBiMapToZip() {
+        String[] array = {"Alpha", "Beta", "Gamma"};
+        final List<String> results = Zip.enumerate(Arrays.stream(array)).map((i,a) -> i+a, (i,a) -> a+i)
+                .map((a,b) -> a+b).toList();
+        assertThat(results).containsExactly("0AlphaAlpha0", "1BetaBeta1", "2GammaGamma2");
+    }
+
+    @Test
+    public void testMapToZip() {
+        String[] array = {"Alpha", "Beta", "Gamma"};
+        final List<String> results = Zip.enumerate(Arrays.stream(array)).map(i -> 2*i, String::toUpperCase)
+                .map((i,a) -> i+a).toList();
+        assertThat(results).containsExactly("0ALPHA", "2BETA", "4GAMMA");
+    }
+
+    @Test
+    public void testFilter() {
+        String[] array = {"Alpha", "Beta", "Gamma", "Delta"};
+        List<String> results = Zip.enumerate(Arrays.stream(array)).filter((i,a) -> i%2==0).map((a,b) -> a+b).toList();
+        assertThat(results).containsExactly("0Alpha", "2Gamma");
+    }
+
+    @Test
+    public void testEntryZipForEach() {
+        String[] array = {"Alpha", "Beta", "Gamma", "Delta"};
+        List<String> results = new ArrayList<>(2);
+        Zip.enumerate(Arrays.stream(array)).filter((i,a) -> i%2==0).forEach((i,a) -> results.add(i+a));
+        assertThat(results).containsExactly("0Alpha", "2Gamma");
+    }
+
+    @Test
+    public void testEntryZipMapToZip() {
+        String[] array = {"Alpha", "Beta", "Gamma", "Delta"};
+        List<String> results = Zip.enumerate(Arrays.stream(array)).filter((i,a) -> i%2==0)
+                .map(i -> 2*i, String::toUpperCase)
+                .map((i,b) -> i+b).toList();
+        assertThat(results).containsExactly("0ALPHA", "4GAMMA");
     }
 }
