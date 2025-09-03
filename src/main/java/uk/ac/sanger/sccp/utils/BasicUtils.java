@@ -677,4 +677,15 @@ public class BasicUtils {
         }
         return Optional.ofNullable(singleValue);
     }
+
+    /**
+     * Chains two iterables into one
+     * @param iter1 first iterable
+     * @param iter2 second iterable
+     * @return chained iterable
+     * @param <E> content of iterable
+     */
+    public static <E> Iterable<E> chain(Iterable<? extends E> iter1, Iterable<? extends E> iter2) {
+        return () -> Stream.concat(stream(iter1), stream(iter2)).iterator();
+    }
 }

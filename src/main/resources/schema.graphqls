@@ -2530,6 +2530,9 @@ type Mutation {
     """Link a work number to prior operations."""
     setOperationWork(request: OpWorkRequest!): [Operation!]!
 
+    """Updates the cytassist overview table. Useful for testing."""
+    updateCytassistOverview: Boolean!
+
     """Create a new user for the application."""
     addUser(username: String!): User!
     """Set the user role (privileges) for a user."""

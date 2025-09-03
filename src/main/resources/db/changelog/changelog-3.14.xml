@@ -1,0 +1,116 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <changeSet id="3.14.1" author="dr6">
+        <createTable tableName="cytassist_overview">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="work_number" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="sample_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="section" type="INT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="source_barcode" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source_slot_address" type="VARCHAR(8)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source_labware_type" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source_external_name" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source_labware_created" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+            <column name="stain_type" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="stain_performed" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+            <column name="image_performed" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+            <column name="probe_panels" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="probe_hyb_start" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+            <column name="probe_hyb_end" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+            <column name="cytassist_barcode" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="cytassist_labware_type" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="cytassist_slot_address" type="VARCHAR(8)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="cytassist_lp" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="cytassist_performed" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tissue_coverage" type="VARCHAR(8)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="qpcr_result" type="VARCHAR(16)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="amplification_cq" type="VARCHAR(16)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="dual_index_plate_type" type="VARCHAR(64)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="dual_index_plate_well" type="VARCHAR(8)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="visium_concentration_type" type="VARCHAR(32)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="visium_concentration_value" type="VARCHAR(16)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="visium_concentration_average_size" type="VARCHAR(16)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="visium_concentration_range" type="VARCHAR(16)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="latest_barcode" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="latest_state" type="VARCHAR(16)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="latest_barcode_released" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+            <column name="flags" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="users" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+</databaseChangeLog>

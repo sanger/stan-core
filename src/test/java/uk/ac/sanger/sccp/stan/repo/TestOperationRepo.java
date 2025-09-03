@@ -10,10 +10,12 @@ import uk.ac.sanger.sccp.stan.model.*;
 
 import javax.persistence.EntityManager;
 import javax.transaction.Transactional;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -124,6 +126,16 @@ public class TestOperationRepo {
                 new SlotIdSampleId(slotIds[1], sampleIds[1]),
                 new SlotIdSampleId(slotIds[2], sampleIds[2])
         );
+    }
+
+    @Test
+    @Transactional
+    public void testFindEarliestPerformedIntoLabware() {
+        setUpOps();
+        Set<Integer> lwIds = Arrays.stream(lws).map(Labware::getId).collect(toSet());
+        Map<Integer, LocalDateTime> map = opRepo.findEarliestPerformedIntoLabware(lwIds);
+        assertThat(map.keySet()).containsExactlyInAnyOrderElementsOf(lwIds);
+        map.values().forEach(dt -> assertThat(dt).isInstanceOf(LocalDateTime.class));
     }
 
     private Operation makeOp(OperationType opType, Labware... labware) {

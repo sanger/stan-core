@@ -245,6 +245,7 @@ public class GraphQLProvider {
                         .dataFetcher("recordSampleMetrics", transact(graphQLMutation.recordSampleMetrics()))
                         .dataFetcher("saveSlotCopy", transact(graphQLMutation.saveSlotCopy()))
                         .dataFetcher("setOperationWork", transact(graphQLMutation.setOperationWork()))
+                        .dataFetcher("updateCytassistOverview", graphQLMutation.updateCytassistOverview())
 
                         .dataFetcher("addUser", transact(graphQLMutation.addUser()))
                         .dataFetcher("setUserRole", transact(graphQLMutation.setUserRole()))
