@@ -30,12 +30,12 @@ mutation {
         }
         slotMeasurements: [{
             address: "A1"
-            commentId: 1
+            commentIds: 1
             name: "Cq value"
             value: "10"
         },{
             address: "A2"
-            commentId: 2
+            commentIds: 2
             name: "Cq value"
             value: "20"
         }]

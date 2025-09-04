@@ -177,7 +177,7 @@ class TestLibraryPrepService {
         data.reagentPlates = UCMap.from(ReagentPlate::getBarcode, EntityFactory.makeReagentPlate("RP1"));
         data.ampOpType = EntityFactory.makeOperationType("Amplify", null);
         data.comments = List.of(new Comment(1, "com1", "cat1"));
-        data.sanitisedMeasurements = List.of(new SlotMeasurementRequest(new Address(1,1), "name", "value", 1));
+        data.sanitisedMeasurements = List.of(new SlotMeasurementRequest(new Address(1,1), "name", "value", List.of(1)));
 
         OperationResult opres = service.record(data);
         assertThat(opres.getOperations()).containsExactly(ops);

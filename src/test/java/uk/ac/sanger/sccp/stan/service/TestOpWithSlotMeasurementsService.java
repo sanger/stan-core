@@ -410,10 +410,10 @@ public class TestOpWithSlotMeasurementsService {
     public void testValidateComments() {
         Address A1 = new Address(1,1);
         List<SlotMeasurementRequest> sms = List.of(
-                new SlotMeasurementRequest(A1, "Alpha", "Beta", 1),
-                new SlotMeasurementRequest(A1, "Alpha", "Beta", 2),
+                new SlotMeasurementRequest(A1, "Alpha", "Beta", List.of(1)),
+                new SlotMeasurementRequest(A1, "Alpha", "Beta", List.of(2)),
                 new SlotMeasurementRequest(A1, "Alpha", "Beta", null),
-                new SlotMeasurementRequest(A1, "Alpha", "Beta", -1)
+                new SlotMeasurementRequest(A1, "Alpha", "Beta", List.of(-1))
         );
         //noinspection unchecked
         ArgumentCaptor<Stream<Integer>> commentIdStreamCaptor = ArgumentCaptor.forClass(Stream.class);
@@ -641,7 +641,8 @@ public class TestOpWithSlotMeasurementsService {
         Integer opId = 300;
         List<Comment> comments = List.of(
                 new Comment(1, "Banana", "custard"),
-                new Comment(2, "Rhubarb", "custard")
+                new Comment(2, "Rhubarb", "custard"),
+                new Comment(3, "Jelly", "ice cream")
         );
         LabwareType lt = EntityFactory.makeLabwareType(1, 2);
         Sample sam1 = EntityFactory.getSample();
@@ -651,8 +652,8 @@ public class TestOpWithSlotMeasurementsService {
         Address A1 = new Address(1,1);
         Address A2 = new Address(1,2);
         List<SlotMeasurementRequest> sms = List.of(
-                new SlotMeasurementRequest(A1, "A", "B", 1),
-                new SlotMeasurementRequest(A2, "A", "B", 2)
+                new SlotMeasurementRequest(A1, "A", "B", List.of(1)),
+                new SlotMeasurementRequest(A2, "A", "B", List.of(2,3))
         );
 
         when(mockOpComRepo.saveAll(any())).then(Matchers.returnArgument());
@@ -662,7 +663,8 @@ public class TestOpWithSlotMeasurementsService {
         verify(mockOpComRepo).saveAll(List.of(
                 new OperationComment(null, comments.get(0), opId, sam1.getId(), lw.getSlot(A1).getId(), null),
                 new OperationComment(null, comments.get(0), opId, sam2.getId(), lw.getSlot(A1).getId(), null),
-                new OperationComment(null, comments.get(1), opId, sam2.getId(), lw.getSlot(A2).getId(), null)
+                new OperationComment(null, comments.get(1), opId, sam2.getId(), lw.getSlot(A2).getId(), null),
+                new OperationComment(null, comments.get(2), opId, sam2.getId(), lw.getSlot(A2).getId(), null)
         ));
     }
 

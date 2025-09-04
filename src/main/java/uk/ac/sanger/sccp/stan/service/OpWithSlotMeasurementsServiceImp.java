@@ -16,7 +16,6 @@ import uk.ac.sanger.sccp.utils.UCMap;
 import java.util.*;
 import java.util.stream.Stream;
 
-import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 import static uk.ac.sanger.sccp.utils.BasicUtils.pluralise;
@@ -177,8 +176,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
     @Override
     public List<Comment> validateComments(Collection<String> problems, Collection<SlotMeasurementRequest> sms) {
         Stream<Integer> commentIdStream = sms.stream()
-                .map(SlotMeasurementRequest::getCommentId)
-                .filter(Objects::nonNull);
+                .flatMap(r -> r.getCommentIds().stream());
         return commentValidationService.validateCommentIds(problems, commentIdStream);
     }
 
@@ -391,9 +389,12 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
         Map<Integer, Comment> commentMap = comments.stream().collect(BasicUtils.inMap(Comment::getId));
 
         List<OperationComment> opComs = sms.stream()
-                .filter(sm -> sm.getCommentId()!=null)
-                .flatMap(sm -> newOpComs(opId, lw.getSlot(sm.getAddress()), commentMap.get(sm.getCommentId())))
-                .collect(toList());
+                .filter(sm -> !nullOrEmpty(sm.getCommentIds()))
+                .flatMap(sm -> sm.getCommentIds().stream()
+                        .distinct()
+                        .flatMap(id -> newOpComs(opId, lw.getSlot(sm.getAddress()), commentMap.get(id)))
+                )
+                .toList();
         if (!opComs.isEmpty()) {
             opComRepo.saveAll(opComs);
         }

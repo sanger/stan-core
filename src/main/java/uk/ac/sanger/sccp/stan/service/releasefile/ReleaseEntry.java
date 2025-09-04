@@ -33,6 +33,7 @@ public class ReleaseEntry {
     private String cq;
     private String visiumConcentration;
     private String visiumConcentrationType;
+    private String sizeRange;
     private Integer rnascopePlex;
     private Integer ihcPlex;
     private LocalDate sectionDate;
@@ -199,6 +200,14 @@ public class ReleaseEntry {
 
     public void setVisiumConcentrationType(String visiumConcentrationType) {
         this.visiumConcentrationType = visiumConcentrationType;
+    }
+
+    public String getSizeRange() {
+        return this.sizeRange;
+    }
+
+    public void setSizeRange(String sizeRange) {
+        this.sizeRange = sizeRange;
     }
 
     public Integer getRnascopePlex() {
@@ -458,6 +467,7 @@ public class ReleaseEntry {
                 && Objects.equals(this.cq, that.cq)
                 && Objects.equals(this.visiumConcentration, that.visiumConcentration)
                 && Objects.equals(this.visiumConcentrationType, that.visiumConcentrationType)
+                && Objects.equals(this.sizeRange, that.sizeRange)
                 && Objects.equals(this.rnascopePlex, that.rnascopePlex)
                 && Objects.equals(this.ihcPlex, that.ihcPlex)
                 && Objects.equals(this.sectionDate, that.sectionDate)
@@ -516,6 +526,7 @@ public class ReleaseEntry {
                 .add("cq", cq)
                 .add("visiumConcentration", visiumConcentration)
                 .add("visiumConcentrationType", visiumConcentrationType)
+                .add("sizeRange", sizeRange)
                 .add("rnascopePlex", rnascopePlex)
                 .add("ihcPlex", ihcPlex)
                 .add("sectionDate", sectionDate)
