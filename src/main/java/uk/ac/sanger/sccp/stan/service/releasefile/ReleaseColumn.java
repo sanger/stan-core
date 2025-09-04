@@ -51,6 +51,7 @@ public enum ReleaseColumn implements TsvColumn<ReleaseEntry> {
     Number_of_amplification_cycles(ReleaseEntry::getAmplificationCycles, ReleaseFileOption.Visium),
     Visium_concentration(ReleaseEntry::getVisiumConcentration, ReleaseFileOption.Visium),
     Visium_concentration_type(ReleaseEntry::getVisiumConcentrationType, ReleaseFileOption.Visium),
+    Size_range(ReleaseEntry::getSizeRange, ReleaseFileOption.Visium),
     Dual_index_plate_type(ReleaseEntry::getReagentPlateType, ReleaseFileOption.Visium),
     Dual_index_plate_name(ReleaseEntry::getReagentSource, ReleaseFileOption.Visium),
     // tag columns go here for visium

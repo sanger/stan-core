@@ -180,7 +180,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     }
 
     public DataFetcher<Iterable<LabwareType>> getLabwareTypes() {
-        return dfe -> labwareTypeRepo.findAll();
+        return allOrEnabled(labwareTypeRepo::findAll, labwareTypeRepo::findAllByEnabled);
     }
 
     public DataFetcher<Iterable<Medium>> getMediums() {

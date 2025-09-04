@@ -2,8 +2,10 @@ package uk.ac.sanger.sccp.stan.request;
 
 import uk.ac.sanger.sccp.stan.model.Address;
 
+import java.util.List;
 import java.util.Objects;
 
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullToEmpty;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
@@ -14,20 +16,20 @@ public class SlotMeasurementRequest {
     private Address address;
     private String name;
     private String value;
-    private Integer commentId;
+    private List<Integer> commentIds = List.of();
 
     public SlotMeasurementRequest() {}
 
-    public SlotMeasurementRequest(Address address, String name, String value, Integer commentId) {
+    public SlotMeasurementRequest(Address address, String name, String value, List<Integer> commentIds) {
         this.address = address;
         this.name = name;
         this.value = value;
-        this.commentId = commentId;
+        this.commentIds = nullToEmpty(commentIds);
     }
 
     /** Copy constructor */
     public SlotMeasurementRequest(SlotMeasurementRequest other) {
-        this(other.getAddress(), other.getName(), other.getValue(), other.getCommentId());
+        this(other.getAddress(), other.getName(), other.getValue(), other.getCommentIds());
     }
 
     public Address getAddress() {
@@ -54,12 +56,12 @@ public class SlotMeasurementRequest {
         this.value = value;
     }
 
-    public Integer getCommentId() {
-        return this.commentId;
+    public List<Integer> getCommentIds() {
+        return this.commentIds;
     }
 
-    public void setCommentId(Integer commentId) {
-        this.commentId = commentId;
+    public void setCommentIds(List<Integer> commentIds) {
+        this.commentIds = nullToEmpty(commentIds);
     }
 
     /**
@@ -83,7 +85,7 @@ public class SlotMeasurementRequest {
         return (Objects.equals(this.address, that.address)
                 && Objects.equals(this.name, that.name)
                 && Objects.equals(this.value, that.value)
-                && Objects.equals(this.commentId, that.commentId)
+                && Objects.equals(this.commentIds, that.commentIds)
         );
     }
 
@@ -94,7 +96,7 @@ public class SlotMeasurementRequest {
 
     @Override
     public String toString() {
-        return String.format("SlotMeasurementRequest(%s, %s, %s, commentId=%s)", address, repr(name), repr(value),
-                commentId);
+        return String.format("SlotMeasurementRequest(%s, %s, %s, commentIds=%s)", address, repr(name), repr(value),
+                commentIds);
     }
 }

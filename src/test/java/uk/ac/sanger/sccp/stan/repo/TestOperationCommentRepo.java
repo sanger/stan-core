@@ -81,4 +81,27 @@ public class TestOperationCommentRepo {
         assertThat(opCommentRepo.findAllBySlotAndOpType(List.of(slotIds[0]), baking)).containsExactly(oc4);
     }
 
+    @Test
+    @Transactional
+    void testFindAllBySlotIdInAndCommentCategory() {
+        Sample sample = entityCreator.createSample(null, 1);
+        Integer sampleId = sample.getId();
+        OperationType opType = entityCreator.createOpType("Frying", null);
+        User user = entityCreator.createUser("dr6");
+        Integer opId = opRepo.save(new Operation(null, opType, null, List.of(), user)).getId();
+        Comment com1 = commentRepo.save(new Comment(null, "Alabama", "A"));
+        Comment com2 = commentRepo.save(new Comment(null, "Alaska", "A"));
+        Comment com3 = commentRepo.save(new Comment(null, "Birmingham", "B"));
+        LabwareType lt = entityCreator.createLabwareType("lt", 1, 3);
+        Labware lw = entityCreator.createLabware("STAN-A1", lt, sample, sample, sample);
+        List<Slot> slots = lw.getSlots();
+        Integer[] slotIds = slots.stream().map(Slot::getId).toArray(Integer[]::new);
+        OperationComment oc1 = opCommentRepo.save(new OperationComment(null, com1, opId, sampleId, slotIds[0], null));
+        OperationComment oc2 = opCommentRepo.save(new OperationComment(null, com2, opId, sampleId, slotIds[1], null));
+        opCommentRepo.save(new OperationComment(null, com1, opId, sampleId, slotIds[2], null));
+        opCommentRepo.save(new OperationComment(null, com3, opId, sampleId, slotIds[0], null));
+        assertThat(opCommentRepo.findAllBySlotIdInAndCommentCategory(List.of(slotIds[0], slotIds[1]), "A"))
+                .containsExactlyInAnyOrder(oc1, oc2);
+    }
+
 }

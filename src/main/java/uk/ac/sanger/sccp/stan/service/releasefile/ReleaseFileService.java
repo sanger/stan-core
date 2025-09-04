@@ -131,6 +131,7 @@ public class ReleaseFileService {
         loadSolutions(entries);
         if (options.contains(ReleaseFileOption.Visium)) {
             loadVisiumBarcodes(entries, ancestry);
+            loadSizeRanges(entries, slotIds);
         }
         if (options.contains(ReleaseFileOption.Histology)) {
             loadRnaAnalysis(entries, slotIds);
@@ -360,6 +361,27 @@ public class ReleaseFileService {
         Map<Integer, Labware> idToLabware = labwareRepo.findAllByIdIn(labwareIds).stream().collect(inMap(Labware::getId));
         for (ReleaseEntry entry : entries) {
             entry.setVisiumBarcode(visiumBarcode(entry, ancestry, idToLabware));
+        }
+    }
+
+    /**
+     * Loads size range comments
+     * @param entries the release entries
+     */
+    public void loadSizeRanges(Collection<ReleaseEntry> entries, Set<Integer> slotIds) {
+        List<OperationComment> opcoms = opComRepo.findAllBySlotIdInAndCommentCategory(slotIds, "size range");
+        if (!opcoms.isEmpty()) {
+            Map<SlotIdSampleId, Set<String>> ssIdOpComs = new HashMap<>();
+            for (OperationComment oc : opcoms) {
+                SlotIdSampleId ssId = new SlotIdSampleId(oc.getSlotId(), oc.getSampleId());
+                ssIdOpComs.computeIfAbsent(ssId, s -> new HashSet<>()).add(oc.getComment().getText());
+            }
+            Map<SlotIdSampleId, String> ssIdSizeRange = ssIdOpComs.entrySet().stream()
+                    .collect(toMap(Map.Entry::getKey, e -> String.join(",", e.getValue())));
+            for (ReleaseEntry entry : entries) {
+                SlotIdSampleId ssId =  new SlotIdSampleId(entry.getSlot(), entry.getSample());
+                entry.setSizeRange(ssIdSizeRange.get(ssId));
+            }
         }
     }
 

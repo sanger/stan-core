@@ -12,7 +12,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.containsIgnoreCase;
  * @author dr6
  */
 @Entity
-public class LabwareType implements HasIntId, HasName {
+public class LabwareType implements HasIntId, HasName, HasEnabled {
     public static final String FETAL_WASTE_NAME = "Fetal waste container",
             PROVIASETTE_NAME = "Proviasette",
             CASSETTE_NAME = "Cassette",
@@ -29,6 +29,7 @@ public class LabwareType implements HasIntId, HasName {
     private int numRows = 1;
     private int numColumns = 1;
     private boolean prebarcoded;
+    private boolean enabled = true;
 
     @ManyToOne
     private LabelType labelType;
@@ -92,6 +93,16 @@ public class LabwareType implements HasIntId, HasName {
 
     public void setPrebarcoded(boolean prebarcoded) {
         this.prebarcoded = prebarcoded;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return this.enabled;
+    }
+
+    @Override
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
     }
 
     public boolean isFetalWaste() {
