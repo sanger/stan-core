@@ -4,6 +4,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
 import uk.ac.sanger.sccp.stan.model.*;
 
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.*;
 
 public interface OperationRepo extends CrudRepository<Operation, Integer> {
@@ -39,6 +41,14 @@ public interface OperationRepo extends CrudRepository<Operation, Integer> {
             "where a.operation_id in (?1)", nativeQuery = true)
     int[][] _loadOpSlotSampleIds(Collection<Integer> opIds);
 
+    @Query(value = "select slot.labware_id, MIN(op.performed) as performed " +
+            "from slot join action a on (a.dest_slot_id=slot.id) " +
+            "join operation op on (a.operation_id=op.id) " +
+            "where slot.labware_id in (?1) " +
+            "group by slot.labware_id",
+            nativeQuery = true)
+    Object[][] _loadLabwareFirstTimestamp(Collection<Integer> labwareIds);
+
     /**
      * Gets the slot and sample ids for each each specified operation
      * @param opIds operation ids to look up
@@ -59,4 +69,29 @@ public interface OperationRepo extends CrudRepository<Operation, Integer> {
         }
         return opSlotSampleIds;
     }
+
+    /**
+     * Finds the earlier timestamp of an operation into the specified labware.
+     * This is useful as a creation timestamp for the labware.
+     * @param labwareIds the labware ids to check
+     * @return a map from labware id to timestamp
+     */
+    default Map<Integer, LocalDateTime> findEarliestPerformedIntoLabware(Collection<Integer> labwareIds) {
+        if (labwareIds.isEmpty()) {
+            return Map.of();
+        }
+        Object[][] data = _loadLabwareFirstTimestamp(labwareIds);
+        Map<Integer, LocalDateTime> lwTime = new HashMap<>(data.length);
+        for (Object[] row : data) {
+            LocalDateTime time;
+            if (row[1] instanceof Timestamp ts) {
+                time = ts.toLocalDateTime();
+            } else {
+                time = (LocalDateTime) row[1];
+            }
+            lwTime.put((Integer) row[0], time);
+        }
+        return lwTime;
+    }
+
 }
