@@ -141,7 +141,7 @@ public abstract class BaseRegisterFileReader<RequestType, ColumnType extends Enu
     }
 
     public LifeStage valueToLifeStage(Collection<String> problems, String lifeStageString) {
-        if (!nullOrEmpty(lifeStageString)) {
+        if (!nullOrEmpty(lifeStageString) && !lifeStageString.equalsIgnoreCase("n/a")) {
             try {
                 return LifeStage.valueOf(lifeStageString.toLowerCase());
             } catch (IllegalArgumentException e) {
