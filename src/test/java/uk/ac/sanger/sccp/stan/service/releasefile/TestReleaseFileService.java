@@ -120,7 +120,6 @@ public class TestReleaseFileService {
         lwTOSlide.getFirstSlot().addSample(sample2);
 
         LabwareType lt96WellPlate = new LabwareType(2, "96 well plate", 12, 8, null, false);
-        lt96WellPlate.setName("96 Well Plate");
         sample3 = new Sample(13, 1, tissue, bioState);
         lw96WellPlate = EntityFactory.makeLabware(lt96WellPlate);
         lw96WellPlate.getFirstSlot().addSample(sample3);
