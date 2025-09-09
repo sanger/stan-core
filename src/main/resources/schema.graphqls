@@ -651,6 +651,10 @@ input SlotCopyDestination {
     preBarcode: String
     """The LP number of the new labware, if it has one."""
     lpNumber: String
+    """Reagent A lot number, if specified."""
+    reagentALot: String
+    """Reagent B lot number, if specified."""
+    reagentBLot: String
     """The specifications of which source slots are being copied into what addresses in the destination labware."""
     contents: [SlotCopyContent!]!
 }

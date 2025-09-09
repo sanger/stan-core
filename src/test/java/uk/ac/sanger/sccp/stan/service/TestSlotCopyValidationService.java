@@ -17,13 +17,13 @@ import uk.ac.sanger.sccp.utils.UCMap;
 import uk.ac.sanger.sccp.utils.Zip;
 
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.Matchers.*;
 import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
@@ -46,6 +46,8 @@ public class TestSlotCopyValidationService {
     Validator<String> mockLotNumberValidator;
     @Mock
     CleanedOutSlotService mockCleanedOutSlotService;
+    @Mock
+    Validator<String> mockReagentLotValidator;
 
     SlotCopyValidationServiceImp service;
     AutoCloseable mocking;
@@ -54,7 +56,7 @@ public class TestSlotCopyValidationService {
     void setup() {
         mocking = MockitoAnnotations.openMocks(this);
         service = spy(new SlotCopyValidationServiceImp(mockLwTypeRepo, mockLwRepo, mockBsRepo, mockValHelperFactory,
-                mockPreBarcodeValidator, mockLotNumberValidator, mockCleanedOutSlotService));
+                mockPreBarcodeValidator, mockLotNumberValidator, mockReagentLotValidator, mockCleanedOutSlotService));
     }
 
     @AfterEach
@@ -89,6 +91,7 @@ public class TestSlotCopyValidationService {
         mayAddProblem(valid ? null : "bad contents").when(service).validateContents(any(), any(), any(), any(), any());
         mayAddProblem(valid ? null : "bad ops").when(service).validateOps(any(), any(), any(), any());
         mayAddProblem(valid ? null : "bad lp").when(service).validateLpNumbers(any(), any());
+        mayAddProblem(valid ? null : "bad reagent lot").when(service).validateReagentLots(any(), any(), any(), any(), any());
         UCMap<BioState> bsMap = UCMap.from(BioState::getName, EntityFactory.getBioState());
         mayAddProblem(valid ? null : "bad bs", bsMap).when(service).validateBioStates(any(), any());
         Work work = EntityFactory.makeWork("SGP1");
@@ -101,7 +104,7 @@ public class TestSlotCopyValidationService {
         } else {
             assertThat(problems).containsExactlyInAnyOrder(
                     "No user supplied.", "val problem", "bad lw type", "bad prebc", "bad source",
-                    "bad listed souce", "bad lot", "bad contents", "bad ops", "bad bs", "used prebc", "bad lp"
+                    "bad listed souce", "bad lot", "bad reagent lot", "bad contents", "bad ops", "bad bs", "used prebc", "bad lp"
             );
         }
 
@@ -436,6 +439,84 @@ public class TestSlotCopyValidationService {
         assertThat(scds).hasSize(expectedLps.length);
         Zip.of(scds.stream(), Arrays.stream(expectedLps)).forEach((scd, lp) -> assertEquals(lp, scd.getLpNumber()));
         assertProblem(problems, expectedProblem);
+    }
+
+    @Test
+    public void testNeedsReagentLot() {
+        OperationType cyt = EntityFactory.makeOperationType("Cytassist", null);
+        OperationType otherOpType = EntityFactory.makeOperationType("Bananas", null);
+        LabwareType cytLt = EntityFactory.makeLabwareType(1, 1, "Cytassist HD 3' something");
+        LabwareType otherLt = EntityFactory.getTubeType();
+        Labware cytLw = EntityFactory.makeEmptyLabware(cytLt, "STAN-1");
+        Labware otherLw = EntityFactory.getTube();
+        Object[][] options = {
+                {cyt, cytLw, otherLt, true},
+                {cyt, null, cytLt, true},
+                {cyt, otherLw, cytLt, false},
+                {cyt, null, otherLt, false},
+                {otherOpType, cytLw, cytLt, false},
+                {null, cytLw, cytLt, false},
+        };
+        for (Object[] option : options) {
+            OperationType opType = (OperationType) option[0];
+            Labware lw = (Labware) option[1];
+            LabwareType lt = (LabwareType) option[2];
+            boolean expected = (boolean) option[3];
+            assertEquals(expected, service.needsReagentLot(opType, lw, lt));
+        }
+    }
+
+    @Test
+    public void testValidateReagentLots() {
+        OperationType opType = EntityFactory.makeOperationType("Cytassist", null);
+        LabwareType lt = EntityFactory.makeLabwareType(1,2, "lt");
+        UCMap<LabwareType> lts = UCMap.from(LabwareType::getName, lt);
+        Labware lw = EntityFactory.getTube();
+        String bc = lw.getBarcode();
+        UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lw);
+        final String missingLotMessage = "Missing reagent lot for destination " + bc;
+        Object[][] options = {
+                {bc, "lt", "r1", "r2", true, null},
+                {bc, "lt", "", null, false, null},
+                {bc, "lt", "", "r2", true, missingLotMessage},
+                {bc, "lt", "r1", null, true, missingLotMessage},
+                {bc, "lt", "r1", "r2!", true, "r2!"},
+                {bc, "lt", "r1!", null, false, "r1!"},
+                {null, "lt", "r1", null, true, "Missing reagent lot for "+lt.getName()},
+        };
+        when(mockReagentLotValidator.validate(any(), any())).then(invocation -> {
+            String string = invocation.getArgument(0);
+            if (string.indexOf('!') < 0) {
+                return true;
+            }
+            Consumer<String> addProblem = invocation.getArgument(1);
+            addProblem.accept(string);
+            return false;
+        });
+        Set<String> problems = new HashSet<>(1);
+        SlotCopyRequest request = new SlotCopyRequest();
+        final boolean[] needsReagentLot = {false,false};
+        doAnswer(invocation -> {
+            needsReagentLot[1] = true;
+            return needsReagentLot[0];
+        }).when(service).needsReagentLot(any(), any(), any());
+        for (Object[] option : options) {
+            SlotCopyDestination scd = new SlotCopyDestination();
+            scd.setBarcode((String) option[0]);
+            scd.setLabwareType((String) option[1]);
+            scd.setReagentALot((String) option[2]);
+            scd.setReagentBLot((String) option[3]);
+            needsReagentLot[0] = (boolean) option[4];
+            needsReagentLot[1] = false;
+            problems.clear();
+            String expectedProblem = (String) option[5];
+            request.setDestinations(List.of(scd));
+            service.validateReagentLots(problems, opType, lts, lwMap, request);
+            assertProblem(problems, expectedProblem);
+            if (nullOrEmpty(scd.getReagentALot()) || nullOrEmpty(scd.getReagentBLot())) {
+                assertTrue(needsReagentLot[1]);
+            }
+        }
     }
 
     @Test

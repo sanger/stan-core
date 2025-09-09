@@ -184,6 +184,8 @@ public class SlotCopyRequest {
         private String probeLotNumber;
         private String preBarcode;
         private String lpNumber;
+        private String reagentALot;
+        private String reagentBLot;
         private List<SlotCopyContent> contents;
 
         public SlotCopyDestination() {
@@ -289,6 +291,22 @@ public class SlotCopyRequest {
             this.lpNumber = lpNumber;
         }
 
+        public String getReagentALot() {
+            return this.reagentALot;
+        }
+
+        public void setReagentALot(String reagentALot) {
+            this.reagentALot = reagentALot;
+        }
+
+        public String getReagentBLot() {
+            return this.reagentBLot;
+        }
+
+        public void setReagentBLot(String reagentBLot) {
+            this.reagentBLot = reagentBLot;
+        }
+
         /**
          * The specifications of which source slots are being copied into what addresses in the destination labware.
          */
@@ -314,6 +332,8 @@ public class SlotCopyRequest {
                     && Objects.equals(this.barcode, that.barcode)
                     && Objects.equals(this.lpNumber, that.lpNumber)
                     && Objects.equals(this.contents, that.contents)
+                    && Objects.equals(this.reagentALot, that.reagentALot)
+                    && Objects.equals(this.reagentBLot, that.reagentBLot)
             );
         }
 
@@ -334,6 +354,8 @@ public class SlotCopyRequest {
                     .add("preBarcode", preBarcode)
                     .add("lpNumber", lpNumber)
                     .add("contents", contents)
+                    .add("reagentALot", reagentALot)
+                    .add("reagentBLot", reagentBLot)
                     .reprStringValues()
                     .toString();
         }
