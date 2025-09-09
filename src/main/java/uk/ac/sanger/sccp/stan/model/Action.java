@@ -105,7 +105,7 @@ public class Action {
 
     @Override
     public int hashCode() {
-        return (id!=null ? id.hashCode() : 0);
+        return (id!=null ? id.hashCode() : Objects.hash(operationId, source, destination, sample));
     }
 
     @Override
