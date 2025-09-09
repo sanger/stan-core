@@ -2035,6 +2035,8 @@ input QCLabwareRequest {
     operationType: String!
     """The specifications of labware to QC."""
     labware: [QCLabware!]!
+    """Was it terminated early?"""
+    terminated: Boolean
 }
 
 """Raise a flag on a piece of labware."""

@@ -196,12 +196,14 @@ public class QCLabwareRequest {
 
     private String operationType;
     private List<QCLabware> labware = List.of();
+    private boolean terminated = false;
 
     public QCLabwareRequest() {}
 
-    public QCLabwareRequest(String operationType, List<QCLabware> labware) {
+    public QCLabwareRequest(String operationType, List<QCLabware> labware, boolean terminated) {
         setOperationType(operationType);
         setLabware(labware);
+        setTerminated(terminated);
     }
 
     /**
@@ -226,6 +228,14 @@ public class QCLabwareRequest {
         this.labware = nullToEmpty(labware);
     }
 
+    public boolean isTerminated() {
+        return this.terminated;
+    }
+
+    public void setTerminated(boolean terminated) {
+        this.terminated = terminated;
+    }
+
     @Override
     public String toString() {
         return String.format("QCLabwareRequest(%s, %s)", repr(operationType), labware);
@@ -237,7 +247,8 @@ public class QCLabwareRequest {
         if (o == null || getClass() != o.getClass()) return false;
         QCLabwareRequest that = (QCLabwareRequest) o;
         return (Objects.equals(this.operationType, that.operationType)
-                && Objects.equals(this.labware, that.labware));
+                && Objects.equals(this.labware, that.labware)
+                && this.terminated == that.terminated);
     }
 
     @Override
