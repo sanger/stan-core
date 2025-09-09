@@ -15,6 +15,7 @@ import uk.ac.sanger.sccp.stan.service.validation.ValidationHelper;
 import uk.ac.sanger.sccp.stan.service.validation.ValidationHelperFactory;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
+import uk.ac.sanger.sccp.utils.Zip;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -43,6 +44,8 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
     private final WorkService workService;
     private final LabwareNoteRepo lwNoteRepo;
     private final RoiRepo roiRepo;
+    private final CommentRepo commentRepo;
+    private final OperationCommentRepo opComRepo;
     private final Validator<String> decodingReagentLotValidator;
     private final Validator<String> runNameValidator;
     private final Validator<String> roiValidator;
@@ -55,7 +58,8 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
     public AnalyserServiceImp(LabwareValidatorFactory lwValFactory, OpSearcher opSearcher,
                               OperationService opService, WorkService workService,
                               LabwareRepo lwRepo, OperationTypeRepo opTypeRepo, OperationRepo opRepo,
-                              LabwareNoteRepo lwNoteRepo, RoiRepo roiRepo,
+                              LabwareNoteRepo lwNoteRepo, RoiRepo roiRepo, CommentRepo commentRepo,
+                              OperationCommentRepo opComRepo,
                               @Qualifier("decodingReagentLotValidator") Validator<String> decodingReagentLotValidator,
                               @Qualifier("runNameValidator") Validator<String> runNameValidator,
                               @Qualifier("roiValidator") Validator<String> roiValidator,
@@ -67,6 +71,8 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
         this.workService = workService;
         this.lwNoteRepo = lwNoteRepo;
         this.roiRepo = roiRepo;
+        this.commentRepo = commentRepo;
+        this.opComRepo = opComRepo;
         this.decodingReagentLotValidator = decodingReagentLotValidator;
         this.runNameValidator = runNameValidator;
         this.roiValidator = roiValidator;
@@ -93,6 +99,15 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
         validateCellSegmentationLot(problems, request.getCellSegmentationLot());
         validateDecodingConsumablesLot(problems, request.getLabware());
         validateRunName(problems, request.getRunName());
+        Comment repeatComment = null;
+        if (request.isRepeat()) {
+            Optional<Comment> optComment = commentRepo.findByCategoryAndText("misc", "repeat");
+            if (optComment.isEmpty()) {
+                problems.add("Repeat comment missing from database.");
+            } else {
+                repeatComment = optComment.get();
+            }
+        }
         ValidationHelper val = valFactory.getHelper();
         Equipment equipment = val.checkEquipment(request.getEquipmentId(), EQUIPMENT_CATEGORY, true);
         problems.addAll(val.getProblems());
@@ -104,7 +119,7 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
             sanitiseRois(al, lwMap.get(al.getBarcode()));
         }
 
-        return record(user, request, opType, lwMap, workMap, equipment);
+        return record(user, request, opType, lwMap, workMap, equipment, repeatComment);
     }
 
     /**
@@ -428,7 +443,7 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
      * @return the labware and operations recorded
      */
     public OperationResult record(User user, AnalyserRequest request, OperationType opType,
-                                  UCMap<Labware> lwMap, UCMap<Work> workMap, Equipment equipment) {
+                                  UCMap<Labware> lwMap, UCMap<Work> workMap, Equipment equipment, Comment repeatComment) {
         String lotA = request.getLotNumberA().trim();
         String lotB = request.getLotNumberB().trim();
         String run = request.getRunName().trim();
@@ -471,6 +486,13 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
         if (request.getPerformed()!=null) {
             ops.forEach(op -> op.setPerformed(request.getPerformed()));
             opRepo.saveAll(ops);
+        }
+
+        if (request.isRepeat() && repeatComment != null) {
+            List<OperationComment> opcoms = Zip.of(ops.stream(), labware.stream()).map((Operation op, Labware lw) ->
+                new OperationComment(null, repeatComment, op.getId(), null, null, lw.getId())
+            ).toList();
+            opComRepo.saveAll(opcoms);
         }
 
         return new OperationResult(ops, labware);
