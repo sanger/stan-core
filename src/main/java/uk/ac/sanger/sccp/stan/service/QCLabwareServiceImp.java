@@ -3,8 +3,7 @@ package uk.ac.sanger.sccp.stan.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.repo.OperationCommentRepo;
-import uk.ac.sanger.sccp.stan.repo.OperationRepo;
+import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.request.QCLabwareRequest;
 import uk.ac.sanger.sccp.stan.request.QCLabwareRequest.QCLabware;
@@ -34,6 +33,7 @@ public class QCLabwareServiceImp implements QCLabwareService {
     private final Clock clock;
     private final ValidationHelperFactory valFactory;
     private final OperationRepo opRepo;
+    private final CommentRepo commentRepo;
     private final OperationCommentRepo opComRepo;
     private final WorkService workService;
     private final OperationService opService;
@@ -41,12 +41,13 @@ public class QCLabwareServiceImp implements QCLabwareService {
 
     @Autowired
     public QCLabwareServiceImp(Clock clock, ValidationHelperFactory valFactory,
-                               OperationRepo opRepo, OperationCommentRepo opComRepo,
+                               OperationRepo opRepo, CommentRepo commentRepo, OperationCommentRepo opComRepo,
                                WorkService workService, OperationService opService,
                                LabwareNoteService lwNoteService) {
         this.clock = clock;
         this.valFactory = valFactory;
         this.opRepo = opRepo;
+        this.commentRepo = commentRepo;
         this.opComRepo = opComRepo;
         this.workService = workService;
         this.opService = opService;
@@ -66,6 +67,15 @@ public class QCLabwareServiceImp implements QCLabwareService {
         UCMap<Labware> lwMap = val.checkLabware(qcls.stream().map(QCLabware::getBarcode).collect(toList()));
         UCMap<Work> workMap = val.checkWork(qcls.stream().map(QCLabware::getWorkNumber).collect(toList()));
         checkTimestamps(val, qcls, lwMap, clock);
+        Comment terminatedComment = null;
+        if (request.isTerminated()) {
+            Optional<Comment> opt = commentRepo.findByCategoryAndText("misc", "terminated early");
+            if (opt.isPresent()) {
+                terminatedComment = opt.get();
+            } else {
+                val.getProblems().add("Terminated early comment missing from database.");
+            }
+        }
         Map<Integer, Comment> commentMap = checkComments(val, qcls);
         checkSampleComments(val, qcls, lwMap);
         if (opType != null && opType.getName().equals(XENIUM_ANALYSER_QC_NAME)) {
@@ -76,7 +86,7 @@ public class QCLabwareServiceImp implements QCLabwareService {
             throw new ValidationException(val.getProblems());
         }
 
-        return record(user, opType, qcls, lwMap, workMap, commentMap);
+        return record(user, opType, qcls, lwMap, workMap, commentMap, terminatedComment);
     }
 
     /**
@@ -195,10 +205,12 @@ public class QCLabwareServiceImp implements QCLabwareService {
      * @param lwMap the indicated labware mapped from barcodes
      * @param workMap the indicated work linked from work numbers
      * @param commentMap the indicated comments linked from ids
+     * @param terminatedComment comment used to indicate the thing was terminated early
      * @return the labware and operations requested
      */
     public OperationResult record(User user, OperationType opType, List<QCLabware> qcls,
-                                  UCMap<Labware> lwMap, UCMap<Work> workMap, Map<Integer, Comment> commentMap) {
+                                  UCMap<Labware> lwMap, UCMap<Work> workMap, Map<Integer, Comment> commentMap,
+                                  Comment terminatedComment) {
         final UCMap<Operation> lwOps = new UCMap<>(qcls.size());
         final List<Operation> opsToSave = new ArrayList<>();
         for (QCLabware qcl : qcls) {
@@ -214,7 +226,7 @@ public class QCLabwareServiceImp implements QCLabwareService {
             opRepo.saveAll(opsToSave);
         }
         linkWorks(qcls, workMap, lwOps);
-        linkComments(qcls, commentMap, lwOps, lwMap);
+        linkComments(qcls, commentMap, lwOps, lwMap, terminatedComment);
         saveNotes(qcls, lwOps, lwMap);
         return assembleResult(qcls, lwOps, lwMap);
     }
@@ -244,23 +256,26 @@ public class QCLabwareServiceImp implements QCLabwareService {
      * @param commentMap map of comments from their ids
      * @param lwOps map of operations from their labware barcode
      * @param lwMap map of labware from barcodes
+     * @param terminatedComment comment to indicate the thing was terminated early
      */
-    public void linkComments(List<QCLabware> qcls, Map<Integer, Comment> commentMap, UCMap<Operation> lwOps, UCMap<Labware> lwMap) {
+    public void linkComments(List<QCLabware> qcls, Map<Integer, Comment> commentMap,
+                             UCMap<Operation> lwOps, UCMap<Labware> lwMap, Comment terminatedComment) {
         List<OperationComment> opcoms = new ArrayList<>();
         for (QCLabware qcl : qcls) {
+            final Labware lw = lwMap.get(qcl.getBarcode());
+            final Operation op = lwOps.get(qcl.getBarcode());
+            if (terminatedComment != null) {
+                opcoms.add(new OperationComment(null, terminatedComment, op.getId(), null, null, lw.getId()));
+            }
             if (!nullOrEmpty(qcl.getComments())) {
                 qcl.getComments().forEach(id -> {
                     Comment comment = commentMap.get(id);
-                    Operation op = lwOps.get(qcl.getBarcode());
-                    Labware lw = lwMap.get(qcl.getBarcode());
                     opcoms.add(new OperationComment(null, comment, op.getId(), null, null, lw.getId()));
                 });
             }
             if (!nullOrEmpty(qcl.getSampleComments())) {
                 qcl.getSampleComments().forEach(sc -> {
                     Comment comment = commentMap.get(sc.getCommentId());
-                    Operation op = lwOps.get(qcl.getBarcode());
-                    Labware lw = lwMap.get(qcl.getBarcode());
                     Slot slot = lw.getSlot(sc.getAddress());
                     opcoms.add(new OperationComment(null, comment, op.getId(), sc.getSampleId(), slot.getId(), null));
                 });
