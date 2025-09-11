@@ -90,7 +90,7 @@ public class TestCompletionService {
         doReturn(commentMap).when(service).validateCommentIds(any(), any());
 
         OperationResult opres = new OperationResult(List.of(), List.of(lw));
-        doReturn(opres).when(service).execute(any(), any(), any(), any(), any(), any());
+        doReturn(opres).when(service).execute(any(), any(), any(), any(), any(), any(), any());
 
         assertSame(opres, service.perform(user, request));
 
@@ -103,14 +103,14 @@ public class TestCompletionService {
         verify(service).validateCommentLocations(any(), same(request.getLabware()), same(lwMap));
         verify(service).validateCommentIds(any(), same(request.getLabware()));
 
-        verify(service).execute(user, request.getLabware(), opType, work, lwMap, commentMap);
+        verify(service).execute(user, request.getLabware(), opType, work, lwMap, commentMap, priorOps);
     }
 
     @Test
     public void testPerform_null() {
         Matchers.assertValidationException(() -> service.perform(EntityFactory.getUser(), null),
                 List.of("Request not specified."));
-        verify(service, never()).execute(any(), any(), any(), any(), any(), any());
+        verify(service, never()).execute(any(), any(), any(), any(), any(), any(), any());
     }
 
     @ParameterizedTest
@@ -155,7 +155,7 @@ public class TestCompletionService {
         verify(service).validateTimestamps(any(), same(request.getLabware()), same(lwMap), same(precedingOps));
         verify(service).validateCommentLocations(any(), same(request.getLabware()), same(lwMap));
         verify(service).validateCommentIds(any(), same(request.getLabware()));
-        verify(service, never()).execute(any(), any(), any(), any(), any(), any());
+        verify(service, never()).execute(any(), any(), any(), any(), any(), any(), any());
     }
 
     @ParameterizedTest
@@ -318,17 +318,18 @@ public class TestCompletionService {
         OperationType opType = EntityFactory.makeOperationType("fizzle", null);
         Work work = EntityFactory.makeWork("SGP1");
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, EntityFactory.getTube());
+        Map<Integer, Operation> priorOpMap = Map.of(100, new Operation());
         Map<Integer, Comment> commentMap = Map.of(4, new Comment(4, "A", "B"));
         UCMap<Operation> bcOps = new UCMap<>(1);
         bcOps.put("STAN-1", new Operation());
-        doReturn(bcOps).when(service).makeOps(any(), any(), any(), any());
+        doReturn(bcOps).when(service).makeOps(any(), any(), any(), any(), any());
         doNothing().when(service).recordComments(any(), any(), any(), any());
         OperationResult opres = new OperationResult(bcOps.values(), lwMap.values());
         doReturn(opres).when(service).composeResult(any(), any(), any());
 
-        assertSame(opres, service.execute(user, lscs, opType, work, lwMap, commentMap));
+        assertSame(opres, service.execute(user, lscs, opType, work, lwMap, commentMap, priorOpMap));
 
-        verify(service).makeOps(user, opType, lscs, lwMap);
+        verify(service).makeOps(user, opType, lscs, lwMap, priorOpMap);
         verify(service).recordComments(lscs, lwMap, bcOps, commentMap);
         verify(mockWorkService).link(work, bcOps.values());
         verify(service).composeResult(lscs, lwMap, bcOps);
@@ -340,6 +341,13 @@ public class TestCompletionService {
         OperationType opType = EntityFactory.makeOperationType("fizzle", null);
         Labware lw1 = EntityFactory.getTube();
         Labware lw2 = EntityFactory.makeLabware(lw1.getLabwareType(), EntityFactory.getSample());
+
+        Operation priorOp1 = new Operation();
+        priorOp1.setId(11);
+        Operation priorOp2 = new Operation();
+        priorOp2.setId(12);
+        Map<Integer, Operation> priorOpMap = Map.of(lw1.getId(), priorOp1, lw2.getId(), priorOp2);
+
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lw1, lw2);
         LocalDateTime time1 = time(1);
         LocalDateTime now = time(2);
@@ -355,16 +363,49 @@ public class TestCompletionService {
         op1.setPerformed(now);
         op2.setPerformed(now);
 
-        when(mockOpService.createOperationInPlace(opType, user, lw1, null, null))
-                .thenReturn(op1);
-        when(mockOpService.createOperationInPlace(opType, user, lw2, null, null))
-                .thenReturn(op2);
-
-        UCMap<Operation> bcOps = service.makeOps(user, opType, lscs, lwMap);
+        doReturn(op1).when(service).createOp(any(), any(), same(lw1), any());
+        doReturn(op2).when(service).createOp(any(), any(), same(lw2), any());
+        UCMap<Operation> bcOps = service.makeOps(user, opType, lscs, lwMap, priorOpMap);
         assertThat(bcOps).hasSize(2).containsEntry(lw1.getBarcode(), op1).containsEntry(lw2.getBarcode(), op2);
         assertEquals(time1, op1.getPerformed());
         assertEquals(now, op2.getPerformed());
+        verify(service).createOp(opType, user, lw1, priorOp1);
+        verify(service).createOp(opType, user, lw2, priorOp2);
         verify(mockOpRepo).saveAll(List.of(op1));
+    }
+
+    @Test
+    public void testCreateOp() {
+        Sample[] samples = EntityFactory.makeSamples(3);
+        LabwareType lt = EntityFactory.makeLabwareType(1,3);
+        Labware lw = EntityFactory.makeEmptyLabware(lt);
+        final Address A1 = new Address(1,1), A2 = new Address(1,2), A3 = new Address(1,3);
+        Slot slot1 = lw.getSlot(A1);
+        Slot slot2 = lw.getSlot(A2);
+        Slot slot3 = lw.getSlot(A3);
+        slot1.setSamples(List.of(samples[0], samples[1]));
+        slot2.setSamples(List.of(samples[1], samples[2]));
+        slot3.setSamples(List.of(samples[2]));
+        Operation priorOp = new Operation();
+        priorOp.setId(100);
+        priorOp.setActions(List.of(
+                new Action(101, 100, slot1, slot1, samples[0], samples[0]),
+                new Action(102, 100, slot1, slot1, samples[1], samples[1]),
+                new Action(103, 100, slot2, slot2, samples[1], samples[1])
+        ));
+        User user = EntityFactory.getUser();
+        OperationType opType = EntityFactory.makeOperationType("qc", null, OperationTypeFlag.IN_PLACE);
+        Operation newOp = new Operation();
+        newOp.setId(200);
+        when(mockOpService.createOperation(any(), any(), any(), any())).thenReturn(newOp);
+
+        assertSame(newOp, service.createOp(opType, user, lw, priorOp));
+        List<Action> expectedActions = List.of(
+                new Action(null, null, slot1, slot1, samples[0], samples[0]),
+                new Action(null, null, slot1, slot1, samples[1], samples[1]),
+                new Action(null, null, slot2, slot2, samples[1], samples[1])
+        );
+        verify(mockOpService).createOperation(same(opType), same(user), sameElements(expectedActions, true), isNull());
     }
 
     @Test
