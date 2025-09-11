@@ -195,6 +195,7 @@ public class AnalyserRequest {
     private Integer equipmentId;
     private String cellSegmentationLot;
     private List<AnalyserLabware> labware = List.of();
+    private boolean repeat = false;
 
     public AnalyserRequest() {}
 
@@ -298,6 +299,15 @@ public class AnalyserRequest {
         this.labware = nullToEmpty(labware);
     }
 
+    /** Is this request a repeat? */
+    public boolean isRepeat() {
+        return this.repeat;
+    }
+
+    public void setRepeat(boolean repeat) {
+        this.repeat = repeat;
+    }
+
     @Override
     public String toString() {
         return BasicUtils.describe("AnalyserRequest")
@@ -308,6 +318,7 @@ public class AnalyserRequest {
                 .add("performed", performed)
                 .add("cellSegmentationLot", cellSegmentationLot)
                 .add("labware", labware)
+                .add("repeat", repeat)
                 .reprStringValues()
                 .toString();
     }
@@ -323,7 +334,9 @@ public class AnalyserRequest {
                 && Objects.equals(this.runName, that.runName)
                 && Objects.equals(this.performed, that.performed)
                 && Objects.equals(this.cellSegmentationLot, that.cellSegmentationLot)
-                && Objects.equals(this.labware, that.labware));
+                && Objects.equals(this.labware, that.labware)
+                && this.repeat == that.repeat
+        );
     }
 
     @Override
