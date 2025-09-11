@@ -265,6 +265,11 @@ public class Matchers {
         public boolean matches(String argument) {
             return (string==null ? argument==null : string.equalsIgnoreCase(argument));
         }
+
+        @Override
+        public String toString() {
+            return String.format("eqCi(%s)", string);
+        }
     }
 
     /**

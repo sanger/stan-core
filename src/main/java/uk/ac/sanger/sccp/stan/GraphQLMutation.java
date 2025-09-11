@@ -18,6 +18,7 @@ import uk.ac.sanger.sccp.stan.request.stain.ComplexStainRequest;
 import uk.ac.sanger.sccp.stan.request.stain.StainRequest;
 import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.analysis.RNAAnalysisService;
+import uk.ac.sanger.sccp.stan.service.cytassistoverview.CytassistOverviewService;
 import uk.ac.sanger.sccp.stan.service.extract.ExtractService;
 import uk.ac.sanger.sccp.stan.service.flag.FlagLabwareService;
 import uk.ac.sanger.sccp.stan.service.label.print.LabelPrintService;
@@ -108,6 +109,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final TissueTypeService tissueTypeService;
     final WorkChangeService workChangeService;
     final CellClassService cellClassService;
+    final CytassistOverviewService cytassistOverviewService;
 
     @Autowired
     public GraphQLMutation(ObjectMapper objectMapper, AuthenticationComponent authComp,
@@ -143,7 +145,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            SegmentationService segmentationService, CleanOutService cleanOutService, RoiMetricService roiMetricService,
                            UserAdminService userAdminService, SlotCopyRecordService slotCopyRecordService,
                            TissueTypeService tissueTypeService, WorkChangeService workChangeService,
-                           CellClassService cellClassService) {
+                           CellClassService cellClassService, CytassistOverviewService cytassistOverviewService) {
         super(objectMapper, authComp, userRepo);
         this.authService = authService;
         this.registerService = registerService;
@@ -211,6 +213,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.tissueTypeService = tissueTypeService;
         this.workChangeService = workChangeService;
         this.cellClassService = cellClassService;
+        this.cytassistOverviewService = cytassistOverviewService;
     }
 
     private void logRequest(String name, User user, Object request) {
@@ -1023,6 +1026,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             requireNonNull(enabled, "enabled not specified.");
             logRequest(functionName, user, String.format("arg: %s, enabled: %s", repr(arg), enabled));
             return setEnabledFunction.apply(arg, enabled);
+        };
+    }
+
+    public DataFetcher<Boolean> updateCytassistOverview() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.admin);
+            cytassistOverviewService.update();
+            logRequest("update cytassist overview", user, null);
+            return true; // arbitrary return value
         };
     }
 }

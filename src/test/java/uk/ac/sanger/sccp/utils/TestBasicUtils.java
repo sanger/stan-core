@@ -442,4 +442,13 @@ public class TestBasicUtils {
         }
         assertEquals(Optional.ofNullable(expected), getSingleValue(iter));
     }
+
+    @Test
+    public void testChain() {
+        List<Integer> ints = List.of(1, 2, 3);
+        List<Float> floats = List.of(1.1f, 2.2f, 3.3f);
+        List<Number> numbers = new ArrayList<>(6);
+        chain(ints, floats).forEach(numbers::add);
+        assertThat(numbers).containsExactly(1, 2, 3, 1.1f, 2.2f, 3.3f);
+    }
 }

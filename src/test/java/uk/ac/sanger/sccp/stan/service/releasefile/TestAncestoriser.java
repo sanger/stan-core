@@ -8,8 +8,11 @@ import uk.ac.sanger.sccp.stan.repo.ActionRepo;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
 
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.anyCollection;
@@ -129,6 +132,89 @@ public class TestAncestoriser {
         assertThat(ancestry.ancestors(slotSample(lw3, sample2)))
                 .containsOnly(slotSample(lw3, sample2), slotSample(lw2, sample2),
                         slotSample(lw2beta, sample2), slotSample(lw, sample));
+    }
+
+    @Test
+    public void testFindPosterity() {
+        Labware lw = EntityFactory.makeLabware(lt, sample);
+        Labware lw1 = EntityFactory.makeLabware(lt, sample1);
+        Labware lw2 = EntityFactory.makeLabware(lt, sample2);
+        Labware lw2beta = EntityFactory.makeLabware(lt, sample2);
+        Labware lwB = EntityFactory.makeLabware(lt, sampleB);
+        Labware lwB1 = EntityFactory.makeLabware(lt, sampleB1b);
+
+        Labware lw3 = EntityFactory.makeEmptyLabware(lt);
+        lw3.getFirstSlot().getSamples().addAll(List.of(sample, sample1, sample2, sampleB1));
+
+        final List<Action> actions = makeActions(
+                lw, lw1, sample1, sample,
+                lw, lw2, sample2, sample,
+                lw, lw2beta, sample2, sample,
+                lw, lw3, sample, sample,
+                lw1, lw3, sample1, sample1,
+                lw2, lw3, sample2, sample2,
+                lw2beta, lw3, sample2, sample2,
+                lwB, lw3, sampleB1, sampleB,
+                lw3, lwB1, sampleB1, sampleB1,
+                lwB1, lwB1, sampleB1b, sampleB1
+        );
+
+        when(mockActionRepo.findAllBySourceIn(anyCollection())).then(invocation -> {
+            final Collection<Slot> slots = invocation.getArgument(0);
+            return actions.stream()
+                    .filter(ac -> slots.contains(ac.getSource()))
+                    .collect(toList());
+        });
+
+        var posterity = ancestoriser.findPosterity(makeSlotSamples(
+                lw, sample,
+                lwB, sampleB
+        ));
+
+        Object[][] expectedData = {
+                { lw, sample, lw1, sample1, lw2, sample2, lw2beta, sample2, lw3, sample },
+                { lw1, sample1, lw3, sample1 },
+                { lw2, sample2, lw3, sample2 },
+                { lw2beta, sample2, lw3, sample2 },
+                { lwB, sampleB, lw3, sampleB1 },
+                { lw3, sampleB1, lwB1, sampleB1 },
+                { lwB1, sampleB1, lwB1, sampleB1b },
+        };
+        Set<SlotSample> keys = new HashSet<>();
+        for (Object[] data : expectedData) {
+            SlotSample key = slotSample(data[0], (Sample) data[1]);
+            Set<SlotSample> values = new HashSet<>(data.length/2-1);
+            for (int i = 2; i < data.length; i+=2) {
+                SlotSample ss = slotSample(data[i], (Sample) data[i+1]);
+                values.add(ss);
+                keys.add(ss);
+            }
+            assertEquals(values, posterity.get(key));
+            keys.add(key);
+        }
+        assertThat(posterity.keySet()).hasSameElementsAs(keys);
+
+        assertThat(posterity.getLeafs()).containsExactlyInAnyOrderElementsOf(makeSlotSamples(
+                lw3, sample,
+                lw3, sample1,
+                lw3, sample2,
+                lwB1, sampleB1b
+        ));
+
+        assertThat(posterity.getLeafs(slotSample(lw, sample))).containsExactlyInAnyOrderElementsOf(makeSlotSamples(
+                lw3, sample1, lw3, sample, lw3, sample2
+        ));
+        assertThat(posterity.getLeafs(slotSample(lwB, sampleB))).containsExactlyInAnyOrderElementsOf(makeSlotSamples(
+                lwB1, sampleB1b
+        ));
+
+        assertThat(posterity.descendents(slotSample(lw, sample))).containsExactlyInAnyOrderElementsOf(makeSlotSamples(
+                lw1, sample1, lw3, sample1, lw3, sample, lw3, sample2, lw2beta, sample2, lw2, sample2, lw, sample
+        ));
+
+        assertThat(posterity.descendents(slotSample(lwB, sampleB))).containsExactlyInAnyOrderElementsOf(makeSlotSamples(
+                lwB1, sampleB1, lwB, sampleB, lw3, sampleB1, lwB1, sampleB1b
+        ));
     }
 
     private List<Action> makeActions(Object... objects) {
