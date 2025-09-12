@@ -10,6 +10,8 @@ query {
         labwareType
         lotNumber
         probeLotNumber
+        reagentALot
+        reagentBLot
         bioState
         sources { barcode labwareState }
         contents { sourceBarcode sourceAddress destinationAddress }

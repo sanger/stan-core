@@ -31,6 +31,7 @@ public class SlotCopyValidationServiceImp implements SlotCopyValidationService {
     private final ValidationHelperFactory valHelperFactory;
     private final Validator<String> preBarcodeValidator;
     private final Validator<String> lotNumberValidator;
+    private final Validator<String> reagentLotValidator;
     private final CleanedOutSlotService cleanedOutSlotService;
 
     @Autowired
@@ -38,6 +39,7 @@ public class SlotCopyValidationServiceImp implements SlotCopyValidationService {
                                         ValidationHelperFactory valHelperFactory,
                                         @Qualifier("cytAssistBarcodeValidator") Validator<String> preBarcodeValidator,
                                         @Qualifier("lotNumberValidator") Validator<String> lotNumberValidator,
+                                        @Qualifier("reagentLotValidator") Validator<String> reagentLotValidator,
                                         CleanedOutSlotService cleanedOutSlotService) {
         this.lwTypeRepo = lwTypeRepo;
         this.lwRepo = lwRepo;
@@ -45,6 +47,7 @@ public class SlotCopyValidationServiceImp implements SlotCopyValidationService {
         this.valHelperFactory = valHelperFactory;
         this.preBarcodeValidator = preBarcodeValidator;
         this.lotNumberValidator = lotNumberValidator;
+        this.reagentLotValidator = reagentLotValidator;
         this.cleanedOutSlotService = cleanedOutSlotService;
     }
 
@@ -75,6 +78,7 @@ public class SlotCopyValidationServiceImp implements SlotCopyValidationService {
         }
         checkListedSources(data.problems, request);
         validateLotNumbers(data.problems, request.getDestinations());
+        validateReagentLots(data.problems, data.opType, data.lwTypes, data.destLabware, request);
         validateLpNumbers(data.problems, request.getDestinations());
         validateContents(data.problems, data.lwTypes, data.sourceLabware, data.destLabware, request);
         validateOps(data.problems, request.getDestinations(), data.opType, data.lwTypes);
@@ -294,6 +298,42 @@ public class SlotCopyValidationServiceImp implements SlotCopyValidationService {
                 lotNumberValidator.validate(scd.getProbeLotNumber(), problems::add);
             }
         }
+    }
+
+    /**
+     * Checks reagent lots. Checks their presence, if required. Checks their format, if given.
+     * @param problems receptacle for problems
+     * @param opType the operation type being validated
+     * @param lwTypes map to look up labware types by name
+     * @param destLabware map to look up existing labware by barcode
+     * @param request the request being validated
+     */
+    public void validateReagentLots(Collection<String> problems, OperationType opType, UCMap<LabwareType> lwTypes,
+                                    UCMap<Labware> destLabware, SlotCopyRequest request) {
+        for (SlotCopyDestination scd : request.getDestinations()) {
+            for (String string : Arrays.asList(scd.getReagentALot(), scd.getReagentBLot())) {
+                if (!nullOrEmpty(string)) {
+                    reagentLotValidator.validate(string, problems::add);
+                } else if (needsReagentLot(opType, destLabware.get(scd.getBarcode()), lwTypes.get(scd.getLabwareType()))) {
+                    if (scd.getBarcode() != null) {
+                        problems.add("Missing reagent lot for destination " + scd.getBarcode());
+                    } else {
+                        problems.add("Missing reagent lot for "+scd.getLabwareType());
+                    }
+                }
+            }
+        }
+    }
+
+    /** Are reagent lots required? */
+    public boolean needsReagentLot(OperationType opType, Labware lw, LabwareType lt) {
+        if (opType == null || !opType.getName().equalsIgnoreCase(CYTASSIST_OP)) {
+            return false;
+        }
+        if (lw != null) {
+            lt = lw.getLabwareType();
+        }
+        return lt != null && lt.getName().matches("Cytassist HD 3\\b.*");
     }
 
     /**
