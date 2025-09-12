@@ -26,6 +26,8 @@ public class SlotCopySave {
     private String bioState;
     private SlideCosting costing;
     private String lotNumber;
+    private String reagentALot;
+    private String reagentBLot;
     private String probeLotNumber;
     private String preBarcode;
     private List<SlotCopyContent> contents = List.of();
@@ -129,6 +131,22 @@ public class SlotCopySave {
         this.probeLotNumber = probeLotNumber;
     }
 
+    public String getReagentALot() {
+        return this.reagentALot;
+    }
+
+    public void setReagentALot(String reagentALot) {
+        this.reagentALot = reagentALot;
+    }
+
+    public String getReagentBLot() {
+        return this.reagentBLot;
+    }
+
+    public void setReagentBLot(String reagentBLot) {
+        this.reagentBLot = reagentBLot;
+    }
+
     /** The barcode of the new labware, if it is prebarcoded. */
     public String getPreBarcode() {
         return this.preBarcode;
@@ -161,6 +179,8 @@ public class SlotCopySave {
                 .add("costing", costing)
                 .add("lotNumber", lotNumber)
                 .add("probeLotNumber", probeLotNumber)
+                .add("reagentALot", reagentALot)
+                .add("reagentBLot", reagentBLot)
                 .add("preBarcode", preBarcode)
                 .add("contents", contents)
                 .reprStringValues()
@@ -183,6 +203,8 @@ public class SlotCopySave {
                 && Objects.equals(this.costing, that.costing)
                 && Objects.equals(this.lotNumber, that.lotNumber)
                 && Objects.equals(this.probeLotNumber, that.probeLotNumber)
+                && Objects.equals(this.reagentALot, that.reagentALot)
+                && Objects.equals(this.reagentBLot, that.reagentBLot)
                 && Objects.equals(this.preBarcode, that.preBarcode)
                 && Objects.equals(this.contents, that.contents)
         );

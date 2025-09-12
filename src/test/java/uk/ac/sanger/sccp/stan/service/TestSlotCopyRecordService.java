@@ -168,6 +168,8 @@ class TestSlotCopyRecordService {
                 new SlotCopyRecordNote(NOTE_COSTING, "SGP"),
                 new SlotCopyRecordNote(NOTE_LOT, "lot1"),
                 new SlotCopyRecordNote(NOTE_PROBELOT, "probe1"),
+                new SlotCopyRecordNote(NOTE_REAGENT_A_LOT, "rla"),
+                new SlotCopyRecordNote(NOTE_REAGENT_B_LOT, "rlb"),
                 new SlotCopyRecordNote(NOTE_EXECUTION, "manual"),
                 new SlotCopyRecordNote(NOTE_SRC_BARCODE, 0, "STAN-0"),
                 new SlotCopyRecordNote(NOTE_SRC_STATE, 0, "discarded"),
@@ -192,6 +194,8 @@ class TestSlotCopyRecordService {
         assertEquals(SlideCosting.SGP, save.getCosting());
         assertEquals("lot1", save.getLotNumber());
         assertEquals("probe1", save.getProbeLotNumber());
+        assertEquals("rla", save.getReagentALot());
+        assertEquals("rlb", save.getReagentBLot());
         assertEquals(ExecutionType.manual, save.getExecutionType());
         assertThat(save.getSources()).containsExactlyInAnyOrder(new SlotCopySource("STAN-0", Labware.State.discarded),
                 new SlotCopySource("STAN-1", Labware.State.active));
@@ -270,6 +274,8 @@ class TestSlotCopyRecordService {
         request.setPreBarcode("pb");
         request.setLotNumber("lot1");
         request.setProbeLotNumber("probe1");
+        request.setReagentALot("rla");
+        request.setReagentBLot("rlb");
         request.setSources(List.of(new SlotCopySource("STAN-0", Labware.State.discarded),
                 new SlotCopySource("STAN-1", Labware.State.active)));
         request.setContents(List.of(
@@ -286,6 +292,8 @@ class TestSlotCopyRecordService {
                 new SlotCopyRecordNote(NOTE_PREBARCODE, "pb"),
                 new SlotCopyRecordNote(NOTE_LOT, "lot1"),
                 new SlotCopyRecordNote(NOTE_PROBELOT, "probe1"),
+                new SlotCopyRecordNote(NOTE_REAGENT_A_LOT, "rla"),
+                new SlotCopyRecordNote(NOTE_REAGENT_B_LOT, "rlb"),
                 new SlotCopyRecordNote(NOTE_SRC_BARCODE, 0, "STAN-0"),
                 new SlotCopyRecordNote(NOTE_SRC_STATE, 0, "discarded"),
                 new SlotCopyRecordNote(NOTE_SRC_BARCODE, 1, "STAN-1"),

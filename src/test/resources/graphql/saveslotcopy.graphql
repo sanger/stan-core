@@ -5,6 +5,8 @@ mutation {
         costing: SGP
         lotNumber: "lot1"
         probeLotNumber: "probe1"
+        reagentALot: "123456"
+        reagentBLot: "987654"
         labwareType: "lt1"
         operationType: "opname"
         preBarcode: "pb1"

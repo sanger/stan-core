@@ -705,6 +705,10 @@ input SlotCopySave {
     lotNumber: String
     """The probe lot number of the slide, if specified."""
     probeLotNumber: String
+    """Reagent A lot number, if specified."""
+    reagentALot: String
+    """Reagent B lot number, if specified."""
+    reagentBLot: String
     """The barcode of the new labware, if it is prebarcoded."""
     preBarcode: String
     """The specifications of which source slots are being copied into what addresses in the destination labware."""
@@ -753,6 +757,10 @@ type SlotCopyLoad {
     lotNumber: String
     """The probe lot number of the slide, if specified."""
     probeLotNumber: String
+    """Reagent A lot number, if specified."""
+    reagentALot: String
+    """Reagent B lot number, if specified."""
+    reagentBLot: String
     """The barcode of the new labware, if it is prebarcoded."""
     preBarcode: String
     """The specifications of which source slots are being copied into what addresses in the destination labware."""

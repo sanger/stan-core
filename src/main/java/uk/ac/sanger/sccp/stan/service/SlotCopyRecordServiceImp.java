@@ -32,6 +32,8 @@ public class SlotCopyRecordServiceImp implements SlotCopyRecordService {
             NOTE_COSTING = "costing",
             NOTE_LOT = "lot",
             NOTE_PROBELOT = "probe lot",
+            NOTE_REAGENT_A_LOT = "reagent a lot",
+            NOTE_REAGENT_B_LOT = "reagent b lot",
             NOTE_EXECUTION = "execution",
             NOTE_CON_SRCBC = "con source barcode",
             NOTE_CON_SRCADDRESS = "con source address",
@@ -102,6 +104,8 @@ public class SlotCopyRecordServiceImp implements SlotCopyRecordService {
         save.setCosting(nullableValueOf(singleNoteValue(noteMap, NOTE_COSTING), SlideCosting::valueOf));
         save.setLotNumber(singleNoteValue(noteMap, NOTE_LOT));
         save.setProbeLotNumber(singleNoteValue(noteMap, NOTE_PROBELOT));
+        save.setReagentALot(singleNoteValue(noteMap, NOTE_REAGENT_A_LOT));
+        save.setReagentBLot(singleNoteValue(noteMap, NOTE_REAGENT_B_LOT));
         save.setExecutionType(nullableValueOf(singleNoteValue(noteMap, NOTE_EXECUTION), ExecutionType::valueOf));
         List<String> sourceBarcodes = noteMap.get(NOTE_SRC_BARCODE);
         List<String> sourceStates = noteMap.get(NOTE_SRC_STATE);
@@ -200,6 +204,8 @@ public class SlotCopyRecordServiceImp implements SlotCopyRecordService {
         mayAddNote(notes, NOTE_BIOSTATE, request.getBioState());
         mayAddNote(notes, NOTE_LOT, request.getLotNumber());
         mayAddNote(notes, NOTE_PROBELOT, request.getProbeLotNumber());
+        mayAddNote(notes, NOTE_REAGENT_A_LOT, request.getReagentALot());
+        mayAddNote(notes, NOTE_REAGENT_B_LOT, request.getReagentBLot());
         if (request.getExecutionType()!=null) {
             notes.add(new SlotCopyRecordNote(NOTE_EXECUTION, request.getExecutionType().name()));
         }
