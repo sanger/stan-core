@@ -27,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.Matchers.*;
+import static uk.ac.sanger.sccp.utils.BasicUtils.coalesce;
 
 /**
  * Tests {@link BlockProcessingServiceImp}
@@ -55,6 +56,8 @@ public class TestBlockProcessingService {
     @Mock
     private SampleRepo mockSampleRepo;
     @Mock
+    private MediumRepo mockMediumRepo;
+    @Mock
     private CommentValidationService mockCommentValidationService;
     @Mock
     private OperationService mockOpService;
@@ -78,7 +81,7 @@ public class TestBlockProcessingService {
         mocking = MockitoAnnotations.openMocks(this);
         service = spy(new BlockProcessingServiceImp(mockLwValFactory, mockPrebarcodeValidator, mockReplicateValidator,
                 mockLwRepo, mockSlotRepo, mockOpTypeRepo, mockOpCommentRepo, mockLtRepo,
-                mockBsRepo, mockTissueRepo, mockSampleRepo,
+                mockBsRepo, mockTissueRepo, mockSampleRepo, mockMediumRepo,
                 mockCommentValidationService, mockOpService, mockLwService, mockBioRiskService, mockWorkService,
                 mockStoreService,
                 mockTransactor));
@@ -141,8 +144,7 @@ public class TestBlockProcessingService {
         TissueBlockLabware block = new TissueBlockLabware("STAN-1", "lt", "1a");
         TissueBlockRequest request = new TissueBlockRequest(List.of(block), "SGP5", List.of("STAN-1"));
         UCMap<Labware> sources = UCMap.from(Labware::getBarcode, EntityFactory.getTube());
-        LabwareType lt = EntityFactory.makeLabwareType(1,1);
-        lt.setName("lt");
+        LabwareType lt = EntityFactory.makeLabwareType(1,1, "lt");
         UCMap<LabwareType> lwTypes = UCMap.from(LabwareType::getName, lt);
         Work work = new Work(5, "SGP5", null, null, null, null, null, null);
         Map<Integer, Comment> commentMap = Map.of(50, new Comment(50, "Interesting", "science"));
@@ -160,19 +162,22 @@ public class TestBlockProcessingService {
     @ParameterizedTest
     @ValueSource(booleans={false,true})
     public void testPerformInTransaction(boolean simple) {
+        String ltName = simple ? "lt" : "proviasette";
+        LabwareType lt = EntityFactory.makeLabwareType(1,1, ltName);
         Work work = (simple ? null : new Work(5, "SGP5", null, null, null, null, null, null));
         Comment comment = (simple ? null : new Comment(50, "Interesting", "science"));
-        TissueBlockLabware block = new TissueBlockLabware("STAN-1", "lt", "1a");
+        TissueBlockLabware block = new TissueBlockLabware("STAN-1", ltName, "1a");
         TissueBlockRequest request = new TissueBlockRequest(List.of(block));
+        Medium medium = null;
         if (!simple) {
             block.setCommentId(comment.getId());
             block.setPreBarcode("PREBC1");
             request.setWorkNumber(work.getWorkNumber());
             request.setDiscardSourceBarcodes(List.of("STAN-1"));
+            medium = new Medium(50, "OCT");
+            when(mockMediumRepo.findByName("OCT")).thenReturn(Optional.of(medium));
         }
         UCMap<Labware> sources = UCMap.from(Labware::getBarcode, EntityFactory.getTube());
-        LabwareType lt = EntityFactory.makeLabwareType(1,1);
-        lt.setName("lt");
         UCMap<LabwareType> ltMap = UCMap.from(LabwareType::getName, lt);
         Map<Integer, Comment> commentMap = Map.of(50, new Comment(50, "Hello", "stuff"));
 
@@ -181,16 +186,21 @@ public class TestBlockProcessingService {
         List<Sample> samples = List.of(EntityFactory.getSample());
         List<Labware> dests = List.of(EntityFactory.makeLabware(lt, samples.getFirst()));
         List<Operation> ops = List.of(new Operation());
-        doReturn(samples).when(service).createSamples(any(), any());
+        doReturn(samples).when(service).createSamples(any(), any(), any());
         doReturn(dests).when(service).createDestinations(any(), any(), any());
         doReturn(ops).when(service).createOperations(any(), any(), any(), any(), any());
         doNothing().when(service).discardSources(any(), any());
 
         User user = EntityFactory.getUser();
         assertEquals(new OperationResult(ops, dests), service.performInsideTransaction(user, request));
+        if (!simple) {
+            verify(mockMediumRepo).findByName("OCT");
+        } else {
+            verifyNoInteractions(mockMediumRepo);
+        }
 
         verifyValidation(request, sources, ltMap);
-        verifyCreation(request, user, sources, dests, commentMap, work, samples, ltMap, ops);
+        verifyCreation(request, user, medium, sources, dests, commentMap, work, samples, ltMap, ops);
     }
 
     private void stubValidation(UCMap<Labware> sources, UCMap<LabwareType> lwTypes, Work work,
@@ -230,7 +240,7 @@ public class TestBlockProcessingService {
     }
 
     private void verifyNoCreation() {
-        verify(service, never()).createSamples(any(), any());
+        verify(service, never()).createSamples(any(), any(), any());
         verify(service, never()).createDestinations(any(), any(), any());
         verify(service, never()).createOperations(any(), any(), any(), any(), any());
         verifyNoInteractions(mockBioRiskService);
@@ -238,10 +248,10 @@ public class TestBlockProcessingService {
         verify(service, never()).discardSources(any(), any());
     }
 
-    private void verifyCreation(TissueBlockRequest request, User user, UCMap<Labware> sources, List<Labware> dests,
+    private void verifyCreation(TissueBlockRequest request, User user, Medium medium, UCMap<Labware> sources, List<Labware> dests,
                                 Map<Integer, Comment> commentMap, Work work,
                                 List<Sample> samples, UCMap<LabwareType> ltMap, List<Operation> ops) {
-        verify(service).createSamples(same(request), same(sources));
+        verify(service).createSamples(same(request), same(sources), same(medium));
         verify(service).createDestinations(same(request), same(samples), same(ltMap));
         verify(service).createOperations(same(request), same(user), same(sources), same(dests), same(commentMap));
         verify(mockBioRiskService).copyOpSampleBioRisks(same(ops));
@@ -356,8 +366,7 @@ public class TestBlockProcessingService {
     }
 
     static Stream<Arguments> checkPrebarcodesArgs() {
-        LabwareType pretube = EntityFactory.makeLabwareType(1,1);
-        pretube.setName("Pretube");
+        LabwareType pretube = EntityFactory.makeLabwareType(1,1, "Pretube");
         pretube.setPrebarcoded(true);
         UCMap<LabwareType> ltMap = UCMap.from(LabwareType::getName, EntityFactory.getTubeType(), pretube);
         Labware existingLw = EntityFactory.makeEmptyLabware(pretube);
@@ -467,10 +476,8 @@ public class TestBlockProcessingService {
     }
 
     static Stream<Arguments> loadEntitiesArgs() {
-        LabwareType lt1 = EntityFactory.makeLabwareType(1,1);
-        lt1.setName("lt1");
-        LabwareType lt2 = EntityFactory.makeLabwareType(1,1);
-        lt2.setName("lt2");
+        LabwareType lt1 = EntityFactory.makeLabwareType(1,1, "lt1");
+        LabwareType lt2 = EntityFactory.makeLabwareType(1,1, "lt2");
         List<LabwareType> lwTypes = List.of(lt1, lt2);
         Function<TissueBlockLabware, String> fieldGetter = TissueBlockLabware::getLabwareType;
         Function<LabwareType, String> entityFieldGetter = LabwareType::getName;
@@ -632,80 +639,101 @@ public class TestBlockProcessingService {
         lw1.setBarcode("STAN-1");
         Labware lw2 = EntityFactory.makeEmptyLabware(lt);
         lw2.setBarcode("STAN-2");
+        Medium oct = new Medium(50, "OCT");
 
         TissueBlockLabware block1 = new TissueBlockLabware("STAN-1", "lt", "1a");
-        TissueBlockLabware block2 = new TissueBlockLabware("STAN-2", "lt", "2b");
+        TissueBlockLabware block2 = new TissueBlockLabware("STAN-2", "proviasette", "2b");
         TissueBlockRequest request = new TissueBlockRequest(List.of(block1, block2));
 
         Sample sam1 = EntityFactory.getSample();
         Sample sam2 = new Sample(10, 20, sam1.getTissue(), bs);
 
-        doReturn(sam1, sam2).when(service).createSample(any(), any(), any());
+        doReturn(sam1, sam2).when(service).createSample(any(), any(), any(), any());
 
-        List<Sample> samples = service.createSamples(request, UCMap.from(Labware::getBarcode, lw1, lw2));
+        List<Sample> samples = service.createSamples(request, UCMap.from(Labware::getBarcode, lw1, lw2), oct);
 
         assertThat(samples).containsExactly(sam1, sam2);
-        verify(service, times(2)).createSample(any(), any(), any());
-        verify(service).createSample(block1, lw1, bs);
-        verify(service).createSample(block2, lw2, bs);
+        verify(service, times(2)).createSample(any(), any(), any(), any());
+        verify(service).createSample(block1, lw1, bs, null);
+        verify(service).createSample(block2, lw2, bs, oct);
     }
 
     @ParameterizedTest
-    @ValueSource(booleans={false,true})
-    public void testCreateSample(boolean alreadyHasRep) {
-        Tissue originalTissue = EntityFactory.makeTissue(null, null);
-        BioState bs = EntityFactory.getBioState();
-        originalTissue.setReplicate(alreadyHasRep ? "1a" : null);
-        Sample originalSample = new Sample(500, null, originalTissue, bs);
-        Labware lw = EntityFactory.makeLabware(EntityFactory.getTubeType(), originalSample);
-        when(mockTissueRepo.save(any())).then(invocation -> {
-            Tissue tissue = invocation.getArgument(0);
-            assertNull(tissue.getId());
-            tissue.setId(500);
-            return tissue;
-        });
-        when(mockSampleRepo.save(any())).then(invocation -> {
-            Sample newSample = invocation.getArgument(0);
-            assertNull(newSample.getId());
-            newSample.setId(600);
-            return newSample;
-        });
-
-        TissueBlockLabware block = new TissueBlockLabware();
-        if (alreadyHasRep) {
-            block.setReplicate(originalTissue.getReplicate());
-        } else {
-            block.setReplicate("2C");
+    @CsvSource({
+            ",,None,,false",
+            ",,OCT,OCT,false",
+            "1a,1a,OCT,OCT,false",
+            ",1a,None,,true",
+            "1a,1a,None,OCT,true",
+            "1a,1b,None,OCT,true",
+    })
+    public void testGetOrCreateTissue(String oldRep, String newRep, String oldMedium, String newMedium, boolean save) {
+        if (save) {
+            when(mockTissueRepo.save(any())).thenAnswer(invocation -> {
+                Tissue tis = invocation.getArgument(0);
+                tis.setId(50);
+                return tis;
+            });
         }
-
-        Sample sample = service.createSample(block, lw, bs);
-        Tissue tissue = sample.getTissue();
-        if (alreadyHasRep) {
+        Medium med0 = new Medium(100, oldMedium);
+        Medium med1;
+        if (newMedium==null) {
+            med1 = null;
+        } else if (newMedium.equalsIgnoreCase(oldMedium)) {
+            med1 = med0;
+        } else {
+            med1 = new Medium(101, newMedium);
+        }
+        Donor donor = EntityFactory.getDonor();
+        SpatialLocation sl = EntityFactory.getSpatialLocation();
+        Tissue tissue0 = EntityFactory.makeTissue(donor, sl);
+        tissue0.setMedium(med0);
+        tissue0.setReplicate(oldRep);
+        Tissue tissue1 = service.getOrCreateTissue(tissue0, newRep, med1);
+        if (!save) {
             verifyNoInteractions(mockTissueRepo);
+            assertSame(tissue0, tissue1);
         } else {
-            verify(mockTissueRepo).save(tissue);
+            verify(mockTissueRepo).save(tissue1);
+            assertNotNull(tissue1.getId());
         }
-        verify(mockSampleRepo).save(sample);
+        assertSame(coalesce(med1, med0), tissue1.getMedium());
+        assertEquals(newRep, tissue1.getReplicate());
+    }
+
+    @Test
+    public void testCreateSample() {
+        Tissue originalTissue = EntityFactory.getTissue();
+        BioState bs1 = new BioState(1, "Banana");
+        BioState bs2 = new BioState(2, "Custard");
+        Sample originalSample = new Sample(5, null, originalTissue, bs1);
+        Tissue newTissue = originalTissue.derived();
+        Labware lw = EntityFactory.makeLabware(EntityFactory.getTubeType(), originalSample);
+        when(mockSampleRepo.save(any())).then(invocation -> {
+            Sample sample = invocation.getArgument(0);
+            assertNull(sample.getId());
+            sample.setId(600);
+            return sample;
+        });
+        Medium medium = new Medium(100, "Oct");
+        String repl = "1a";
+        doReturn(newTissue).when(service).getOrCreateTissue(any(), any(), any());
+        TissueBlockLabware block = new TissueBlockLabware();
+        block.setReplicate(repl);
+        Sample sample = service.createSample(block, lw, bs2, medium);
+        verify(mockSampleRepo).save(any());
+        verify(service).getOrCreateTissue(originalTissue, repl, medium);
         assertEquals(600, sample.getId());
-        if (alreadyHasRep) {
-            assertEquals(tissue, originalTissue);
-        } else {
-            assertEquals(500, tissue.getId());
-            assertEquals(new Tissue(500, originalTissue.getExternalName(), "2c", originalTissue.getSpatialLocation(), originalTissue.getDonor(),
-                    originalTissue.getMedium(), originalTissue.getFixative(), originalTissue.getCellClass(), originalTissue.getHmdmc(), originalTissue.getCollectionDate(),
-                    originalTissue.getId()), tissue);
-        }
-        assertEquals(new Sample(600, null, tissue, bs), sample);
+        assertSame(bs2, sample.getBioState());
+        assertSame(newTissue, sample.getTissue());
     }
 
     @Test
     public void testCreateDestinations() {
         Sample sam1 = EntityFactory.getSample();
         Sample sam2 = new Sample(sam1.getId()+1, null, sam1.getTissue(), sam1.getBioState());
-        LabwareType lt1 = EntityFactory.makeLabwareType(1,1);
-        lt1.setName("lt1");
-        LabwareType lt2 = EntityFactory.makeLabwareType(1,1);
-        lt2.setName("lt2");
+        LabwareType lt1 = EntityFactory.makeLabwareType(1,1, "lt1");
+        LabwareType lt2 = EntityFactory.makeLabwareType(1,1, "lt2");
         Labware lw1 = EntityFactory.makeLabware(lt1, sam1);
         Labware lw2 = EntityFactory.makeLabware(lt2, sam2);
         doReturn(lw1, lw2).when(service).createDestination(any(), any(), any());

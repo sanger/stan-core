@@ -1,5 +1,6 @@
 package uk.ac.sanger.sccp.stan.service;
 
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -38,6 +39,7 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
     private final BioStateRepo bsRepo;
     private final TissueRepo tissueRepo;
     private final SampleRepo sampleRepo;
+    private final MediumRepo mediumRepo;
     private final CommentValidationService commentValidationService;
     private final OperationService opService;
     private final LabwareService lwService;
@@ -53,7 +55,7 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
                                      @Qualifier("replicateValidator") Validator<String> replicateValidator,
                                      LabwareRepo lwRepo, SlotRepo slotRepo, OperationTypeRepo opTypeRepo,
                                      OperationCommentRepo opCommentRepo, LabwareTypeRepo ltRepo,
-                                     BioStateRepo bsRepo, TissueRepo tissueRepo, SampleRepo sampleRepo,
+                                     BioStateRepo bsRepo, TissueRepo tissueRepo, SampleRepo sampleRepo, MediumRepo mediumRepo,
                                      CommentValidationService commentValidationService, OperationService opService,
                                      LabwareService lwService, BioRiskService bioRiskService, WorkService workService, StoreService storeService, Transactor transactor) {
         this.lwValFactory = lwValFactory;
@@ -67,6 +69,7 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
         this.bsRepo = bsRepo;
         this.tissueRepo = tissueRepo;
         this.sampleRepo = sampleRepo;
+        this.mediumRepo = mediumRepo;
         this.commentValidationService = commentValidationService;
         this.opService = opService;
         this.lwService = lwService;
@@ -101,11 +104,18 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
         Map<Integer, Comment> comments = loadComments(problems, request);
         checkReplicates(problems, request, sources);
         checkDiscardBarcodes(problems, request);
+        Medium oct = null;
+        if (lwTypes.values().stream().anyMatch(lt -> lt.getName().equalsIgnoreCase(LabwareType.PROVIASETTE_NAME))) {
+            oct = mediumRepo.findByName("OCT").orElse(null);
+            if (oct==null) {
+                problems.add("OCT medium not found in database.");
+            }
+        }
         if (!problems.isEmpty()) {
             throw new ValidationException("The request could not be validated.", problems);
         }
 
-        List<Sample> samples = createSamples(request, sources);
+        List<Sample> samples = createSamples(request, sources, oct);
         List<Labware> destinations = createDestinations(request, samples, lwTypes);
         List<Operation> ops = createOperations(request, user, sources, destinations, comments);
         if (work!=null) {
@@ -359,14 +369,39 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
      * Creates new samples, in a list parallel to the blocks specified in the request.
      * @param request the request
      * @param sources the source labware
+     * @param oct the oct medium for where it is required
      * @return a list of samples, corresponding to the respective blocks in the request
      */
-    public List<Sample> createSamples(TissueBlockRequest request, UCMap<Labware> sources) {
+    public List<Sample> createSamples(TissueBlockRequest request, UCMap<Labware> sources, Medium oct) {
         final BioState bs = bsRepo.getByName("Tissue");
         return request.getLabware()
                 .stream()
-                .map(block -> createSample(block, sources.get(block.getSourceBarcode()), bs))
+                .map(block -> createSample(block, sources.get(block.getSourceBarcode()), bs,
+                        (block.getLabwareType().equalsIgnoreCase(LabwareType.PROVIASETTE_NAME)) ? oct : null))
                 .collect(toList());
+    }
+
+    /**
+     * Creates a new derived tissue from the original; or returns the original if nothing needs changing.
+     * @param original the original tissue
+     * @param replicate the specified replicate number
+     * @param medium the specified medium
+     * @return a new or original tissue
+     */
+    public Tissue getOrCreateTissue(Tissue original, String replicate, Medium medium) {
+        boolean changeReplicate = (!nullOrEmpty(replicate) && !replicate.equalsIgnoreCase(original.getReplicate()));
+        boolean changeMedium = (medium!=null && !medium.getId().equals(original.getMedium().getId()));
+        if (!changeReplicate && !changeMedium) {
+            return original;
+        }
+        Tissue tissue = original.derived();
+        if (changeReplicate) {
+            tissue.setReplicate(replicate.toLowerCase());
+        }
+        if (changeMedium) {
+            tissue.setMedium(medium);
+        }
+        return tissueRepo.save(tissue);
     }
 
     /**
@@ -374,20 +409,14 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
      * @param block the specification of the block
      * @param sourceLabware the source labware for the new block
      * @param bs the bio state for the new block
+     * @param medium the medium for the new block, if specified
      * @return the newly created sample
      */
-    public Sample createSample(TissueBlockLabware block, Labware sourceLabware, BioState bs) {
+    public Sample createSample(TissueBlockLabware block, Labware sourceLabware, BioState bs, Medium medium) {
         Tissue original = getSample(sourceLabware)
                 .map(Sample::getTissue)
                 .orElseThrow();
-        Tissue tissue;
-        if (nullOrEmpty(block.getReplicate()) || block.getReplicate().equalsIgnoreCase(original.getReplicate())) {
-            tissue = original;
-        } else {
-            tissue = original.derived();
-            tissue.setReplicate(block.getReplicate().toLowerCase());
-            tissue = tissueRepo.save(tissue);
-        }
+        Tissue tissue = getOrCreateTissue(original, block.getReplicate(), medium);
         return sampleRepo.save(new Sample(null, null, tissue, bs));
     }
 
@@ -458,8 +487,8 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
                 .findAny()
                 .orElseThrow();
         Slot dest = destLw.getFirstSlot();
-        Sample srcSample = src.getSamples().get(0);
-        Sample dstSample = dest.getSamples().get(0);
+        Sample srcSample = src.getSamples().getFirst();
+        Sample dstSample = dest.getSamples().getFirst();
         Action action = new Action(null, null, src, dest, dstSample, srcSample);
         Operation op = opService.createOperation(opType, user, List.of(action), null);
         if (comment!=null) {
@@ -515,7 +544,7 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
             return new RepKey(tissue.getDonor(), tissue.getSpatialLocation(), replicate);
         }
 
-
+        @NotNull
         @Override
         public String toString() {
             return String.format("{Donor: %s, Tissue type: %s, Spatial location: %s, Replicate: %s}",
