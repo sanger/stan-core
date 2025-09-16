@@ -61,6 +61,8 @@ public class TestSaveSlotCopyMutation {
         assertEquals("lt1", data.get("labwareType"));
         assertEquals("lot1", data.get("lotNumber"));
         assertEquals("probe1", data.get("probeLotNumber"));
+        assertEquals("123456", data.get("reagentALot"));
+        assertEquals("987654", data.get("reagentBLot"));
         assertEquals("bs", data.get("bioState"));
         assertEquals("SGP", data.get("costing"));
         List<Map<String, ?>> sourceData = chainGet(data, "sources");

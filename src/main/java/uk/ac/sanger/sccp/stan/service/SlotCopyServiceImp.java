@@ -146,6 +146,7 @@ public class SlotCopyServiceImp implements SlotCopyService {
             OperationResult opres = executeOp(user, dest.getContents(), opType, lwTypes.get(dest.getLabwareType()),
                     dest.getPreBarcode(), sources,sourceLpNumbers,  dest.getCosting(), dest.getLotNumber(),
                     dest.getProbeLotNumber(), bioStates.get(dest.getBioState()), dest.getLpNumber(),
+                    dest.getReagentALot(), dest.getReagentBLot(),
                     existingDests.get(dest.getBarcode()), executionType);
             ops.addAll(opres.getOperations());
             destLabware.addAll(opres.getLabware());
@@ -202,8 +203,9 @@ public class SlotCopyServiceImp implements SlotCopyService {
                                      OperationType opType, LabwareType lwType, String preBarcode,
                                      UCMap<Labware> sourceMap, UCMap<String> sourceLps,
                                      SlideCosting costing, String lotNumber,
-                                     String probeLotNumber, BioState bioState, String lpNumber, Labware destLw,
-                                     ExecutionType executionType) {
+                                     String probeLotNumber, BioState bioState, String lpNumber,
+                                     String reagentALot, String reagentBLot,
+                                     Labware destLw, ExecutionType executionType) {
         if (destLw==null) {
             destLw = lwService.create(lwType, preBarcode, preBarcode);
         } else if (bioState==null) {
@@ -225,6 +227,12 @@ public class SlotCopyServiceImp implements SlotCopyService {
         }
         if (!nullOrEmpty(lpNumber)) {
             lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), LP_NOTE_NAME, lpNumber));
+        }
+        if (!nullOrEmpty(reagentALot)) {
+            lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), "reagent A lot", reagentALot.toUpperCase()));
+        }
+        if (!nullOrEmpty(reagentBLot)) {
+            lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), "reagent B lot", reagentBLot.toUpperCase()));
         }
         if (executionType!=null) {
             lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), EXECUTION_NOTE_NAME, executionType.toString()));
