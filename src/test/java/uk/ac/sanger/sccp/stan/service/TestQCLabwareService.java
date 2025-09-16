@@ -7,8 +7,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.*;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.repo.OperationCommentRepo;
-import uk.ac.sanger.sccp.stan.repo.OperationRepo;
+import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.request.QCLabwareRequest;
 import uk.ac.sanger.sccp.stan.request.QCLabwareRequest.QCLabware;
@@ -17,6 +16,7 @@ import uk.ac.sanger.sccp.stan.service.validation.ValidationHelper;
 import uk.ac.sanger.sccp.stan.service.validation.ValidationHelperFactory;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
+import uk.ac.sanger.sccp.utils.Zip;
 
 import java.time.*;
 import java.util.*;
@@ -43,6 +43,8 @@ public class TestQCLabwareService {
     private ValidationHelperFactory mockValFactory;
     @Mock
     private OperationRepo mockOpRepo;
+    @Mock
+    private CommentRepo mockCommentRepo;
     @Mock
     private OperationCommentRepo mockOpComRepo;
     @Mock
@@ -75,8 +77,12 @@ public class TestQCLabwareService {
     }
 
     @ParameterizedTest
-    @ValueSource(booleans={false,true})
-    public void testPerform_ok(boolean xen) {
+    @CsvSource({
+            "false,false",
+            "false,true",
+            "true,true",
+    })
+    public void testPerform_ok(boolean xen, boolean terminated) {
         User user = EntityFactory.getUser();
         OperationType opType = EntityFactory.makeOperationType(xen ? QCLabwareServiceImp.XENIUM_ANALYSER_QC_NAME : "opname", null);
         Labware lw = EntityFactory.getTube();
@@ -84,8 +90,10 @@ public class TestQCLabwareService {
         UCMap<Work> workMap = UCMap.from(Work::getWorkNumber, EntityFactory.makeWork("SGP1"));
         Map<Integer, Comment> commentMap = Map.of(5, new Comment(5, "A", "B"));
         QCLabware qcl = new QCLabware(lw.getBarcode(), null, null, null, null, null);
-        QCLabwareRequest request = new QCLabwareRequest(opType.getName(), List.of(qcl));
+        QCLabwareRequest request = new QCLabwareRequest(opType.getName(), List.of(qcl), terminated);
         List<QCLabware> qcls = request.getLabware();
+        Comment terminatedComment = new Comment(50, "terminated early", "misc");
+        when(mockCommentRepo.findByCategoryAndText("misc", "terminated early")).thenReturn(Optional.of(terminatedComment));
 
         doReturn(opType).when(mockVal).checkOpType(anyString(), any(OperationTypeFlag.class));
         doReturn(lwMap).when(mockVal).checkLabware(anyCollection());
@@ -97,7 +105,7 @@ public class TestQCLabwareService {
         doNothing().when(service).checkRunNames(any(), any(), any());
 
         OperationResult opres = new OperationResult(List.of(new Operation()), List.of(lw));
-        doReturn(opres).when(service).record(any(), any(), any(), any(), any(), any());
+        doReturn(opres).when(service).record(any(), any(), any(), any(), any(), any(), any());
 
         assertSame(opres, service.perform(user, request));
         verify(mockVal).checkOpType(request.getOperationType(), OperationTypeFlag.IN_PLACE);
@@ -113,7 +121,7 @@ public class TestQCLabwareService {
             verify(service, never()).checkRunNamesPresent(any(), any());
         }
 
-        verify(service).record(user, opType, qcls, lwMap, workMap, commentMap);
+        verify(service).record(user, opType, qcls, lwMap, workMap, commentMap, terminated ? terminatedComment : null);
     }
 
 
@@ -121,7 +129,7 @@ public class TestQCLabwareService {
     public void testPerform_none() {
         User user = EntityFactory.getUser();
         OperationType opType = EntityFactory.makeOperationType("opname", null);
-        QCLabwareRequest request = new QCLabwareRequest(opType.getName(), null);
+        QCLabwareRequest request = new QCLabwareRequest(opType.getName(), null, false);
         when(mockVal.checkOpType(any(), any(OperationTypeFlag.class))).thenReturn(opType);
 
         assertValidationException(() -> service.perform(user, request), List.of("No labware specified."));
@@ -133,7 +141,7 @@ public class TestQCLabwareService {
         verify(service, never()).checkComments(any(), any());
         verify(service, never()).checkSampleComments(any(), any(), any());
         verify(service, never()).checkRunNames(any(), any(), any());
-        verify(service, never()).record(any(), any(), any(), any(), any(), any());
+        verify(service, never()).record(any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -145,7 +153,8 @@ public class TestQCLabwareService {
         UCMap<Work> workMap = UCMap.from(Work::getWorkNumber, EntityFactory.makeWork("SGP1"));
         Map<Integer, Comment> commentMap = Map.of(5, new Comment(5, "A", "B"));
         QCLabware qcl = new QCLabware(lw.getBarcode(), null, "SGP1", null, null, null);
-        QCLabwareRequest request = new QCLabwareRequest(opType.getName(), List.of(qcl));
+        QCLabwareRequest request = new QCLabwareRequest(opType.getName(), List.of(qcl), true);
+        when(mockCommentRepo.findByCategoryAndText("misc", "terminated early")).thenReturn(Optional.empty());
         List<QCLabware> qcls = request.getLabware();
         problems.add("Problem A.");
         problems.add("Problem B.");
@@ -159,7 +168,8 @@ public class TestQCLabwareService {
         doAnswer(addProblem("Bad run name")).when(service).checkRunNames(any(), any(), any());
 
         assertValidationException(() -> service.perform(user, request),
-                List.of("Problem A.", "Problem B.", "Bad time", "Bad comment", "Bad run name"));
+                List.of("Problem A.", "Problem B.", "Bad time", "Bad comment", "Bad run name",
+                "Terminated early comment missing from database."));
 
         verify(mockVal).checkOpType(request.getOperationType(), OperationTypeFlag.IN_PLACE);
         verify(mockVal).checkLabware(List.of(lw.getBarcode()));
@@ -168,7 +178,7 @@ public class TestQCLabwareService {
         verify(service).checkComments(any(), same(qcls));
         verify(service).checkRunNames(any(), same(qcls), same(lwMap));
 
-        verify(service, never()).record(any(), any(), any(), any(), any(), any());
+        verify(service, never()).record(any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -370,6 +380,7 @@ public class TestQCLabwareService {
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lws);
         Work work = EntityFactory.makeWork("SGP1");
         UCMap<Work> workMap = UCMap.from(Work::getWorkNumber, work);
+        Comment terminatedComment = new Comment(4, "terminated early", "misc");
         Map<Integer, Comment> commentMap = Map.of(5, new Comment(5, "A", "B"));
 
         List<QCLabware> qcls = List.of(new QCLabware("STAN-1", null, "SGP1", ldt(1), List.of(1,2), null),
@@ -382,12 +393,12 @@ public class TestQCLabwareService {
             when(mockOpService.createOperationInPlace(opType, user, lws[i], null, null)).thenReturn(ops[i]);
         }
         doNothing().when(service).linkWorks(any(), any(), any());
-        doNothing().when(service).linkComments(any(), any(), any(), any());
+        doNothing().when(service).linkComments(any(), any(), any(), any(), any());
         OperationResult opRes = new OperationResult(Arrays.asList(ops), Arrays.asList(lws));
         doNothing().when(service).saveNotes(any(), any(), any());
         doReturn(opRes).when(service).assembleResult(any(), any(), any());
 
-        assertSame(opRes, service.record(user, opType, qcls, lwMap, workMap, commentMap));
+        assertSame(opRes, service.record(user, opType, qcls, lwMap, workMap, commentMap, terminatedComment));
         UCMap<Operation> lwOps = new UCMap<>(lws.length);
         for (int i = 0; i < lws.length; ++i) {
             lwOps.put(lws[i].getBarcode(), ops[i]);
@@ -401,7 +412,7 @@ public class TestQCLabwareService {
         }
         verify(mockOpRepo).saveAll(List.of(ops[0], ops[1]));
         verify(service).linkWorks(qcls, workMap, lwOps);
-        verify(service).linkComments(qcls, commentMap, lwOps, lwMap);
+        verify(service).linkComments(qcls, commentMap, lwOps, lwMap, terminatedComment);
         verify(service).saveNotes(qcls, lwOps, lwMap);
         verify(service).assembleResult(qcls, lwOps, lwMap);
     }
@@ -431,8 +442,10 @@ public class TestQCLabwareService {
         verifyNoMoreInteractions(mockWorkService);
     }
 
-    @Test
-    public void testLinkComments() {
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    public void testLinkComments(boolean terminated) {
+        Comment terminatedComment = terminated ? new Comment(50, "terminated early", "misc") : null;
         Comment[] comments = IntStream.rangeClosed(1,3)
                 .mapToObj(i -> new Comment(i, "com"+i, "cat"))
                 .toArray(Comment[]::new);
@@ -464,13 +477,13 @@ public class TestQCLabwareService {
                 new QCLabware("STAN-23", null, null, null, List.of(2), List.of(new QCSampleComment(A2, 11, 2)))
         );
 
-        service.linkComments(qcls, commentMap, lwOps, lwMap);
+        service.linkComments(qcls, commentMap, lwOps, lwMap, terminatedComment);
         //noinspection unchecked
         ArgumentCaptor<Collection<OperationComment>> captor = ArgumentCaptor.forClass(Collection.class);
 
         verify(mockOpComRepo).saveAll(captor.capture());
         Collection<OperationComment> opComs = captor.getValue();
-        assertThat(opComs).containsExactlyInAnyOrder(
+        List<OperationComment> expectedOpComs = List.of(
                 new OperationComment(null, comments[0], ops[0].getId(), null, null, lws[0].getId()),
                 new OperationComment(null, comments[1], ops[0].getId(), null, null, lws[0].getId()),
                 new OperationComment(null, comments[2], ops[0].getId(), null, null, lws[0].getId()),
@@ -478,6 +491,14 @@ public class TestQCLabwareService {
                 new OperationComment(null, comments[0], ops[1].getId(), 10, lws[1].getSlot(A1).getId(), null),
                 new OperationComment(null, comments[1], ops[2].getId(), 11, lws[2].getSlot(A2).getId(), null)
         );
+        if (terminated) {
+            List<OperationComment> newOpComs = new ArrayList<>(expectedOpComs.size()+ops.length);
+            newOpComs.addAll(expectedOpComs);
+            Zip.of(Arrays.stream(ops), Arrays.stream(lws))
+                            .forEach((op, lw) -> newOpComs.add(new OperationComment(null, terminatedComment, op.getId(), null, null, lw.getId())));
+            expectedOpComs = newOpComs;
+        }
+        assertThat(opComs).containsExactlyInAnyOrderElementsOf(expectedOpComs);
     }
 
     @Test
