@@ -59,6 +59,10 @@ public class AnalyserServiceTest {
     private LabwareNoteRepo mockLwNoteRepo;
     @Mock
     private RoiRepo mockRoiRepo;
+    @Mock
+    private CommentRepo mockCommentRepo;
+    @Mock
+    private OperationCommentRepo mockOpComRepo;
     @Mock(name="decodingReagentLotValidator")
     private Validator<String> mockDecodingReagentLotValidator;
     @Mock(name="runNameValidator")
@@ -83,6 +87,7 @@ public class AnalyserServiceTest {
         mocking = MockitoAnnotations.openMocks(this);
         service = spy(new AnalyserServiceImp(mockLwValFactory, mockOpSearcher, mockOpService, mockWorkService,
                 mockLwRepo, mockOpTypeRepo, mockOpRepo, mockLwNoteRepo, mockRoiRepo,
+                mockCommentRepo, mockOpComRepo,
                 mockDecodingReagentLotValidator, mockRunNameValidator, mockRoiValidator, mockCSLotValidator,
                 mockDecodingConsumablesLotValidator,
                 mockValFactory));
@@ -103,6 +108,8 @@ public class AnalyserServiceTest {
         UCMap<Work> workMap = UCMap.from(Work::getWorkNumber, EntityFactory.makeWork("SGP1"));
         Equipment equipment = new Equipment(1, "Xenium 1", EQUIPMENT_CATEGORY, true);
         OperationResult opres = new OperationResult(List.of(new Operation()), List.of(lw));
+        final Comment repeatComment = new Comment(5, "repeat", "misc");
+        when(mockCommentRepo.findByCategoryAndText("misc", "repeat")).thenReturn(Optional.of(repeatComment));
 
         doReturn(lwMap).when(service).checkLabware(any(), any());
         doReturn(opType).when(service).checkOpType(any(), any());
@@ -121,19 +128,20 @@ public class AnalyserServiceTest {
         doReturn(new HashSet<>()).when(mockVal).getProblems();
         doReturn(equipment).when(mockVal).checkEquipment(any(), any(), anyBoolean());
 
-        doReturn(opres).when(service).record(any(), any(), any(), any(), any(), any());
+        doReturn(opres).when(service).record(any(), any(), any(), any(), any(), any(), any());
 
         AnalyserRequest request = new AnalyserRequest("opname", "lotA", "lotB",
                 "run", LocalDateTime.now(),
                 List.of(new AnalyserLabware(lw.getBarcode(), null, null, null, null)),
                 equipment.getId(), "cslot");
+        request.setRepeat(true);
 
         assertSame(opres, service.perform(user, request));
 
         verifyValidation(request, opType, lwMap, priorOps, mockVal);
 
         verify(service).sanitiseRois(request.getLabware().getFirst(), lw);
-        verify(service).record(user, request, opType, lwMap, workMap, equipment);
+        verify(service).record(user, request, opType, lwMap, workMap, equipment, repeatComment);
     }
 
     @Test
@@ -144,6 +152,7 @@ public class AnalyserServiceTest {
         OperationType opType = EntityFactory.makeOperationType("opname", null);
         Map<Integer, Operation> priorOps = Map.of(5, new Operation());
         UCMap<Work> workMap = UCMap.from(Work::getWorkNumber, EntityFactory.makeWork("SGP1"));
+        when(mockCommentRepo.findByCategoryAndText(any(), any())).thenReturn(Optional.empty());
 
         doAnswer(addProblem("bad lw", lwMap)).when(service).checkLabware(any(), any());
         doAnswer(addProblem("bad optype", opType)).when(service).checkOpType(any(), any());
@@ -161,16 +170,18 @@ public class AnalyserServiceTest {
         doReturn(Set.of("bad equipment")).when(mockVal).getProblems();
 
         AnalyserRequest request = new AnalyserRequest("opname", "lotA", "lotB", "run", LocalDateTime.now(), List.of(new AnalyserLabware()), null, "cslot");
+        request.setRepeat(true);
 
         assertValidationException(() -> service.perform(user, request), List.of(
                         "bad lw", "bad optype", "bad prior ops", "bad time", "bad work", "bad position",
-                "bad roi", "bad sample", "bad lot", "bad cslot", "bad dclot", "bad run", "bad equipment"
+                "bad roi", "bad sample", "bad lot", "bad cslot", "bad dclot", "bad run", "bad equipment",
+                "Repeat comment missing from database."
         ));
         verify(mockValFactory, times(1)).getHelper();
         verifyValidation(request, opType, lwMap, priorOps, mockVal);
 
         verify(service, never()).sanitiseRois(any(), any());
-        verify(service, never()).record(any(), any(), any(), any(), any(), any());
+        verify(service, never()).record(any(), any(), any(), any(), any(), any(), any());
     }
 
     private void verifyValidation(AnalyserRequest request, OperationType opType, UCMap<Labware> lwMap,
@@ -641,11 +652,13 @@ public class AnalyserServiceTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings={"NULL", "", "cslot1"})
-    public void testRecord(String cslot) {
-        if (cslot.equals("NULL")) {
-            cslot = null;
-        }
+    @CsvSource({
+            ",false",
+            "'',false",
+            "cslot1,false",
+            ",true"
+    })
+    public void testRecord(String cslot, boolean repeat) {
         User user = EntityFactory.getUser();
         OperationType opType = EntityFactory.makeOperationType("foo", null);
         LabwareType lt = EntityFactory.getTubeType();
@@ -666,6 +679,7 @@ public class AnalyserServiceTest {
         Equipment equipment = new Equipment(1, "Xenium 1", EQUIPMENT_CATEGORY, true);
         AnalyserRequest request = new AnalyserRequest(opType.getName(), "lot1", "lot2", "run1",
                 LocalDateTime.of(2023,1,1,12,0), List.of(al1, al2), equipment.getId(), cslot);
+        request.setRepeat(repeat);
         Operation op1 = new Operation();
         op1.setId(11);
         Operation op2 = new Operation();
@@ -673,7 +687,9 @@ public class AnalyserServiceTest {
         when(mockOpService.createOperationInPlace(same(opType), same(user), same(lw1), isNull(), any())).thenReturn(op1);
         when(mockOpService.createOperationInPlace(same(opType), same(user), same(lw2), isNull(), any())).thenReturn(op2);
 
-        OperationResult opres = service.record(user, request, opType, lwMap, workMap, equipment);
+        Comment repeatComment = (repeat ? new Comment(50, "repeat", "misc") : null);
+
+        OperationResult opres = service.record(user, request, opType, lwMap, workMap, equipment, repeatComment);
 
         assertThat(opres.getLabware()).containsExactly(lw1, lw2);
         assertThat(opres.getOperations()).containsExactly(op1, op2);
@@ -710,6 +726,14 @@ public class AnalyserServiceTest {
         ));
         verify(service).addRois(any(), eq(op1.getId()), same(lw1), same(srs1));
         verify(service).addRois(any(), eq(op2.getId()), same(lw2), same(srs2));
+        if (repeat) {
+            verify(mockOpComRepo).saveAll(List.of(
+                    new OperationComment(null, repeatComment, op1.getId(), null, null, lw1.getId()),
+                    new OperationComment(null, repeatComment, op2.getId(), null, null, lw2.getId())
+            ));
+        } else {
+            verifyNoInteractions(mockOpComRepo);
+        }
     }
 
     @Test

@@ -1979,6 +1979,8 @@ input AnalyserRequest {
     equipmentId: Int!
     """The cell segmentation lot number."""
     cellSegmentationLot: String
+    """Is this request a repeat?"""
+    repeat: Boolean
 }
 
 """A region of interest for a sample in an operation."""
