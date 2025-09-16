@@ -17,6 +17,7 @@ import java.time.*;
 import java.util.*;
 import java.util.stream.Stream;
 
+import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 import static uk.ac.sanger.sccp.utils.BasicUtils.pluralise;
 
@@ -78,7 +79,7 @@ public class CompletionServiceImp extends BaseResultService implements Completio
             throw new ValidationException(problems);
         }
 
-        return execute(user, request.getLabware(), opType, work, lwMap, commentMap);
+        return execute(user, request.getLabware(), opType, work, lwMap, commentMap, priorOpMap);
     }
 
     /**
@@ -233,11 +234,12 @@ public class CompletionServiceImp extends BaseResultService implements Completio
      * @param work the work to link the operations to
      * @param lwMap the specified labware, mapped from its barcode
      * @param commentMap the indicated comments, mapped from their its
+     * @param priorOpMap map from labware id to prior operation
      * @return the labware and operations used in this request
      */
     public OperationResult execute(User user, Collection<LabwareSampleComments> lscs, OperationType opType, Work work,
-                                   UCMap<Labware> lwMap, Map<Integer, Comment> commentMap) {
-        UCMap<Operation> bcOps = makeOps(user, opType, lscs, lwMap);
+                                   UCMap<Labware> lwMap, Map<Integer, Comment> commentMap, Map<Integer, Operation> priorOpMap) {
+        UCMap<Operation> bcOps = makeOps(user, opType, lscs, lwMap, priorOpMap);
         recordComments(lscs, lwMap, bcOps, commentMap);
         workService.link(work, bcOps.values());
         return composeResult(lscs, lwMap, bcOps);
@@ -249,15 +251,16 @@ public class CompletionServiceImp extends BaseResultService implements Completio
      * @param opType the type of operation to record
      * @param lscs the parts of the request indicating each labware and optional timestamp
      * @param lwMap map of the indicated labware from its barcode
+     * @param priorOpMap map from labware id to prior operation
      * @return the created operations, mapped from the labware barcode
      */
     public UCMap<Operation> makeOps(User user, OperationType opType, Collection<LabwareSampleComments> lscs,
-                                    UCMap<Labware> lwMap) {
+                                    UCMap<Labware> lwMap, Map<Integer, Operation> priorOpMap) {
         List<Operation> opsToUpdate = new ArrayList<>();
         UCMap<Operation> opsToReturn = new UCMap<>(lscs.size());
         for (LabwareSampleComments lsc : lscs) {
             Labware lw = lwMap.get(lsc.getBarcode());
-            Operation newOp = opService.createOperationInPlace(opType, user, lw, null, null);
+            Operation newOp = createOp(opType, user, lw, priorOpMap.get(lw.getId()));
             if (lsc.getCompletion()!=null) {
                 newOp.setPerformed(lsc.getCompletion());
                 opsToUpdate.add(newOp);
@@ -268,6 +271,24 @@ public class CompletionServiceImp extends BaseResultService implements Completio
             opRepo.saveAll(opsToUpdate);
         }
         return opsToReturn;
+    }
+
+    /**
+     * Creates the new operation based on actions from the prior operation
+     * @param opType type of op to create
+     * @param user user responsible for op
+     * @param lw the labware involved in the op
+     * @param priorOp prior op for labware
+     * @return newly created operation
+     */
+    public Operation createOp(OperationType opType, User user, Labware lw, Operation priorOp) {
+        requireNonNull(priorOp, "No prior operation for labware "+lw.getBarcode());
+        List<Action> actions = priorOp.getActions().stream()
+                .filter(ac -> ac.getDestination().getLabwareId().equals(lw.getId()))
+                .map(ac -> new Action(null, null, ac.getDestination(), ac.getDestination(), ac.getSample(), ac.getSample()))
+                .distinct()
+                .toList();
+        return opService.createOperation(opType, user, actions, null);
     }
 
     /**
