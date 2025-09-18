@@ -10,6 +10,7 @@ import java.util.List;
 
 public interface ActionRepo extends CrudRepository<Action, Integer> {
     List<Action> findAllByDestinationIn(Collection<Slot> destinations);
+    List<Action> findAllBySourceIn(Collection<Slot> slots);
 
     @Query("select distinct a.source.labwareId from Action a " +
             "where a.destination.labwareId IN (?1)")

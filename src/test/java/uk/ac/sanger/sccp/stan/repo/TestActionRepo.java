@@ -30,7 +30,7 @@ public class TestActionRepo {
 
     @Transactional
     @Test
-    public void testFindAllByDestinationIn() {
+    public void testCustomMethods() {
         User user = entityCreator.createUser("user1");
         Donor donor = entityCreator.createDonor("DONOR1");
         Tissue tissue = entityCreator.createTissue(donor, "TISSUE1");
@@ -48,5 +48,10 @@ public class TestActionRepo {
         assertThat(actionRepo.findAllByDestinationIn(List.of(slot1, slot2))).containsOnly(action);
         assertThat(actionRepo.findAllByDestinationIn(List.of(slot1))).isEmpty();
         assertThat(actionRepo.findAllByDestinationIn(List.of(slot2))).containsOnly(action);
+        assertThat(actionRepo.findAllBySourceIn(List.of(slot1, slot2))).containsOnly(action);
+        assertThat(actionRepo.findAllBySourceIn(List.of(slot2))).isEmpty();
+        assertThat(actionRepo.findAllBySourceIn(List.of(slot1))).containsOnly(action);
+        assertThat(actionRepo.findSourceLabwareIdsForDestinationLabwareIds(List.of(lw2.getId()))).containsExactly(lw1.getId());
+        assertThat(actionRepo.findSourceLabwareIdsForDestinationLabwareIds(List.of(lw1.getId()))).isEmpty();
     }
 }
