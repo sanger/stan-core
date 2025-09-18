@@ -307,7 +307,7 @@ public class CytassistOverviewDataCompilerImp implements CytassistOverviewDataCo
 
     /** Loads Cq measurement from qPCR ops on future lw */
     void loadQPCR(List<CytData> data, Posterity posterity, Set<Integer> allDestSlotIds) {
-        loadMeasurement(data, posterity, allDestSlotIds, "qPCR", "Cq value", CytassistOverview::setQpcrResult);
+        loadMeasurement(data, posterity, allDestSlotIds, "qPCR results", "Cq value", CytassistOverview::setQpcrResult);
     }
 
     /** Loads Cq measurement from amplification ops on future lw */

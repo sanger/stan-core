@@ -541,7 +541,7 @@ class TestCytassistOverviewDataCompiler {
         }).when(dataCompiler).loadMeasurement(any(), any(), any(), any(), any(), any());
         dataCompiler.loadQPCR(data, posterity, allDestSlotIds);
         verify(dataCompiler).loadMeasurement(same(data), same(posterity), same(allDestSlotIds),
-                eqCi("qPCR"), eqCi("Cq value"), any());
+                eqCi("qPCR results"), eqCi("Cq value"), any());
         assertEquals("20", data.getFirst().row.getQpcrResult());
     }
 

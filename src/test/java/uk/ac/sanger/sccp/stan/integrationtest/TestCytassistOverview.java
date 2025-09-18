@@ -134,7 +134,7 @@ public class TestCytassistOverview {
         OperationType transfer = entityCreator.createOpType("Transfer", null);
         createOp(transfer, 18, lws[0], lws[5]); // Just here to move to new labware
         createOp(transfer, 19, lws[2], lws[6]);
-        OperationType qpcrOpType = entityCreator.createOpType("qPCR", null, OperationTypeFlag.IN_PLACE);
+        OperationType qpcrOpType = entityCreator.createOpType("qPCR results", null, OperationTypeFlag.IN_PLACE);
         Operation qp1 = createOp(qpcrOpType, 20, lws[5], lws[5]);
         Operation qp2 = createOp(qpcrOpType, 21, lws[6], lws[6]);
         OperationType ampOpType = entityCreator.createOpType("Amplification", null, OperationTypeFlag.IN_PLACE);
