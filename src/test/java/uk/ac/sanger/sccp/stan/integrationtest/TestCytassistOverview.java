@@ -217,7 +217,8 @@ public class TestCytassistOverview {
         assertNull(co.getVisiumConcentrationAverageSize());
         assertNull(co.getVisiumConcentrationRange());
         assertEquals(lws[5].getBarcode(), co.getLatestBarcode());
-        assertEquals(Labware.State.active.toString(), co.getLatestState());
+        assertEquals(Labware.State.active.toString(), co.getLatestLwState());
+        assertEquals("Tissue", co.getLatestBioState());
         assertNull(co.getLatestBarcodeReleased());
         assertNull(co.getFlags());
         assertEquals(user.getUsername(), co.getUsers());
@@ -253,7 +254,7 @@ public class TestCytassistOverview {
         assertEquals("75", co.getVisiumConcentrationAverageSize());
         assertEquals("1-2", co.getVisiumConcentrationRange());
         assertEquals(lws[6].getBarcode(), co.getLatestBarcode());
-        assertEquals(Labware.State.released.toString(), co.getLatestState());
+        assertEquals(Labware.State.released.toString(), co.getLatestLwState());
         assertEquals(time(28), co.getLatestBarcodeReleased());
         assertEquals("Strange flag", co.getFlags());
         assertEquals(user.getUsername(), co.getUsers());

@@ -42,7 +42,8 @@ public class CytassistOverview {
     private String visiumConcentrationAverageSize;
     private String visiumConcentrationRange;
     private String latestBarcode;
-    private String latestState;
+    private String latestLwState;
+    private String latestBioState;
     private LocalDateTime latestBarcodeReleased;
     private String flags;
     private String users;
@@ -287,12 +288,20 @@ public class CytassistOverview {
         this.latestBarcode = latestBarcode;
     }
 
-    public String getLatestState() {
-        return this.latestState;
+    public String getLatestLwState() {
+        return this.latestLwState;
     }
 
-    public void setLatestState(String latestState) {
-        this.latestState = latestState;
+    public void setLatestLwState(String latestLwState) {
+        this.latestLwState = latestLwState;
+    }
+
+    public String getLatestBioState() {
+        return this.latestBioState;
+    }
+
+    public void setLatestBioState(String latestBioState) {
+        this.latestBioState = latestBioState;
     }
 
     public LocalDateTime getLatestBarcodeReleased() {
@@ -352,7 +361,8 @@ public class CytassistOverview {
                 .add("visiumConcentrationAverageSize", visiumConcentrationAverageSize)
                 .add("visiumConcentrationRange", visiumConcentrationRange)
                 .add("latestBarcode", latestBarcode)
-                .add("latestState", latestState)
+                .add("latestLwState", latestLwState)
+                .add("latestBioState", latestBioState)
                 .add("latestBarcodeReleased", latestBarcodeReleased)
                 .add("flags", flags)
                 .add("users", users)

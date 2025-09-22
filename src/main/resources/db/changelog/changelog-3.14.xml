@@ -106,7 +106,10 @@
             <column name="latest_barcode" type="VARCHAR(32)">
                 <constraints nullable="false"/>
             </column>
-            <column name="latest_state" type="VARCHAR(16)">
+            <column name="latest_lw_state" type="VARCHAR(16)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="latest_bio_state" type="VARCHAR(64)">
                 <constraints nullable="false"/>
             </column>
             <column name="latest_barcode_released" type="TIMESTAMP">

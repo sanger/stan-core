@@ -447,17 +447,20 @@ public class CytassistOverviewDataCompilerImp implements CytassistOverviewDataCo
         for (CytData d : data) {
             Labware foundLw = null;
             LocalDateTime foundTime = null;
+            BioState foundBioState = null;
             for (SlotSample ss : posterity.descendents(new SlotSample(d.cytAction.getSource(), d.cytAction.getSourceSample()))) {
                 LocalDateTime lwTime = lwTimes.get(ss.slot().getLabwareId());
                 Labware lw = lwMap.get(ss.slot().getLabwareId());
                 if (lw != null && lwTime != null && (foundTime==null || foundTime.isBefore(lwTime))) {
                     foundLw = lw;
                     foundTime = lwTime;
+                    foundBioState = ss.sample().getBioState();
                 }
             }
             if (foundLw != null) {
                 d.row.setLatestBarcode(foundLw.getBarcode());
-                d.row.setLatestState(foundLw.getState().toString());
+                d.row.setLatestLwState(foundLw.getState().toString());
+                d.row.setLatestBioState(foundBioState.getName());
                 LocalDateTime time = releaseTime.get(foundLw.getId());
                 d.row.setLatestBarcodeReleased(time);
             }

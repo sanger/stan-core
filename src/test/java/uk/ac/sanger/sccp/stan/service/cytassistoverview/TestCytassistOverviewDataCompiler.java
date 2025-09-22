@@ -717,11 +717,12 @@ class TestCytassistOverviewDataCompiler {
         verify(mockOpRepo).findEarliestPerformedIntoLabware(leafLwIds);
         CytData d = data.get(0);
         assertEquals(leafLw[1].getBarcode(), d.row.getLatestBarcode());
-        assertEquals("released", d.row.getLatestState());
+        assertEquals("released", d.row.getLatestLwState());
         assertEquals(time(8), d.row.getLatestBarcodeReleased());
         d = data.get(1);
         assertEquals(leafLw[3].getBarcode(), d.row.getLatestBarcode());
-        assertEquals("discarded", d.row.getLatestState());
+        assertEquals("discarded", d.row.getLatestLwState());
+        assertEquals("Tissue", d.row.getLatestBioState());
         assertNull(d.row.getLatestBarcodeReleased());
     }
 
