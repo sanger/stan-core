@@ -706,13 +706,13 @@ public class TestReleaseFileService {
         Ancestry ancestry = makeAncestry(lw, sample, lw, sample);
         ReleaseEntry entry = new ReleaseEntry(lw, lw.getFirstSlot(), sample);
         when(mockOpRepo.findAllByOperationTypeAndDestinationSlotIdIn(any(), any())).thenReturn(List.of());
-        doNothing().when(service).loadStainQcComments(any(), any(), any());
+        doNothing().when(service).loadImagingQcComments(any(), any(), any());
         service.loadStains(List.of(entry), ancestry);
         verify(mockOpTypeRepo).getByName("Stain");
         verify(mockOpRepo).findAllByOperationTypeAndDestinationSlotIdIn(opType, Set.of(lw.getFirstSlot().getId()));
         verify(service, never()).labwareIdToOp(any());
         verify(service, never()).findEntryOps(any(), any(), any());
-        verify(service, never()).loadStainQcComments(any(), any(), any());
+        verify(service, never()).loadImagingQcComments(any(), any(), any());
         verifyNoInteractions(mockStainTypeRepo);
         verifyNoInteractions(mockLwNoteRepo);
     }
@@ -731,14 +731,14 @@ public class TestReleaseFileService {
         Map<Integer, Operation> labwareStainOp = Map.of(lw.getId(), op);
         doReturn(labwareStainOp).when(service).labwareIdToOp(any());
         doReturn(Map.of()).when(service).findEntryOps(any(), any(), any());
-        doNothing().when(service).loadStainQcComments(any(), any(), any());
+        doNothing().when(service).loadImagingQcComments(any(), any(), any());
         final List<ReleaseEntry> entries = List.of(entry);
         service.loadStains(entries, ancestry);
         verify(mockOpTypeRepo).getByName("Stain");
         verify(mockOpRepo).findAllByOperationTypeAndDestinationSlotIdIn(opType, Set.of(lw.getFirstSlot().getId()));
         verify(service).labwareIdToOp(ops);
         verify(service).findEntryOps(entries, labwareStainOp, ancestry);
-        verify(service, never()).loadStainQcComments(any(), any(), any());
+        verify(service, never()).loadImagingQcComments(any(), any(), any());
 
         verifyNoInteractions(mockStainTypeRepo);
         verifyNoInteractions(mockLwNoteRepo);
@@ -766,7 +766,7 @@ public class TestReleaseFileService {
                 new ReleaseEntry(labware[2], labware[2].getFirstSlot(), sample)
         );
 
-        doNothing().when(service).loadStainQcComments(any(), any(), any());
+        doNothing().when(service).loadImagingQcComments(any(), any(), any());
 
         Ancestry ancestry = makeAncestry(labware[1], sample, labware[0], sample);
 
@@ -811,11 +811,11 @@ public class TestReleaseFileService {
         final Set<Integer> opIds = Set.of(ops[0].getId(), ops[1].getId());
         verify(mockStainTypeRepo).loadOperationStainTypes(opIds);
         verify(mockLwNoteRepo).findAllByOperationIdIn(opIds);
-        verify(service).loadStainQcComments(entries, ancestry, Set.of(100,101));
+        verify(service).loadImagingQcComments(entries, ancestry, Set.of(100,101));
     }
 
     @Test
-    public void testLoadStainQcComments() {
+    public void testLoadImagingQcComments() {
         setupLabware();
         Labware lw3 = EntityFactory.makeLabware(EntityFactory.getTubeType(), sample);
         Ancestry ancestry = makeAncestry(lw3, sample, lw2, sample, lw2, sample, lw1, sample);
@@ -835,13 +835,13 @@ public class TestReleaseFileService {
         List<ReleaseEntry> entries = List.of(new ReleaseEntry(lw2, lw2.getFirstSlot(), sample),
                 new ReleaseEntry(lw3, lw3.getFirstSlot(), sample));
 
-        service.loadStainQcComments(entries, ancestry, stainOpIds);
+        service.loadImagingQcComments(entries, ancestry, stainOpIds);
 
         verify(mockRoRepo).findAllByRefersToOpIdIn(stainOpIds);
         verify(mockOpComRepo).findAllByOperationIdIn(resultOpIds);
 
-        assertEquals("Banana.", entries.get(0).getStainQcComment());
-        assertEquals("Banana. Custard.", entries.get(1).getStainQcComment());
+        assertEquals("Banana.", entries.get(0).getImagingQcComment());
+        assertEquals("Banana. Custard.", entries.get(1).getImagingQcComment());
     }
 
     @NotNull

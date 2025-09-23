@@ -940,17 +940,17 @@ public class ReleaseFileService {
             }
         }
         Set<Integer> stainOpIds = entryStainOp.values().stream().map(Operation::getId).collect(toSet());
-        loadStainQcComments(entries, ancestry, stainOpIds);
+        loadImagingQcComments(entries, ancestry, stainOpIds);
     }
 
     /**
-     * Loads comments from the result-ops for the given stain op ids. Puts them into the stainQcComment field in the
+     * Loads comments from the result-ops for the given stain op ids. Puts them into the imagingQcComment field in the
      * ReleaseEntries. Follows the ancestry to see which operations are relevant to which entries.
      * @param entries the release entries under construction
      * @param ancestry the ancestry of the entities referred to in the entries
      * @param stainOpIds the stain operation ids that we look up the results for
      */
-    public void loadStainQcComments(Collection<ReleaseEntry> entries, Ancestry ancestry, Collection<Integer> stainOpIds) {
+    public void loadImagingQcComments(Collection<ReleaseEntry> entries, Ancestry ancestry, Collection<Integer> stainOpIds) {
         List<ResultOp> rops = roRepo.findAllByRefersToOpIdIn(stainOpIds);
         if (rops.isEmpty()) {
             return;
@@ -980,7 +980,7 @@ public class ReleaseFileService {
                     break;
                 }
             }
-            entry.setStainQcComment(commentText);
+            entry.setImagingQcComment(commentText);
         }
     }
 

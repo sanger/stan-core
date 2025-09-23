@@ -49,7 +49,7 @@ public class ReleaseEntry {
     private LocalDateTime xeniumStart, xeniumEnd;
     private String xeniumRoi, xeniumReagentALot, xeniumReagentBLot, xeniumCassettePosition, xeniumRun, xeniumComment;
     private String solution;
-    private String stainQcComment;
+    private String imagingQcComment;
     private String amplificationCycles;
     private String flagDescription = "";
     private String paraffinProcessingProgram;
@@ -388,12 +388,12 @@ public class ReleaseEntry {
         this.solution = solution;
     }
 
-    public String getStainQcComment() {
-        return this.stainQcComment;
+    public String getImagingQcComment() {
+        return this.imagingQcComment;
     }
 
-    public void setStainQcComment(String stainQcComment) {
-        this.stainQcComment = stainQcComment;
+    public void setImagingQcComment(String imagingQcComment) {
+        this.imagingQcComment = imagingQcComment;
     }
 
     public String getAmplificationCycles() {
@@ -490,7 +490,7 @@ public class ReleaseEntry {
                 && Objects.equals(this.xeniumRun, that.xeniumRun)
                 && Objects.equals(this.xeniumComment, that.xeniumComment)
                 && Objects.equals(this.solution, that.solution)
-                && Objects.equals(this.stainQcComment, that.stainQcComment)
+                && Objects.equals(this.imagingQcComment, that.imagingQcComment)
                 && Objects.equals(this.amplificationCycles, that.amplificationCycles)
                 && Objects.equals(this.equipment, that.equipment)
                 && Objects.equals(this.flagDescription, that.flagDescription)
@@ -549,7 +549,7 @@ public class ReleaseEntry {
                 .add("xeniumRun", xeniumRun)
                 .add("xeniumComment", xeniumComment)
                 .add("solution", solution)
-                .add("stainQcComment", stainQcComment)
+                .add("imagingQcComment", imagingQcComment)
                 .add("amplificationCycles", amplificationCycles)
                 .add("equipment", equipment)
                 .add("flagDescription", flagDescription)

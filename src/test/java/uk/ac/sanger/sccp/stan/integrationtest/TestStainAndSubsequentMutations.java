@@ -53,7 +53,7 @@ public class TestStainAndSubsequentMutations {
     @Transactional
     @Test
     public void testStainAndWorkProgressAndRecordResult() throws Exception {
-        entityCreator.createOpType("Stain QC", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.RESULT);
+        entityCreator.createOpType("Imaging QC", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.RESULT);
         entityCreator.createOpType("Tissue coverage", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.RESULT);
         entityCreator.createOpType("Pretreatment QC", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.RESULT);
         WorkType wt = entityCreator.createWorkType("Rocks");
@@ -117,7 +117,7 @@ public class TestStainAndSubsequentMutations {
 
         opData = chainGet(data, "data", "recordStainResult", "operations", 0);
         Integer resultOpId = (Integer) opData.get("id");
-        assertEquals("Stain QC", chainGet(opData, "operationType", "name"));
+        assertEquals("Imaging QC", chainGet(opData, "operationType", "name"));
         assertNotNull(resultOpId);
         List<ResultOp> results = resultOpRepo.findAllByOperationIdIn(List.of(resultOpId));
         assertThat(results).hasSize(1);
