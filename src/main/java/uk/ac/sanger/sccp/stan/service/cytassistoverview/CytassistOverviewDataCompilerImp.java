@@ -75,6 +75,7 @@ public class CytassistOverviewDataCompilerImp implements CytassistOverviewDataCo
         Set<Integer> sourceSlotIds = sourceSlotIds(data);
         Posterity posterity = loadPosterity(data);
         Set<Integer> allDestSlotIds = destSlotIds(posterity);
+        Set<Integer> cytDestIds = data.stream().map(d -> d.cytAction.getDestination().getId()).collect(toSet());
         loadCytLabware(data);
         loadSourceCreation(data, sourceSlotIds);
         fillCytassistData(data);
@@ -83,7 +84,7 @@ public class CytassistOverviewDataCompilerImp implements CytassistOverviewDataCo
         loadImages(data, sourceSlotIds);
         loadProbes(data, sourceSlotIds);
         loadProbeQC(data, sourceSlotIds);
-        loadTissueCoverage(data, sourceSlotIds);
+        loadTissueCoverage(data, cytDestIds);
         loadQPCR(data, posterity, allDestSlotIds);
         loadAmpCq(data, posterity, allDestSlotIds);
         loadDualIndex(data, posterity, allDestSlotIds);
@@ -281,20 +282,17 @@ public class CytassistOverviewDataCompilerImp implements CytassistOverviewDataCo
         }
     }
 
-    /** Loads tissue coverage measurement for the cyt sources */
-    void loadTissueCoverage(List<CytData> data, Set<Integer> sourceSlotIds) {
-        OperationType opType = opTypeRepo.getByName("Tissue coverage");
-        List<Operation> ops = opRepo.findAllByOperationTypeAndDestinationSlotIdIn(opType, sourceSlotIds);
-        Map<Integer, Operation> opMap = ops.stream().collect(inMap(Operation::getId));
-        List<Measurement> measurements = measurementRepo.findAllByOperationIdIn(opMap.keySet());
+    /** Loads tissue coverage measurement for the cyt destinations */
+    void loadTissueCoverage(List<CytData> data, Set<Integer> slotIds) {
+        List<Measurement> measurements = measurementRepo.findAllBySlotIdInAndName(slotIds, "Tissue coverage");
         Map<SlotIdSampleId, Measurement> ssCoverage = new HashMap<>();
         for (Measurement m : measurements) {
-            if (m.getName().equalsIgnoreCase("Tissue coverage")) {
-                ssCoverage.put(new SlotIdSampleId(m.getSlotId(), m.getSampleId()), m);
-            }
+            ssCoverage.put(new SlotIdSampleId(m.getSlotId(), m.getSampleId()), m);
         }
+        Set<Integer> opIds = ssCoverage.values().stream().map(Measurement::getOperationId).collect(toSet());
+        Map<Integer, Operation> opMap = stream(opRepo.findAllById(opIds)).collect(inMap(Operation::getId));
         for (CytData d : data) {
-            Measurement m = ssCoverage.get(new SlotIdSampleId(d.cytAction.getSource(), d.cytAction.getSourceSample()));
+            Measurement m = ssCoverage.get(new SlotIdSampleId(d.cytAction.getDestination(), d.cytAction.getSample()));
             if (m != null) {
                 d.row.setTissueCoverage(m.getValue());
                 Operation op = opMap.get(m.getOperationId());

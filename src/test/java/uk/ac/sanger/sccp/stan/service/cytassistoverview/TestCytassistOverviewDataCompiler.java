@@ -130,6 +130,9 @@ class TestCytassistOverviewDataCompiler {
         assertThat(data.stream().map(d -> d.cytAction))
                 .containsExactlyElementsOf(ops.stream()
                         .flatMap(op -> op.getActions().stream()).toList());
+        Set<Integer> cytSlotIds = ops.stream()
+                .flatMap(op -> op.getActions().stream().map(a -> a.getDestination().getId()))
+                .collect(toSet());
         verify(dataCompiler).loadSourceCreation(same(data), eq(sourceSlotIds));
         verify(dataCompiler).loadCytLabware(same(data));
         verify(dataCompiler).fillCytassistData(same(data));
@@ -138,7 +141,7 @@ class TestCytassistOverviewDataCompiler {
         verify(dataCompiler).loadImages(same(data), eq(sourceSlotIds));
         verify(dataCompiler).loadProbes(same(data), eq(sourceSlotIds));
         verify(dataCompiler).loadProbeQC(same(data), eq(sourceSlotIds));
-        verify(dataCompiler).loadTissueCoverage(same(data), eq(sourceSlotIds));
+        verify(dataCompiler).loadTissueCoverage(same(data), eq(cytSlotIds));
         verify(dataCompiler).loadQPCR(same(data), same(posterity), same(allDestSlotIds));
         verify(dataCompiler).loadAmpCq(same(data), same(posterity), same(allDestSlotIds));
         verify(dataCompiler).loadDualIndex(same(data), same(posterity), same(allDestSlotIds));
@@ -501,13 +504,11 @@ class TestCytassistOverviewDataCompiler {
         Sample[] samples = EntityFactory.makeSamples(2);
         Labware lw = EntityFactory.makeLabware(EntityFactory.makeLabwareType(1,2), samples);
         List<Slot> slots = lw.getSlots();
-        Set<Integer> sourceSlotIds = slots.stream().map(Slot::getId).collect(toSet());
+        Set<Integer> slotIds = slots.stream().map(Slot::getId).collect(toSet());
         User user = EntityFactory.getUser();
         List<Operation> ops = IntStream.rangeClosed(1, 2)
                 .mapToObj(i -> makeOp(i, user, null))
                 .toList();
-        Set<Integer> opIds = ops.stream().map(Operation::getId).collect(toSet());
-        when(mockOpRepo.findAllByOperationTypeAndDestinationSlotIdIn(any(), any())).thenReturn(ops);
         List<Action> cytActions = Zip.enumerate(slots.stream())
                 .map((i, slot) -> new Action(10*i+11, i+1, slot, slot, samples[i], samples[i]))
                 .toList();
@@ -515,12 +516,12 @@ class TestCytassistOverviewDataCompiler {
         List<Measurement> measurements = Zip.enumerate(cytActions.stream())
                 .map((i,a) -> new Measurement(i, "Tissue coverage", "value"+i, samples[i].getId(), ops.get(i).getId(), slots.get(i).getId()))
                 .toList();
-        when(mockMeasurementRepo.findAllByOperationIdIn(any())).thenReturn(measurements);
+        when(mockMeasurementRepo.findAllBySlotIdInAndName(any(), any())).thenReturn(measurements);
+        when(mockOpRepo.findAllById(any())).thenReturn(ops);
 
-        dataCompiler.loadTissueCoverage(data, sourceSlotIds);
-        verify(mockOpTypeRepo).getByName(eqCi(opType.getName()));
-        verify(mockOpRepo).findAllByOperationTypeAndDestinationSlotIdIn(opType, sourceSlotIds);
-        verify(mockMeasurementRepo).findAllByOperationIdIn(opIds);
+        dataCompiler.loadTissueCoverage(data, slotIds);
+        verify(mockMeasurementRepo).findAllBySlotIdInAndName(slotIds, "Tissue coverage");
+        verify(mockOpRepo).findAllById(measurements.stream().map(Measurement::getOperationId).collect(toSet()));
 
         for (int i = 0; i < 2; ++i) {
             assertEquals("value"+i, data.get(i).row.getTissueCoverage());

@@ -119,8 +119,8 @@ public class TestCytassistOverview {
         Operation tc1 = createOp(tcOpType, 11, lws[0], lws[0]);
         Operation tc2 = createOp(tcOpType, 12, lws[2], lws[2]);
         measurementRepo.saveAll(List.of(
-                new Measurement(null, "Tissue coverage", "10", sample.getId(), tc1.getId(), slots[0].getId()),
-                new Measurement(null, "Tissue coverage", "20", sample.getId(), tc2.getId(), slots[2].getId())
+                new Measurement(null, "Tissue coverage", "10", sample.getId(), tc1.getId(), slots[3].getId()),
+                new Measurement(null, "Tissue coverage", "20", sample.getId(), tc2.getId(), slots[4].getId())
         ));
         OperationType cytOpType = entityCreator.createOpType("Cytassist", null, OperationTypeFlag.IN_PLACE);
         Operation cyt1 = createOp(cytOpType, 16, lws[0], lws[3]);
