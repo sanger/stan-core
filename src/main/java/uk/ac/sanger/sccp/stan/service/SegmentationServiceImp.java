@@ -6,6 +6,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.request.SegmentationRequest;
+import uk.ac.sanger.sccp.stan.request.SegmentationRequest.PanelLot;
 import uk.ac.sanger.sccp.stan.request.SegmentationRequest.SegmentationLabware;
 import uk.ac.sanger.sccp.stan.service.validation.ValidationHelper;
 import uk.ac.sanger.sccp.stan.service.validation.ValidationHelperFactory;
@@ -39,14 +40,19 @@ public class SegmentationServiceImp implements SegmentationService {
     private final OperationTypeRepo opTypeRepo;
     private final OperationCommentRepo opComRepo;
     private final LabwareNoteRepo noteRepo;
+    private final ProteinPanelRepo proteinPanelRepo;
+    private final OpPanelRepo opPanelRepo;
 
     private final Validator<String> reagentLotValidator;
+    private final Validator<String> panelLotValidator;
 
     public SegmentationServiceImp(Clock clock, ValidationHelperFactory valHelperFactory,
                                   OperationService opService, WorkService workService,
                                   OperationRepo opRepo, OperationTypeRepo opTypeRepo,
                                   OperationCommentRepo opComRepo, LabwareNoteRepo noteRepo,
-                                  @Qualifier("reagentLotValidator") Validator<String> reagentLotValidator) {
+                                  ProteinPanelRepo proteinPanelRepo, OpPanelRepo opPanelRepo,
+                                  @Qualifier("reagentLotValidator") Validator<String> reagentLotValidator,
+                                  @Qualifier("panelLotValidator") Validator<String> panelLotValidator) {
         this.clock = clock;
         this.valHelperFactory = valHelperFactory;
         this.opService = opService;
@@ -55,7 +61,10 @@ public class SegmentationServiceImp implements SegmentationService {
         this.opTypeRepo = opTypeRepo;
         this.opComRepo = opComRepo;
         this.noteRepo = noteRepo;
+        this.proteinPanelRepo = proteinPanelRepo;
+        this.opPanelRepo = opPanelRepo;
         this.reagentLotValidator = reagentLotValidator;
+        this.panelLotValidator = panelLotValidator;
     }
 
     @Override
@@ -94,10 +103,12 @@ public class SegmentationServiceImp implements SegmentationService {
         data.labware = loadLabware(val, request.getLabware());
         data.works = loadWorks(val, request.getLabware());
         data.comments = loadComments(val, request.getLabware());
+        data.panels = loadPanels();
         checkCostings(problems, data.opType, request.getLabware());
         UCMap<LocalDateTime> priorOpTimes = checkPriorOps(problems, data.opType, data.labware.values());
         checkTimestamps(val, clock, request.getLabware(), data.labware, priorOpTimes);
         checkReagentLots(problems, request.getLabware());
+        checkProteinPanels(problems, data.panels, request.getLabware());
         return data;
     }
 
@@ -138,6 +149,11 @@ public class SegmentationServiceImp implements SegmentationService {
                 .filter(lwReq -> lwReq.getCommentIds()!=null)
                 .flatMap(lwReq -> lwReq.getCommentIds().stream());
         return val.checkCommentIds(commentIds);
+    }
+
+    /** Loads all protein panels */
+    UCMap<ProteinPanel> loadPanels() {
+        return stream(proteinPanelRepo.findAll()).collect(UCMap.toUCMap(ProteinPanel::getName));
     }
 
     /**
@@ -247,6 +263,61 @@ public class SegmentationServiceImp implements SegmentationService {
     }
 
     /**
+     * Checks for problems with protein panels and their lots.
+     * @param problems receptacle for problems
+     * @param panels known panels
+     * @param sls labware specs from request
+     */
+    void checkProteinPanels(final Collection<String> problems, UCMap<ProteinPanel> panels, final Collection<SegmentationLabware> sls) {
+        Set<String> invalidNames = new LinkedHashSet<>();
+        Set<String> repeatedNames = new LinkedHashSet<>();
+        boolean anyMissingNames = false;
+        boolean anyMissingLots = false;
+        boolean anyMissingCosting = false;
+        final Consumer<String> problemAdd = problems::add;
+        for (SegmentationLabware sl : sls) {
+            if (!nullOrEmpty(sl.getProteinPanels())) {
+                Set<Integer> panelIdSet = new HashSet<>();
+                for (PanelLot pl : sl.getProteinPanels()) {
+                    if (nullOrEmpty(pl.getName())) {
+                        anyMissingNames = true;
+                    } else {
+                        ProteinPanel pp = panels.get(pl.getName());
+                        if (pp==null) {
+                            invalidNames.add(repr(pl.getName()));
+                        } else if (!panelIdSet.add(pp.getId())) {
+                            repeatedNames.add(pp.getName());
+                        }
+                    }
+                    if (nullOrEmpty(pl.getLot())) {
+                        anyMissingLots = true;
+                    } else {
+                        panelLotValidator.validate(pl.getLot(), problemAdd);
+                    }
+                    if (pl.getCosting()==null) {
+                        anyMissingCosting = true;
+                    }
+                }
+            }
+        }
+        if (anyMissingNames) {
+            problems.add("Protein panel name not specified.");
+        }
+        if (!invalidNames.isEmpty()) {
+            problems.add("Unknown protein panel name: "+invalidNames);
+        }
+        if (!repeatedNames.isEmpty()) {
+            problems.add("Protein panel given multiple times for the same labware: "+repeatedNames);
+        }
+        if (anyMissingLots) {
+            problems.add("Protein panel lot not specified.");
+        }
+        if (anyMissingCosting) {
+            problems.add("Protein panel costing not specified.");
+        }
+    }
+
+    /**
      * Records the operations and all associated information for the request
      * @param lwReqs details of the request
      * @param user the user responsible
@@ -260,9 +331,10 @@ public class SegmentationServiceImp implements SegmentationService {
         List<Operation> opsToUpdate = new ArrayList<>();
         List<LabwareNote> newNotes = new ArrayList<>();
         List<OperationComment> newOpComs = new ArrayList<>();
+        List<OpPanel> newOpPanels = new ArrayList<>();
         for (SegmentationLabware lwReq: lwReqs) {
             Labware lw = data.labware.get(lwReq.getBarcode());
-            Operation op = recordOp(user, data, lwReq, lw, opsToUpdate, newNotes, newOpComs, newWorkOps);
+            Operation op = recordOp(user, data, lwReq, lw, opsToUpdate, newNotes, newOpComs, newWorkOps, newOpPanels);
             labware.add(lw);
             ops.add(op);
         }
@@ -274,6 +346,9 @@ public class SegmentationServiceImp implements SegmentationService {
         }
         if (!newOpComs.isEmpty()) {
             opComRepo.saveAll(newOpComs);
+        }
+        if (!newOpPanels.isEmpty()) {
+            opPanelRepo.saveAll(newOpPanels);
         }
         if (!newWorkOps.isEmpty()) {
             workService.linkWorkOps(newWorkOps.stream());
@@ -292,11 +367,13 @@ public class SegmentationServiceImp implements SegmentationService {
      * @param newNotes receptacle for new notes that need to be saved
      * @param newOpComs receptacle for new operation comments that need to be saved
      * @param newWorkOps receptacle for new work-operation links that need to be saved
+     * @param newOpPanels receptacle for new op panels that need to be saved
      * @return the operation created
      */
     Operation recordOp(User user, SegmentationData data, SegmentationLabware lwReq, Labware lw,
                        final List<Operation> opsToUpdate, final List<LabwareNote> newNotes,
-                       final List<OperationComment> newOpComs, final List<WorkOp> newWorkOps) {
+                       final List<OperationComment> newOpComs, final List<WorkOp> newWorkOps,
+                       final List<OpPanel> newOpPanels) {
         final Operation op = opService.createOperationInPlace(data.opType, user, lw, null, null);
         if (lwReq.getPerformed() != null) {
             op.setPerformed(lwReq.getPerformed());
@@ -320,6 +397,11 @@ public class SegmentationServiceImp implements SegmentationService {
         if (lwReq.getWorkNumber()!=null) {
             newWorkOps.add(new WorkOp(data.works.get(lwReq.getWorkNumber()), op));
         }
+        if (!lwReq.getProteinPanels().isEmpty()) {
+            lwReq.getProteinPanels().stream()
+                    .map(pp -> new OpPanel(data.panels.get(pp.getName()), op.getId(), lw.getId(), pp.getLot(), pp.getCosting()))
+                    .forEach(newOpPanels::add);
+        }
 
         return op;
     }
@@ -331,6 +413,7 @@ public class SegmentationServiceImp implements SegmentationService {
         UCMap<Work> works;
         UCMap<Labware> labware;
         Map<Integer, Comment> comments;
+        UCMap<ProteinPanel> panels;
 
         public SegmentationData(Collection<String> problems) {
             this.problems = problems;

@@ -353,6 +353,21 @@ public class FieldValidation {
     }
 
     @Bean
+    public Validator<String> panelLotValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(CharacterType.DIGIT);
+        return new StringValidator("Panel lot", 6, 6, charTypes);
+    }
+
+    @Bean
+    public Validator<String> proteinPanelNameValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(
+                CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN, CharacterType.SPACE, CharacterType.COLON,
+                CharacterType.SLASH, CharacterType.PAREN, CharacterType.FULL_STOP, CharacterType.APOSTROPHE, CharacterType.AMPERSAND
+        );
+        return new StringValidator("Protein panel name", 1, 64, charTypes);
+    }
+
+    @Bean
     public Validator<String> runNameValidator() {
         Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN,
                 CharacterType.UNDERSCORE, CharacterType.SPACE, CharacterType.SLASH, CharacterType.BACKSLASH,

@@ -110,6 +110,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final WorkChangeService workChangeService;
     final CellClassService cellClassService;
     final CytassistOverviewService cytassistOverviewService;
+    final ProteinPanelAdminService proteinPanelAdminService;
 
     @Autowired
     public GraphQLMutation(ObjectMapper objectMapper, AuthenticationComponent authComp,
@@ -145,7 +146,8 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            SegmentationService segmentationService, CleanOutService cleanOutService, RoiMetricService roiMetricService,
                            UserAdminService userAdminService, SlotCopyRecordService slotCopyRecordService,
                            TissueTypeService tissueTypeService, WorkChangeService workChangeService,
-                           CellClassService cellClassService, CytassistOverviewService cytassistOverviewService) {
+                           CellClassService cellClassService, CytassistOverviewService cytassistOverviewService,
+                           ProteinPanelAdminService proteinPanelAdminService) {
         super(objectMapper, authComp, userRepo);
         this.authService = authService;
         this.registerService = registerService;
@@ -214,6 +216,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.workChangeService = workChangeService;
         this.cellClassService = cellClassService;
         this.cytassistOverviewService = cytassistOverviewService;
+        this.proteinPanelAdminService = proteinPanelAdminService;
     }
 
     private void logRequest(String name, User user, Object request) {
@@ -560,6 +563,14 @@ public class GraphQLMutation extends BaseGraphQLResource {
 
     public DataFetcher<CellClass> setCellClassEnabled() {
         return adminSetEnabled(cellClassService::setEnabled, "SetCellClassEnabled", "name");
+    }
+
+    public DataFetcher<ProteinPanel> addProteinPanel() {
+        return adminAdd(proteinPanelAdminService::addNew, "AddProteinPanel", "name");
+    }
+
+    public DataFetcher<ProteinPanel> setProteinPanelEnabled() {
+        return adminSetEnabled(proteinPanelAdminService::setEnabled, "SetProteinPanelEnabled", "name");
     }
 
     public DataFetcher<Work> createWork() {

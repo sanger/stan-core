@@ -64,6 +64,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final CellClassRepo cellClassRepo;
     final WorkRepo workRepo;
     final ReagentPlateRepo reagentPlateRepo;
+    final ProteinPanelRepo proteinPanelRepo;
     final LabelPrintService labelPrintService;
     final FindService findService;
     final CommentAdminService commentAdminService;
@@ -103,7 +104,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                ProgramRepo programRepo, CostCodeRepo costCodeRepo, DnapStudyRepo dnapStudyRepo,
                                SolutionRepo solutionRepo, OmeroProjectRepo omeroProjectRepo,
                                ProbePanelRepo probePanelRepo, WorkTypeRepo workTypeRepo, CellClassRepo cellClassRepo,
-                               WorkRepo workRepo, ReagentPlateRepo reagentPlateRepo,
+                               WorkRepo workRepo, ReagentPlateRepo reagentPlateRepo, ProteinPanelRepo proteinPanelRepo,
                                LabelPrintService labelPrintService, FindService findService,
                                CommentAdminService commentAdminService, EquipmentAdminService equipmentAdminService,
                                HistoryService historyService, WorkProgressService workProgressService, PlanService planService,
@@ -133,6 +134,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.omeroProjectRepo = omeroProjectRepo;
         this.probePanelRepo = probePanelRepo;
         this.reagentPlateRepo = reagentPlateRepo;
+        this.proteinPanelRepo = proteinPanelRepo;
         this.equipmentAdminService = equipmentAdminService;
         this.releaseDestinationRepo = releaseDestinationRepo;
         this.releaseRecipientRepo = releaseRecipientRepo;
@@ -201,6 +203,10 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
 
     public DataFetcher<Iterable<Fixative>> getFixatives() {
         return allOrEnabled(fixativeRepo::findAll, fixativeRepo::findAllByEnabled);
+    }
+
+    public DataFetcher<Iterable<ProteinPanel>> getProteinPanels() {
+        return allOrEnabled(proteinPanelRepo::findAll, proteinPanelRepo::findAllByEnabled);
     }
 
     public DataFetcher<Labware> findLabwareByBarcode() {

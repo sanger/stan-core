@@ -13,6 +13,8 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.trimAndRequire;
 
 /**
  * Base class for a couple of required services.
+ * @param <E> entity type
+ * @param <R> repo type
  * @author dr6
  */
 public abstract class BaseAdminService<E extends HasEnabled, R extends CrudRepository<E, ?>> {

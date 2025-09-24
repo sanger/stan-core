@@ -9,7 +9,7 @@ import org.springframework.test.context.ActiveProfiles;
 import uk.ac.sanger.sccp.stan.EntityCreator;
 import uk.ac.sanger.sccp.stan.GraphQLTester;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.repo.LabwareNoteRepo;
+import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import javax.persistence.EntityManager;
@@ -18,6 +18,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGet;
 
 /**
@@ -37,6 +38,10 @@ public class TestSegmentationMutation {
     private EntityManager entityManager;
     @Autowired
     private LabwareNoteRepo lwNoteRepo;
+    @Autowired
+    private ProteinPanelRepo proteinPanelRepo;
+    @Autowired
+    private OpPanelRepo opPanelRepo;
 
     @Test
     @Transactional
@@ -50,6 +55,7 @@ public class TestSegmentationMutation {
         User user = entityCreator.createUser("user1");
 
         Work work = entityCreator.createWork(null, null, null, null, null);
+        ProteinPanel pp = proteinPanelRepo.save(new ProteinPanel("Alpha"));
 
         String mutation = tester.readGraphQL("segmentation.graphql")
                 .replace("[BC]", lw.getBarcode())
@@ -79,6 +85,15 @@ public class TestSegmentationMutation {
         UCMap<String> noteValues = notes.stream().collect(UCMap.toUCMap(LabwareNote::getName, LabwareNote::getValue));
         assertEquals("Faculty", noteValues.get("costing"));
         assertEquals("123456", noteValues.get("reagent lot"));
+        List<OpPanel> opPanels = opPanelRepo.findAllByOperationId(opId);
+        assertThat(opPanels).hasSize(1);
+        OpPanel opPanel = opPanels.getFirst();
+        assertNotNull(opPanel.getId());
+        assertEquals(pp, opPanel.getProteinPanel());
+        assertEquals(opId, opPanel.getOperationId());
+        assertEquals(lw.getId(), opPanel.getLabwareId());
+        assertEquals("123456", opPanel.getLotNumber());
+        assertEquals(SlideCosting.SGP, opPanel.getCosting());
 
         testSegmentationQC(work, lw);
     }

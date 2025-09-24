@@ -7,6 +7,11 @@ mutation {
             commentIds: [1]
             costing: Faculty
             reagentLot: "123456"
+            proteinPanels: [{
+                name: "alpha"
+                lot: "123456"
+                costing: SGP
+            }]
         }]
     }) {
         labware {

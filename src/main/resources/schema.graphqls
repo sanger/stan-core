@@ -189,6 +189,12 @@ type CellClass {
     enabled: Boolean!
 }
 
+"""A protein panel."""
+type ProteinPanel {
+    name: String!
+    enabled: Boolean!
+}
+
 """A piece of tissue from which multiple samples may originate."""
 type Tissue {
     externalName: String
@@ -2085,6 +2091,16 @@ input ReactivateLabware {
     commentId: Int!
 }
 
+"""Panel, lot number, costing."""
+input PanelLot {
+    """Name of the panel."""
+    name: String!
+    """Lot number."""
+    lot: String!
+    """Costing."""
+    costing: SlideCosting!
+}
+
 """Details about labware in a segmentation request."""
 input SegmentationLabware {
     """The barcode of the labware."""
@@ -2099,6 +2115,8 @@ input SegmentationLabware {
     performed: Timestamp
     """The reagent lot number."""
     reagentLot: String
+    """Protein panels and lot numbers."""
+    proteinPanels: [PanelLot!]
 }
 
 """A request to record segmentation on one or more labware."""
@@ -2204,6 +2222,8 @@ type Query {
     bioRisks(includeDisabled: Boolean): [BioRisk!]!
     """Get all cellular classifications that are enabled, or get all including disabled."""
     cellClasses(includeDisabled: Boolean): [CellClass!]!
+    """Get protein panels that are enabled, or all including disabled."""
+    proteinPanels(includeDisabled: Boolean): [ProteinPanel!]!
     """Get all the mediums available."""
     mediums: [Medium!]!
     """Get all the fixatives that are enabled, or get all including those that are disabled."""
@@ -2453,6 +2473,10 @@ type Mutation {
     addCellClass(name: String!): CellClass!
     """Enable or disable a cellular classification."""
     setCellClassEnabled(name: String!, enabled: Boolean!): CellClass!
+    """Add a new protein panel."""
+    addProteinPanel(name: String!): ProteinPanel!
+    """Enable or disable a protein panel."""
+    setProteinPanelEnabled(name: String!, enabled: Boolean!): ProteinPanel!
 
     """Create a new work, which will be allocated a new work number with the given prefix."""
     createWork(prefix: String!, workType: String!, workRequester: String!, project: String!, program: String!, costCode: String!, numBlocks: Int, numSlides: Int, numOriginalSamples: Int, omeroProject: String, ssStudyId: Int): Work!

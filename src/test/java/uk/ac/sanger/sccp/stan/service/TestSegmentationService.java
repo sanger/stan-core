@@ -10,6 +10,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.request.SegmentationRequest;
+import uk.ac.sanger.sccp.stan.request.SegmentationRequest.PanelLot;
 import uk.ac.sanger.sccp.stan.request.SegmentationRequest.SegmentationLabware;
 import uk.ac.sanger.sccp.stan.service.SegmentationServiceImp.SegmentationData;
 import uk.ac.sanger.sccp.stan.service.validation.ValidationHelper;
@@ -34,6 +35,7 @@ import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.Matchers.*;
 import static uk.ac.sanger.sccp.stan.service.SegmentationServiceImp.CELL_SEGMENTATION_OP_NAME;
 import static uk.ac.sanger.sccp.stan.service.SegmentationServiceImp.QC_OP_NAME;
+import static uk.ac.sanger.sccp.utils.BasicUtils.concat;
 import static uk.ac.sanger.sccp.utils.BasicUtils.inMap;
 
 /** Test {@link SegmentationServiceImp} */
@@ -55,7 +57,11 @@ class TestSegmentationService {
     @Mock
     private LabwareNoteRepo mockNoteRepo;
     @Mock
-    private Validator<String> mockReagentLotValidator;
+    private ProteinPanelRepo mockPanelRepo;
+    @Mock
+    private OpPanelRepo mockOpPanelRepo;
+    @Mock
+    private Validator<String> mockLotValidator;
 
     @InjectMocks
     private SegmentationServiceImp service;
@@ -120,9 +126,12 @@ class TestSegmentationService {
         doReturn(workMap).when(service).loadWorks(any(), any());
         doReturn(commentMap).when(service).loadComments(any(), any());
         doReturn(priorOpMap).when(service).checkPriorOps(any(), any(), any());
+        UCMap<ProteinPanel> pMap = UCMap.from(ProteinPanel::getName, new ProteinPanel(1, "Alpha", true));
+        doReturn(pMap).when(service).loadPanels();
         doNothing().when(service).checkCostings(any(), any(), any());
 
         doNothing().when(service).checkTimestamps(any(), any(), any(), any(), any());
+        doNothing().when(service).checkProteinPanels(any(), any(), any());
 
         SegmentationData data = service.validate(user, request);
         assertThat(data.problems).isEmpty();
@@ -130,6 +139,7 @@ class TestSegmentationService {
         assertSame(lwMap, data.labware);
         assertSame(workMap, data.works);
         assertSame(commentMap, data.comments);
+        assertSame(pMap, data.panels);
 
         //noinspection unchecked
         ArgumentCaptor<Predicate<OperationType>> predicateCaptor = ArgumentCaptor.forClass(Predicate.class);
@@ -142,9 +152,11 @@ class TestSegmentationService {
         verify(service).loadLabware(val, request.getLabware());
         verify(service).loadWorks(val, request.getLabware());
         verify(service).loadComments(val, request.getLabware());
+        verify(service).loadPanels();
         verify(service).checkCostings(same(problems), same(opType), same(request.getLabware()));
         verify(service).checkPriorOps(same(problems), same(opType), eq(lwMap.values()));
         verify(service).checkTimestamps(same(val), same(mockClock), same(request.getLabware()), same(data.labware), same(priorOpMap));
+        verify(service).checkProteinPanels(same(problems), same(pMap), same(request.getLabware()));
     }
 
     @ParameterizedTest
@@ -190,6 +202,7 @@ class TestSegmentationService {
         verify(service, never()).checkCostings(any(), any(), any());
         verify(service, never()).checkPriorOps(any(), any(), any());
         verify(service, never()).checkTimestamps(any(), any(), any(), any(), any());
+        verify(service, never()).checkProteinPanels(any(), any(), any());
 
         assertProblem(data.problems, "No labware specified.");
     }
@@ -208,6 +221,8 @@ class TestSegmentationService {
         Map<Integer, Comment> commentMap = Map.of(100, new Comment(100, "com", "cat"));
         UCMap<LocalDateTime> priorOps = new UCMap<>();
         priorOps.put("somebc", LocalDateTime.now());
+        UCMap<ProteinPanel> pMap = UCMap.from(ProteinPanel::getName, new ProteinPanel(1, "Alpha", true));
+        doReturn(pMap).when(service).loadPanels();
 
         doAnswer(addProblem("Bad lw", lwMap)).when(service).loadLabware(any(), any());
         doAnswer(addProblem("Bad work", workMap)).when(service).loadWorks(any(), any());
@@ -215,6 +230,7 @@ class TestSegmentationService {
         mayAddProblem("Bad costing").when(service).checkCostings(any(), any(), any());
         doAnswer(addProblem("Bad prior op", priorOps)).when(service).checkPriorOps(any(), any(), any());
         mayAddProblem("Bad time").when(service).checkTimestamps(any(), any(), any(), any(), any());
+        mayAddProblem("Bad panel").when(service).checkProteinPanels(any(), any(), any());
 
         SegmentationData data = service.validate(null, request);
         verify(val).checkOpType(eq("opname"), any(), any(), any());
@@ -222,11 +238,13 @@ class TestSegmentationService {
         verify(service).loadLabware(val, lwReqs);
         verify(service).loadWorks(val, lwReqs);
         verify(service).loadComments(val, lwReqs);
+        verify(service).loadPanels();
         verify(service).checkCostings(any(), same(opType), same(lwReqs));
         verify(service).checkTimestamps(val, mockClock, lwReqs, lwMap, priorOps);
+        verify(service).checkProteinPanels(any(), same(pMap), same(lwReqs));
 
         assertThat(data.problems).containsExactlyInAnyOrder(
-                "No user supplied.", "Bad lw", "Bad work", "Bad comment", "Bad costing", "Bad prior op", "Bad time"
+                "No user supplied.", "Bad lw", "Bad work", "Bad comment", "Bad costing", "Bad prior op", "Bad time", "Bad panel"
         );
     }
 
@@ -260,6 +278,17 @@ class TestSegmentationService {
         when(val.checkWork(anyCollection())).thenReturn(workMap);
         assertSame(workMap, service.loadWorks(val, lwReqs));
         verify(val).checkWork(workNumbers);
+    }
+
+    @Test
+    void testLoadPanels() {
+        List<ProteinPanel> panels = List.of(new ProteinPanel(1, "Alpha", true), new ProteinPanel(2, "Beta", false));
+        when(mockPanelRepo.findAll()).thenReturn(panels);
+        UCMap<ProteinPanel> pMap = service.loadPanels();
+        assertThat(pMap).hasSize(panels.size());
+        for (ProteinPanel p : panels) {
+            assertThat(pMap.get(p.getName())).isSameAs(p);
+        }
     }
 
     @Test
@@ -369,7 +398,7 @@ class TestSegmentationService {
     @Test
     public void testCheckReagentLots() {
         final List<String> problems = new ArrayList<>(2);
-        when(mockReagentLotValidator.validate(any(), any())).then(invocation -> {
+        when(mockLotValidator.validate(any(), any())).then(invocation -> {
             String lot = invocation.getArgument(0);
             if (lot != null && lot.indexOf('!') >= 0) {
                 Consumer<String> addProblem = invocation.getArgument(1);
@@ -388,11 +417,63 @@ class TestSegmentationService {
                 })
                 .toList();
         service.checkReagentLots(problems, sls);
-        verify(mockReagentLotValidator, times(4)).validate(any(), any());
+        verify(mockLotValidator, times(4)).validate(any(), any());
         Arrays.stream(expectedLots).filter(Objects::nonNull)
-                .forEach(lot -> verify(mockReagentLotValidator).validate(eq(lot), any()));
+                .forEach(lot -> verify(mockLotValidator).validate(eq(lot), any()));
         Zip.of(sls.stream(), Arrays.stream(expectedLots)).forEach((sl, lot) -> assertEquals(lot, sl.getReagentLot()));
         assertThat(problems).containsExactlyInAnyOrder("Bad lot: Alpha!", "Bad lot: Beta!");
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void testCheckProteinPanels(boolean ok) {
+        List<PanelLot> pls = List.of(
+                new PanelLot("alpha", "1", SlideCosting.SGP),
+                new PanelLot("BETA", "2", SlideCosting.Faculty),
+                new PanelLot("Alpha", "3", SlideCosting.SGP)
+        );
+        if (!ok) {
+            pls = concat(pls, List.of(
+                    new PanelLot(null, "1", SlideCosting.SGP),
+                    new PanelLot("foozle", "2", SlideCosting.SGP),
+                    new PanelLot("Beta", "3!", SlideCosting.SGP),
+                    new PanelLot("Alpha",  "4", SlideCosting.SGP),
+                    new PanelLot("Gamma",  "", SlideCosting.SGP),
+                    new PanelLot("Delta", "6", null)
+            ));
+        }
+        List<SegmentationLabware> sls = List.of(new SegmentationLabware(), new SegmentationLabware());
+        sls.get(0).setProteinPanels(pls.subList(0,2));
+        sls.get(1).setProteinPanels(pls.subList(2, pls.size()));
+        when(mockLotValidator.validate(any(), any())).then(invocation -> {
+            String lot = invocation.getArgument(0);
+            if (lot != null && lot.indexOf('!') >= 0) {
+                Consumer<String> addProblem = invocation.getArgument(1);
+                addProblem.accept("Bad lot: "+lot);
+                return false;
+            }
+            return true;
+        });
+        UCMap<ProteinPanel> pMap = UCMap.from(ProteinPanel::getName,
+                new ProteinPanel(1, "Alpha", true),
+                new ProteinPanel(2, "Beta", true),
+                new ProteinPanel(3, "Gamma", true),
+                new ProteinPanel(4, "Delta", true)
+        );
+        List<String> problems = new ArrayList<>();
+        service.checkProteinPanels(problems, pMap, sls);
+        if (ok) {
+            assertThat(problems).isEmpty();
+        } else {
+            assertThat(problems).containsExactlyInAnyOrder(
+                    "Bad lot: 3!",
+                    "Protein panel name not specified.",
+                    "Unknown protein panel name: [\"foozle\"]",
+                    "Protein panel given multiple times for the same labware: [Alpha]",
+                    "Protein panel lot not specified.",
+                    "Protein panel costing not specified."
+            );
+        }
     }
 
     @Test
@@ -452,6 +533,8 @@ class TestSegmentationService {
         final LabwareType lt = EntityFactory.getTubeType();
         List<Labware> lws = IntStream.range(0,5).mapToObj(i -> EntityFactory.makeEmptyLabware(lt)).toList();
         data.labware = UCMap.from(lws, Labware::getBarcode);
+        ProteinPanel panel = new ProteinPanel(1, "Alpha", true);
+        data.panels = UCMap.from(ProteinPanel::getName, panel);
         List<SegmentationLabware> lwReqs = lws.stream()
                 .map(lw -> {
                     SegmentationLabware lwReq = new SegmentationLabware();
@@ -486,16 +569,20 @@ class TestSegmentationService {
                 List<WorkOp> newWorkOps = invocation.getArgument(7);
                 newWorkOps.add(new WorkOp(work, op));
             }
+            if (index==4) {
+                List<OpPanel> newOpPanels = invocation.getArgument(8);
+                newOpPanels.add(new OpPanel(panel, op.getId(), lw.getId(), "123456", SlideCosting.SGP));
+            }
             return op;
-        }).when(service).recordOp(any(), any(), any(), any(), any(), any(), any(), any());
+        }).when(service).recordOp(any(), any(), any(), any(), any(), any(), any(), any(), any());
 
         OperationResult opRes = service.record(lwReqs, user, data);
 
-        verify(service, times(lws.size())).recordOp(any(), any(), any(), any(), any(), any(), any(), any());
+        verify(service, times(lws.size())).recordOp(any(), any(), any(), any(), any(), any(), any(), any(), any());
 
         for (int i = 0; i < lws.size(); ++i) {
             verify(service).recordOp(same(user), same(data), same(lwReqs.get(i)), same(lws.get(i)),
-                    any(), any(), any(), any());
+                    any(), any(), any(), any(), any());
         }
 
         verify(mockOpRepo).saveAll(List.of(ops.get(0), ops.get(4)));
@@ -503,6 +590,7 @@ class TestSegmentationService {
                 new LabwareNote(null, lws.get(4).getId(), ops.get(4).getId(), "costing", "Faculty")));
         verify(mockOpComRepo).saveAll(List.of(new OperationComment(null, comment, ops.get(2).getId(), 500, 600, null),
                 new OperationComment(null, comment, ops.get(4).getId(), 500, 600, null)));
+        verify(mockOpPanelRepo).saveAll(List.of(new OpPanel(panel, ops.get(4).getId(), lws.get(4).getId(), "123456", SlideCosting.SGP)));
         ArgumentCaptor<Stream<WorkOp>> workOpCaptor = streamCaptor();
         verify(mockWorkService).linkWorkOps(workOpCaptor.capture());
         assertThat(workOpCaptor.getValue()).containsExactly(new WorkOp(work, ops.get(3)), new WorkOp(work, ops.get(4)));
@@ -523,6 +611,11 @@ class TestSegmentationService {
         SegmentationLabware lwReq = new SegmentationLabware();
         SegmentationData data = new SegmentationData(List.of());
         data.opType = EntityFactory.makeOperationType("opname", null);
+        ProteinPanel[] panels = {
+                new ProteinPanel(1, "Alpha", true),
+                new ProteinPanel(2, "Beta", false),
+        };
+        data.panels = UCMap.from(ProteinPanel::getName, panels);
         User user = EntityFactory.getUser();
         Labware lw = EntityFactory.getTube();
         lwReq.setBarcode(lw.getBarcode());
@@ -546,6 +639,7 @@ class TestSegmentationService {
         } else {
             comments = null;
         }
+        lwReq.setProteinPanels(List.of(new PanelLot("Alpha", "123456", SlideCosting.SGP), new PanelLot("Beta", "654321", SlideCosting.Faculty)));
         if (hasWork) {
             lwReq.setWorkNumber("SGP1");
             work = EntityFactory.makeWork("SGP1");
@@ -563,7 +657,8 @@ class TestSegmentationService {
         final List<LabwareNote> newNotes = new ArrayList<>();
         final List<OperationComment> newOpComs = new ArrayList<>();
         final List<WorkOp> newWorkOps = new ArrayList<>();
-        assertSame(op, service.recordOp(user, data, lwReq, lw, opsToUpdate, newNotes, newOpComs, newWorkOps));
+        final List<OpPanel> newOpPanels = new ArrayList<>();
+        assertSame(op, service.recordOp(user, data, lwReq, lw, opsToUpdate, newNotes, newOpComs, newWorkOps, newOpPanels));
 
         verify(mockOpService).createOperationInPlace(data.opType, user, lw, null, null);
 
@@ -587,6 +682,10 @@ class TestSegmentationService {
         } else {
             assertThat(newOpComs).isEmpty();
         }
+        assertThat(newOpPanels).containsExactlyInAnyOrder(
+                new OpPanel(panels[0], op.getId(), lw.getId(), "123456", SlideCosting.SGP),
+                new OpPanel(panels[1], op.getId(), lw.getId(), "654321", SlideCosting.Faculty)
+        );
     }
 
     private static <E> void assertMayContain(Collection<E> cl, E item) {

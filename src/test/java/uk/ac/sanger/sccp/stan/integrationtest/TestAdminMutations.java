@@ -66,6 +66,8 @@ public class TestAdminMutations {
     private BioRiskRepo bioRiskRepo;
     @Autowired
     private CellClassRepo cellClassRepo;
+    @Autowired
+    private ProteinPanelRepo proteinPanelRepo;
 
     @Test
     @Transactional
@@ -215,5 +217,11 @@ public class TestAdminMutations {
     @Transactional
     public void testAddCellClassAndSetEnabled() throws Exception {
         testGenericAddNewAndSetEnabled("CellClass", "name", "bananas", cellClassRepo::findByName, CellClass::getName, "cellClasses");
+    }
+
+    @Test
+    @Transactional
+    public void testAddProteinPanelAndSetEnabled() throws Exception {
+        testGenericAddNewAndSetEnabled("ProteinPanel", "name", "bananas", proteinPanelRepo::findByName, ProteinPanel::getName, "proteinPanels");
     }
 }
