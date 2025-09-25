@@ -13,6 +13,7 @@ import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.UCMap;
 
+import javax.persistence.EntityNotFoundException;
 import java.time.*;
 import java.util.*;
 import java.util.stream.Stream;
@@ -82,6 +83,27 @@ public class CompletionServiceImp extends BaseResultService implements Completio
         return execute(user, request.getLabware(), opType, work, lwMap, commentMap, priorOpMap);
     }
 
+    @Override
+    public List<Address> getProbeHybSlotAddresses(String barcode) {
+        Labware lw = lwRepo.getByBarcode(barcode);
+        Set<String> problems = new LinkedHashSet<>();
+        List<OperationType> opTypes = probeHybOpTypes(problems);
+        if (!problems.isEmpty()) {
+            throw new EntityNotFoundException("Failed to get operation types from database.");
+        }
+        Map<Integer, Operation> opMap = lookUpLatestOps(problems, opTypes, List.of(lw), false);
+        Operation op = opMap.get(lw.getId());
+        if (op==null) {
+            return List.of();
+        }
+        return op.getActions().stream()
+                .filter(ac -> ac.getDestination().getLabwareId().equals(lw.getId()))
+                .map(ac -> ac.getDestination().getAddress())
+                .sorted()
+                .distinct()
+                .toList();
+    }
+
     /**
      * Checks that the specified op type exists and seems suitable
      * @param problems receptacle for problems
@@ -110,6 +132,11 @@ public class CompletionServiceImp extends BaseResultService implements Completio
             problems.add("Operation type "+opType.getName()+" cannot be used in this operation.");
             return null;
         }
+        return probeHybOpTypes(problems);
+    }
+
+    /** Gets the probe hybridisation op types */
+    public List<OperationType> probeHybOpTypes(Collection<String> problems) {
         List<String> precedingOpNames = PROBE_HYBRIDISATION_NAMES;
         List<OperationType> opTypes = opTypeRepo.findByNameIn(precedingOpNames);
         if (opTypes.isEmpty()) {

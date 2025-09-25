@@ -14,6 +14,7 @@ import uk.ac.sanger.sccp.stan.request.CompletionRequest.SampleAddressComment;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
+import uk.ac.sanger.sccp.utils.Zip;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -40,6 +41,8 @@ public class TestCompletionService {
     @Mock
     private OperationRepo mockOpRepo;
     @Mock
+    private LabwareRepo mockLwRepo;
+    @Mock
     private Clock mockClock;
     @Mock
     private OperationCommentRepo mockOpComRepo;
@@ -64,6 +67,31 @@ public class TestCompletionService {
     @AfterEach
     public void cleanUp() throws Exception {
         mocking.close();
+    }
+
+    @Test
+    public void testGetProbeHybSlotAddresses() {
+        Sample sam = EntityFactory.getSample();
+        Labware lw = EntityFactory.makeLabware(EntityFactory.makeLabwareType(1,4), sam, sam, sam, sam);
+        List<OperationType> opTypes = PROBE_HYBRIDISATION_NAMES.stream()
+                .map(name -> EntityFactory.makeOperationType(name, null))
+                .toList();
+        List<Slot> lwSlots = lw.getSlots();
+        List<Slot> slots = List.of(lwSlots.get(0), lwSlots.get(3));
+        Address[] usedAddresses = slots.stream().map(Slot::getAddress).toArray(Address[]::new);
+        List<Action> actions = Zip.enumerate(slots.stream())
+                .map((i, slot) -> new Action(100+i, 10, slot, slot, sam, sam))
+                .toList();
+        Operation op = new Operation(10, opTypes.getFirst(), LocalDateTime.now(), actions, EntityFactory.getUser());
+        when(mockLwRepo.getByBarcode(any())).thenReturn(lw);
+        doReturn(Map.of(lw.getId(), op)).when(service).lookUpLatestOps(any(), any(), any(), anyBoolean());
+        doReturn(opTypes).when(service).probeHybOpTypes(any());
+
+        assertThat(service.getProbeHybSlotAddresses(lw.getBarcode())).containsExactly(usedAddresses);
+
+        verify(mockLwRepo).getByBarcode(lw.getBarcode());
+        verify(service).probeHybOpTypes(any());
+        verify(service).lookUpLatestOps(any(), same(opTypes), eq(List.of(lw)), eq(false));
     }
 
     @Test

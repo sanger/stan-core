@@ -2333,6 +2333,8 @@ type Query {
     labwareBioRiskCodes(barcode: String!): [SampleBioRisk!]!
     """Reloads saved slot copy information."""
     reloadSlotCopy(operationType: String!, workNumber: String!, lpNumber: String!): SlotCopyLoad
+    """Gets info about which slots have been used in probe hybridisation."""
+    probeHybSlots(barcode: String!): [Address!]!
 
     """Get the specified storage location."""
     location(locationBarcode: String!): Location!

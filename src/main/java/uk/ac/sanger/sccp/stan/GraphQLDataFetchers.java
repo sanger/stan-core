@@ -91,6 +91,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final AnalyserScanDataService analyserScanDataService;
     final LabwareNoteService lwNoteService;
     final SlotCopyRecordService slotCopyRecordService;
+    final CompletionService completionService;
 
     @Autowired
     public GraphQLDataFetchers(ObjectMapper objectMapper, AuthenticationComponent authComp, UserRepo userRepo,
@@ -116,7 +117,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                CleanedOutSlotService cleanedOutSlotService,
                                FlagLookupService flagLookupService, MeasurementService measurementService,
                                GraphService graphService, CommentRepo commentRepo,
-                               AnalyserScanDataService analyserScanDataService, LabwareNoteService lwNoteService, SlotCopyRecordService slotCopyRecordService) {
+                               AnalyserScanDataService analyserScanDataService, LabwareNoteService lwNoteService,
+                               SlotCopyRecordService slotCopyRecordService, CompletionService completionService) {
         super(objectMapper, authComp, userRepo);
         this.sessionConfig = sessionConfig;
         this.versionInfo = versionInfo;
@@ -169,6 +171,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.analyserScanDataService = analyserScanDataService;
         this.lwNoteService = lwNoteService;
         this.slotCopyRecordService = slotCopyRecordService;
+        this.completionService = completionService;
     }
 
     public DataFetcher<User> getUser() {
@@ -559,6 +562,13 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
             String workNumber = dfe.getArgument("workNumber");
             String lpNumber = dfe.getArgument("lpNumber");
             return slotCopyRecordService.load(opname, workNumber, lpNumber);
+        };
+    }
+
+    public DataFetcher<List<Address>> getProbeHybSlots() {
+        return dfe -> {
+            String barcode = dfe.getArgument("barcode");
+            return completionService.getProbeHybSlotAddresses(barcode);
         };
     }
 
