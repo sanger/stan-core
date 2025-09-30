@@ -5,7 +5,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
-import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 /**
  * @author dr6
@@ -25,12 +24,7 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
                 .antMatchers("/graphql").permitAll()
                 .antMatchers("/graphiql").permitAll()
             .and()
-                .csrf()
-                .ignoringRequestMatchers(r -> "/files".equalsIgnoreCase(r.getRequestURI()))
-                .ignoringRequestMatchers(r -> "/register/section".equalsIgnoreCase(r.getRequestURI()))
-                .ignoringRequestMatchers(r -> "/register/block".equalsIgnoreCase(r.getRequestURI()))
-                .ignoringRequestMatchers(r -> "/register/original".equalsIgnoreCase(r.getRequestURI()))
-                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse());
+                .csrf().disable();
     }
 
 
