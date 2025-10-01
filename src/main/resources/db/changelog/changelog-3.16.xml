@@ -1,0 +1,55 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+    <changeSet id="3.16.0" author="dr6">
+        <createTable tableName="protein_panel">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="name" type="VARCHAR(64)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValue="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="3.16.1" author="dr6">
+        <createTable tableName="op_panel">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="operation_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_op_panel_operation" referencedTableName="operation" referencedColumnNames="id"/>
+            </column>
+            <column name="protein_panel_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_op_panel_protein_panel" referencedTableName="protein_panel" referencedColumnNames="id"/>
+            </column>
+            <column name="labware_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_op_panel_labware" referencedTableName="labware" referencedColumnNames="id"/>
+            </column>
+            <column name="lot_number" type="VARCHAR(16)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="costing" type="ENUM('Faculty', 'SGP', 'Warranty_replacement')">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="op_panel" indexName="uk_op_panel_operation_protein_panel" unique="true">
+            <column name="operation_id"/>
+            <column name="protein_panel_id"/>
+        </createIndex>
+        <rollback>
+            <dropAllForeignKeyConstraints baseTableName="op_panel"/>
+            <dropTable tableName="op_panel"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

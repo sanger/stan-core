@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Objects;
 
 import static uk.ac.sanger.sccp.utils.BasicUtils.nullToEmpty;
+import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
  * A request to record segmentation on one or more labware.
@@ -69,6 +70,65 @@ public class SegmentationRequest {
         return Objects.hash(operationType, labware);
     }
 
+    /** Panel name and lot number */
+    public static class PanelLot {
+        private String name;
+        private String lot;
+        private SlideCosting costing;
+
+        public PanelLot() {} // required no-arg constructor
+
+        public PanelLot(String name, String lot, SlideCosting costing) {
+            this.name = name;
+            this.lot = lot;
+            this.costing = costing;
+        }
+
+        public String getName() {
+            return this.name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public String getLot() {
+            return this.lot;
+        }
+
+        public void setLot(String lot) {
+            this.lot = lot;
+        }
+
+        public SlideCosting getCosting() {
+            return this.costing;
+        }
+
+        public void setCosting(SlideCosting costing) {
+            this.costing = costing;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (o == null || getClass() != o.getClass()) return false;
+            PanelLot that = (PanelLot) o;
+            return (Objects.equals(this.name, that.name)
+                    && Objects.equals(this.lot, that.lot)
+                    && this.costing == that.costing
+            );
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(name, lot, costing);
+        }
+
+        @Override
+        public String toString() {
+            return String.format("(%s, %s, %s)", repr(name), repr(lot), costing);
+        }
+    }
+
     /**
      * Details about labware in a segmentation request.
      */
@@ -79,6 +139,7 @@ public class SegmentationRequest {
         private SlideCosting costing;
         private LocalDateTime performed;
         private String reagentLot;
+        private List<PanelLot> proteinPanels = List.of();
 
         /**
          * The barcode of the labware.
@@ -143,6 +204,14 @@ public class SegmentationRequest {
             this.reagentLot = reagentLot;
         }
 
+        public List<PanelLot> getProteinPanels() {
+            return this.proteinPanels;
+        }
+
+        public void setProteinPanels(List<PanelLot> proteinPanels) {
+            this.proteinPanels = nullToEmpty(proteinPanels);
+        }
+
         @Override
         public String toString() {
             return BasicUtils.describe(this)
@@ -152,6 +221,7 @@ public class SegmentationRequest {
                     .add("costing", costing)
                     .add("performed", performed==null ? null : performed.toString())
                     .add("reagentLot", reagentLot)
+                    .add("proteinPanels", proteinPanels)
                     .reprStringValues()
                     .toString();
         }
@@ -167,6 +237,7 @@ public class SegmentationRequest {
                     && this.costing == that.costing
                     && Objects.equals(this.performed, that.performed)
                     && Objects.equals(this.reagentLot, that.reagentLot)
+                    && Objects.equals(this.proteinPanels, that.proteinPanels)
             );
         }
 

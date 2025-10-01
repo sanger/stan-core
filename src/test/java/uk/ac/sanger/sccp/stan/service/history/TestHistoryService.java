@@ -79,6 +79,8 @@ public class TestHistoryService {
     @Mock
     private SolutionRepo mockSolutionRepo;
     @Mock
+    private OpPanelRepo mockOpPanelRepo;
+    @Mock
     private ReagentActionDetailService mockRadService;
     @Mock
     private SlotRegionService mockSlotRegionService;
@@ -100,7 +102,7 @@ public class TestHistoryService {
         service = spy(new HistoryServiceImp(mockOpRepo, mockOpTypeRepo, mockLwRepo, mockSampleRepo, mockTissueRepo, mockDonorRepo,
                 mockReleaseRepo, mockDestructionRepo, mockOpCommentRepo, mockRoiRepo, mockSnapshotRepo, mockWorkRepo,
                 mockMeasurementRepo, mockLwNoteRepo, mockResultOpRepo, mockStainTypeRepo, mockLwProbeRepo,
-                mockFlagRepo, mockOpSolRepo, mockSolutionRepo,
+                mockFlagRepo, mockOpSolRepo, mockSolutionRepo, mockOpPanelRepo,
                 mockRadService, mockSlotRegionService, mockFlagLookupService));
     }
 
@@ -972,6 +974,21 @@ public class TestHistoryService {
     }
 
     @Test
+    public void testLoadOpPanels() {
+        OpPanel[] panels = {
+                new OpPanel(20, new ProteinPanel(1, "Alpha", true), 10, 100, "11", SlideCosting.SGP),
+                new OpPanel(21, new ProteinPanel(2, "Beta", true), 10, 100, "22", SlideCosting.Faculty),
+                new OpPanel(22, new ProteinPanel(1, "Beta", true), 11, 200, "33", SlideCosting.SGP),
+        };
+        when(mockOpPanelRepo.findAllByOperationIdIn(any())).then(invocation -> {
+            Collection<Integer> opIds = invocation.getArgument(0);
+            return Arrays.stream(panels).filter(p -> opIds.contains(p.getOperationId())).collect(toList());
+        });
+        assertEquals(Map.of(), service.loadOpPanels(Set.of(1,2)));
+        assertEquals(Map.of(10, List.of(panels[0], panels[1])), service.loadOpPanels(Set.of(1,10)));
+    }
+
+    @Test
     public void testLoadOpProbes() {
         ProbePanel p1 = new ProbePanel(1, ProbePanel.ProbeType.xenium, "probe1");
         ProbePanel p2 = new ProbePanel(2, ProbePanel.ProbeType.xenium, "probe2");
@@ -1173,6 +1190,13 @@ public class TestHistoryService {
         Roi roi = new Roi(slotId, 6, 7, "roi1");
         String detail = service.roiDetail(roi, Map.of(slotId, slot));
         assertEquals("ROI (6, B3): roi1", detail);
+    }
+
+    @Test
+    public void testOpPanelDetail() {
+        OpPanel opPanel = new OpPanel(1, new ProteinPanel(1, "Alpha", true), 10, 100, "11", SlideCosting.SGP);
+        String detail = service.opPanelDetail(opPanel);
+        assertEquals("Alpha (11, SGP)", detail);
     }
 
     @ParameterizedTest

@@ -120,6 +120,7 @@ public class GraphQLProvider {
                         .dataFetcher("measurementValueFromLabwareOrParent", graphQLDataFetchers.getMeasurementValueFromLabwareOrParent())
                         .dataFetcher("rois", graphQLDataFetchers.labwareRois())
                         .dataFetcher("runRois", graphQLDataFetchers.labwareRunRois())
+                        .dataFetcher("proteinPanels", graphQLDataFetchers.getProteinPanels())
 
                         .dataFetcher("users", graphQLDataFetchers.getUsers())
                         .dataFetcher("planData", graphQLDataFetchers.getPlanData())
@@ -201,6 +202,8 @@ public class GraphQLProvider {
                         .dataFetcher("setWorkTypeEnabled", transact(graphQLMutation.setWorkTypeEnabled()))
                         .dataFetcher("addCellClass", transact(graphQLMutation.addCellClass()))
                         .dataFetcher("setCellClassEnabled", transact(graphQLMutation.setCellClassEnabled()))
+                        .dataFetcher("addProteinPanel", transact(graphQLMutation.addProteinPanel()))
+                        .dataFetcher("setProteinPanelEnabled", transact(graphQLMutation.setProteinPanelEnabled()))
 
                         .dataFetcher("createWork", transact(graphQLMutation.createWork()))
                         .dataFetcher("updateWorkStatus", transact(graphQLMutation.updateWorkStatus()))

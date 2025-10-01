@@ -54,6 +54,7 @@ public class HistoryServiceImp implements HistoryService {
     private final LabwareFlagRepo flagRepo;
     private final OperationSolutionRepo opSolRepo;
     private final SolutionRepo solutionRepo;
+    private final OpPanelRepo opPanelRepo;
     private final ReagentActionDetailService reagentActionDetailService;
     private final SlotRegionService slotRegionService;
     private final FlagLookupService flagLookupService;
@@ -64,7 +65,7 @@ public class HistoryServiceImp implements HistoryService {
                              DestructionRepo destructionRepo, OperationCommentRepo opCommentRepo, RoiRepo roiRepo,
                              SnapshotRepo snapshotRepo, WorkRepo workRepo, MeasurementRepo measurementRepo,
                              LabwareNoteRepo labwareNoteRepo, ResultOpRepo resultOpRepo,
-                             StainTypeRepo stainTypeRepo, LabwareProbeRepo lwProbeRepo, LabwareFlagRepo flagRepo, OperationSolutionRepo opSolRepo, SolutionRepo solutionRepo,
+                             StainTypeRepo stainTypeRepo, LabwareProbeRepo lwProbeRepo, LabwareFlagRepo flagRepo, OperationSolutionRepo opSolRepo, SolutionRepo solutionRepo, OpPanelRepo opPanelRepo,
                              ReagentActionDetailService reagentActionDetailService,
                              SlotRegionService slotRegionService, FlagLookupService flagLookupService) {
         this.opRepo = opRepo;
@@ -87,6 +88,7 @@ public class HistoryServiceImp implements HistoryService {
         this.flagRepo = flagRepo;
         this.opSolRepo = opSolRepo;
         this.solutionRepo = solutionRepo;
+        this.opPanelRepo = opPanelRepo;
         this.reagentActionDetailService = reagentActionDetailService;
         this.slotRegionService = slotRegionService;
         this.flagLookupService = flagLookupService;
@@ -645,6 +647,19 @@ public class HistoryServiceImp implements HistoryService {
         return notes.stream().collect(Collectors.groupingBy(LabwareNote::getOperationId));
     }
 
+    /**
+     * Loads op panels for the specified ops
+     * @param opIds the ids of ops
+     * @return a map of op id to list of op panels
+     */
+    public Map<Integer, List<OpPanel>> loadOpPanels(Collection<Integer> opIds) {
+        List<OpPanel> opPanels = opPanelRepo.findAllByOperationIdIn(opIds);
+        if (opPanels.isEmpty()) {
+            return Map.of();
+        }
+        return opPanels.stream().collect(Collectors.groupingBy(OpPanel::getOperationId));
+    }
+
     public String describeSeconds(String value) {
         int seconds;
         try {
@@ -707,6 +722,10 @@ public class HistoryServiceImp implements HistoryService {
     public String roiDetail(Roi roi, Map<Integer, Slot> slotIdMap) {
         Address address = slotIdMap.get(roi.getSlotId()).getAddress();
         return String.format("ROI (%s, %s): %s", roi.getSampleId(), address, roi.getRoi());
+    }
+
+    public String opPanelDetail(OpPanel opPanel) {
+        return String.format("%s (%s, %s)", opPanel.getProteinPanel().getName(), opPanel.getLotNumber(), opPanel.getCosting());
     }
 
     /**
@@ -852,6 +871,7 @@ public class HistoryServiceImp implements HistoryService {
         var opMeasurements = loadOpMeasurements(opIds);
         var opLabwareNotes = loadOpLabwareNotes(opIds);
         var opRois = loadOpRois(opIds);
+        var opPanels = loadOpPanels(opIds);
         var opStainTypes = stainTypeRepo.loadOperationStainTypes(opIds);
         var opReagentActions = reagentActionDetailService.loadReagentTransfers(opIds);
         var opFlags = loadLabwareFlags(operations);
@@ -891,6 +911,7 @@ public class HistoryServiceImp implements HistoryService {
             List<Measurement> measurements = opMeasurements.getOrDefault(op.getId(), List.of());
             List<LabwareNote> lwNotes = opLabwareNotes.getOrDefault(op.getId(), List.of());
             List<Roi> rois = opRois.getOrDefault(op.getId(), List.of());
+            List<OpPanel> panels = opPanels.getOrDefault(op.getId(), List.of());
             List<ReagentActionDetail> reagentActions = opReagentActions.getOrDefault(op.getId(), List.of());
             List<LabwareProbe> lwProbes = opProbes.getOrDefault(op.getId(), List.of());
             List<LabwareFlag> flags = opFlags.getOrDefault(op.getId(), List.of());
@@ -999,6 +1020,7 @@ public class HistoryServiceImp implements HistoryService {
                         entry.addDetail(detail);
                     }
                 });
+                panels.stream().map(this::opPanelDetail).forEach(entry::addDetail);
 
                 entries.add(entry);
             }

@@ -4,7 +4,7 @@ mutation {
         labware: [{
             barcode: "[BC]"
             workNumber: "[WORK]"
-            commentIds: [2]
+            commentIds: [2],
         }]
     }) {
         labware {
