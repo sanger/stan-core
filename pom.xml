@@ -11,7 +11,7 @@
 	</parent>
 	<groupId>uk.ac.sanger.sccp</groupId>
 	<artifactId>stan</artifactId>
-	<version>3.15.3</version>
+	<version>3.15.4</version>
 	<name>stan</name>
 	<description>Spatial Genomics LIMS</description>
 
