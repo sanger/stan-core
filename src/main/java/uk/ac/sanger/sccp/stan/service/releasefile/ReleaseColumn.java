@@ -38,7 +38,7 @@ public enum ReleaseColumn implements TsvColumn<ReleaseEntry> {
     Source_barcode(ReleaseEntry::getSourceBarcode, ReleaseFileMode.CDNA, ReleaseFileOption.Visium),
     Source_address(ReleaseEntry::getSourceAddress, ReleaseFileMode.CDNA, ReleaseFileOption.Visium),
     Stain_type(ReleaseEntry::getStainType, ReleaseFileOption.Histology, ReleaseFileOption.RNAscope_IHC, ReleaseFileOption.Visium, ReleaseFileOption.Xenium),
-    Stain_QC_comment(ReleaseEntry::getStainQcComment, ReleaseFileOption.Histology, ReleaseFileOption.RNAscope_IHC, ReleaseFileOption.Visium, ReleaseFileOption.Xenium),
+    Imaging_QC_comment(ReleaseEntry::getImagingQcComment, ReleaseFileOption.Histology, ReleaseFileOption.RNAscope_IHC, ReleaseFileOption.Visium, ReleaseFileOption.Xenium),
     RNA_analysis_result(ReleaseEntry::getRnaAnalysisResult, ReleaseFileOption.Histology),
     RNA_analysis_comment(ReleaseEntry::getRnaAnalysisComment, ReleaseFileOption.Histology),
     Bond_barcode(ReleaseEntry::getBondBarcode, ReleaseFileOption.RNAscope_IHC),

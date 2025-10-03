@@ -1,6 +1,6 @@
 mutation {
     recordStainResult(request: {
-        operationType: "Stain QC"
+        operationType: "Imaging QC"
         workNumber: "SGP500"
         labwareResults: [
             {
