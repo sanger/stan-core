@@ -210,7 +210,7 @@ public class TestRegisterValidation {
                     BlockRegisterRequest br = new BlockRegisterRequest();
                     br.setDonorIdentifier(s);
                     br.setLifeStage(LifeStage.adult);
-                    br.setSpecies("Human");
+                    br.setSpecies(Species.HUMAN_NAME);
                     return br;
                 })
                 .collect(toList())
@@ -440,33 +440,33 @@ public class TestRegisterValidation {
         LocalDate future1 = LocalDate.now().plusDays(7);
         LocalDate future2 = future1.plusDays(2);
         return Arrays.stream(new Object[][]{
-                { toBrr("Human", LifeStage.fetal, LocalDate.of(2022,1,20)) },
+                { toBrr(Species.HUMAN_NAME, LifeStage.fetal, LocalDate.of(2022,1,20)) },
                 { toBrr("Hamster", LifeStage.fetal, null) },
-                { toBrr("Human", LifeStage.adult, null) },
-                { toBrr("Human", LifeStage.paediatric, null) },
+                { toBrr(Species.HUMAN_NAME, LifeStage.adult, null) },
+                { toBrr(Species.HUMAN_NAME, LifeStage.paediatric, null) },
 
-                { toBrr("Human", LifeStage.fetal, LocalDate.of(2021,5,6)),
-                        toBrr("Human", LifeStage.paediatric, null),
+                { toBrr(Species.HUMAN_NAME, LifeStage.fetal, LocalDate.of(2021,5,6)),
+                        toBrr(Species.HUMAN_NAME, LifeStage.paediatric, null),
                         toBrr("Hamster", LifeStage.fetal, null),
                         toBrr(null, LifeStage.fetal, null),
-                        toBrr("Human", null, null),
+                        toBrr(Species.HUMAN_NAME, null, null),
                 },
 
-                { toBrr("Human", LifeStage.fetal, null),
+                { toBrr(Species.HUMAN_NAME, LifeStage.fetal, null),
                         "Human fetal samples must have a collection date." },
-                { toBrr("Human", LifeStage.fetal, future1),
+                { toBrr(Species.HUMAN_NAME, LifeStage.fetal, future1),
                         toBrr("Hamster", LifeStage.adult, future2),
                         "Invalid sample collection dates: ["+future1+", "+future2+"]"},
-                { toBrr("Human", LifeStage.fetal, LocalDate.of(2021,1,2), "Ext1"),
-                        toBrr("Human", LifeStage.fetal, LocalDate.of(2021,1,3), "ext1"),
+                { toBrr(Species.HUMAN_NAME, LifeStage.fetal, LocalDate.of(2021,1,2), "Ext1"),
+                        toBrr(Species.HUMAN_NAME, LifeStage.fetal, LocalDate.of(2021,1,3), "ext1"),
                         "Inconsistent collection dates specified for tissue EXT1."},
 
-                { toBrr("Human", LifeStage.fetal, LocalDate.of(2020,2,1), "EXT2"),
-                        toBrr("Human", LifeStage.adult, LocalDate.of(2020,2,2), "ext1"),
-                                toBrr("Human", LifeStage.adult, null, "ext1"),
+                { toBrr(Species.HUMAN_NAME, LifeStage.fetal, LocalDate.of(2020,2,1), "EXT2"),
+                        toBrr(Species.HUMAN_NAME, LifeStage.adult, LocalDate.of(2020,2,2), "ext1"),
+                                toBrr(Species.HUMAN_NAME, LifeStage.adult, null, "ext1"),
                         toBrr(null, null, null),
-                        toBrr("Human", LifeStage.fetal, null),
-                        toBrr("Human", LifeStage.adult, future1),
+                        toBrr(Species.HUMAN_NAME, LifeStage.fetal, null),
+                        toBrr(Species.HUMAN_NAME, LifeStage.adult, future1),
                         "Human fetal samples must have a collection date.",
                         "Invalid sample collection date: ["+future1+"]",
                         "Inconsistent collection dates specified for tissue EXT1."},
@@ -480,7 +480,7 @@ public class TestRegisterValidation {
     @CsvSource({"false,false", "true,false", "true,true"})
     public void testValidateWorks(boolean anyWorks, boolean anyProblem) {
         List<BlockRegisterRequest> brrs = List.of(
-                toBrr("Human", LifeStage.adult, null)
+                toBrr(Species.HUMAN_NAME, LifeStage.adult, null)
         );
         List<String> workNumbers;
         List<Work> works;
@@ -611,7 +611,7 @@ public class TestRegisterValidation {
 
     /** @see #testValidateDonors */
     private static Stream<Arguments> donorData() {
-        Species human = new Species(1, "Human");
+        Species human = new Species(1, Species.HUMAN_NAME);
         Species hamster = new Species(2, "Hamster");
         Species dodo = new Species(3, "Dodo");
         dodo.setEnabled(false);
@@ -625,35 +625,35 @@ public class TestRegisterValidation {
         return Stream.of(
                 // Valid:
                 Arguments.of(List.of("DONOR1", "Donor2"), List.of(LifeStage.adult, LifeStage.fetal),
-                        List.of("human", "hamster"),
+                        List.of(Species.HUMAN_NAME, "hamster"),
                         List.of(), knownSpecies,
                         List.of(new Donor(null, "DONOR1", LifeStage.adult, human),
                                 new Donor(null, "Donor2", LifeStage.fetal, hamster)),
                         List.of()),
                 Arguments.of(List.of("Donor1", "DONOR1"), List.of(LifeStage.adult, LifeStage.adult),
-                        List.of("human", "human"),
+                        List.of(Species.HUMAN_NAME, Species.HUMAN_NAME),
                         List.of(), knownSpecies,
                         List.of(new Donor(null, "Donor1", LifeStage.adult, human)),
                         List.of()),
                 Arguments.of(List.of("DIRK", "jeff"),
-                        List.of(dirk.getLifeStage(), jeff.getLifeStage()), List.of("human", "hamster"),
+                        List.of(dirk.getLifeStage(), jeff.getLifeStage()), List.of(Species.HUMAN_NAME, "hamster"),
                         List.of(dirk, jeff), knownSpecies, List.of(dirk, jeff),
                         List.of()),
 
                 // Invalid:
                 Arguments.of(List.of("Dirk", "jeff"), List.of(LifeStage.adult, LifeStage.paediatric),
-                        List.of("human", "hamster"),
+                        List.of(Species.HUMAN_NAME, "hamster"),
                         List.of(dirk, jeff), knownSpecies, List.of(dirk, jeff),
                         List.of("Wrong life stage given for existing donor Jeff")),
                 Arguments.of(List.of("Donor1", "DONOR1"), List.of(LifeStage.adult, LifeStage.fetal),
-                        List.of("human", "human"),
+                        List.of(Species.HUMAN_NAME, Species.HUMAN_NAME),
                         List.of(), knownSpecies, List.of(new Donor(null, "Donor1", LifeStage.adult, human)),
                         List.of("Multiple different life stages specified for donor Donor1")),
                 Arguments.of(Arrays.asList(null, null), Arrays.asList(null, null),
-                        List.of("human", "human"),
+                        List.of(Species.HUMAN_NAME, Species.HUMAN_NAME),
                         List.of(), knownSpecies, List.of(), List.of("Missing donor identifier.")),
                 Arguments.of(List.of(""), List.of(LifeStage.adult),
-                        List.of("human", "human"),
+                        List.of(Species.HUMAN_NAME, Species.HUMAN_NAME),
                         List.of(), knownSpecies, List.of(), List.of("Missing donor identifier.")),
                 Arguments.of(List.of("Donor1"), List.of(LifeStage.adult),
                         List.of(""), List.of(), knownSpecies, List.of(new Donor(null, "Donor1", LifeStage.adult, null)),
@@ -662,11 +662,11 @@ public class TestRegisterValidation {
                         List.of(), knownSpecies, List.of(new Donor(null, "Donor1", LifeStage.adult, null)),
                                 List.of("Unknown species: \"Bananas\"")),
                 Arguments.of(List.of("Donor1", "DONOR1"), List.of(LifeStage.adult, LifeStage.adult),
-                        List.of("human", "hamster"),
+                        List.of(Species.HUMAN_NAME, "hamster"),
                         List.of(), knownSpecies, List.of(new Donor(null, "Donor1", LifeStage.adult, human)),
                         List.of("Multiple different species specified for donor Donor1")),
                 Arguments.of(List.of("Donor1", "Jeff"), List.of(LifeStage.adult, LifeStage.fetal),
-                        List.of("human", "human"),
+                        List.of(Species.HUMAN_NAME, Species.HUMAN_NAME),
                         List.of(jeff), knownSpecies, List.of(jeff, new Donor(null, "Donor1", LifeStage.adult, human)),
                         List.of("Wrong species given for existing donor Jeff")),
                 Arguments.of(List.of("dodonor"),
@@ -679,7 +679,7 @@ public class TestRegisterValidation {
 
                 Arguments.of(List.of("Donor1", "DONOR1", "jeff", "dirk", "", ""),
                         List.of(LifeStage.adult, LifeStage.fetal, LifeStage.paediatric, LifeStage.paediatric, LifeStage.adult, LifeStage.adult),
-                        List.of("human", "human", "hamster", "human", "human", "human"),
+                        List.of(Species.HUMAN_NAME, Species.HUMAN_NAME, "hamster", Species.HUMAN_NAME, Species.HUMAN_NAME, Species.HUMAN_NAME),
                         List.of(dirk, jeff),knownSpecies, List.of(new Donor(null, "Donor1", LifeStage.adult, human), dirk, jeff),
                         List.of("Multiple different life stages specified for donor Donor1",
                                 "Wrong life stage given for existing donor Dirk",
@@ -736,18 +736,18 @@ public class TestRegisterValidation {
         // List<Hmdmc> knownHmdmcs, List<String> givenHmdmcs, List<String> speciesNames,
         // List<Hmdmc> expectedHmdmcs, List<String> expectedProblems
         return Stream.of(
-                Arguments.of(List.of(h0, h1), List.of("20/001", "20/000", "20/000", ""), List.of("Human", "Human", "Human", "Hamster"),
+                Arguments.of(List.of(h0, h1), List.of("20/001", "20/000", "20/000", ""), List.of(Species.HUMAN_NAME, Species.HUMAN_NAME, Species.HUMAN_NAME, "Hamster"),
                         List.of(h0, h1), List.of()),
-                Arguments.of(List.of(h0, h1), List.of("20/001", "20/404", "20/405"), List.of("Human", "Human", "Human"),
+                Arguments.of(List.of(h0, h1), List.of("20/001", "20/404", "20/405"), List.of(Species.HUMAN_NAME, Species.HUMAN_NAME, Species.HUMAN_NAME),
                         List.of(h1), List.of("Unknown HuMFre numbers: [20/404, 20/405]")),
-                Arguments.of(List.of(h0), Arrays.asList(null, "20/000", null), List.of("Human", "Human", "Human"),
+                Arguments.of(List.of(h0), Arrays.asList(null, "20/000", null), List.of(Species.HUMAN_NAME, Species.HUMAN_NAME, Species.HUMAN_NAME),
                         List.of(h0), List.of("Missing HuMFre number.")),
-                Arguments.of(List.of(h0, h1), List.of("20/000", "20/001"), List.of("Human", "Hamster"),
+                Arguments.of(List.of(h0, h1), List.of("20/000", "20/001"), List.of(Species.HUMAN_NAME, "Hamster"),
                         List.of(h0), List.of("Non-human tissue should not have a HuMFre number.")),
-                Arguments.of(List.of(h0, h2, h3), List.of("20/000", "20/002", "20/003", "20/002"), List.of("Human", "Human", "Human", "Human"),
+                Arguments.of(List.of(h0, h2, h3), List.of("20/000", "20/002", "20/003", "20/002"), List.of(Species.HUMAN_NAME, Species.HUMAN_NAME, Species.HUMAN_NAME, Species.HUMAN_NAME),
                         List.of(h0, h2, h3), List.of("HuMFre numbers not enabled: [20/002, 20/003]")),
                 Arguments.of(List.of(h0, h1, h2), List.of("20/000", "20/001", "20/000", "", "", "20/404", "20/002"),
-                        List.of("Human", "Human", "Human", "Human", "Human", "Human", "Human"),
+                        List.of(Species.HUMAN_NAME, Species.HUMAN_NAME, Species.HUMAN_NAME, Species.HUMAN_NAME, Species.HUMAN_NAME, Species.HUMAN_NAME, Species.HUMAN_NAME),
                         List.of(h0, h1, h2), List.of("Missing HuMFre number.", "Unknown HuMFre number: [20/404]",
                                 "HuMFre number not enabled: [20/002]"))
         );

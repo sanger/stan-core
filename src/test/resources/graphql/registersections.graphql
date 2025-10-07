@@ -8,7 +8,7 @@ mutation {
                     {
                         address: "A1"
                         donorIdentifier: "DONOR1"
-                        species: "Human"
+                        species: "Homo sapiens (Human)"
                         hmdmc: "20/0002"
                         fixative: "None"
                         medium: "None"
@@ -43,7 +43,7 @@ mutation {
                     {
                         address: "B2"
                         donorIdentifier: "DONOR1"
-                        species: "Human"
+                        species: "Homo sapiens (Human)"
                         hmdmc: "20/0002"
                         fixative: "None"
                         medium: "None"

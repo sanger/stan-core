@@ -239,13 +239,13 @@ public class TestSectionRegisterValidation {
         return Stream.of(
                 // Successful, one existing and two new donors
                 Arguments.of(
-                        List.of(new SectionRegisterContent("DONOR1", LifeStage.adult, "Human"),
-                                new SectionRegisterContent("DONOR1", LifeStage.adult, "human"),
-                                new SectionRegisterContent("DONOR2", LifeStage.fetal, "Human"),
-                                new SectionRegisterContent("DONOR2", LifeStage.fetal, "HUMAN"),
+                        List.of(new SectionRegisterContent("DONOR1", LifeStage.adult, Species.HUMAN_NAME),
+                                new SectionRegisterContent("DONOR1", LifeStage.adult, Species.HUMAN_NAME),
+                                new SectionRegisterContent("DONOR2", LifeStage.fetal, Species.HUMAN_NAME),
+                                new SectionRegisterContent("DONOR2", LifeStage.fetal, Species.HUMAN_NAME),
                                 new SectionRegisterContent("DONOR3", LifeStage.paediatric, "Hamster"),
-                                new SectionRegisterContent("DONOR4", null, "human"),
-                                new SectionRegisterContent("DONOR4", null, "HUMAN")),
+                                new SectionRegisterContent("DONOR4", null, Species.HUMAN_NAME),
+                                new SectionRegisterContent("DONOR4", null, Species.HUMAN_NAME)),
                         null, List.of(new Donor(null, "DONOR2", LifeStage.fetal, human),
                                 new Donor(null, "DONOR3", LifeStage.paediatric, hamster),
                                 new Donor(null, "DONOR4", null, human),
@@ -254,15 +254,15 @@ public class TestSectionRegisterValidation {
 
                 // Various individual problems
                 Arguments.of(
-                        new SectionRegisterContent(null, LifeStage.adult, "Human"),
+                        new SectionRegisterContent(null, LifeStage.adult, Species.HUMAN_NAME),
                         "Missing donor identifier.", null, knownDonors, knownSpecies
                 ),
                 Arguments.of(
-                        new SectionRegisterContent("", LifeStage.adult, "Human"),
+                        new SectionRegisterContent("", LifeStage.adult, Species.HUMAN_NAME),
                         "Missing donor identifier.", null, knownDonors, knownSpecies
                 ),
                 Arguments.of(
-                        new SectionRegisterContent("DONOR1", null, "Human"),
+                        new SectionRegisterContent("DONOR1", null, Species.HUMAN_NAME),
                         "Wrong life stage given for existing donor DONOR1", donor1, knownDonors, knownSpecies
                 ),
                 Arguments.of(
@@ -281,23 +281,23 @@ public class TestSectionRegisterValidation {
                 ),
                 Arguments.of(
                         List.of(
-                            new SectionRegisterContent("DONOR1", LifeStage.adult, "Human"),
-                            new SectionRegisterContent("DONOR2", LifeStage.adult, "Human"),
-                            new SectionRegisterContent("Donor2", LifeStage.fetal, "Human")
+                            new SectionRegisterContent("DONOR1", LifeStage.adult, Species.HUMAN_NAME),
+                            new SectionRegisterContent("DONOR2", LifeStage.adult, Species.HUMAN_NAME),
+                            new SectionRegisterContent("Donor2", LifeStage.fetal, Species.HUMAN_NAME)
                         ), "Multiple different life stages specified for donor DONOR2",
                         List.of(donor1, new Donor(null, "DONOR2", LifeStage.adult, human)),
                         knownDonors, knownSpecies
                 ),
                 Arguments.of(
                         List.of(
-                                new SectionRegisterContent("DONOR2", LifeStage.adult, "Human"),
+                                new SectionRegisterContent("DONOR2", LifeStage.adult, Species.HUMAN_NAME),
                                 new SectionRegisterContent("Donor2", LifeStage.adult, "hamster")
                         ), "Multiple different species specified for donor DONOR2",
                         new Donor(null, "DONOR2", LifeStage.adult, human),
                         knownDonors, knownSpecies
                 ),
                 Arguments.of(
-                        new SectionRegisterContent("Donor1", LifeStage.paediatric, "Human"),
+                        new SectionRegisterContent("Donor1", LifeStage.paediatric, Species.HUMAN_NAME),
                         "Wrong life stage given for existing donor DONOR1", donor1, knownDonors, knownSpecies
                 ),
                 Arguments.of(
@@ -307,7 +307,7 @@ public class TestSectionRegisterValidation {
                 Arguments.of(
                         List.of(new SectionRegisterContent("DONOR2", null, ""),
                                 new SectionRegisterContent("Donor2", LifeStage.adult, null),
-                                new SectionRegisterContent("donor2", null, "Human")),
+                                new SectionRegisterContent("donor2", null, Species.HUMAN_NAME)),
                         List.of("Missing species.", "Multiple different life stages specified for donor DONOR2"),
                         new Donor(null, "DONOR2", null, human),
                         knownDonors, knownSpecies
@@ -317,8 +317,8 @@ public class TestSectionRegisterValidation {
                 Arguments.of(
                         List.of(new SectionRegisterContent("DONOR1", LifeStage.paediatric, "hamster"),
                                 new SectionRegisterContent("DONOR2", null, null),
-                                new SectionRegisterContent(null, LifeStage.fetal, "Human"),
-                                new SectionRegisterContent("Donor2", LifeStage.adult, "Human"),
+                                new SectionRegisterContent(null, LifeStage.fetal, Species.HUMAN_NAME),
+                                new SectionRegisterContent("Donor2", LifeStage.adult, Species.HUMAN_NAME),
                                 new SectionRegisterContent("DONOR2", LifeStage.fetal, "Hamster"),
                                 new SectionRegisterContent("DONOR3", LifeStage.fetal, "Unicorn")),
                         List.of("Wrong life stage given for existing donor DONOR1",
@@ -514,8 +514,8 @@ public class TestSectionRegisterValidation {
         return Stream.of(
                 // Good request
                 testData.get()
-                        .content("EXT1", "4", "Arm", 2, "Donor1", "None", "None", "2021/01", "human", "tissue")
-                        .content("EXT2", "5", "Leg", 1, "Donor1", "butter", "Formalin", "2021/02", "human", "tissue")
+                        .content("EXT1", "4", "Arm", 2, "Donor1", "None", "None", "2021/01", Species.HUMAN_NAME, "tissue")
+                        .content("EXT2", "5", "Leg", 1, "Donor1", "butter", "Formalin", "2021/02", Species.HUMAN_NAME, "tissue")
                         .content("EXT3", "5", "Leg", 1, "Donor2", "butter", "Formalin", null, "hamster", "tissue")
                         .tissues(new Tissue(null, "EXT1", "4", ARM.getSpatialLocations().get(1), DONOR1, mediumNone, fixNone, cellClass, hmdmc1, null, null),
                                 new Tissue(null, "EXT2", "5", LEG.getSpatialLocations().get(0), DONOR1, medium, fix, cellClass, hmdmc2, null, null),
@@ -523,85 +523,85 @@ public class TestSectionRegisterValidation {
 
                 // Single problems
                 testData.get()
-                        .content("EXT1", "4", "ARM", 1, "Donor1", "None", "None", null, "human", "tissue")
+                        .content("EXT1", "4", "ARM", 1, "Donor1", "None", "None", null, Species.HUMAN_NAME, "tissue")
                         .problem("Missing HuMFre number."),
                 testData.get()
-                        .content("EXT1", "4", "ARM", 1, "Donor1", "None", "None", "", "human", "tissue")
+                        .content("EXT1", "4", "ARM", 1, "Donor1", "None", "None", "", Species.HUMAN_NAME, "tissue")
                         .content("EXT2", "4", "ARM", 1, "Donor1", "None", "None", "2021/01", "", "tissue")
                         .problem("Missing HuMFre number."),
                 testData.get()
-                        .content("EXT1", "4", "ARM", 1, "Donor1", "None", "None", "2021/404", "human", "tissue")
-                        .content("EXT2", "4", "ARM", 1, "Donor1", "None", "None", "2021/405", "human", "tissue")
-                        .content("EXT3", "4", "ARM", 1, "Donor1", "None", "None", "2021/405", "human", "tissue")
+                        .content("EXT1", "4", "ARM", 1, "Donor1", "None", "None", "2021/404", Species.HUMAN_NAME, "tissue")
+                        .content("EXT2", "4", "ARM", 1, "Donor1", "None", "None", "2021/405", Species.HUMAN_NAME, "tissue")
+                        .content("EXT3", "4", "ARM", 1, "Donor1", "None", "None", "2021/405", Species.HUMAN_NAME, "tissue")
                         .problem("Unknown HuMFre numbers: [2021/404, 2021/405]"),
                 testData.get()
                         .content("EXT1", "4", "ARM", 1, "Donor2", "None", "None", "2021/01", "Hamster", "tissue")
                         .problem("Unexpected HuMFre number received for non-human tissue."),
                 testData.get()
-                        .content("EXT1", "4", "ARM", 1, "Donor2", "None", "None", "2021/03", "Human", "tissue")
-                        .content("EXT2", "4", "ARM", 1, "Donor2", "None", "None", "2021/04", "Human", "tissue")
+                        .content("EXT1", "4", "ARM", 1, "Donor2", "None", "None", "2021/03", Species.HUMAN_NAME, "tissue")
+                        .content("EXT2", "4", "ARM", 1, "Donor2", "None", "None", "2021/04", Species.HUMAN_NAME, "tissue")
                         .problem("HuMFre number not enabled: [2021/03, 2021/04]"),
                 testData.get()
-                        .content(null, "4", "ARM", 1, "Donor1", "None", "None", "2021/01", "Human", "tissue")
+                        .content(null, "4", "ARM", 1, "Donor1", "None", "None", "2021/01", Species.HUMAN_NAME, "tissue")
                         .problem("Missing external identifier."),
                 testData.get()
-                        .content("", "4", "ARM", 1, "Donor1", "None", "None", "2021/01", "Human", "tissue")
+                        .content("", "4", "ARM", 1, "Donor1", "None", "None", "2021/01", Species.HUMAN_NAME, "tissue")
                         .problem("Missing external identifier."),
                 testData.get()
-                        .content("!DN", "4", "ARM", 1, "Donor1", "none", "none", "2021/01", "human", "tissue")
+                        .content("!DN", "4", "ARM", 1, "Donor1", "none", "none", "2021/01", Species.HUMAN_NAME, "tissue")
                         .problem("Bad external name: !DN"),
                 testData.get()
-                        .content("EXT1", "4", "ARM", 1, "Donor1", "None", "None", "2021/01", "Human", "tissue")
-                        .content("EXT1", "5", "ARM", 1, "Donor1", "None", "None", "2021/01", "Human", "tissue")
-                        .content("EXT2", "4", "ARM", 1, "Donor1", "None", "None", "2021/01", "Human", "tissue")
-                        .content("EXT2", "5", "ARM", 1, "Donor1", "None", "None", "2021/01", "Human", "tissue")
-                        .content("EXT3", "5", "ARM", 1, "Donor1", "None", "None", "2021/01", "Human", "tissue")
+                        .content("EXT1", "4", "ARM", 1, "Donor1", "None", "None", "2021/01", Species.HUMAN_NAME, "tissue")
+                        .content("EXT1", "5", "ARM", 1, "Donor1", "None", "None", "2021/01", Species.HUMAN_NAME, "tissue")
+                        .content("EXT2", "4", "ARM", 1, "Donor1", "None", "None", "2021/01", Species.HUMAN_NAME, "tissue")
+                        .content("EXT2", "5", "ARM", 1, "Donor1", "None", "None", "2021/01", Species.HUMAN_NAME, "tissue")
+                        .content("EXT3", "5", "ARM", 1, "Donor1", "None", "None", "2021/01", Species.HUMAN_NAME, "tissue")
                         .problem("Repeated external identifiers: [EXT1, EXT2]"),
                 testData.get()
-                        .content("TISSUE1", "4", "ARM", 1, "Donor1", "none", "none", "2021/01", "human", "tissue")
-                        .content("TISSUE2", "4", "ARM", 1, "Donor1", "none", "none", "2021/01", "human", "tissue")
-                        .content("TISSUE3", "4", "ARM", 1, "Donor1", "none", "none", "2021/01", "human", "tissue")
+                        .content("TISSUE1", "4", "ARM", 1, "Donor1", "none", "none", "2021/01", Species.HUMAN_NAME, "tissue")
+                        .content("TISSUE2", "4", "ARM", 1, "Donor1", "none", "none", "2021/01", Species.HUMAN_NAME, "tissue")
+                        .content("TISSUE3", "4", "ARM", 1, "Donor1", "none", "none", "2021/01", Species.HUMAN_NAME, "tissue")
                         .existing(new Tissue(1, "TISSUE1", "3", ARM.getSpatialLocations().get(0), DONOR1, medium, fix, null, hmdmcs.get(0), null, null),
                                 new Tissue(2, "TISSUE2", "3", ARM.getSpatialLocations().get(0), DONOR1, medium, fix, null, hmdmcs.get(0), null, null))
                         .problem("External identifiers already in use: [TISSUE1, TISSUE2]"),
                 testData.get()
-                        .content("EXT1", "4", null, 1, "Donor1", "None", "None", "2021/01", "Human", "tissue")
+                        .content("EXT1", "4", null, 1, "Donor1", "None", "None", "2021/01", Species.HUMAN_NAME, "tissue")
                         .problem("Missing tissue type."),
                 testData.get()
-                        .content("EXT1", "4", "Squirrel", 1, "Donor1", "None", "None", "2021/01", "Human", "tissue")
+                        .content("EXT1", "4", "Squirrel", 1, "Donor1", "None", "None", "2021/01", Species.HUMAN_NAME, "tissue")
                         .problem("Unknown tissue type: [Squirrel]"),
                 testData.get()
-                        .content("EXT1", "4", "ARM", null, "Donor1", "None", "None", "2021/01", "Human", "tissue")
+                        .content("EXT1", "4", "ARM", null, "Donor1", "None", "None", "2021/01", Species.HUMAN_NAME, "tissue")
                         .problem("Missing spatial location."),
                 testData.get()
-                        .content("EXT1", "4", "ARM", 5, "Donor1", "None", "None", "2021/01", "Human", "tissue")
-                        .content("EXT2", "4", "LEG", 3, "Donor1", "None", "None", "2021/01", "Human", "tissue")
+                        .content("EXT1", "4", "ARM", 5, "Donor1", "None", "None", "2021/01", Species.HUMAN_NAME, "tissue")
+                        .content("EXT2", "4", "LEG", 3, "Donor1", "None", "None", "2021/01", Species.HUMAN_NAME, "tissue")
                         .problem("Unknown spatial locations: [5 for Arm, 3 for Leg]"),
                 testData.get()
-                        .content("EXT1", null, "ARM", 1, "Donor1", "None", "None", "2021/01", "Human", "tissue")
+                        .content("EXT1", null, "ARM", 1, "Donor1", "None", "None", "2021/01", Species.HUMAN_NAME, "tissue")
                         .problem("Missing replicate number."),
 
                 testData.get()
-                        .content("EXT1", "!-4", "ARM", 1, "Donor1", "None", "None", "2021/01", "Human", "tissue")
+                        .content("EXT1", "!-4", "ARM", 1, "Donor1", "None", "None", "2021/01", Species.HUMAN_NAME, "tissue")
                         .problem("Bad replicate: !-4"),
                 testData.get()
-                        .content("EXT1", "4", "ARM", 1, "Donor1", "Custard", "None", "2021/01", "Human", "tissue")
-                        .content("EXT2", "4", "ARM", 1, "Donor1", "Jelly", "None", "2021/01", "Human", "tissue")
+                        .content("EXT1", "4", "ARM", 1, "Donor1", "Custard", "None", "2021/01", Species.HUMAN_NAME, "tissue")
+                        .content("EXT2", "4", "ARM", 1, "Donor1", "Jelly", "None", "2021/01", Species.HUMAN_NAME, "tissue")
                         .problem("Unknown mediums: [Custard, Jelly]"),
                 testData.get()
-                        .content("EXT1", "4", "ARM", 1, "Donor1", "None", "Glue", "2021/01", "Human", "tissue")
-                        .content("EXT2", "4", "ARM", 1, "Donor1", "None", "Stapler", "2021/01", "Human", "tissue")
+                        .content("EXT1", "4", "ARM", 1, "Donor1", "None", "Glue", "2021/01", Species.HUMAN_NAME, "tissue")
+                        .content("EXT2", "4", "ARM", 1, "Donor1", "None", "Stapler", "2021/01", Species.HUMAN_NAME, "tissue")
                         .problem("Unknown fixatives: [Glue, Stapler]"),
                 testData.get()
-                        .content("EXT1", "4", "TAIL", 1, "Donor1", "None", "None", "2021/01", "Human", "tissue")
+                        .content("EXT1", "4", "TAIL", 1, "Donor1", "None", "None", "2021/01", Species.HUMAN_NAME, "tissue")
                         .problem("Tissue type is disabled: [Tail]"),
                 testData.get()
-                        .content("EXT1", "4", "LEG", 2, "Donor1", "None", "None", "2021/01", "Human", "tissue")
+                        .content("EXT1", "4", "LEG", 2, "Donor1", "None", "None", "2021/01", Species.HUMAN_NAME, "tissue")
                         .problem("Disabled spatial location: [2 for Leg]"),
 
                 // Mixed problems
                 testData.get()
-                        .content(null, null, null, null, null, null, null, null, "Human", "tissue")
+                        .content(null, null, null, null, null, null, null, null, Species.HUMAN_NAME, "tissue")
                         .problems("Missing external identifier.", "Missing replicate number.", "Missing tissue type.", "Missing spatial location.", "Missing medium.",
                                 "Missing fixative.", "Missing HuMFre number."),
                 testData.get()

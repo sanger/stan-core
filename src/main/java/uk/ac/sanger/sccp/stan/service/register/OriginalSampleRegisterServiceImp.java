@@ -212,7 +212,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
                 if (data.getSampleCollectionDate().isAfter(today)) {
                     anyInFuture = true;
                 }
-            } else if (data.getLifeStage()==LifeStage.fetal && "human".equalsIgnoreCase(data.getSpecies())) {
+            } else if (data.getLifeStage()==LifeStage.fetal && Species.isHumanName(data.getSpecies())) {
                 anyMissing = true;
             }
         }

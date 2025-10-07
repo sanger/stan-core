@@ -81,7 +81,7 @@ public class TestRegisterOriginalSamplesMutation {
         assertThat(chainGetList(lwData, "slots", 0, "samples")).hasSize(1);
         Map<String, ?> tissueData = chainGet(lwData, "slots", 0, "samples", 0, "tissue");
         assertEquals(externalName, tissueData.get("externalName"));
-        assertEquals("Human", chainGet(tissueData, "donor", "species", "name"));
+        assertEquals(Species.HUMAN_NAME, chainGet(tissueData, "donor", "species", "name"));
         assertEquals("2022-05-19", tissueData.get("collectionDate"));
         assertEquals("None", chainGet(tissueData, "medium", "name"));
         assertEquals("None", chainGet(tissueData, "fixative", "name"));

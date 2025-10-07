@@ -30,7 +30,7 @@ public class TestDonorRepo {
     @Test
     @Transactional
     public void testGetByDonorName() {
-        Species species = speciesRepo.findByName("Human").orElseThrow();
+        Species species = speciesRepo.findByName(Species.HUMAN_NAME).orElseThrow();
         Donor donor1 = donorRepo.save(new Donor(null, "DONOR1", LifeStage.adult, species));
 
         assertEquals(donor1, donorRepo.getByDonorName("donor1"));
@@ -42,7 +42,7 @@ public class TestDonorRepo {
     @Test
     @Transactional
     public void testFindAllByDonorNameIn() {
-        Species species = speciesRepo.findByName("Human").orElseThrow();
+        Species species = speciesRepo.findByName(Species.HUMAN_NAME).orElseThrow();
         Donor donor1 = donorRepo.save(new Donor(null, "DONOR1", LifeStage.adult, species));
         Donor donor2 = donorRepo.save(new Donor(null, "DONOR2", LifeStage.adult, species));
         donorRepo.save(new Donor(null, "DONOR3", LifeStage.adult, species));

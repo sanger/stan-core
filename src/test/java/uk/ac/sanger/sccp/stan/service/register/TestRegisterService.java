@@ -544,7 +544,7 @@ public class TestRegisterService {
     }
 
     static Stream<Arguments> createArgs() {
-        Species human = new Species(1, "Human");
+        Species human = new Species(1, Species.HUMAN_NAME);
         Species hamster = new Species(2, "Hamster");
         Hmdmc hmdmc = new Hmdmc(10, "20/001");
         // Species species, Hmdmc hmdmc, String expectedErrorMessage

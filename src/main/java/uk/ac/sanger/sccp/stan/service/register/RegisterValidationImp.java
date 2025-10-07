@@ -215,7 +215,7 @@ public class RegisterValidationImp implements RegisterValidation {
             boolean needsHmdmc = false;
             boolean needsNoHmdmc = false;
             if (block.getSpecies()!=null && !block.getSpecies().isEmpty()) {
-                needsHmdmc = block.getSpecies().equalsIgnoreCase("Human");
+                needsHmdmc = Species.isHumanName(block.getSpecies());
                 needsNoHmdmc = !needsHmdmc;
             }
             String hmdmcString = block.getHmdmc();
@@ -278,7 +278,7 @@ public class RegisterValidationImp implements RegisterValidation {
         for (BlockRegisterRequest block : blocks()) {
             if (block.getSampleCollectionDate()==null) {
                 if (block.getLifeStage()==LifeStage.fetal && block.getSpecies()!=null
-                        && block.getSpecies().equalsIgnoreCase("Human")) {
+                        && Species.isHumanName(block.getSpecies())) {
                     missing = true;
                 }
             } else if (block.getSampleCollectionDate().isAfter(today)) {

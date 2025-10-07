@@ -33,7 +33,7 @@ public class TestLabwareLabelDataService {
     @BeforeEach
     void setup() {
         mockPlanActionRepo = mock(PlanActionRepo.class);
-        species = new Species(1, "Human");
+        species = new Species(1, Species.HUMAN_NAME);
         service = spy(new LabwareLabelDataService(mockPlanActionRepo));
     }
 

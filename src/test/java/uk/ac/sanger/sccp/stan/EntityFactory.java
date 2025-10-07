@@ -58,7 +58,7 @@ public class EntityFactory {
 
     public static Species getHuman() {
         if (human==null) {
-            human = new Species(1, "Human");
+            human = new Species(1, Species.HUMAN_NAME);
         }
         return human;
     }
