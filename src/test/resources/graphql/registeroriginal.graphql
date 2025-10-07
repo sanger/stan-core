@@ -4,7 +4,7 @@ mutation {
             {
                 labwareType:"proviasette"
                 donorIdentifier:"DONOR1"
-                species: "Human"
+                species: "Homo sapiens (Human)"
                 cellClass: "Tissue"
                 lifeStage:adult
                 bioRiskCode: "risk1"

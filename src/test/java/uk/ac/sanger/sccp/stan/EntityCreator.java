@@ -305,7 +305,7 @@ public class EntityCreator {
     }
 
     public Species getHuman() {
-        return speciesRepo.findByName("Human").orElseThrow();
+        return speciesRepo.findByName(Species.HUMAN_NAME).orElseThrow();
     }
 
     public <E> E getAny(CrudRepository<E, ?> repo) {

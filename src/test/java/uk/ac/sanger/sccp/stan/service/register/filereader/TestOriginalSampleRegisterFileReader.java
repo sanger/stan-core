@@ -3,6 +3,7 @@ package uk.ac.sanger.sccp.stan.service.register.filereader;
 import org.apache.poi.ss.usermodel.Row;
 import org.junit.jupiter.api.Test;
 import uk.ac.sanger.sccp.stan.model.LifeStage;
+import uk.ac.sanger.sccp.stan.model.Species;
 import uk.ac.sanger.sccp.stan.request.register.OriginalSampleData;
 import uk.ac.sanger.sccp.stan.request.register.OriginalSampleRegisterRequest;
 import uk.ac.sanger.sccp.stan.service.register.filereader.OriginalSampleRegisterFileReader.Column;
@@ -58,7 +59,7 @@ public class TestOriginalSampleRegisterFileReader extends BaseTestFileReader {
         final LocalDate date = LocalDate.of(2023, 1, 2);
         Object[] values = {
                 "junk", "SGP15", "DONOR1", "fetal", date,
-                "human", "tissue", "risk1", "12345", "tt1", "EXT1", 12, "11A", "bowl", "fix1", "sol1", "junkyjunk"
+                Species.HUMAN_NAME, "tissue", "risk1", "12345", "tt1", "EXT1", 12, "11A", "bowl", "fix1", "sol1", "junkyjunk"
         };
         Column[] columns = Column.values();
         for (int i = 0; i < values.length; ++i) {
@@ -73,7 +74,7 @@ public class TestOriginalSampleRegisterFileReader extends BaseTestFileReader {
         assertEquals("DONOR1", data.getDonorIdentifier());
         assertEquals(LifeStage.fetal, data.getLifeStage());
         assertEquals(date, data.getSampleCollectionDate());
-        assertEquals("human", data.getSpecies());
+        assertEquals(Species.HUMAN_NAME, data.getSpecies());
         assertEquals("tissue", data.getCellClass());
         assertEquals("risk1", data.getBioRiskCode());
         assertEquals("12345", data.getHmdmc());

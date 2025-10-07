@@ -10,6 +10,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
 import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.LifeStage;
+import uk.ac.sanger.sccp.stan.model.Species;
 import uk.ac.sanger.sccp.stan.request.register.BlockRegisterRequest;
 import uk.ac.sanger.sccp.stan.request.register.RegisterRequest;
 import uk.ac.sanger.sccp.stan.service.register.filereader.BlockRegisterFileReader.Column;
@@ -363,7 +364,7 @@ class TestBlockRegisterFileReader extends BaseTestFileReader {
         row.put(Column.HuMFre, "12/234");
         row.put(Column.Life_stage, "ADULT");
         row.put(Column.Replicate_number, "14");
-        row.put(Column.Species, "Human");
+        row.put(Column.Species, Species.HUMAN_NAME);
         row.put(Column.Tissue_type, "Arm");
         row.put(Column.Spatial_location, 2);
         row.put(Column.Embedding_medium, "brass");
@@ -377,7 +378,7 @@ class TestBlockRegisterFileReader extends BaseTestFileReader {
         assertEquals("12/234", br.getHmdmc());
         assertEquals(LifeStage.adult, br.getLifeStage());
         assertEquals("14", br.getReplicateNumber());
-        assertEquals("Human", br.getSpecies());
+        assertEquals(Species.HUMAN_NAME, br.getSpecies());
         assertEquals("Arm", br.getTissueType());
         assertEquals(2, br.getSpatialLocation());
         assertEquals("brass", br.getMedium());

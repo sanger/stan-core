@@ -338,21 +338,21 @@ public class TestOriginalSampleRegisterService {
         LocalDate tomorrow = LocalDate.now().plusDays(1);
         return Arrays.stream(new Object[][] {
                 {
-                        osd(LifeStage.fetal, "Human", yesterday),
-                        osd(LifeStage.adult, "Human", yesterday),
+                        osd(LifeStage.fetal, Species.HUMAN_NAME, yesterday),
+                        osd(LifeStage.adult, Species.HUMAN_NAME, yesterday),
                         osd(LifeStage.paediatric, "Hamster", null),
-                        osd(LifeStage.adult, "Human", null),
+                        osd(LifeStage.adult, Species.HUMAN_NAME, null),
                 },
                 {
                     osd(LifeStage.adult, "Hamster", tomorrow),
                         "Collection date must be in the past.",
                 },
                 {
-                    osd(LifeStage.fetal, "Human", null),
+                    osd(LifeStage.fetal, Species.HUMAN_NAME, null),
                         "Collection date is required for fetal samples.",
                 },
                 {
-                    osd(LifeStage.fetal, "Human", null),
+                    osd(LifeStage.fetal, Species.HUMAN_NAME, null),
                         osd(LifeStage.adult, "Hamster", tomorrow),
                         "Collection date must be in the past.",
                         "Collection date is required for fetal samples.",
@@ -374,21 +374,21 @@ public class TestOriginalSampleRegisterService {
     }
 
     static Stream<Arguments> checkDonorFieldsArgs() {
-        Species human = new Species(1, "Human");
+        Species human = new Species(1, Species.HUMAN_NAME);
         Species banana = new Species(2, "Banana");
         Donor donor1 = new Donor(1, "DONOR1", LifeStage.adult, human);
         Donor donor2 = new Donor(2, "DONOR2", LifeStage.fetal, banana);
         UCMap<Donor> donors = UCMap.from(Donor::getDonorName, donor1, donor2);
-        OriginalSampleData correct1 = osdWithDonor(donor1.getDonorName(), LifeStage.adult, "human");
+        OriginalSampleData correct1 = osdWithDonor(donor1.getDonorName(), LifeStage.adult, Species.HUMAN_NAME.toLowerCase());
         OriginalSampleData correct2 = osdWithDonor(donor2.getDonorName(), LifeStage.fetal, "banana");
-        OriginalSampleData new1A = osdWithDonor("DONOR3", LifeStage.adult, "Human");
-        OriginalSampleData new1B = osdWithDonor("DONOR3", LifeStage.fetal, "Human");
-        OriginalSampleData new2A = osdWithDonor("DONOR4", LifeStage.adult, "Human");
+        OriginalSampleData new1A = osdWithDonor("DONOR3", LifeStage.adult, Species.HUMAN_NAME);
+        OriginalSampleData new1B = osdWithDonor("DONOR3", LifeStage.fetal, Species.HUMAN_NAME);
+        OriginalSampleData new2A = osdWithDonor("DONOR4", LifeStage.adult, Species.HUMAN_NAME);
         OriginalSampleData new2B = osdWithDonor("DONOR4", LifeStage.adult, "Banana");
-        OriginalSampleData missing1 = osdWithDonor("DONOR1", null, "Human");
+        OriginalSampleData missing1 = osdWithDonor("DONOR1", null, Species.HUMAN_NAME);
         OriginalSampleData missing2 = osdWithDonor("DONOR2", LifeStage.fetal, null);
-        OriginalSampleData missing3 = osdWithDonor(null, LifeStage.fetal, "Human");
-        OriginalSampleData wrong1 = osdWithDonor("donor1", LifeStage.paediatric, "human");
+        OriginalSampleData missing3 = osdWithDonor(null, LifeStage.fetal, Species.HUMAN_NAME);
+        OriginalSampleData wrong1 = osdWithDonor("donor1", LifeStage.paediatric, Species.HUMAN_NAME);
         OriginalSampleData wrong2 = osdWithDonor("donor2", LifeStage.fetal, "carrot");
 
         return Arrays.stream(new Object[][] {
@@ -426,7 +426,7 @@ public class TestOriginalSampleRegisterService {
     }
 
     static Stream<Arguments> checkHmdmcsArgs() {
-        Species human = new Species(1, "Human");
+        Species human = new Species(1, Species.HUMAN_NAME);
         Species cat = new Species(2, "Cat");
         CellClass tissue = new CellClass(1, "Tissue", true, true);
         CellClass cake = new CellClass(2, "Cake", false, true);
@@ -689,7 +689,7 @@ public class TestOriginalSampleRegisterService {
         Donor[] existingDonors = IntStream.range(1, 3)
                 .mapToObj(i -> new Donor(i, "DONOR"+i, null, null))
                 .toArray(Donor[]::new);
-        Species human = new Species(1, "Human");
+        Species human = new Species(1, Species.HUMAN_NAME);
         Species banana = new Species(2, "Banana");
         List<DataStruct> datas = List.of(
                 dataStructOf("DONOR1", existingDonors[0], human, LifeStage.fetal),
