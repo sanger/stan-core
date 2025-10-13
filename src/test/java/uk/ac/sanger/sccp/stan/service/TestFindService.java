@@ -406,7 +406,7 @@ public class TestFindService {
         FindRequest hamsterRequest = new FindRequest();
         hamsterRequest.setSpecies("Hamster");
         FindRequest humanRequest = new FindRequest();
-        humanRequest.setSpecies("HUMAN");
+        humanRequest.setSpecies(Species.HUMAN_NAME.toUpperCase());
 
         return Stream.of(
                 Arguments.of(lss, new FindRequest(null, null, null, null, 0, null, null, null, null), lss),

@@ -9,8 +9,7 @@ import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
 import uk.ac.sanger.sccp.stan.Matchers;
-import uk.ac.sanger.sccp.stan.model.Address;
-import uk.ac.sanger.sccp.stan.model.LifeStage;
+import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.request.register.*;
 import uk.ac.sanger.sccp.stan.service.register.filereader.SectionRegisterFileReader.Column;
 
@@ -339,9 +338,9 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
                 rowMap("X1", "bowl")
         );
         List<SectionRegisterContent> srcs = List.of(
-                new SectionRegisterContent("d1", LifeStage.adult, "human"),
-                new SectionRegisterContent("d2", LifeStage.adult, "human"),
-                new SectionRegisterContent("d3", LifeStage.adult, "human")
+                new SectionRegisterContent("d1", LifeStage.adult, Species.HUMAN_NAME),
+                new SectionRegisterContent("d2", LifeStage.adult, Species.HUMAN_NAME),
+                new SectionRegisterContent("d3", LifeStage.adult, Species.HUMAN_NAME)
         );
         var srcIter = srcs.iterator();
         for (var row : rows) {
@@ -367,9 +366,9 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
             rows.get(1).put(Column.Prebarcode, numPrebarcodes==1 ? "xyz123" : "abc456");
         }
         List<SectionRegisterContent> srcs = List.of(
-                new SectionRegisterContent("d1", LifeStage.adult, "human"),
-                new SectionRegisterContent("d2", LifeStage.adult, "human"),
-                new SectionRegisterContent("d3", LifeStage.adult, "human")
+                new SectionRegisterContent("d1", LifeStage.adult, Species.HUMAN_NAME),
+                new SectionRegisterContent("d2", LifeStage.adult, Species.HUMAN_NAME),
+                new SectionRegisterContent("d3", LifeStage.adult, Species.HUMAN_NAME)
         );
         var srcIter = srcs.iterator();
         for (var row : rows) {
@@ -397,9 +396,9 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
                 rowMap("X1", anyLwType ? "pipe" : null)
         );
         List<SectionRegisterContent> srcs = List.of(
-                new SectionRegisterContent("d1", LifeStage.adult, "human"),
-                new SectionRegisterContent("d2", LifeStage.adult, "human"),
-                new SectionRegisterContent("d3", LifeStage.adult, "human")
+                new SectionRegisterContent("d1", LifeStage.adult, Species.HUMAN_NAME),
+                new SectionRegisterContent("d2", LifeStage.adult, Species.HUMAN_NAME),
+                new SectionRegisterContent("d3", LifeStage.adult, Species.HUMAN_NAME)
         );
         var srcIter = srcs.iterator();
         for (var row : rows) {
@@ -441,7 +440,7 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
         row.put(Column.HuMFre, "12/234");
         row.put(Column.Life_stage, "ADULT");
         row.put(Column.Replicate_number, "14");
-        row.put(Column.Species, "Human");
+        row.put(Column.Species, Species.HUMAN_NAME);
         row.put(Column.Tissue_type, "Arm");
         row.put(Column.Spatial_location, 2);
         row.put(Column.Embedding_medium, "brass");
@@ -456,7 +455,7 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
         assertEquals("12/234", src.getHmdmc());
         assertEquals(LifeStage.adult, src.getLifeStage());
         assertEquals("14", src.getReplicateNumber());
-        assertEquals("Human", src.getSpecies());
+        assertEquals(Species.HUMAN_NAME, src.getSpecies());
         assertEquals("Arm", src.getTissueType());
         assertEquals(2, src.getSpatialLocation());
         assertEquals("brass", src.getMedium());

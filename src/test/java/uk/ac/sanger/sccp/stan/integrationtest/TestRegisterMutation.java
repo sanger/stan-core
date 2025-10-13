@@ -57,7 +57,7 @@ public class TestRegisterMutation {
         assertNotNull(barcode);
         Map<String, ?> tissueData = chainGet(data, "labware", 0, "slots", 0, "samples", 0, "tissue");
         assertEquals("TISSUE1", tissueData.get("externalName"));
-        assertEquals("Human", chainGet(tissueData, "donor", "species", "name"));
+        assertEquals(Species.HUMAN_NAME, chainGet(tissueData, "donor", "species", "name"));
         assertEquals("2021-02-03", tissueData.get("collectionDate"));
 
         result = tester.post(mutation);

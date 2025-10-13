@@ -334,7 +334,7 @@ public class SectionRegisterValidation {
             if (nullOrEmpty(content.getSpecies())) {
                 needHmdmc = needNoHmdmc = false;
             } else {
-                needNoHmdmc = !content.getSpecies().equalsIgnoreCase("Human");
+                needNoHmdmc = !Species.isHumanName(content.getSpecies());
                 needHmdmc = !needNoHmdmc && cellClass!=null && cellClass.isHmdmcRequired();
             }
             Hmdmc hmdmc;

@@ -8,6 +8,7 @@ import java.util.Objects;
  */
 @Entity
 public class Species implements HasEnabled {
+    public static final String HUMAN_NAME = "Homo sapiens (Human)";
     @Id
     @GeneratedValue(strategy=GenerationType.IDENTITY)
     private Integer id;
@@ -68,7 +69,11 @@ public class Species implements HasEnabled {
         return getName();
     }
 
+    public static boolean isHumanName(String name) {
+        return name != null && (name.equalsIgnoreCase(HUMAN_NAME) || name.equalsIgnoreCase("Human"));
+    }
+
     public boolean requiresHmdmc() {
-        return getName().equalsIgnoreCase("Human");
+        return isHumanName(getName());
     }
 }
