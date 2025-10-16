@@ -1919,8 +1919,8 @@ input ProbeOperationLabware {
     barcode: String!
     """The work number of the operation on this labware."""
     workNumber: String!
-    """The costing for the kit used on this labware."""
-    kitCosting: SlideCosting!
+    """The costing for the kit used on this labware, if any."""
+    kitCosting: SlideCosting
     """Reagent lot number."""
     reagentLot: String
     """The probes used on this labware."""

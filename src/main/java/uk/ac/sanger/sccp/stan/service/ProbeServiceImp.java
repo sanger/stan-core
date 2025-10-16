@@ -109,7 +109,6 @@ public class ProbeServiceImp implements ProbeService {
                 .map(ProbeOperationLabware::getWorkNumber)
                 .toList();
         UCMap<Work> work = workService.validateUsableWorks(problems, workNumbers);
-        checkKitCostings(problems, request.getLabware());
         checkReagentLots(problems, request.getLabware());
         UCMap<ProbePanel> probes = validateProbes(problems, probeType, request.getLabware());
         UCMap<ProbePanel> spikes = checkSpikes(problems, request.getLabware());
@@ -229,17 +228,6 @@ public class ProbeServiceImp implements ProbeService {
             problems.add("Operation type "+opType.getName()+" cannot be used in this request.");
         }
         return opType;
-    }
-
-    /**
-     * Checks that kit costings are supplied in the request
-     * @param problems receptacle for problems
-     * @param pols request details
-     */
-    public void checkKitCostings(Collection<String> problems, Collection<ProbeOperationLabware> pols) {
-        if (pols!=null && pols.stream().anyMatch(pos -> pos.getKitCosting()==null)) {
-            problems.add("Missing kit costing for labware.");
-        }
     }
 
     /**
@@ -428,12 +416,15 @@ public class ProbeServiceImp implements ProbeService {
      */
     public void saveKitCostings(Collection<ProbeOperationLabware> pols, UCMap<Labware> lwMap, UCMap<Operation> lwOps) {
         List<LabwareNote> notes = pols.stream()
+                .filter(pol -> pol.getKitCosting()!=null)
                 .map(pol -> {
                     String barcode = pol.getBarcode();
                     return new LabwareNote(null, lwMap.get(barcode).getId(), lwOps.get(barcode).getId(),
                             KIT_COSTING_NAME, pol.getKitCosting().name());
                 }).toList();
-        noteRepo.saveAll(notes);
+        if (!notes.isEmpty()) {
+            noteRepo.saveAll(notes);
+        }
     }
 
     /**
