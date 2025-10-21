@@ -200,7 +200,8 @@ public class FieldValidation {
     public Validator<String> projectNameValidator() {
         Set<CharacterType> charTypes = EnumSet.of(
                 CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN, CharacterType.SPACE,
-                CharacterType.SLASH, CharacterType.PAREN, CharacterType.FULL_STOP, CharacterType.APOSTROPHE
+                CharacterType.SLASH, CharacterType.PAREN, CharacterType.FULL_STOP, CharacterType.APOSTROPHE,
+                CharacterType.UNDERSCORE
         );
         return new StringValidator("Project name", 2, 128, charTypes);
     }
