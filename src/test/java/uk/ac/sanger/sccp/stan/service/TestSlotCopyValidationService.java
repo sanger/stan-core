@@ -13,8 +13,7 @@ import uk.ac.sanger.sccp.stan.request.SlotCopyRequest.*;
 import uk.ac.sanger.sccp.stan.service.SlotCopyValidationService.Data;
 import uk.ac.sanger.sccp.stan.service.validation.ValidationHelper;
 import uk.ac.sanger.sccp.stan.service.validation.ValidationHelperFactory;
-import uk.ac.sanger.sccp.utils.UCMap;
-import uk.ac.sanger.sccp.utils.Zip;
+import uk.ac.sanger.sccp.utils.*;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -23,7 +22,8 @@ import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.Matchers.*;
 import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
@@ -442,27 +442,29 @@ public class TestSlotCopyValidationService {
     }
 
     @Test
-    public void testNeedsReagentLot() {
+    public void testNeededReagentLot() {
         OperationType cyt = EntityFactory.makeOperationType("Cytassist", null);
         OperationType otherOpType = EntityFactory.makeOperationType("Bananas", null);
-        LabwareType cytLt = EntityFactory.makeLabwareType(1, 1, "Cytassist HD 3' something");
+        LabwareType cyt3Lt = EntityFactory.makeLabwareType(1, 1, "Cytassist HD 3' something");
+        LabwareType cyt1Lt = EntityFactory.makeLabwareType(1, 1, "Cytassist HD 1' something");
         LabwareType otherLt = EntityFactory.getTubeType();
-        Labware cytLw = EntityFactory.makeEmptyLabware(cytLt, "STAN-1");
+        Labware cyt3Lw = EntityFactory.makeEmptyLabware(cyt3Lt, "STAN-1");
         Labware otherLw = EntityFactory.getTube();
         Object[][] options = {
-                {cyt, cytLw, otherLt, true},
-                {cyt, null, cytLt, true},
-                {cyt, otherLw, cytLt, false},
-                {cyt, null, otherLt, false},
-                {otherOpType, cytLw, cytLt, false},
-                {null, cytLw, cytLt, false},
+                {cyt, cyt3Lw, otherLt, 2},
+                {cyt, null, cyt3Lt, 2},
+                {cyt, otherLw, cyt3Lt, 0},
+                {cyt, null, otherLt, 0},
+                {otherOpType, cyt3Lw, cyt3Lt, 0},
+                {null, cyt3Lw, cyt3Lt, 0},
+                {cyt, null, cyt1Lt, 1},
         };
         for (Object[] option : options) {
             OperationType opType = (OperationType) option[0];
             Labware lw = (Labware) option[1];
             LabwareType lt = (LabwareType) option[2];
-            boolean expected = (boolean) option[3];
-            assertEquals(expected, service.needsReagentLot(opType, lw, lt));
+            int expected = (int) option[3];
+            assertEquals(expected, service.neededReagentLot(opType, lw, lt));
         }
     }
 
@@ -476,13 +478,15 @@ public class TestSlotCopyValidationService {
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lw);
         final String missingLotMessage = "Missing reagent lot for destination " + bc;
         Object[][] options = {
-                {bc, "lt", "r1", "r2", true, null},
-                {bc, "lt", "", null, false, null},
-                {bc, "lt", "", "r2", true, missingLotMessage},
-                {bc, "lt", "r1", null, true, missingLotMessage},
-                {bc, "lt", "r1", "r2!", true, "r2!"},
-                {bc, "lt", "r1!", null, false, "r1!"},
-                {null, "lt", "r1", null, true, "Missing reagent lot for "+lt.getName()},
+                {bc, "lt", null, "r1", "r2", 2, null},
+                {bc, "lt", null, "", null, 0, null},
+                {bc, "lt", null, "", "r2", 2, missingLotMessage},
+                {bc, "lt", null, "r1", null, 2, missingLotMessage},
+                {bc, "lt", "r1", null, null, 1, null},
+                {bc, "lt", null, "r1", "r2", 1, missingLotMessage},
+                {bc, "lt", null, "r1", "r2!", 2, "r2!"},
+                {bc, "lt", null, "r1!", null, 0, "r1!"},
+                {null, "lt", null, "r1", null, 2, "Missing reagent lot for "+lt.getName()},
         };
         when(mockReagentLotValidator.validate(any(), any())).then(invocation -> {
             String string = invocation.getArgument(0);
@@ -495,26 +499,28 @@ public class TestSlotCopyValidationService {
         });
         Set<String> problems = new HashSet<>(1);
         SlotCopyRequest request = new SlotCopyRequest();
-        final boolean[] needsReagentLot = {false,false};
+        final int[] needsReagentLot = {0,0};
         doAnswer(invocation -> {
-            needsReagentLot[1] = true;
+            needsReagentLot[1] += 1;
             return needsReagentLot[0];
-        }).when(service).needsReagentLot(any(), any(), any());
+        }).when(service).neededReagentLot(any(), any(), any());
         for (Object[] option : options) {
             SlotCopyDestination scd = new SlotCopyDestination();
             scd.setBarcode((String) option[0]);
             scd.setLabwareType((String) option[1]);
-            scd.setReagentALot((String) option[2]);
-            scd.setReagentBLot((String) option[3]);
-            needsReagentLot[0] = (boolean) option[4];
-            needsReagentLot[1] = false;
+            scd.setReagentLot((String) option[2]);
+            scd.setReagentALot((String) option[3]);
+            scd.setReagentBLot((String) option[4]);
+            needsReagentLot[0] = (int) option[5];
+            needsReagentLot[1] = 0;
             problems.clear();
-            String expectedProblem = (String) option[5];
+            String expectedProblem = (String) option[6];
             request.setDestinations(List.of(scd));
             service.validateReagentLots(problems, opType, lts, lwMap, request);
             assertProblem(problems, expectedProblem);
-            if (nullOrEmpty(scd.getReagentALot()) || nullOrEmpty(scd.getReagentBLot())) {
-                assertTrue(needsReagentLot[1]);
+            if (Stream.of(scd.getReagentLot(), scd.getReagentALot(), scd.getReagentBLot())
+                    .anyMatch(BasicUtils::nullOrEmpty)) {
+                assertThat(needsReagentLot[1]).isGreaterThan(0);
             }
         }
     }

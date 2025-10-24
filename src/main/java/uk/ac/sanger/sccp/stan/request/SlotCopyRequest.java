@@ -184,8 +184,10 @@ public class SlotCopyRequest {
         private String probeLotNumber;
         private String preBarcode;
         private String lpNumber;
+        private String reagentLot;
         private String reagentALot;
         private String reagentBLot;
+        private SlideCosting reagentCosting;
         private List<SlotCopyContent> contents;
 
         public SlotCopyDestination() {
@@ -318,6 +320,22 @@ public class SlotCopyRequest {
             this.contents = (contents==null ? List.of() : contents);
         }
 
+        public String getReagentLot() {
+            return this.reagentLot;
+        }
+
+        public void setReagentLot(String reagentLot) {
+            this.reagentLot = reagentLot;
+        }
+
+        public SlideCosting getReagentCosting() {
+            return this.reagentCosting;
+        }
+
+        public void setReagentCosting(SlideCosting reagentCosting) {
+            this.reagentCosting = reagentCosting;
+        }
+
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
@@ -334,6 +352,8 @@ public class SlotCopyRequest {
                     && Objects.equals(this.contents, that.contents)
                     && Objects.equals(this.reagentALot, that.reagentALot)
                     && Objects.equals(this.reagentBLot, that.reagentBLot)
+                    && Objects.equals(this.reagentLot, that.reagentLot)
+                    && this.reagentCosting == that.reagentCosting
             );
         }
 
@@ -354,8 +374,10 @@ public class SlotCopyRequest {
                     .add("preBarcode", preBarcode)
                     .add("lpNumber", lpNumber)
                     .add("contents", contents)
+                    .add("reagentLot", reagentLot)
                     .add("reagentALot", reagentALot)
                     .add("reagentBLot", reagentBLot)
+                    .add("reagentCosting", reagentCosting)
                     .reprStringValues()
                     .toString();
         }

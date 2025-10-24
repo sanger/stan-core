@@ -144,9 +144,10 @@ public class SlotCopyServiceImp implements SlotCopyService {
         }
         for (SlotCopyDestination dest : dests) {
             OperationResult opres = executeOp(user, dest.getContents(), opType, lwTypes.get(dest.getLabwareType()),
-                    dest.getPreBarcode(), sources,sourceLpNumbers,  dest.getCosting(), dest.getLotNumber(),
+                    dest.getPreBarcode(), sources,sourceLpNumbers, dest.getCosting(), dest.getLotNumber(),
                     dest.getProbeLotNumber(), bioStates.get(dest.getBioState()), dest.getLpNumber(),
-                    dest.getReagentALot(), dest.getReagentBLot(),
+                    dest.getReagentLot(), dest.getReagentALot(), dest.getReagentBLot(),
+                    dest.getReagentCosting(),
                     existingDests.get(dest.getBarcode()), executionType);
             ops.addAll(opres.getOperations());
             destLabware.addAll(opres.getLabware());
@@ -195,6 +196,10 @@ public class SlotCopyServiceImp implements SlotCopyService {
      * @param probeLotNumber the transcriptome probe lot number, if specified
      * @param bioState the new bio state of the labware, if given
      * @param lpNumber the lp number for the labware, if given
+     * @param reagentLot single reagent lot, if given
+     * @param reagentALot reagent A lot, if given
+     * @param reagentBLot reagent B lot, if given
+     * @param reagentCosting reagent costing, if given
      * @param destLw existing destination labware, if applicable
      * @param executionType the execution type of the operation, if given
      * @return the result of the operation
@@ -204,7 +209,8 @@ public class SlotCopyServiceImp implements SlotCopyService {
                                      UCMap<Labware> sourceMap, UCMap<String> sourceLps,
                                      SlideCosting costing, String lotNumber,
                                      String probeLotNumber, BioState bioState, String lpNumber,
-                                     String reagentALot, String reagentBLot,
+                                     String reagentLot, String reagentALot, String reagentBLot,
+                                     SlideCosting reagentCosting,
                                      Labware destLw, ExecutionType executionType) {
         if (destLw==null) {
             destLw = lwService.create(lwType, preBarcode, preBarcode);
@@ -228,11 +234,17 @@ public class SlotCopyServiceImp implements SlotCopyService {
         if (!nullOrEmpty(lpNumber)) {
             lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), LP_NOTE_NAME, lpNumber));
         }
+        if (!nullOrEmpty(reagentLot)) {
+            lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), "reagent lot", reagentLot.toUpperCase()));
+        }
         if (!nullOrEmpty(reagentALot)) {
             lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), "reagent A lot", reagentALot.toUpperCase()));
         }
         if (!nullOrEmpty(reagentBLot)) {
             lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), "reagent B lot", reagentBLot.toUpperCase()));
+        }
+        if (reagentCosting != null) {
+            lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), "reagent costing", reagentCosting.name()));
         }
         if (executionType!=null) {
             lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), EXECUTION_NOTE_NAME, executionType.toString()));

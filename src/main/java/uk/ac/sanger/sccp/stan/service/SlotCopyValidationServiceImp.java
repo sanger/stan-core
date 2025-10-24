@@ -25,6 +25,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 @Service
 public class SlotCopyValidationServiceImp implements SlotCopyValidationService {
     private final Pattern LP_NUMBER_PTN = Pattern.compile("^(?:LP)?\\d{1,8}$", Pattern.CASE_INSENSITIVE);
+    private final Pattern CYTASSIST_3_PTN = Pattern.compile("^Cytassist HD 3\\b.*", Pattern.CASE_INSENSITIVE);
     private final LabwareTypeRepo lwTypeRepo;
     private final LabwareRepo lwRepo;
     private final BioStateRepo bsRepo;
@@ -79,6 +80,7 @@ public class SlotCopyValidationServiceImp implements SlotCopyValidationService {
         checkListedSources(data.problems, request);
         validateLotNumbers(data.problems, request.getDestinations());
         validateReagentLots(data.problems, data.opType, data.lwTypes, data.destLabware, request);
+        validateReagentCostings(data.problems, data.opType, request);
         validateLpNumbers(data.problems, request.getDestinations());
         validateContents(data.problems, data.lwTypes, data.sourceLabware, data.destLabware, request);
         validateOps(data.problems, request.getDestinations(), data.opType, data.lwTypes);
@@ -311,29 +313,60 @@ public class SlotCopyValidationServiceImp implements SlotCopyValidationService {
     public void validateReagentLots(Collection<String> problems, OperationType opType, UCMap<LabwareType> lwTypes,
                                     UCMap<Labware> destLabware, SlotCopyRequest request) {
         for (SlotCopyDestination scd : request.getDestinations()) {
-            for (String string : Arrays.asList(scd.getReagentALot(), scd.getReagentBLot())) {
+            int needed = neededReagentLot(opType, destLabware.get(scd.getBarcode()), lwTypes.get(scd.getLabwareType()));
+            boolean missing = false;
+            for (int rlIndex = 0; rlIndex < 3; rlIndex++) {
+                String string = switch (rlIndex) {
+                    case 0 -> scd.getReagentLot();
+                    case 1 -> scd.getReagentALot();
+                    case 2 -> scd.getReagentBLot();
+                    default -> null; // can't happen
+                };
                 if (!nullOrEmpty(string)) {
                     reagentLotValidator.validate(string, problems::add);
-                } else if (needsReagentLot(opType, destLabware.get(scd.getBarcode()), lwTypes.get(scd.getLabwareType()))) {
-                    if (scd.getBarcode() != null) {
-                        problems.add("Missing reagent lot for destination " + scd.getBarcode());
-                    } else {
-                        problems.add("Missing reagent lot for "+scd.getLabwareType());
-                    }
+                } else if (needed==(rlIndex==0 ? 1 : 2)) {
+                    missing = true;
+                }
+            }
+            if (missing) {
+                if (scd.getBarcode() != null) {
+                    problems.add("Missing reagent lot for destination " + scd.getBarcode());
+                } else {
+                    problems.add("Missing reagent lot for "+scd.getLabwareType());
                 }
             }
         }
     }
 
-    /** Are reagent lots required? */
-    public boolean needsReagentLot(OperationType opType, Labware lw, LabwareType lt) {
-        if (opType == null || !opType.getName().equalsIgnoreCase(CYTASSIST_OP)) {
-            return false;
+    public void validateReagentCostings(Collection<String> problems, OperationType opType, SlotCopyRequest request) {
+        if (opType!=null && opType.getName().equalsIgnoreCase(CYTASSIST_OP) &&
+                request.getDestinations().stream().anyMatch(scd -> scd.getReagentCosting()==null)) {
+            problems.add("Missing reagent costing.");
+        }
+    }
+
+    /**
+     * What reagent lots are required?
+     * Either 0, 1, or 2.
+     * @param opType operation type being validated
+     * @param lw labware in use
+     * @param lt labware type expected
+     * @return 0, 1 or 2
+     */
+    public int neededReagentLot(OperationType opType, Labware lw, LabwareType lt) {
+        if (opType==null || !opType.getName().equalsIgnoreCase(CYTASSIST_OP)) {
+            return 0;
         }
         if (lw != null) {
             lt = lw.getLabwareType();
         }
-        return lt != null && lt.getName().matches("Cytassist HD 3\\b.*");
+        if (lt == null || !lt.isCytAssist()) {
+            return 0;
+        }
+        if (CYTASSIST_3_PTN.matcher(lt.getName()).matches()) {
+            return 2;
+        }
+        return 1;
     }
 
     /**
