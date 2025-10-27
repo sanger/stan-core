@@ -2349,6 +2349,11 @@ type Query {
     analyserScanData(barcode: String!): AnalyserScanData!
     """Run names recorded for the specified labware."""
     runNames(barcode: String!): [String!]!
+    """
+    Does the specified operation exist on the specified labware?
+    With the specified run name, work number if provided.
+    """
+    opExists(operationType: String!, barcode: String!, run: String, workNumber: String): Boolean!
     """Bio risk codes for samples in the specified labware."""
     labwareBioRiskCodes(barcode: String!): [SampleBioRisk!]!
     """Reloads saved slot copy information."""
