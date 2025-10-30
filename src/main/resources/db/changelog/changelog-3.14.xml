@@ -85,6 +85,9 @@
             <column name="amplification_cq" type="VARCHAR(16)">
                 <constraints nullable="true"/>
             </column>
+            <column name="amplification_cycles" type="VARCHAR(16)">
+                <constraints nullable="true"/>
+            </column>
             <column name="dual_index_plate_type" type="VARCHAR(64)">
                 <constraints nullable="true"/>
             </column>

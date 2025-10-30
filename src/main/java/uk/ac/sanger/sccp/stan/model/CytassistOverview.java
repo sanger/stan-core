@@ -35,6 +35,7 @@ public class CytassistOverview {
     private String tissueCoverage;
     private String qpcrResult;
     private String amplificationCq;
+    private String amplificationCycles;
     private String dualIndexPlateType;
     private String dualIndexPlateWell;
     private String visiumConcentrationType;
@@ -232,6 +233,14 @@ public class CytassistOverview {
         this.amplificationCq = amplificationCq;
     }
 
+    public String getAmplificationCycles() {
+        return this.amplificationCycles;
+    }
+
+    public void setAmplificationCycles(String amplificationCycles) {
+        this.amplificationCycles = amplificationCycles;
+    }
+
     public String getDualIndexPlateType() {
         return this.dualIndexPlateType;
     }
@@ -354,6 +363,7 @@ public class CytassistOverview {
                 .add("tissueCoverage", tissueCoverage)
                 .add("qpcrResult", qpcrResult)
                 .add("amplificationCq", amplificationCq)
+                .add("amplificationCycles", amplificationCycles)
                 .add("dualIndexPlateType", dualIndexPlateType)
                 .add("dualIndexPlateWell", dualIndexPlateWell)
                 .add("visiumConcentrationType", visiumConcentrationType)
