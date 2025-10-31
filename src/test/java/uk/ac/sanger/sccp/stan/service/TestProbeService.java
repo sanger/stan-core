@@ -102,7 +102,6 @@ public class TestProbeService {
         doReturn(spikeMap).when(service).checkSpikes(any(), any());
         doNothing().when(service).validateTimestamp(any(), any(), any());
         doNothing().when(service).checkReagentLots(any(), any());
-        doNothing().when(service).checkKitCostings(any(), any());
 
         if (nullOrEmpty(expectedProblems)) {
             OperationResult opres = new OperationResult(List.of(), List.of(lw));
@@ -119,7 +118,6 @@ public class TestProbeService {
             verify(service, never()).validateProbes(any(), any(), any());
             verify(service, never()).validateTimestamp(any(), any(), any());
             verify(service, never()).checkReagentLots(any(), any());
-            verify(service, never()).checkKitCostings(any(), any());
             return;
         }
         final List<ProbeOperationLabware> pols = request.getLabware();
@@ -139,7 +137,6 @@ public class TestProbeService {
         verify(service).validateProbes(any(), same(probeType), eq(pols));
         verify(service).checkSpikes(any(), same(pols));
         verify(service).checkReagentLots(any(), eq(pols));
-        verify(service).checkKitCostings(any(), eq(pols));
         if (request.getPerformed()==null) {
             verify(service, never()).validateTimestamp(any(), any(), any());
         } else {
@@ -160,12 +157,11 @@ public class TestProbeService {
         UCMap<ProbePanel> ppMap = UCMap.from(ProbePanel::getName, new ProbePanel(probeType, "pp1"));
         doAnswer(addProblem("Bad probe", ppMap)).when(service).validateProbes(any(), any(), any());
         doAnswer(addProblem("Bad time")).when(service).validateTimestamp(any(), any(), any());
-        doAnswer(addProblem("Bad costing")).when(service).checkKitCostings(any(), any());
         User user = EntityFactory.getUser();
         ProbeOperationRequest request = new ProbeOperationRequest("optype", LocalDateTime.now(),
                 List.of(new ProbeOperationLabware("Alpha", "Beta", SlideCosting.SGP, null, List.of(), null)));
         Matchers.assertValidationException(() -> service.recordProbeOperation(user, request),
-                List.of("Bad labware", "Bad op type", "Bad work", "Bad probe", "Bad time", "Bad costing"));
+                List.of("Bad labware", "Bad op type", "Bad work", "Bad probe", "Bad time"));
         ArgumentCaptor<Stream<String>> streamCaptor = Matchers.streamCaptor();
         verify(service).validateLabware(any(), streamCaptor.capture());
         assertThat(streamCaptor.getValue()).containsExactly("Alpha");
@@ -174,7 +170,6 @@ public class TestProbeService {
         verify(service).validateProbes(any(), same(probeType), same(request.getLabware()));
         verify(service).checkSpikes(any(), same(request.getLabware()));
         verify(service).validateTimestamp(any(), same(request.getPerformed()), same(lwMap));
-        verify(service).checkKitCostings(any(), same(request.getLabware()));
         verify(service, never()).perform(any(), any(), any(), any(), any(), any(), any(), any());
     }
 
@@ -247,7 +242,7 @@ public class TestProbeService {
 
         service.checkAllAddresses(problems, pols, lwMap);
         verify(service, times(1)).checkAddresses(any(), any(), any());
-        verify(service).checkAddresses(same(problems), same(addresses), same(lwList.get(0)));
+        verify(service).checkAddresses(same(problems), same(addresses), same(lwList.getFirst()));
     }
 
     @ParameterizedTest
@@ -343,26 +338,6 @@ public class TestProbeService {
             }
         }
         verify(mockReagentLotValidator, never()).validate(isNull(), any());
-    }
-
-    @ParameterizedTest
-    @ValueSource(booleans={false,true})
-    public void testCheckKitCostings(boolean anyMissing) {
-        List<SlideCosting> costings;
-        String expectedProblem;
-        if (anyMissing) {
-            costings = Arrays.asList(SlideCosting.SGP, SlideCosting.Faculty, null, SlideCosting.SGP, null);
-            expectedProblem = "Missing kit costing for labware.";
-        } else {
-            costings = List.of(SlideCosting.SGP, SlideCosting.Faculty, SlideCosting.SGP);
-            expectedProblem = null;
-        }
-        List<ProbeOperationLabware> pols = costings.stream()
-                .map(costing -> new ProbeOperationLabware(null, null, costing, null, null, null))
-                .toList();
-        List<String> problems = new ArrayList<>(anyMissing ? 1 : 0);
-        service.checkKitCostings(problems, pols);
-        assertProblem(problems, expectedProblem);
     }
 
     @Test
