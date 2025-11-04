@@ -8,6 +8,8 @@ mutation {
             costing: Faculty
             lotNumber: "1234567"
             probeLotNumber: "7777777"
+            reagentLot: "000000"
+            reagentCosting: SGP
             contents: [
                 {
                     sourceBarcode: "STAN-01"

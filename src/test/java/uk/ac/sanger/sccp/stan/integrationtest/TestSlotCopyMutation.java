@@ -157,12 +157,14 @@ public class TestSlotCopyMutation {
         assertTrue(newLabware.getSlot(cytAssist ? D1 : A2).getSamples().stream().allMatch(sam -> sam.getBioState().getName().equals(newBsName)));
         if (cytAssist) {
             List<LabwareNote> notes = lwNoteRepo.findAllByOperationIdIn(List.of(opId));
-            assertThat(notes).hasSize(3);
+            assertThat(notes).hasSize(5);
             Map<String, String> noteMap = notes.stream().collect(toMap(LabwareNote::getName, LabwareNote::getValue));
             notes.forEach(note -> assertEquals(destLabwareId, note.getLabwareId()));
             assertEquals("Faculty", noteMap.get("costing"));
             assertEquals("1234567", noteMap.get("lot"));
             assertEquals("7777777", noteMap.get("probe lot"));
+            assertEquals("000000", noteMap.get("reagent lot"));
+            assertEquals("SGP", noteMap.get("reagent costing"));
         }
 
         verifyNoInteractions(mockStorelightClient);
