@@ -11,6 +11,7 @@ import uk.ac.sanger.sccp.stan.service.cytassistoverview.CytassistOverviewDataCom
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.Posterity;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
+import uk.ac.sanger.sccp.utils.UCMap;
 import uk.ac.sanger.sccp.utils.Zip;
 
 import java.time.LocalDateTime;
@@ -114,7 +115,7 @@ class TestCytassistOverviewDataCompiler {
         doNothing().when(dataCompiler).loadProbeQC(any(), any());
         doNothing().when(dataCompiler).loadTissueCoverage(any(), any());
         doNothing().when(dataCompiler).loadQPCR(any(), any(), any());
-        doNothing().when(dataCompiler).loadAmpCq(any(), any(), any());
+        doNothing().when(dataCompiler).loadAmpMeasurements(any(), any(), any());
         doNothing().when(dataCompiler).loadDualIndex(any(), any(), any());
         doNothing().when(dataCompiler).loadVisiumConcentration(any(), any(), any());
         doNothing().when(dataCompiler).loadLatestLabware(any(), any());
@@ -143,7 +144,7 @@ class TestCytassistOverviewDataCompiler {
         verify(dataCompiler).loadProbeQC(same(data), eq(sourceSlotIds));
         verify(dataCompiler).loadTissueCoverage(same(data), eq(cytSlotIds));
         verify(dataCompiler).loadQPCR(same(data), same(posterity), same(allDestSlotIds));
-        verify(dataCompiler).loadAmpCq(same(data), same(posterity), same(allDestSlotIds));
+        verify(dataCompiler).loadAmpMeasurements(same(data), same(posterity), same(allDestSlotIds));
         verify(dataCompiler).loadDualIndex(same(data), same(posterity), same(allDestSlotIds));
         verify(dataCompiler).loadVisiumConcentration(same(data), same(posterity), same(allDestSlotIds));
         verify(dataCompiler).loadLatestLabware(same(data), same(posterity));
@@ -547,20 +548,23 @@ class TestCytassistOverviewDataCompiler {
     }
 
     @Test
-    void testLoadAmpCq() {
+    void testLoadAmpMeasurements() {
         Posterity posterity = new Posterity();
         List<CytData> data = List.of(new CytData(null, null));
         Set<Integer> allDestSlotIds = Set.of(1,2);
         doAnswer(invocation -> {
             List<CytData> argData = invocation.getArgument(0);
-            BiConsumer<CytassistOverview, String> consumer = invocation.getArgument(5);
-            consumer.accept(argData.getFirst().row, "30");
+            UCMap<BiConsumer<CytassistOverview, String>> consumers = invocation.getArgument(4);
+            CytData data0 = argData.getFirst();
+            consumers.get("Cq value").accept(data0.row, "30");
+            consumers.get("Cycles").accept(data0.row, "80");
             return null;
-        }).when(dataCompiler).loadMeasurement(any(), any(), any(), any(), any(), any());
-        dataCompiler.loadAmpCq(data, posterity, allDestSlotIds);
-        verify(dataCompiler).loadMeasurement(same(data), same(posterity), same(allDestSlotIds),
-                eqCi("Amplification"), eqCi("Cq value"), any());
+        }).when(dataCompiler).loadMeasurements(any(), any(), any(), any(), any());
+        dataCompiler.loadAmpMeasurements(data, posterity, allDestSlotIds);
+        verify(dataCompiler).loadMeasurements(same(data), same(posterity), same(allDestSlotIds),
+                eqCi("Amplification"), any());
         assertEquals("30", data.getFirst().row.getAmplificationCq());
+        assertEquals("80", data.getFirst().row.getAmplificationCycles());
     }
 
     @Test

@@ -9,6 +9,7 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.Posterity;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
+import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -86,7 +87,7 @@ public class CytassistOverviewDataCompilerImp implements CytassistOverviewDataCo
         loadProbeQC(data, sourceSlotIds);
         loadTissueCoverage(data, cytDestIds);
         loadQPCR(data, posterity, allDestSlotIds);
-        loadAmpCq(data, posterity, allDestSlotIds);
+        loadAmpMeasurements(data, posterity, allDestSlotIds);
         loadDualIndex(data, posterity, allDestSlotIds);
         loadVisiumConcentration(data, posterity, allDestSlotIds);
         loadLatestLabware(data, posterity);
@@ -308,9 +309,12 @@ public class CytassistOverviewDataCompilerImp implements CytassistOverviewDataCo
         loadMeasurement(data, posterity, allDestSlotIds, "qPCR results", "Cq value", CytassistOverview::setQpcrResult);
     }
 
-    /** Loads Cq measurement from amplification ops on future lw */
-    void loadAmpCq(List<CytData> data, Posterity posterity, Set<Integer> allDestSlotIds) {
-        loadMeasurement(data, posterity, allDestSlotIds, "Amplification", "Cq value", CytassistOverview::setAmplificationCq);
+    /** Loads measurements from amplification ops on future lw */
+    void loadAmpMeasurements(List<CytData> data, Posterity posterity, Set<Integer> allDestSlotIds) {
+        UCMap<BiConsumer<CytassistOverview, String>> measSetters = new UCMap<>(2);
+        measSetters.put("Cq value", CytassistOverview::setAmplificationCq);
+        measSetters.put("Cycles", CytassistOverview::setAmplificationCycles);
+        loadMeasurements(data, posterity, allDestSlotIds, "Amplification", measSetters);
     }
 
     /** Loads details of dual index ops on future lw */
@@ -593,37 +597,63 @@ public class CytassistOverviewDataCompilerImp implements CytassistOverviewDataCo
      */
     void loadMeasurement(List<CytData> data, Posterity posterity, Set<Integer> destSlotIds,
                          String opName, String measurementName, BiConsumer<CytassistOverview, String> setter) {
+        UCMap<BiConsumer<CytassistOverview, String>> setterMap = new UCMap<>(1);
+        setterMap.put(measurementName, setter);
+        loadMeasurements(data, posterity, destSlotIds, opName, setterMap);
+    }
+
+    /**
+     * Loads measurements for given op name and measurement names from future labware.
+     * Later measurements supersede earlier ones.
+     * The value of the measurement is set using the given setter functions.
+     */
+    void loadMeasurements(List<CytData> data, Posterity posterity, Set<Integer> destSlotIds,
+                         String opName, UCMap<BiConsumer<CytassistOverview, String>> measurementSetters) {
+
+        /* A name (converted to upper case) and a slot sample id, used as a hashmap key. */
+        record NameSs(String name, SlotIdSampleId ssId) {
+            NameSs(String name, SlotIdSampleId ssId) {
+                this.name = name.toUpperCase();
+                this.ssId = ssId;
+            }
+        }
         OperationType opType = opTypeRepo.getByName(opName);
         List<Operation> ops = opRepo.findAllByOperationTypeAndDestinationSlotIdIn(opType, destSlotIds);
         Map<Integer, Operation> opMap = ops.stream().collect(inMap(Operation::getId));
         List<Measurement> measurements = measurementRepo.findAllByOperationIdIn(opMap.keySet());
-        Map<SlotIdSampleId, String> ssMeas = new HashMap<>();
-        Map<SlotIdSampleId, Operation> ssOp = new HashMap<>();
+        Map<NameSs, String> nameSsMeas = new HashMap<>();
+        Map<NameSs, Operation> nameSsOp = new HashMap<>();
         for (Measurement m : measurements) {
-            if (m.getName().equalsIgnoreCase(measurementName)) {
-                SlotIdSampleId key = new SlotIdSampleId(m.getSlotId(), m.getSampleId());
+            if (measurementSetters.containsKey(m.getName())) {
+                SlotIdSampleId ssId = new SlotIdSampleId(m.getSlotId(), m.getSampleId());
+                NameSs key = new NameSs(m.getName(), ssId);
                 Operation op = opMap.get(m.getOperationId());
-                Operation savedOp = ssOp.get(key);
+                Operation savedOp = nameSsOp.get(key);
                 if (savedOp == null || savedOp.compareTo(op) < 0) {
-                    ssMeas.put(key, m.getValue());
-                    ssOp.put(key, op);
+                    nameSsMeas.put(key, m.getValue());
+                    nameSsOp.put(key, op);
                 }
             }
         }
         for (CytData d : data) {
             SlotSample start = new SlotSample(d.cytAction.getSource(), d.cytAction.getSourceSample());
-            Operation foundOp = null;
-            String foundValue = null;
+            UCMap<Operation> nameFoundOps = new UCMap<>();
+            UCMap<String> nameFoundValues = new UCMap<>();
             for (SlotSample ss : posterity.descendents(start)) {
-                SlotIdSampleId key = new SlotIdSampleId(ss.slotId(), ss.sampleId());
-                Operation op = ssOp.get(key);
-                if (op != null && (foundOp==null || foundOp.compareTo(op) < 0)) {
-                    foundOp = op;
-                    foundValue = ssMeas.get(key);
+                SlotIdSampleId ssId = new SlotIdSampleId(ss.slotId(), ss.sampleId());
+                for (String measurementName : measurementSetters.keySet()) {
+                    NameSs key = new NameSs(measurementName, ssId);
+                    Operation op = nameSsOp.get(new NameSs(measurementName, ssId));
+                    if (op != null && (nameFoundOps.get(measurementName)==null || nameFoundOps.get(measurementName).compareTo(op) < 0)) {
+                        nameFoundOps.put(measurementName, op);
+                        nameFoundValues.put(measurementName, nameSsMeas.get(key));
+                    }
                 }
             }
-            if (foundOp != null) {
-                setter.accept(d.row, foundValue);
+            for (String measurementName : nameFoundOps.keySet()) {
+                Operation foundOp = nameFoundOps.get(measurementName);
+                String foundValue = nameFoundValues.get(measurementName);
+                measurementSetters.get(measurementName).accept(d.row, foundValue);
                 d.users.add(foundOp.getUser());
             }
         }
