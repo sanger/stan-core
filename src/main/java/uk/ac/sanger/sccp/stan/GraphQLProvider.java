@@ -137,6 +137,7 @@ public class GraphQLProvider {
                         .dataFetcher("workProgress", graphQLDataFetchers.workProgress())
                         .dataFetcher("analyserScanData", graphQLDataFetchers.analyserScanData())
                         .dataFetcher("runNames", graphQLDataFetchers.runNames())
+                        .dataFetcher("opExists", graphQLDataFetchers.opExists())
                         .dataFetcher("labwareBioRiskCodes", graphQLDataFetchers.labwareBioRiskCodes())
                         .dataFetcher("reloadSlotCopy", graphQLDataFetchers.reloadSlotCopy())
                         .dataFetcher("probeHybSlots", graphQLDataFetchers.getProbeHybSlots())

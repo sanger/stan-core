@@ -21,8 +21,7 @@ import uk.ac.sanger.sccp.stan.service.flag.FlagLookupService;
 import uk.ac.sanger.sccp.stan.service.graph.GraphService;
 import uk.ac.sanger.sccp.stan.service.history.HistoryService;
 import uk.ac.sanger.sccp.stan.service.label.print.LabelPrintService;
-import uk.ac.sanger.sccp.stan.service.operation.AnalyserServiceImp;
-import uk.ac.sanger.sccp.stan.service.operation.RecentOpService;
+import uk.ac.sanger.sccp.stan.service.operation.*;
 import uk.ac.sanger.sccp.stan.service.operation.plan.PlanService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.stan.service.work.WorkSummaryService;
@@ -93,6 +92,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final LabwareNoteService lwNoteService;
     final SlotCopyRecordService slotCopyRecordService;
     final CompletionService completionService;
+    final OpLookupService opLookupService;
 
     @Autowired
     public GraphQLDataFetchers(ObjectMapper objectMapper, AuthenticationComponent authComp, UserRepo userRepo,
@@ -119,7 +119,8 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                FlagLookupService flagLookupService, MeasurementService measurementService,
                                GraphService graphService, CommentRepo commentRepo,
                                AnalyserScanDataService analyserScanDataService, LabwareNoteService lwNoteService,
-                               SlotCopyRecordService slotCopyRecordService, CompletionService completionService) {
+                               SlotCopyRecordService slotCopyRecordService, CompletionService completionService,
+                               OpLookupService opLookupService) {
         super(objectMapper, authComp, userRepo);
         this.sessionConfig = sessionConfig;
         this.versionInfo = versionInfo;
@@ -174,6 +175,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.lwNoteService = lwNoteService;
         this.slotCopyRecordService = slotCopyRecordService;
         this.completionService = completionService;
+        this.opLookupService = opLookupService;
     }
 
     public DataFetcher<User> getUser() {
@@ -552,6 +554,17 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         return dfe -> {
             String barcode = dfe.getArgument("barcode");
             return lwNoteService.findNoteValuesForBarcode(barcode, AnalyserServiceImp.RUN_NAME);
+        };
+    }
+
+    public DataFetcher<Boolean> opExists() {
+        return dfe -> {
+            String barcode = dfe.getArgument("barcode");
+            String opName = dfe.getArgument("operationType");
+            String run = dfe.getArgument("run");
+            String workNumber = dfe.getArgument("workNumber");
+            List<Operation> ops = opLookupService.findOps(opName, barcode, run, workNumber);
+            return !ops.isEmpty();
         };
     }
 
