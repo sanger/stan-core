@@ -15,6 +15,7 @@ import uk.ac.sanger.sccp.stan.service.sanitiser.DecimalSanitiser;
 import uk.ac.sanger.sccp.stan.service.sanitiser.Sanitiser;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
+import uk.ac.sanger.sccp.utils.Zip;
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -53,6 +54,7 @@ public class TestSectionRegisterValidation {
     @Mock private Validator<String> mockReplicateValidator;
     @Mock private Validator<String> mockVisiumLpBarcodeValidation;
     @Mock private Validator<String> mockXeniumBarcodeValidator;
+    @Mock private Validator<String> mockXeniumLotValidator;
     private Sanitiser<String> thicknessSanisiser;
     @Mock private SlotRegionService mockSlotRegionService;
     @Mock private BioRiskService mockBioRiskService;
@@ -97,7 +99,8 @@ public class TestSectionRegisterValidation {
                 mockBioStateRepo,
                 mockSlotRegionService, mockBioRiskService, mockWorkService,
                 mockExternalBarcodeValidation, mockDonorNameValidation, mockExternalNameValidation,
-                mockReplicateValidator, mockVisiumLpBarcodeValidation, mockXeniumBarcodeValidator, thicknessSanisiser));
+                mockReplicateValidator, mockVisiumLpBarcodeValidation, mockXeniumBarcodeValidator, mockXeniumLotValidator,
+                thicknessSanisiser));
     }
 
     private void mockValidator(Validator<String> validator) {
@@ -433,6 +436,27 @@ public class TestSectionRegisterValidation {
             arr2[4] = lwTypes;
             return Arguments.of(arr2);
         });
+    }
+
+    @Test
+    public void testValidateLots() {
+        String[] inputs = {
+                "alpha", "    Beta  ", "", null, "  ", "!Gamma",
+        };
+        String[] expected = {
+                "ALPHA", "BETA", null, null, null, "!GAMMA",
+        };
+        mockValidator(mockXeniumLotValidator);
+        List<SectionRegisterLabware> srls = Arrays.stream(inputs).map(lot -> {
+            SectionRegisterLabware srl = new SectionRegisterLabware();
+            srl.setLot(lot);
+            return srl;
+        }).toList();
+        SectionRegisterValidation val = makeValidation(srls);
+        val.validateLots();
+        assertProblem(val.getProblems(), "Bad string: !GAMMA");
+        Zip.of(srls.stream(), Arrays.stream(expected))
+                .forEach((srl, exp) -> assertEquals(exp, srl.getLot()));
     }
 
     @ParameterizedTest

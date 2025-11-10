@@ -411,6 +411,8 @@ input SectionRegisterLabware {
     externalBarcode: String!
     """The prebarcode of this labware, if any."""
     preBarcode: String
+    """The lot number of the labware, if any."""
+    lot: String
     """The contents of the labware (new sections)."""
     contents: [SectionRegisterContent!]!
 }

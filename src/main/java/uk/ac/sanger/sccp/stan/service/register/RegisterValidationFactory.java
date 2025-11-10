@@ -33,6 +33,7 @@ public class RegisterValidationFactory {
     private final Validator<String> visiumLpSlideBarcodeValidation;
     private final Validator<String> xeniumBarcodeValidator;
     private final Validator<String> replicateValidator;
+    private final Validator<String> xeniumLotValidator;
     private final Sanitiser<String> thicknessSanitiser;
     private final TissueFieldChecker tissueFieldChecker;
     private final SlotRegionService slotRegionService;
@@ -50,6 +51,7 @@ public class RegisterValidationFactory {
                                      @Qualifier("visiumLPBarcodeValidator") Validator<String> visiumLpSlideBarcodeValidation,
                                      @Qualifier("xeniumBarcodeValidator") Validator<String> xeniumBarcodeValidator,
                                      @Qualifier("thicknessSanitiser") Sanitiser<String> thicknessSanitiser,
+                                     @Qualifier("xeniumLotValidator") Validator<String> xeniumLotValidator,
                                      @Qualifier("replicateValidator") Validator<String> replicateValidator,
                                      TissueFieldChecker tissueFieldChecker,
                                      SlotRegionService slotRegionService, BioRiskService bioRiskService, WorkService workService) {
@@ -70,6 +72,7 @@ public class RegisterValidationFactory {
         this.visiumLpSlideBarcodeValidation = visiumLpSlideBarcodeValidation;
         this.xeniumBarcodeValidator = xeniumBarcodeValidator;
         this.replicateValidator = replicateValidator;
+        this.xeniumLotValidator = xeniumLotValidator;
         this.thicknessSanitiser = thicknessSanitiser;
         this.tissueFieldChecker = tissueFieldChecker;
         this.slotRegionService = slotRegionService;
@@ -88,6 +91,6 @@ public class RegisterValidationFactory {
                 hmdmcRepo, ttRepo, fixativeRepo, cellClassRepo, mediumRepo, tissueRepo, bioStateRepo,
                 slotRegionService, bioRiskService, workService,
                 externalBarcodeValidation, donorNameValidation, externalNameValidation, replicateValidator,
-                visiumLpSlideBarcodeValidation, xeniumBarcodeValidator, thicknessSanitiser);
+                visiumLpSlideBarcodeValidation, xeniumBarcodeValidator, xeniumLotValidator, thicknessSanitiser);
     }
 }

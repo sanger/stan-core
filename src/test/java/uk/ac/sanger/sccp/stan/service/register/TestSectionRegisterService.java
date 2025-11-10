@@ -36,6 +36,7 @@ public class TestSectionRegisterService {
     @Mock private OperationTypeRepo mockOpTypeRepo;
     @Mock private SlotRepo mockSlotRepo;
     @Mock private SamplePositionRepo mockSamplePositionRepo;
+    @Mock private LabwareNoteRepo mockLwNoteRepo;
 
     @Mock private OperationService mockOpService;
     @Mock private LabwareService mockLwService;
@@ -55,7 +56,7 @@ public class TestSectionRegisterService {
         user = EntityFactory.getUser();
 
         regService = spy(new SectionRegisterServiceImp(mockValidationFactory, mockDonorRepo, mockTissueRepo, mockSampleRepo,
-                mockMeasurementRepo, mockOpTypeRepo, mockSlotRepo, mockSamplePositionRepo,
+                mockMeasurementRepo, mockOpTypeRepo, mockSlotRepo, mockSamplePositionRepo, mockLwNoteRepo,
                 mockOpService, mockLwService, mockWorkService, mockBioRiskService));
     }
 
@@ -341,6 +342,7 @@ public class TestSectionRegisterService {
         SectionRegisterLabware[] srls = Arrays.stream(labware)
                 .map(lw -> new SectionRegisterLabware(lw.getExternalBarcode(), lt.getName(), null))
                 .toArray(SectionRegisterLabware[]::new);
+        srls[0].setLot("1-2345A");
         UCMap<Sample> sampleMap = UCMap.from(sam -> sam.getTissue().getExternalName(), EntityFactory.getSample());
         UCMap<SlotRegion> regionMap = UCMap.from(SlotRegion::getName, EntityFactory.getSlotRegion());
         SectionRegisterRequest request = new SectionRegisterRequest(Arrays.asList(srls), "SGP1");
@@ -363,6 +365,7 @@ public class TestSectionRegisterService {
             verify(regService).createSamplePositions(srls[i], lw, ops[i].getId(), sampleMap, regionMap);
             verify(regService).linkBioRisks(srls[i], ops[i].getId(), sampleMap, riskMap);
         }
+        verify(mockLwNoteRepo).saveAll(List.of(new LabwareNote(null, labware[0].getId(), operations.getFirst().getId(), "lot", "1-2345A")));
         verify(mockWorkService).link(work, operations);
         assertThat(operations).containsExactly(ops);
     }

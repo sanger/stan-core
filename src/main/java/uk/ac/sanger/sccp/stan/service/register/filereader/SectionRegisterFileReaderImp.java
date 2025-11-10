@@ -78,6 +78,8 @@ public class SectionRegisterFileReaderImp extends BaseRegisterFileReader<Section
                 () -> problems.add("Multiple different labware types specified for external ID "+externalName+"."));
         String prebarcode = getUniqueString(group.stream().map(row -> (String) row.get(Column.Prebarcode)),
                 () -> problems.add("Multiple different prebarcodes specified for external ID "+externalName+"."));
+        String lot = getUniqueString(group.stream().map(row -> (String) row.get(Column.Lot)),
+                () -> problems.add("Multiple different lots specified for external ID "+externalName+"."));
         if (lwType==null) {
             problems.add("No labware type specified for external ID "+externalName+".");
         } else if (lwType.equalsIgnoreCase("xenium") && nullOrEmpty(prebarcode)) {
@@ -90,6 +92,7 @@ public class SectionRegisterFileReaderImp extends BaseRegisterFileReader<Section
                 .collect(toList());
         final SectionRegisterLabware srl = new SectionRegisterLabware(externalName, lwType, srcs);
         srl.setPreBarcode(prebarcode);
+        srl.setLot(lot);
         return srl;
     }
 

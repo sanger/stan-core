@@ -2,9 +2,7 @@ package uk.ac.sanger.sccp.stan.request.register;
 
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 import static uk.ac.sanger.sccp.utils.BasicUtils.newArrayList;
 
@@ -16,6 +14,7 @@ public class SectionRegisterLabware {
     private String externalBarcode;
     private String preBarcode;
     private String labwareType;
+    private String lot;
     private List<SectionRegisterContent> contents;
 
     public SectionRegisterLabware() {
@@ -52,6 +51,14 @@ public class SectionRegisterLabware {
         this.labwareType = labwareType;
     }
 
+    public String getLot() {
+        return this.lot;
+    }
+
+    public void setLot(String lot) {
+        this.lot = lot;
+    }
+
     public List<SectionRegisterContent> getContents() {
         return this.contents;
     }
@@ -68,6 +75,7 @@ public class SectionRegisterLabware {
         return (Objects.equals(this.externalBarcode, that.externalBarcode)
                 && Objects.equals(this.preBarcode, that.preBarcode)
                 && Objects.equals(this.labwareType, that.labwareType)
+                && Objects.equals(this.lot, that.lot)
                 && Objects.equals(this.contents, that.contents));
     }
 
@@ -82,6 +90,7 @@ public class SectionRegisterLabware {
                 .add("externalBarcode", externalBarcode)
                 .add("preBarcode", preBarcode)
                 .add("labwareType", labwareType)
+                .add("lot", lot)
                 .add("contents", contents)
                 .reprStringValues()
                 .omitNullValues()
