@@ -28,10 +28,12 @@ public interface WorkService {
      * @param numOriginalSamples the value for the "numOriginalSamples" field (may be null)
      * @param omeroProjectName the name of the omero project for this work (may be null)
      * @param ssStudyId the Sequencescape study id study (may be null)
+     * @param facultyLead the name of the faculty lead (may be null)
      * @return the new work
      */
-    Work createWork(User user, String prefix, String workTypeName, String workRequesterName, String projectName, String programName, String costCode,
-                    Integer numBlocks, Integer numSlides, Integer numOriginalSamples, String omeroProjectName, Integer ssStudyId);
+    Work createWork(User user, String prefix, String workTypeName, String workRequesterName, String projectName,
+                    String programName, String costCode, Integer numBlocks, Integer numSlides,
+                    Integer numOriginalSamples, String omeroProjectName, Integer ssStudyId, String facultyLead);
 
     /**
      * Updates the status of the work. Records a work event for the change.

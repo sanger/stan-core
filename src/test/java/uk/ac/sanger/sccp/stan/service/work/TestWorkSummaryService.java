@@ -99,7 +99,7 @@ public class TestWorkSummaryService {
     private Work work(WorkType wt, Status status, Integer numBlocks, Integer numSlides, Integer numOriginal) {
         int id = ++idCounter;
         return new Work(id, "SGP"+id, wt, null, null, null, null, status,
-                numBlocks, numSlides, numOriginal, null, null, null);
+                numBlocks, numSlides, numOriginal, null, null, null, null);
     }
 
 }
