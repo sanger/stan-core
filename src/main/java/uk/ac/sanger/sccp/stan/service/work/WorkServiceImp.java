@@ -36,6 +36,7 @@ public class WorkServiceImp implements WorkService {
     private final OmeroProjectRepo omeroProjectRepo;
     private final DnapStudyRepo dnapStudyRepo;
     private final ReleaseRecipientRepo recipientRepo;
+    private final ReleaseDestinationRepo destinationRepo;
     private final WorkEventRepo workEventRepo;
     private final WorkEventService workEventService;
     private final Validator<String> priorityValidator;
@@ -43,7 +44,8 @@ public class WorkServiceImp implements WorkService {
     @Autowired
     public WorkServiceImp(ProjectRepo projectRepo, ProgramRepo programRepo, CostCodeRepo costCodeRepo,
                           WorkTypeRepo workTypeRepo, WorkRepo workRepo, LabwareRepo lwRepo, OmeroProjectRepo omeroProjectRepo,
-                          DnapStudyRepo dnapStudyRepo, ReleaseRecipientRepo recipientRepo, WorkEventRepo workEventRepo, WorkEventService workEventService,
+                          DnapStudyRepo dnapStudyRepo, ReleaseRecipientRepo recipientRepo, ReleaseDestinationRepo destinationRepo,
+                          WorkEventRepo workEventRepo, WorkEventService workEventService,
                           @Qualifier("workPriorityValidator") Validator<String> priorityValidator) {
         this.projectRepo = projectRepo;
         this.programRepo = programRepo;
@@ -54,6 +56,7 @@ public class WorkServiceImp implements WorkService {
         this.omeroProjectRepo = omeroProjectRepo;
         this.dnapStudyRepo = dnapStudyRepo;
         this.recipientRepo = recipientRepo;
+        this.destinationRepo = destinationRepo;
         this.workEventRepo = workEventRepo;
         this.workEventService = workEventService;
         this.priorityValidator = priorityValidator;
@@ -72,7 +75,7 @@ public class WorkServiceImp implements WorkService {
     public Work createWork(User user, String prefix, String workTypeName, String workRequesterName, String projectName,
                            String programName, String costCode,
                            Integer numBlocks, Integer numSlides, Integer numOriginalSamples,
-                           String omeroProjectName, Integer ssStudyId) {
+                           String omeroProjectName, Integer ssStudyId, String facultyLead) {
         checkPrefix(prefix);
 
         Project project = projectRepo.getByName(projectName);
@@ -108,10 +111,19 @@ public class WorkServiceImp implements WorkService {
         }
         requireNonNull(user, "No user supplied.");
         ReleaseRecipient workRequester = findOrCreateRequester(user, workRequesterName);
+        ReleaseDestination leadDest;
+        if (nullOrEmpty(facultyLead)) {
+            leadDest = null;
+        } else {
+            leadDest = destinationRepo.getByName(facultyLead);
+            if (!leadDest.isEnabled()) {
+                throw new IllegalArgumentException("Destination "+leadDest.getName()+" is disabled.");
+            }
+        }
 
         String workNumber = workRepo.createNumber(prefix);
         Work work = workRepo.save(new Work(null, workNumber, type, workRequester, project, program, cc, Status.unstarted,
-                numBlocks, numSlides, numOriginalSamples, null, omeroProject, dnapStudy));
+                numBlocks, numSlides, numOriginalSamples, null, omeroProject, dnapStudy, leadDest));
         workEventService.recordEvent(user, work, WorkEvent.Type.create, null);
         return work;
     }

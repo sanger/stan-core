@@ -92,6 +92,10 @@ public class Work {
     @ManyToOne
     private DnapStudy dnapStudy;
 
+    @ManyToOne
+    @JoinColumn(name="faculty_lead_id")
+    private ReleaseDestination facultyLead;
+
     @Column(columnDefinition = "enum('unstarted', 'active', 'paused', 'completed', 'failed', 'withdrawn')")
     @Enumerated(EnumType.STRING)
     private Status status;
@@ -116,8 +120,10 @@ public class Work {
 
     public Work() {}
 
-    public Work(Integer id, String workNumber, WorkType workType, ReleaseRecipient workRequester, Project project, Program program, CostCode costCode, Status status,
-                Integer numBlocks, Integer numSlides, Integer numOriginalSamples, String priority, OmeroProject omeroProject, DnapStudy dnapStudy) {
+    public Work(Integer id, String workNumber, WorkType workType, ReleaseRecipient workRequester, Project project,
+                Program program, CostCode costCode, Status status, Integer numBlocks, Integer numSlides,
+                Integer numOriginalSamples, String priority, OmeroProject omeroProject, DnapStudy dnapStudy,
+                ReleaseDestination facultyLead) {
         this.id = id;
         this.workNumber = workNumber;
         this.workType = workType;
@@ -132,6 +138,7 @@ public class Work {
         this.priority = priority;
         this.omeroProject = omeroProject;
         this.dnapStudy = dnapStudy;
+        this.facultyLead = facultyLead;
         setOperationIds(null);
         setReleaseIds(null);
     }
@@ -139,7 +146,7 @@ public class Work {
     public Work(Integer id, String workNumber, WorkType workType, ReleaseRecipient workRequester, Project project,
                 Program program, CostCode costCode, Status status) {
         this(id, workNumber, workType, workRequester, project, program, costCode, status, null,
-                null, null, null, null, null);
+                null, null, null, null, null, null);
     }
 
     public Integer getId() {
@@ -281,6 +288,14 @@ public class Work {
         this.dnapStudy = dnapStudy;
     }
 
+    public ReleaseDestination getFacultyLead() {
+        return this.facultyLead;
+    }
+
+    public void setFacultyLead(ReleaseDestination facultyLead) {
+        this.facultyLead = facultyLead;
+    }
+
     @JsonIgnore
     public boolean isClosed() {
         return (status==Status.completed || status==Status.failed || status==Status.withdrawn);
@@ -314,6 +329,7 @@ public class Work {
                 && Objects.equals(this.priority, that.priority)
                 && Objects.equals(this.omeroProject, that.omeroProject)
                 && Objects.equals(this.dnapStudy, that.dnapStudy)
+                && Objects.equals(this.facultyLead, that.facultyLead)
                 && this.status == that.status);
     }
 

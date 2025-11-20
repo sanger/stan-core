@@ -1295,6 +1295,8 @@ type Work {
     omeroProject: OmeroProject
     """The DNAP study associated with this work, if any."""
     dnapStudy: DnapStudy
+    """The faculty lead for this work, if any."""
+    facultyLead: ReleaseDestination
 }
 
 """A work along with a comment that was recorded to explain its current status."""
@@ -2492,7 +2494,9 @@ type Mutation {
     setProteinPanelEnabled(name: String!, enabled: Boolean!): ProteinPanel!
 
     """Create a new work, which will be allocated a new work number with the given prefix."""
-    createWork(prefix: String!, workType: String!, workRequester: String!, project: String!, program: String!, costCode: String!, numBlocks: Int, numSlides: Int, numOriginalSamples: Int, omeroProject: String, ssStudyId: Int): Work!
+    createWork(prefix: String!, workType: String!, workRequester: String!, project: String!, program: String!,
+        costCode: String!, numBlocks: Int, numSlides: Int, numOriginalSamples: Int, omeroProject: String,
+        ssStudyId: Int, facultyLead: String): Work!
     """Update the status of an existing work."""
     updateWorkStatus(workNumber: String!, status: WorkStatus!, commentId: Int): WorkWithComment!
     """Update the number of blocks field in a work."""

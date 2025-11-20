@@ -587,14 +587,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             Integer numOriginalSamples = dfe.getArgument("numOriginalSamples");
             String omeroProjectName = dfe.getArgument("omeroProject");
             Integer ssStudyId = dfe.getArgument("ssStudyId");
+            String facultyLead = dfe.getArgument("facultyLead");
             logRequest("Create work", user,
                     String.format("project: %s, program: %s, costCode: %s, prefix: %s, workType: %s, " +
                                     "workRequesterName: %s, numBlocks: %s, numSlides: %s, numOriginalSamples: %s, " +
-                                    "omeroProjectName: %s, ssStudyId: %s",
+                                    "omeroProjectName: %s, ssStudyId: %s, facultyLead: %s",
                     projectName, programName, code, prefix, workTypeName, workRequesterName, numBlocks, numSlides,
-                            numOriginalSamples, omeroProjectName, ssStudyId));
+                            numOriginalSamples, omeroProjectName, ssStudyId, facultyLead));
             return workService.createWork(user, prefix, workTypeName, workRequesterName, projectName, programName, code,
-                    numBlocks, numSlides, numOriginalSamples, omeroProjectName, ssStudyId);
+                    numBlocks, numSlides, numOriginalSamples, omeroProjectName, ssStudyId, facultyLead);
         };
     }
 
