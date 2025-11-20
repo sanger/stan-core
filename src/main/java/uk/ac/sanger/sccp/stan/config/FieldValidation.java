@@ -413,6 +413,12 @@ public class FieldValidation {
     }
 
     @Bean
+    public Validator<String> xeniumLotValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN);
+        return new StringValidator("Xenium lot", 6, 10, charTypes);
+    }
+
+    @Bean
     public Clock clock() {
         return Clock.systemUTC();
     }

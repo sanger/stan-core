@@ -126,6 +126,7 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
     @Test
     void testIndexColumns() {
         Row row = mockRow("mandatory nonsense", "work number", "slide type", "external slide id", "xenium barcode",
+                "xenium lot",
                 "section address", "fixative", "embedding medium", "donor id", "life stage",
                 "species", "cell class", "bio risk", "humfre", "tissue type", "spatial location", "replicate number",
                 "section external id", "section number", "section thickness", "date sectioned", "if bla bla bla position", null, "");

@@ -30,6 +30,7 @@ public class SectionRegisterServiceImp implements IRegisterService<SectionRegist
     private final OperationTypeRepo opTypeRepo;
     private final SlotRepo slotRepo;
     private final SamplePositionRepo samplePositionRepo;
+    private final LabwareNoteRepo lwNoteRepo;
 
     private final OperationService opService;
     private final LabwareService lwService;
@@ -39,7 +40,8 @@ public class SectionRegisterServiceImp implements IRegisterService<SectionRegist
     public SectionRegisterServiceImp(RegisterValidationFactory validationFactory, DonorRepo donorRepo,
                                      TissueRepo tissueRepo, SampleRepo sampleRepo, MeasurementRepo measurementRepo,
                                      OperationTypeRepo opTypeRepo, SlotRepo slotRepo,
-                                     SamplePositionRepo samplePositionRepo, OperationService opService,
+                                     SamplePositionRepo samplePositionRepo, LabwareNoteRepo lwNoteRepo,
+                                     OperationService opService,
                                      LabwareService lwService, WorkService workService, BioRiskService bioRiskService) {
         this.validationFactory = validationFactory;
         this.donorRepo = donorRepo;
@@ -49,6 +51,7 @@ public class SectionRegisterServiceImp implements IRegisterService<SectionRegist
         this.opTypeRepo = opTypeRepo;
         this.slotRepo = slotRepo;
         this.samplePositionRepo = samplePositionRepo;
+        this.lwNoteRepo = lwNoteRepo;
         this.opService = opService;
         this.lwService = lwService;
         this.workService = workService;
@@ -214,6 +217,7 @@ public class SectionRegisterServiceImp implements IRegisterService<SectionRegist
                                             Work work) {
         OperationType opType = opTypeRepo.getByName("Register");
         List<Operation> ops = new ArrayList<>(request.getLabware().size());
+        List<LabwareNote> notes = new ArrayList<>();
         for (SectionRegisterLabware srl : request.getLabware()) {
             Labware lw = labwareMap.get(srl.getExternalBarcode());
             Operation op = createOp(user, opType, lw);
@@ -221,6 +225,13 @@ public class SectionRegisterServiceImp implements IRegisterService<SectionRegist
             createMeasurements(srl, lw, op, sampleMap);
             createSamplePositions(srl, lw, op.getId(), sampleMap, regionMap);
             linkBioRisks(srl, op.getId(), sampleMap, bioRiskMap);
+            if (!nullOrEmpty(srl.getLot())) {
+                LabwareNote note = new LabwareNote(null, lw.getId(), op.getId(), "lot", srl.getLot());
+                notes.add(note);
+            }
+        }
+        if (!notes.isEmpty()) {
+            lwNoteRepo.saveAll(notes);
         }
         if (work != null) {
             workService.link(work, ops);
@@ -262,7 +273,7 @@ public class SectionRegisterServiceImp implements IRegisterService<SectionRegist
             Sample sample = sampleMap.get(src.getExternalIdentifier());
             Slot slot = lw.getSlot(src.getAddress());
             if (src.getSectionThickness() != null) {
-                measurements.add(new Measurement(null, "Thickness", src.getSectionThickness().toString(),
+                measurements.add(new Measurement(null, "Thickness", src.getSectionThickness(),
                         sample.getId(), op.getId(), slot.getId()));
             }
             if (src.getDateSectioned() != null) {

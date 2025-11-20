@@ -44,7 +44,9 @@ public class SectionRegisterValidation {
     private final Validator<String> visiumLpBarcodeValidation;
     private final Validator<String> xeniumBarcodeValidator;
     private final Validator<String> replicateValidator;
+    private final Validator<String> xeniumLotValidator;
     private final Sanitiser<String> thicknessSanitiser;
+
 
     public SectionRegisterValidation(SectionRegisterRequest request,
                                      DonorRepo donorRepo, SpeciesRepo speciesRepo, LabwareTypeRepo lwTypeRepo,
@@ -55,6 +57,7 @@ public class SectionRegisterValidation {
                                      Validator<String> externalBarcodeValidation, Validator<String> donorNameValidation,
                                      Validator<String> externalNameValidation, Validator<String> replicateValidator,
                                      Validator<String> visiumLpBarcodeValidation, Validator<String> xeniumBarcodeValidator,
+                                     Validator<String> xeniumLotValidator,
                                      Sanitiser<String> thicknessSanitiser) {
         this.request = request;
         this.donorRepo = donorRepo;
@@ -77,6 +80,7 @@ public class SectionRegisterValidation {
         this.replicateValidator = replicateValidator;
         this.visiumLpBarcodeValidation = visiumLpBarcodeValidation;
         this.xeniumBarcodeValidator = xeniumBarcodeValidator;
+        this.xeniumLotValidator = xeniumLotValidator;
         this.thicknessSanitiser = thicknessSanitiser;
     }
 
@@ -85,6 +89,7 @@ public class SectionRegisterValidation {
         UCMap<Donor> donors = validateDonors();
         UCMap<LabwareType> lwTypes = validateLabwareTypes();
         validateBarcodes(lwTypes);
+        validateLots();
         UCMap<Tissue> tissues = validateTissues(donors);
         UCMap<Sample> samples = validateSamples(tissues);
         UCMap<SlotRegion> regions = validateRegions();
@@ -201,6 +206,21 @@ public class SectionRegisterValidation {
         }
         // Allow duplicate addresses
         return lwTypeMap;
+    }
+
+    /** Checks the labware lot numbers, if present */
+    public void validateLots() {
+        for (var srl : request.getLabware()) {
+            String lot = srl.getLot();
+            if (lot==null) {
+                continue;
+            }
+            lot = trimToNull(lot.toUpperCase());
+            srl.setLot(lot);
+            if (lot != null) {
+                xeniumLotValidator.validate(lot, this::addProblem);
+            }
+        }
     }
 
     public String findBarcodeProblem(String barcode, Set<String> seen) {
