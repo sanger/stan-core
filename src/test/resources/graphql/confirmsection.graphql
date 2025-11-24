@@ -6,26 +6,13 @@ mutation {
                 workNumber: "SGP4000"
                 confirmSections: [
                     {
-                        destinationAddress: "A1"
+                        destinationAddresses: ["A1"]
                         newSection: 14
                         sampleId: 55555
                         commentIds: [2]
-                        region: "Bottom"
                     }
                     {
-                        destinationAddress: "A1"
-                        newSection: 15
-                        sampleId: 55555
-                        region: "Top"
-                    }
-                    {
-                        destinationAddress: "A1"
-                        newSection: 15
-                        sampleId: 55556
-                        region: "Middle"
-                    }
-                    {
-                        destinationAddress: "B2"
+                        destinationAddresses: ["B2"]
                         newSection: 17
                         sampleId: 55556
                     }
@@ -42,7 +29,7 @@ mutation {
                 workNumber: "SGP4000"
                 confirmSections: [
                     {
-                        destinationAddress: "A1"
+                        destinationAddresses: ["A1"]
                         sampleId: 55555
                     }
                 ]
@@ -52,7 +39,7 @@ mutation {
                 workNumber: "SGP4000"
                 confirmSections: [
                     {
-                        destinationAddress: "A1"
+                        destinationAddresses: ["A1"]
                         sampleId: 55556
                     }
                 ]

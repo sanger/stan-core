@@ -10,6 +10,7 @@ import uk.ac.sanger.sccp.utils.UCMap;
 import java.util.*;
 import java.util.stream.Stream;
 
+import static java.util.stream.Collectors.toSet;
 import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 import static uk.ac.sanger.sccp.utils.BasicUtils.pluralise;
 
@@ -56,7 +57,7 @@ public class PlanValidationImp implements PlanValidation {
     }
 
     /**
-     * Checks the sources. Returns a map of {@link ActionKey} to source slot for each action.
+     * Checks the sources.
      * @param opType the type of operation
      */
     public UCMap<Labware> validateSources(OperationType opType) {
@@ -299,57 +300,74 @@ public class PlanValidationImp implements PlanValidation {
             addProblem("No actions specified for labware %s.", lwErrorDesc(lw));
             return;
         }
-        Set<ActionKey> keys = new HashSet<>(lw.getActions().size());
+        Set<Address> seenAddresses = new HashSet<>();
         for (PlanRequestAction ac : lw.getActions()) {
-            if (ac.getAddress()==null) {
+            if (nullOrEmpty(ac.getAddresses())) {
                 addProblem("Missing destination address.");
                 continue;
             }
-            if (lt!=null && lt.indexOf(ac.getAddress()) < 0) {
-                addProblem("Invalid address %s given for labware type %s.", ac.getAddress(), lt.getName());
+            if (lt != null) {
+                Set<Address> invalidAddresses = ac.getAddresses().stream()
+                        .filter(ad -> lt.indexOf(ad) < 0)
+                        .collect(toSet());
+                if (!invalidAddresses.isEmpty()) {
+                    addProblem("Invalid address given for labware type %s: %s",
+                            lt.getName(),
+                            invalidAddresses);
+                }
             }
-            ActionKey key = new ActionKey(ac);
-            if (key.isComplete() && !keys.add(key)) {
-                // We allow duplicate actions from a block, because we can create multiple sections
-                addProblem("Actions for labware %s contain duplicate action: %s", lwErrorDesc(lw), key);
+            for (Address ad : ac.getAddresses()) {
+                if (!seenAddresses.add(ad)) {
+                    addProblem("Actions for labware %s contains duplicate address: %s", lwErrorDesc(lw), ad);
+                }
             }
         }
     }
 
+    /**
+     * Are rows laid out with only one tissue on each row?
+     * @param sourceLwMap look up source labware from barcode
+     * @param lw the destination labware
+     * @param lt the labware type of the destination labware
+     * @param rowsPerGroup number of rows expected for each tissue
+     * @return true if the layout is divided as expected, false otherwise
+     */
     public boolean hasDividedLayout(UCMap<Labware> sourceLwMap, PlanRequestLabware lw, LabwareType lt, int rowsPerGroup) {
         final int numGroups = lt.getNumRows() / rowsPerGroup;
         Tissue[] tissues = new Tissue[numGroups];
         for (var pa : lw.getActions()) {
-            if (pa.getAddress()==null || pa.getSource()==null || pa.getSource().getBarcode()==null) {
+            if (nullOrEmpty(pa.getAddresses()) || pa.getSource()==null || pa.getSource().getBarcode()==null) {
                 continue;
             }
-            int tissueIndex = (pa.getAddress().getRow()-1)/rowsPerGroup;
-            if (tissueIndex < 0 || tissueIndex >= numGroups) {
-                continue; // must be invalid address, which is handled elsewhere
-            }
-            Labware sourceLabware = sourceLwMap.get(pa.getSource().getBarcode());
-            if (sourceLabware==null) {
-                continue;
-            }
-            Address sourceAddress = pa.getSource().getAddress();
-            if (sourceAddress==null) {
-                sourceAddress = new Address(1,1);
-            }
-            Slot sourceSlot = sourceLabware.optSlot(sourceAddress).orElse(null);
-            if (sourceSlot==null) {
-                continue;
-            }
-            Sample sample = sourceSlot.getSamples().stream()
-                    .filter(sam -> sam.getId()==pa.getSampleId())
-                    .findAny().orElse(null);
-            if (sample==null) {
-                continue;
-            }
-            Tissue tissue = sample.getTissue();
-            if (tissues[tissueIndex]==null) {
-                tissues[tissueIndex] = tissue;
-            } else if (!tissues[tissueIndex].equals(tissue)) {
-                return false;
+            for (Address ad : pa.getAddresses()) {
+                int tissueIndex = (ad.getRow() - 1) / rowsPerGroup;
+                if (tissueIndex < 0 || tissueIndex >= numGroups) {
+                    continue; // must be invalid address, which is handled elsewhere
+                }
+                Labware sourceLabware = sourceLwMap.get(pa.getSource().getBarcode());
+                if (sourceLabware == null) {
+                    continue;
+                }
+                Address sourceAddress = pa.getSource().getAddress();
+                if (sourceAddress == null) {
+                    sourceAddress = new Address(1, 1);
+                }
+                Slot sourceSlot = sourceLabware.optSlot(sourceAddress).orElse(null);
+                if (sourceSlot == null) {
+                    continue;
+                }
+                Sample sample = sourceSlot.getSamples().stream()
+                        .filter(sam -> sam.getId() == pa.getSampleId())
+                        .findAny().orElse(null);
+                if (sample == null) {
+                    continue;
+                }
+                Tissue tissue = sample.getTissue();
+                if (tissues[tissueIndex] == null) {
+                    tissues[tissueIndex] = tissue;
+                } else if (!tissues[tissueIndex].equals(tissue)) {
+                    return false;
+                }
             }
         }
         return true;
@@ -375,28 +393,5 @@ public class PlanValidationImp implements PlanValidation {
 
     private void addProblem(String format, Object... args) {
         addProblem(String.format(format, args));
-    }
-
-    record ActionKey(String sourceBarcode, Address sourceAddress, int sampleId, Address destAddress) {
-        ActionKey(PlanRequestAction action) {
-            this(action.getSource().getBarcode(), action.getSource().getAddress(),
-                    action.getSampleId(), action.getAddress());
-        }
-
-        ActionKey(String sourceBarcode, Address sourceAddress, int sampleId, Address destAddress) {
-            this.sourceBarcode = (sourceBarcode==null ? null : sourceBarcode.toUpperCase());
-            this.sourceAddress = (sourceAddress==null ? new Address(1,1) : sourceAddress);
-            this.sampleId = sampleId;
-            this.destAddress = destAddress;
-        }
-
-        boolean isComplete() {
-            return (this.sourceAddress!=null && this.sourceBarcode!=null && this.destAddress!=null);
-        }
-
-        @Override
-        public String toString() {
-            return String.format("(address=%s, sampleId=%s, source={%s, %s})", destAddress, sampleId, sourceBarcode, sourceAddress);
-        }
     }
 }

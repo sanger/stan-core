@@ -146,12 +146,14 @@ public class TestRegisterOriginalSamplesMutation {
                 .replace("BARCODE0", block.getBarcode())
                 .replace("55555", String.valueOf(blockSampleId));
         Object result = tester.post(planMutation);
+        assertNoErrors(result);
         String slideBarcode = chainGet(result, "data", "plan", "labware", 0, "barcode");
         String confirmMutation = tester.readGraphQL("confirmsection_simple.graphql")
                 .replace("BARCODE0", slideBarcode)
                 .replace("55555", String.valueOf(blockSampleId))
                 .replace("SGP1", work.getWorkNumber());
         result = tester.post(confirmMutation);
+        assertNoErrors(result);
         assertNotNull(chainGet(result, "data", "confirmSection", "labware", 0, "barcode"));
     }
 

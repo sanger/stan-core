@@ -13,7 +13,6 @@ public class ConfirmSectionValidation {
     private final Collection<String> problems;
     private final UCMap<Labware> labware;
     private final Map<Integer, PlanOperation> lwPlans;
-    private final UCMap<SlotRegion> slotRegions;
     private final Map<Integer, Comment> comments;
     private final UCMap<Work> works;
 
@@ -21,17 +20,15 @@ public class ConfirmSectionValidation {
         this.problems = problems;
         this.labware = null;
         this.lwPlans = null;
-        this.slotRegions = null;
         this.comments = null;
         this.works = null;
     }
 
     public ConfirmSectionValidation(UCMap<Labware> labware, Map<Integer, PlanOperation> lwPlans,
-                                    UCMap<SlotRegion> slotRegions, Map<Integer, Comment> comments, UCMap<Work> works) {
+                                    Map<Integer, Comment> comments, UCMap<Work> works) {
         this.problems = List.of();
         this.labware = labware;
         this.lwPlans = lwPlans;
-        this.slotRegions = slotRegions;
         this.comments = comments;
         this.works = works;
     }
@@ -46,10 +43,6 @@ public class ConfirmSectionValidation {
 
     public Map<Integer, PlanOperation> getLwPlans() {
         return this.lwPlans;
-    }
-
-    public UCMap<SlotRegion> getSlotRegions() {
-        return this.slotRegions;
     }
 
     public Map<Integer, Comment> getComments() {
@@ -68,7 +61,6 @@ public class ConfirmSectionValidation {
         return (Objects.equals(this.problems, that.problems)
                 && Objects.equals(this.labware, that.labware)
                 && Objects.equals(this.lwPlans, that.lwPlans)
-                && Objects.equals(this.slotRegions, that.slotRegions)
                 && Objects.equals(this.comments, that.comments)
                 && Objects.equals(this.works, that.works)
         );

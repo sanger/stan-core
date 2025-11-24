@@ -1,5 +1,6 @@
 package uk.ac.sanger.sccp.stan.request;
 
+import uk.ac.sanger.sccp.stan.model.Address;
 import uk.ac.sanger.sccp.stan.model.PlanOperation;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
@@ -7,6 +8,7 @@ import java.util.List;
 import java.util.Objects;
 
 import static uk.ac.sanger.sccp.utils.BasicUtils.newArrayList;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullToEmpty;
 
 /**
  * The data about a previously recorded plan
@@ -16,15 +18,17 @@ public class PlanData {
     private PlanOperation plan;
     private List<LabwareFlagged> sources;
     private LabwareFlagged destination;
+    private List<List<Address>> groups;
 
-    public PlanData(PlanOperation plan, Iterable<LabwareFlagged> sources, LabwareFlagged destination) {
+    public PlanData(PlanOperation plan, Iterable<LabwareFlagged> sources, LabwareFlagged destination, List<List<Address>> groups) {
         setPlan(plan);
         setSources(sources);
         setDestination(destination);
+        setGroups(groups);
     }
 
     public PlanData() {
-        this(null, null, null);
+        this(null, null, null, null);
     }
 
     public PlanOperation getPlan() {
@@ -51,6 +55,18 @@ public class PlanData {
         this.destination = destination;
     }
 
+    public void setSources(List<LabwareFlagged> sources) {
+        this.sources = sources;
+    }
+
+    public List<List<Address>> getGroups() {
+        return this.groups;
+    }
+
+    public void setGroups(List<List<Address>> groups) {
+        this.groups = nullToEmpty(groups);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -58,7 +74,9 @@ public class PlanData {
         PlanData that = (PlanData) o;
         return (Objects.equals(this.plan, that.plan)
                 && Objects.equals(this.sources, that.sources)
-                && Objects.equals(this.destination, that.destination));
+                && Objects.equals(this.destination, that.destination)
+                && Objects.equals(this.groups, that.groups)
+        );
     }
 
     @Override
@@ -72,6 +90,7 @@ public class PlanData {
                 .add("plan", plan)
                 .add("sources", sources)
                 .add("destination", destination)
+                .add("groups", groups)
                 .toString();
     }
 }

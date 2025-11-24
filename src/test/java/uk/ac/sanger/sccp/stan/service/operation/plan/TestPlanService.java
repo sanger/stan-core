@@ -11,10 +11,10 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.LabwareFlagged;
 import uk.ac.sanger.sccp.stan.request.PlanData;
 import uk.ac.sanger.sccp.stan.request.plan.*;
-import uk.ac.sanger.sccp.stan.service.LabwareService;
-import uk.ac.sanger.sccp.stan.service.ValidationException;
+import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.flag.FlagLookupService;
 import uk.ac.sanger.sccp.utils.UCMap;
+import uk.ac.sanger.sccp.utils.Zip;
 
 import java.util.*;
 import java.util.stream.IntStream;
@@ -36,6 +36,7 @@ public class TestPlanService {
     private PlanValidation mockPlanValidation;
     private LabwareService mockLwService;
     private FlagLookupService mockFlagLookupService;
+    private SlotGroupService mockSlotGroupService;
 
     private PlanOperationRepo mockPlanRepo;
     private PlanActionRepo mockPlanActionRepo;
@@ -53,6 +54,7 @@ public class TestPlanService {
         mockPlanValidation = mock(PlanValidation.class);
         mockLwService = mock(LabwareService.class);
         mockFlagLookupService = mock(FlagLookupService.class);
+        mockSlotGroupService = mock(SlotGroupService.class);
         mockPlanRepo = mock(PlanOperationRepo.class);
         mockPlanActionRepo = mock(PlanActionRepo.class);
         mockOpTypeRepo = mock(OperationTypeRepo.class);
@@ -65,7 +67,8 @@ public class TestPlanService {
 
         when(mockPlanValidationFactory.createPlanValidation(any())).thenReturn(mockPlanValidation);
 
-        planService = spy(new PlanServiceImp(mockPlanValidationFactory, mockLwService, mockFlagLookupService,
+        planService = spy(new PlanServiceImp(mockPlanValidationFactory,
+                mockLwService, mockFlagLookupService, mockSlotGroupService,
                 mockPlanRepo, mockPlanActionRepo, mockOpTypeRepo, mockLwRepo, mockLtRepo, mockLwNoteRepo, mockBsRepo));
     }
 
@@ -82,7 +85,7 @@ public class TestPlanService {
             planService.recordPlan(user, request);
             fail("Expected ValidationException");
         } catch (ValidationException ve) {
-            assertEquals(ve.getMessage(), "The plan request could not be validated.");
+            assertEquals("The plan request could not be validated.", ve.getMessage());
             // noinspection unchecked,rawtypes
             assertThat(ve.getProblems()).hasSameElementsAs((Iterable) problems);
         }
@@ -141,6 +144,7 @@ public class TestPlanService {
         prlws.get(0).setCosting(SlideCosting.SGP);
         prlws.get(0).setLotNumber("lot1");
         prlws.get(1).setCosting(SlideCosting.Faculty);
+        doNothing().when(planService).createSlotGroups(anyInt(), any(), any());
         final PlanRequest request = new PlanRequest("Section", prlws);
         PlanResult result = planService.executePlanRequest(user, request);
 
@@ -154,8 +158,10 @@ public class TestPlanService {
         verify(planService).lookUpSources(request);
         verify(planService).createDestinations(request);
         verify(planService, times(request.getLabware().size())).createActions(any(), anyInt(), same(sources), any(), any());
-        verify(planService).createActions(request.getLabware().get(0), plans[0].getId(), sources, destinations.get(0), opBs);
-        verify(planService).createActions(request.getLabware().get(1), plans[1].getId(), sources, destinations.get(1), opBs);
+        for (int i = 0; i < plans.length; i++) {
+            verify(planService).createActions(request.getLabware().get(i), plans[i].getId(), sources, destinations.get(i), opBs);
+            verify(planService).createSlotGroups(plans[i].getId(), destinations.get(i), request.getLabware().get(i));
+        }
         verify(mockLwNoteRepo).saveAll(List.of(
                 LabwareNote.noteForPlan(destinations.get(0).getId(), plans[0].getId(), "costing", "SGP"),
                 LabwareNote.noteForPlan(destinations.get(0).getId(), plans[0].getId(), "lot", "LOT1"),
@@ -310,7 +316,7 @@ public class TestPlanService {
         UCMap<Labware> sourceMap = UCMap.from(sources, Labware::getBarcode);
         Labware destination = EntityFactory.makeEmptyLabware(lt);
         int planId = 99;
-        PlanRequestLabware prl =  new PlanRequestLabware(lt.getName(), destination.getBarcode(),
+        PlanRequestLabware prl = new PlanRequestLabware(lt.getName(), destination.getBarcode(),
                 List.of(
                         new PlanRequestAction(A1, samples.get(0).getId(),
                                 new PlanRequestSource(sourceBarcodes.get(0), A1), null),
@@ -365,7 +371,7 @@ public class TestPlanService {
             List<LabwareFlagged> lfSources = sources.stream().map(x -> new LabwareFlagged(x, null)).toList();
             LabwareFlagged lfDest = new LabwareFlagged(lw, null);
 
-            assertEquals(new PlanData(plan, lfSources, lfDest), planService.getPlanData(barcode, false));
+            assertEquals(new PlanData(plan, lfSources, lfDest, null), planService.getPlanData(barcode, false));
             verify(planService).getSources(plan);
         }
 
@@ -398,7 +404,7 @@ public class TestPlanService {
             return lws.stream().map(x -> new LabwareFlagged(x, priority)).toList();
         });
 
-        assertEquals(new PlanData(plan, lfSources, lfDest), planService.getPlanData(barcode, true));
+        assertEquals(new PlanData(plan, lfSources, lfDest, null), planService.getPlanData(barcode, true));
         verify(planService).getSources(plan);
     }
 
@@ -452,5 +458,21 @@ public class TestPlanService {
         doReturn(lwList).when(mockLwRepo).findAllByIdIn(any());
         assertEquals(lwList, planService.getSources(plan));
         verify(mockLwRepo).findAllByIdIn(Set.of(labware[0].getId(), labware[1].getId()));
+    }
+
+    @Test
+    public void testCreateSlotGroups() {
+        int planId = 100;
+        Labware lw = EntityFactory.getTube();
+        List<List<Address>> addresses = List.of(
+                List.of(new Address(1,1), new Address(1,2)),
+                List.of(new Address(2,1), new Address(2,2))
+        );
+        List<PlanRequestAction> pras = List.of(new PlanRequestAction(), new PlanRequestAction());
+        Zip.of(pras.stream(), addresses.stream()).forEach(PlanRequestAction::setAddresses);
+        PlanRequestLabware prl = new PlanRequestLabware();
+        prl.setActions(pras);
+        planService.createSlotGroups(planId, lw, prl);
+        verify(mockSlotGroupService).saveGroups(lw, planId, addresses);
     }
 }
