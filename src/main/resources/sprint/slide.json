@@ -90,14 +90,6 @@
     { "key": "donor[1]", "value": "#donor[1]#" },
     { "key": "tissue[1]", "value": "#tissue[1]#" },
     { "key": "replicate[1]", "value": "#replicate[1]#" },
-    { "key": "externalName[1]", "value": "#externalName[1]#" },
-    { "key": "donor[2]", "value": "#donor[2]#" },
-    { "key": "tissue[2]", "value": "#tissue[2]#" },
-    { "key": "replicate[2]", "value": "#replicate[2]#" },
-    { "key": "externalName[2]", "value": "#externalName[2]#" },
-    { "key": "donor[3]", "value": "#donor[3]#" },
-    { "key": "tissue[3]", "value": "#tissue[3]#" },
-    { "key": "replicate[3]", "value": "#replicate[3]#" },
-    { "key": "externalName[3]", "value": "#externalName[3]#" }
+    { "key": "externalName[1]", "value": "#externalName[1]#" }
   ]
 }
