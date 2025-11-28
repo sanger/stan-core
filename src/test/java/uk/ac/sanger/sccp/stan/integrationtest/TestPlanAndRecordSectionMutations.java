@@ -86,8 +86,8 @@ public class TestPlanAndRecordSectionMutations {
         }
         List<Map<String, ?>> resultActions = chainGet(resultOps, 0, "planActions");
 
-        String[] expectedPlanDestAddresses = { "A1", "B2" };
-        int[] expectedPlanSampleId = {blockSamples[0].getId(), blockSamples[1].getId()};
+        String[] expectedPlanDestAddresses = { "A1", "A2", "B2" };
+        int[] expectedPlanSampleId = {blockSamples[0].getId(), blockSamples[0].getId(), blockSamples[1].getId()};
         assertEquals(expectedPlanDestAddresses.length, resultActions.size());
 
         for (int i = 0; i < expectedPlanDestAddresses.length; ++i) {
@@ -118,7 +118,8 @@ public class TestPlanAndRecordSectionMutations {
                 .map(m -> m.get("barcode"))
                 .collect(toList())).containsExactlyInAnyOrder(sources);
         List<Map<String,?>> planActionsData = chainGet(planData, "plan", "planActions");
-        assertThat(planActionsData).hasSize(2);
+        assertThat(planActionsData).hasSize(3);
+        assertEquals(List.of(List.of("A1", "A2"), List.of("B2")), planData.get("groups"));
 
         for (int i = 1; i < barcodes.length; ++i) {
             String barcode = barcodes[i]; // fetal waste barcode
@@ -134,6 +135,17 @@ public class TestPlanAndRecordSectionMutations {
             assertThat(planActionsData).hasSize(1);
         }
         assertEquals(List.of(List.of("A1")), planData.get("groups"));
+    }
+
+    private static List<Integer> sampleIdInSlot(List<?> slots, String address) {
+        for (Object slot : slots) {
+            if (chainGet(slot, "address").equals(address)) {
+                return chainGetList(slot, "samples").stream()
+                        .<Integer>map(sam -> chainGet(sam, "id"))
+                        .toList();
+            }
+        }
+        return null;
     }
 
     private void testConfirm(Sample[] blockSamples, Labware[] sourceBlocks, String[] barcodes) throws Exception {
@@ -172,6 +184,16 @@ public class TestPlanAndRecordSectionMutations {
             assertEquals("Tissue", chainGet(sam, "bioState", "name"));
         }
 
+        // A1 and A2 should contain the same sample
+        List<Integer> a1SampleIds = sampleIdInSlot(slots, "A1");
+        assertThat(a1SampleIds).hasSize(1);
+        List<Integer> a2SampleIds = sampleIdInSlot(slots, "A2");
+        assertEquals(a1SampleIds, a2SampleIds);
+        // B2 should contain a different sample
+        List<Integer> b2SampleIds = sampleIdInSlot(slots, "B2");
+        assertThat(b2SampleIds).hasSize(1);
+        assertNotEquals(a1SampleIds, b2SampleIds);
+
         List<Map<String, ?>> b2Samples = chainGetList(slots.stream()
                 .filter(sd -> chainGet(sd, "address").equals("B2"))
                 .findAny()
@@ -188,10 +210,10 @@ public class TestPlanAndRecordSectionMutations {
         assertNotNull(chainGet(resultOp, "performed"));
         assertEquals("Section", chainGet(resultOp, "operationType", "name"));
         List<Map<String,?>> actions = chainGet(resultOp, "actions");
-        int[] expectedSourceLabwareIds = {sourceBlocks[0].getId(), sourceBlocks[1].getId()};
-        String[] expectedDestAddress = { "A1", "B2" };
-        String[] expectedActionTissues = { "TISSUE1",  "TISSUE2" };
-        int[] expectedActionSecNum = { 14,17 };
+        int[] expectedSourceLabwareIds = {sourceBlocks[0].getId(), sourceBlocks[0].getId(), sourceBlocks[1].getId()};
+        String[] expectedDestAddress = { "A1", "A2", "B2" };
+        String[] expectedActionTissues = { "TISSUE1",  "TISSUE1", "TISSUE2" };
+        int[] expectedActionSecNum = { 14,14,17 };
 
         assertEquals(expectedSourceLabwareIds.length, actions.size());
         int destLabwareId = -1;
@@ -255,7 +277,7 @@ public class TestPlanAndRecordSectionMutations {
         entityManager.flush();
         entityManager.refresh(work);
         assertThat(work.getOperationIds()).hasSize(3);
-        assertThat(work.getSampleSlotIds()).hasSize(4);
+        assertThat(work.getSampleSlotIds()).hasSize(5);
 
         List<LabwareNote> notes = lwNoteRepo.findAllByOperationIdIn(opIds);
         assertThat(notes).hasSize(2);
@@ -271,7 +293,7 @@ public class TestPlanAndRecordSectionMutations {
         Integer opId = opIds.get(0);
         final List<OperationComment> opcoms = opComRepo.findAllByOperationIdIn(opIds);
         Integer slotId = opcoms.get(0).getSlotId();
-        assertThat(opcoms).hasSize(2);
+        assertThat(opcoms).hasSize(3);
         assertOpCom(opcoms.get(0), 2, opId, sampleIds.get(0), slotId);
     }
 

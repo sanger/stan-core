@@ -8,7 +8,7 @@ mutation {
             actions:[
                 {
                     source:{ barcode:"STAN-B70C" }
-                    addresses: ["A1"]
+                    addresses: ["A1", "A2"]
                     sampleId: 55555
                 }
                 {
