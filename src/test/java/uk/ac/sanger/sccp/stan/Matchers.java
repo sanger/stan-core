@@ -202,6 +202,23 @@ public class Matchers {
     }
 
     /**
+     * Like doReturn(a, b, c) for when (a,b,c) are in an iterator.
+     * After the iterator is exhausted, the last value will be returned
+     * @param xs iterator of items to return
+     * @return a stub for ongoing mocking
+     * @param <X> return type of the mocked method
+     */
+    public static <X> Stubber doReturnFrom(final Iterator<? extends X> xs) {
+        final Object[] last = {null};
+        return doAnswer(invocation -> {
+            if (xs.hasNext()) {
+                last[0] = xs.next();
+            }
+            return last[0];
+        });
+    }
+
+    /**
      * A stub that will add the given problem (see {@link #addProblem}) if it is non-null; and
      * will return null/void
      * @param problem the problem to add, or null

@@ -6,7 +6,7 @@ mutation {
             actions:[
                 {
                     source:{ barcode:"BARCODE0" }
-                    address: "A1"
+                    addresses: ["A1"]
                     sampleId: 55555
                 }
             ]

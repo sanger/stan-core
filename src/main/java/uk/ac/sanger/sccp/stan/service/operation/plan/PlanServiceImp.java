@@ -7,8 +7,7 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.LabwareFlagged;
 import uk.ac.sanger.sccp.stan.request.PlanData;
 import uk.ac.sanger.sccp.stan.request.plan.*;
-import uk.ac.sanger.sccp.stan.service.LabwareService;
-import uk.ac.sanger.sccp.stan.service.ValidationException;
+import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.flag.FlagLookupService;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.UCMap;
@@ -17,7 +16,6 @@ import javax.persistence.EntityNotFoundException;
 import java.util.*;
 import java.util.function.Predicate;
 
-import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 
@@ -29,6 +27,7 @@ public class PlanServiceImp implements PlanService {
     private final PlanValidationFactory planValidationFactory;
     private final LabwareService lwService;
     private final FlagLookupService flagLookupService;
+    private final SlotGroupService slotGroupService;
     private final PlanOperationRepo planRepo;
     private final PlanActionRepo planActionRepo;
     private final OperationTypeRepo opTypeRepo;
@@ -39,13 +38,14 @@ public class PlanServiceImp implements PlanService {
 
     @Autowired
     public PlanServiceImp(PlanValidationFactory planValidationFactory,
-                          LabwareService lwService, FlagLookupService flagLookupService,
+                          LabwareService lwService, FlagLookupService flagLookupService, SlotGroupService slotGroupService,
                           PlanOperationRepo planRepo, PlanActionRepo planActionRepo,
                           OperationTypeRepo opTypeRepo, LabwareRepo lwRepo, LabwareTypeRepo ltRepo,
                           LabwareNoteRepo lwNoteRepo, BioStateRepo bsRepo) {
         this.planValidationFactory = planValidationFactory;
         this.lwService = lwService;
         this.flagLookupService = flagLookupService;
+        this.slotGroupService = slotGroupService;
         this.planRepo = planRepo;
         this.planActionRepo = planActionRepo;
         this.opTypeRepo = opTypeRepo;
@@ -96,6 +96,7 @@ public class PlanServiceImp implements PlanService {
             if (!nullOrEmpty(pl.getLotNumber())) {
                 lwNotes.add(LabwareNote.noteForPlan(lw.getId(), plan.getId(), "lot", pl.getLotNumber().toUpperCase()));
             }
+            createSlotGroups(plan.getId(), lw, pl);
         }
         if (!lwNotes.isEmpty()) {
             lwNoteRepo.saveAll(lwNotes);
@@ -166,7 +167,7 @@ public class PlanServiceImp implements PlanService {
                                           UCMap<Labware> sources, Labware destination,
                                           BioState newBioState) {
         final List<PlanAction> actions = new ArrayList<>(requestLabware.getActions().size());
-        for (PlanRequestAction prac : sortedActions(requestLabware.getActions())) {
+        for (PlanRequestAction prac : requestLabware.getActions()) {
             Labware source = sources.get(prac.getSource().getBarcode());
             Slot slot0;
             if (prac.getSource().getAddress()!=null) {
@@ -174,16 +175,19 @@ public class PlanServiceImp implements PlanService {
             } else {
                 slot0 = source.getFirstSlot();
             }
-            Slot slot1 = destination.getSlot(prac.getAddress());
             Sample originalSample = slot0.getSamples().stream()
                     .filter(sample -> sample.getId() == prac.getSampleId())
                     .findAny()
                     .orElseThrow(() -> new EntityNotFoundException("Sample " + prac.getSampleId()
                             + " not found in " + prac.getSource()));
-            PlanAction action = new PlanAction(null, planId, slot0, slot1, originalSample,
-                    null, prac.getSampleThickness(), newBioState);
-            actions.add(action);
+            for (Address ad : prac.getAddresses()) {
+                Slot slot1 = destination.getSlot(ad);
+                PlanAction action = new PlanAction(null, planId, slot0, slot1, originalSample,
+                        null, prac.getSampleThickness(), newBioState);
+                actions.add(action);
+            }
         }
+        actions.sort(Comparator.comparing(a -> a.getDestination().getAddress(), Address.COLUMN_MAJOR));
         return BasicUtils.asList(planActionRepo.saveAll(actions));
     }
 
@@ -215,7 +219,8 @@ public class PlanServiceImp implements PlanService {
                     .map(lw -> new LabwareFlagged(lw, null))
                     .toList();
         }
-        return new PlanData(plan, lfSources, lfDest);
+        List<List<Address>> groups = slotGroupService.loadGroups(plan.getId());
+        return new PlanData(plan, lfSources, lfDest, groups);
     }
 
     public void validateLabwareForPlanData(Labware labware) {
@@ -241,9 +246,16 @@ public class PlanServiceImp implements PlanService {
         return lwRepo.findAllByIdIn(labwareIds);
     }
 
-    private static List<PlanRequestAction> sortedActions(List<PlanRequestAction> pracs) {
-        return pracs.stream()
-                .sorted(Comparator.comparing(PlanRequestAction::getAddress, Address.COLUMN_MAJOR))
-                .collect(toList());
+    /**
+     * Creates the slot groups for the given plan and labware
+     * @param planId the id of the plan record
+     * @param lw the destination labware
+     * @param prl the request for the given labware
+     */
+    public void createSlotGroups(int planId, Labware lw, PlanRequestLabware prl) {
+        List<List<Address>> addressGroups = prl.getActions().stream()
+                .map(PlanRequestAction::getAddresses)
+                .toList();
+        slotGroupService.saveGroups(lw, planId, addressGroups);
     }
 }

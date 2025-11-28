@@ -6,7 +6,7 @@ mutation {
                 workNumber: "SGP1"
                 confirmSections: [
                     {
-                        destinationAddress: "A1"
+                        destinationAddresses: ["A1"]
                         newSection: 14
                         sampleId: 55555
                     }

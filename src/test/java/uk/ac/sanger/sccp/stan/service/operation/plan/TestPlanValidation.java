@@ -447,48 +447,42 @@ public class TestPlanValidation {
     /** @see #testCheckActions */
     static Stream<Arguments> actionsData() {
         LabwareType lt = EntityFactory.makeLabwareType(1,2);
-        final Address FIRST = new Address(1,1);
-        final Address SECOND = new Address(1,2);
-        PlanRequestSource src = new PlanRequestSource("STAN-000", FIRST);
-        PlanRequestSource srcAlt = new PlanRequestSource("stan-100", FIRST);
-        PlanRequestSource src2 = new PlanRequestSource("STAN-001", FIRST);
-        PlanRequestSource src3 = new PlanRequestSource("STAN-000", SECOND);
+        final Address A1 = new Address(1,1);
+        final Address A2 = new Address(1,2);
+        PlanRequestSource src = new PlanRequestSource("STAN-000", A1);
+        PlanRequestSource srcAlt = new PlanRequestSource("stan-100", A1);
 
         return Stream.of(
-                Arguments.of("STAN-100", List.of(new PlanRequestAction(FIRST, 4, src, null),
-                        new PlanRequestAction(FIRST, 5, src, null),
-                        new PlanRequestAction(SECOND, 4, src, null),
-                        new PlanRequestAction(FIRST, 4, src2, null),
-                        new PlanRequestAction(FIRST, 4, src3, null)),
+                Arguments.of("STAN-100", List.of(
+                        new PlanRequestAction(A1, 5, src, null),
+                        new PlanRequestAction(A2, 4, src, null)),
                         lt, null),
-                Arguments.of(null, List.of(new PlanRequestAction(FIRST, 4, src, null),
-                        new PlanRequestAction(FIRST, 5, src, null),
-                        new PlanRequestAction(SECOND, 4, src, null),
-                        new PlanRequestAction(FIRST, 4, src2, null),
-                        new PlanRequestAction(FIRST, 4, src3, null)),
+                Arguments.of(null, List.of(
+                        new PlanRequestAction(A1, 4, src, null),
+                        new PlanRequestAction(A2, 4, src, null)),
                         lt, null),
 
                 Arguments.of("STAN-100", List.of(), lt, "No actions specified for labware STAN-100."),
                 Arguments.of(null, List.of(), lt, "No actions specified for labware of type "+lt.getName()+"."),
                 Arguments.of(null, List.of(), null, "No actions specified for labware of unspecified type."),
                 //Duplicate actions
-                Arguments.of("STAN-100", List.of(new PlanRequestAction(FIRST, 4, src, null),
-                        new PlanRequestAction(FIRST, 4, src, null),
-                        new PlanRequestAction(SECOND, 4, srcAlt, null)),
-                        lt, "Actions for labware STAN-100 contain duplicate action: (address=A1, sampleId=4, source={STAN-000, A1})"),
+                Arguments.of("STAN-100", List.of(new PlanRequestAction(A1, 4, src, null),
+                        new PlanRequestAction(A1, 4, src, null),
+                        new PlanRequestAction(A2, 4, srcAlt, null)),
+                        lt, "Actions for labware STAN-100 contains duplicate address: A1"),
                 //Duplicate actions from a non-block source without a barcode
-                Arguments.of(null, List.of(new PlanRequestAction(FIRST, 4, src, null),
-                        new PlanRequestAction(FIRST, 4, src, null),
-                        new PlanRequestAction(SECOND, 4, src, null)),
-                        lt, "Actions for labware of type "+lt.getName()+" contain duplicate action: (address=A1, sampleId=4, source={STAN-000, A1})"),
+                Arguments.of(null, List.of(new PlanRequestAction(A1, 4, src, null),
+                        new PlanRequestAction(A1, 4, src, null),
+                        new PlanRequestAction(A2, 4, src, null)),
+                        lt, "Actions for labware of type "+lt.getName()+" contains duplicate address: A1"),
                 Arguments.of("STAN-100", new PlanRequestAction(null, 4, src, null), lt,
                         "Missing destination address."),
                 Arguments.of(null, new PlanRequestAction(null, 4, src, null), lt,
                         "Missing destination address."),
                 Arguments.of("STAN-100", new PlanRequestAction(new Address(2,4), 4, src, null), lt,
-                        "Invalid address B4 given for labware type "+lt.getName()+"."),
+                        "Invalid address given for labware type "+lt.getName()+": [B4]"),
                 Arguments.of(null, new PlanRequestAction(new Address(4,7), 4, src, null), lt,
-                        "Invalid address D7 given for labware type "+lt.getName()+".")
+                        "Invalid address given for labware type "+lt.getName()+": [D7]")
         );
     }
 

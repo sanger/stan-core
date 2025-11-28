@@ -1,0 +1,38 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+    <changeSet id="3.19.0" author="dr6">
+        <createTable tableName="slot_group">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="group_index" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="slot_id" type="INT">
+                <constraints nullable="false" foreignKeyName="fk_slot_group_slot" referencedTableName="slot" referencedColumnNames="id"/>
+            </column>
+            <column name="plan_id" type="INT">
+                <constraints nullable="true" foreignKeyName="fk_slot_group_plan" referencedTableName="plan_operation" referencedColumnNames="id"/>
+            </column>
+            <column name="operation_id" type="INT">
+                <constraints nullable="true" foreignKeyName="fk_slot_group_operation" referencedTableName="operation" referencedColumnNames="id"/>
+            </column>
+            <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="slot_group" indexName="uk_slot_group_slot_plan" unique="true">
+            <column name="slot_id"/>
+            <column name="plan_id"/>
+        </createIndex>
+        <rollback>
+            <dropAllForeignKeyConstraints baseTableName="slot_group"/>
+            <dropTable tableName="slot_group"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

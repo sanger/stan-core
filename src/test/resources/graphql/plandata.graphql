@@ -16,5 +16,6 @@ query {
         sources {
             barcode
         }
+        groups
     }
 }

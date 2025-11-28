@@ -16,6 +16,8 @@ import java.util.stream.IntStream;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -51,6 +53,12 @@ public class IntegrationTestUtils {
 
     public static <T> List<T> chainGetList(Object container, Object... accessors) {
         return chainGet(container, accessors);
+    }
+
+    public static void assertNoErrors(Object response) {
+        if (chainGet(response, "errors") != null) {
+            fail(response.toString());
+        }
     }
 
     public static <K, V> Map<K, V> nullableMapOf(K key1, V value1, K key2, V value2) {
