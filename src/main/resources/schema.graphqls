@@ -1931,6 +1931,8 @@ input ProbeOperationLabware {
     kitCosting: SlideCosting
     """Reagent lot number."""
     reagentLot: String
+    """Cassette lot number."""
+    cassetteLot: String
     """The probes used on this labware."""
     probes: [ProbeLot!]!
     """The name of the spike probe, if used."""
