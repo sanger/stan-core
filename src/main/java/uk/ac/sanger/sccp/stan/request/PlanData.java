@@ -55,10 +55,6 @@ public class PlanData {
         this.destination = destination;
     }
 
-    public void setSources(List<LabwareFlagged> sources) {
-        this.sources = sources;
-    }
-
     public List<List<Address>> getGroups() {
         return this.groups;
     }
