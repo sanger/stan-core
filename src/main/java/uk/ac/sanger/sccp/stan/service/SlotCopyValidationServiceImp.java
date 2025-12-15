@@ -33,6 +33,7 @@ public class SlotCopyValidationServiceImp implements SlotCopyValidationService {
     private final Validator<String> preBarcodeValidator;
     private final Validator<String> lotNumberValidator;
     private final Validator<String> reagentLotValidator;
+    private final Validator<String> cassetteLotValidator;
     private final CleanedOutSlotService cleanedOutSlotService;
 
     @Autowired
@@ -41,6 +42,7 @@ public class SlotCopyValidationServiceImp implements SlotCopyValidationService {
                                         @Qualifier("cytAssistBarcodeValidator") Validator<String> preBarcodeValidator,
                                         @Qualifier("lotNumberValidator") Validator<String> lotNumberValidator,
                                         @Qualifier("reagentLotValidator") Validator<String> reagentLotValidator,
+                                        @Qualifier("cassetteLotValidator") Validator<String> cassetteLotValidator,
                                         CleanedOutSlotService cleanedOutSlotService) {
         this.lwTypeRepo = lwTypeRepo;
         this.lwRepo = lwRepo;
@@ -49,6 +51,7 @@ public class SlotCopyValidationServiceImp implements SlotCopyValidationService {
         this.preBarcodeValidator = preBarcodeValidator;
         this.lotNumberValidator = lotNumberValidator;
         this.reagentLotValidator = reagentLotValidator;
+        this.cassetteLotValidator = cassetteLotValidator;
         this.cleanedOutSlotService = cleanedOutSlotService;
     }
 
@@ -298,6 +301,9 @@ public class SlotCopyValidationServiceImp implements SlotCopyValidationService {
             }
             if (!nullOrEmpty(scd.getProbeLotNumber())) {
                 lotNumberValidator.validate(scd.getProbeLotNumber(), problems::add);
+            }
+            if (!nullOrEmpty(scd.getCassetteLot())) {
+                cassetteLotValidator.validate(scd.getCassetteLot(), problems::add);
             }
         }
     }

@@ -187,6 +187,7 @@ public class SlotCopyRequest {
         private String reagentLot;
         private String reagentALot;
         private String reagentBLot;
+        private String cassetteLot;
         private SlideCosting reagentCosting;
         private List<SlotCopyContent> contents;
 
@@ -309,6 +310,14 @@ public class SlotCopyRequest {
             this.reagentBLot = reagentBLot;
         }
 
+        public String getCassetteLot() {
+            return this.cassetteLot;
+        }
+
+        public void setCassetteLot(String cassetteLot) {
+            this.cassetteLot = cassetteLot;
+        }
+
         /**
          * The specifications of which source slots are being copied into what addresses in the destination labware.
          */
@@ -353,6 +362,7 @@ public class SlotCopyRequest {
                     && Objects.equals(this.reagentALot, that.reagentALot)
                     && Objects.equals(this.reagentBLot, that.reagentBLot)
                     && Objects.equals(this.reagentLot, that.reagentLot)
+                    && Objects.equals(this.cassetteLot, that.cassetteLot)
                     && this.reagentCosting == that.reagentCosting
             );
         }
@@ -377,6 +387,7 @@ public class SlotCopyRequest {
                     .add("reagentLot", reagentLot)
                     .add("reagentALot", reagentALot)
                     .add("reagentBLot", reagentBLot)
+                    .add("cassetteLot", cassetteLot)
                     .add("reagentCosting", reagentCosting)
                     .reprStringValues()
                     .toString();

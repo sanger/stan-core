@@ -665,6 +665,8 @@ input SlotCopyDestination {
     reagentALot: String
     """Reagent B lot number, if specified."""
     reagentBLot: String
+    """Cassette lot number, if specified."""
+    cassetteLot: String
     """Costing for reagent, if specified."""
     reagentCosting: SlideCosting
     """The specifications of which source slots are being copied into what addresses in the destination labware."""
@@ -721,6 +723,8 @@ input SlotCopySave {
     reagentALot: String
     """Reagent B lot number, if specified."""
     reagentBLot: String
+    """Cassette lot number, if specified."""
+    cassetteLot: String
     """The barcode of the new labware, if it is prebarcoded."""
     preBarcode: String
     """The specifications of which source slots are being copied into what addresses in the destination labware."""
@@ -773,6 +777,8 @@ type SlotCopyLoad {
     reagentALot: String
     """Reagent B lot number, if specified."""
     reagentBLot: String
+    """Cassette lot number, if specified."""
+    cassetteLot: String
     """The barcode of the new labware, if it is prebarcoded."""
     preBarcode: String
     """The specifications of which source slots are being copied into what addresses in the destination labware."""

@@ -34,6 +34,7 @@ public class SlotCopyRecordServiceImp implements SlotCopyRecordService {
             NOTE_PROBELOT = "probe lot",
             NOTE_REAGENT_A_LOT = "reagent a lot",
             NOTE_REAGENT_B_LOT = "reagent b lot",
+            NOTE_CASSETTE_LOT = "cassette lot",
             NOTE_EXECUTION = "execution",
             NOTE_CON_SRCBC = "con source barcode",
             NOTE_CON_SRCADDRESS = "con source address",
@@ -106,6 +107,7 @@ public class SlotCopyRecordServiceImp implements SlotCopyRecordService {
         save.setProbeLotNumber(singleNoteValue(noteMap, NOTE_PROBELOT));
         save.setReagentALot(singleNoteValue(noteMap, NOTE_REAGENT_A_LOT));
         save.setReagentBLot(singleNoteValue(noteMap, NOTE_REAGENT_B_LOT));
+        save.setCassetteLot(singleNoteValue(noteMap, NOTE_CASSETTE_LOT));
         save.setExecutionType(nullableValueOf(singleNoteValue(noteMap, NOTE_EXECUTION), ExecutionType::valueOf));
         List<String> sourceBarcodes = noteMap.get(NOTE_SRC_BARCODE);
         List<String> sourceStates = noteMap.get(NOTE_SRC_STATE);
@@ -206,6 +208,7 @@ public class SlotCopyRecordServiceImp implements SlotCopyRecordService {
         mayAddNote(notes, NOTE_PROBELOT, request.getProbeLotNumber());
         mayAddNote(notes, NOTE_REAGENT_A_LOT, request.getReagentALot());
         mayAddNote(notes, NOTE_REAGENT_B_LOT, request.getReagentBLot());
+        mayAddNote(notes, NOTE_CASSETTE_LOT, request.getCassetteLot());
         if (request.getExecutionType()!=null) {
             notes.add(new SlotCopyRecordNote(NOTE_EXECUTION, request.getExecutionType().name()));
         }

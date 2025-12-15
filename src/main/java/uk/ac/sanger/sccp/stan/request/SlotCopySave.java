@@ -28,6 +28,7 @@ public class SlotCopySave {
     private String lotNumber;
     private String reagentALot;
     private String reagentBLot;
+    private String cassetteLot;
     private String probeLotNumber;
     private String preBarcode;
     private List<SlotCopyContent> contents = List.of();
@@ -147,6 +148,14 @@ public class SlotCopySave {
         this.reagentBLot = reagentBLot;
     }
 
+    public String getCassetteLot() {
+        return this.cassetteLot;
+    }
+
+    public void setCassetteLot(String cassetteLot) {
+        this.cassetteLot = cassetteLot;
+    }
+
     /** The barcode of the new labware, if it is prebarcoded. */
     public String getPreBarcode() {
         return this.preBarcode;
@@ -181,6 +190,7 @@ public class SlotCopySave {
                 .add("probeLotNumber", probeLotNumber)
                 .add("reagentALot", reagentALot)
                 .add("reagentBLot", reagentBLot)
+                .add("cassetteLot", cassetteLot)
                 .add("preBarcode", preBarcode)
                 .add("contents", contents)
                 .reprStringValues()
@@ -205,6 +215,7 @@ public class SlotCopySave {
                 && Objects.equals(this.probeLotNumber, that.probeLotNumber)
                 && Objects.equals(this.reagentALot, that.reagentALot)
                 && Objects.equals(this.reagentBLot, that.reagentBLot)
+                && Objects.equals(this.cassetteLot, that.cassetteLot)
                 && Objects.equals(this.preBarcode, that.preBarcode)
                 && Objects.equals(this.contents, that.contents)
         );
