@@ -198,6 +198,7 @@ public class TestReleaseFileService {
         doNothing().when(service).loadSectionComments(any());
         doNothing().when(service).loadVisiumBarcodes(any(), any());
         doNothing().when(service).loadSizeRanges(any(), any());
+        doNothing().when(service).loadQpcrComments(any(), any());
         doNothing().when(service).loadXeniumFields(any(), any());
         doNothing().when(service).loadSolutions(any());
         doNothing().when(service).loadFlags(any());
@@ -227,6 +228,7 @@ public class TestReleaseFileService {
         verify(service).loadSectionComments(entries);
         verify(service, times(includeVisium ? 1 : 0)).loadVisiumBarcodes(entries, ancestry);
         verify(service, times(includeVisium ? 1 : 0)).loadSizeRanges(entries, slotIds);
+        verify(service, times(includeVisium ? 1 : 0)).loadQpcrComments(entries, ancestry);
         verify(service).loadXeniumFields(entries, slotIds);
         verify(service).loadSolutions(entries);
         verify(service).loadFlags(entries);
@@ -812,6 +814,39 @@ public class TestReleaseFileService {
         verify(mockStainTypeRepo).loadOperationStainTypes(opIds);
         verify(mockLwNoteRepo).findAllByOperationIdIn(opIds);
         verify(service).loadImagingQcComments(entries, ancestry, Set.of(100,101));
+    }
+
+    @Test
+    public void testLoadQpcrComments() {
+        setupLabware();
+        OperationType opType = EntityFactory.makeOperationType("qPCR results", null);
+        when(mockOpTypeRepo.getByName(any())).thenReturn(opType);
+        Labware lw3 = EntityFactory.makeLabware(EntityFactory.getTubeType(), sample);
+        Labware lw4 = EntityFactory.makeLabware(EntityFactory.getTubeType(), sample);
+        Ancestry ancestry = makeAncestry(lw3, sample, lw2, sample, lw2, sample, lw1, sample);
+        ancestry.put(new SlotSample(lw4.getFirstSlot(), sample), Set.of());
+        List<Operation> qpcrOps = IntStream.of(3,4).mapToObj(i -> {
+            Operation op = new Operation();
+            op.setId(i);
+            return op;
+        }).toList();
+        when(mockOpRepo.findAllByOperationTypeAndDestinationSlotIdIn(any(), any())).thenReturn(qpcrOps);
+        List<OperationComment> opComs = List.of(
+                new OperationComment(10, new Comment(1, "Banana", "c"), 3, sample.getId(), lw1.getFirstSlot().getId(), null),
+                new OperationComment(11, new Comment(2, "Custard", "c"), 4, sample.getId(), lw2.getFirstSlot().getId(), null)
+        );
+        when(mockOpComRepo.findAllByOperationIdIn(any())).thenReturn(opComs);
+        List<ReleaseEntry> entries = List.of(
+                new ReleaseEntry(lw3, lw3.getFirstSlot(), sample),
+                new ReleaseEntry(lw4, lw4.getFirstSlot(), sample)
+        );
+        service.loadQpcrComments(entries, ancestry);
+        verify(mockOpTypeRepo).getByName("qPCR results");
+        Set<Integer> allSlotIds = ancestry.keySet().stream().map(SlotSample::slotId).collect(toSet());
+        verify(mockOpRepo).findAllByOperationTypeAndDestinationSlotIdIn(opType, allSlotIds);
+        verify(mockOpComRepo).findAllByOperationIdIn(List.of(3,4));
+        assertThat(entries.get(0).getQpcrComment()).isIn("Banana. Custard.", "Custard. Banana.");
+        assertThat(entries.get(1).getQpcrComment()).isNullOrEmpty();
     }
 
     @Test
