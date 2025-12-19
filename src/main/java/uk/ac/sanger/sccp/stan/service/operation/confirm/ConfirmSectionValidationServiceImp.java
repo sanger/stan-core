@@ -9,7 +9,6 @@ import uk.ac.sanger.sccp.stan.repo.PlanOperationRepo;
 import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSectionLabware.AddressCommentId;
 import uk.ac.sanger.sccp.stan.service.CommentValidationService;
-import uk.ac.sanger.sccp.stan.service.SlotRegionService;
 import uk.ac.sanger.sccp.stan.service.sanitiser.Sanitiser;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.BasicUtils;
@@ -31,19 +30,16 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
     private final LabwareRepo labwareRepo;
     private final PlanOperationRepo planOpRepo;
     private final WorkService workService;
-    private final SlotRegionService slotRegionService;
     private final CommentValidationService commentValidationService;
     private final Sanitiser<String> thicknessSanitiser;
 
     @Autowired
     public ConfirmSectionValidationServiceImp(LabwareRepo labwareRepo, PlanOperationRepo planOpRepo,
-                                              WorkService workService, SlotRegionService slotRegionService,
-                                              CommentValidationService commentValidationService,
+                                              WorkService workService, CommentValidationService commentValidationService,
                                               @Qualifier("thicknessSanitiser") Sanitiser<String> thicknessSanitiser) {
         this.labwareRepo = labwareRepo;
         this.planOpRepo = planOpRepo;
         this.workService = workService;
-        this.slotRegionService = slotRegionService;
         this.commentValidationService = commentValidationService;
         this.thicknessSanitiser = thicknessSanitiser;
     }
@@ -57,8 +53,7 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
             return new ConfirmSectionValidation(problems);
         }
         UCMap<Labware> labware = validateLabware(problems, request.getLabware());
-        UCMap<SlotRegion> slotRegions = validateSlotRegions(problems, request.getLabware());
-        requireRegionsForMultiSampleSlots(problems, request.getLabware());
+        checkRepeatedDestSlots(problems, request.getLabware());
         Map<Integer, PlanOperation> plans = lookUpPlans(problems, labware.values());
         validateOperations(problems, request.getLabware(), labware, plans);
         Map<Integer, Comment> commentIdMap = validateCommentIds(problems, request.getLabware());
@@ -71,34 +66,32 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
         if (!problems.isEmpty()) {
             return new ConfirmSectionValidation(problems);
         }
-        return new ConfirmSectionValidation(labware, plans, slotRegions, commentIdMap, works);
+        return new ConfirmSectionValidation(labware, plans, commentIdMap, works);
     }
 
     /**
-     * Checks that each section specified in a slot with multiple sections also specifies a region.
+     * Checks that slots aren't assigned multiple sections
      * @param problems receptacle for problems found
      * @param csls the specification of each labware
      */
-    public void requireRegionsForMultiSampleSlots(Collection<String> problems, Collection<ConfirmSectionLabware> csls) {
+    public void checkRepeatedDestSlots(Collection<String> problems, Collection<ConfirmSectionLabware> csls) {
         for (ConfirmSectionLabware csl : csls) {
             if (nullOrEmpty(csl.getBarcode())) {
                 continue; // Request is already broken, and we can't give meaningful problem messages
             }
             Map<Address, Integer> sectionCount = new HashMap<>();
-            Set<Address> addressesWithoutRegions = new HashSet<>();
 
             for (ConfirmSection cs : csl.getConfirmSections()) {
-                final Address address = cs.getDestinationAddress();
-                if (address != null) {
-                    sectionCount.merge(address, 1, Integer::sum);
-                    if (nullOrEmpty(cs.getRegion())) {
-                        addressesWithoutRegions.add(address);
+                for (Address address : cs.getDestinationAddresses()) {
+                    if (address != null) {
+                        sectionCount.merge(address, 1, Integer::sum);
                     }
                 }
             }
-            for (Address address : addressesWithoutRegions) {
-                if (sectionCount.get(address) > 1) {
-                    problems.add("A region must be specified for each section in slot "+address+" of "+csl.getBarcode()+".");
+            for (Map.Entry<Address, Integer> entry : sectionCount.entrySet()) {
+                if (entry.getValue() > 1) {
+                    problems.add(String.format("Multiple actions linked to destination %s %s.",
+                            csl.getBarcode(), entry.getKey()));
                 }
             }
         }
@@ -154,43 +147,6 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
         }
         return lwMap;
     }
-
-    public UCMap<SlotRegion> validateSlotRegions(Collection<String> problems, List<ConfirmSectionLabware> csls) {
-        if (csls.stream().flatMap(csl -> csl.getConfirmSections().stream().map(ConfirmSection::getRegion))
-                .allMatch(BasicUtils::nullOrEmpty)) {
-            return new UCMap<>(0);
-        }
-        UCMap<SlotRegion> slotRegions = slotRegionService.loadSlotRegionMap(true);
-
-        for (ConfirmSectionLabware csl : csls) {
-            if (nullOrEmpty(csl.getBarcode())) {
-                continue;
-            }
-            Map<Address, Set<SlotRegion>> used = new HashMap<>();
-            for (ConfirmSection cs : csl.getConfirmSections()) {
-                final String regionName = cs.getRegion();
-                if (nullOrEmpty(regionName)) {
-                    continue;
-                }
-                SlotRegion sr = slotRegions.get(regionName);
-                if (sr == null) {
-                    problems.add("Unknown region: "+repr(regionName));
-                    continue;
-                }
-                final Address address = cs.getDestinationAddress();
-                if (address == null) {
-                    continue;
-                }
-                Set<SlotRegion> usedRegions = used.computeIfAbsent(address, k -> new HashSet<>());
-                if (!usedRegions.add(sr)) {
-                    problems.add(String.format("Region %s specified twice for %s in %s.",
-                            sr.getName(), address, csl.getBarcode()));
-                }
-            }
-        }
-        return slotRegions;
-    }
-
 
     /**
      * Looks up the plans for the given labware.
@@ -360,13 +316,22 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
                                 Map<Integer, Set<Integer>> sampleIdSections) {
         boolean ok = true;
         final LabwareType lt = lw.getLabwareType();
-        final Address address = con.getDestinationAddress();
-        if (address == null) {
+        if (nullOrEmpty(con.getDestinationAddresses())) {
             addProblem(problems, "Section specified with no address.");
             ok = false;
-        } else if (lt.indexOf(address) < 0) {
-            addProblem(problems, "Invalid address %s in labware %s specified as destination.", address, lw.getBarcode());
-            ok = false;
+        }
+        Set<Address> seenAddresses = new HashSet<>();
+        for (Address ad : con.getDestinationAddresses()) {
+            if (ad==null) {
+                addProblem(problems, "Null given as destination address.");
+                ok = false;
+            } else if (lt.indexOf(ad) < 0) {
+                addProblem(problems, "Invalid address %s in labware %s specified as destination.", ad, lw.getBarcode());
+                ok = false;
+            } else if (!seenAddresses.add(ad)) {
+                addProblem(problems, "Repeated destination address %s specified for labware %s.", ad, lw.getBarcode());
+                ok = false;
+            }
         }
         final Integer sampleId = con.getSampleId();
         final Integer section = con.getNewSection();
@@ -390,10 +355,11 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
         if (!ok) {
             return;
         }
-
-        if (!plannedSampleIds.getOrDefault(address, Set.of()).contains(sampleId)) {
-            addProblem(problems, "Sample id %s is not expected in address %s of labware %s.",
-                    sampleId, address, lw.getBarcode());
+        for (Address address : con.getDestinationAddresses()) {
+            if (!plannedSampleIds.getOrDefault(address, Set.of()).contains(sampleId)) {
+                addProblem(problems, "Sample id %s is not expected in address %s of labware %s.",
+                        sampleId, address, lw.getBarcode());
+            }
         }
 
         Set<Integer> sections = sampleIdSections.get(sampleId);

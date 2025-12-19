@@ -36,7 +36,6 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
     private final CommentRepo commentRepo;
     private final OperationCommentRepo opCommentRepo;
     private final LabwareNoteRepo lwNoteRepo;
-    private final SamplePositionRepo samplePositionRepo;
 
     private final EntityManager entityManager;
 
@@ -45,7 +44,7 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
                                     OperationService opService, WorkService workService,
                                     LabwareRepo lwRepo, SlotRepo slotRepo, MeasurementRepo measurementRepo,
                                     SampleRepo sampleRepo, CommentRepo commentRepo, OperationCommentRepo opCommentRepo,
-                                    LabwareNoteRepo lwNoteRepo, SamplePositionRepo samplePositionRepo,
+                                    LabwareNoteRepo lwNoteRepo,
                                     EntityManager entityManager) {
         this.validationService = validationService;
         this.bioRiskService = bioRiskService;
@@ -58,7 +57,6 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
         this.commentRepo = commentRepo;
         this.opCommentRepo = opCommentRepo;
         this.lwNoteRepo = lwNoteRepo;
-        this.samplePositionRepo = samplePositionRepo;
         this.entityManager = entityManager;
     }
 
@@ -99,7 +97,7 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
             if (plan==null) {
                 throw new IllegalArgumentException("No plan found for labware " + lw.getBarcode());
             }
-            ConfirmLabwareResult clr = confirmLabware(user, csl, lw, plan, validation.getSlotRegions(), validation.getComments());
+            ConfirmLabwareResult clr = confirmLabware(user, csl, lw, plan, validation.getComments());
             var notes = plansNotes.get(plan.getId());
             if (notes!=null && !notes.isEmpty()) {
                 updateNotes(notes, clr.operation.getId(), lw.getId());
@@ -171,7 +169,7 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
      * @return an operation (if one was created) and the labware (updated if necessary)
      */
     public ConfirmLabwareResult confirmLabware(User user, ConfirmSectionLabware csl, Labware lw, PlanOperation plan,
-                                               UCMap<SlotRegion> slotRegions, Map<Integer, Comment> commentIdMap) {
+                                               Map<Integer, Comment> commentIdMap) {
         var secs = csl.getConfirmSections();
         if (csl.isCancelled() || secs==null || secs.isEmpty()) {
             lw.setDiscarded(true);
@@ -180,40 +178,39 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
         }
 
         final int lwId = lw.getId();
+        Map<SectionKey, Sample> sectionMap = new HashMap<>();
 
         Set<Slot> slotsToSave = new HashSet<>();
         List<Measurement> measurements = new ArrayList<>();
-        List<SamplePosition> samplePositions = new ArrayList<>();
         List<OperationComment> opComs = new ArrayList<>();
 
         var planActionMap = getPlanActionMap(plan.getPlanActions(), lwId);
         List<Action> actions = new ArrayList<>(secs.size());
         for (ConfirmSection sec : secs) {
-            PlanAction pa = planActionMap.get(new PlanActionKey(sec.getDestinationAddress(), sec.getSampleId()));
-            if (pa==null) {
-                throw new IllegalArgumentException(String.format("No plan action found matching section request: " +
-                        "sample id %s in %s slot %s.", sec.getSampleId(), lw.getBarcode(), sec.getDestinationAddress()));
-            }
-            Slot slot = lw.getSlot(sec.getDestinationAddress()); // Use the lw object as the authoritative container for
-            // slot objects that we might do multiple updates on
-            Action action = makeAction(sec, pa, slot);
-            final Sample sample = action.getSample();
-            slot.getSamples().add(sample);
-            slotsToSave.add(slot);
-            String thickness = thickness(sec, pa);
-            if (!nullOrEmpty(thickness)) {
-                measurements.add(new Measurement(null, "Thickness", thickness,
-                        sample.getId(), null, slot.getId()));
-            }
-            if (!nullOrEmpty(sec.getRegion())) {
-                samplePositions.add(new SamplePosition(slot.getId(), sample.getId(), slotRegions.get(sec.getRegion()), null));
-            }
-            if (!nullOrEmpty(sec.getCommentIds())) {
-                for (Integer commentId : sec.getCommentIds()) {
-                    opComs.add(new OperationComment(null, commentIdMap.get(commentId), null, sample.getId(), slot.getId(), null));
+            for (Address ad : sec.getDestinationAddresses()) {
+                PlanAction pa = planActionMap.get(ad);
+                if (pa == null) {
+                    throw new IllegalArgumentException(String.format("No plan action found into %s slot %s.",
+                            lw.getBarcode(), ad));
                 }
+                Slot slot = lw.getSlot(ad);
+                final Sample sample = getSection(sectionMap, sec, pa, slot);
+                Action action = makeAction(sample, pa, slot);
+                slot.getSamples().add(sample);
+                slotsToSave.add(slot);
+                String thickness = thickness(sec, pa);
+                if (!nullOrEmpty(thickness)) {
+                    measurements.add(new Measurement(null, "Thickness", thickness,
+                            sample.getId(), null, slot.getId()));
+                }
+                if (!nullOrEmpty(sec.getCommentIds())) {
+                    for (Integer commentId : sec.getCommentIds()) {
+                        opComs.add(new OperationComment(null, commentIdMap.get(commentId), null,
+                                sample.getId(), slot.getId(), null));
+                    }
+                }
+                actions.add(action);
             }
-            actions.add(action);
         }
         slotRepo.saveAll(slotsToSave);
         entityManager.refresh(lw);
@@ -221,10 +218,6 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
         if (!measurements.isEmpty()) {
             measurements.forEach(m -> m.setOperationId(op.getId()));
             measurementRepo.saveAll(measurements);
-        }
-        if (!samplePositions.isEmpty()) {
-            samplePositions.forEach(sp -> sp.setOperationId(op.getId()));
-            samplePositionRepo.saveAll(samplePositions);
         }
         if (!opComs.isEmpty()) {
             opComs.forEach(oc -> oc.setOperationId(op.getId()));
@@ -246,45 +239,57 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
 
     /**
      * Makes a new (unsaved) action representing the sectioning of a block into a new slot
-     * @param sec the request pertaining to a single section
+     * @param newSample the sample being put into the slot
      * @param pa the plan action that specified the sample being put into the new slot
      * @param slot the destination of the new section
      * @return a new unsaved action, containing the new section
      */
-    public Action makeAction(ConfirmSection sec, PlanAction pa, Slot slot) {
-        Sample sample = getSection(sec, pa, slot);
-        return new Action(null, null, pa.getSource(), slot, sample, pa.getSample());
+    public Action makeAction(Sample newSample, PlanAction pa, Slot slot) {
+        return new Action(null, null, pa.getSource(), slot, newSample, pa.getSample());
     }
 
     /**
-     * Gets the required section. If it is already present in the slot (it should not be), then it is
-     * returned; otherwise it is created in the database and returned
+     * Gets the required section. If it's in the sectionMap already, it's returned.
+     * If it is already present in the slot (it should not be), then it is added to the sectionMap and return.
+     * Otherwise it is created in the database, added to the sectionMap and returned.
+     * The sectionMap uses tissue (id), section number and bio state in its keys.
+     * @param sectionMap a cache of existing sections to prevent dupes
      * @param sec the request pertaining to a single section
      * @param pa the plan action for the source sample going into this slot
      * @param slot the destination slot
      * @return the sample as specified
      */
-    public Sample getSection(ConfirmSection sec, PlanAction pa, Slot slot) {
+    Sample getSection(Map<SectionKey, Sample> sectionMap, ConfirmSection sec, PlanAction pa, Slot slot) {
         Sample sourceSample = pa.getSample();
+        Tissue tissue = sourceSample.getTissue();
         Integer section = sec.getNewSection();
         BioState bs = coalesce(pa.getNewBioState(), sourceSample.getBioState());
-        return slot.getSamples().stream()
-                .filter(sample -> sample.getTissue().getId().equals(sourceSample.getTissue().getId())
-                        && Objects.equals(sample.getSection(), section)
-                        && bs.getId().equals(sample.getBioState().getId()))
-                .findFirst()
-                .orElseGet(() -> createSection(sourceSample, section, bs));
+        SectionKey key = new SectionKey(tissue.getId(), section, bs);
+        Sample sam = sectionMap.get(key);
+        if (sam == null) {
+            sam = slot.getSamples().stream()
+                    .filter(sample -> sample.getTissue().getId().equals(tissue.getId())
+                            && Objects.equals(sample.getSection(), section)
+                            && bs.getId().equals(sample.getBioState().getId()))
+                    .findFirst()
+                    .orElse(null);
+            if (sam == null) {
+                sam = createSection(tissue, section, bs);
+            }
+            sectionMap.put(key, sam);
+        }
+        return sam;
     }
 
     /**
      * Creates a new section with the given section number and bio state.
-     * @param sourceSample the original sample (i.e. a block)
+     * @param tissue the tissue for the section
      * @param section the section number for the new sample
      * @param bs the biostate for the new sample
      * @return a new sample which has been created in the database
      */
-    public Sample createSection(Sample sourceSample, Integer section, BioState bs) {
-        return sampleRepo.save(new Sample(null, section, sourceSample.getTissue(), bs));
+    public Sample createSection(Tissue tissue, Integer section, BioState bs) {
+        return sampleRepo.save(new Sample(null, section, tissue, bs));
     }
 
     /**
@@ -341,17 +346,17 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
     }
 
     /**
-     * Puts plan actions into a map from a {@code PlanActionKey}.
+     * Puts plan actions into a map from destination address.
      * Only those linked to the indicated labware will be included.
      * @param planActions the plan actions to put into a map
      * @param lwId the id of the labware whose plan actions we want to include
-     * @return a map from {@code PlanActionKey} to {@code PlanAction}
+     * @return a map from address to {@code PlanAction}
      */
-    public Map<PlanActionKey, PlanAction> getPlanActionMap(Collection<PlanAction> planActions, final int lwId) {
-        Map<PlanActionKey, PlanAction> planActionMap = new HashMap<>(planActions.size());
+    public Map<Address, PlanAction> getPlanActionMap(Collection<PlanAction> planActions, final int lwId) {
+        Map<Address, PlanAction> planActionMap = new HashMap<>(planActions.size());
         for (PlanAction pa : planActions) {
             if (pa.getDestination().getLabwareId()==lwId) {
-                planActionMap.putIfAbsent(new PlanActionKey(pa), pa);
+                planActionMap.putIfAbsent(pa.getDestination().getAddress(), pa);
             }
         }
         return planActionMap;
@@ -385,12 +390,8 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
         slotRepo.saveAll(slotsToUpdate.values());
     }
 
-    /** A key used to identify a particular plan action so we can look it up. */
-    public record PlanActionKey(Address address, Integer sectionId) {
-        PlanActionKey(PlanAction pa) {
-            this(pa.getDestination().getAddress(), pa.getSample().getId());
-        }
-    }
+    /** Deduplication key for samples */
+    record SectionKey(Integer tissueId, Integer section, BioState bs) {}
 
     /**
      * The result on an individual piece of labware of the confirmation request.

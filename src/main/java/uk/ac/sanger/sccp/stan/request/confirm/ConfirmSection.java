@@ -7,40 +7,44 @@ import java.util.List;
 import java.util.Objects;
 
 import static uk.ac.sanger.sccp.utils.BasicUtils.coalesce;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullToEmpty;
 
 /**
  * The information about a particular section in a confirmed operation
  * @author dr6
  */
 public class ConfirmSection {
-    private Address destinationAddress;
+    private List<Address> destinationAddresses = List.of();
     private Integer sampleId;
     private Integer newSection;
     private List<Integer> commentIds = List.of();
-    private String region;
     private String thickness;
 
     public ConfirmSection() {}
 
-    public ConfirmSection(Address destinationAddress, Integer sampleId, Integer newSection,
-                          List<Integer> commentIds, String region) {
-        this.destinationAddress = destinationAddress;
-        this.sampleId = sampleId;
-        this.newSection = newSection;
+    public ConfirmSection(List<Address> destinationAddresses, Integer sampleId, Integer newSection,
+                          List<Integer> commentIds) {
+        setDestinationAddress(destinationAddresses);
+        setSampleId(sampleId);
+        setNewSection(newSection);
         setCommentIds(commentIds);
-        this.region = region;
+    }
+
+    public ConfirmSection(Address destinationAddress, Integer sampleId, Integer newSection,
+                          List<Integer> commentIds) {
+        this(destinationAddress==null ? null : List.of(destinationAddress), sampleId, newSection, commentIds);
     }
 
     public ConfirmSection(Address destinationAddress, Integer sampleId, Integer newSection) {
-        this(destinationAddress, sampleId, newSection, null, null);
+        this(destinationAddress, sampleId, newSection, null);
     }
 
-    public Address getDestinationAddress() {
-        return this.destinationAddress;
+    public List<Address> getDestinationAddresses() {
+        return this.destinationAddresses;
     }
 
-    public void setDestinationAddress(Address destinationAddress) {
-        this.destinationAddress = destinationAddress;
+    public void setDestinationAddress(List<Address> destinationAddresses) {
+        this.destinationAddresses = nullToEmpty(destinationAddresses);
     }
 
     public Integer getSampleId() {
@@ -67,14 +71,6 @@ public class ConfirmSection {
         this.commentIds = coalesce(commentIds, List.of());
     }
 
-    public String getRegion() {
-        return this.region;
-    }
-
-    public void setRegion(String region) {
-        this.region = region;
-    }
-
     public String getThickness() {
         return this.thickness;
     }
@@ -88,28 +84,26 @@ public class ConfirmSection {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ConfirmSection that = (ConfirmSection) o;
-        return (Objects.equals(this.destinationAddress, that.destinationAddress)
+        return (Objects.equals(this.destinationAddresses, that.destinationAddresses)
                 && Objects.equals(this.sampleId, that.sampleId)
                 && Objects.equals(this.newSection, that.newSection)
                 && Objects.equals(this.commentIds, that.commentIds)
-                && Objects.equals(this.region, that.region)
                 && Objects.equals(this.thickness, that.thickness)
         );
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(destinationAddress, sampleId, newSection);
+        return Objects.hash(destinationAddresses, sampleId, newSection);
     }
 
     @Override
     public String toString() {
         return BasicUtils.describe("ConfirmSection")
-                .add("destinationAddress", destinationAddress)
+                .add("destinationAddresses", destinationAddresses)
                 .add("sampleId", sampleId)
                 .add("newSection", newSection)
                 .add("commentIds", commentIds)
-                .addRepr("region", region)
                 .addRepr("thickness", thickness)
                 .toString();
     }

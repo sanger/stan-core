@@ -12,7 +12,6 @@ import uk.ac.sanger.sccp.stan.repo.PlanOperationRepo;
 import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSectionLabware.AddressCommentId;
 import uk.ac.sanger.sccp.stan.service.CommentValidationService;
-import uk.ac.sanger.sccp.stan.service.SlotRegionService;
 import uk.ac.sanger.sccp.stan.service.sanitiser.Sanitiser;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
@@ -20,7 +19,6 @@ import uk.ac.sanger.sccp.utils.Zip;
 
 import java.util.*;
 import java.util.function.Function;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -46,8 +44,6 @@ public class TestConfirmSectionValidationService {
     @Mock
     WorkService mockWorkService;
     @Mock
-    SlotRegionService mockSlotRegionService;
-    @Mock
     CommentValidationService mockCommentValidationService;
     @Mock
     Sanitiser<String> mockThicknessSanitiser;
@@ -59,7 +55,7 @@ public class TestConfirmSectionValidationService {
     void setup() {
         mocking = MockitoAnnotations.openMocks(this);
         service = spy(new ConfirmSectionValidationServiceImp(mockLwRepo, mockPlanRepo, mockWorkService,
-                mockSlotRegionService, mockCommentValidationService, mockThicknessSanitiser));
+                mockCommentValidationService, mockThicknessSanitiser));
         opType = new OperationType(2, "Section", OperationTypeFlag.SOURCE_IS_BLOCK.bit(),
                 EntityFactory.getBioState());
     }
@@ -90,15 +86,13 @@ public class TestConfirmSectionValidationService {
 
         PlanOperation plan = EntityFactory.makePlanForLabware(opType, List.of(), List.of());
         Map<Integer, PlanOperation> planMap = Map.of(lw.getId(), plan);
-        UCMap<SlotRegion> regionMap = UCMap.from(SlotRegion::getName, new SlotRegion(1, "Top"));
         Map<Integer, Comment> commentMap = Map.of(1, new Comment(1, "com", "cat"));
         UCMap<Work> works = UCMap.from(Work::getWorkNumber, EntityFactory.makeWork("SGP1"));
 
         mayAddProblem(valid ? null : "lw problem", lwMap).when(service).validateLabware(any(), any());
         mayAddProblem(valid ? null : "plan problem", planMap).when(service).lookUpPlans(any(), any());
         mayAddProblem(valid ? null : "op problem").when(service).validateOperations(any(), any(), any(), any());
-        mayAddProblem(valid ? null : "region problem", regionMap).when(service).validateSlotRegions(any(), any());
-        mayAddProblem(valid ? null : "missing region").when(service).requireRegionsForMultiSampleSlots(any(), any());
+        mayAddProblem(valid ? null : "dupe address").when(service).checkRepeatedDestSlots(any(), any());
         mayAddProblem(valid ? null : "comment problem", commentMap).when(service).validateCommentIds(any(), any());
         mayAddProblem(valid ? null : "work problem", works).when(mockWorkService).validateUsableWorks(any(), any());
         mayAddProblem(valid ? null : "thickness problem").when(service).sanitiseThickness(any(), any());
@@ -109,23 +103,40 @@ public class TestConfirmSectionValidationService {
             assertEquals(validation.getLwPlans(), planMap);
             assertEquals(validation.getLabware(), lwMap);
             assertEquals(validation.getComments(), commentMap);
-            assertEquals(validation.getSlotRegions(), regionMap);
             assertEquals(validation.getWorks(), works);
         } else {
             assertThat(validation.getProblems()).containsExactlyInAnyOrder(
-                    "lw problem", "plan problem", "op problem", "region problem", "missing region",
+                    "lw problem", "plan problem", "op problem", "dupe address",
                     "comment problem", "work problem", "thickness problem"
             );
         }
 
         verify(service).validateCommentIds(any(), eq(request.getLabware()));
-        verify(service).validateSlotRegions(any(), eq(request.getLabware()));
-        verify(service).requireRegionsForMultiSampleSlots(any(), eq(request.getLabware()));
+        verify(service).checkRepeatedDestSlots(any(), eq(request.getLabware()));
         verify(mockWorkService).validateUsableWorks(any(), eq(Set.of("SGP1")));
         verify(service).validateLabware(any(), eq(request.getLabware()));
         verify(service).sanitiseThickness(any(), eq(request.getLabware()));
         verify(service).lookUpPlans(any(), eq(lwMap.values()));
         verify(service).validateOperations(any(), eq(request.getLabware()), eq(lwMap), eq(planMap));
+    }
+
+    @Test
+    public void testCheckRepeatedDestSlots() {
+        final Address A1 = new Address(1,1), A2 = new Address(1,2), A3 = new Address(1,3);
+        List<ConfirmSectionLabware> csls = List.of(
+                new ConfirmSectionLabware(null),
+                new ConfirmSectionLabware("STAN-1", false, List.of(
+                        new ConfirmSection(List.of(A1, A2), null, null, null),
+                        new ConfirmSection(A3, null, null, null)
+                ), null, null),
+                new ConfirmSectionLabware("STAN-2", false, List.of(
+                        new ConfirmSection(List.of(A1, A2), null, null, null),
+                        new ConfirmSection(List.of(A2, A3), null, null, null)
+                ), null, null)
+        );
+        List<String> problems = new ArrayList<>(1);
+        service.checkRepeatedDestSlots(problems, csls);
+        assertProblem(problems, "Multiple actions linked to destination STAN-2 A2.");
     }
 
     @ParameterizedTest
@@ -157,83 +168,6 @@ public class TestConfirmSectionValidationService {
         }
         assertEquals(commentMap, service.validateCommentIds(problems, csls));
         assertThat(problems).containsExactlyInAnyOrderElementsOf(expectedProblems);
-    }
-
-    @ParameterizedTest
-    @MethodSource("validateRegionsArgs")
-    public void testValidateRegions(List<SlotRegion> allRegions, List<SlotRegion> expectedRegions,
-                                    List<ConfirmSectionLabware> csls, List<String> expectedProblems) {
-        List<String> problems = new ArrayList<>(expectedProblems.size());
-        when(mockSlotRegionService.loadSlotRegionMap(true)).thenReturn(UCMap.from(allRegions, SlotRegion::getName));
-        assertEquals(UCMap.from(expectedRegions, SlotRegion::getName), service.validateSlotRegions(problems, csls));
-        assertThat(problems).containsExactlyInAnyOrderElementsOf(expectedProblems);
-    }
-
-    static Stream<Arguments> validateRegionsArgs() {
-        final Address A1 = new Address(1,1);
-        final Address A2 = new Address(1,2);
-        List<SlotRegion> allRegions = List.of(new SlotRegion(1, "Top"),
-                new SlotRegion(2, "Bottom"), new SlotRegion(3, "Middle"));
-        ConfirmSectionLabware cslNoRegion = new ConfirmSectionLabware("STAN-1", false,
-                List.of(confirmSection(A1, null), confirmSection(A1, "")), List.of(), null);
-        ConfirmSectionLabware cslNoBarcode = new ConfirmSectionLabware("", false, List.of(), List.of(), null);
-        ConfirmSectionLabware cslRegions = new ConfirmSectionLabware("STAN-2", false,
-                List.of(confirmSection(A1, "Top"), confirmSection(A1, "Bottom"),
-                        confirmSection(A2, "Top")), List.of(), null);
-        ConfirmSectionLabware cslUnknownRegion = new ConfirmSectionLabware("STAN-3", false,
-                List.of(confirmSection(A1, "Spoon")), List.of(), null);
-        ConfirmSectionLabware cslRepeatedRegions = new ConfirmSectionLabware("STAN-4", false,
-                List.of(confirmSection(A1, "Top"), confirmSection(A1, "top")), List.of(), null);
-        return Arrays.stream(new Object[][] {
-                {allRegions, List.of(), List.of(cslNoRegion, cslNoBarcode), List.of()},
-                {allRegions, allRegions, List.of(cslNoRegion, cslRegions), List.of()},
-                {allRegions, allRegions, List.of(cslRegions, cslUnknownRegion), List.of("Unknown region: \"Spoon\"")},
-                {allRegions, allRegions, List.of(cslRepeatedRegions), List.of("Region Top specified twice for A1 in STAN-4.")},
-        }).map(Arguments::of);
-    }
-
-    @Test
-    public void testRequireRegionsForMultiSampleSlots() {
-        List<String> problems = new ArrayList<>();
-        final Address A1 = new Address(1,1);
-        final Address A2 = new Address(1,2);
-        final Address A3 = new Address(1,3);
-        final Address A4 = new Address(1,4);
-        ConfirmSectionLabware[] csls = IntStream.range(0, 3)
-                .mapToObj(i -> new ConfirmSectionLabware("STAN-"+i))
-                .toArray(ConfirmSectionLabware[]::new);
-        csls[0].setBarcode(""); // empty barcode csl is skipped
-        csls[1].setConfirmSections(
-                List.of(makeConfirmSection(A1, null),
-                        makeConfirmSection(A2, "Top"),
-                        makeConfirmSection(A3, "Top"),
-                        makeConfirmSection(A4, "Bottom")
-                )
-        );
-        csls[2].setConfirmSections(
-                List.of(makeConfirmSection(A1, null),
-                        makeConfirmSection(A1, "Top"),
-                        makeConfirmSection(A2, ""),
-                        makeConfirmSection(A3, "Top"),
-                        makeConfirmSection(A3, "Bottom"),
-                        makeConfirmSection(A4, null),
-                        makeConfirmSection(A4, null))
-        );
-        service.requireRegionsForMultiSampleSlots(problems, Arrays.asList(csls));
-        assertThat(problems).containsExactlyInAnyOrder(
-                "A region must be specified for each section in slot A1 of STAN-2.",
-                "A region must be specified for each section in slot A4 of STAN-2."
-        );
-    }
-
-    private static ConfirmSection makeConfirmSection(Address address, String regionName) {
-        return new ConfirmSection(address, 1, 2, null, regionName);
-    }
-
-    private static ConfirmSection confirmSection(Address address, String regionName) {
-        ConfirmSection cs = new ConfirmSection(address, 1, 1);
-        cs.setRegion(regionName);
-        return cs;
     }
 
     @MethodSource("validateLabwareArgs")

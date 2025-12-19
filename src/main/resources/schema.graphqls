@@ -528,8 +528,8 @@ type PlanOperation {
 
 """A specification of an action in a plan request. Describes the action on a sample being transferred between slots."""
 input PlanRequestAction {
-    """The intended address of the sample in the destination labware."""
-    address: Address!
+    """The intended addresses of the sample in the destination labware."""
+    addresses: [Address!]!
     """The id of the existing sample."""
     sampleId: Int!
     """The thickness (if specified) of the new sample."""
@@ -597,16 +597,14 @@ input ConfirmOperationRequest {
 
 """A specification of a section to confirm in a planned sectioning operation."""
 input ConfirmSection {
-    """The address of the destination slot for the section."""
-    destinationAddress: Address!
+    """The addresses of the destination slots for the section."""
+    destinationAddresses: [Address!]!
     """The original sample id of the source."""
     sampleId: Int!
     """The section number of the new section."""
     newSection: Int
     """The comment ids to record against this sample in this slot."""
     commentIds: [Int!]
-    """The region of this sample in this slot, if any."""
-    region: String
     """The thickness of the section, overriding the thickness specified in the plan."""
     thickness: String
 }
@@ -1213,6 +1211,8 @@ type PlanData {
     plan: PlanOperation!
     """The single item of destination labware for the plan."""
     destination: LabwareFlagged!
+    """The groups of addresses specified by the plan."""
+    groups: [[Address!]!]!
 }
 
 """A project that work can be associated with."""
