@@ -268,10 +268,10 @@ public class TestLabwareValidator {
     public void testValidateBlock() {
         final Runnable action = validator::validateBlock;
         testValidator(List.of(), action);
-        Sample sam1 = EntityFactory.getSample();
-        Sample sam2 = new Sample(sam1.getId()+1, 800, sam1.getTissue(), sam1.getBioState());
-        Labware goodLw = EntityFactory.makeBlock(sam1);
-        Labware badLw = EntityFactory.makeLabware(EntityFactory.getTubeType(), sam2);
+        Sample[] samples = EntityFactory.makeSamples(2);
+        samples[0].setBlockHighestSection(1);
+        Labware goodLw = EntityFactory.makeTube(samples[0]);
+        Labware badLw = EntityFactory.makeTube(samples[1]);
 
         testValidator(List.of(goodLw), action);
 

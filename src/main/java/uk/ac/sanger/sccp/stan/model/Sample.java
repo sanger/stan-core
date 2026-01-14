@@ -1,9 +1,9 @@
 package uk.ac.sanger.sccp.stan.model;
 
-import com.google.common.base.MoreObjects;
-
 import javax.persistence.*;
 import java.util.Objects;
+
+import static uk.ac.sanger.sccp.utils.BasicUtils.describe;
 
 /**
  * A sample is a piece of some tissue that has some particular state and can be located inside slots in labware,
@@ -20,6 +20,7 @@ public class Sample {
     private Tissue tissue;
     @ManyToOne
     private BioState bioState;
+    private Integer blockHighestSection;
 
     public Sample() {}
 
@@ -62,6 +63,24 @@ public class Sample {
         this.bioState = bioState;
     }
 
+    public Integer getBlockHighestSection() {
+        return this.blockHighestSection;
+    }
+
+    public void setBlockHighestSection(Integer blockHighestSection) {
+        this.blockHighestSection = blockHighestSection;
+    }
+
+    public boolean isBlock() {
+        return blockHighestSection != null;
+    }
+
+    public static Sample newBlock(Integer id, Tissue tissue, BioState bs, Integer blockHighestSection) {
+        Sample sample = new Sample(id, null, tissue, bs);
+        sample.setBlockHighestSection(blockHighestSection);
+        return sample;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -70,7 +89,9 @@ public class Sample {
         return (Objects.equals(this.id, that.id)
                 && Objects.equals(this.section, that.section)
                 && Objects.equals(this.tissue, that.tissue)
-                && Objects.equals(this.bioState, that.bioState));
+                && Objects.equals(this.bioState, that.bioState)
+                && Objects.equals(this.blockHighestSection, that.blockHighestSection)
+        );
     }
 
     @Override
@@ -80,11 +101,12 @@ public class Sample {
 
     @Override
     public String toString() {
-        return MoreObjects.toStringHelper(this)
+        return describe(this)
                 .add("id", id)
                 .add("section", section)
                 .add("tissue", tissue)
                 .add("bioState", bioState)
+                .addIfNotNull("blockHighestSection", blockHighestSection)
                 .toString();
     }
 }

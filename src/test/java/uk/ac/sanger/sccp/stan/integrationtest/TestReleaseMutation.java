@@ -81,13 +81,12 @@ public class TestReleaseMutation {
         Work work1 = entityCreator.createWork(null, null, null, null, null);
         Donor donor = entityCreator.createDonor("DONOR1");
         Tissue tissue = entityCreator.createTissue(donor, "TISSUE1");
-        Sample sample = entityCreator.createSample(tissue, null);
+        Sample sample = entityCreator.createBlockSample(tissue);
+        sample.setBlockHighestSection(6);
         Sample sample1 = entityCreator.createSample(tissue, 1);
         LabwareType lwtype = entityCreator.createLabwareType("lwtype4", 1, 4);
-        Labware block = entityCreator.createBlock("STAN-001", sample);
+        Labware block = entityCreator.createTube("STAN-001", sample);
         Slot blockSlot = block.getFirstSlot();
-        blockSlot.setBlockSampleId(sample.getId());
-        blockSlot.setBlockHighestSection(6);
         blockSlot = slotRepo.save(blockSlot);
         block.getSlots().set(0, blockSlot);
         Labware lw = entityCreator.createLabware("STAN-002", lwtype, sample, sample, null, sample1);

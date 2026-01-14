@@ -155,8 +155,8 @@ public class TestInPlaceOpService {
         OperationType ot3 = EntityFactory.makeOperationType("Blodge", null, OperationTypeFlag.IN_PLACE, OperationTypeFlag.SOURCE_IS_BLOCK);
         LabwareType lt = EntityFactory.getTubeType();
         Sample sam = EntityFactory.getSample();
-        Labware block = EntityFactory.makeLabware(lt, sam);
-        block.getFirstSlot().setBlockSampleId(sam.getId());
+        Sample blockSam = Sample.newBlock(sam.getId()+1, sam.getTissue(), sam.getBioState(), 1);
+        Labware block = EntityFactory.makeLabware(lt, blockSam);
         Labware tube = EntityFactory.makeLabware(lt, sam);
         return Arrays.stream(new Object[][] {
                 {ot, tube, null},
@@ -164,9 +164,11 @@ public class TestInPlaceOpService {
                 {"", tube, "No operation type specified."},
                 {"Bananas", tube, "Unknown operation type: \"Bananas\""},
                 {ot2, tube, "Operation type Passage cannot be recorded in place."},
+                {ot3, block, null},
                 {ot3, tube, "Operation type Blodge can only be recorded on a block."},
         }).map(Arguments::of);
     }
+
     @Test
     public void testMakeActions_nobs() {
         Sample sam1 = EntityFactory.getSample();

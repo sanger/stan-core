@@ -31,7 +31,8 @@ public class TestPlanOperationRepo {
     @Transactional
     public void testFindAllByDestinationIdIn() {
         Tissue tissue = entityCreator.createTissue(entityCreator.createDonor("DONOR1"), "TISSUE1");
-        Labware block = entityCreator.createBlock("STAN-BLOCK", entityCreator.createSample(tissue, null));
+        Sample sample = entityCreator.createBlockSample(tissue);
+        Labware block = entityCreator.createTube("STAN-BLOCK", sample);
         Slot source = block.getFirstSlot();
         LabwareType lt = entityCreator.createLabwareType("1x2", 1, 2);
         Labware lw1 = entityCreator.createLabware("STAN-1", lt);

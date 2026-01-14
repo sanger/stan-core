@@ -118,6 +118,14 @@ public class EntityCreator {
 
     }
 
+    public Sample createBlockSample(Tissue tissue) {
+        BioState bs = bioStateRepo.getByName("Tissue");
+        if (tissue==null) {
+            tissue = createTissue(null, "EXT1");
+        }
+        return sampleRepo.save(Sample.newBlock(null, tissue, bs, 0));
+    }
+
     public Sample createSample(Tissue tissue, Integer section) {
         BioState bs = bioStateRepo.getByName("Tissue");
         return createSample(tissue, section, bs);
@@ -134,17 +142,17 @@ public class EntityCreator {
     }
 
     public Labware createTube(String barcode) {
-        LabwareType lt = ltRepo.getByName("Tube");
-        Labware lw = labwareRepo.save(new Labware(null, barcode, lt, null));
-        Slot slot = slotRepo.save(new Slot(null, lw.getId(), new Address(1,1), new ArrayList<>(), null, null));
-        lw.getSlots().add(slot);
-        return lw;
+        return createTube(barcode, null);
     }
 
-    public Labware createBlock(String barcode, Sample sample) {
-        LabwareType lt = ltRepo.getByName("Proviasette");
+    public Labware createTube(String barcode, Sample sample) {
+        LabwareType lt = ltRepo.getByName("Tube");
         Labware lw = labwareRepo.save(new Labware(null, barcode, lt, null));
-        Slot slot = slotRepo.save(new Slot(null, lw.getId(), new Address(1,1), new ArrayList<>(List.of(sample)), sample.getId(), 0));
+        List<Sample> samples = new ArrayList<>();
+        if (sample != null) {
+            samples.add(sample);
+        }
+        Slot slot = slotRepo.save(new Slot(null, lw.getId(), new Address(1,1), samples));
         lw.getSlots().add(slot);
         return lw;
     }
@@ -158,8 +166,7 @@ public class EntityCreator {
         List<Slot> slots = Address.stream(lt.getNumRows(), lt.getNumColumns())
                 .map(ad -> {
                     Sample sample = sampleIter.hasNext() ? sampleIter.next() : null;
-                    return new Slot(null, lw.getId(), ad, (sample==null ? List.of() : List.of(sample)),
-                            null, null);
+                    return new Slot(null, lw.getId(), ad, (sample==null ? List.of() : List.of(sample)));
                 })
                 .collect(Collectors.toList());
         slotRepo.saveAll(slots);
@@ -174,7 +181,7 @@ public class EntityCreator {
                 .map(ad -> {
                     Sample[] sams = sampleArrayIter.hasNext() ? sampleArrayIter.next() : null;
                     List<Sample> samList = (sams==null ? List.of() : Arrays.asList(sams));
-                    return new Slot(null, lw.getId(), ad, samList, null, null);
+                    return new Slot(null, lw.getId(), ad, samList);
                 })
                 .collect(Collectors.toList());
         slotRepo.saveAll(slots);

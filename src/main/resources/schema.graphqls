@@ -224,6 +224,8 @@ type Sample {
     tissue: Tissue!
     """The state of this particular sample."""
     bioState: BioState!
+    """For blocks, what is the highest section number already taken from this block?"""
+    blockHighestSection: Int
 }
 
 """A slot in a piece of labware, which may contain samples."""
@@ -236,10 +238,6 @@ type Slot {
     labwareId: Int!
     """The list of samples contained in this slot. May be empty."""
     samples: [Sample!]!
-    """Is this slot a block of tissue? Blocks have different properties from sections."""
-    block: Boolean!
-    """For blocks, what is the highest section number already taken from this block?"""
-    blockHighestSection: Int
 }
 
 type Labware {

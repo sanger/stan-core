@@ -81,10 +81,10 @@ public class TestFileBlockRegister {
         tester.setUser(user);
         Tissue tissue1 = creator.createTissue(null, "EXT1");
         Tissue tissue2 = creator.createTissue(tissue1.getDonor(), "EXT2");
-        Sample sample1 = creator.createSample(tissue1, null);
-        Sample sample2 = creator.createSample(tissue2, null);
-        Labware lw1 = creator.createBlock("STAN-X", sample1);
-        Labware lw2 = creator.createBlock("STAN-Y", sample2);
+        Sample sample1 = creator.createBlockSample(tissue1);
+        Sample sample2 = creator.createBlockSample(tissue2);
+        Labware lw1 = creator.createTube("STAN-X", sample1);
+        Labware lw2 = creator.createTube("STAN-Y", sample2);
         when(mockRegService.register(any(), any())).thenReturn(RegisterResult.clashes(
                 List.of(new RegisterClash(tissue1, List.of(lw1)), new RegisterClash(tissue2, List.of(lw2)))
         ));
@@ -100,7 +100,7 @@ public class TestFileBlockRegister {
                 .containsExactlyInAnyOrder("EXT1", "EXT2");
         for (var clash : clashes) {
             String bc = clash.get("tissue").get("externalName").equals("EXT1") ? "STAN-X" : "STAN-Y";
-            assertEquals(List.of(Map.of("barcode", bc,"labwareType", Map.of("name", "Proviasette"))),
+            assertEquals(List.of(Map.of("barcode", bc,"labwareType", Map.of("name", "Tube"))),
                     clash.get("labware"));
         }
     }

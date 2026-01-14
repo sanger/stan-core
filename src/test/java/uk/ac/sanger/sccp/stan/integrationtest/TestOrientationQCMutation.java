@@ -42,8 +42,8 @@ public class TestOrientationQCMutation {
     @Transactional
     @Test
     public void testOrientationQC() throws Exception {
-        Sample sample = entityCreator.createSample(null, null);
-        Labware lw = entityCreator.createBlock("STAN-1", sample);
+        Sample sample = entityCreator.createBlockSample(null);
+        Labware lw = entityCreator.createTube("STAN-1", sample);
         Work work = entityCreator.createWork(null, null, null, null, null);
 
         OperationType opType = entityCreator.createOpType("Orientation QC", null,

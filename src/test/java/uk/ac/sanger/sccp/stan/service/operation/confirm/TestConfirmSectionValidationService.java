@@ -406,18 +406,16 @@ public class TestConfirmSectionValidationService {
         lw1.setBarcode("STAN-001");
         Labware lw2 = EntityFactory.makeEmptyLabware(lt);
         lw2.setBarcode("STAN-002");
-        Sample sampleA = EntityFactory.getSample();
+        Sample sample0 = EntityFactory.getSample();
+        Sample sampleA = Sample.newBlock(sample0.getId()+1, sample0.getTissue(), sample0.getBioState(), 12);
         Tissue tissueB = EntityFactory.makeTissue(EntityFactory.getDonor(), EntityFactory.getSpatialLocation());
         Sample sampleB = new Sample(sampleA.getId()+1, null, tissueB, sampleA.getBioState());
 
         LabwareType tubeType = EntityFactory.getTubeType();
         Labware lwA = EntityFactory.makeLabware(tubeType, sampleA);
         final Slot slotA = lwA.getFirstSlot();
-        slotA.setBlockSampleId(sampleA.getId());
-        slotA.setBlockHighestSection(12);
         Labware lwB = EntityFactory.makeLabware(tubeType, sampleB);
         final Slot slotB = lwB.getFirstSlot();
-        slotB.setBlockSampleId(sampleA.getId());
 
         final Address A1 = new Address(1,1);
         final Address B3 = new Address(2,3);

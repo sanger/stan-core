@@ -271,9 +271,11 @@ public class TestAliquotService {
         OperationType analysisOp = EntityFactory.makeOperationType("Floop", null, OperationTypeFlag.ANALYSIS);
         OperationType sectionOp = EntityFactory.makeOperationType("Section", null, OperationTypeFlag.SOURCE_IS_BLOCK);
 
-        Sample sample = new Sample(50, null, EntityFactory.getTissue(), EntityFactory.getBioState());
-        Labware block = EntityFactory.makeBlock(sample);
-        Labware section = EntityFactory.getTube();
+        Sample[] samples = EntityFactory.makeSamples(2);
+        samples[0].setBlockHighestSection(0);
+        samples[1].setSection(1);
+        Labware block = EntityFactory.makeTube(samples[0]);
+        Labware section = EntityFactory.makeTube(samples[1]);
 
         return Arrays.stream(new Object[][]{
                 {3, aliquotOp, block},

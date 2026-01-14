@@ -155,13 +155,11 @@ public class RegisterServiceImp implements IRegisterService<RegisterRequest> {
 
         for (BlockRegisterRequest block : request.getBlocks()) {
             Tissue tissue = tissues.get(block.getExternalIdentifier().toUpperCase());
-            Sample sample = sampleRepo.save(new Sample(null, null, tissue, bioState));
+            Sample sample = sampleRepo.save(Sample.newBlock(null, tissue, bioState, block.getHighestSection()));
             LabwareType labwareType = validation.getLabwareType(block.getLabwareType());
             Labware labware = labwareService.create(labwareType);
             Slot slot = labware.getFirstSlot();
             slot.getSamples().add(sample);
-            slot.setBlockSampleId(sample.getId());
-            slot.setBlockHighestSection(block.getHighestSection());
             slot = slotRepo.save(slot);
             entityManager.refresh(labware);
             labwareList.add(labware);

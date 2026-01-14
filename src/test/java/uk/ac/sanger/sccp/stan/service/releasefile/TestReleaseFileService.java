@@ -350,26 +350,12 @@ public class TestReleaseFileService {
     @Test
     public void testLoadLastSection() {
         LabwareType lt = EntityFactory.getTubeType();
-        Sample sampleA = EntityFactory.getSample();
-        Tissue tissueB = EntityFactory.makeTissue(EntityFactory.getDonor(), EntityFactory.getSpatialLocation());
-        Sample sampleB = new Sample(60, null, tissueB, EntityFactory.getBioState());
-        Sample[] samples = { sampleA, sampleB, sampleA, sampleA, sampleB, sampleA };
-        boolean[] isBlock = { true, true, true, true, true, false };
-        Integer[] blockMaxSection = { 6, 6, 2, null, null, null };
+        Sample[] samples = EntityFactory.makeSamples(3);
+        samples[0].setBlockHighestSection(6);
+        samples[1].setBlockHighestSection(2);
 
-        Labware[] labware = IntStream.range(0, samples.length)
-                .mapToObj(i -> {
-                    Sample sample = samples[i];
-                    Labware lw = EntityFactory.makeLabware(lt, sample);
-                    if (isBlock[i]) {
-                        Slot slot = lw.getFirstSlot();
-                        slot.setBlockSampleId(sample.getId());
-                        if (blockMaxSection[i]!=null) {
-                            slot.setBlockHighestSection(blockMaxSection[i]);
-                        }
-                    }
-                    return lw;
-                })
+        Labware[] labware = Arrays.stream(samples)
+                .map(sample -> EntityFactory.makeLabware(lt, sample))
                 .toArray(Labware[]::new);
 
         List<ReleaseEntry> entries = Arrays.stream(labware)
@@ -378,7 +364,7 @@ public class TestReleaseFileService {
 
         service.loadLastSection(entries);
 
-        Integer[] expectedLastSection = {6, 6, 2, null, null, null};
+        Integer[] expectedLastSection = {6, 2, null};
         IntStream.range(0, expectedLastSection.length).forEach(i ->
             assertEquals(expectedLastSection[i], entries.get(i).getLastSection(), "element "+i)
         );

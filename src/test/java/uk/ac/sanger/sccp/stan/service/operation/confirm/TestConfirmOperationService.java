@@ -344,9 +344,9 @@ public class TestConfirmOperationService {
         );
         BioState rna = new BioState(2, "RNA");
         Sample newSection = makeSample(544, 3, tissue1, bio);
-        Slot sourceSlot = new Slot(null, null, new Address(1,1), List.of(blockSample), null, null);
-        Slot emptySlot = new Slot(null, null, new Address(1,1), List.of(), null, null);
-        Slot populousSlot = new Slot(null, null, new Address(1,2), sections, null, null);
+        Slot sourceSlot = new Slot(null, null, new Address(1,1), List.of(blockSample));
+        Slot emptySlot = new Slot(null, null, new Address(1,1), List.of());
+        Slot populousSlot = new Slot(null, null, new Address(1,2), sections);
         return Stream.of(
                 Arguments.of(new PlanAction(null, null, sourceSlot, emptySlot, blockSample, null, null, null),
                         emptySlot, blockSample, false),

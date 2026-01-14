@@ -234,7 +234,7 @@ class TestFlagLookupService {
         SlotSample lwSs = new SlotSample(lw.getFirstSlot(), sample);
         Ancestry anc = mock(Ancestry.class);
         when(mockAncestoriser.findAncestry(any())).thenReturn(anc);
-        Labware otherLw = EntityFactory.makeBlock(sample);
+        Labware otherLw = EntityFactory.makeTube(sample);
         Set<SlotSample> ancestorSS = Set.of(lwSs, new SlotSample(otherLw.getFirstSlot(), sample));
         when(anc.keySet()).thenReturn(ancestorSS);
         when(mockFlagRepo.findAllByLabwareIdIn(any())).thenReturn(List.of());
@@ -254,7 +254,7 @@ class TestFlagLookupService {
         SlotSample lwSs = new SlotSample(lw.getFirstSlot(), sample);
         Ancestry anc = mock(Ancestry.class);
         when(mockAncestoriser.findAncestry(any())).thenReturn(anc);
-        Labware otherLw = EntityFactory.makeBlock(sample);
+        Labware otherLw = EntityFactory.makeTube(sample);
         Set<SlotSample> ancestorSS = Set.of(lwSs, new SlotSample(otherLw.getFirstSlot(), sample));
         when(anc.keySet()).thenReturn(ancestorSS);
         List<LabwareFlag> flags = List.of(
@@ -289,7 +289,7 @@ class TestFlagLookupService {
         SlotSample lw2Ss = new SlotSample(lw2.getFirstSlot(), sample);
         Ancestry anc = mock(Ancestry.class);
         when(mockAncestoriser.findAncestry(any())).thenReturn(anc);
-        Labware otherLw = EntityFactory.makeBlock(sample);
+        Labware otherLw = EntityFactory.makeTube(sample);
         SlotSample blockSs = new SlotSample(otherLw.getFirstSlot(), sample);
         Set<SlotSample> ancSs = Set.of(lw1Ss, lw2Ss, blockSs);
         when(anc.keySet()).thenReturn(ancSs);

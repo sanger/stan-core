@@ -271,15 +271,15 @@ public class ReleaseFileService {
     /**
      * Figures and sets the last section field for release entries.
      * The last section is only set on entries that specify a block.
-     * The last section is {@link Slot#getBlockHighestSection}
+     * The last section is {@link Sample#getBlockHighestSection}
      * @param entries the release entries under construction
      */
     public void loadLastSection(Collection<ReleaseEntry> entries) {
         for (ReleaseEntry entry : entries) {
-            if (!entry.getSlot().isBlock() || !entry.getSlot().getBlockSampleId().equals(entry.getSample().getId())) {
-                continue;
+            Sample sample = entry.getSample();
+            if (sample.isBlock()) {
+                entry.setLastSection(sample.getBlockHighestSection());
             }
-            entry.setLastSection(entry.getSlot().getBlockHighestSection());
         }
     }
 

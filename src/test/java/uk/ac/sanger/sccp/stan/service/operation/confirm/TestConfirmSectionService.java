@@ -23,6 +23,7 @@ import java.util.*;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -515,11 +516,11 @@ public class TestConfirmSectionService {
                 .toArray(Sample[]::new);
         final Address A1 = new Address(1, 1);
         final Address A2 = new Address(1, 2);
-        Slot source = new Slot(10, 1, A1, null, null, null);
+        Slot source = new Slot(10, 1, A1, null);
         Slot[] slots = {
-                new Slot(100, 10, A1, Arrays.asList(samples), null, null),
-                new Slot(101, 10, A2, List.of(samples[0]), null, null),
-                new Slot(200, 20, A1, Arrays.asList(samples), null, null)
+                new Slot(100, 10, A1, Arrays.asList(samples)),
+                new Slot(101, 10, A2, List.of(samples[0])),
+                new Slot(200, 20, A1, Arrays.asList(samples))
         };
         PlanAction[] pas = {
                 new PlanAction(51, 1, source, slots[0], samples[0]),
@@ -549,11 +550,8 @@ public class TestConfirmSectionService {
         final Tissue tissue = EntityFactory.getTissue();
         for (int i = 0; i < sourceSamples.length; ++i) {
             final int sampleId = 50 + i;
-            sourceSamples[i] = new Sample(sampleId, null, tissue, bs);
+            sourceSamples[i] = Sample.newBlock(sampleId, tissue, bs, 10*i);
             sourceLabware[i] = EntityFactory.makeLabware(tubeType, sourceSamples[i]);
-            final Slot slot = sourceLabware[i].getFirstSlot();
-            slot.setBlockSampleId(sampleId);
-            slot.setBlockHighestSection(10*i);
         }
         Sample[] sections = new Sample[4];
         Labware[] destLabware = new Labware[2];
@@ -584,7 +582,7 @@ public class TestConfirmSectionService {
         // Just to make sure that if source slots have competing instances, they still get updated correctly:
         for (int i = 0; i < srcs.length; ++i) {
             Slot src = srcs[i];
-            srcs[i] = new Slot(src.getId(), src.getLabwareId(), src.getAddress(), src.getSamples(), src.getBlockSampleId(), src.getBlockHighestSection());
+            srcs[i] = new Slot(src.getId(), src.getLabwareId(), src.getAddress(), src.getSamples());
         }
 
         List<Action> op1Actions = List.of(
@@ -593,23 +591,23 @@ public class TestConfirmSectionService {
         );
         ops[1].setActions(op1Actions);
 
-        final List<Slot> updatedSources = new ArrayList<>(2);
-        when(mockSlotRepo.saveAll(any())).then(invocation -> {
-            Collection<Slot> slots = invocation.getArgument(0);
-            updatedSources.addAll(slots);
-
-            return slots;
+        final List<Sample> updatedSamples = new ArrayList<>(2);
+        when(mockSampleRepo.saveAll(any())).then(invocation -> {
+            Collection<Sample> samples = invocation.getArgument(0);
+            updatedSamples.addAll(samples);
+            return samples;
         });
 
         service.updateSourceBlocks(Arrays.asList(ops));
 
-        verify(mockSlotRepo).saveAll(any());
+        verify(mockSampleRepo).saveAll(any());
 
-        updatedSources.sort(Comparator.comparing(Slot::getId));
-        final List<Slot> expectedUpdatedSources = List.of(
-                new Slot(srcs[0].getId(), srcs[0].getLabwareId(), srcs[0].getAddress(), srcs[0].getSamples(), srcs[0].getBlockSampleId(), 21),
-                new Slot(srcs[1].getId(), srcs[1].getLabwareId(), srcs[1].getAddress(), srcs[1].getSamples(), srcs[1].getBlockSampleId(), 23)
+        updatedSamples.sort(Comparator.comparing(Sample::getId));
+        Map<Integer, Integer> srcSampleHighs = updatedSamples.stream()
+                        .collect(toMap(Sample::getId, Sample::getBlockHighestSection));
+        assertEquals(
+                Map.of(sourceSamples[0].getId(), sections[1].getSection(), sourceSamples[1].getId(), sections[3].getSection()),
+                srcSampleHighs
         );
-        assertEquals(expectedUpdatedSources, updatedSources);
     }
 }

@@ -88,9 +88,9 @@ public class TestPlanActionRepo {
 
         Labware lw = new Labware(null, "STAN-001A", any(labwareTypeRepo), null);
         labwareRepo.save(lw);
-        Slot slot1 = new Slot(null, lw.getId(), new Address(1,1), null, null, null);
-        Slot slot2 = new Slot(null, lw.getId(), new Address(1,2), null, null, null);
-        Slot slot3 = new Slot(null, lw.getId(), new Address(1,3), null, null, null);
+        Slot slot1 = new Slot(null, lw.getId(), new Address(1,1), null);
+        Slot slot2 = new Slot(null, lw.getId(), new Address(1,2), null);
+        Slot slot3 = new Slot(null, lw.getId(), new Address(1,3), null);
         slotRepo.save(slot1);
         slotRepo.save(slot2);
         slotRepo.save(slot3);
@@ -106,8 +106,8 @@ public class TestPlanActionRepo {
     @Test
     @Transactional
     public void testFindAllByDestinationLabwareId() {
-        Sample sample = entityCreator.createSample(entityCreator.createTissue(entityCreator.createDonor("DONOR1"), "TISSUE1"),null);
-        Labware sourceLabware = entityCreator.createBlock("STAN-000", sample);
+        Sample sample = entityCreator.createBlockSample(entityCreator.createTissue(entityCreator.createDonor("DONOR1"), "TISSUE1"));
+        Labware sourceLabware = entityCreator.createTube("STAN-000", sample);
         Slot sourceSlot = sourceLabware.getFirstSlot();
         LabwareType lt = entityCreator.createLabwareType("2x2", 2, 2);
         Labware labware = entityCreator.createLabware("STAN-001", lt);

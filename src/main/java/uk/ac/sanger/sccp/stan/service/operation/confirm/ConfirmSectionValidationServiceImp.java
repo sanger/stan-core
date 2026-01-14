@@ -286,7 +286,7 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
             if (dest.getLabwareId().equals(lw.getId())) {
                 final Integer sampleId = pa.getSample().getId();
                 plannedSampleIds.computeIfAbsent(dest.getAddress(), ad -> new HashSet<>()).add(sampleId);
-                Integer lastSection = pa.getSource().getBlockHighestSection();
+                Integer lastSection = pa.getSample().getBlockHighestSection();
                 if (lastSection != null) {
                     Integer max = sampleMaxSection.get(sampleId);
                     if (max == null || max < lastSection) {

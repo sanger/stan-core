@@ -141,7 +141,7 @@ public class TestRegisterOriginalSamplesMutation {
     }
 
     private void testSectioningBlock(Labware block, Work work) throws Exception {
-        final Integer blockSampleId = block.getFirstSlot().getBlockSampleId();
+        final Integer blockSampleId = block.getFirstSlot().getSamples().getFirst().getId();
         String planMutation = tester.readGraphQL("plan_simple.graphql")
                 .replace("BARCODE0", block.getBarcode())
                 .replace("55555", String.valueOf(blockSampleId));

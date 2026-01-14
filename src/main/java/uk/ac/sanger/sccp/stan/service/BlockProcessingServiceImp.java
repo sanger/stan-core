@@ -12,8 +12,7 @@ import uk.ac.sanger.sccp.stan.request.TissueBlockRequest;
 import uk.ac.sanger.sccp.stan.request.TissueBlockRequest.TissueBlockLabware;
 import uk.ac.sanger.sccp.stan.service.store.StoreService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
-import uk.ac.sanger.sccp.utils.BasicUtils;
-import uk.ac.sanger.sccp.utils.UCMap;
+import uk.ac.sanger.sccp.utils.*;
 
 import java.util.*;
 import java.util.function.Function;
@@ -406,6 +405,7 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
 
     /**
      * Creates a new sample, from a new tissue if necessary.
+     * The new sample will represent a new block, so it will have the blockHighestSection field set to 0.
      * @param block the specification of the block
      * @param sourceLabware the source labware for the new block
      * @param bs the bio state for the new block
@@ -417,7 +417,7 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
                 .map(Sample::getTissue)
                 .orElseThrow();
         Tissue tissue = getOrCreateTissue(original, block.getReplicate(), medium);
-        return sampleRepo.save(new Sample(null, null, tissue, bs));
+        return sampleRepo.save(Sample.newBlock(null, tissue, bs, 0));
     }
 
     /**
@@ -428,10 +428,9 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
      * @return a list of labware for respective blocks of the request
      */
     public List<Labware> createDestinations(TissueBlockRequest request, List<Sample> samples, UCMap<LabwareType> lwTypes) {
-        final var sampleIter = samples.iterator();
-        return request.getLabware().stream()
-                .map(block -> createDestination(lwTypes.get(block.getLabwareType()), sampleIter.next(), block.getPreBarcode()))
-                .collect(toList());
+        return Zip.of(request.getLabware().stream(), samples.stream())
+                .map((tbl, sam) -> createDestination(lwTypes.get(tbl.getLabwareType()), sam, tbl.getPreBarcode()))
+                .toList();
     }
 
     /**
@@ -445,8 +444,6 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
         Labware lw = lwService.create(lwType, preBarcode, preBarcode);
         Slot slot = lw.getFirstSlot();
         slot.addSample(sample);
-        slot.setBlockSampleId(sample.getId());
-        slot.setBlockHighestSection(0);
         slotRepo.save(slot);
         return lw;
     }

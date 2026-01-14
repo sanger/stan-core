@@ -112,7 +112,7 @@ public class TestLabwareLabelDataService {
     public void testSlotOrderForLabwareType(String ltName, boolean columnMajor) {
         LabwareType lt = new LabwareType(null, ltName, 2, 3, null, false);
         List<Slot> slots = Address.stream(2, 3)
-                .map(ad -> new Slot(null, 100, ad, null, null, null))
+                .map(ad -> new Slot(null, 100, ad, null))
                 .sorted(service.slotOrderForLabwareType(lt))
                 .toList();
         if (columnMajor) {

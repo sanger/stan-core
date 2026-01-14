@@ -1158,7 +1158,7 @@ public class TestHistoryService {
     })
     public void testResultDetail(PassFail res, Address address, String expected) {
         final int slotId = 7;
-        Slot slot = (address==null ? null : new Slot(slotId, 2, address, null, null, null));
+        Slot slot = (address==null ? null : new Slot(slotId, 2, address, null));
         Map<Integer, Slot> slotIdMap = (slot==null ? Map.of() : Map.of(slotId, slot));
         ResultOp result = new ResultOp();
         result.setResult(res);
@@ -1211,7 +1211,7 @@ public class TestHistoryService {
         Integer slotId = null;
         if (address != null) {
             slotId = 70;
-            Slot slot = new Slot(slotId, 7, address, null, null, null);
+            Slot slot = new Slot(slotId, 7, address, null);
             slotIdMap = Map.of(slotId, slot);
         }
         Measurement measurement = new Measurement(6, name, value, 4, 5, slotId);
@@ -1232,7 +1232,7 @@ public class TestHistoryService {
     }
 
     static Stream<Arguments> doesCommentApplyData() {
-        Slot slot = new Slot(100, 10, new Address(1,1), null, null, null);
+        Slot slot = new Slot(100, 10, new Address(1,1), null);
         Comment com = new Comment(1, "Alabama", "Bananas");
         return Stream.of(
                 Arguments.of(new OperationComment(1, com, 1, null, null, null), 1, 10, null, true),
@@ -1273,7 +1273,7 @@ public class TestHistoryService {
         final int sampleId = 4;
         final int slotId = 10;
         final int lwId = 1;
-        Map<Integer, Slot> slotIdMap = Map.of(slotId, new Slot(slotId, lwId, new Address(1,2), null, null, null));
+        Map<Integer, Slot> slotIdMap = Map.of(slotId, new Slot(slotId, lwId, new Address(1,2), null));
         return Arrays.stream(new Object[][] {
                 {new Measurement(1, "A", "1", null, 1, null), sampleId, lwId, slotIdMap, true},
                 {new Measurement(1, "A", "1", sampleId, 1, null), sampleId, lwId, slotIdMap, true},

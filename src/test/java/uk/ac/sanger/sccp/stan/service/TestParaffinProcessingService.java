@@ -11,6 +11,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.request.ParaffinProcessingRequest;
+import uk.ac.sanger.sccp.stan.service.ParaffinProcessingServiceImp.BlockChange;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 
 import java.util.*;
@@ -37,6 +38,8 @@ public class TestParaffinProcessingService {
     private MediumRepo mockMediumRepo;
     @Mock
     private TissueRepo mockTissueRepo;
+    @Mock
+    private SampleRepo mockSampleRepo;
     @Mock
     private SlotRepo mockSlotRepo;
     @Mock
@@ -225,11 +228,12 @@ public class TestParaffinProcessingService {
         doReturn(ops).when(service).createOps(any(), any());
         doNothing().when(service).recordComments(any(), any());
         doNothing().when(service).updateMedium(any(), any());
-        doNothing().when(service).createBlocks(any());
+        List<BlockChange> changes = List.of(new BlockChange(null, null, null));
+        doReturn(changes).when(service).createBlocks(any());
 
         assertEquals(new OperationResult(ops, labware), service.record(user, labware, work, comment, medium));
         verify(service).updateMedium(labware, medium);
-        verify(service).createOps(user, labware);
+        verify(service).createOps(user, changes);
         verify(mockWorkService).link(work, ops);
         verify(service).recordComments(comment, ops);
         verify(service).createBlocks(labware);
@@ -282,17 +286,22 @@ public class TestParaffinProcessingService {
         when(mockOpTypeRepo.getByName(opType.getName())).thenReturn(opType);
         User user = EntityFactory.getUser();
         LabwareType lt = EntityFactory.getTubeType();
-        Sample sample = EntityFactory.getSample();
+        Sample[] samples = EntityFactory.makeSamples(4);
         List<Labware> labware = IntStream.range(0, 2)
-                .mapToObj(i -> EntityFactory.makeLabware(lt, sample))
-                .collect(toList());
+                .mapToObj(i -> EntityFactory.makeLabware(lt, samples[i*2]))
+                .toList();
         List<Operation> ops = makeOps(2);
-        when(mockOpService.createOperationInPlace(any(), any(), any(), any(), any())).thenReturn(ops.get(0), ops.get(1));
+        when(mockOpService.createOperation(any(), any(), any(), any())).thenReturn(ops.get(0), ops.get(1));
+        List<BlockChange> changes = IntStream.range(0, samples.length/2)
+                        .mapToObj(i -> new BlockChange(labware.get(i).getFirstSlot(), samples[2*i], samples[2*i+1]))
+                .toList();
+        assertThat(service.createOps(user, changes)).containsExactlyElementsOf(ops);
 
-        assertThat(service.createOps(user, labware)).containsExactlyElementsOf(ops);
-
-        for (Labware lw : labware) {
-            verify(mockOpService).createOperationInPlace(opType, user, lw, null, null);
+        verify(mockOpService, times(labware.size())).createOperation(any(), any(), any(), any());
+        for (int i = 0; i < labware.size(); ++i) {
+            Slot slot = labware.get(i).getFirstSlot();
+            Action ac = new Action(null, null, slot, slot, samples[2*i+1], samples[2*i]);
+            verify(mockOpService).createOperation(opType, user, List.of(ac), null);
         }
     }
 
@@ -304,32 +313,45 @@ public class TestParaffinProcessingService {
         Sample[] samples = IntStream.rangeClosed(101,104)
                 .mapToObj(i -> new Sample(i, null, tissue, bs))
                 .toArray(Sample[]::new);
-        LabwareType lt = EntityFactory.getTubeType();
-        List<Labware> labware;
         if (anyChanged) {
-            labware = IntStream.range(0, 4).mapToObj(
-                    i -> (i < 2 ? EntityFactory.makeBlock(samples[i]) : EntityFactory.makeLabware(lt, samples[i]))
-            ).toList();
+            samples[0].setBlockHighestSection(2);
+            samples[1].setBlockHighestSection(2);
         } else {
-            labware = IntStream.range(0,4).mapToObj(
-                    i -> EntityFactory.makeBlock(samples[i])
-            ).toList();
+            for (Sample sam : samples) {
+                sam.setBlockHighestSection(2);
+            }
         }
+        List<Labware> labware = Arrays.stream(samples).map(EntityFactory::makeTube).toList();
         List<Slot> changedSlots;
+        List<Sample> changedSamples;
         if (anyChanged) {
             changedSlots = labware.subList(2,4).stream().map(Labware::getFirstSlot).toList();
+            changedSamples = Stream.of(samples[2], samples[3]).map(sam -> Sample.newBlock(null, sam.getTissue(), sam.getBioState(), 0)).toList();
         } else {
-            changedSlots = List.of();
+            changedSlots = null;
+            changedSamples = null;
         }
-        service.createBlocks(labware);
+        List<BlockChange> changes = service.createBlocks(labware);
         if (anyChanged) {
             verify(mockSlotRepo).saveAll(changedSlots);
+            verify(mockSampleRepo).saveAll(changedSamples);
         } else {
             verifyNoInteractions(mockSlotRepo);
+            verifyNoInteractions(mockSampleRepo);
         }
         for (Labware lw : labware) {
             assertTrue(lw.getFirstSlot().isBlock());
         }
+        BlockChange[] expectedChanges = IntStream.range(0, samples.length)
+                .mapToObj(i -> new BlockChange(labware.get(i).getFirstSlot(), samples[i], samples[i]))
+                .toArray(BlockChange[]::new);
+
+        if (anyChanged) {
+            for (int i = 2; i < 4; ++i) {
+                expectedChanges[i] = new BlockChange(labware.get(i).getFirstSlot(), samples[i], changedSamples.get(i-2));
+            }
+        }
+        assertThat(changes).containsExactlyInAnyOrder(expectedChanges);
     }
 
     @Test
