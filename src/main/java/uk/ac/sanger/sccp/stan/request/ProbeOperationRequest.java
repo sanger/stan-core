@@ -26,6 +26,7 @@ public class ProbeOperationRequest {
         private String workNumber;
         private SlideCosting kitCosting;
         private String reagentLot;
+        private String cassetteLot;
         private List<ProbeLot> probes = List.of();
         private String spike;
         private List<Address> addresses = List.of();
@@ -33,11 +34,12 @@ public class ProbeOperationRequest {
         public ProbeOperationLabware() {}
 
         public ProbeOperationLabware(String barcode, String workNumber, SlideCosting kitCosting, String reagentLot,
-                                     List<ProbeLot> probes, String spike) {
+                                     String cassetteLot, List<ProbeLot> probes, String spike) {
             setBarcode(barcode);
             setWorkNumber(workNumber);
             setKitCosting(kitCosting);
             setReagentLot(reagentLot);
+            setCassetteLot(cassetteLot);
             setProbes(probes);
             setSpike(spike);
         }
@@ -83,6 +85,15 @@ public class ProbeOperationRequest {
             this.reagentLot = reagentLot;
         }
 
+        /** Cassette lot number. */
+        public String getCassetteLot() {
+            return this.cassetteLot;
+        }
+
+        public void setCassetteLot(String cassetteLot) {
+            this.cassetteLot = cassetteLot;
+        }
+
         /**
          * The probes used on this labware.
          */
@@ -120,6 +131,7 @@ public class ProbeOperationRequest {
                     && Objects.equals(this.workNumber, that.workNumber)
                     && this.kitCosting==that.kitCosting
                     && Objects.equals(this.reagentLot, that.reagentLot)
+                    && Objects.equals(this.cassetteLot, that.cassetteLot)
                     && Objects.equals(this.probes, that.probes)
                     && Objects.equals(this.spike, that.spike)
                     && Objects.equals(this.addresses, that.addresses)
@@ -133,8 +145,8 @@ public class ProbeOperationRequest {
 
         @Override
         public String toString() {
-            return String.format("(%s, %s, workNumber: %s, reagentLot: %s, probes: %s, spike: %s, addresses: %s)",
-                    repr(barcode), kitCosting, repr(workNumber), repr(reagentLot), probes, repr(spike), addresses);
+            return String.format("(%s, %s, workNumber: %s, reagentLot: %s, cassetteLot: %s, probes: %s, spike: %s, addresses: %s)",
+                    repr(barcode), kitCosting, repr(workNumber), repr(reagentLot), repr(cassetteLot), probes, repr(spike), addresses);
         }
     }
 
