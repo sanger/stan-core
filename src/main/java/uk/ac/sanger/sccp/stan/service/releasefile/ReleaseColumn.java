@@ -48,6 +48,7 @@ public enum ReleaseColumn implements TsvColumn<ReleaseEntry> {
     Tissue_coverage(ReleaseEntry::getCoverage, ReleaseFileOption.Visium),
     Permeabilisation_time(ReleaseEntry::getPermTime, ReleaseFileOption.Visium),
     Cq_value(ReleaseEntry::getCq, ReleaseFileOption.Visium),
+    qPCR_comment(ReleaseEntry::getQpcrComment, ReleaseFileOption.Visium),
     Number_of_amplification_cycles(ReleaseEntry::getAmplificationCycles, ReleaseFileOption.Visium),
     Visium_concentration(ReleaseEntry::getVisiumConcentration, ReleaseFileOption.Visium),
     Visium_concentration_type(ReleaseEntry::getVisiumConcentrationType, ReleaseFileOption.Visium),

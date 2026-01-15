@@ -132,6 +132,7 @@ public class ReleaseFileService {
         if (options.contains(ReleaseFileOption.Visium)) {
             loadVisiumBarcodes(entries, ancestry);
             loadSizeRanges(entries, slotIds);
+            loadQpcrComments(entries, ancestry);
         }
         if (options.contains(ReleaseFileOption.Histology)) {
             loadRnaAnalysis(entries, slotIds);
@@ -981,6 +982,33 @@ public class ReleaseFileService {
                 }
             }
             entry.setImagingQcComment(commentText);
+        }
+    }
+
+
+    /** Loads comments from qpcr operations */
+    public void loadQpcrComments(Collection<ReleaseEntry> entries, Ancestry ancestry) {
+        OperationType qpcrOpType = opTypeRepo.getByName("qPCR results");
+        Set<Integer> allSlotIds = ancestry.keySet().stream().map(SlotSample::slotId).collect(toSet());
+        List<Operation> ops = opRepo.findAllByOperationTypeAndDestinationSlotIdIn(qpcrOpType, allSlotIds);
+        if (ops.isEmpty()) {
+            return;
+        }
+        List<OperationComment> opcoms = opComRepo.findAllByOperationIdIn(ops.stream().map(Operation::getId).collect(toList()));
+        Map<SlotIdSampleId, List<OperationComment>> slotIdComs = opcoms.stream()
+                .collect(groupingBy(oc -> new SlotIdSampleId(oc.getSlotId(), oc.getSampleId())));
+        for (ReleaseEntry entry : entries) {
+            SlotSample key = new SlotSample(entry.getSlot(), entry.getSample());
+            Set<OperationComment> entryOcs = new HashSet<>();
+            for (SlotSample ss : ancestry.ancestors(key)) {
+                List<OperationComment> ocs = slotIdComs.get(new SlotIdSampleId(ss.slotId(), ss.sampleId()));
+                if (!nullOrEmpty(ocs)) {
+                    entryOcs.addAll(ocs);
+                }
+            }
+            if (!nullOrEmpty(entryOcs)) {
+                entry.setQpcrComment(joinComments(entryOcs.stream()));
+            }
         }
     }
 

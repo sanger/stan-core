@@ -31,6 +31,7 @@ public class ReleaseEntry {
     private String reagentPlateType;
     private String reagentSource;
     private String cq;
+    private String qpcrComment;
     private String visiumConcentration;
     private String visiumConcentrationType;
     private String sizeRange;
@@ -184,6 +185,14 @@ public class ReleaseEntry {
 
     public void setCq(String cq) {
         this.cq = cq;
+    }
+
+    public String getQpcrComment() {
+        return this.qpcrComment;
+    }
+
+    public void setQpcrComment(String qpcrComment) {
+        this.qpcrComment = qpcrComment;
     }
 
     public String getVisiumConcentration() {
