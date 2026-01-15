@@ -170,6 +170,7 @@ class TestSlotCopyRecordService {
                 new SlotCopyRecordNote(NOTE_PROBELOT, "probe1"),
                 new SlotCopyRecordNote(NOTE_REAGENT_A_LOT, "rla"),
                 new SlotCopyRecordNote(NOTE_REAGENT_B_LOT, "rlb"),
+                new SlotCopyRecordNote(NOTE_CASSETTE_LOT, "caslot"),
                 new SlotCopyRecordNote(NOTE_EXECUTION, "manual"),
                 new SlotCopyRecordNote(NOTE_SRC_BARCODE, 0, "STAN-0"),
                 new SlotCopyRecordNote(NOTE_SRC_STATE, 0, "discarded"),
@@ -196,6 +197,7 @@ class TestSlotCopyRecordService {
         assertEquals("probe1", save.getProbeLotNumber());
         assertEquals("rla", save.getReagentALot());
         assertEquals("rlb", save.getReagentBLot());
+        assertEquals("caslot", save.getCassetteLot());
         assertEquals(ExecutionType.manual, save.getExecutionType());
         assertThat(save.getSources()).containsExactlyInAnyOrder(new SlotCopySource("STAN-0", Labware.State.discarded),
                 new SlotCopySource("STAN-1", Labware.State.active));
@@ -276,6 +278,7 @@ class TestSlotCopyRecordService {
         request.setProbeLotNumber("probe1");
         request.setReagentALot("rla");
         request.setReagentBLot("rlb");
+        request.setCassetteLot("caslot");
         request.setSources(List.of(new SlotCopySource("STAN-0", Labware.State.discarded),
                 new SlotCopySource("STAN-1", Labware.State.active)));
         request.setContents(List.of(
@@ -294,6 +297,7 @@ class TestSlotCopyRecordService {
                 new SlotCopyRecordNote(NOTE_PROBELOT, "probe1"),
                 new SlotCopyRecordNote(NOTE_REAGENT_A_LOT, "rla"),
                 new SlotCopyRecordNote(NOTE_REAGENT_B_LOT, "rlb"),
+                new SlotCopyRecordNote(NOTE_CASSETTE_LOT, "caslot"),
                 new SlotCopyRecordNote(NOTE_SRC_BARCODE, 0, "STAN-0"),
                 new SlotCopyRecordNote(NOTE_SRC_STATE, 0, "discarded"),
                 new SlotCopyRecordNote(NOTE_SRC_BARCODE, 1, "STAN-1"),
