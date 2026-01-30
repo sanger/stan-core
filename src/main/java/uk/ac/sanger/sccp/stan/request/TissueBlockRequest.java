@@ -1,9 +1,12 @@
 package uk.ac.sanger.sccp.stan.request;
 
+import uk.ac.sanger.sccp.stan.model.Address;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import java.util.List;
 import java.util.Objects;
+
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullToEmpty;
 
 /**
  * A request to process original tissue into blocks.
@@ -84,41 +87,15 @@ public class TissueBlockRequest {
     }
 
     /**
-     * The input about a new block being created.
+     * The input about labware containing new blocks
      * @author dr6
      */
     public static class TissueBlockLabware {
-        private String sourceBarcode;
         private String labwareType;
         private String preBarcode;
-        private Integer commentId;
-        private String replicate;
+        private List<TissueBlockContent> contents = List.of();
 
         public TissueBlockLabware() {}
-
-        public TissueBlockLabware(String sourceBarcode, String labwareType, String replicate) {
-            this(sourceBarcode, labwareType, replicate, null, null);
-        }
-
-        public TissueBlockLabware(String sourceBarcode, String labwareType, String replicate,
-                                  String preBarcode, Integer commentId) {
-            this.sourceBarcode = sourceBarcode;
-            this.labwareType = labwareType;
-            this.replicate = replicate;
-            this.preBarcode = preBarcode;
-            this.commentId = commentId;
-        }
-
-        /**
-         * The original tissue barcode.
-         */
-        public String getSourceBarcode() {
-            return this.sourceBarcode;
-        }
-
-        public void setSourceBarcode(String sourceBarcode) {
-            this.sourceBarcode = sourceBarcode;
-        }
 
         /**
          * The labware type for the new labware.
@@ -142,36 +119,20 @@ public class TissueBlockRequest {
             this.preBarcode = preBarcode;
         }
 
-        /**
-         * The comment (if any) associated with this operation.
-         */
-        public Integer getCommentId() {
-            return this.commentId;
+        public List<TissueBlockContent> getContents() {
+            return this.contents;
         }
 
-        public void setCommentId(Integer commentId) {
-            this.commentId = commentId;
-        }
-
-        /**
-         * The replicate number for the new block.
-         */
-        public String getReplicate() {
-            return this.replicate;
-        }
-
-        public void setReplicate(String replicate) {
-            this.replicate = replicate;
+        public void setContents(List<TissueBlockContent> contents) {
+            this.contents = nullToEmpty(contents);
         }
 
         @Override
         public String toString() {
             return BasicUtils.describe("TissueBlockLabware")
-                    .add("sourceBarcode", sourceBarcode)
                     .add("labwareType", labwareType)
                     .add("preBarcode", preBarcode)
-                    .add("commentId", commentId)
-                    .add("replicate", replicate)
+                    .add("contents", contents)
                     .reprStringValues()
                     .omitNullValues()
                     .toString();
@@ -182,9 +143,89 @@ public class TissueBlockRequest {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             TissueBlockLabware that = (TissueBlockLabware) o;
-            return (Objects.equals(this.sourceBarcode, that.sourceBarcode)
-                    && Objects.equals(this.labwareType, that.labwareType)
+            return (Objects.equals(this.labwareType, that.labwareType)
                     && Objects.equals(this.preBarcode, that.preBarcode)
+                    && Objects.equals(this.contents, that.contents));
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(labwareType, preBarcode, contents);
+        }
+    }
+
+    /**
+     * The content of a block-sample
+     */
+    public static class TissueBlockContent {
+        private String sourceBarcode;
+        private Integer sourceSampleId;
+        private List<Address> addresses = List.of();
+        private Integer commentId;
+        private String replicate;
+
+        public TissueBlockContent() {}
+
+        public String getSourceBarcode() {
+            return this.sourceBarcode;
+        }
+
+        public void setSourceBarcode(String sourceBarcode) {
+            this.sourceBarcode = sourceBarcode;
+        }
+
+        public Integer getSourceSampleId() {
+            return this.sourceSampleId;
+        }
+
+        public void setSourceSampleId(Integer sourceSampleId) {
+            this.sourceSampleId = sourceSampleId;
+        }
+
+        public List<Address> getAddresses() {
+            return this.addresses;
+        }
+
+        public void setAddresses(List<Address> addresses) {
+            this.addresses = nullToEmpty(addresses);
+        }
+
+        public Integer getCommentId() {
+            return this.commentId;
+        }
+
+        public void setCommentId(Integer commentId) {
+            this.commentId = commentId;
+        }
+
+        public String getReplicate() {
+            return this.replicate;
+        }
+
+        public void setReplicate(String replicate) {
+            this.replicate = replicate;
+        }
+
+        @Override
+        public String toString() {
+            return BasicUtils.describe(this)
+                    .add("sourceBarcode", sourceBarcode)
+                    .add("sourceSampleId", sourceSampleId)
+                    .add("addresses", addresses)
+                    .add("commentId", commentId)
+                    .add("replicate", replicate)
+                    .reprStringValues()
+                    .toString();
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            TissueBlockContent that = (TissueBlockContent) o;
+            return (Objects.equals(this.sourceBarcode, that.sourceBarcode)
+                    && Objects.equals(this.sourceSampleId, that.sourceSampleId)
+                    && Objects.equals(this.addresses, that.addresses)
                     && Objects.equals(this.commentId, that.commentId)
                     && Objects.equals(this.replicate, that.replicate)
             );
@@ -192,7 +233,7 @@ public class TissueBlockRequest {
 
         @Override
         public int hashCode() {
-            return Objects.hash(sourceBarcode, replicate);
+            return Objects.hash(sourceBarcode, sourceSampleId, addresses, commentId, replicate);
         }
     }
 }
