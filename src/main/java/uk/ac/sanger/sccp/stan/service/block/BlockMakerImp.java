@@ -80,6 +80,7 @@ public class BlockMakerImp implements BlockMaker {
         List<Labware> labware = new ArrayList<>(lwData.size());
         for (BlockLabwareData lwd : lwData) {
             String prebarcode = lwd.getRequestLabware().getPreBarcode();
+            // Uses the prebarcode for the labware external barcode and the de facto barcode
             Labware lw = lwService.create(lwd.getLwType(), prebarcode, prebarcode);
             labware.add(lw);
             lwd.setLabware(lw);

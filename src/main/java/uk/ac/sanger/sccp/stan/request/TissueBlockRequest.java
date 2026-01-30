@@ -140,6 +140,7 @@ public class TissueBlockRequest {
 
         @Override
         public boolean equals(Object o) {
+            if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             TissueBlockLabware that = (TissueBlockLabware) o;
             return (Objects.equals(this.labwareType, that.labwareType)
@@ -219,6 +220,7 @@ public class TissueBlockRequest {
 
         @Override
         public boolean equals(Object o) {
+            if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             TissueBlockContent that = (TissueBlockContent) o;
             return (Objects.equals(this.sourceBarcode, that.sourceBarcode)

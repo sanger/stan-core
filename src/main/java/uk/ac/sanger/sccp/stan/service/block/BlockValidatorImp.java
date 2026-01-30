@@ -116,10 +116,10 @@ public class BlockValidatorImp implements BlockValidator {
                 barcodes.add(barcode.toUpperCase());
             }
         }
-        LabwareValidator val = lwValFactory.getValidator();
         if (anyMissing) {
             problems.add("Source barcode missing.");
         }
+        LabwareValidator val = lwValFactory.getValidator();
         val.loadLabware(lwRepo, barcodes);
         val.validateSources();
         if (bioState!=null) {
