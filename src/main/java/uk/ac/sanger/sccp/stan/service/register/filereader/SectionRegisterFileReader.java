@@ -18,10 +18,10 @@ public interface SectionRegisterFileReader extends MultipartFileReader<SectionRe
     int SHEET_INDEX = 3;
     /** Column headings expected in the Excel file. */
     enum Column implements IColumn {
-        _preamble(Void.class, Pattern.compile("mandatory.*", Pattern.CASE_INSENSITIVE), false),
+        _preamble(Void.class, Pattern.compile("mandatory.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL), false),
         Work_number(Pattern.compile("(work|sgp)\\s*number.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL)),
         Slide_type,
-        External_slide_ID(Pattern.compile("(external )?(slide (barcode|id|identifier)|barcode.*slide)", Pattern.CASE_INSENSITIVE)),
+        External_slide_ID(Pattern.compile("(external )?(slide (barcode|id|identifier)|barcode.*slide)", Pattern.CASE_INSENSITIVE|Pattern.DOTALL)),
         Prebarcode(String.class, Pattern.compile("(xenium( slide)?\\s*|pre)barcode", Pattern.CASE_INSENSITIVE), false),
         Lot(String.class, Pattern.compile("(xenium )?(slide )?lot\\b.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL), false),
         Section_address,
@@ -31,7 +31,7 @@ public interface SectionRegisterFileReader extends MultipartFileReader<SectionRe
         Life_stage,
         Species,
         Cell_class(Pattern.compile("cell(ular)?\\s*class(ification)?", Pattern.CASE_INSENSITIVE)),
-        Bio_risk(Pattern.compile("bio\\w*\\s+risk.*", Pattern.CASE_INSENSITIVE)),
+        Bio_risk(Pattern.compile("bio\\w*\\s+risk.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL)),
         HuMFre(Pattern.compile("humfre\\s*(number)?", Pattern.CASE_INSENSITIVE)),
         Tissue_type,
         Spatial_location(Integer.class, Pattern.compile("spatial\\s*location\\s*(number)?", Pattern.CASE_INSENSITIVE), true),
@@ -39,8 +39,8 @@ public interface SectionRegisterFileReader extends MultipartFileReader<SectionRe
         Section_external_ID,
         Section_number(Integer.class),
         Section_thickness(String.class),
-        Date_sectioned(LocalDate.class, Pattern.compile("date.*sectioned|section.*date", Pattern.CASE_INSENSITIVE), false),
-        Section_position(Pattern.compile("(if.+)?(section\\s+)?position|position.*slot.*", Pattern.CASE_INSENSITIVE)),
+        Date_sectioned(LocalDate.class, Pattern.compile("date.*sectioned|section.*date", Pattern.CASE_INSENSITIVE|Pattern.DOTALL), false),
+        Section_position(Pattern.compile("(if.+)?(section\\s+)?position|position.*slot.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL)),
         ;
 
         private final Pattern pattern;

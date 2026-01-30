@@ -19,24 +19,24 @@ public interface BlockRegisterFileReader extends MultipartFileReader<RegisterReq
 
     /** Column headings expected in the Excel file. */
     enum Column implements IColumn {
-        _preamble(Void.class, Pattern.compile("mandatory.*|all\\s*information.*needed", Pattern.CASE_INSENSITIVE)),
+        _preamble(Void.class, Pattern.compile("mandatory.*|all\\s*information.*needed", Pattern.CASE_INSENSITIVE|Pattern.DOTALL)),
         Work_number(Pattern.compile("(work|sgp)\\s*number.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL)),
-        Donor_identifier(Pattern.compile("donor\\s*id.*", Pattern.CASE_INSENSITIVE)),
+        Donor_identifier(Pattern.compile("donor\\s*id.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL)),
         Life_stage,
-        Collection_date(LocalDate.class, Pattern.compile("(if.*)?(date.*collection|collection.*date).*", Pattern.CASE_INSENSITIVE)),
+        Collection_date(LocalDate.class, Pattern.compile("(if.*)?(date.*collection|collection.*date).*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL)),
         Species,
         Cell_class(Pattern.compile("cell(ular)?\\s*class(ification)?", Pattern.CASE_INSENSITIVE)),
-        Bio_risk(Pattern.compile("bio\\w*\\s+risk.*", Pattern.CASE_INSENSITIVE)),
+        Bio_risk(Pattern.compile("bio\\w*\\s+risk.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL)),
         HuMFre(Pattern.compile("humfre\\s*(number)?", Pattern.CASE_INSENSITIVE)),
         Tissue_type,
-        External_identifier(Pattern.compile("external\\s*id.*", Pattern.CASE_INSENSITIVE)),
+        External_identifier(Pattern.compile("external\\s*id.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL)),
         Spatial_location(Integer.class, Pattern.compile("spatial\\s*location\\s*(number)?", Pattern.CASE_INSENSITIVE)),
         Replicate_number,
-        Last_known_section(Integer.class, Pattern.compile("last.*section.*", Pattern.CASE_INSENSITIVE)),
+        Last_known_section(Integer.class, Pattern.compile("last.*section.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL)),
         Labware_type,
         Fixative,
         Embedding_medium(Pattern.compile("(embedding)?\\s*medium", Pattern.CASE_INSENSITIVE)),
-        Comment(Void.class, Pattern.compile("(information|comment).*", Pattern.CASE_INSENSITIVE)),
+        Comment(Void.class, Pattern.compile("(information|comment).*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL)),
         ;
 
         private final Pattern pattern;
