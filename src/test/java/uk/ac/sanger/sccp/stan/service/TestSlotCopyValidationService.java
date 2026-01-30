@@ -45,6 +45,8 @@ public class TestSlotCopyValidationService {
     @Mock
     Validator<String> mockLotNumberValidator;
     @Mock
+    Validator<String> mockCassetteLotValidator;
+    @Mock
     CleanedOutSlotService mockCleanedOutSlotService;
     @Mock
     Validator<String> mockReagentLotValidator;
@@ -56,7 +58,8 @@ public class TestSlotCopyValidationService {
     void setup() {
         mocking = MockitoAnnotations.openMocks(this);
         service = spy(new SlotCopyValidationServiceImp(mockLwTypeRepo, mockLwRepo, mockBsRepo, mockValHelperFactory,
-                mockPreBarcodeValidator, mockLotNumberValidator, mockReagentLotValidator, mockCleanedOutSlotService));
+                mockPreBarcodeValidator, mockLotNumberValidator, mockReagentLotValidator, mockCassetteLotValidator,
+                mockCleanedOutSlotService));
     }
 
     @AfterEach
@@ -401,11 +404,13 @@ public class TestSlotCopyValidationService {
         scds.get(1).setProbeLotNumber("PROBE1");
         scds.get(2).setLotNumber("LOT2");
         scds.get(2).setProbeLotNumber("PROBE2");
+        scds.get(2).setCassetteLot("123456");
         List<String> expected = List.of("LOT0", "PROBE1", "LOT2", "PROBE2");
         when(mockLotNumberValidator.validate(any(), any())).thenReturn(true);
         List<String> problems = new ArrayList<>(0);
         service.validateLotNumbers(problems, scds);
         verify(mockLotNumberValidator, times(expected.size())).validate(any(), any());
+        verify(mockCassetteLotValidator).validate(eq("123456"), any());
         expected.forEach(lot -> verify(mockLotNumberValidator).validate(eq(lot), any()));
     }
 

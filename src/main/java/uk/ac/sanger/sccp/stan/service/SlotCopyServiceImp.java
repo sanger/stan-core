@@ -30,6 +30,7 @@ public class SlotCopyServiceImp implements SlotCopyService {
     static final String CYTASSIST_OP = "CytAssist";
     static final String EXECUTION_NOTE_NAME = "execution";
     static final String LP_NOTE_NAME = "LP number";
+    static final String CASSETTE_LOT_NOTE_NAME = "cassette lot";
 
     static final String BS_PROBES = "Probes", BS_CDNA = "cDNA", BS_LIBRARY = "Library",
             BS_LIB_PRE_CLEAN = "Library pre-clean", BS_LIB_POST_CLEAN = "Library post-clean",
@@ -146,7 +147,7 @@ public class SlotCopyServiceImp implements SlotCopyService {
             OperationResult opres = executeOp(user, dest.getContents(), opType, lwTypes.get(dest.getLabwareType()),
                     dest.getPreBarcode(), sources,sourceLpNumbers, dest.getCosting(), dest.getLotNumber(),
                     dest.getProbeLotNumber(), bioStates.get(dest.getBioState()), dest.getLpNumber(),
-                    dest.getReagentLot(), dest.getReagentALot(), dest.getReagentBLot(),
+                    dest.getReagentLot(), dest.getReagentALot(), dest.getReagentBLot(), dest.getCassetteLot(),
                     dest.getReagentCosting(),
                     existingDests.get(dest.getBarcode()), executionType);
             ops.addAll(opres.getOperations());
@@ -200,6 +201,7 @@ public class SlotCopyServiceImp implements SlotCopyService {
      * @param reagentALot reagent A lot, if given
      * @param reagentBLot reagent B lot, if given
      * @param reagentCosting reagent costing, if given
+     * @param cassetteLot cassette lot, if given
      * @param destLw existing destination labware, if applicable
      * @param executionType the execution type of the operation, if given
      * @return the result of the operation
@@ -210,7 +212,7 @@ public class SlotCopyServiceImp implements SlotCopyService {
                                      SlideCosting costing, String lotNumber,
                                      String probeLotNumber, BioState bioState, String lpNumber,
                                      String reagentLot, String reagentALot, String reagentBLot,
-                                     SlideCosting reagentCosting,
+                                     String cassetteLot, SlideCosting reagentCosting,
                                      Labware destLw, ExecutionType executionType) {
         if (destLw==null) {
             destLw = lwService.create(lwType, preBarcode, preBarcode);
@@ -242,6 +244,9 @@ public class SlotCopyServiceImp implements SlotCopyService {
         }
         if (!nullOrEmpty(reagentBLot)) {
             lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), "reagent B lot", reagentBLot.toUpperCase()));
+        }
+        if (!nullOrEmpty(cassetteLot)) {
+            lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), CASSETTE_LOT_NOTE_NAME, cassetteLot));
         }
         if (reagentCosting != null) {
             lwNoteRepo.save(new LabwareNote(null, filledLabware.getId(), op.getId(), "reagent costing", reagentCosting.name()));

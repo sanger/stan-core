@@ -15,7 +15,8 @@ import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.time.*;
 import java.util.*;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static uk.ac.sanger.sccp.utils.BasicUtils.*;
@@ -30,6 +31,7 @@ public class ProbeServiceImp implements ProbeService {
             PROBE_HYB_XEN = "Probe hybridisation Xenium";
     public static final String KIT_COSTING_NAME = "kit costing";
     public static final String REAGENT_LOT_NAME = "reagent lot";
+    public static final String CASSETTE_LOT_NAME = "cassette lot";
 
     private final LabwareValidatorFactory lwValFac;
     private final LabwareRepo lwRepo;
@@ -42,6 +44,7 @@ public class ProbeServiceImp implements ProbeService {
     private final WorkService workService;
     private final Validator<String> probeLotValidator;
     private final Validator<String> reagentLotValidator;
+    private final Validator<String> cassetteLotValidator;
     private final Clock clock;
 
     @Autowired
@@ -51,6 +54,7 @@ public class ProbeServiceImp implements ProbeService {
                            OperationService opService, WorkService workService,
                            @Qualifier("probeLotNumberValidator") Validator<String> probeLotValidator,
                            @Qualifier("reagentLotValidator") Validator<String> reagentLotValidator,
+                           @Qualifier("cassetteLotValidator") Validator<String> cassetteLotValidator,
                            Clock clock) {
         this.lwValFac = lwValFac;
         this.lwRepo = lwRepo;
@@ -63,6 +67,7 @@ public class ProbeServiceImp implements ProbeService {
         this.workService = workService;
         this.probeLotValidator = probeLotValidator;
         this.reagentLotValidator = reagentLotValidator;
+        this.cassetteLotValidator = cassetteLotValidator;
         this.clock = clock;
     }
 
@@ -110,6 +115,7 @@ public class ProbeServiceImp implements ProbeService {
                 .toList();
         UCMap<Work> work = workService.validateUsableWorks(problems, workNumbers);
         checkReagentLots(problems, request.getLabware());
+        checkCassetteLots(problems, request.getLabware());
         UCMap<ProbePanel> probes = validateProbes(problems, probeType, request.getLabware());
         UCMap<ProbePanel> spikes = checkSpikes(problems, request.getLabware());
         if (request.getPerformed()!=null) {
@@ -238,18 +244,44 @@ public class ProbeServiceImp implements ProbeService {
      */
     public void checkReagentLots(Collection<String> problems, Collection<ProbeOperationLabware> pols) {
         if (pols != null) {
-            final Consumer<String> addProblem = problems::add;
-            for (ProbeOperationLabware pol : pols) {
-                String lot = pol.getReagentLot();
+            checkLots(problems, reagentLotValidator, pols.stream(), ProbeOperationLabware::getReagentLot, ProbeOperationLabware::setReagentLot);
+        }
+    }
+
+    /**
+     * Checks cassette lots.
+     * Lots are trimmed; empty lots are nulled; missing lots are skipped.
+     * @param problems receptacle for problems
+     * @param pols details of the request
+     */
+    public void checkCassetteLots(Collection<String> problems, Collection<ProbeOperationLabware> pols) {
+        if (pols != null) {
+            checkLots(problems, cassetteLotValidator, pols.stream(), ProbeOperationLabware::getCassetteLot, ProbeOperationLabware::setCassetteLot);
+        }
+    }
+
+    /**
+     * Checks lots in the given items.
+     * Lots are trimmed; empty lots are nulled; missing lots are skipped.
+     * @param problems receptacle for problems
+     * @param validator validator to check lots
+     * @param items items containing lots
+     * @param getter getter of the lot from the item
+     * @param setter setter of the lot in the item
+     * @param <E> type of item
+     */
+    public <E> void checkLots(Collection<String> problems, Validator<String> validator,
+                              Stream<E> items, Function<E, String> getter, BiConsumer<E, String> setter) {
+        items.forEach(item -> {
+            String lot = getter.apply(item);
+            if (lot != null) {
+                lot = emptyToNull(lot.trim());
+                setter.accept(item, lot);
                 if (lot != null) {
-                    lot = emptyToNull(lot.trim());
-                    pol.setReagentLot(lot);
-                    if (lot != null) {
-                        reagentLotValidator.validate(lot, addProblem);
-                    }
+                    validator.validate(lot, problems::add);
                 }
             }
-        }
+        });
     }
 
     /**
@@ -352,7 +384,7 @@ public class ProbeServiceImp implements ProbeService {
                                    UCMap<ProbePanel> spikeMap, UCMap<Work> workMap) {
         UCMap<Operation> lwOps = makeOps(user, opType, pols, lwMap, time);
         saveKitCostings(pols, lwMap, lwOps);
-        saveReagentLots(pols, lwMap, lwOps);
+        saveLabwareLots(pols, lwMap, lwOps);
         linkWork(pols, lwOps, workMap);
         saveProbes(pols, lwOps, lwMap, probeMap, spikeMap);
         return assembleResult(pols, lwMap, lwOps);
@@ -471,21 +503,27 @@ public class ProbeServiceImp implements ProbeService {
     }
 
     /**
-     * Saves the indicated reagent lots against the indicated labware and ops
+     * Saves the indicated reagent and cassette lots against the indicated labware and ops
      * @param pols request details
      * @param lwMap map to look up labware by barcode
      * @param lwOps map to look up operation by labware barcode
      */
-    public void saveReagentLots(Collection<ProbeOperationLabware> pols,
+    public void saveLabwareLots(Collection<ProbeOperationLabware> pols,
                                 UCMap<Labware> lwMap, UCMap<Operation> lwOps) {
         List<LabwareNote> notes = new ArrayList<>();
         for (ProbeOperationLabware pol : pols) {
-            String lot = pol.getReagentLot();
-            if (!nullOrEmpty(lot)) {
+            String rlot = pol.getReagentLot();
+            String clot = pol.getCassetteLot();
+            if (!nullOrEmpty(rlot) || !nullOrEmpty(clot)) {
                 String barcode = pol.getBarcode();
                 Labware lw = lwMap.get(barcode);
                 Operation op = lwOps.get(barcode);
-                notes.add(new LabwareNote(null, lw.getId(), op.getId(), REAGENT_LOT_NAME, lot));
+                if (!nullOrEmpty(rlot)) {
+                    notes.add(new LabwareNote(null, lw.getId(), op.getId(), REAGENT_LOT_NAME, rlot));
+                }
+                if (!nullOrEmpty(clot)) {
+                    notes.add(new LabwareNote(null, lw.getId(), op.getId(), CASSETTE_LOT_NAME, clot));
+                }
             }
         }
         if (!notes.isEmpty()) {

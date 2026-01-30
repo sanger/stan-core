@@ -413,6 +413,12 @@ public class FieldValidation {
     }
 
     @Bean
+    public Validator<String> cassetteLotValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(CharacterType.DIGIT);
+        return new StringValidator("Cassette lot", 6, 6, charTypes);
+    }
+
+    @Bean
     public Validator<String> xeniumLotValidator() {
         Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN);
         return new StringValidator("Xenium lot", 6, 10, charTypes);

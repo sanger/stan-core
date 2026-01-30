@@ -76,7 +76,7 @@ public class TestReleaseMutation {
     @Transactional
     public void testRelease() throws Exception {
         Stream.of("Probe hybridisation Xenium", "Probe hybridisation QC", "Xenium analyser",
-                "Xenium analyser QC", "DV200 analysis", "RIN analysis", "Paraffin processing")
+                "Xenium analyser QC", "DV200 analysis", "RIN analysis", "Paraffin processing", "qPCR results")
                         .forEach(name -> entityCreator.createOpType(name, null, OperationTypeFlag.IN_PLACE));
         Work work1 = entityCreator.createWork(null, null, null, null, null);
         Donor donor = entityCreator.createDonor("DONOR1");
