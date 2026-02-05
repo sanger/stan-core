@@ -2,7 +2,7 @@ package uk.ac.sanger.sccp.stan.service.register.filereader;
 
 import org.apache.poi.ss.usermodel.*;
 import org.springframework.web.multipart.MultipartFile;
-import uk.ac.sanger.sccp.stan.request.register.RegisterRequest;
+import uk.ac.sanger.sccp.stan.request.register.BlockRegisterRequest;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
 
 import java.io.IOException;
@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
 /**
  * Reads a block registration request from an Excel file.
  */
-public interface BlockRegisterFileReader extends MultipartFileReader<RegisterRequest> {
+public interface BlockRegisterFileReader extends MultipartFileReader<BlockRegisterRequest> {
     /** The relevant sheet in the excel file to read. */
     int SHEET_INDEX = 2;
 
@@ -29,6 +29,7 @@ public interface BlockRegisterFileReader extends MultipartFileReader<RegisterReq
         Bio_risk(Pattern.compile("bio\\w*\\s+risk.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL)),
         HuMFre(Pattern.compile("humfre\\s*(number)?", Pattern.CASE_INSENSITIVE)),
         Tissue_type,
+        Slot_address(Pattern.compile("(sample\\s*)?slot\\s*address.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL)),
         External_identifier(Pattern.compile("external\\s*id.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL)),
         Spatial_location(Integer.class, Pattern.compile("spatial\\s*location\\s*(number)?", Pattern.CASE_INSENSITIVE)),
         Replicate_number,
@@ -36,6 +37,7 @@ public interface BlockRegisterFileReader extends MultipartFileReader<RegisterReq
         Labware_type,
         Fixative,
         Embedding_medium(Pattern.compile("(embedding)?\\s*medium", Pattern.CASE_INSENSITIVE)),
+        External_barcode(Pattern.compile("external\\s*barcode.", Pattern.CASE_INSENSITIVE|Pattern.DOTALL)),
         Comment(Void.class, Pattern.compile("(information|comment).*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL)),
         ;
 
@@ -86,7 +88,7 @@ public interface BlockRegisterFileReader extends MultipartFileReader<RegisterReq
      * @exception ValidationException the request is invalid
      * */
     @Override
-    default RegisterRequest read(MultipartFile multipartFile) throws IOException, ValidationException {
+    default BlockRegisterRequest read(MultipartFile multipartFile) throws IOException, ValidationException {
         try (Workbook wb = WorkbookFactory.create(multipartFile.getInputStream())) {
             if (SHEET_INDEX < 0 || SHEET_INDEX >= wb.getNumberOfSheets()) {
                 throw new ValidationException(List.of("Workbook does not have a worksheet at index "+SHEET_INDEX));
@@ -101,6 +103,6 @@ public interface BlockRegisterFileReader extends MultipartFileReader<RegisterReq
      * @return a request read from the sheet
      * @exception ValidationException the request is invalid
      */
-    RegisterRequest read(Sheet sheet) throws ValidationException;
+    BlockRegisterRequest read(Sheet sheet) throws ValidationException;
 
 }

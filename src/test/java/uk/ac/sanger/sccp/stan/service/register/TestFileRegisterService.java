@@ -158,7 +158,7 @@ class TestFileRegisterService {
     @ValueSource(booleans={false,true})
     public void testUpdateWithExisting(boolean any) {
         String[] extNames = { null, "Alpha1", "Beta", "Alpha2" };
-        List<BlockRegisterRequest> blocks = Arrays.stream(extNames)
+        List<BlockRegisterRequest_old> blocks = Arrays.stream(extNames)
                 .map(TestFileRegisterService::blockRegWithExternalName)
                 .toList();
         RegisterRequest request = new RegisterRequest(blocks);
@@ -180,11 +180,11 @@ class TestFileRegisterService {
         List<String> ignore = anyToRemove ? List.of("ALPHA1", "alpha2") : List.of();
         service.updateToRemove(request, ignore);
         String[] remaining = (anyToRemove ? new String[]{null, "Beta"} : extNames);
-        assertThat(request.getBlocks().stream().map(BlockRegisterRequest::getExternalIdentifier)).containsExactly(remaining);
+        assertThat(request.getBlocks().stream().map(BlockRegisterRequest_old::getExternalIdentifier)).containsExactly(remaining);
     }
 
-    private static BlockRegisterRequest blockRegWithExternalName(String xn) {
-        BlockRegisterRequest br = new BlockRegisterRequest();
+    private static BlockRegisterRequest_old blockRegWithExternalName(String xn) {
+        BlockRegisterRequest_old br = new BlockRegisterRequest_old();
         br.setExternalIdentifier(xn);
         return br;
     }

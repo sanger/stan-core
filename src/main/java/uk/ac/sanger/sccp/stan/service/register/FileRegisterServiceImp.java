@@ -94,7 +94,7 @@ public class FileRegisterServiceImp implements FileRegisterService {
                 .filter(Objects::nonNull)
                 .map(String::toUpperCase)
                 .collect(toSet());
-        for (BlockRegisterRequest block : request.getBlocks()) {
+        for (BlockRegisterRequest_old block : request.getBlocks()) {
             if (block != null && !nullOrEmpty(block.getExternalIdentifier())
                     && externalNamesUC.contains(block.getExternalIdentifier().toUpperCase())) {
                 block.setExistingTissue(true);
@@ -115,7 +115,7 @@ public class FileRegisterServiceImp implements FileRegisterService {
                 .filter(Objects::nonNull)
                 .map(String::toUpperCase)
                 .collect(toSet());
-        List<BlockRegisterRequest> blocks = request.getBlocks().stream()
+        List<BlockRegisterRequest_old> blocks = request.getBlocks().stream()
                 .filter(block -> block==null || block.getExternalIdentifier()==null || !ignoreUC.contains(block.getExternalIdentifier().toUpperCase()))
                 .toList();
         request.setBlocks(blocks);

@@ -144,7 +144,7 @@ public class TestFileBlockRegister {
         verify(mockRegService).register(eq(user), requestCaptor.capture());
         RegisterRequest request = requestCaptor.getValue();
         assertThat(request.getBlocks()).hasSize(1);
-        BlockRegisterRequest br = request.getBlocks().getFirst();
+        BlockRegisterRequest_old br = request.getBlocks().getFirst();
         assertEquals("EXT18", br.getExternalIdentifier());
         assertEquals("Bad reg", getProblem(map));
         assertEquals("risk1", br.getBioRiskCode());

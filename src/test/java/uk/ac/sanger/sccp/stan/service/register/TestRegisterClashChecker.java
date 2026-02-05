@@ -89,7 +89,7 @@ public class TestRegisterClashChecker {
     public void testFindClashes(RegisterRequest request, List<Tissue> tissues) {
         Set<String> newXns = request.getBlocks().stream()
                 .filter(b -> !b.isExistingTissue())
-                .map(BlockRegisterRequest::getExternalIdentifier)
+                .map(BlockRegisterRequest_old::getExternalIdentifier)
                 .collect(toSet());
         if (newXns.isEmpty()) {
             assertThat(checker.findClashes(request)).isEmpty();
@@ -127,11 +127,11 @@ public class TestRegisterClashChecker {
     }
 
     static RegisterRequest makeRequest(Object... data) {
-        List<BlockRegisterRequest> brs = new ArrayList<>(data.length/2);
+        List<BlockRegisterRequest_old> brs = new ArrayList<>(data.length/2);
         for (int i = 0; i < data.length; i += 2) {
             String xn = (String) data[i];
             boolean exists = (boolean) data[i+1];
-            BlockRegisterRequest br = new BlockRegisterRequest();
+            BlockRegisterRequest_old br = new BlockRegisterRequest_old();
             br.setExternalIdentifier(xn);
             br.setExistingTissue(exists);
             brs.add(br);

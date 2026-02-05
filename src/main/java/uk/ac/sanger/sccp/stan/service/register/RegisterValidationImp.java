@@ -2,7 +2,7 @@ package uk.ac.sanger.sccp.stan.service.register;
 
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.register.BlockRegisterRequest;
+import uk.ac.sanger.sccp.stan.request.register.BlockRegisterRequest_old;
 import uk.ac.sanger.sccp.stan.request.register.RegisterRequest;
 import uk.ac.sanger.sccp.stan.service.BioRiskService;
 import uk.ac.sanger.sccp.stan.service.Validator;
@@ -98,7 +98,7 @@ public class RegisterValidationImp implements RegisterValidation {
     }
 
     public void validateDonors() {
-        for (BlockRegisterRequest block : blocks()) {
+        for (BlockRegisterRequest_old block : blocks()) {
             boolean skip = false;
             Species species = null;
             if (block.getDonorIdentifier()==null || block.getDonorIdentifier().isEmpty()) {
@@ -159,7 +159,7 @@ public class RegisterValidationImp implements RegisterValidation {
     public void validateSpatialLocations() {
         Map<String, TissueType> tissueTypeMap = new HashMap<>();
         Set<String> unknownTissueTypes = new LinkedHashSet<>();
-        for (BlockRegisterRequest block : blocks()) {
+        for (BlockRegisterRequest_old block : blocks()) {
             if (block.getTissueType()==null || block.getTissueType().isEmpty()) {
                 addProblem("Missing tissue type.");
                 continue;
@@ -211,7 +211,7 @@ public class RegisterValidationImp implements RegisterValidation {
         Set<String> unknownHmdmcs = new LinkedHashSet<>();
         boolean unwanted = false;
         boolean missing = false;
-        for (BlockRegisterRequest block : blocks()) {
+        for (BlockRegisterRequest_old block : blocks()) {
             boolean needsHmdmc = false;
             boolean needsNoHmdmc = false;
             if (block.getSpecies()!=null && !block.getSpecies().isEmpty()) {
@@ -259,15 +259,15 @@ public class RegisterValidationImp implements RegisterValidation {
     }
 
     public void validateLabwareTypes() {
-        validateByName("labware type", BlockRegisterRequest::getLabwareType, ltRepo::findByName, labwareTypeMap);
+        validateByName("labware type", BlockRegisterRequest_old::getLabwareType, ltRepo::findByName, labwareTypeMap);
     }
 
     public void validateMediums() {
-        validateByName("medium", BlockRegisterRequest::getMedium, mediumRepo::findByName, mediumMap);
+        validateByName("medium", BlockRegisterRequest_old::getMedium, mediumRepo::findByName, mediumMap);
     }
 
     public void validateFixatives() {
-        validateByName("fixative", BlockRegisterRequest::getFixative, fixativeRepo::findByName, fixativeMap);
+        validateByName("fixative", BlockRegisterRequest_old::getFixative, fixativeRepo::findByName, fixativeMap);
     }
 
     public void validateCollectionDates() {
@@ -275,7 +275,7 @@ public class RegisterValidationImp implements RegisterValidation {
         LocalDate today = LocalDate.now();
         Set<LocalDate> badDates = new LinkedHashSet<>();
         Map<String, LocalDate> extToDate = new HashMap<>(request.getBlocks().size());
-        for (BlockRegisterRequest block : blocks()) {
+        for (BlockRegisterRequest_old block : blocks()) {
             if (block.getSampleCollectionDate()==null) {
                 if (block.getLifeStage()==LifeStage.fetal && block.getSpecies()!=null
                         && Species.isHumanName(block.getSpecies())) {
@@ -304,17 +304,17 @@ public class RegisterValidationImp implements RegisterValidation {
     }
 
     public void validateExistingTissues() {
-        List<BlockRegisterRequest> blocksForExistingTissues = blocks().stream()
-                .filter(BlockRegisterRequest::isExistingTissue)
+        List<BlockRegisterRequest_old> blocksForExistingTissues = blocks().stream()
+                .filter(BlockRegisterRequest_old::isExistingTissue)
                 .toList();
         if (blocksForExistingTissues.isEmpty()) {
             return;
         }
-        if (blocksForExistingTissues.stream().map(BlockRegisterRequest::getExternalIdentifier).anyMatch(xn -> xn==null || xn.isEmpty())) {
+        if (blocksForExistingTissues.stream().map(BlockRegisterRequest_old::getExternalIdentifier).anyMatch(xn -> xn==null || xn.isEmpty())) {
             addProblem("Missing external identifier.");
         }
         Set<String> xns = blocksForExistingTissues.stream()
-                .map(BlockRegisterRequest::getExternalIdentifier)
+                .map(BlockRegisterRequest_old::getExternalIdentifier)
                 .filter(Objects::nonNull)
                 .collect(toLinkedHashSet());
         if (xns.isEmpty()) {
@@ -329,7 +329,7 @@ public class RegisterValidationImp implements RegisterValidation {
             addProblem("Existing external identifiers not recognised: " + reprCollection(missing));
         }
 
-        for (BlockRegisterRequest br : blocksForExistingTissues) {
+        for (BlockRegisterRequest_old br : blocksForExistingTissues) {
             String xn = br.getExternalIdentifier();
             if (xn == null || xn.isEmpty()) {
                 continue;
@@ -344,7 +344,7 @@ public class RegisterValidationImp implements RegisterValidation {
     public void validateNewTissues() {
         // NB repeated new external identifier in one request is still disallowed
         Set<String> externalNames = new HashSet<>();
-        for (BlockRegisterRequest block : blocks()) {
+        for (BlockRegisterRequest_old block : blocks()) {
             if (block.isExistingTissue()) {
                 continue;
             }
@@ -374,13 +374,13 @@ public class RegisterValidationImp implements RegisterValidation {
 
     public void validateBioRisks() {
         this.bioRiskMap = bioRiskService.loadAndValidateBioRisks(problems, blocks().stream(),
-                BlockRegisterRequest::getBioRiskCode, BlockRegisterRequest::setBioRiskCode);
+                BlockRegisterRequest_old::getBioRiskCode, BlockRegisterRequest_old::setBioRiskCode);
     }
 
     public void validateCellClasses() {
         Set<String> cellClassNames = new HashSet<>();
         boolean anyMissing = false;
-        for (BlockRegisterRequest block : blocks()) {
+        for (BlockRegisterRequest_old block : blocks()) {
             String cellClassName = block.getCellClass();
             if (nullOrEmpty(cellClassName)) {
                 anyMissing = true;
@@ -415,12 +415,12 @@ public class RegisterValidationImp implements RegisterValidation {
     }
 
     private <E> void validateByName(String entityName,
-                                    Function<BlockRegisterRequest, String> nameFunction,
+                                    Function<BlockRegisterRequest_old, String> nameFunction,
                                     Function<String, Optional<E>> lkp,
                                     Map<String, E> map) {
         Set<String> unknownNames = new LinkedHashSet<>();
         boolean missing = false;
-        for (BlockRegisterRequest block : blocks()) {
+        for (BlockRegisterRequest_old block : blocks()) {
             String name = nameFunction.apply(block);
             if (name==null || name.isEmpty()) {
                 missing = true;
@@ -448,7 +448,7 @@ public class RegisterValidationImp implements RegisterValidation {
         }
     }
 
-    private Collection<BlockRegisterRequest> blocks() {
+    private Collection<BlockRegisterRequest_old> blocks() {
         return request.getBlocks();
     }
 

@@ -2,13 +2,13 @@ package uk.ac.sanger.sccp.stan.service.register;
 
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.request.register.BlockRegisterRequest;
+import uk.ac.sanger.sccp.stan.request.register.BlockRegisterRequest_old;
 
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
- * Utility for checking that the description of tissue in a {@link BlockRegisterRequest}
+ * Utility for checking that the description of tissue in a {@link BlockRegisterRequest_old}
  * matches the information in an existing tissue.
  * @author dr6
  */
@@ -19,23 +19,23 @@ public class TissueFieldChecker {
         return ab.andThen(b -> b==null ? null : bc.apply(b));
     }
     enum Field {
-        DONOR(Tissue::getDonor, Donor::getDonorName, BlockRegisterRequest::getDonorIdentifier, "donor identifier"),
-        HMDMC(Tissue::getHmdmc, Hmdmc::getHmdmc, BlockRegisterRequest::getHmdmc, "HuMFre number"),
-        TTYPE(Tissue::getTissueType, TissueType::getName, BlockRegisterRequest::getTissueType, "tissue type"),
-        SL(Tissue::getSpatialLocation, SpatialLocation::getCode, BlockRegisterRequest::getSpatialLocation, "spatial location"),
-        REPLICATE(Tissue::getReplicate, BlockRegisterRequest::getReplicateNumber, "replicate number", false),
-        MEDIUM(Tissue::getMedium, Medium::getName, BlockRegisterRequest::getMedium, "medium"),
-        FIXATIVE(Tissue::getFixative, Fixative::getName, BlockRegisterRequest::getFixative, "fixative"),
-        COLLECTION_DATE(Tissue::getCollectionDate, BlockRegisterRequest::getSampleCollectionDate, "sample collection date", true),
-        CELL_CLASS(Tissue::getCellClass, CellClass::getName, BlockRegisterRequest::getCellClass, "cellular classification"),
+        DONOR(Tissue::getDonor, Donor::getDonorName, BlockRegisterRequest_old::getDonorIdentifier, "donor identifier"),
+        HMDMC(Tissue::getHmdmc, Hmdmc::getHmdmc, BlockRegisterRequest_old::getHmdmc, "HuMFre number"),
+        TTYPE(Tissue::getTissueType, TissueType::getName, BlockRegisterRequest_old::getTissueType, "tissue type"),
+        SL(Tissue::getSpatialLocation, SpatialLocation::getCode, BlockRegisterRequest_old::getSpatialLocation, "spatial location"),
+        REPLICATE(Tissue::getReplicate, BlockRegisterRequest_old::getReplicateNumber, "replicate number", false),
+        MEDIUM(Tissue::getMedium, Medium::getName, BlockRegisterRequest_old::getMedium, "medium"),
+        FIXATIVE(Tissue::getFixative, Fixative::getName, BlockRegisterRequest_old::getFixative, "fixative"),
+        COLLECTION_DATE(Tissue::getCollectionDate, BlockRegisterRequest_old::getSampleCollectionDate, "sample collection date", true),
+        CELL_CLASS(Tissue::getCellClass, CellClass::getName, BlockRegisterRequest_old::getCellClass, "cellular classification"),
         ;
 
         private final Function<Tissue, ?> tissueFunction;
-        private final Function<BlockRegisterRequest, ?> brFunction;
+        private final Function<BlockRegisterRequest_old, ?> brFunction;
         private final String description;
         private final boolean replaceMissing;
 
-        Field(Function<Tissue, ?> tissueFunction, Function<BlockRegisterRequest, ?> brFunction,
+        Field(Function<Tissue, ?> tissueFunction, Function<BlockRegisterRequest_old, ?> brFunction,
               String description, boolean replaceMissing) {
             this.tissueFunction = tissueFunction;
             this.brFunction = brFunction;
@@ -43,7 +43,7 @@ public class TissueFieldChecker {
             this.replaceMissing = replaceMissing;
         }
 
-        <X> Field(Function<Tissue, X> tissueFunction, Function<? super X, ?> xFunction, Function<BlockRegisterRequest, ?> brFunction,
+        <X> Field(Function<Tissue, X> tissueFunction, Function<? super X, ?> xFunction, Function<BlockRegisterRequest_old, ?> brFunction,
                   String description) {
             this(chain(tissueFunction, xFunction), brFunction, description, false);
         }
@@ -51,12 +51,12 @@ public class TissueFieldChecker {
         public Object apply(Tissue tissue) {
             return tissueFunction.apply(tissue);
         }
-        public Object apply(BlockRegisterRequest br) {
+        public Object apply(BlockRegisterRequest_old br) {
             return brFunction.apply(br);
         }
     }
 
-    public void check(Consumer<String> problemConsumer, BlockRegisterRequest br, Tissue tissue) {
+    public void check(Consumer<String> problemConsumer, BlockRegisterRequest_old br, Tissue tissue) {
         for (Field field : Field.values()) {
             Object oldValue = field.apply(tissue);
             if (field.replaceMissing && oldValue==null) {

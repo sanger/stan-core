@@ -69,7 +69,7 @@ public class RegisterServiceImp implements IRegisterService<RegisterRequest> {
 
     public Map<String, Donor> createDonors(RegisterRequest request, RegisterValidation validation) {
         Map<String, Donor> donors = new HashMap<>();
-        for (BlockRegisterRequest block : request.getBlocks()) {
+        for (BlockRegisterRequest_old block : request.getBlocks()) {
             String donorName = block.getDonorIdentifier().toUpperCase();
             if (!donors.containsKey(donorName)) {
                 Donor donor = validation.getDonor(donorName);
@@ -85,7 +85,7 @@ public class RegisterServiceImp implements IRegisterService<RegisterRequest> {
     public Map<String, Tissue> createTissues(RegisterRequest request, RegisterValidation validation) {
         Map<String, Donor> donors = createDonors(request, validation);
         Map<String, Tissue> tissueMap = new HashMap<>(request.getBlocks().size());
-        for (BlockRegisterRequest block : request.getBlocks()) {
+        for (BlockRegisterRequest_old block : request.getBlocks()) {
             final String tissueKey =  block.getExternalIdentifier().toUpperCase();
             Tissue existingTissue = validation.getTissue(tissueKey);
             if (tissueMap.get(tissueKey)!=null) {
@@ -130,7 +130,7 @@ public class RegisterServiceImp implements IRegisterService<RegisterRequest> {
      */
     public void updateExistingTissues(RegisterRequest request, RegisterValidation validation) {
         List<Tissue> toUpdate = new ArrayList<>();
-        for (BlockRegisterRequest brr : request.getBlocks()) {
+        for (BlockRegisterRequest_old brr : request.getBlocks()) {
             if (brr.isExistingTissue() && brr.getSampleCollectionDate()!=null) {
                 Tissue tissue = validation.getTissue(brr.getExternalIdentifier());
                 if (tissue!=null && tissue.getCollectionDate()==null) {
@@ -153,7 +153,7 @@ public class RegisterServiceImp implements IRegisterService<RegisterRequest> {
 
         List<Operation> ops = new ArrayList<>(request.getBlocks().size());
 
-        for (BlockRegisterRequest block : request.getBlocks()) {
+        for (BlockRegisterRequest_old block : request.getBlocks()) {
             Tissue tissue = tissues.get(block.getExternalIdentifier().toUpperCase());
             Sample sample = sampleRepo.save(Sample.newBlock(null, tissue, bioState, block.getHighestSection()));
             LabwareType labwareType = validation.getLabwareType(block.getLabwareType());

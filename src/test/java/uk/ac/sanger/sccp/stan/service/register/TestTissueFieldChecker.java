@@ -6,7 +6,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.Tissue;
-import uk.ac.sanger.sccp.stan.request.register.BlockRegisterRequest;
+import uk.ac.sanger.sccp.stan.request.register.BlockRegisterRequest_old;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -53,7 +53,7 @@ public class TestTissueFieldChecker {
 
     @ParameterizedTest
     @MethodSource("checkArgs")
-    public void testCheck(BlockRegisterRequest br, Tissue tissue, Object problemObj) {
+    public void testCheck(BlockRegisterRequest_old br, Tissue tissue, Object problemObj) {
         Collection<String> expectedProblems;
         if (problemObj==null) {
             expectedProblems = List.of();
@@ -101,8 +101,8 @@ public class TestTissueFieldChecker {
         );
     }
 
-    private static BlockRegisterRequest toBRR(Tissue tissue, Consumer<BlockRegisterRequest> adjuster) {
-        BlockRegisterRequest br = new BlockRegisterRequest();
+    private static BlockRegisterRequest_old toBRR(Tissue tissue, Consumer<BlockRegisterRequest_old> adjuster) {
+        BlockRegisterRequest_old br = new BlockRegisterRequest_old();
         br.setExistingTissue(true);
         br.setExternalIdentifier(tissue.getExternalName());
         br.setTissueType(tissue.getTissueType().getName());

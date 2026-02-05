@@ -11,7 +11,7 @@ import org.junit.jupiter.params.provider.*;
 import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.LifeStage;
 import uk.ac.sanger.sccp.stan.model.Species;
-import uk.ac.sanger.sccp.stan.request.register.BlockRegisterRequest;
+import uk.ac.sanger.sccp.stan.request.register.BlockRegisterRequest_old;
 import uk.ac.sanger.sccp.stan.request.register.RegisterRequest;
 import uk.ac.sanger.sccp.stan.service.register.filereader.BlockRegisterFileReader.Column;
 import uk.ac.sanger.sccp.utils.Zip;
@@ -28,16 +28,16 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 /**
- * Tests {@link BlockRegisterFileReaderImp}
+ * Tests {@link BlockRegisterFileReaderImp_old}
  */
 class TestBlockRegisterFileReader extends BaseTestFileReader {
     private static final int DATA_ROW = 3;
 
-    private BlockRegisterFileReaderImp reader;
+    private BlockRegisterFileReaderImp_old reader;
 
     @BeforeEach
     void testSetUp() {
-        reader = spy(new BlockRegisterFileReaderImp());
+        reader = spy(new BlockRegisterFileReaderImp_old());
     }
 
     // Check that the pattern for each column accepts that column's name
@@ -308,7 +308,7 @@ class TestBlockRegisterFileReader extends BaseTestFileReader {
                 rowMap("sgp1 sgp3 sgp2", "X2"),
                 rowMap(null, null)
         );
-        List<BlockRegisterRequest> brs = IntStream.rangeClosed(1, rows.size())
+        List<BlockRegisterRequest_old> brs = IntStream.rangeClosed(1, rows.size())
                 .mapToObj(i -> makeBlockRegisterRequest("X"+i))
                 .collect(toList());
         Zip.of(rows.stream(), brs.stream()).forEach((row, br) -> doReturn(br).when(reader).createBlockRequest(any(), same(row)));
@@ -325,7 +325,7 @@ class TestBlockRegisterFileReader extends BaseTestFileReader {
                 rowMap("SGP1", "X1"),
                 rowMap("sgp2", "X2")
         );
-        List<BlockRegisterRequest> srls = IntStream.range(1, 3)
+        List<BlockRegisterRequest_old> srls = IntStream.range(1, 3)
                 .mapToObj(i -> makeBlockRegisterRequest("X"+i))
                 .toList();
 
@@ -345,7 +345,7 @@ class TestBlockRegisterFileReader extends BaseTestFileReader {
         row.put(Column.Replicate_number, "12A");
         row.put(Column.Spatial_location, 14);
         row.put(Column.Last_known_section, 18);
-        BlockRegisterRequest src = reader.createBlockRequest(problems, row);
+        BlockRegisterRequest_old src = reader.createBlockRequest(problems, row);
         assertEquals("Donor1", src.getDonorIdentifier());
         assertEquals("12A", src.getReplicateNumber());
         assertEquals(14, src.getSpatialLocation());
@@ -372,7 +372,7 @@ class TestBlockRegisterFileReader extends BaseTestFileReader {
         row.put(Column.Collection_date, date);
         row.put(Column.Last_known_section, 17);
         row.put(Column.Labware_type, "Eggcup");
-        BlockRegisterRequest br = reader.createBlockRequest(problems, row);
+        BlockRegisterRequest_old br = reader.createBlockRequest(problems, row);
         assertEquals("Donor1", br.getDonorIdentifier());
         assertEquals("X11", br.getExternalIdentifier());
         assertEquals("12/234", br.getHmdmc());
@@ -395,7 +395,7 @@ class TestBlockRegisterFileReader extends BaseTestFileReader {
         Map<Column, Object> row = new EnumMap<>(Column.class);
         row.put(Column.Donor_identifier, "Donor1");
         row.put(Column.Life_stage, "ascended");
-        BlockRegisterRequest src = reader.createBlockRequest(problems, row);
+        BlockRegisterRequest_old src = reader.createBlockRequest(problems, row);
         assertThat(problems).containsExactlyInAnyOrder(
                 "Unknown life stage: \"ascended\"",
                 "Last known section not specified.",
@@ -418,8 +418,8 @@ class TestBlockRegisterFileReader extends BaseTestFileReader {
         return map;
     }
 
-    static BlockRegisterRequest makeBlockRegisterRequest(String externalId) {
-        BlockRegisterRequest br = new BlockRegisterRequest();
+    static BlockRegisterRequest_old makeBlockRegisterRequest(String externalId) {
+        BlockRegisterRequest_old br = new BlockRegisterRequest_old();
         br.setExternalIdentifier(externalId);
         return br;
     }

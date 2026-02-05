@@ -96,7 +96,7 @@ public class TestRegisterService {
 
     @Test
     public void testRegisterValidBlocks() {
-        RegisterRequest request = new RegisterRequest(List.of(new BlockRegisterRequest()));
+        RegisterRequest request = new RegisterRequest(List.of(new BlockRegisterRequest_old()));
         when(mockValidation.validate()).thenReturn(Set.of());
         final RegisterResult result = new RegisterResult(List.of(EntityFactory.getTube()));
         doNothing().when(registerService).updateExistingTissues(any(), any());
@@ -114,7 +114,7 @@ public class TestRegisterService {
 
     @Test
     public void testRegisterWithClashes() {
-        RegisterRequest request = new RegisterRequest(List.of(new BlockRegisterRequest()));
+        RegisterRequest request = new RegisterRequest(List.of(new BlockRegisterRequest_old()));
         List<RegisterClash> clashes = List.of(new RegisterClash(EntityFactory.getTissue(), List.of()));
         when(mockClashChecker.findClashes(any())).thenReturn(clashes);
         assertEquals(RegisterResult.clashes(clashes), registerService.register(user, request));
@@ -126,7 +126,7 @@ public class TestRegisterService {
 
     @Test
     public void testRegisterInvalidBlocks() {
-        RegisterRequest request = new RegisterRequest(List.of(new BlockRegisterRequest()));
+        RegisterRequest request = new RegisterRequest(List.of(new BlockRegisterRequest_old()));
         final Set<String> problems = Set.of("Everything is bad.", "I spilled my tea.");
         when(mockValidation.validate()).thenReturn(problems);
 
@@ -148,11 +148,11 @@ public class TestRegisterService {
         Donor donor0 = EntityFactory.getDonor();
         Species hamster = new Species(2, "Hamster");
         Donor donor1 = new Donor(null, "Jeff", LifeStage.paediatric, hamster);
-        BlockRegisterRequest block0 = new BlockRegisterRequest();
+        BlockRegisterRequest_old block0 = new BlockRegisterRequest_old();
         block0.setDonorIdentifier(donor0.getDonorName());
         block0.setLifeStage(donor0.getLifeStage());
         block0.setSpecies(donor0.getSpecies().getName());
-        BlockRegisterRequest block1 = new BlockRegisterRequest();
+        BlockRegisterRequest_old block1 = new BlockRegisterRequest_old();
         block1.setDonorIdentifier(donor1.getDonorName());
         block1.setLifeStage(donor1.getLifeStage());
         block1.setSpecies(donor1.getSpecies().getName());
@@ -177,18 +177,18 @@ public class TestRegisterService {
     @Test
     public void testUpdateExistingTissues_none() {
         Tissue tissue1 = EntityFactory.getTissue();
-        BlockRegisterRequest brr1 = new BlockRegisterRequest();
+        BlockRegisterRequest_old brr1 = new BlockRegisterRequest_old();
         brr1.setExternalIdentifier(tissue1.getExternalName());
         brr1.setExistingTissue(true);
 
         Tissue tissue2 = EntityFactory.makeTissue(tissue1.getDonor(), tissue1.getSpatialLocation());
         tissue2.setCollectionDate(LocalDate.of(2020,1,2));
-        BlockRegisterRequest brr2 = new BlockRegisterRequest();
+        BlockRegisterRequest_old brr2 = new BlockRegisterRequest_old();
         brr2.setExternalIdentifier(tissue2.getExternalName().toLowerCase());
         brr2.setExistingTissue(true);
         brr2.setSampleCollectionDate(tissue2.getCollectionDate());
 
-        BlockRegisterRequest brr3 = new BlockRegisterRequest();
+        BlockRegisterRequest_old brr3 = new BlockRegisterRequest_old();
 
         when(mockValidation.getTissue(Matchers.eqCi(tissue1.getExternalName()))).thenReturn(tissue1);
         when(mockValidation.getTissue(Matchers.eqCi(tissue2.getExternalName()))).thenReturn(tissue2);
@@ -204,12 +204,12 @@ public class TestRegisterService {
         Tissue tissue = EntityFactory.makeTissue(donor, sl);
 
         when(mockValidation.getTissue(eqCi(tissue.getExternalName()))).thenReturn(tissue);
-        BlockRegisterRequest brr1 = new BlockRegisterRequest();
+        BlockRegisterRequest_old brr1 = new BlockRegisterRequest_old();
         brr1.setExistingTissue(true);
         brr1.setExternalIdentifier(tissue.getExternalName().toLowerCase());
         brr1.setSampleCollectionDate(LocalDate.of(2010,2,3));
 
-        registerService.updateExistingTissues(new RegisterRequest(List.of(brr1, new BlockRegisterRequest())), mockValidation);
+        registerService.updateExistingTissues(new RegisterRequest(List.of(brr1, new BlockRegisterRequest_old())), mockValidation);
         verify(mockTissueRepo).saveAll(List.of(tissue));
         assertEquals(brr1.getSampleCollectionDate(), tissue.getCollectionDate());
     }
@@ -242,7 +242,7 @@ public class TestRegisterService {
         when(mockValidation.getMedium(medium.getName())).thenReturn(medium);
         when(mockValidation.getFixative(fix.getName())).thenReturn(fix);
         LocalDate colDate = LocalDate.of(2020,5,4);
-        List<BlockRegisterRequest> brs = List.of(
+        List<BlockRegisterRequest_old> brs = List.of(
                 makeBrr(existingTissue.getExternalName(), donor1.getDonorName(),
                         existingTissue.getHmdmc().getHmdmc(), donor1.getSpecies().getName(),
                         existingTissue.getReplicate(), existingTissue.getSpatialLocation(),
@@ -287,11 +287,11 @@ public class TestRegisterService {
         }
     }
 
-    private BlockRegisterRequest makeBrr(String externalName, String donorName,
-                                         String hmdmc, String species,
-                                         String replicate, SpatialLocation sl,
-                                         String mediumName, String fixName, LocalDate collectionDate) {
-        BlockRegisterRequest br = new BlockRegisterRequest();
+    private BlockRegisterRequest_old makeBrr(String externalName, String donorName,
+                                             String hmdmc, String species,
+                                             String replicate, SpatialLocation sl,
+                                             String mediumName, String fixName, LocalDate collectionDate) {
+        BlockRegisterRequest_old br = new BlockRegisterRequest_old();
         br.setExternalIdentifier(externalName);
         br.setDonorIdentifier(donorName);
         br.setHmdmc(hmdmc);
@@ -318,7 +318,7 @@ public class TestRegisterService {
         CellClass cellClass = EntityFactory.getCellClass();
         Hmdmc[] hmdmcs = {new Hmdmc(20000, "20/000"), new Hmdmc(20001, "20/001")};
 
-        BlockRegisterRequest block0 = new BlockRegisterRequest();
+        BlockRegisterRequest_old block0 = new BlockRegisterRequest_old();
         block0.setDonorIdentifier(donor1.getDonorName());
         block0.setLifeStage(donor1.getLifeStage());
         block0.setExternalIdentifier("TISSUE0");
@@ -333,7 +333,7 @@ public class TestRegisterService {
         block0.setSpecies(donor1.getSpecies().getName());
         block0.setCellClass("Tissue");
 
-        BlockRegisterRequest block1 = new BlockRegisterRequest();
+        BlockRegisterRequest_old block1 = new BlockRegisterRequest_old();
         block1.setDonorIdentifier(donor2.getDonorName());
         block1.setLifeStage(donor2.getLifeStage());
         block1.setReplicateNumber("5");
@@ -409,9 +409,9 @@ public class TestRegisterService {
 
         verify(registerService).createDonors(request, mockValidation);
 
-        List<BlockRegisterRequest> blocks = request.getBlocks();
+        List<BlockRegisterRequest_old> blocks = request.getBlocks();
         for (int i = 0; i < blocks.size(); i++) {
-            BlockRegisterRequest block = blocks.get(i);
+            BlockRegisterRequest_old block = blocks.get(i);
             verify(mockTissueRepo).save(
                     new Tissue(null,
                             block.getExternalIdentifier(),
@@ -459,7 +459,7 @@ public class TestRegisterService {
         }
         BioRisk br = new BioRisk(800, "biorisk");
 
-        BlockRegisterRequest block = new BlockRegisterRequest();
+        BlockRegisterRequest_old block = new BlockRegisterRequest_old();
         block.setDonorIdentifier(donor.getDonorName());
         block.setLifeStage(donor.getLifeStage());
         block.setExternalIdentifier("TISSUE");

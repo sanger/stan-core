@@ -36,7 +36,7 @@ public class RegisterClashChecker {
     public List<RegisterClash> findClashes(RegisterRequest request) {
         Set<String> externalNames = request.getBlocks().stream()
                 .filter(br -> !br.isExistingTissue())
-                .map(BlockRegisterRequest::getExternalIdentifier)
+                .map(BlockRegisterRequest_old::getExternalIdentifier)
                 .collect(toSet());
         if (externalNames.isEmpty()) {
             return List.of();

@@ -10,7 +10,7 @@ import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.register.BlockRegisterRequest;
+import uk.ac.sanger.sccp.stan.request.register.BlockRegisterRequest_old;
 import uk.ac.sanger.sccp.stan.request.register.RegisterRequest;
 import uk.ac.sanger.sccp.stan.service.BioRiskService;
 import uk.ac.sanger.sccp.stan.service.Validator;
@@ -138,7 +138,7 @@ public class TestRegisterValidation {
 
     @Test
     public void testValidateNonemptyRequestWithoutProblems() {
-        RegisterRequest request = new RegisterRequest(List.of(new BlockRegisterRequest()));
+        RegisterRequest request = new RegisterRequest(List.of(new BlockRegisterRequest_old()));
         RegisterValidationImp validation = create(request);
         stubValidationMethods(validation);
         assertThat(validation.validate()).isEmpty();
@@ -147,7 +147,7 @@ public class TestRegisterValidation {
 
     @Test
     public void testValidateNonemptyRequestWithProblems() {
-        RegisterRequest request = new RegisterRequest(List.of(new BlockRegisterRequest()));
+        RegisterRequest request = new RegisterRequest(List.of(new BlockRegisterRequest_old()));
         RegisterValidationImp validation = create(request);
         stubValidationMethods(validation);
         doAnswer(invocation -> validation.problems.add("Problem alpha."))
@@ -169,7 +169,7 @@ public class TestRegisterValidation {
         RegisterRequest request = new RegisterRequest(
                 donorNames.stream()
                         .map(donorName -> {
-                            BlockRegisterRequest br = new BlockRegisterRequest();
+                            BlockRegisterRequest_old br = new BlockRegisterRequest_old();
                             br.setDonorIdentifier(donorName);
                             br.setLifeStage(lifeStageIter.next());
                             br.setSpecies(speciesIter.next());
@@ -207,7 +207,7 @@ public class TestRegisterValidation {
         RegisterRequest request = new RegisterRequest(
                 Stream.of("Alpha", "Beta", "Gamma*", "Delta*", "Gamma*")
                 .map(s -> {
-                    BlockRegisterRequest br = new BlockRegisterRequest();
+                    BlockRegisterRequest_old br = new BlockRegisterRequest_old();
                     br.setDonorIdentifier(s);
                     br.setLifeStage(LifeStage.adult);
                     br.setSpecies(Species.HUMAN_NAME);
@@ -228,7 +228,7 @@ public class TestRegisterValidation {
         RegisterRequest request = new RegisterRequest(
                 Zip.of(tissueTypeNames.stream(), codes.stream())
                         .map((name, code) -> {
-                            BlockRegisterRequest br = new BlockRegisterRequest();
+                            BlockRegisterRequest_old br = new BlockRegisterRequest_old();
                             br.setTissueType(name);
                             br.setSpatialLocation(code);
                             return br;
@@ -261,7 +261,7 @@ public class TestRegisterValidation {
         RegisterRequest request = new RegisterRequest(
                 Zip.of(givenHmdmcs.stream(), speciesNames.stream())
                         .map((hmdmc, species) -> {
-                            BlockRegisterRequest br = new BlockRegisterRequest();
+                            BlockRegisterRequest_old br = new BlockRegisterRequest_old();
                             br.setHmdmc(hmdmc);
                             br.setSpecies(species);
                             return br;
@@ -291,7 +291,7 @@ public class TestRegisterValidation {
             return knownLts.stream().filter(lt -> arg.equalsIgnoreCase(lt.getName())).findAny();
         });
         testValidateSimpleField(givenLtNames, expectedLts, expectedProblems,
-                RegisterValidationImp::validateLabwareTypes, LabwareType::getName, BlockRegisterRequest::setLabwareType,
+                RegisterValidationImp::validateLabwareTypes, LabwareType::getName, BlockRegisterRequest_old::setLabwareType,
                 v -> v.labwareTypeMap, RegisterValidationImp::getLabwareType);
     }
 
@@ -304,7 +304,7 @@ public class TestRegisterValidation {
             return knownItems.stream().filter(item -> arg.equalsIgnoreCase(item.getName())).findAny();
         });
         testValidateSimpleField(givenNames, expectedItems, expectedProblems,
-                RegisterValidationImp::validateMediums, Medium::getName, BlockRegisterRequest::setMedium,
+                RegisterValidationImp::validateMediums, Medium::getName, BlockRegisterRequest_old::setMedium,
                 v -> v.mediumMap, RegisterValidationImp::getMedium);
     }
 
@@ -317,7 +317,7 @@ public class TestRegisterValidation {
             return knownItems.stream().filter(item -> arg.equalsIgnoreCase(item.getName())).findAny();
         });
         testValidateSimpleField(givenNames, expectedItems, expectedProblems,
-                RegisterValidationImp::validateFixatives, Fixative::getName, BlockRegisterRequest::setFixative,
+                RegisterValidationImp::validateFixatives, Fixative::getName, BlockRegisterRequest_old::setFixative,
                 v -> v.fixativeMap, RegisterValidationImp::getFixative);
     }
 
@@ -353,7 +353,7 @@ public class TestRegisterValidation {
         RegisterRequest request = new RegisterRequest(
                 testData.stream()
                 .map(td -> {
-                    BlockRegisterRequest br = new BlockRegisterRequest();
+                    BlockRegisterRequest_old br = new BlockRegisterRequest_old();
                     br.setExternalIdentifier(td.externalName);
                     br.setReplicateNumber(td.replicate);
                     br.setDonorIdentifier(td.donorName);
@@ -386,9 +386,9 @@ public class TestRegisterValidation {
             return existingTissues.stream().filter(t -> xns.stream().anyMatch(xn -> t.getExternalName().equalsIgnoreCase(xn)))
                     .collect(toList());
         });
-        List<BlockRegisterRequest> brs = new ArrayList<>(testData.size());
+        List<BlockRegisterRequest_old> brs = new ArrayList<>(testData.size());
         for (ValidateExistingTissueTestData td : testData) {
-            BlockRegisterRequest br = new BlockRegisterRequest();
+            BlockRegisterRequest_old br = new BlockRegisterRequest_old();
             br.setExternalIdentifier(td.externalName);
             br.setExistingTissue(td.existing);
             if (td.fieldProblem != null) {
@@ -429,7 +429,7 @@ public class TestRegisterValidation {
 
     @ParameterizedTest
     @MethodSource("validateCollectionDatesArgs")
-    public void testValidateCollectionDates(List<BlockRegisterRequest> brrs, List<String> expectedProblems) {
+    public void testValidateCollectionDates(List<BlockRegisterRequest_old> brrs, List<String> expectedProblems) {
         RegisterRequest request = new RegisterRequest(brrs);
         RegisterValidationImp validation = create(request);
         validation.validateCollectionDates();
@@ -470,7 +470,7 @@ public class TestRegisterValidation {
                         "Human fetal samples must have a collection date.",
                         "Invalid sample collection date: ["+future1+"]",
                         "Inconsistent collection dates specified for tissue EXT1."},
-        }).map(arr -> Arguments.of(Arrays.stream(arr).filter(obj -> obj instanceof BlockRegisterRequest)
+        }).map(arr -> Arguments.of(Arrays.stream(arr).filter(obj -> obj instanceof BlockRegisterRequest_old)
                 .collect(toList()),
                 Arrays.stream(arr).filter(obj -> obj instanceof String)
                 .collect(toList())));
@@ -479,7 +479,7 @@ public class TestRegisterValidation {
     @ParameterizedTest
     @CsvSource({"false,false", "true,false", "true,true"})
     public void testValidateWorks(boolean anyWorks, boolean anyProblem) {
-        List<BlockRegisterRequest> brrs = List.of(
+        List<BlockRegisterRequest_old> brrs = List.of(
                 toBrr(Species.HUMAN_NAME, LifeStage.adult, null)
         );
         List<String> workNumbers;
@@ -522,8 +522,8 @@ public class TestRegisterValidation {
 
     }
 
-    static BlockRegisterRequest toBrr(String species, LifeStage lifeStage, LocalDate collectionDate, String ext) {
-        BlockRegisterRequest brr = new BlockRegisterRequest();
+    static BlockRegisterRequest_old toBrr(String species, LifeStage lifeStage, LocalDate collectionDate, String ext) {
+        BlockRegisterRequest_old brr = new BlockRegisterRequest_old();
         brr.setSpecies(species);
         brr.setLifeStage(lifeStage);
         brr.setSampleCollectionDate(collectionDate);
@@ -531,7 +531,7 @@ public class TestRegisterValidation {
         return brr;
     }
 
-    static BlockRegisterRequest toBrr(String species, LifeStage lifeStage, LocalDate collectionDate) {
+    static BlockRegisterRequest_old toBrr(String species, LifeStage lifeStage, LocalDate collectionDate) {
         return toBrr(species, lifeStage, collectionDate, null);
     }
 
@@ -539,13 +539,13 @@ public class TestRegisterValidation {
                                    List<E> expectedItems, List<String> expectedProblems,
                                             Consumer<RegisterValidationImp> validationFunction,
                                             Function<E, String> stringFn,
-                                            BiConsumer<BlockRegisterRequest, String> blockFunction,
+                                            BiConsumer<BlockRegisterRequest_old, String> blockFunction,
                                             Function<RegisterValidationImp, Map<String, E>> mapFunction,
                                             BiFunction<RegisterValidationImp, String, E> getter) {
         RegisterRequest request = new RegisterRequest(
                 givenStrings.stream()
                         .map(string -> {
-                            BlockRegisterRequest br = new BlockRegisterRequest();
+                            BlockRegisterRequest_old br = new BlockRegisterRequest_old();
                             blockFunction.accept(br, string);
                             return br;
                         })
@@ -567,9 +567,9 @@ public class TestRegisterValidation {
     @SuppressWarnings("unchecked")
     @Test
     void testValidateBioRisks() {
-        BlockRegisterRequest block1 = new BlockRegisterRequest();
+        BlockRegisterRequest_old block1 = new BlockRegisterRequest_old();
         block1.setBioRiskCode("risk1");
-        BlockRegisterRequest block2 = new BlockRegisterRequest();
+        BlockRegisterRequest_old block2 = new BlockRegisterRequest_old();
         block2.setBioRiskCode("risk2");
         RegisterRequest request = new RegisterRequest(List.of(block1, block2));
         RegisterValidationImp val = create(request);
@@ -579,16 +579,16 @@ public class TestRegisterValidation {
         val.validateBioRisks();
 
         assertSame(returnedMap, val.bioRiskMap);
-        ArgumentCaptor<Stream<BlockRegisterRequest>> blockStreamCaptor = ArgumentCaptor.forClass(Stream.class);
-        ArgumentCaptor<Function<BlockRegisterRequest, String>> getterCaptor = ArgumentCaptor.forClass(Function.class);
-        ArgumentCaptor<BiConsumer<BlockRegisterRequest, String>> setterCaptor = ArgumentCaptor.forClass(BiConsumer.class);
+        ArgumentCaptor<Stream<BlockRegisterRequest_old>> blockStreamCaptor = ArgumentCaptor.forClass(Stream.class);
+        ArgumentCaptor<Function<BlockRegisterRequest_old, String>> getterCaptor = ArgumentCaptor.forClass(Function.class);
+        ArgumentCaptor<BiConsumer<BlockRegisterRequest_old, String>> setterCaptor = ArgumentCaptor.forClass(BiConsumer.class);
         verify(mockBioRiskService).loadAndValidateBioRisks(same(val.problems), blockStreamCaptor.capture(),
                 getterCaptor.capture(), setterCaptor.capture());
 
         // Check that the getter and setter are the functions we expect
         assertThat(blockStreamCaptor.getValue().map(getterCaptor.getValue())).containsExactly("risk1", "risk2");
-        BiConsumer<BlockRegisterRequest, String> setter = setterCaptor.getValue();
-        BlockRegisterRequest blk = new BlockRegisterRequest();
+        BiConsumer<BlockRegisterRequest_old, String> setter = setterCaptor.getValue();
+        BlockRegisterRequest_old blk = new BlockRegisterRequest_old();
         setter.accept(blk, "v1");
         assertEquals("v1", blk.getBioRiskCode());
     }
@@ -596,7 +596,7 @@ public class TestRegisterValidation {
     @Test
     void testValidateCellClasses() {
         String[] ccNames = {"cc1", "cc2", null, "cc4"};
-        List<BlockRegisterRequest> blocks = IntStream.range(0, ccNames.length).mapToObj(i -> new BlockRegisterRequest()).toList();
+        List<BlockRegisterRequest_old> blocks = IntStream.range(0, ccNames.length).mapToObj(i -> new BlockRegisterRequest_old()).toList();
         Zip.of(Arrays.stream(ccNames), blocks.stream()).forEach((name, block) -> block.setCellClass(name));
         CellClass[] cellClasses = IntStream.rangeClosed(1, 2).mapToObj(i -> new CellClass(i, "cc"+i, false, true)).toArray(CellClass[]::new);
         UCMap<CellClass> ccMap = UCMap.from(CellClass::getName, cellClasses);

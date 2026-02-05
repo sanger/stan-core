@@ -9,27 +9,27 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.describe;
  * @author dr6
  */
 public class RegisterRequest {
-    private List<BlockRegisterRequest> blocks;
+    private List<BlockRegisterRequest_old> blocks;
     private List<String> workNumbers;
 
     public RegisterRequest() {
         this(null, null);
     }
 
-    public RegisterRequest(List<BlockRegisterRequest> blocks) {
+    public RegisterRequest(List<BlockRegisterRequest_old> blocks) {
         this(blocks, null);
     }
 
-    public RegisterRequest(List<BlockRegisterRequest> blocks, List<String> workNumbers) {
+    public RegisterRequest(List<BlockRegisterRequest_old> blocks, List<String> workNumbers) {
         setBlocks(blocks);
         setWorkNumbers(workNumbers);
     }
 
-    public List<BlockRegisterRequest> getBlocks() {
+    public List<BlockRegisterRequest_old> getBlocks() {
         return this.blocks;
     }
 
-    public void setBlocks(List<BlockRegisterRequest> blocks) {
+    public void setBlocks(List<BlockRegisterRequest_old> blocks) {
         this.blocks = (blocks==null ? List.of() : blocks);
     }
 
