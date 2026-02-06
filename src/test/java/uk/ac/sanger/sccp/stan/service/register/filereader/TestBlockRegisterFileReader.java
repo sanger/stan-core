@@ -5,20 +5,18 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellAddress;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
 import uk.ac.sanger.sccp.stan.Matchers;
+import uk.ac.sanger.sccp.stan.model.Address;
 import uk.ac.sanger.sccp.stan.model.LifeStage;
-import uk.ac.sanger.sccp.stan.model.Species;
-import uk.ac.sanger.sccp.stan.request.register.BlockRegisterRequest_old;
-import uk.ac.sanger.sccp.stan.request.register.RegisterRequest;
+import uk.ac.sanger.sccp.stan.request.register.*;
 import uk.ac.sanger.sccp.stan.service.register.filereader.BlockRegisterFileReader.Column;
-import uk.ac.sanger.sccp.utils.Zip;
 
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.function.Supplier;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -26,18 +24,19 @@ import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.stan.Matchers.*;
 
 /**
- * Tests {@link BlockRegisterFileReaderImp_old}
+ * Tests {@link BlockRegisterFileReaderImp}
  */
 class TestBlockRegisterFileReader extends BaseTestFileReader {
     private static final int DATA_ROW = 3;
 
-    private BlockRegisterFileReaderImp_old reader;
+    private BlockRegisterFileReaderImp reader;
 
     @BeforeEach
     void testSetUp() {
-        reader = spy(new BlockRegisterFileReaderImp_old());
+        reader = spy(new BlockRegisterFileReaderImp());
     }
 
     // Check that the pattern for each column accepts that column's name
@@ -58,7 +57,7 @@ class TestBlockRegisterFileReader extends BaseTestFileReader {
         mockSheet();
         mockHeadingRow();
         doAnswer(Matchers.addProblem(problem, map)).when(reader).indexColumns(any(), any());
-        assertValidationError(() -> reader.read(sheet), problem);
+        assertValidationException(() -> reader.read(sheet), List.of(problem));
         verify(reader).indexColumns(any(), same(headingRow));
         verify(reader, never()).readRow(any(), any(), any());
         verify(reader, never()).createRequest(any(), any());
@@ -71,7 +70,7 @@ class TestBlockRegisterFileReader extends BaseTestFileReader {
         mockRows(0,0);
         Map<Column, Integer> map = columnMapOf(Column.Donor_identifier, 3);
         doReturn(map).when(reader).indexColumns(any(), any());
-        assertValidationError(() -> reader.read(sheet), "No registrations requested.");
+        assertValidationException(() -> reader.read(sheet), List.of("No registrations requested."));
         verify(reader, never()).readRow(any(), any(), any());
         verify(reader, never()).createRequest(any(), any());
     }
@@ -93,15 +92,15 @@ class TestBlockRegisterFileReader extends BaseTestFileReader {
             Matchers.mayAddProblem(rowProblem, rowMaps.get(i)).when(reader).readRow(any(), any(), same(rows.get(DATA_ROW+i)));
         }
 
-        RegisterRequest request;
+        BlockRegisterRequest request;
         if (error) {
             request = null;
         } else {
-            request = new RegisterRequest();
+            request = new BlockRegisterRequest();
             doReturn(request).when(reader).createRequest(any(), any());
         }
         if (error) {
-            assertValidationError(() -> reader.read(sheet), problem);
+            assertValidationException(() -> reader.read(sheet), List.of(problem));
         } else {
             assertSame(request, reader.read(sheet));
         }
@@ -121,8 +120,10 @@ class TestBlockRegisterFileReader extends BaseTestFileReader {
     void testIndexColumns() {
         Row row = mockRow("All information is needed",
                 "SGP number", "donor identifier", "life stage", "if then date of collection of stuff",
-                "species", "cellular classification", "biological risk assessment number", "humfre", "tissue type", "external id", "spatial location", "replicate number",
-                "last known banana section custard", "labware type", "fixative", "medium", "information", "comment");
+                "species", "cellular classification", "biological risk assessment number", "humfre", "slot address of sample",
+                "tissue type", "external id", "spatial location", "replicate number",
+                "last known banana section custard", "labware type", "fixative", "medium", "external barcode",
+                "information", "comment");
         List<String> problems = new ArrayList<>();
         var result = reader.indexColumns(problems, row);
         assertThat(problems).isEmpty();
@@ -146,7 +147,7 @@ class TestBlockRegisterFileReader extends BaseTestFileReader {
         assertThat(problems).containsExactlyInAnyOrder(
                 "Repeated column: Work number",
                 "Unexpected column heading: \"bananas\"",
-                "Missing columns: [Tissue type, External identifier]");
+                "Missing columns: [Slot address, Tissue type, External identifier, External barcode]");
     }
 
     @Test
@@ -301,108 +302,161 @@ class TestBlockRegisterFileReader extends BaseTestFileReader {
         }).map(Arguments::of);
     }
 
-    @Test
-    void testCreateRequest() {
-        List<Map<Column, Object>> rows = List.of(
-                rowMap("SGP1, SGP2 sgp3,sgp2", "X1"),
-                rowMap("sgp1 sgp3 sgp2", "X2"),
-                rowMap(null, null)
-        );
-        List<BlockRegisterRequest_old> brs = IntStream.rangeClosed(1, rows.size())
-                .mapToObj(i -> makeBlockRegisterRequest("X"+i))
-                .collect(toList());
-        Zip.of(rows.stream(), brs.stream()).forEach((row, br) -> doReturn(br).when(reader).createBlockRequest(any(), same(row)));
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    void testCreateRequest(boolean ok) {
+        List<Map<Column, Object>> rows;
+        if (ok) {
+            rows = List.of(rowMap("SGP1, SGP2", "EXT1"), rowMap("sgp2, sgp1", "EXT2"));
+        } else {
+            rows = List.of(rowMap("SGP1", "EXT1"), rowMap("SGP2", "EXT2"));
+        }
+        List<BlockRegisterLabware> brlw = List.of(new BlockRegisterLabware());
+        String problem = ok ? null : "Bad request.";
+        mayAddProblem(problem, brlw).when(reader).createLabwareRequests(any(), any());
+        if (ok) {
+            List<String> problems = new ArrayList<>();
+            BlockRegisterRequest request = reader.createRequest(problems, rows);
+            assertSame(brlw, request.getLabware());
+            assertThat(request.getWorkNumbers()).containsExactlyInAnyOrder("SGP1", "SGP2");
+        } else {
+            List<String> problems = new ArrayList<>(2);
+            List<String> expectedProblems = List.of(problem, "All rows must list the same work numbers.");
+            assertValidationException(() -> reader.createRequest(problems, rows), expectedProblems);
+        }
+        verify(reader).createLabwareRequests(any(), same(rows));
+    }
 
-        final List<String> problems = new ArrayList<>();
-        RegisterRequest request = reader.createRequest(problems, rows);
-        assertThat(request.getWorkNumbers()).containsExactlyInAnyOrder("SGP1", "SGP2", "SGP3");
-        assertEquals(brs, request.getBlocks());
+    @ParameterizedTest
+    @CsvSource(value = {
+            ";",
+            "sgp1;SGP1",
+            "sgp1, SGP2;SGP1,SGP2"
+    }, delimiter=';')
+    void testWorkNumberSet(String input, String expected) {
+        Set<String> workNumbers = BlockRegisterFileReaderImp.workNumberSet(input);
+        if (expected==null) {
+            assertThat(workNumbers).isNullOrEmpty();
+        } else {
+            assertThat(workNumbers).containsExactlyInAnyOrder(expected.split(","));
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    void testCreateLabwareRequests(boolean xbMissing) {
+        List<Map<Column, Object>> rows = List.of(rowWithExternalBarcode("EXT1", "A"),
+                rowWithExternalBarcode(xbMissing ? null : "ext1", "B"),
+                rowWithExternalBarcode("EXT2", "C"));
+
+        List<BlockRegisterLabware> brls = List.of(new BlockRegisterLabware(), new BlockRegisterLabware());
+        brls.getFirst().setExternalBarcode("EXT1");
+        brls.getLast().setExternalBarcode("EXT2");
+        doReturnFrom(brls.iterator()).when(reader).toLabwareRequest(any(), any());
+        List<String> problems = new ArrayList<>(xbMissing ? 1 : 0);
+        assertThat(reader.createLabwareRequests(problems, rows)).containsExactlyElementsOf(brls);
+        assertProblem(problems, xbMissing ? "Cannot process blocks without an external barcode." : null);
+
+        verify(reader, times(2)).toLabwareRequest(any(), any());
+        verify(reader).toLabwareRequest(same(problems), eq(rows.subList(0, xbMissing ? 1 : 2)));
+        verify(reader).toLabwareRequest(same(problems), eq(rows.subList(2, 3)));
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            ",false,",
+            "EXT1 ext1,false,EXT1",
+            "ext1 ext2,true,ext1",
+    })
+    void testUniqueRowValue(String values, boolean error, String expectedValue) {
+        String[] splitValues = (values==null ? new String[0] : values.split("\\s+"));
+        final Column column = Column.External_barcode;
+        List<Map<Column, Object>> rows = Arrays.stream(splitValues).map(v -> {
+            Map<Column, Object> map = new EnumMap<>(Column.class);
+            map.put(column, v);
+            return map;
+        }).toList();
+        List<String> problems = new ArrayList<>(error ? 1 : 0);
+        Supplier<String> errorSupplier = () -> "Bad thing.";
+        assertEquals(expectedValue, reader.uniqueRowValue(problems, rows, column, errorSupplier));
+        assertProblem(problems, error ? "Bad thing." : null);
     }
 
     @Test
-    void testCreateRequest_problems() {
-        List<Map<Column, Object>> rows = List.of(
-                rowMap("SGP1", "X1"),
-                rowMap("sgp2", "X2")
-        );
-        List<BlockRegisterRequest_old> srls = IntStream.range(1, 3)
-                .mapToObj(i -> makeBlockRegisterRequest("X"+i))
-                .toList();
-
-        doReturn(srls.get(0)).when(reader).createBlockRequest(any(), same(rows.get(0)));
-        Matchers.mayAddProblem("Bad stuff.", srls.get(1)).when(reader).createBlockRequest(any(), same(rows.get(1)));
-
-        assertValidationError(() -> reader.createRequest(new ArrayList<>(), rows),
-                "All rows must list the same work numbers.",
-                "Bad stuff.");
-    }
-
-    @Test
-    void testCreateBlockRegisterRequest_basic() {
+    void testToLabwareRequest() {
+        List<Map<Column, Object>> rows = List.of(rowWithExternalBarcode("BC", "A"), rowWithExternalBarcode("BC", "B"));
+        rows.forEach(row -> {
+            row.put(Column.Labware_type, "lt");
+            row.put(Column.Fixative, "fix");
+            row.put(Column.Embedding_medium, "med");
+        });
+        BlockRegisterSample brs1 = new BlockRegisterSample();
+        BlockRegisterSample brs2 = new BlockRegisterSample();
+        brs1.setExternalIdentifier("xn1");
+        brs2.setExternalIdentifier("xn2");
+        doReturn(brs1, brs2).when(reader).toSample(any(), any());
         List<String> problems = new ArrayList<>(0);
-        Map<Column, Object> row = new EnumMap<>(Column.class);
-        row.put(Column.Donor_identifier, "Donor1");
-        row.put(Column.Replicate_number, "12A");
-        row.put(Column.Spatial_location, 14);
-        row.put(Column.Last_known_section, 18);
-        BlockRegisterRequest_old src = reader.createBlockRequest(problems, row);
-        assertEquals("Donor1", src.getDonorIdentifier());
-        assertEquals("12A", src.getReplicateNumber());
-        assertEquals(14, src.getSpatialLocation());
-        assertNull(src.getLifeStage());
+        BlockRegisterLabware brl = reader.toLabwareRequest(problems, rows);
+        verify(reader, times(3)).uniqueRowValue(any(), any(), any(), any());
+        rows.forEach(row -> verify(reader).toSample(same(problems), same(row)));
         assertThat(problems).isEmpty();
+        assertEquals("lt", brl.getLabwareType());
+        assertEquals("fix", brl.getFixative());
+        assertEquals("med", brl.getMedium());
+        assertEquals("BC", brl.getExternalBarcode());
+        assertThat(brl.getSamples()).containsExactly(brs1, brs2);
     }
 
-
-    @Test
-    void testCreateBlockRegisterRequest_full() {
-        List<String> problems = new ArrayList<>(0);
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    void testToSample(boolean complete) {
         Map<Column, Object> row = new EnumMap<>(Column.class);
-        final LocalDate date = LocalDate.of(2022, 5, 5);
-        row.put(Column.Donor_identifier, "Donor1");
-        row.put(Column.External_identifier, "X11");
-        row.put(Column.HuMFre, "12/234");
-        row.put(Column.Life_stage, "ADULT");
-        row.put(Column.Replicate_number, "14");
-        row.put(Column.Species, Species.HUMAN_NAME);
-        row.put(Column.Tissue_type, "Arm");
-        row.put(Column.Spatial_location, 2);
-        row.put(Column.Embedding_medium, "brass");
-        row.put(Column.Fixative, "Floop");
-        row.put(Column.Collection_date, date);
-        row.put(Column.Last_known_section, 17);
-        row.put(Column.Labware_type, "Eggcup");
-        BlockRegisterRequest_old br = reader.createBlockRequest(problems, row);
-        assertEquals("Donor1", br.getDonorIdentifier());
-        assertEquals("X11", br.getExternalIdentifier());
-        assertEquals("12/234", br.getHmdmc());
-        assertEquals(LifeStage.adult, br.getLifeStage());
-        assertEquals("14", br.getReplicateNumber());
-        assertEquals(Species.HUMAN_NAME, br.getSpecies());
-        assertEquals("Arm", br.getTissueType());
-        assertEquals(2, br.getSpatialLocation());
-        assertEquals("brass", br.getMedium());
-        assertEquals("Floop", br.getFixative());
-        assertEquals(date, br.getSampleCollectionDate());
-        assertEquals(17, br.getHighestSection());
-        assertEquals("Eggcup", br.getLabwareType());
-        assertThat(problems).isEmpty();
-    }
-
-    @Test
-    void testCreateRequestContent_problems() {
-        List<String> problems = new ArrayList<>(2);
-        Map<Column, Object> row = new EnumMap<>(Column.class);
-        row.put(Column.Donor_identifier, "Donor1");
-        row.put(Column.Life_stage, "ascended");
-        BlockRegisterRequest_old src = reader.createBlockRequest(problems, row);
-        assertThat(problems).containsExactlyInAnyOrder(
-                "Unknown life stage: \"ascended\"",
-                "Last known section not specified.",
-                "Spatial location not specified."
-        );
-        assertEquals("Donor1", src.getDonorIdentifier());
-        assertNull(src.getLifeStage());
+        row.put(Column.Bio_risk, "risk1");
+        row.put(Column.Cell_class, "cclass1");
+        row.put(Column.Donor_identifier, "donor1");
+        row.put(Column.HuMFre, "hum1");
+        row.put(Column.Life_stage, "fetal");
+        row.put(Column.Replicate_number, "17");
+        row.put(Column.Species, "mermaid");
+        row.put(Column.Tissue_type, "leg");
+        LocalDate date;
+        if (complete) {
+            row.put(Column.Spatial_location, 3);
+            row.put(Column.Last_known_section, 5);
+            date = LocalDate.of(2023, 1, 2);
+            row.put(Column.Collection_date, date);
+            row.put(Column.Slot_address, "A1, A2");
+        } else {
+            date = null;
+        }
+        row.put(Column.External_identifier, "ext1");
+        List<String> problems = new ArrayList<>(complete ? 0 : 2);
+        BlockRegisterSample brs = reader.toSample(problems, row);
+        if (complete) {
+            assertThat(problems).isEmpty();
+        } else {
+            assertThat(problems).containsExactlyInAnyOrder("Spatial location not specified.", "Last known section not specified.");
+        }
+        assertEquals("risk1", brs.getBioRiskCode());
+        assertEquals("cclass1", brs.getCellClass());
+        assertEquals("donor1", brs.getDonorIdentifier());
+        assertEquals("hum1", brs.getHmdmc());
+        assertEquals(LifeStage.fetal, brs.getLifeStage());
+        assertEquals("17", brs.getReplicateNumber());
+        assertEquals("mermaid", brs.getSpecies());
+        assertEquals("leg", brs.getTissueType());
+        if (complete) {
+            assertEquals(3, brs.getSpatialLocation());
+            assertEquals(5, brs.getHighestSection());
+            assertEquals(date, brs.getSampleCollectionDate());
+            assertThat(brs.getAddresses()).containsExactlyInAnyOrder(new Address(1,1), new Address(1,2));
+        } else {
+            assertNull(brs.getSpatialLocation());
+            assertNull(brs.getHighestSection());
+            assertNull(brs.getSampleCollectionDate());
+            assertThat(brs.getAddresses()).isEmpty();
+        }
+        assertEquals("ext1", brs.getExternalIdentifier());
     }
 
     static <V> Map<Column, V> columnMapOf(Column k1, V v1) {
@@ -418,13 +472,32 @@ class TestBlockRegisterFileReader extends BaseTestFileReader {
         return map;
     }
 
-    static BlockRegisterRequest_old makeBlockRegisterRequest(String externalId) {
-        BlockRegisterRequest_old br = new BlockRegisterRequest_old();
-        br.setExternalIdentifier(externalId);
-        return br;
+    static Map<Column, Object> rowWithExternalBarcode(String externalBarcode, String externalName) {
+        Map<Column, Object> map = new EnumMap<>(Column.class);
+        map.put(Column.External_identifier, externalName);
+        map.put(Column.External_barcode, externalBarcode);
+        return map;
     }
 
-    static void assertValidationError(Executable exec, String... expectedProblems) {
-        Matchers.assertValidationException(exec, "The file contents are invalid.", expectedProblems);
+    @ParameterizedTest
+    @MethodSource("parseAddressesArgs")
+    void testParseAddresses(String input, List<Address> expectedAddresses, String expectedError) {
+        List<String> problems = new ArrayList<>(expectedError==null ? 0 : 1);
+        assertEquals(expectedAddresses, BlockRegisterFileReaderImp.parseAddresses(problems, input));
+        assertProblem(problems, expectedError);
+    }
+
+    static Stream<Arguments> parseAddressesArgs() {
+        Address A1 = new Address(1,1);
+        Address A2 = new Address(1,2);
+        Address AA50 = new Address(27,50);
+        return Arrays.stream(new Object[][] {
+                {null, List.of(), null},
+                {"A1", List.of(A1), null},
+                {"a1, A2", List.of(A1, A2), null},
+                {"A1 A2", List.of(A1, A2), null},
+                {"A2 27,50 a1", List.of(A2, AA50, A1), null},
+                {"A,X,W?", List.of(), "Couldn't parse slot addresses: \"A,X,W?\""}
+        }).map(Arguments::of);
     }
 }

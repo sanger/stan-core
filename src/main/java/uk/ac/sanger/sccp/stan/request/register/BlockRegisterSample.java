@@ -1,17 +1,21 @@
 package uk.ac.sanger.sccp.stan.request.register;
 
+import uk.ac.sanger.sccp.stan.model.Address;
 import uk.ac.sanger.sccp.stan.model.LifeStage;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Objects;
 
 import static uk.ac.sanger.sccp.utils.BasicUtils.describe;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullToEmpty;
 
 /**
  * A sample inside a block being registered.
  * @author dr6
  */
 public class BlockRegisterSample {
+    private List<Address> addresses = List.of();
     private String donorIdentifier;
     private LifeStage lifeStage;
     private String hmdmc;
@@ -25,6 +29,15 @@ public class BlockRegisterSample {
     private boolean existingTissue;
     private LocalDate sampleCollectionDate;
     private String bioRiskCode;
+
+    /** The addresses of slots containing the sample */
+    public List<Address> getAddresses() {
+        return this.addresses;
+    }
+
+    public void setAddresses(List<Address> addresses) {
+        this.addresses = nullToEmpty(addresses);
+    }
 
     /** The string to use as the donor name. */
     public String getDonorIdentifier() {
@@ -146,6 +159,7 @@ public class BlockRegisterSample {
     @Override
     public String toString() {
         return describe(this)
+                .add("addresses", addresses)
                 .add("donorIdentifier", donorIdentifier)
                 .add("lifeStage", lifeStage)
                 .add("hmdmc", hmdmc)
@@ -169,6 +183,7 @@ public class BlockRegisterSample {
         if (o == null || o.getClass() != this.getClass()) return false;
         BlockRegisterSample that = (BlockRegisterSample) o;
         return (this.existingTissue == that.existingTissue
+                && Objects.equals(this.addresses, that.addresses)
                 && Objects.equals(this.donorIdentifier, that.donorIdentifier)
                 && Objects.equals(this.lifeStage, that.lifeStage)
                 && Objects.equals(this.hmdmc, that.hmdmc)
@@ -186,7 +201,7 @@ public class BlockRegisterSample {
 
     @Override
     public int hashCode() {
-        return Objects.hash(donorIdentifier, lifeStage, hmdmc, tissueType, spatialLocation, replicateNumber,
+        return Objects.hash(addresses, donorIdentifier, lifeStage, hmdmc, tissueType, spatialLocation, replicateNumber,
                 externalIdentifier, highestSection, species, cellClass, existingTissue, sampleCollectionDate,
                 bioRiskCode);
     }
