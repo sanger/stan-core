@@ -2421,7 +2421,7 @@ type Mutation {
     """Log out; end the current login session."""
     logout: String
     """Register blocks of tissue."""
-    register(request: BlockRegisterRequest!): RegisterResult!
+    registerBlocks(request: BlockRegisterRequest!): RegisterResult!
     """Register sections of tissue."""
     registerSections(request: SectionRegisterRequest): RegisterResult!
     """Record planned operations."""

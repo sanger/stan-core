@@ -23,19 +23,19 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 @Service
 public class FileRegisterServiceImp implements FileRegisterService {
     private final IRegisterService<SectionRegisterRequest> sectionRegisterService;
-    private final IRegisterService<RegisterRequest> blockRegisterService;
+    private final IRegisterService<BlockRegisterRequest> blockRegisterService;
     private final IRegisterService<OriginalSampleRegisterRequest> originalSampleRegisterService;
     private final MultipartFileReader<SectionRegisterRequest> sectionFileReader;
-    private final MultipartFileReader<RegisterRequest> blockFileReader;
+    private final MultipartFileReader<BlockRegisterRequest> blockFileReader;
     private final MultipartFileReader<OriginalSampleRegisterRequest> originalSampleFileReader;
     private final Transactor transactor;
 
     @Autowired
     public FileRegisterServiceImp(IRegisterService<SectionRegisterRequest> sectionRegisterService,
-                                  IRegisterService<RegisterRequest> blockRegisterService,
+                                  IRegisterService<BlockRegisterRequest> blockRegisterService,
                                   IRegisterService<OriginalSampleRegisterRequest> originalSampleRegisterService,
                                   MultipartFileReader<SectionRegisterRequest> sectionFileReader,
-                                  MultipartFileReader<RegisterRequest> blockFileReader,
+                                  MultipartFileReader<BlockRegisterRequest> blockFileReader,
                                   MultipartFileReader<OriginalSampleRegisterRequest> originalSampleFileReader,
                                   Transactor transactor) {
         this.sectionRegisterService = sectionRegisterService;
@@ -71,11 +71,11 @@ public class FileRegisterServiceImp implements FileRegisterService {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-        if (!nullOrEmpty(ignoreExternalNames) && req instanceof RegisterRequest) {
-            updateToRemove((RegisterRequest) req, ignoreExternalNames);
+        if (!nullOrEmpty(ignoreExternalNames) && req instanceof BlockRegisterRequest) {
+            updateToRemove((BlockRegisterRequest) req, ignoreExternalNames);
         }
-        if (!nullOrEmpty(existingExternalNames) && req instanceof RegisterRequest) {
-            updateWithExisting((RegisterRequest) req, existingExternalNames);
+        if (!nullOrEmpty(existingExternalNames) && req instanceof BlockRegisterRequest) {
+            updateWithExisting((BlockRegisterRequest) req, existingExternalNames);
         }
         return transactor.transact("register", () -> service.apply(user, req));
     }
@@ -86,18 +86,23 @@ public class FileRegisterServiceImp implements FileRegisterService {
      * @param request a block register request
      * @param existingExternalNames list of known existing external names
      */
-    public void updateWithExisting(RegisterRequest request, List<String> existingExternalNames) {
-        if (nullOrEmpty(existingExternalNames) || nullOrEmpty(request.getBlocks())) {
+    public void updateWithExisting(BlockRegisterRequest request, List<String> existingExternalNames) {
+        if (request==null || nullOrEmpty(existingExternalNames) || nullOrEmpty(request.getLabware())) {
             return;
         }
         Set<String> externalNamesUC = existingExternalNames.stream()
                 .filter(Objects::nonNull)
                 .map(String::toUpperCase)
                 .collect(toSet());
-        for (BlockRegisterRequest_old block : request.getBlocks()) {
-            if (block != null && !nullOrEmpty(block.getExternalIdentifier())
-                    && externalNamesUC.contains(block.getExternalIdentifier().toUpperCase())) {
-                block.setExistingTissue(true);
+        for (BlockRegisterLabware brl : request.getLabware()) {
+            if (brl==null || brl.getSamples()==null) {
+                continue;
+            }
+            for (BlockRegisterSample brs : brl.getSamples()) {
+                if (brs != null && !nullOrEmpty(brs.getExternalIdentifier())
+                        && externalNamesUC.contains(brs.getExternalIdentifier().toUpperCase())) {
+                    brs.setExistingTissue(true);
+                }
             }
         }
     }
@@ -107,18 +112,31 @@ public class FileRegisterServiceImp implements FileRegisterService {
      * @param request block register request
      * @param externalNames external names to remove
      */
-    public void updateToRemove(RegisterRequest request, List<String> externalNames) {
-        if (nullOrEmpty(externalNames) || nullOrEmpty(request.getBlocks())) {
+    public void updateToRemove(BlockRegisterRequest request, List<String> externalNames) {
+        if (request==null || nullOrEmpty(externalNames) || nullOrEmpty(request.getLabware())) {
             return;
         }
         Set<String> ignoreUC = externalNames.stream()
                 .filter(Objects::nonNull)
                 .map(String::toUpperCase)
                 .collect(toSet());
-        List<BlockRegisterRequest_old> blocks = request.getBlocks().stream()
-                .filter(block -> block==null || block.getExternalIdentifier()==null || !ignoreUC.contains(block.getExternalIdentifier().toUpperCase()))
-                .toList();
-        request.setBlocks(blocks);
+        List<BlockRegisterLabware> brls = new ArrayList<>(request.getLabware().size());
+        for (BlockRegisterLabware brl : request.getLabware()) {
+            if (brl != null && !nullOrEmpty(brl.getSamples())) {
+                List<BlockRegisterSample> samples = brl.getSamples().stream()
+                        .filter(brs -> brs==null || brs.getExternalIdentifier()==null
+                                || !ignoreUC.contains(brs.getExternalIdentifier().toUpperCase()))
+                        .toList();
+                if (samples.isEmpty()) {
+                    continue;
+                }
+                if (samples.size() < brl.getSamples().size()) {
+                    brl.setSamples(samples);
+                }
+            }
+            brls.add(brl);
+        }
+        request.setLabware(brls);
     }
 
     @Override

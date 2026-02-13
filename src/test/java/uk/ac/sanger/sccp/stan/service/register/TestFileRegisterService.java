@@ -11,13 +11,13 @@ import uk.ac.sanger.sccp.stan.*;
 import uk.ac.sanger.sccp.stan.model.User;
 import uk.ac.sanger.sccp.stan.request.register.*;
 import uk.ac.sanger.sccp.stan.service.register.filereader.MultipartFileReader;
+import uk.ac.sanger.sccp.utils.Zip;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.BiFunction;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,13 +32,13 @@ class TestFileRegisterService {
     @Mock
     private IRegisterService<SectionRegisterRequest> mockSectionRegisterService;
     @Mock
-    private IRegisterService<RegisterRequest> mockBlockRegisterService;
+    private IRegisterService<BlockRegisterRequest> mockBlockRegisterService;
     @Mock
     private IRegisterService<OriginalSampleRegisterRequest> mockOriginalRegisterService;
     @Mock
     private MultipartFileReader<SectionRegisterRequest> mockSectionFileReader;
     @Mock
-    private MultipartFileReader<RegisterRequest> mockBlockFileReader;
+    private MultipartFileReader<BlockRegisterRequest> mockBlockFileReader;
     @Mock
     private MultipartFileReader<OriginalSampleRegisterRequest> mockOriginalFileReader;
     @Mock
@@ -52,7 +52,7 @@ class TestFileRegisterService {
     @BeforeEach
     void setup() {
         mocking = MockitoAnnotations.openMocks(this);
-        service = spy(new FileRegisterServiceImp(mockSectionRegisterService, mockBlockRegisterService,mockOriginalRegisterService,
+        service = spy(new FileRegisterServiceImp(mockSectionRegisterService, mockBlockRegisterService, mockOriginalRegisterService,
                 mockSectionFileReader, mockBlockFileReader, mockOriginalFileReader, mockTransactor));
         user = EntityFactory.getUser();
     }
@@ -93,13 +93,13 @@ class TestFileRegisterService {
         verify(fileReader).read(file);
         //noinspection unchecked,rawtypes
         verify((IRegisterService) regService).register(user, request);
-        if (request instanceof RegisterRequest && existingExt!=null) {
-            verify(service).updateWithExisting((RegisterRequest) request, existingExt);
+        if (request instanceof BlockRegisterRequest && existingExt!=null) {
+            verify(service).updateWithExisting((BlockRegisterRequest) request, existingExt);
         } else {
             verify(service, never()).updateWithExisting(any(), any());
         }
-        if (request instanceof RegisterRequest && ignoreExt!=null) {
-            verify(service).updateToRemove((RegisterRequest) request, ignoreExt);
+        if (request instanceof BlockRegisterRequest && ignoreExt!=null) {
+            verify(service).updateToRemove((BlockRegisterRequest) request, ignoreExt);
         } else {
             verify(service, never()).updateToRemove(any(), any());
         }
@@ -110,13 +110,13 @@ class TestFileRegisterService {
         return Arrays.stream(new Object[][] {
                     {new SectionRegisterRequest()},
                     {new OriginalSampleRegisterRequest()},
-                    {new RegisterRequest()},
-                    {new RegisterRequest(), List.of("Alpha1"), null},
-                    {new RegisterRequest(), null, List.of("Beta")},
-                    {new RegisterRequest(), List.of("Alpha1"), List.of("Beta")},
+                    {new BlockRegisterRequest()},
+                    {new BlockRegisterRequest(), List.of("Alpha1"), null},
+                    {new BlockRegisterRequest(), null, List.of("Beta")},
+                    {new BlockRegisterRequest(), List.of("Alpha1"), List.of("Beta")},
             }).map(arr -> arr.length < 3 ? Arrays.copyOf(arr, 3) : arr)
             .map(Arguments::of);
-}
+    }
 
     @ParameterizedTest
     @MethodSource("regArgs")
@@ -158,34 +158,43 @@ class TestFileRegisterService {
     @ValueSource(booleans={false,true})
     public void testUpdateWithExisting(boolean any) {
         String[] extNames = { null, "Alpha1", "Beta", "Alpha2" };
-        List<BlockRegisterRequest_old> blocks = Arrays.stream(extNames)
-                .map(TestFileRegisterService::blockRegWithExternalName)
-                .toList();
-        RegisterRequest request = new RegisterRequest(blocks);
+        BlockRegisterRequest request = requestWithExternalNames(extNames);
         List<String> existing = any ? List.of("ALPHA1", "alpha2") : List.of();
 
         service.updateWithExisting(request, existing);
-        IntStream.range(0, blocks.size()).forEach(i ->
-            assertEquals(any && (i==1 || i==3), blocks.get(i).isExistingTissue())
-        );
+        Zip.enumerate(streamSamples(request)).forEach((i, brs) ->
+                assertEquals(any && (i==1 || i==3), brs.isExistingTissue()));
     }
 
     @ParameterizedTest
     @ValueSource(booleans={false,true})
     public void testUpdateToRemove(boolean anyToRemove) {
         String[] extNames = { null, "Alpha1", "Beta", "Alpha2" };
-        RegisterRequest request = new RegisterRequest(Arrays.stream(extNames)
-                .map(TestFileRegisterService::blockRegWithExternalName)
-                .toList());
+        BlockRegisterRequest request = requestWithExternalNames(extNames);
         List<String> ignore = anyToRemove ? List.of("ALPHA1", "alpha2") : List.of();
         service.updateToRemove(request, ignore);
         String[] remaining = (anyToRemove ? new String[]{null, "Beta"} : extNames);
-        assertThat(request.getBlocks().stream().map(BlockRegisterRequest_old::getExternalIdentifier)).containsExactly(remaining);
+        assertThat(streamSamples(request).map(BlockRegisterSample::getExternalIdentifier)).containsExactly(remaining);
     }
 
-    private static BlockRegisterRequest_old blockRegWithExternalName(String xn) {
-        BlockRegisterRequest_old br = new BlockRegisterRequest_old();
-        br.setExternalIdentifier(xn);
-        return br;
+    private static BlockRegisterRequest requestWithExternalNames(String... xns) {
+        List<BlockRegisterSample> brss = Arrays.stream(xns)
+                .map(TestFileRegisterService::brsWithExternalName)
+                .toList();
+        BlockRegisterLabware brl = new BlockRegisterLabware();
+        brl.setSamples(brss);
+        BlockRegisterRequest request = new BlockRegisterRequest();
+        request.setLabware(List.of(brl));
+        return request;
+    }
+
+    private static Stream<BlockRegisterSample> streamSamples(BlockRegisterRequest request) {
+        return request.getLabware().stream().flatMap(brl -> brl.getSamples().stream());
+    }
+
+    private static BlockRegisterSample brsWithExternalName(String xn) {
+        BlockRegisterSample brs = new BlockRegisterSample();
+        brs.setExternalIdentifier(xn);
+        return brs;
     }
 }

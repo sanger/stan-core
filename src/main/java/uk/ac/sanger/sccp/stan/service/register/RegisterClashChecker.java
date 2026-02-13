@@ -33,6 +33,22 @@ public class RegisterClashChecker {
         this.lwRepo = lwRepo;
     }
 
+    public List<RegisterClash> findClashes(BlockRegisterRequest request) {
+        Set<String> externalNames = request.getLabware().stream()
+                .flatMap(brl -> brl.getSamples().stream())
+                .filter(brs -> !brs.isExistingTissue())
+                .map(BlockRegisterSample::getExternalIdentifier)
+                .collect(toSet());
+        if (externalNames.isEmpty()) {
+            return List.of();
+        }
+        List<Tissue> existingTissues = tissueRepo.findAllByExternalNameIn(externalNames);
+        if (existingTissues.isEmpty()) {
+            return List.of();
+        }
+        return createClashInfo(existingTissues);
+    }
+
     public List<RegisterClash> findClashes(RegisterRequest request) {
         Set<String> externalNames = request.getBlocks().stream()
                 .filter(br -> !br.isExistingTissue())

@@ -44,7 +44,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 public class GraphQLMutation extends BaseGraphQLResource {
     Logger log = LoggerFactory.getLogger(GraphQLMutation.class);
     final AuthService authService;
-    final IRegisterService<RegisterRequest> registerService;
+    final IRegisterService<BlockRegisterRequest> blockRegisterService;
     final IRegisterService<SectionRegisterRequest> sectionRegisterService;
     final PlanService planService;
     final LabelPrintService labelPrintService;
@@ -115,7 +115,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     @Autowired
     public GraphQLMutation(ObjectMapper objectMapper, AuthenticationComponent authComp,
                            AuthService authService,
-                           IRegisterService<RegisterRequest> registerService,
+                           IRegisterService<BlockRegisterRequest> blockRegisterService,
                            IRegisterService<SectionRegisterRequest> sectionRegisterService,
                            PlanService planService, LabelPrintService labelPrintService,
                            ConfirmOperationService confirmOperationService,
@@ -150,7 +150,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            ProteinPanelAdminService proteinPanelAdminService) {
         super(objectMapper, authComp, userRepo);
         this.authService = authService;
-        this.registerService = registerService;
+        this.blockRegisterService = blockRegisterService;
         this.sectionRegisterService = sectionRegisterService;
         this.planService = planService;
         this.labelPrintService = labelPrintService;
@@ -245,12 +245,12 @@ public class GraphQLMutation extends BaseGraphQLResource {
         };
     }
 
-    public DataFetcher<RegisterResult> register() {
+    public DataFetcher<RegisterResult> blockRegister() {
         return dfe -> {
             User user = checkUser(dfe, User.Role.normal);
-            RegisterRequest request = arg(dfe, "request", RegisterRequest.class);
-            logRequest("Register", user, request);
-            return registerService.register(user, request);
+            BlockRegisterRequest request = arg(dfe, "request", BlockRegisterRequest.class);
+            logRequest("Block register", user, request);
+            return blockRegisterService.register(user, request);
         };
     }
 

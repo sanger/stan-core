@@ -101,7 +101,7 @@ public class TestRegisterService {
         final RegisterResult result = new RegisterResult(List.of(EntityFactory.getTube()));
         doNothing().when(registerService).updateExistingTissues(any(), any());
         doReturn(result).when(registerService).create(any(), any(), any());
-        when(mockClashChecker.findClashes(any())).thenReturn(List.of());
+        when(mockClashChecker.findClashes(any(BlockRegisterRequest.class))).thenReturn(List.of());
 
         assertSame(result, registerService.register(user, request));
 
@@ -116,7 +116,7 @@ public class TestRegisterService {
     public void testRegisterWithClashes() {
         RegisterRequest request = new RegisterRequest(List.of(new BlockRegisterRequest_old()));
         List<RegisterClash> clashes = List.of(new RegisterClash(EntityFactory.getTissue(), List.of()));
-        when(mockClashChecker.findClashes(any())).thenReturn(clashes);
+        when(mockClashChecker.findClashes(any(BlockRegisterRequest.class))).thenReturn(clashes);
         assertEquals(RegisterResult.clashes(clashes), registerService.register(user, request));
         verifyNoInteractions(mockValidationFactory);
         verifyNoInteractions(mockValidation);
