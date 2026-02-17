@@ -94,7 +94,7 @@ public class TestSlotCopyService {
         if (sourceSamples==null) {
             Tissue tissue = EntityFactory.getTissue();
             sourceSamples = IntStream.of(1, 2, 3)
-                    .mapToObj(i -> new Sample(10 + i, i, tissue, bioState))
+                    .mapToObj(i -> new Sample(10 + i, String.valueOf(i), tissue, bioState))
                     .collect(toList());
         }
         return sourceSamples;
@@ -391,8 +391,8 @@ public class TestSlotCopyService {
         BioState newBioState = changeBioState ? cdna : null;
         Tissue tissue1 = EntityFactory.getTissue();
         Tissue tissue2 = EntityFactory.makeTissue(tissue1.getDonor(), tissue1.getSpatialLocation());
-        Sample tissueSample = new Sample(1, 1, tissue1, tissue);
-        Sample cdnaSample = new Sample(2, 2, tissue2, cdna);
+        Sample tissueSample = new Sample(1, "1", tissue1, tissue);
+        Sample cdnaSample = new Sample(2, "2", tissue2, cdna);
         final Address A1 = new Address(1,1);
         final Address B1 = new Address(2,1);
         final Address C1 = new Address(3,1);
@@ -467,7 +467,7 @@ public class TestSlotCopyService {
     @Test
     public void testCreateOperation() {
         UCMap<Labware> lwMap = makeLabwareMap();
-        Sample newSample = new Sample(500, 3, EntityFactory.getTissue(), cdna);
+        Sample newSample = new Sample(500, "3", EntityFactory.getTissue(), cdna);
         final Address A1 = new Address(1,1);
         final Address B1 = new Address(2,1);
         final Address A2 = new Address(1,2);

@@ -1,9 +1,9 @@
 package uk.ac.sanger.sccp.stan.model;
 
-import com.google.common.base.MoreObjects;
-
 import javax.persistence.*;
 import java.util.Objects;
+
+import static uk.ac.sanger.sccp.utils.BasicUtils.describe;
 
 /**
  * A sample is a piece of some tissue that has some particular state and can be located inside slots in labware,
@@ -15,7 +15,7 @@ public class Sample {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
-    private Integer section;
+    private String section;
     @ManyToOne
     private Tissue tissue;
     @ManyToOne
@@ -23,7 +23,7 @@ public class Sample {
 
     public Sample() {}
 
-    public Sample(Integer id, Integer section, Tissue tissue, BioState bioState) {
+    public Sample(Integer id, String section, Tissue tissue, BioState bioState) {
         this.id = id;
         this.section = section;
         this.tissue = tissue;
@@ -38,11 +38,11 @@ public class Sample {
         this.id = id;
     }
 
-    public Integer getSection() {
+    public String getSection() {
         return this.section;
     }
 
-    public void setSection(Integer section) {
+    public void setSection(String section) {
         this.section = section;
     }
 
@@ -80,9 +80,9 @@ public class Sample {
 
     @Override
     public String toString() {
-        return MoreObjects.toStringHelper(this)
+        return describe(this)
                 .add("id", id)
-                .add("section", section)
+                .addRepr("section", section)
                 .add("tissue", tissue)
                 .add("bioState", bioState)
                 .toString();

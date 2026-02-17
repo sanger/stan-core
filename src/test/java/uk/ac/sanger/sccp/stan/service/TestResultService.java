@@ -690,7 +690,7 @@ public class TestResultService {
     @Test
     public void testCreateResults() {
         Sample sam1 = EntityFactory.getSample();
-        Sample sam2 = new Sample(sam1.getId()+1, 10, sam1.getTissue(), sam1.getBioState());
+        Sample sam2 = new Sample(sam1.getId()+1, "10", sam1.getTissue(), sam1.getBioState());
         int sam1id = sam1.getId();
         int sam2id = sam2.getId();
 
@@ -782,8 +782,8 @@ public class TestResultService {
         final Address A2 = new Address(1,2);
         LabwareType lt = EntityFactory.makeLabwareType(1,4);
         Sample sam1 = EntityFactory.getSample();
-        Sample sam2 = new Sample(sam1.getId()+1, 10, sam1.getTissue(), sam1.getBioState());
-        Sample sam3 = new Sample(sam1.getId()+2, 11, sam1.getTissue(), sam1.getBioState());
+        Sample sam2 = new Sample(sam1.getId()+1, "10", sam1.getTissue(), sam1.getBioState());
+        Sample sam3 = new Sample(sam1.getId()+2, "11", sam1.getTissue(), sam1.getBioState());
         Labware lw = EntityFactory.makeLabware(lt, sam1, sam3, sam1);
         lw.getSlot(A1).addSample(sam2);
         List<SlotMeasurementRequest> sms = List.of(

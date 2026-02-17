@@ -8,11 +8,8 @@ import uk.ac.sanger.sccp.stan.repo.ActionRepo;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
 
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.anyCollection;
@@ -51,12 +48,12 @@ public class TestAncestoriser {
         BioState bioState = EntityFactory.getBioState();
         BioState bs2 = new BioState(bioState.getId()+1, "Asleep");
         sample = new Sample(1, null, tissue, bioState);
-        sample1 = new Sample(2, 1, tissue, bioState);
-        sample2 = new Sample(3, 2, tissue, bioState);
+        sample1 = new Sample(2, "1", tissue, bioState);
+        sample2 = new Sample(3, "2", tissue, bioState);
         Tissue tissue2 = EntityFactory.makeTissue(tissue.getDonor(), EntityFactory.getSpatialLocation());
         sampleB = new Sample(4, null, tissue2, bioState);
-        sampleB1 = new Sample(5, 1, tissue2, bioState);
-        sampleB1b = new Sample(6, 1, tissue2, bs2);
+        sampleB1 = new Sample(5, "1", tissue2, bioState);
+        sampleB1b = new Sample(6, "1", tissue2, bs2);
     }
 
     @Test

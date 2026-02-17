@@ -5,6 +5,7 @@ import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import java.util.*;
 
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 import static uk.ac.sanger.sccp.utils.BasicUtils.nullToEmpty;
 
 /**
@@ -115,27 +116,37 @@ public class LabwareLabelData {
     }
 
     private void addField(Map<String, String> map, String fieldName, int index, String value) {
-        if (value!=null && !value.isEmpty()) {
+        if (!nullOrEmpty(value)) {
             map.put(fieldName+"["+index+"]", value);
         }
     }
 
     public record LabelContent(String donorName, String externalName, String tissueDesc, String replicate, String stateDesc) {
         public LabelContent() {
-            this(null, null, null, null, (String) null);
+            this(null, null, null, null, null);
         }
 
-        public LabelContent(String donorName, String externalName, String tissueDesc, String replicate, Integer section) {
-            this(donorName, externalName, tissueDesc, replicate, section==null ? null : String.format("S%03d", section));
-        }
-
-        public LabelContent(String donorName, String externalName, String tissueDesc, String replicate, Integer minSection, Integer maxSection) {
-            this(donorName, externalName,  tissueDesc, replicate, minSection==null ? null :
-                    String.format(maxSection==null || minSection.equals(maxSection) ? "S%03d" : "S%03d+", minSection));
+        public LabelContent(String donorName, String externalName, String tissueDesc, String replicate, String minSection, String maxSection) {
+            this(donorName, externalName,  tissueDesc, replicate, descSection(minSection, maxSection));
         }
 
         public LabelContent withStateDesc(String newStateDesc) {
             return new LabelContent(this.donorName, this.externalName, this.tissueDesc, this.replicate, newStateDesc);
+        }
+
+        public static LabelContent ofSection(String donorName, String externalName, String tissueDesc, String replicate, String section) {
+            String state = (nullOrEmpty(section) ? null : ("S"+section));
+            return new LabelContent(donorName, externalName, tissueDesc, replicate, state);
+        }
+
+        private static String descSection(String s1, String s2) {
+            if (nullOrEmpty(s1)) {
+                return null;
+            }
+            if (nullOrEmpty(s2) || s1.equals(s2)) {
+                return "S"+s1;
+            }
+            return "S"+s1+"+";
         }
 
         @NotNull

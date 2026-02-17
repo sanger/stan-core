@@ -36,13 +36,13 @@ public class TestBioStateReplacer {
         BioState bs0 = new BioState(1, "Regular");
         BioState bs1 = new BioState(2, "Decaf");
         Tissue tissue = EntityFactory.getTissue();
-        Sample s1 = new Sample(1, 1, tissue, bs0);
-        Sample s2 = new Sample(2, 2, tissue, bs0);
-        Sample s3 = new Sample(3, 3, tissue, bs1);
-        Sample s4 = new Sample(4, 4, tissue, bs1);
+        Sample s1 = new Sample(1, "1", tissue, bs0);
+        Sample s2 = new Sample(2, "2", tissue, bs0);
+        Sample s3 = new Sample(3, "3", tissue, bs1);
+        Sample s4 = new Sample(4, "4", tissue, bs1);
 
-        Sample s1b = new Sample(5, 1, tissue, bs1);
-        Sample s2b = new Sample(6, 2, tissue, bs1);
+        Sample s1b = new Sample(5, "1", tissue, bs1);
+        Sample s2b = new Sample(6, "2", tissue, bs1);
 
         LabwareType lt = EntityFactory.makeLabwareType(2,2);
         Labware lw = EntityFactory.makeEmptyLabware(lt);
@@ -89,21 +89,21 @@ public class TestBioStateReplacer {
         BioState bs0 = new BioState(1, "Regular");
         BioState bs1 = new BioState(2, "Decaf");
         Tissue tissue = EntityFactory.getTissue();
-        Sample sam1 = new Sample(1, 1, tissue, bs1);
+        Sample sam1 = new Sample(1, "1", tissue, bs1);
         final Map<Integer, Sample> sampleMap = new HashMap<>();
         assertSame(sam1, bsr.replaceSample(bs1, sam1, sampleMap));
         assertThat(sampleMap).isEmpty();
         verifyNoInteractions(mockSampleRepo);
 
-        Sample sam2 = new Sample(2, 2, tissue, bs0);
-        Sample sam3 = new Sample(3, 2, tissue, bs1);
+        Sample sam2 = new Sample(2, "2", tissue, bs0);
+        Sample sam3 = new Sample(3, "2", tissue, bs1);
         when(mockSampleRepo.save(any())).thenReturn(sam3);
         assertSame(sam3, bsr.replaceSample(bs1, sam2, sampleMap));
         assertThat(sampleMap).hasSize(1);
         assertSame(sam3, sampleMap.get(sam2.getId()));
         assertSame(sam3, bsr.replaceSample(bs1, sam2, sampleMap));
         verify(mockSampleRepo).save(any());
-        verify(mockSampleRepo).save(new Sample(null, 2, tissue, bs1));
+        verify(mockSampleRepo).save(new Sample(null, "2", tissue, bs1));
     }
 
 }
