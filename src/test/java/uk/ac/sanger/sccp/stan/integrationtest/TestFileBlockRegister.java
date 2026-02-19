@@ -50,7 +50,7 @@ public class TestFileBlockRegister {
     ObjectMapper objectMapper;
 
     @MockBean
-    IRegisterService<RegisterRequest> mockRegService;
+    IRegisterService<BlockRegisterRequest> mockRegService;
 
     @Test
     @Transactional
@@ -117,12 +117,12 @@ public class TestFileBlockRegister {
         when(mockRegService.register(any(), any())).thenThrow(new ValidationException(List.of("Bad reg")));
         var response = upload("testdata/block_reg_existing.xlsx", List.of("Ext17"), null, false);
         var map = objectMapper.readValue(response.getContentAsString(), Map.class);
-        ArgumentCaptor<RegisterRequest> requestCaptor = ArgumentCaptor.forClass(RegisterRequest.class);
+        ArgumentCaptor<BlockRegisterRequest> requestCaptor = ArgumentCaptor.forClass(BlockRegisterRequest.class);
         verify(mockRegService).register(eq(user), requestCaptor.capture());
-        RegisterRequest request = requestCaptor.getValue();
-        assertThat(request.getBlocks()).hasSize(2);
-        assertTrue(request.getBlocks().get(0).isExistingTissue());
-        assertFalse(request.getBlocks().get(1).isExistingTissue());
+        BlockRegisterRequest request = requestCaptor.getValue();
+        assertThat(request.getLabware()).hasSize(2);
+        assertTrue(request.getLabware().get(0).getSamples().getFirst().isExistingTissue());
+        assertFalse(request.getLabware().get(1).getSamples().getFirst().isExistingTissue());
         assertEquals("Bad reg", getProblem(map));
     }
 
@@ -139,15 +139,17 @@ public class TestFileBlockRegister {
         tester.setUser(user);
         when(mockRegService.register(any(), any())).thenThrow(new ValidationException(List.of("Bad reg")));
         var response = upload("testdata/block_reg_existing.xlsx", null, List.of("Ext17"), false);
+        System.out.printf("%n****%n%s%n****%n", response.getContentAsString());
         var map = objectMapper.readValue(response.getContentAsString(), Map.class);
-        ArgumentCaptor<RegisterRequest> requestCaptor = ArgumentCaptor.forClass(RegisterRequest.class);
+        ArgumentCaptor<BlockRegisterRequest> requestCaptor = ArgumentCaptor.forClass(BlockRegisterRequest.class);
         verify(mockRegService).register(eq(user), requestCaptor.capture());
-        RegisterRequest request = requestCaptor.getValue();
-        assertThat(request.getBlocks()).hasSize(1);
-        BlockRegisterRequest_old br = request.getBlocks().getFirst();
-        assertEquals("EXT18", br.getExternalIdentifier());
+        BlockRegisterRequest request = requestCaptor.getValue();
+        assertThat(request.getLabware()).hasSize(1);
+        BlockRegisterLabware brl = request.getLabware().getFirst();
+        BlockRegisterSample brs = brl.getSamples().getFirst();
+        assertEquals("EXT18", brs.getExternalIdentifier());
         assertEquals("Bad reg", getProblem(map));
-        assertEquals("risk1", br.getBioRiskCode());
+        assertEquals("risk1", brs.getBioRiskCode());
     }
 
     private MockHttpServletResponse upload(String filename) throws Exception {
