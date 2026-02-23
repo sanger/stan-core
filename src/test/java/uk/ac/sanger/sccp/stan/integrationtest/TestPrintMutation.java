@@ -67,9 +67,9 @@ public class TestPrintMutation {
                 lw.getLabwareType().getLabelType(),
                 List.of(new LabwareLabelData(lw.getBarcode(), lw.getExternalBarcode(), tissue.getMedium().getName(), "2021-03-17",
                         List.of(
-                                new LabwareLabelData.LabelContent(donorName, tissue.getExternalName(), tissueDesc, replicate, 1),
-                                new LabwareLabelData.LabelContent(donorName, tissue.getExternalName(), tissueDesc, replicate, 2),
-                                new LabwareLabelData.LabelContent(donorName, tissue.getExternalName(), tissueDesc, replicate, 3),
+                                LabwareLabelData.LabelContent.ofSection(donorName, tissue.getExternalName(), tissueDesc, replicate, "1"),
+                                LabwareLabelData.LabelContent.ofSection(donorName, tissue.getExternalName(), tissueDesc, replicate, "2"),
+                                LabwareLabelData.LabelContent.ofSection(donorName, tissue.getExternalName(), tissueDesc, replicate, "3"),
                                 new LabwareLabelData.LabelContent(donorName, tissue.getExternalName(), tissueDesc, replicate, "RNA")
                         ), Map.of("externalName", tissue.getExternalName()))
                 ))
@@ -82,9 +82,9 @@ public class TestPrintMutation {
 
         assertNotNull(record.getPrinted());
         assertNotNull(record.getId());
-        assertEquals(record.getLabware().getId(), lw.getId());
-        assertEquals(record.getPrinter().getId(), printer.getId());
-        assertEquals(record.getUser().getUsername(), "dr6");
+        assertEquals(lw.getId(), record.getLabware().getId());
+        assertEquals(printer.getId(), record.getPrinter().getId());
+        assertEquals("dr6", record.getUser().getUsername());
     }
 
 

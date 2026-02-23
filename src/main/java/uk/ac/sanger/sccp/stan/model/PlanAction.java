@@ -1,9 +1,9 @@
 package uk.ac.sanger.sccp.stan.model;
 
-import com.google.common.base.MoreObjects;
-
 import javax.persistence.*;
 import java.util.Objects;
+
+import static uk.ac.sanger.sccp.utils.BasicUtils.describe;
 
 /**
  * A planned action inside a planned operation.
@@ -26,7 +26,7 @@ public class PlanAction {
     private Slot destination;
     @ManyToOne
     private Sample sample;
-    private Integer newSection;
+    private String newSection;
     private String sampleThickness;
     @ManyToOne
     private BioState newBioState;
@@ -38,7 +38,7 @@ public class PlanAction {
     }
 
     public PlanAction(Integer id, Integer planOperationId, Slot source, Slot destination, Sample sample,
-                      Integer newSection, String sampleThickness, BioState newBioState) {
+                      String newSection, String sampleThickness, BioState newBioState) {
         this.id = id;
         this.planOperationId = planOperationId;
         this.source = source;
@@ -89,11 +89,11 @@ public class PlanAction {
         this.sample = sample;
     }
 
-    public Integer getNewSection() {
+    public String getNewSection() {
         return this.newSection;
     }
 
-    public void setNewSection(Integer section) {
+    public void setNewSection(String section) {
         this.newSection = section;
     }
 
@@ -135,13 +135,13 @@ public class PlanAction {
 
     @Override
     public String toString() {
-        return MoreObjects.toStringHelper(this)
+        return describe(this)
                 .add("id", id)
                 .add("planOperationId", planOperationId)
                 .add("source", source)
                 .add("destination", destination)
                 .add("sample", sample)
-                .add("newSection", newSection)
+                .addRepr("newSection", newSection)
                 .add("sampleThickness", sampleThickness)
                 .add("newBioState", newBioState)
                 .toString();

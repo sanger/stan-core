@@ -186,7 +186,7 @@ public class TestFindService {
 
     static Stream<Labware> findByLabwareBarcodeArgs() {
         Sample sample1 = EntityFactory.getSample();
-        Sample sample2 = new Sample(sample1.getId()+1, 8, sample1.getTissue(), sample1.getBioState());
+        Sample sample2 = new Sample(sample1.getId()+1, "8", sample1.getTissue(), sample1.getBioState());
         LabwareType lt1 = EntityFactory.getTubeType();
         Labware lwWithMultipleSamplesInOneSlot = EntityFactory.makeEmptyLabware(lt1);
         lwWithMultipleSamplesInOneSlot.getFirstSlot().getSamples().addAll(List.of(sample1, sample2));
@@ -215,9 +215,9 @@ public class TestFindService {
 
         Sample[] samples = {
                 new Sample(100, null, tissue1, bioState),
-                new Sample(101, 1, tissue1, bioState),
-                new Sample(102, 2, tissue2, bioState),
-                new Sample(103, 3, tissue3, bioState)
+                new Sample(101, "1", tissue1, bioState),
+                new Sample(102, "2", tissue2, bioState),
+                new Sample(103, "3", tissue3, bioState)
         };
         LabwareType lt1 = EntityFactory.getTubeType();
         LabwareType lt2 = EntityFactory.makeLabwareType(1, 2);
@@ -387,7 +387,7 @@ public class TestFindService {
         Donor donor2 = new Donor(null, "DONOR2", LifeStage.fetal, hamster);
         Tissue tissue2 = new Tissue(201, "TISSUE2", "4", sl2, donor2, tissue1.getMedium(),
                 tissue1.getFixative(), null, tissue1.getHmdmc(), null, null);
-        Sample sample2 = new Sample(202, 2, tissue2, EntityFactory.getBioState());
+        Sample sample2 = new Sample(202, "2", tissue2, EntityFactory.getBioState());
 
         Project pr = new Project(1, "project", true);
         CostCode cc = new CostCode(1, "cc1");
@@ -457,7 +457,7 @@ public class TestFindService {
         LabwareType lt = EntityFactory.makeLabwareType(1, 2);
         final Tissue tissue = EntityFactory.getTissue();
         final BioState bs = EntityFactory.getBioState();
-        Sample[] samples = IntStream.range(0,2).mapToObj(i -> new Sample(10+i, 1+i, tissue, bs)).toArray(Sample[]::new);
+        Sample[] samples = IntStream.range(0,2).mapToObj(i -> new Sample(10+i, String.valueOf(1+i), tissue, bs)).toArray(Sample[]::new);
         Labware[] labware = IntStream.range(0,2).mapToObj(i -> EntityFactory.makeLabware(lt, samples)).toArray(Labware[]::new);
         List<LabwareSample> lss = Arrays.stream(samples).flatMap(
                 sam -> Arrays.stream(labware).map(lw -> new LabwareSample(lw, sam, Set.of()))
@@ -489,7 +489,7 @@ public class TestFindService {
         Tissue tissue = EntityFactory.getTissue();
         BioState bs = EntityFactory.getBioState();
         Sample[] samples = IntStream.range(0,2)
-                .mapToObj(i -> new Sample(10+i, 1+i, tissue, bs))
+                .mapToObj(i -> new Sample(10+i, String.valueOf(1+i), tissue, bs))
                 .toArray(Sample[]::new);
         List<LabwareSample> lss = Arrays.stream(labware)
                 .flatMap(lw -> Arrays.stream(samples)

@@ -688,4 +688,20 @@ public class BasicUtils {
     public static <E> Iterable<E> chain(Iterable<? extends E> iter1, Iterable<? extends E> iter2) {
         return () -> Stream.concat(stream(iter1), stream(iter2)).iterator();
     }
+
+    /**
+     * Compares strings in such a way that digit sequences of different lengths are sorted according to their
+     * numerical values.
+     * For instance, {@code "Alpha 9 beta"} will precede {@code "Alpha 10 beta"}
+     * It doesn't check for minus signs, because they are
+     * just as likely to be hyphens.
+     */
+    public static int compareNumberStrings(String a, String b) {
+        return StringUtils.compareNumberStrings(a, b);
+    }
+
+    /** Comparator to sort number strings */
+    public static Comparator<String> numberStringComparator() {
+        return BasicUtils::compareNumberStrings;
+    }
 }

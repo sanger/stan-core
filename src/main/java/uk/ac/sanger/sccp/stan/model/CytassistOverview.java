@@ -15,7 +15,7 @@ public class CytassistOverview {
     private Integer id;
     private String workNumber;
     private Integer sampleId;
-    private Integer section;
+    private String section;
     private String sourceBarcode;
     private String sourceSlotAddress;
     private String sourceLabwareType;
@@ -73,11 +73,11 @@ public class CytassistOverview {
         this.sampleId = sampleId;
     }
 
-    public Integer getSection() {
+    public String getSection() {
         return this.section;
     }
 
-    public void setSection(Integer section) {
+    public void setSection(String section) {
         this.section = section;
     }
 

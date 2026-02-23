@@ -18,6 +18,7 @@ import java.util.*;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
@@ -187,9 +188,8 @@ public class TestConfirmOperationService {
             when(mockOperationService.createOperation(any(), any(), any(), any())).thenReturn(op);
             doAnswer(invocation -> {
                 PlanAction pa = invocation.getArgument(0);
-                int section = pa.getNewSection();
-                return sections.stream().filter(sec -> sec.getSection()==section)
-                        .findAny()
+                String section = requireNonNull(pa.getNewSection(), "No section is null");
+                return sections.stream().filter(sec -> section.equalsIgnoreCase(sec.getSection()))                        .findAny()
                         .orElseThrow();
             }).when(service).getOrCreateSample(any(), any());
         } else {
@@ -230,9 +230,9 @@ public class TestConfirmOperationService {
         Sample sample = new Sample(50, null, EntityFactory.getTissue(), EntityFactory.getBioState());
         Sample[] sections = {
                 null,
-                new Sample(51, 1, sample.getTissue(), sample.getBioState()),
-                new Sample(52, 2, sample.getTissue(), sample.getBioState()),
-                new Sample(53, 3, sample.getTissue(), sample.getBioState()),
+                new Sample(51, "1", sample.getTissue(), sample.getBioState()),
+                new Sample(52, "2", sample.getTissue(), sample.getBioState()),
+                new Sample(53, "3", sample.getTissue(), sample.getBioState()),
         };
         Labware source = EntityFactory.makeLabware(EntityFactory.getTubeType(), sample);
         final Slot srcSlot = source.getFirstSlot();
@@ -245,13 +245,13 @@ public class TestConfirmOperationService {
                 new ConfirmOperationLabware(dests[0].getBarcode()),
                 new ConfirmOperationLabware(dests[1].getBarcode(), true, null, null),
                 new ConfirmOperationLabware(dests[2].getBarcode(), false,
-                        List.of(new CancelPlanAction(A1, sample.getId(), 2), new CancelPlanAction(A2, sample.getId(), 3)),
+                        List.of(new CancelPlanAction(A1, sample.getId(), "2"), new CancelPlanAction(A2, sample.getId(), "3")),
                         null
                 ),
                 new ConfirmOperationLabware(dests[3].getBarcode(), false,
-                        List.of(new CancelPlanAction(A1, sample.getId(), 1),
-                                new CancelPlanAction(A1, sample.getId(), 2),
-                                new CancelPlanAction(A2, sample.getId(), 3)),
+                        List.of(new CancelPlanAction(A1, sample.getId(), "1"),
+                                new CancelPlanAction(A1, sample.getId(), "2"),
+                                new CancelPlanAction(A2, sample.getId(), "3")),
                         null
                 )
         };
@@ -259,10 +259,10 @@ public class TestConfirmOperationService {
 
         List<?>[] planActions = Arrays.stream(dests)
                 .map(dest -> List.of(
-                        new PlanAction(20, 10, srcSlot, dest.getSlot(A1), sample, 1, "4", null),
-                        new PlanAction(21, 10, srcSlot, dest.getSlot(A1), sample, 2, null, null),
-                        new PlanAction(22, 10, srcSlot, dest.getSlot(A2), sample, 3, "7", null),
-                        new PlanAction(23, 10, srcSlot, otherSlot, sample, 4, null, null)
+                        new PlanAction(20, 10, srcSlot, dest.getSlot(A1), sample, "1", "4", null),
+                        new PlanAction(21, 10, srcSlot, dest.getSlot(A1), sample, "2", null, null),
+                        new PlanAction(22, 10, srcSlot, dest.getSlot(A2), sample, "3", "7", null),
+                        new PlanAction(23, 10, srcSlot, otherSlot, sample, "4", null, null)
                 ))
                 .toArray(List[]::new);
 
@@ -314,7 +314,7 @@ public class TestConfirmOperationService {
 
         assertSame(expectedSample, service.getOrCreateSample(planAction, slot));
         if (creates) {
-            Integer newSection = planAction.getNewSection();
+            String newSection = planAction.getNewSection();
             if (newSection==null) {
                 newSection = planAction.getSample().getSection();
             }
@@ -322,14 +322,16 @@ public class TestConfirmOperationService {
             if (newBioState==null) {
                 newBioState = planAction.getSample().getBioState();
             }
-            verify(mockSampleRepo).save(makeSample(null, newSection, planAction.getSample().getTissue(), newBioState));
+            Tissue tissue = planAction.getSample().getTissue();
+            verify(mockSampleRepo).save(new Sample(null, newSection, tissue, newBioState));
         } else {
             verifyNoInteractions(mockSampleRepo);
         }
     }
 
     private static Sample makeSample(Integer id, Integer section, Tissue tissue, BioState bioState) {
-        return new Sample(id, section, tissue, bioState);
+        String sectionString = (section==null ? null : section.toString());
+        return new Sample(id, sectionString, tissue, bioState);
     }
 
     static Stream<Arguments> getOrCreateSampleArguments() {
@@ -350,22 +352,22 @@ public class TestConfirmOperationService {
         return Stream.of(
                 Arguments.of(new PlanAction(null, null, sourceSlot, emptySlot, blockSample, null, null, null),
                         emptySlot, blockSample, false),
-                Arguments.of(new PlanAction(null, null, sourceSlot, emptySlot, blockSample, 3, null, null),
+                Arguments.of(new PlanAction(null, null, sourceSlot, emptySlot, blockSample, "3", null, null),
                         emptySlot, newSection, true),
-                Arguments.of(new PlanAction(null, null, sourceSlot, populousSlot, blockSample, 3, null, null),
+                Arguments.of(new PlanAction(null, null, sourceSlot, populousSlot, blockSample, "3", null, null),
                         populousSlot, newSection, true),
-                Arguments.of(new PlanAction(null, null, sourceSlot, populousSlot, blockSample, 1, null, null),
+                Arguments.of(new PlanAction(null, null, sourceSlot, populousSlot, blockSample, "1", null, null),
                         populousSlot, sections.get(1), false),
-                Arguments.of(new PlanAction(null, null, sourceSlot, populousSlot, blockSample, 2, null, null),
+                Arguments.of(new PlanAction(null, null, sourceSlot, populousSlot, blockSample, "2", null, null),
                         populousSlot, sections.get(2), false),
-                Arguments.of(new PlanAction(null, null, sourceSlot, populousSlot, sections.get(1), 1, null, null),
+                Arguments.of(new PlanAction(null, null, sourceSlot, populousSlot, sections.get(1), "1", null, null),
                         populousSlot, sections.get(1), false),
-                Arguments.of(new PlanAction(null, null, sourceSlot, emptySlot, sections.get(1), 3, null, null),
+                Arguments.of(new PlanAction(null, null, sourceSlot, emptySlot, sections.get(1), "3", null, null),
                         emptySlot, newSection, true),
 
                 Arguments.of(new PlanAction(null, null, sourceSlot, emptySlot, blockSample, null, null, rna),
                         emptySlot, newSection, true),
-                Arguments.of(new PlanAction(null, null, sourceSlot, emptySlot, blockSample, 17, null, rna),
+                Arguments.of(new PlanAction(null, null, sourceSlot, emptySlot, blockSample, "17", null, rna),
                         emptySlot, newSection, true)
         );
     }

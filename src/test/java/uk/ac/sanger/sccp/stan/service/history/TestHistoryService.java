@@ -116,7 +116,7 @@ public class TestHistoryService {
         History history = new History();
         Sample sample = EntityFactory.getSample();
         when(mockSampleRepo.findById(sample.getId())).thenReturn(Optional.of(sample));
-        Sample sample2 = new Sample(sample.getId()+1, 10, sample.getTissue(), sample.getBioState());
+        Sample sample2 = new Sample(sample.getId()+1, "10", sample.getTissue(), sample.getBioState());
         List<Sample> samples = List.of(sample, sample2);
         when(mockSampleRepo.findAllByTissueIdIn(List.of(sample.getTissue().getId()))).thenReturn(samples);
         doReturn(history).when(service).getHistoryForSamples(samples);
@@ -140,7 +140,7 @@ public class TestHistoryService {
         } else {
             when(mockTissueRepo.getAllByExternalName(tissue.getExternalName())).thenReturn(List.of(tissue));
         }
-        Sample sample2 = new Sample(sample.getId()+1, 10, sample.getTissue(), sample.getBioState());
+        Sample sample2 = new Sample(sample.getId()+1, "10", sample.getTissue(), sample.getBioState());
         List<Sample> samples = List.of(sample, sample2);
         when(mockSampleRepo.findAllByTissueIdIn(List.of(tissue.getId()))).thenReturn(samples);
         doReturn(history).when(service).getHistoryForSamples(samples);
@@ -157,7 +157,7 @@ public class TestHistoryService {
         Tissue tissue2 = EntityFactory.makeTissue(donor, EntityFactory.getSpatialLocation());
         when(mockTissueRepo.findByDonorId(donor.getId())).thenReturn(List.of(tissue, tissue2));
         when(mockDonorRepo.getByDonorName(donor.getDonorName())).thenReturn(donor);
-        Sample sample2 = new Sample(sample.getId()+1, 10, tissue2, sample.getBioState());
+        Sample sample2 = new Sample(sample.getId()+1, "10", tissue2, sample.getBioState());
         List<Sample> samples = List.of(sample, sample2);
         when(mockSampleRepo.findAllByTissueIdIn(List.of(tissue.getId(), tissue2.getId()))).thenReturn(samples);
         doReturn(history).when(service).getHistoryForSamples(samples);
@@ -171,8 +171,8 @@ public class TestHistoryService {
         Sample sample = EntityFactory.getSample();
         Tissue tissue = sample.getTissue();
         Tissue tissue2 = EntityFactory.makeTissue(tissue.getDonor(), EntityFactory.getSpatialLocation());
-        Sample sample2 = new Sample(sample.getId()+1, 10, tissue2, sample.getBioState());
-        Sample sample3 = new Sample(sample2.getId()+1, 11, tissue2, sample.getBioState());
+        Sample sample2 = new Sample(sample.getId()+1, "10", tissue2, sample.getBioState());
+        Sample sample3 = new Sample(sample2.getId()+1, "11", tissue2, sample.getBioState());
         LabwareType lt = EntityFactory.makeLabwareType(1,2);
         Labware lw = EntityFactory.makeLabware(lt, sample, sample2);
         when(mockLwRepo.getByBarcode(lw.getBarcode())).thenReturn(lw);
@@ -348,7 +348,7 @@ public class TestHistoryService {
         Tissue tissue = EntityFactory.getTissue();
         BioState bs = EntityFactory.getBioState();
         Sample[] samples = IntStream.range(1, 7)
-                .mapToObj(i -> new Sample(i, 10+i, tissue, bs))
+                .mapToObj(i -> new Sample(i, String.valueOf(10+i), tissue, bs))
                 .toArray(Sample[]::new);
         Labware lw1 = EntityFactory.makeEmptyLabware(lt);
         lw1.getFirstSlot().getSamples().addAll(List.of(samples[0], samples[1]));
@@ -519,7 +519,7 @@ public class TestHistoryService {
                     Donor donor = new Donor(i, "donor"+i, null, null);
                     Tissue tissue = EntityFactory.makeTissue(donor, null);
                     tissue.setId(10+i);
-                    return new Sample(100+i, i, tissue, null);
+                    return new Sample(100+i, String.valueOf(i), tissue, null);
                 })
                 .toArray(Sample[]::new);
         LabwareType lt = EntityFactory.makeLabwareType(1, 2);
@@ -742,7 +742,7 @@ public class TestHistoryService {
     @Test
     public void testGetHistoryForSamples() {
         Sample sample = EntityFactory.getSample();
-        Sample sample2 = new Sample(sample.getId() + 1, 10, sample.getTissue(), sample.getBioState());
+        Sample sample2 = new Sample(sample.getId() + 1, "10", sample.getTissue(), sample.getBioState());
         List<Sample> samples = List.of(sample, sample2);
         Set<Integer> sampleIds = Set.of(sample.getId(), sample2.getId());
         List<Operation> ops = List.of(new Operation(100, null, null, null, null));
@@ -868,7 +868,7 @@ public class TestHistoryService {
             samples = new Sample[3];
             samples[0] = sample;
             for (int i = 1; i < samples.length; ++i) {
-                samples[i] = new Sample(sample.getId()+i, 10+i, sample.getTissue(), sample.getBioState());
+                samples[i] = new Sample(sample.getId()+i, String.valueOf(10+i), sample.getTissue(), sample.getBioState());
             }
         }
     }

@@ -79,7 +79,7 @@ public class TestReleaseService {
         mockWorkService = mock(WorkService.class);
 
         sample = EntityFactory.getSample();
-        sample1 = new Sample(sample.getId()+1, 7, sample.getTissue(), EntityFactory.getBioState());
+        sample1 = new Sample(sample.getId()+1, "7", sample.getTissue(), EntityFactory.getBioState());
         labwareType = EntityFactory.makeLabwareType(1,4);
         otherRecs = List.of(new ReleaseRecipient(7, "ford"));
 

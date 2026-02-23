@@ -13,18 +13,14 @@ import java.util.Objects;
 public class CancelPlanAction {
     private Address destinationAddress;
     private Integer sampleId;
-    private Integer newSection;
+    private String newSection;
 
     public CancelPlanAction() {}
 
-    public CancelPlanAction(Address destinationAddress, Integer sampleId, Integer newSection) {
+    public CancelPlanAction(Address destinationAddress, Integer sampleId, String newSection) {
         this.destinationAddress = destinationAddress;
         this.sampleId = sampleId;
         this.newSection = newSection;
-    }
-
-    public CancelPlanAction(PlanAction planAction) {
-        this(planAction.getDestination().getAddress(), planAction.getSample().getId(), planAction.getNewSection());
     }
 
     public Address getDestinationAddress() {
@@ -43,11 +39,11 @@ public class CancelPlanAction {
         this.sampleId = sampleId;
     }
 
-    public Integer getNewSection() {
+    public String getNewSection() {
         return this.newSection;
     }
 
-    public void setNewSection(Integer newSection) {
+    public void setNewSection(String newSection) {
         this.newSection = newSection;
     }
 
@@ -71,7 +67,7 @@ public class CancelPlanAction {
         return BasicUtils.describe("CancelPlanAction")
                 .add("destinationAddress", destinationAddress)
                 .add("sampleId", sampleId)
-                .add("newSection", newSection)
+                .addRepr("newSection", newSection)
                 .toString();
     }
 

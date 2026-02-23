@@ -1,6 +1,5 @@
 package uk.ac.sanger.sccp.stan.service;
 
-import com.google.common.collect.Streams;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -11,6 +10,7 @@ import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.service.LabwareService.SampleBioRisk;
+import uk.ac.sanger.sccp.utils.Zip;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityNotFoundException;
@@ -136,13 +136,11 @@ public class LabwareServiceTest {
         assertThat(savedLabware).hasSize(1).contains(lw);
         assertThat(lw.getSlots()).hasSize(6);
         assertThat(savedSlots).hasSameSizeAs(lw.getSlots()).hasSameElementsAs(lw.getSlots());
-        //noinspection UnstableApiUsage
-        Streams.forEachPair(Address.stream(lt.getNumRows(), lt.getNumColumns()), lw.getSlots().stream(),
-                (address, slot) -> {
-                    assertEquals(address, slot.getAddress());
-                    assertEquals(slot.getLabwareId(), lw.getId());
-                    assertNotNull(slot.getId());
-                });
+        Zip.of(Address.stream(lt.getNumRows(), lt.getNumColumns()), lw.getSlots().stream()).forEach((address, slot) -> {
+            assertEquals(address, slot.getAddress());
+            assertEquals(slot.getLabwareId(), lw.getId());
+            assertNotNull(slot.getId());
+        });
     }
 
     @Test
@@ -156,8 +154,7 @@ public class LabwareServiceTest {
         final Address A1 = new Address(1,1);
         final Address A2 = new Address(1,2);
         final List<Slot> allSlots = new ArrayList<>(6);
-        //noinspection UnstableApiUsage
-        Streams.forEachPair(lws.stream(), barcodes.stream(), (lw, bc) -> {
+        Zip.of(lws.stream(), barcodes.stream()).forEach((lw, bc) -> {
             assertEquals(lw.getBarcode(), bc);
             assertThat(lw.getSlots()).hasSize(2);
             assertEquals(lw.getFirstSlot().getAddress(), A1);
@@ -183,7 +180,7 @@ public class LabwareServiceTest {
     @Test
     public void testFindBySample() {
         Sample sample1 = EntityFactory.getSample();
-        Sample sample2 = new Sample(sample1.getId() + 1, 100, sample1.getTissue(), sample1.getBioState());
+        Sample sample2 = new Sample(sample1.getId() + 1, "100", sample1.getTissue(), sample1.getBioState());
 
         LabwareType lt = EntityFactory.getTubeType();
         LabwareType lt2 = EntityFactory.makeLabwareType(1, 2);
@@ -220,9 +217,9 @@ public class LabwareServiceTest {
     @Test
     public void testCalculateLabelType() {
         Sample sample1 = EntityFactory.getSample();
-        Sample sample2 = new Sample(sample1.getId() + 1, 100, sample1.getTissue(), sample1.getBioState());
-        Sample sample3 = new Sample(sample1.getId() + 2, 100, sample1.getTissue(), sample1.getBioState());
-        Sample sample4 = new Sample(sample1.getId() + 3, 100, sample1.getTissue(), sample1.getBioState());
+        Sample sample2 = new Sample(sample1.getId() + 1, "100", sample1.getTissue(), sample1.getBioState());
+        Sample sample3 = new Sample(sample1.getId() + 2, "100", sample1.getTissue(), sample1.getBioState());
+        Sample sample4 = new Sample(sample1.getId() + 3, "100", sample1.getTissue(), sample1.getBioState());
 
         LabelType slideLabel = new LabelType(51, "slide");
         LabelType fourSlotLabel = new LabelType(50, "4slotslide");

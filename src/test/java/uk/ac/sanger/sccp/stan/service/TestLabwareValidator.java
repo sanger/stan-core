@@ -251,7 +251,7 @@ public class TestLabwareValidator {
         testValidator(List.of(), action);
         LabwareType lt = EntityFactory.makeLabwareType(1, 2);
         Sample sample1 = EntityFactory.getSample();
-        Sample sample2 = new Sample(sample1.getId()+1, 800, sample1.getTissue(), sample1.getBioState());
+        Sample sample2 = new Sample(sample1.getId()+1, "800", sample1.getTissue(), sample1.getBioState());
         Labware goodLw = EntityFactory.makeLabware(lt, sample1);
         Labware multiSlotLw = EntityFactory.makeLabware(lt, sample1, sample1);
         Labware multiSampleLw = EntityFactory.makeEmptyLabware(lt);
@@ -269,7 +269,7 @@ public class TestLabwareValidator {
         final Runnable action = validator::validateBlock;
         testValidator(List.of(), action);
         Sample sam1 = EntityFactory.getSample();
-        Sample sam2 = new Sample(sam1.getId()+1, 800, sam1.getTissue(), sam1.getBioState());
+        Sample sam2 = new Sample(sam1.getId()+1, "800", sam1.getTissue(), sam1.getBioState());
         Labware goodLw = EntityFactory.makeBlock(sam1);
         Labware badLw = EntityFactory.makeLabware(EntityFactory.getTubeType(), sam2);
 
@@ -285,7 +285,7 @@ public class TestLabwareValidator {
         testValidator(List.of(), action);
         LabwareType lt = EntityFactory.makeLabwareType(1, 2);
         Sample sample1 = EntityFactory.getSample();
-        Sample sample2 = new Sample(sample1.getId()+1, 800, sample1.getTissue(), sample1.getBioState());
+        Sample sample2 = new Sample(sample1.getId()+1, "800", sample1.getTissue(), sample1.getBioState());
         Labware goodLw = EntityFactory.makeLabware(lt, sample1);
         goodLw.getFirstSlot().addSample(sample2); // Two samples in one slot
         Labware badLw1 = EntityFactory.makeLabware(lt, sample1, sample1); // One sample in two slots

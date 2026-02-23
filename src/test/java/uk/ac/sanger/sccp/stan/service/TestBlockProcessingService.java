@@ -646,7 +646,7 @@ public class TestBlockProcessingService {
         TissueBlockRequest request = new TissueBlockRequest(List.of(block1, block2));
 
         Sample sam1 = EntityFactory.getSample();
-        Sample sam2 = new Sample(10, 20, sam1.getTissue(), bs);
+        Sample sam2 = new Sample(10, "20", sam1.getTissue(), bs);
 
         doReturn(sam1, sam2).when(service).createSample(any(), any(), any(), any());
 

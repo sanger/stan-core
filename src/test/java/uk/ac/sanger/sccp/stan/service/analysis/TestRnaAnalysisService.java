@@ -398,7 +398,7 @@ public class TestRnaAnalysisService {
     @Test
     public void testAddMeasurements() {
         Sample sam1 = EntityFactory.getSample();
-        Sample sam2 = new Sample(sam1.getId() + 1, 6, sam1.getTissue(), sam1.getBioState());
+        Sample sam2 = new Sample(sam1.getId() + 1, "6", sam1.getTissue(), sam1.getBioState());
         LabwareType lt = EntityFactory.makeLabwareType(1, 3);
         Labware lw = EntityFactory.makeLabware(lt, sam1, sam2);
         lw.getFirstSlot().getSamples().add(sam2);
@@ -429,7 +429,7 @@ public class TestRnaAnalysisService {
     @Test
     public void testAddOpComs() {
         Sample sam1 = EntityFactory.getSample();
-        Sample sam2 = new Sample(sam1.getId() + 1, 6, sam1.getTissue(), sam1.getBioState());
+        Sample sam2 = new Sample(sam1.getId() + 1, "6", sam1.getTissue(), sam1.getBioState());
         LabwareType lt = EntityFactory.makeLabwareType(1, 3);
         Labware lw = EntityFactory.makeLabware(lt, sam1, sam2);
         lw.getFirstSlot().getSamples().add(sam2);

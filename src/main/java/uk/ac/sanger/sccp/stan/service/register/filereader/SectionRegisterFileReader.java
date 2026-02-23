@@ -37,7 +37,7 @@ public interface SectionRegisterFileReader extends MultipartFileReader<SectionRe
         Spatial_location(Integer.class, Pattern.compile("spatial\\s*location\\s*(number)?", Pattern.CASE_INSENSITIVE), true),
         Replicate_number,
         Section_external_ID,
-        Section_number(Integer.class),
+        Section_number(String.class),
         Section_thickness(String.class),
         Date_sectioned(LocalDate.class, Pattern.compile("date.*sectioned|section.*date", Pattern.CASE_INSENSITIVE|Pattern.DOTALL), false),
         Section_position(Pattern.compile("(if.+)?(section\\s+)?position|position.*slot.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL)),
