@@ -15,7 +15,7 @@ public class Sample {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
-    private Integer section;
+    private String section;
     @ManyToOne
     private Tissue tissue;
     @ManyToOne
@@ -24,7 +24,7 @@ public class Sample {
 
     public Sample() {}
 
-    public Sample(Integer id, Integer section, Tissue tissue, BioState bioState) {
+    public Sample(Integer id, String section, Tissue tissue, BioState bioState) {
         this.id = id;
         this.section = section;
         this.tissue = tissue;
@@ -39,11 +39,11 @@ public class Sample {
         this.id = id;
     }
 
-    public Integer getSection() {
+    public String getSection() {
         return this.section;
     }
 
-    public void setSection(Integer section) {
+    public void setSection(String section) {
         this.section = section;
     }
 
@@ -103,7 +103,7 @@ public class Sample {
     public String toString() {
         return describe(this)
                 .add("id", id)
-                .add("section", section)
+                .addRepr("section", section)
                 .add("tissue", tissue)
                 .add("bioState", bioState)
                 .addIfNotNull("blockHighestSection", blockHighestSection)

@@ -9,6 +9,7 @@ import uk.ac.sanger.sccp.stan.repo.PlanOperationRepo;
 import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSectionLabware.AddressCommentId;
 import uk.ac.sanger.sccp.stan.service.CommentValidationService;
+import uk.ac.sanger.sccp.stan.service.Validator;
 import uk.ac.sanger.sccp.stan.service.sanitiser.Sanitiser;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.BasicUtils;
@@ -19,8 +20,8 @@ import java.util.stream.Stream;
 
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toSet;
-import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
-import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
+import static uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmSectionServiceImp.parseSectionInt;
+import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 /**
  * @author dr6
@@ -32,16 +33,19 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
     private final WorkService workService;
     private final CommentValidationService commentValidationService;
     private final Sanitiser<String> thicknessSanitiser;
+    private final Validator<String> sectionValidator;
 
     @Autowired
     public ConfirmSectionValidationServiceImp(LabwareRepo labwareRepo, PlanOperationRepo planOpRepo,
                                               WorkService workService, CommentValidationService commentValidationService,
-                                              @Qualifier("thicknessSanitiser") Sanitiser<String> thicknessSanitiser) {
+                                              @Qualifier("thicknessSanitiser") Sanitiser<String> thicknessSanitiser,
+                                              @Qualifier("sectionValidator") Validator<String> sectionValidator) {
         this.labwareRepo = labwareRepo;
         this.planOpRepo = planOpRepo;
         this.workService = workService;
         this.commentValidationService = commentValidationService;
         this.thicknessSanitiser = thicknessSanitiser;
+        this.sectionValidator = sectionValidator;
     }
 
     @Override
@@ -195,7 +199,7 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
      */
     public void validateOperations(Collection<String> problems, List<ConfirmSectionLabware> cols,
                                    UCMap<Labware> labware, Map<Integer, PlanOperation> labwarePlans) {
-        final Map<Integer, Set<Integer>> sampleIdSections = new HashMap<>();
+        final Map<Integer, Set<String>> sampleIdSections = new HashMap<>();
         for (ConfirmSectionLabware col : cols) {
             if (col.getBarcode()==null || col.getBarcode().isEmpty()) {
                 continue;
@@ -276,7 +280,7 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
      *                         by multiple calls to this method
      */
     public void validateSections(Collection<String> problems, List<ConfirmSection> cons,
-                                 Labware lw, PlanOperation plan, final Map<Integer, Set<Integer>> sampleIdSections) {
+                                 Labware lw, PlanOperation plan, final Map<Integer, Set<String>> sampleIdSections) {
         // The expected sample ids in each address of lw
         final Map<Address, Set<Integer>> plannedSampleIds = new HashMap<>();
         // The max section id already taken from a given block (from its sample id)
@@ -313,7 +317,7 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
      */
     public void validateSection(Collection<String> problems, Labware lw, ConfirmSection con,
                                 Map<Address, Set<Integer>> plannedSampleIds, Map<Integer, Integer> sampleMaxSection,
-                                Map<Integer, Set<Integer>> sampleIdSections) {
+                                Map<Integer, Set<String>> sampleIdSections) {
         boolean ok = true;
         final LabwareType lt = lw.getLabwareType();
         if (nullOrEmpty(con.getDestinationAddresses())) {
@@ -334,7 +338,10 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
             }
         }
         final Integer sampleId = con.getSampleId();
-        final Integer section = con.getNewSection();
+        String section = emptyToNull(con.getNewSection());
+        if (section != null) {
+            section = section.toLowerCase();
+        }
         if (sampleId == null) {
             addProblem(problems, "Sample id not specified for section.");
             ok = false;
@@ -347,9 +354,11 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
         } else if (section == null) {
             addProblem(problems, "Section number not specified for section.");
             ok = false;
-        } else if (section < 0) {
-            addProblem(problems, "Section number cannot be less than zero.");
-            ok = false;
+        } else {
+            if (!sectionValidator.validate(section, s -> addProblem(problems, s))) {
+                ok = false;
+            }
+            con.setNewSection(section.toLowerCase()); // make sure section string is lowercase
         }
 
         if (!ok) {
@@ -362,7 +371,7 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
             }
         }
 
-        Set<Integer> sections = sampleIdSections.get(sampleId);
+        Set<String> sections = sampleIdSections.get(sampleId);
         if (sections == null) {
             sections = new HashSet<>();
             sections.add(section);
@@ -373,7 +382,8 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
             sections.add(section);
         }
         Integer maxSection = sampleMaxSection.get(sampleId);
-        if (maxSection != null && section != null && section <= maxSection) {
+        Integer sectionInt = parseSectionInt(section);
+        if (maxSection != null && sectionInt != null && sectionInt <= maxSection) {
             addProblem(problems, "Section numbers from sample id %s must be greater than %s.", sampleId, maxSection);
         }
     }

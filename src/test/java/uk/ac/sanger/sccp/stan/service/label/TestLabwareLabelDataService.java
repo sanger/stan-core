@@ -49,7 +49,7 @@ public class TestLabwareLabelDataService {
         Tissue tissue = EntityFactory.makeTissue(EntityFactory.getDonor(), sl);
         BioState bioState = EntityFactory.getBioState();
         Sample sample1 = new Sample(null, null, tissue, bioState);
-        Sample sample2 = new Sample(null, 5, tissue, bioState);
+        Sample sample2 = new Sample(null, "5", tissue, bioState);
         Labware lw = EntityFactory.makeEmptyLabware(EntityFactory.makeLabwareType(1, 2));
         lw.setCreated(LocalDateTime.of(2021,3,17,15,44));
         lw.getSlots().get(1).getSamples().addAll(List.of(sample1, sample2));
@@ -58,7 +58,7 @@ public class TestLabwareLabelDataService {
         LabwareLabelData actual = service.getLabelData(lw);
 
         List<LabelContent> expectedContents = Stream.of(sample1, sample2)
-                .map(sam -> new LabelContent(sam.getTissue().getDonor().getDonorName(), sam.getTissue().getExternalName(),
+                .map(sam -> LabelContent.ofSection(sam.getTissue().getDonor().getDonorName(), sam.getTissue().getExternalName(),
                         tissueString(sam.getTissue()), sam.getTissue().getReplicate(), sam.getSection()))
                 .collect(toList());
         LabwareLabelData expected = new LabwareLabelData(lw.getBarcode(), lw.getExternalBarcode(), tissue.getMedium().getName(), "2021-03-17", expectedContents,
@@ -83,26 +83,26 @@ public class TestLabwareLabelDataService {
         Tissue tissue2 = EntityFactory.makeTissue(donor2, sl2);
         BioState bioState = EntityFactory.getBioState();
         Sample sample1 = new Sample(null, null, tissue1, bioState);
-        Sample sample2 = new Sample(null, 5, tissue2, bioState);
+        Sample sample2 = new Sample(null, "5", tissue2, bioState);
         Labware labware = EntityFactory.makeEmptyLabware(EntityFactory.makeLabwareType(1, 4));
         labware.setCreated(LocalDateTime.of(2021,3,17,15,45));
         labware.setExternalBarcode("123456");
         List<Slot> slots = labware.getSlots();
         final int planId = 400;
         List<PlanAction> planActions = List.of(
-                new PlanAction(404, planId, slots.get(3), slots.get(3), sample2, 14, null, null),
+                new PlanAction(404, planId, slots.get(3), slots.get(3), sample2, "14", null, null),
                 new PlanAction(403, planId, slots.get(2), slots.get(2), sample2, null, null, null),
                 new PlanAction(401, planId, slots.get(0), slots.get(0), sample1, null, null, null),
-                new PlanAction(402, planId, slots.get(1), slots.get(1), sample1, 7, null, null)
+                new PlanAction(402, planId, slots.get(1), slots.get(1), sample1, "7", null, null)
         );
         when(mockPlanActionRepo.findAllByDestinationLabwareId(labware.getId())).thenReturn(planActions);
 
         LabwareLabelData actual = service.getLabelData(labware);
         List<LabelContent> expectedContents = List.of(
-                new LabelContent(donor1.getDonorName(), tissue1.getExternalName(), tissueString(tissue1), tissue1.getReplicate(), (String) null),
-                new LabelContent(donor1.getDonorName(), tissue1.getExternalName(), tissueString(tissue1), tissue1.getReplicate(), 7),
-                new LabelContent(donor2.getDonorName(), tissue2.getExternalName(), tissueString(tissue2), tissue2.getReplicate(), 5),
-                new LabelContent(donor2.getDonorName(), tissue2.getExternalName(), tissueString(tissue2), tissue2.getReplicate(), 14)
+                new LabelContent(donor1.getDonorName(), tissue1.getExternalName(), tissueString(tissue1), tissue1.getReplicate(), null),
+                LabelContent.ofSection(donor1.getDonorName(), tissue1.getExternalName(), tissueString(tissue1), tissue1.getReplicate(), "7"),
+                LabelContent.ofSection(donor2.getDonorName(), tissue2.getExternalName(), tissueString(tissue2), tissue2.getReplicate(), "5"),
+                LabelContent.ofSection(donor2.getDonorName(), tissue2.getExternalName(), tissueString(tissue2), tissue2.getReplicate(), "14")
         );
         assertEquals(new LabwareLabelData(labware.getBarcode(), labware.getExternalBarcode(), tissue1.getMedium().getName(), "2021-03-17", expectedContents), actual);
     }
@@ -153,7 +153,7 @@ public class TestLabwareLabelDataService {
         Tissue tissue3 = EntityFactory.makeTissue(donor3, sl3);
         BioState bs = EntityFactory.getBioState();
         Sample sample1 = new Sample(null, null, tissue1, bs);
-        Sample sample2 = new Sample(null, 12, tissue2, bs);
+        Sample sample2 = new Sample(null, "12", tissue2, bs);
         Sample sample3 = new Sample(null, null, tissue3, bs);
         Labware lw = EntityFactory.makeEmptyLabware(new LabwareType(100, LabwareType.XENIUM_NAME,
                 5, 3, EntityFactory.getLabelType(), false));
@@ -164,16 +164,16 @@ public class TestLabwareLabelDataService {
         Slot A2 = lw.getSlot(new Address(1,2));
         Slot B1 = lw.getSlot(new Address(2,1));
         List<PlanAction> planActions = List.of(
-                new PlanAction(403, planId, B1, B1, sample3, 21, null, null),
+                new PlanAction(403, planId, B1, B1, sample3, "21", null, null),
                 new PlanAction(402, planId, A2, A2, sample2, null, null, null),
-                new PlanAction(401, planId, A1, A1, sample1, 11, null, null)
+                new PlanAction(401, planId, A1, A1, sample1, "11", null, null)
         );
         when(mockPlanActionRepo.findAllByDestinationLabwareId(lw.getId())).thenReturn(planActions);
         LabwareLabelData actual = service.getLabelData(lw);
         List<LabelContent> expectedContents = List.of(
-                new LabelContent("DONOR1", tissue1.getExternalName(), tissueString(tissue1), tissue1.getReplicate(), 11),
-                new LabelContent("DONOR3", tissue3.getExternalName(), tissueString(tissue3), tissue3.getReplicate(), 21),
-                new LabelContent("DONOR2", tissue2.getExternalName(), tissueString(tissue2), tissue2.getReplicate(), 12)
+                LabelContent.ofSection("DONOR1", tissue1.getExternalName(), tissueString(tissue1), tissue1.getReplicate(), "11"),
+                LabelContent.ofSection("DONOR3", tissue3.getExternalName(), tissueString(tissue3), tissue3.getReplicate(), "21"),
+                LabelContent.ofSection("DONOR2", tissue2.getExternalName(), tissueString(tissue2), tissue2.getReplicate(), "12")
         );
         assertEquals(new LabwareLabelData(lw.getBarcode(), lw.getExternalBarcode(), tissue1.getMedium().getName(),
                 "2023-07-13", expectedContents), actual);
@@ -210,14 +210,14 @@ public class TestLabwareLabelDataService {
         SpatialLocation sl = EntityFactory.getSpatialLocation();
         BioState bs = EntityFactory.getBioState();
         Tissue[] tissues = IntStream.range(0,3).mapToObj(i -> EntityFactory.makeTissue(donor, sl)).toArray(Tissue[]::new);
-        Sample[] samples = IntStream.range(0,3).mapToObj(i -> new Sample(10+i, 20+i, tissues[i], bs)).toArray(Sample[]::new);
+        Sample[] samples = IntStream.range(0,3).mapToObj(i -> new Sample(10+i, String.valueOf(20+i), tissues[i], bs)).toArray(Sample[]::new);
         final Address A1 = new Address(1,1), A2 = new Address(1,2);
         lw.getSlot(A1).getSamples().addAll(List.of(samples[0], samples[1]));
         lw.getSlot(A2).getSamples().add(samples[2]);
 
         Map<Address, List<SimpleContent>> expected = Map.of(
-                A1, List.of(new SimpleContent(tissues[0], 20), new SimpleContent(tissues[1], 21)),
-                A2, List.of(new SimpleContent(tissues[2], 22))
+                A1, List.of(new SimpleContent(tissues[0], "20"), new SimpleContent(tissues[1], "21")),
+                A2, List.of(new SimpleContent(tissues[2], "22"))
         );
         assertEquals(expected, service.addressToSimpleContent(lw));
     }
@@ -238,26 +238,26 @@ public class TestLabwareLabelDataService {
         SpatialLocation sl = EntityFactory.getSpatialLocation();
         BioState bs = EntityFactory.getBioState();
         Tissue[] tissues = IntStream.range(0, 3).mapToObj(i -> EntityFactory.makeTissue(donor, sl)).toArray(Tissue[]::new);
-        Sample[] samples = IntStream.range(0, 3).mapToObj(i -> new Sample(10 + i, 20 + i, tissues[i], bs)).toArray(Sample[]::new);
+        Sample[] samples = IntStream.range(0, 3).mapToObj(i -> new Sample(10 + i, String.valueOf(20 + i), tissues[i], bs)).toArray(Sample[]::new);
         final Address A1 = new Address(1, 1), A2 = new Address(1, 2);
         Slot source = lw.getFirstSlot();
         List<PlanAction> planActions = List.of(
                 new PlanAction(20, 1, source, lw.getSlot(A1), samples[0]),
-                new PlanAction(21, 1, source, lw.getSlot(A1), samples[1], 400, null, null),
+                new PlanAction(21, 1, source, lw.getSlot(A1), samples[1], "400", null, null),
                 new PlanAction(22, 1, source, lw.getSlot(A2), samples[2])
         );
         when(mockPlanActionRepo.findAllByDestinationLabwareId(lw.getId())).thenReturn(planActions);
         Map<Address, List<SimpleContent>> expected = Map.of(
-                A1, List.of(new SimpleContent(tissues[0], 20), new SimpleContent(tissues[1], 400)),
-                A2, List.of(new SimpleContent(tissues[2], 22))
+                A1, List.of(new SimpleContent(tissues[0], "20"), new SimpleContent(tissues[1], "400")),
+                A2, List.of(new SimpleContent(tissues[2], "22"))
         );
         assertEquals(expected, service.addressToSimpleContent(lw));
     }
 
     @ParameterizedTest
     @MethodSource("sectionRangeArgs")
-    public void testSectionRange(List<SimpleContent> scs, Integer min, Integer max) {
-        Integer[] result = service.sectionRange(scs);
+    public void testSectionRange(List<SimpleContent> scs, String min, String max) {
+        String[] result = service.sectionRange(scs);
         assertThat(result).hasSize(2);
         assertEquals(min, result[0]);
         assertEquals(max, result[1]);
@@ -265,12 +265,12 @@ public class TestLabwareLabelDataService {
 
     static Stream<Arguments> sectionRangeArgs() {
         Tissue tissue = EntityFactory.getTissue();
-        return Arrays.stream(new Integer[][] {
+        return Arrays.stream(new String[][] {
                 { null, null },
                 { null, null, null },
-                { 1, 1, 1 },
-                { 1, null, 1, 1 },
-                { 3, 2, 6, 4, 2, 6 },
+                { "1", "1", "1" },
+                { "1", null, "1", "1" },
+                { "3", "2", "6", "4", "2", "6" },
         }).map(arr -> {
             final int len = arr.length;
             List<SimpleContent> scs = Arrays.stream(arr, 0, len-2)
@@ -287,10 +287,10 @@ public class TestLabwareLabelDataService {
         Labware lw = EntityFactory.makeEmptyLabware(makeAdhLabwareType());
         Tissue[] tissues = IntStream.range(0,4).mapToObj(i -> EntityFactory.makeTissue(donor, sl)).toArray(Tissue[]::new);
         Map<Address, List<SimpleContent>> scs = Map.of(
-                new Address(1,1), List.of(new SimpleContent(tissues[0], 1), new SimpleContent(tissues[0], 2)),
-                new Address(2,2), List.of(new SimpleContent(tissues[1], 3)),
-                new Address(3,1), List.of(new SimpleContent(tissues[2], 4)),
-                new Address(4,2), List.of(new SimpleContent(tissues[3], 5))
+                new Address(1,1), List.of(new SimpleContent(tissues[0], "1"), new SimpleContent(tissues[0], "2")),
+                new Address(2,2), List.of(new SimpleContent(tissues[1], "3")),
+                new Address(3,1), List.of(new SimpleContent(tissues[2], "4")),
+                new Address(4,2), List.of(new SimpleContent(tissues[3], "5"))
         );
         assertArrayEquals(tissues, service.checkRowBasedLayout(lw, scs));
     }
@@ -302,10 +302,10 @@ public class TestLabwareLabelDataService {
         Labware lw = EntityFactory.makeEmptyLabware(makeAdhLabwareType());
         Tissue[] tissues = IntStream.range(0,4).mapToObj(i -> EntityFactory.makeTissue(donor, sl)).toArray(Tissue[]::new);
         Map<Address, List<SimpleContent>> scs = Map.of(
-                new Address(1,1), List.of(new SimpleContent(tissues[0], 1), new SimpleContent(tissues[0], 2)),
-                new Address(2,2), List.of(new SimpleContent(tissues[1], 3)),
-                new Address(3,1), List.of(new SimpleContent(tissues[2], 4)),
-                new Address(4,2), List.of(new SimpleContent(tissues[3], 5), new SimpleContent(tissues[2], 6))
+                new Address(1,1), List.of(new SimpleContent(tissues[0], "1"), new SimpleContent(tissues[0], "2")),
+                new Address(2,2), List.of(new SimpleContent(tissues[1], "3")),
+                new Address(3,1), List.of(new SimpleContent(tissues[2], "4")),
+                new Address(4,2), List.of(new SimpleContent(tissues[3], "5"), new SimpleContent(tissues[2], "6"))
         );
 
         assertThat(assertThrows(IllegalArgumentException.class, () -> service.checkRowBasedLayout(lw, scs)))
@@ -320,10 +320,10 @@ public class TestLabwareLabelDataService {
         Labware lw = EntityFactory.makeEmptyLabware(makeAdhLabwareType());
         Tissue[] tissues = IntStream.range(0,2).mapToObj(i -> EntityFactory.makeTissue(donor, sl)).toArray(Tissue[]::new);
         Map<Address, List<SimpleContent>> scs = Map.of(
-                new Address(1,1), List.of(new SimpleContent(tissues[0], 1), new SimpleContent(tissues[0], 2)),
-                new Address(2,2), List.of(new SimpleContent(tissues[0], 3)),
-                new Address(3,1), List.of(new SimpleContent(tissues[1], 4)),
-                new Address(4,2), List.of(new SimpleContent(tissues[1], 5))
+                new Address(1,1), List.of(new SimpleContent(tissues[0], "1"), new SimpleContent(tissues[0], "2")),
+                new Address(2,2), List.of(new SimpleContent(tissues[0], "3")),
+                new Address(3,1), List.of(new SimpleContent(tissues[1], "4")),
+                new Address(4,2), List.of(new SimpleContent(tissues[1], "5"))
         );
         assertArrayEquals(tissues, service.checkDividedLayout(lw, scs));
     }
@@ -335,10 +335,10 @@ public class TestLabwareLabelDataService {
         Labware lw = EntityFactory.makeEmptyLabware(makeAdhLabwareType());
         Tissue[] tissues = IntStream.range(0,2).mapToObj(i -> EntityFactory.makeTissue(donor, sl)).toArray(Tissue[]::new);
         Map<Address, List<SimpleContent>> scs = Map.of(
-                new Address(1,1), List.of(new SimpleContent(tissues[0], 1), new SimpleContent(tissues[0], 2)),
-                new Address(2,2), List.of(new SimpleContent(tissues[0], 3)),
-                new Address(3,1), List.of(new SimpleContent(tissues[1], 4)),
-                new Address(4,2), List.of(new SimpleContent(tissues[0], 5))
+                new Address(1,1), List.of(new SimpleContent(tissues[0], "1"), new SimpleContent(tissues[0], "2")),
+                new Address(2,2), List.of(new SimpleContent(tissues[0], "3")),
+                new Address(3,1), List.of(new SimpleContent(tissues[1], "4")),
+                new Address(4,2), List.of(new SimpleContent(tissues[0], "5"))
         );
 
         assertThat(assertThrows(IllegalArgumentException.class, () -> service.checkDividedLayout(lw, scs)))
@@ -394,10 +394,10 @@ public class TestLabwareLabelDataService {
             tissues[1].setMedium(new Medium(50, "bananas"));
         }
         Map<Address, List<SimpleContent>> scs = Map.of(
-                A1, List.of(new SimpleContent(tissues[0], 1), new SimpleContent(tissues[0], 2)),
-                A2, List.of(new SimpleContent(tissues[0], 1)),
-                B1, List.of(new SimpleContent(tissues[1], 3), new SimpleContent(tissues[1], 3)),
-                D2, List.of(new SimpleContent(tissues[3], 6), new SimpleContent(tissues[3], 5))
+                A1, List.of(new SimpleContent(tissues[0], "1"), new SimpleContent(tissues[0], "2")),
+                A2, List.of(new SimpleContent(tissues[0], "1")),
+                B1, List.of(new SimpleContent(tissues[1], "3"), new SimpleContent(tissues[1], "3")),
+                D2, List.of(new SimpleContent(tissues[3], "6"), new SimpleContent(tissues[3], "5"))
         );
         doReturn(scs).when(service).addressToSimpleContent(lw);
         doReturn(tissues).when(service).checkRowBasedLayout(lw, scs);
@@ -412,10 +412,10 @@ public class TestLabwareLabelDataService {
         String[] reps = { tissues[0].getReplicate(), tissues[1].getReplicate(), null, tissues[3].getReplicate() };
 
         List<LabelContent> expectedContents = List.of(
-                new LabelContent(donorNames[0], externalNames[0], tissueStrings[0], reps[0], "S001+"),
-                new LabelContent(donorNames[0], externalNames[1], tissueStrings[1], reps[1], "S003"),
+                new LabelContent(donorNames[0], externalNames[0], tissueStrings[0], reps[0], "S1+"),
+                new LabelContent(donorNames[0], externalNames[1], tissueStrings[1], reps[1], "S3"),
                 new LabelContent(),
-                new LabelContent(donorNames[1], externalNames[3], tissueStrings[3], reps[3], "S005+")
+                new LabelContent(donorNames[1], externalNames[3], tissueStrings[3], reps[3], "S5+")
         );
         assertEquals(expectedContents, ld.getContents());
     }
@@ -475,10 +475,10 @@ public class TestLabwareLabelDataService {
             tissues[1].setMedium(new Medium(50, "bananas"));
         }
         Map<Address, List<SimpleContent>> scs = Map.of(
-                A1, List.of(new SimpleContent(tissues[0], 1), new SimpleContent(tissues[0], 2)),
-                A2, List.of(new SimpleContent(tissues[0], 1)),
-                B1, List.of(new SimpleContent(tissues[0], 7), new SimpleContent(tissues[0], 3)),
-                C2, List.of(new SimpleContent(tissues[1], 4), new SimpleContent(tissues[1], 5))
+                A1, List.of(new SimpleContent(tissues[0], "1"), new SimpleContent(tissues[0], "2")),
+                A2, List.of(new SimpleContent(tissues[0], "1")),
+                B1, List.of(new SimpleContent(tissues[0], "7"), new SimpleContent(tissues[0], "3")),
+                C2, List.of(new SimpleContent(tissues[1], "4"), new SimpleContent(tissues[1], "5"))
         );
         doReturn(scs).when(service).addressToSimpleContent(lw);
         doReturn(tissues).when(service).checkDividedLayout(lw, scs);
@@ -492,14 +492,14 @@ public class TestLabwareLabelDataService {
         String[] reps = { tissues[0].getReplicate(), tissues[1].getReplicate() };
 
         List<LabelContent> expectedContents = List.of(
-                new LabelContent(donorNames[0], externalNames[0], tissueStrings[0], reps[0], "S001+"),
-                new LabelContent(donorNames[0], externalNames[0], tissueStrings[0], reps[0], "S001"),
-                new LabelContent(donorNames[0], externalNames[0], tissueStrings[0], reps[0], "S003+"),
-                new LabelContent(donorNames[0], externalNames[0], tissueStrings[0], reps[0], (String) null),
-                new LabelContent(donorNames[1], externalNames[1], tissueStrings[1], reps[1], (String) null),
-                new LabelContent(donorNames[1], externalNames[1], tissueStrings[1], reps[1], "S004+"),
-                new LabelContent(donorNames[1], externalNames[1], tissueStrings[1], reps[1], (String) null),
-                new LabelContent(donorNames[1], externalNames[1], tissueStrings[1], reps[1], (String) null)
+                new LabelContent(donorNames[0], externalNames[0], tissueStrings[0], reps[0], "S1+"),
+                new LabelContent(donorNames[0], externalNames[0], tissueStrings[0], reps[0], "S1"),
+                new LabelContent(donorNames[0], externalNames[0], tissueStrings[0], reps[0], "S3+"),
+                new LabelContent(donorNames[0], externalNames[0], tissueStrings[0], reps[0], null),
+                new LabelContent(donorNames[1], externalNames[1], tissueStrings[1], reps[1], null),
+                new LabelContent(donorNames[1], externalNames[1], tissueStrings[1], reps[1], "S4+"),
+                new LabelContent(donorNames[1], externalNames[1], tissueStrings[1], reps[1], null),
+                new LabelContent(donorNames[1], externalNames[1], tissueStrings[1], reps[1], null)
         );
         assertEquals(expectedContents, ld.getContents());
     }
@@ -560,15 +560,15 @@ public class TestLabwareLabelDataService {
         BioState custardState = new BioState(3, "Custard");
         BioState fwState = new BioState(4, "Fetal waste");
 
-        Sample sam1 = new Sample(1, 5, tissue, tissueState);
+        Sample sam1 = new Sample(1, "5", tissue, tissueState);
         Sample sam2 = new Sample(2, null, tissue, originalState);
-        Sample sam3 = new Sample(3, 7, tissue, custardState);
-        Sample sam4 = new Sample(4, 8, tissue, fwState);
+        Sample sam3 = new Sample(3, "7", tissue, custardState);
+        Sample sam4 = new Sample(4, "8", tissue, fwState);
 
         String tissueDesc = "HEA-1";
 
         return Arrays.stream(new Object[][] {
-                {sam1, new LabelContent(donorName, tissue.getExternalName(), tissueDesc, rep, "S005")},
+                {sam1, new LabelContent(donorName, tissue.getExternalName(), tissueDesc, rep, "S5")},
                 {sam2, new LabelContent(donorName, tissue.getExternalName(), tissueDesc, rep, "Original")},
                 {sam3, new LabelContent(donorName, tissue.getExternalName(), tissueDesc, rep, custardState.getName())},
                 {sam4, new LabelContent(donorName, tissue.getExternalName(), tissueDesc, rep, "F waste")},

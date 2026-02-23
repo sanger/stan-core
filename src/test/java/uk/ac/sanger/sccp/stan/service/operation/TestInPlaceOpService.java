@@ -172,7 +172,7 @@ public class TestInPlaceOpService {
     @Test
     public void testMakeActions_nobs() {
         Sample sam1 = EntityFactory.getSample();
-        Sample sam2 = new Sample(sam1.getId()+1, 500, sam1.getTissue(), sam1.getBioState());
+        Sample sam2 = new Sample(sam1.getId()+1, "500", sam1.getTissue(), sam1.getBioState());
         LabwareType lt = EntityFactory.makeLabwareType(3,1);
         Labware lw = EntityFactory.makeLabware(lt, sam1, sam2);
         Slot slot1 = lw.getFirstSlot();

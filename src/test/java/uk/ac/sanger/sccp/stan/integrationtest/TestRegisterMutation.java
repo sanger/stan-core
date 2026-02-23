@@ -151,7 +151,7 @@ public class TestRegisterMutation {
         assertEquals("TISSUE3", sample.getTissue().getExternalName());
         assertEquals("DONOR1", sample.getTissue().getDonor().getDonorName());
         assertEquals("8", sample.getTissue().getReplicate());
-        assertEquals(11, sample.getSection());
+        assertEquals("11", sample.getSection());
 
         List<Measurement> measurements = measurementRepo.findAllBySlotIdIn(List.of(slotB2.getId()));
         assertThat(measurements).hasSize(1);

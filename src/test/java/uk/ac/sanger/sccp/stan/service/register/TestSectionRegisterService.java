@@ -133,9 +133,9 @@ public class TestSectionRegisterService {
         UCMap<Tissue> tissueMap = UCMap.from(Tissue::getExternalName, tissue1, tissue2, tissue3);
 
         BioState bs = EntityFactory.getBioState();
-        Sample sample1 = new Sample(101, 1, tissue1, bs);
-        Sample sample2 = new Sample(102, 2, tissue2, bs);
-        Sample sample3 = new Sample(103, 3, tissue3, bs);
+        Sample sample1 = new Sample(101, "1", tissue1, bs);
+        Sample sample2 = new Sample(102, "2", tissue2, bs);
+        Sample sample3 = new Sample(103, "3", tissue3, bs);
         LabwareType lt = EntityFactory.makeLabwareType(2, 2);
         Labware lw1 = EntityFactory.makeLabware(lt, sample1, sample2);
         lw1.setExternalBarcode("EXT-1");
@@ -205,7 +205,7 @@ public class TestSectionRegisterService {
                 }).collect(toList());
         final BioState bs = EntityFactory.getBioState();
         List<Sample> samples = unsavedTissues.stream()
-                .map(tis -> new Sample(null, 4, tis, bs))
+                .map(tis -> new Sample(null, "4", tis, bs))
                 .collect(toList());
         when(mockTissueRepo.saveAll(any())).thenReturn(savedTissues);
 
@@ -224,13 +224,13 @@ public class TestSectionRegisterService {
                 .collect(toList());
         BioState bs = EntityFactory.getBioState();
         final List<Sample> savedSamples = tissues.stream()
-                .map(t -> new Sample(20*t.getId(), 1, t, bs))
+                .map(t -> new Sample(20*t.getId(), "1", t, bs))
                 .collect(toList());
         final List<Sample> unsavedSamples = savedSamples.stream()
                 .map(sam -> {
                     Tissue unsavedTissue = new Tissue();
                     unsavedTissue.setExternalName(sam.getTissue().getExternalName());
-                    return new Sample(null, 1, unsavedTissue, bs);
+                    return new Sample(null, "1", unsavedTissue, bs);
                 })
                 .collect(toList());
         when(mockSampleRepo.saveAll(any())).thenReturn(savedSamples);
@@ -276,9 +276,9 @@ public class TestSectionRegisterService {
         Tissue tissue2 = EntityFactory.makeTissue(tissue1.getDonor(), tissue1.getSpatialLocation());
         Tissue tissue3 = EntityFactory.makeTissue(tissue1.getDonor(), tissue1.getSpatialLocation());
         BioState bs = EntityFactory.getBioState();
-        Sample sample1 = new Sample(1, 1, tissue1, bs);
-        Sample sample2 = new Sample(2, 1, tissue2, bs);
-        Sample sample3 = new Sample(3, 1, tissue3, bs);
+        Sample sample1 = new Sample(1, "1", tissue1, bs);
+        Sample sample2 = new Sample(2, "1", tissue2, bs);
+        Sample sample3 = new Sample(3, "1", tissue3, bs);
         String xb = "EXT1";
         Labware lw = EntityFactory.makeEmptyLabware(lt);
         lw.setExternalBarcode(xb);
@@ -384,7 +384,7 @@ public class TestSectionRegisterService {
         Sample[] samples = IntStream.range(0,3)
                 .mapToObj(i -> {
                     Tissue tissue = EntityFactory.makeTissue(donor, sl);
-                    return new Sample(10+i, 5+i, tissue, bs);
+                    return new Sample(10+i, String.valueOf(5+i), tissue, bs);
                 })
                 .toArray(Sample[]::new);
         final Slot slotA1 = lw.getSlot(A1);
@@ -501,7 +501,7 @@ public class TestSectionRegisterService {
         return IntStream.range(0,numSamples)
                 .mapToObj(i -> {
                     Tissue tissue = EntityFactory.makeTissue(donor, sl);
-                    return new Sample(10+i, 5+i, tissue, bs);
+                    return new Sample(10+i, String.valueOf(5+i), tissue, bs);
                 })
                 .toArray(Sample[]::new);
     }

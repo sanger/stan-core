@@ -138,7 +138,8 @@ public class EntityCreator {
         if (bioState==null) {
             bioState = bioStateRepo.getByName("Tissue");
         }
-        return sampleRepo.save(new Sample(null, section, tissue, bioState));
+        String sectionString = (section==null ? null : ""+section);
+        return sampleRepo.save(new Sample(null, sectionString, tissue, bioState));
     }
 
     public Labware createTube(String barcode) {

@@ -12,12 +12,14 @@ import uk.ac.sanger.sccp.stan.repo.PlanOperationRepo;
 import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSectionLabware.AddressCommentId;
 import uk.ac.sanger.sccp.stan.service.CommentValidationService;
+import uk.ac.sanger.sccp.stan.service.Validator;
 import uk.ac.sanger.sccp.stan.service.sanitiser.Sanitiser;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 import uk.ac.sanger.sccp.utils.Zip;
 
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -29,6 +31,7 @@ import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.EntityFactory.objToList;
 import static uk.ac.sanger.sccp.stan.Matchers.assertProblem;
 import static uk.ac.sanger.sccp.stan.Matchers.mayAddProblem;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 
 /**
  * Tests {@link ConfirmSectionValidationServiceImp}
@@ -47,6 +50,8 @@ public class TestConfirmSectionValidationService {
     CommentValidationService mockCommentValidationService;
     @Mock
     Sanitiser<String> mockThicknessSanitiser;
+    @Mock
+    Validator<String> mockSectionValidator;
 
     OperationType opType;
     AutoCloseable mocking;
@@ -55,7 +60,7 @@ public class TestConfirmSectionValidationService {
     void setup() {
         mocking = MockitoAnnotations.openMocks(this);
         service = spy(new ConfirmSectionValidationServiceImp(mockLwRepo, mockPlanRepo, mockWorkService,
-                mockCommentValidationService, mockThicknessSanitiser));
+                mockCommentValidationService, mockThicknessSanitiser, mockSectionValidator));
         opType = new OperationType(2, "Section", OperationTypeFlag.SOURCE_IS_BLOCK.bit(),
                 EntityFactory.getBioState());
     }
@@ -144,7 +149,7 @@ public class TestConfirmSectionValidationService {
     public void testValidateCommentIds(boolean valid) {
         List<String> expectedProblems = (valid ? List.of() : List.of("Bad sec com", "Bad slot com"));
         Set<String> problems = new HashSet<>(expectedProblems.size());
-        ConfirmSection cs = new ConfirmSection(new Address(1,3), 50, 4);
+        ConfirmSection cs = new ConfirmSection(new Address(1,3), 50, "4");
         cs.setCommentIds(List.of(10,11));
         List<ConfirmSectionLabware> csls = List.of(
                 new ConfirmSectionLabware("STAN-1"),
@@ -319,10 +324,10 @@ public class TestConfirmSectionValidationService {
         lw2.setBarcode("STAN-002");
         final Address A1 = new Address(1,1);
         final ConfirmSectionLabware csl1 = new ConfirmSectionLabware(lw1.getBarcode(), false,
-                List.of(new ConfirmSection(A1, sample.getId(), 12)),
+                List.of(new ConfirmSection(A1, sample.getId(), "12")),
                 List.of(new AddressCommentId(A1, 4)), null);
         final ConfirmSectionLabware csl2 = new ConfirmSectionLabware(lw2.getBarcode(), false,
-                List.of(new ConfirmSection(A1, sample.getId(), 15)),
+                List.of(new ConfirmSection(A1, sample.getId(), "15")),
                 List.of(new AddressCommentId(A1, 5)), null);
         List<ConfirmSectionLabware> csls = List.of(
                 csl1, csl2,
@@ -334,7 +339,7 @@ public class TestConfirmSectionValidationService {
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lw1, lw2);
 
         Set<String> problems = new HashSet<>();
-        final List<Map<Integer, Set<Integer>>> sampleIdMaps = new ArrayList<>();
+        final List<Map<Integer, Set<String>>> sampleIdMaps = new ArrayList<>();
 
         doAnswer(invocation -> {
             if (invocation.getArgument(2)==lw1) {
@@ -345,7 +350,7 @@ public class TestConfirmSectionValidationService {
         }).when(service).validateCommentAddresses(any(), any(), any(), any());
 
         doAnswer(invocation -> {
-            Map<Integer, Set<Integer>> sampleIdMap = invocation.getArgument(4);
+            Map<Integer, Set<String>> sampleIdMap = invocation.getArgument(4);
             assertNotNull(sampleIdMap);
             if (sampleIdMaps.isEmpty()) {
                 assertThat(sampleIdMap).isEmpty();
@@ -362,7 +367,7 @@ public class TestConfirmSectionValidationService {
 
         // Make sure that the same sample id map is passed to both invocations of validateSections
         assertThat(sampleIdMaps).hasSize(2);
-        final Map<Integer, Set<Integer>> sampleIdMap = sampleIdMaps.get(0);
+        final Map<Integer, Set<String>> sampleIdMap = sampleIdMaps.get(0);
         assertSame(sampleIdMap, sampleIdMaps.get(1));
 
         assertThat(problems).containsExactlyInAnyOrder("Comment problem.", "Section problem.");
@@ -424,11 +429,11 @@ public class TestConfirmSectionValidationService {
                 List.of(lw1.getSlot(A1), lw1.getSlot(A1), lw1.getSlot(B3), lw2.getSlot(A1)), EntityFactory.getUser());
 
         List<ConfirmSection> cons = List.of(
-                new ConfirmSection(A1, sampleA.getId(), 13),
-                new ConfirmSection(B3, sampleB.getId(), 14)
+                new ConfirmSection(A1, sampleA.getId(), "13"),
+                new ConfirmSection(B3, sampleB.getId(), "14")
         );
-        Map<Integer, Set<Integer>> sampleIdSections = new HashMap<>();
-        sampleIdSections.put(sampleA.getId()-1, hashSetOf(10,11));
+        Map<Integer, Set<String>> sampleIdSections = new HashMap<>();
+        sampleIdSections.put(sampleA.getId()-1, hashSetOf("10","11"));
 
         final Set<String> problems = hashSetOf("Identifiable problem.");
 
@@ -436,7 +441,7 @@ public class TestConfirmSectionValidationService {
 
         service.validateSections(problems, cons, lw1, plan, sampleIdSections);
 
-        assertThat(sampleIdSections).containsExactlyEntriesOf(Map.of(sampleA.getId()-1, Set.of(10,11)));
+        assertThat(sampleIdSections).containsExactlyEntriesOf(Map.of(sampleA.getId()-1, Set.of("10","11")));
 
         Map<Integer, Integer> sampleMaxSection = Map.of(sampleA.getId(), 12);
         Map<Address, Set<Integer>> plannedSampleIds = Map.of(A1, Set.of(sampleA.getId(), sampleB.getId()),
@@ -449,10 +454,19 @@ public class TestConfirmSectionValidationService {
     @MethodSource("validateSectionArgs")
     @ParameterizedTest
     public void testValidateSection(Labware lw, ConfirmSection con, Map<Address, Set<Integer>> plannedSampleIds,
-                                Map<Integer, Integer> sampleMaxSection, Map<Integer, Set<Integer>> inputSampleIdSections,
-                                List<String> expectedProblems, Map<Integer, Set<Integer>> newSampleIdSections) {
+                                Map<Integer, Integer> sampleMaxSection, Map<Integer, Set<String>> inputSampleIdSections,
+                                List<String> expectedProblems, Map<Integer, Set<String>> newSampleIdSections) {
         Set<String> problems = new HashSet<>();
-        Map<Integer, Set<Integer>> sampleIdSections = inputSampleIdSections==null ? new HashMap<>() : new HashMap<>(inputSampleIdSections);
+        when(mockSectionValidator.validate(any(), any())).then(invocation -> {
+            String string = invocation.getArgument(0);
+            if (string != null && string.indexOf('-') >= 0) {
+                Consumer<String> consumer = invocation.getArgument(1);
+                consumer.accept("Bad section");
+                return false;
+            }
+            return true;
+        });
+        Map<Integer, Set<String>> sampleIdSections = inputSampleIdSections==null ? new HashMap<>() : new HashMap<>(inputSampleIdSections);
         service.validateSection(problems, lw, con, plannedSampleIds, sampleMaxSection, sampleIdSections);
         assertThat(problems).containsExactlyInAnyOrderElementsOf(expectedProblems);
         assertEquals(combineMaps(inputSampleIdSections, newSampleIdSections), sampleIdSections);
@@ -483,33 +497,33 @@ public class TestConfirmSectionValidationService {
         fw.setBarcode("STAN-FE7A1");
 
         return Arrays.stream(new Object[][] {
-                { lw, new ConfirmSection(null, aid, 20), plannedSampleIds, sampleMaxSection, null,
+                { lw, new ConfirmSection(null, aid, "20"), plannedSampleIds, sampleMaxSection, null,
                         "Section specified with no address.", null },
-                { lw, new ConfirmSection(A1, null, 20), plannedSampleIds, sampleMaxSection, null,
+                { lw, new ConfirmSection(A1, null, "20"), plannedSampleIds, sampleMaxSection, null,
                         "Sample id not specified for section.", null },
                 { lw, new ConfirmSection(A1, aid, null), plannedSampleIds, sampleMaxSection, null,
                         "Section number not specified for section.", null },
-                { lw, new ConfirmSection(F8, aid, 20), plannedSampleIds, sampleMaxSection, null,
+                { lw, new ConfirmSection(F8, aid, "20"), plannedSampleIds, sampleMaxSection, null,
                         "Invalid address F8 in labware STAN-01 specified as destination.", null },
-                { lw, new ConfirmSection(A1, aid, -4), plannedSampleIds, sampleMaxSection, null,
-                        "Section number cannot be less than zero.", null },
-                { lw, new ConfirmSection(A2, bid, 20), plannedSampleIds, sampleMaxSection, null,
-                        "Sample id "+bid+" is not expected in address A2 of labware STAN-01.", Map.of(bid, Set.of(20))},
-                { lw, new ConfirmSection(B3, aid, 21), plannedSampleIds, sampleMaxSection, null,
-                        "Sample id "+aid+" is not expected in address B3 of labware STAN-01.", Map.of(aid, Set.of(21))},
-                { lw, new ConfirmSection(A1, aid, 14), plannedSampleIds, sampleMaxSection, Map.of(aid, Set.of(13,14)),
+                { lw, new ConfirmSection(A1, aid, "-4"), plannedSampleIds, sampleMaxSection, null,
+                        "Bad section", null },
+                { lw, new ConfirmSection(A2, bid, "20"), plannedSampleIds, sampleMaxSection, null,
+                        "Sample id "+bid+" is not expected in address A2 of labware STAN-01.", Map.of(bid, Set.of("20"))},
+                { lw, new ConfirmSection(B3, aid, "21"), plannedSampleIds, sampleMaxSection, null,
+                        "Sample id "+aid+" is not expected in address B3 of labware STAN-01.", Map.of(aid, Set.of("21"))},
+                { lw, new ConfirmSection(A1, aid, "14"), plannedSampleIds, sampleMaxSection, Map.of(aid, Set.of("13","14")),
                         "Repeated section: 14 from sample id "+aid+".", null},
-                { lw, new ConfirmSection(A1, aid, 8), plannedSampleIds, sampleMaxSection, null,
-                        "Section numbers from sample id "+aid+" must be greater than 12.", Map.of(aid, Set.of(8))},
-                { lw, new ConfirmSection(A1, aid, 12), plannedSampleIds, sampleMaxSection, Map.of(aid, hashSetOf(16)),
-                        "Section numbers from sample id "+aid+" must be greater than 12.", Map.of(aid, Set.of(16,12))},
-                { fw, new ConfirmSection(A1, aid, 20), plannedSampleIds, sampleMaxSection, Map.of(aid, hashSetOf(18,19)),
-                        "Section number not expected for fetal waste.", Map.of(aid, Set.of(18,19))},
+                { lw, new ConfirmSection(A1, aid, "8"), plannedSampleIds, sampleMaxSection, null,
+                        "Section numbers from sample id "+aid+" must be greater than 12.", Map.of(aid, Set.of("8"))},
+                { lw, new ConfirmSection(A1, aid, "12"), plannedSampleIds, sampleMaxSection, Map.of(aid, hashSetOf("16")),
+                        "Section numbers from sample id "+aid+" must be greater than 12.", Map.of(aid, Set.of("16","12"))},
+                { fw, new ConfirmSection(A1, aid, "20"), plannedSampleIds, sampleMaxSection, Map.of(aid, hashSetOf("18","19")),
+                        "Section number not expected for fetal waste.", Map.of(aid, Set.of("18","19"))},
 
-                { lw, new ConfirmSection(A1, aid, 20), plannedSampleIds, sampleMaxSection, Map.of(aid, hashSetOf(18, 19)),
-                        null, Map.of(aid, Set.of(18,19,20))},
-                { fw, new ConfirmSection(A1, aid, null), plannedSampleIds, sampleMaxSection, Map.of(aid, hashSetOf(18, 19)),
-                        null, Map.of(aid, hashSetOf(18,19,null))},
+                { lw, new ConfirmSection(A1, aid, "20"), plannedSampleIds, sampleMaxSection, Map.of(aid, hashSetOf("18", "19")),
+                        null, Map.of(aid, Set.of("18","19","20"))},
+                { fw, new ConfirmSection(A1, aid, null), plannedSampleIds, sampleMaxSection, Map.of(aid, hashSetOf("18", "19")),
+                        null, Map.of(aid, hashSetOf("18","19",null))},
         }).map(toListArguments(5));
     }
 
@@ -528,13 +542,13 @@ public class TestConfirmSectionValidationService {
     }
 
     private static <K, V> Map<K, V> combineMaps(Map<K, V> a, Map<K, V> b) {
-        if (a==null || a.isEmpty()) {
-            if (b==null || b.isEmpty()) {
+        if (nullOrEmpty(a)) {
+            if (nullOrEmpty(b)) {
                 return Map.of();
             }
             return b;
         }
-        if (b==null || b.isEmpty()) {
+        if (nullOrEmpty(b)) {
             return a;
         }
         Map<K, V> c = new HashMap<>(a);

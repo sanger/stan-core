@@ -256,7 +256,7 @@ public class TestExtractService {
         BioState tissueBioState = new BioState(1, "Tissue");
         Sample[] sourceSamples = {
                 new Sample(1, null, tissue, tissueBioState),
-                new Sample(2, 3, tissue, tissueBioState),
+                new Sample(2, "3", tissue, tissueBioState),
                 new Sample(3, null, tissue, rnaBioState),
         };
 
@@ -308,7 +308,7 @@ public class TestExtractService {
         BioState tissueBioState = new BioState(1, "Tissue");
         Tissue tissue = EntityFactory.getTissue();
         Sample[] srcSamples = IntStream.range(0,2)
-                .mapToObj(i -> new Sample(i+1, i+2, tissue, tissueBioState))
+                .mapToObj(i -> new Sample(i+1, String.valueOf(i+2), tissue, tissueBioState))
                 .toArray(Sample[]::new);
         Sample[] dstSamples = Arrays.stream(srcSamples)
                 .map(ss -> new Sample(10+ss.getId(), ss.getSection(), tissue, rnaBioState))
