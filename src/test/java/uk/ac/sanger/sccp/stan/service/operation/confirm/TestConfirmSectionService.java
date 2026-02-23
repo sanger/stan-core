@@ -607,7 +607,7 @@ public class TestConfirmSectionService {
         Map<Integer, Integer> srcSampleHighs = updatedSamples.stream()
                         .collect(toMap(Sample::getId, Sample::getBlockHighestSection));
         assertEquals(
-                Map.of(sourceSamples[0].getId(), sections[1].getSection(), sourceSamples[1].getId(), sections[3].getSection()),
+                Map.of(sourceSamples[0].getId(), Integer.valueOf(sections[1].getSection()), sourceSamples[1].getId(), Integer.valueOf(sections[3].getSection())),
                 srcSampleHighs
         );
     }

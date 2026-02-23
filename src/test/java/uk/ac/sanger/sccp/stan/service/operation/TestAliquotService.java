@@ -273,7 +273,7 @@ public class TestAliquotService {
 
         Sample[] samples = EntityFactory.makeSamples(2);
         samples[0].setBlockHighestSection(0);
-        samples[1].setSection(1);
+        samples[1].setSection("1");
         Labware block = EntityFactory.makeTube(samples[0]);
         Labware section = EntityFactory.makeTube(samples[1]);
 
