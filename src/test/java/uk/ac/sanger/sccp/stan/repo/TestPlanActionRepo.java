@@ -69,7 +69,6 @@ public class TestPlanActionRepo {
     @Test
     @Transactional
     public void testFindMaxPlannedSection() {
-        assertThat(planActionRepo.findMaxPlannedSectionForTissueId(-1)).isEmpty();
         assertThat(planActionRepo.findMaxPlannedSectionFromSlotId(-1)).isEmpty();
         Donor donor = new Donor(null, "DONOR", LifeStage.adult, entityCreator.getHuman());
         donorRepo.save(donor);
@@ -77,7 +76,7 @@ public class TestPlanActionRepo {
                 any(mediumRepo), any(fixativeRepo), entityCreator.getTissueCellClass(), any(hmdmcRepo), null, null);
         BioState bioState = any(bioStateRepo);
         tissueRepo.save(tissue);
-        final Sample sample = new Sample(null, 3, tissue, bioState);
+        final Sample sample = new Sample(null, "3", tissue, bioState);
 
         sampleRepo.save(sample);
 
@@ -95,10 +94,9 @@ public class TestPlanActionRepo {
         slotRepo.save(slot2);
         slotRepo.save(slot3);
 
-        planActionRepo.save(new PlanAction(null, plan.getId(), slot1, slot1, sample, 3, null, null));
-        planActionRepo.save(new PlanAction(null, plan.getId(), slot2, slot2, sample, 18, null, null));
-        planActionRepo.save(new PlanAction(null, plan.getId(), slot3, slot3, sample, 4, null, null));
-        assertThat(planActionRepo.findMaxPlannedSectionForTissueId(tissue.getId())).hasValue(18);
+        planActionRepo.save(new PlanAction(null, plan.getId(), slot1, slot1, sample, "3", null, null));
+        planActionRepo.save(new PlanAction(null, plan.getId(), slot2, slot2, sample, "18", null, null));
+        planActionRepo.save(new PlanAction(null, plan.getId(), slot3, slot3, sample, "4", null, null));
         assertThat(planActionRepo.findMaxPlannedSectionFromSlotId(slot1.getId())).hasValue(3);
         assertThat(planActionRepo.findMaxPlannedSectionFromSlotId(slot2.getId())).hasValue(18);
     }

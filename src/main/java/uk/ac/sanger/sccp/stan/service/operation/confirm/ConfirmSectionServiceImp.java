@@ -262,7 +262,7 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
     Sample getSection(Map<SectionKey, Sample> sectionMap, ConfirmSection sec, PlanAction pa, Slot slot) {
         Sample sourceSample = pa.getSample();
         Tissue tissue = sourceSample.getTissue();
-        Integer section = sec.getNewSection();
+        String section = sec.getNewSection();
         BioState bs = coalesce(pa.getNewBioState(), sourceSample.getBioState());
         SectionKey key = new SectionKey(tissue.getId(), section, bs);
         Sample sam = sectionMap.get(key);
@@ -288,7 +288,7 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
      * @param bs the biostate for the new sample
      * @return a new sample which has been created in the database
      */
-    public Sample createSection(Tissue tissue, Integer section, BioState bs) {
+    public Sample createSection(Tissue tissue, String section, BioState bs) {
         return sampleRepo.save(new Sample(null, section, tissue, bs));
     }
 
@@ -373,14 +373,17 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
                 Sample srcSample = action.getSourceSample();
                 Sample sample = action.getSample();
                 if (srcSample.isBlock() && sample.getSection() != null) {
-                    Sample sampleInMap = samplesToUpdate.get(srcSample.getId());
-                    if (sampleInMap != null) {
-                        if (sampleInMap.getBlockHighestSection() < sample.getSection()) {
-                            sampleInMap.setBlockHighestSection(sample.getSection());
+                    Integer sectionInt = parseSectionInt(sample.getSection());
+                    if (sectionInt != null) {
+                        Sample sampleInMap = samplesToUpdate.get(srcSample.getId());
+                        if (sampleInMap != null) {
+                            if (sampleInMap.getBlockHighestSection() < sectionInt) {
+                                sampleInMap.setBlockHighestSection(sectionInt);
+                            }
+                        } else if (srcSample.getBlockHighestSection() < sectionInt) {
+                            srcSample.setBlockHighestSection(sectionInt);
+                            samplesToUpdate.put(srcSample.getId(), srcSample);
                         }
-                    } else if (srcSample.getBlockHighestSection() != null && srcSample.getBlockHighestSection() < sample.getSection()){
-                        srcSample.setBlockHighestSection(sample.getSection());
-                        samplesToUpdate.put(srcSample.getId(), srcSample);
                     }
                 }
             }
@@ -388,8 +391,32 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
         sampleRepo.saveAll(samplesToUpdate.values());
     }
 
+    /**
+     * Parses the integer part of a section string
+     * @param string the section string
+     * @return the integer part, or null if there is no integer part
+     */
+    static Integer parseSectionInt(String string) {
+        if (nullOrEmpty(string)) {
+            return null;
+        }
+        int len = string.length();
+        int n = 0;
+        for (int i = 0; i < len; ++i) {
+            char ch = string.charAt(i);
+            if (ch < '0' || ch > '9') {
+                if (i==0) {
+                    return null;
+                }
+                break;
+            }
+            n = n * 10 + (ch - '0');
+        }
+        return n;
+    }
+
     /** Deduplication key for samples */
-    record SectionKey(Integer tissueId, Integer section, BioState bs) {}
+    record SectionKey(Integer tissueId, String section, BioState bs) {}
 
     /**
      * The result on an individual piece of labware of the confirmation request.

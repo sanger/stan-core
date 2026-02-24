@@ -23,7 +23,7 @@ public class SectionRegisterContent {
     private String replicateNumber;
     private String fixative;
     private String medium;
-    private Integer sectionNumber;
+    private String sectionNumber;
     private String sectionThickness;
     private String region;
     private LocalDate dateSectioned;
@@ -126,11 +126,11 @@ public class SectionRegisterContent {
         this.medium = medium;
     }
 
-    public Integer getSectionNumber() {
+    public String getSectionNumber() {
         return this.sectionNumber;
     }
 
-    public void setSectionNumber(Integer sectionNumber) {
+    public void setSectionNumber(String sectionNumber) {
         this.sectionNumber = sectionNumber;
     }
 

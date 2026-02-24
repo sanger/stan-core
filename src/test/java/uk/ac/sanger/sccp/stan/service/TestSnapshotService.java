@@ -38,7 +38,7 @@ public class TestSnapshotService {
         LabwareType lt = EntityFactory.makeLabwareType(1, 2);
         Labware labware = EntityFactory.makeEmptyLabware(lt);
         Sample sample1 = EntityFactory.getSample();
-        Sample sample2 = new Sample(sample1.getId()+1, 8, sample1.getTissue(), sample1.getBioState());
+        Sample sample2 = new Sample(sample1.getId()+1, "8", sample1.getTissue(), sample1.getBioState());
         final Slot slot1 = labware.getFirstSlot();
         slot1.getSamples().addAll(List.of(sample1, sample2));
         final Slot slot2 = labware.getSlots().get(1);

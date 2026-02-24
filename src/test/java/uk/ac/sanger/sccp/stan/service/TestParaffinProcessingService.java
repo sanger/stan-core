@@ -190,7 +190,7 @@ public class TestParaffinProcessingService {
         String expectedProblem;
         if (anyBad) {
             Sample otherSam = new Sample(105, null, tissue, bs);
-            samples[0].setSection(5);
+            samples[0].setSection("5");
             labware.get(1).getFirstSlot().addSample(otherSam);
             labware.get(2).getFirstSlot().getSamples().clear();
             labware.get(3).getSlot(new Address(1,2)).addSample(samples[3]);

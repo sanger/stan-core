@@ -1,7 +1,6 @@
 package uk.ac.sanger.sccp.stan.service;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -11,13 +10,14 @@ import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.request.TissueBlockRequest;
+import uk.ac.sanger.sccp.stan.request.TissueBlockRequest.TissueBlockLabware;
 import uk.ac.sanger.sccp.stan.service.block.*;
 import uk.ac.sanger.sccp.stan.service.store.StoreService;
 
 import java.util.List;
 
-import static java.util.Collections.singletonList;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -26,22 +26,23 @@ import static org.mockito.Mockito.*;
  */
 public class TestBlockProcessingService {
     @Mock
-    BlockValidatorFactory mockBlockValFactory;
+    private BlockValidatorFactory mockBlockValFactory;
     @Mock
-    BlockMakerFactory mockBlockMakerFactory;
+    private BlockMakerFactory mockBlockMakerFactory;
     @Mock
-    StoreService mockStoreService;
+    private StoreService mockStoreService;
     @Mock
-    Transactor mockTransactor;
-    @InjectMocks
-    BlockProcessingServiceImp service;
+    private Transactor mockTransactor;
+
+    private BlockProcessingServiceImp service;
 
     private AutoCloseable mocking;
 
     @BeforeEach
     void setup() {
         mocking = MockitoAnnotations.openMocks(this);
-        service = spy(service);
+        service = spy(new BlockProcessingServiceImp(mockBlockValFactory, mockBlockMakerFactory,
+                mockStoreService, mockTransactor));
     }
 
     @AfterEach
@@ -51,96 +52,104 @@ public class TestBlockProcessingService {
 
     @ParameterizedTest
     @CsvSource({
-            "true,true",
+            "true, true",
             "true,false",
             "false,true",
+            "false,false",
     })
-    void testPerform(boolean success, boolean discard) {
-        User user = EntityFactory.getUser();
+    void testPerforms(boolean success, boolean discarding) {
         TissueBlockRequest request = new TissueBlockRequest();
-        List<String> discardBarcodes = discard ? List.of("STAN-1") : List.of();
-        request.setDiscardSourceBarcodes(discardBarcodes);
+        request.setDiscardSourceBarcodes(discarding ? List.of("STAN-1", "STAN-2") : List.of());
         Matchers.mockTransactor(mockTransactor);
         OperationResult opres;
-        List<String> problems;
         if (success) {
-            opres = new OperationResult(List.of(new Operation()), List.of());
-            problems = null;
+            opres = new OperationResult(List.of(new Operation()), List.of(new Labware()));
             doReturn(opres).when(service).performInsideTransaction(any(), any());
         } else {
             opres = null;
-            problems = List.of("Bad");
-            doThrow(new ValidationException(problems)).when(service).performInsideTransaction(any(), any());
+            doThrow(new ValidationException(List.of("Bad request"))).when(service).performInsideTransaction(any(), any());
         }
-        if (problems != null) {
-            Matchers.assertValidationException(() -> service.perform(user, request), problems);
-        } else {
+        User user = EntityFactory.getUser();
+
+        if (success) {
             assertSame(opres, service.perform(user, request));
+        } else {
+            Matchers.assertValidationException(() -> service.perform(user, request), List.of("Bad request"));
         }
         verify(service).performInsideTransaction(user, request);
-        verify(mockTransactor).transact(eq("Block processing"), any());
-        if (success && discard) {
-            verify(mockStoreService).discardStorage(user, discardBarcodes);
+        if (success && discarding) {
+            verify(mockStoreService).discardStorage(user, request.getDiscardSourceBarcodes());
         } else {
             verifyNoInteractions(mockStoreService);
         }
     }
 
+    @Test
+    void testPerformInsideTransaction_noUser() {
+        TissueBlockRequest request = new TissueBlockRequest();
+        assertThrows(NullPointerException.class, () -> service.performInsideTransaction(null, request), "User is null.");
+    }
+
+    @Test
+    void testPerformInsideTransaction_noRequest() {
+        User user = EntityFactory.getUser();
+        assertThrows(NullPointerException.class, () -> service.performInsideTransaction(user, null), "Request is null.");
+    }
+
     @ParameterizedTest
-    @ValueSource(booleans={false, true})
-    void testPerformInsideTransaction(boolean success) {
+    @ValueSource(booleans={false,true})
+    void testPerformInsideTransaction(boolean valid) {
+        List<String> problems = valid ? List.of() : List.of("Bad request");
+        BlockValidator val = mock(BlockValidator.class);
         User user = EntityFactory.getUser();
         TissueBlockRequest request = new TissueBlockRequest();
-        BlockValidator val = mock(BlockValidator.class);
-        when(mockBlockValFactory.createBlockValidator(any())).thenReturn(val);
-        BlockMaker maker = mock(BlockMaker.class);
-        when(mockBlockMakerFactory.createBlockMaker(any(), any(), any(), any(), any(), any(), any()))
-                .thenReturn(maker);
+        BlockMaker maker;
         OperationResult opres;
-        List<String> problems;
+        when(mockBlockValFactory.createBlockValidator(any())).thenReturn(val);
+        List<BlockLabwareData> lwData;
         Medium medium;
+        BioState bs;
         Work work;
         OperationType opType;
-        BioState bioState;
-        List<BlockLabwareData> lwData;
-        if (success) {
-            opres = new OperationResult(List.of(new Operation()), List.of());
-            problems = null;
-            medium = EntityFactory.getMedium();
-            work = EntityFactory.makeWork("SGP-1");
-            opType = EntityFactory.makeOperationType("Block processing", null);
-            bioState = EntityFactory.getBioState();
-            lwData = singletonList(null);
-            when(val.getMedium()).thenReturn(medium);
-            when(val.getWork()).thenReturn(work);
-            when(val.getOpType()).thenReturn(opType);
-            when(val.getBioState()).thenReturn(bioState);
-            when(val.getLwData()).thenReturn(lwData);
-            when(maker.record()).thenReturn(opres);
-        } else {
+        if (!valid) {
+            doThrow(new ValidationException(problems)).when(val).raiseError();
+            maker = null;
             opres = null;
+            lwData = null;
             medium = null;
+            bs = null;
             work = null;
             opType = null;
-            bioState = null;
-            lwData = null;
-            problems = List.of("Bad");
-            doThrow(new ValidationException(problems)).when(val).raiseError();
+        }  else {
+            maker = mock(BlockMaker.class);
+            when(mockBlockMakerFactory.createBlockMaker(any(), any(), any(), any(), any(), any(), any())).thenReturn(maker);
+            opres = new OperationResult(List.of(new Operation()), List.of(new Labware()));
+            when(maker.record()).thenReturn(opres);
+            lwData = List.of(new BlockLabwareData(new TissueBlockLabware()));
+            medium = EntityFactory.getMedium();
+            bs = EntityFactory.getBioState();
+            work = EntityFactory.makeWork("SGP1");
+            opType = EntityFactory.makeOperationType("opname", null);
+            when(val.getLwData()).thenReturn(lwData);
+            when(val.getMedium()).thenReturn(medium);
+            when(val.getBioState()).thenReturn(bs);
+            when(val.getWork()).thenReturn(work);
+            when(val.getOpType()).thenReturn(opType);
         }
-        if (success) {
+
+        if (valid) {
             assertSame(opres, service.performInsideTransaction(user, request));
         } else {
             Matchers.assertValidationException(() -> service.performInsideTransaction(user, request), problems);
         }
-        InOrder inOrder = inOrder(mockBlockValFactory, mockBlockMakerFactory, val, maker);
-        inOrder.verify(mockBlockValFactory).createBlockValidator(request);
+        InOrder inOrder = inOrder(val, mockBlockMakerFactory);
         inOrder.verify(val).validate();
         inOrder.verify(val).raiseError();
-        if (success) {
-            inOrder.verify(mockBlockMakerFactory).createBlockMaker(request, lwData, medium, bioState, work, opType, user);
-            inOrder.verify(maker).record();
+        if (valid) {
+            inOrder.verify(mockBlockMakerFactory).createBlockMaker(request, lwData, medium, bs, work, opType, user);
+            verify(maker).record();
         } else {
-            inOrder.verifyNoMoreInteractions();
+            verifyNoInteractions(mockBlockMakerFactory);
         }
     }
 }

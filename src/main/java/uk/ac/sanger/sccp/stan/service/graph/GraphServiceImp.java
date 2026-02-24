@@ -8,13 +8,16 @@ import uk.ac.sanger.sccp.stan.request.history.*;
 import uk.ac.sanger.sccp.stan.request.history.HistoryGraph.Link;
 import uk.ac.sanger.sccp.stan.request.history.HistoryGraph.Node;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
+import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static java.util.stream.Collectors.*;
 import static uk.ac.sanger.sccp.utils.BasicUtils.inMap;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 
 /**
  * @author dr6
@@ -160,10 +163,10 @@ public class GraphServiceImp implements GraphService {
             return null;
         }
         String desc = samples.iterator().next().getBioState().getName();
-        List<Integer> sections = samples.stream()
+        List<String> sections = samples.stream()
                 .map(Sample::getSection)
-                .filter(Objects::nonNull)
-                .sorted()
+                .filter(s -> !nullOrEmpty(s))
+                .sorted(BasicUtils.numberStringComparator())
                 .distinct()
                 .toList();
         if (!sections.isEmpty()) {
@@ -177,19 +180,23 @@ public class GraphServiceImp implements GraphService {
      * @param sections a monotonic sequence of ints
      * @return a string describing the given sections
      */
-    public String summariseSections(List<Integer> sections) {
+    public String summariseSections(List<String> sections) {
         if (sections.isEmpty()) {
             return null;
         }
         if (sections.size()==1) {
-            return sections.getFirst().toString();
+            return sections.getFirst();
         }
         if (sections.size()==2) {
-            return sections.getFirst().toString()+","+sections.getLast().toString();
+            return sections.getFirst()+","+sections.getLast();
         }
-        if (sections.getLast()==sections.getFirst()+sections.size()-1) {
-            return sections.getFirst()+"-"+sections.getLast();
-        }
+        try {
+            int firstNum = Integer.parseInt(sections.getFirst());
+            if (IntStream.range(1, sections.size())
+                    .allMatch(i -> Integer.toString(i+firstNum).equals(sections.get(i)))) {
+                return firstNum+"-"+sections.getLast();
+            }
+        } catch (NumberFormatException ignored) {}
         return sections.stream()
                 .map(Object::toString)
                 .collect(joining(","));

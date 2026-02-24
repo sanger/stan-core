@@ -174,13 +174,13 @@ public class TestPlanAndRecordSectionMutations {
                 .findAny()
                 .orElseThrow(), "samples");
 
-        int[] expectedSecNum = { 14 };
+        String[] expectedSecNum = { "14" };
 
         assertEquals(expectedSecNum.length, a1Samples.size());
         for (int i = 0; i < expectedSecNum.length; ++i) {
             Map<String, ?> sam = a1Samples.get(i);
             assertEquals("TISSUE1", chainGet(sam, "tissue", "externalName"));
-            assertEquals(expectedSecNum[i], (int) sam.get("section"));
+            assertEquals(expectedSecNum[i], sam.get("section"));
             assertEquals("Tissue", chainGet(sam, "bioState", "name"));
         }
 
@@ -202,7 +202,7 @@ public class TestPlanAndRecordSectionMutations {
         assertEquals(1, b2Samples.size());
         Map<String, ?> sam = b2Samples.get(0);
         assertEquals("TISSUE2", chainGet(sam, "tissue", "externalName"));
-        assertEquals(17, (int) sam.get("section"));
+        assertEquals("17", sam.get("section"));
 
         List<Map<String, ?>> resultOps = chainGet(resultConfirm, "operations");
         assertEquals(3, resultOps.size());
@@ -213,7 +213,7 @@ public class TestPlanAndRecordSectionMutations {
         int[] expectedSourceLabwareIds = {sourceBlocks[0].getId(), sourceBlocks[0].getId(), sourceBlocks[1].getId()};
         String[] expectedDestAddress = { "A1", "A2", "B2" };
         String[] expectedActionTissues = { "TISSUE1",  "TISSUE1", "TISSUE2" };
-        int[] expectedActionSecNum = { 14,14,17 };
+        String[] expectedActionSecNum = { "14","14","17" };
 
         assertEquals(expectedSourceLabwareIds.length, actions.size());
         int destLabwareId = -1;
@@ -232,7 +232,7 @@ public class TestPlanAndRecordSectionMutations {
                 assertEquals(destLabwareId, (int) chainGet(action, "destination", "labwareId"));
             }
             assertEquals(expectedActionTissues[i], chainGet(action, "sample", "tissue", "externalName"));
-            assertEquals(expectedActionSecNum[i], (int) chainGet(action, "sample", "section"));
+            assertEquals(expectedActionSecNum[i], chainGet(action, "sample", "section"));
             sampleIds.add(chainGet(action, "sample", "id"));
         }
 

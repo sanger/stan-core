@@ -45,6 +45,7 @@ public class SectionRegisterValidation {
     private final Validator<String> xeniumBarcodeValidator;
     private final Validator<String> replicateValidator;
     private final Validator<String> xeniumLotValidator;
+    private final Validator<String> sectionValidator;
     private final Sanitiser<String> thicknessSanitiser;
 
 
@@ -57,7 +58,7 @@ public class SectionRegisterValidation {
                                      Validator<String> externalBarcodeValidation, Validator<String> donorNameValidation,
                                      Validator<String> externalNameValidation, Validator<String> replicateValidator,
                                      Validator<String> visiumLpBarcodeValidation, Validator<String> xeniumBarcodeValidator,
-                                     Validator<String> xeniumLotValidator,
+                                     Validator<String> xeniumLotValidator, Validator<String> sectionValidator,
                                      Sanitiser<String> thicknessSanitiser) {
         this.request = request;
         this.donorRepo = donorRepo;
@@ -81,6 +82,7 @@ public class SectionRegisterValidation {
         this.visiumLpBarcodeValidation = visiumLpBarcodeValidation;
         this.xeniumBarcodeValidator = xeniumBarcodeValidator;
         this.xeniumLotValidator = xeniumLotValidator;
+        this.sectionValidator = sectionValidator;
         this.thicknessSanitiser = thicknessSanitiser;
     }
 
@@ -464,8 +466,9 @@ public class SectionRegisterValidation {
         for (var content : contents()) {
             if (content.getSectionNumber()==null) {
                 addProblem("Missing section number.");
-            } else if (content.getSectionNumber() < 0) {
-                addProblem("Section number cannot be negative.");
+            } else {
+                sectionValidator.validate(content.getSectionNumber(), this::addProblem);
+                content.setSectionNumber(content.getSectionNumber().toLowerCase());
             }
             if (content.getSectionThickness()!=null) {
                 if (content.getSectionThickness().isBlank()) {

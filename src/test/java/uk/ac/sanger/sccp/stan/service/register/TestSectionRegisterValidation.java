@@ -55,6 +55,7 @@ public class TestSectionRegisterValidation {
     @Mock private Validator<String> mockVisiumLpBarcodeValidation;
     @Mock private Validator<String> mockXeniumBarcodeValidator;
     @Mock private Validator<String> mockXeniumLotValidator;
+    @Mock private Validator<String> mockSectionValidator;
     private Sanitiser<String> thicknessSanisiser;
     @Mock private SlotRegionService mockSlotRegionService;
     @Mock private BioRiskService mockBioRiskService;
@@ -100,6 +101,7 @@ public class TestSectionRegisterValidation {
                 mockSlotRegionService, mockBioRiskService, mockWorkService,
                 mockExternalBarcodeValidation, mockDonorNameValidation, mockExternalNameValidation,
                 mockReplicateValidator, mockVisiumLpBarcodeValidation, mockXeniumBarcodeValidator, mockXeniumLotValidator,
+                mockSectionValidator,
                 thicknessSanisiser));
     }
 
@@ -665,6 +667,15 @@ public class TestSectionRegisterValidation {
     public void testValidateSamples(Object contentsObj, UCMap<Tissue> tissueMap, Object expectedProblemsObj,
                                     Object expectedSamplesObj, BioState bs) {
         when(mockBioStateRepo.findByName("Tissue")).thenReturn(Optional.ofNullable(bs));
+        when(mockSectionValidator.validate(any(), any())).then(invocation -> {
+            String string = invocation.getArgument(0);
+            if (string != null && string.indexOf('-') >= 0) {
+                Consumer<String> consumer = invocation.getArgument(1);
+                consumer.accept("Invalid section number.");
+                return false;
+            }
+            return true;
+        });
 
         SectionRegisterValidation val = makeValidation(contentsObj);
 
@@ -685,14 +696,14 @@ public class TestSectionRegisterValidation {
 
         return Stream.of(
                 Arguments.of(content("TISSUE1", 2, 4), tissues, null,
-                        new Sample(null, 2, tissue1, bs), bs),
+                        new Sample(null, "2", tissue1, bs), bs),
                 Arguments.of(content("TISSUE1", 2, null), tissues, null,
-                        new Sample(null, 2, tissue1, bs), bs),
+                        new Sample(null, "2", tissue1, bs), bs),
 
                 Arguments.of(content("TISSUE1", null, 4), tissues,
                         "Missing section number.", null, bs),
                 Arguments.of(content("TISSUE1", -2, 4), tissues,
-                        "Section number cannot be negative.", null, bs),
+                        "Invalid section number.", null, bs),
                 Arguments.of(content("TISSUE1", 4, -3), tissues,
                         "Value outside the expected bounds for thickness: -3", null, bs),
                 Arguments.of(content("TISSUE1", 2, 4), tissues,
@@ -833,7 +844,7 @@ public class TestSectionRegisterValidation {
     private static SectionRegisterContent content(String extName, Integer section, Integer thickness) {
         SectionRegisterContent content = new SectionRegisterContent();
         content.setExternalIdentifier(extName);
-        content.setSectionNumber(section);
+        content.setSectionNumber(section==null ? null : section.toString());
         content.setSectionThickness(thickness==null ? null : thickness.toString());
         return content;
     }

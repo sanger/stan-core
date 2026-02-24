@@ -331,7 +331,7 @@ class TestCytassistOverviewDataCompiler {
         }).toList();
         dataCompiler.fillCytassistData(data);
         CytassistOverview row = data.getFirst().row;
-        assertEquals(1, row.getSection());
+        assertEquals("1", row.getSection());
         assertEquals(lws[0].getBarcode(), row.getSourceBarcode());
         assertEquals(lws[1].getBarcode(), row.getCytassistBarcode());
         assertEquals("A1", row.getSourceSlotAddress());
@@ -342,7 +342,7 @@ class TestCytassistOverviewDataCompiler {
         assertEquals(lts[1].getName(), row.getCytassistLabwareType());
         assertEquals(opTimes[0], row.getCytassistPerformed());
         row = data.get(1).row;
-        assertEquals(1, row.getSection());
+        assertEquals("1", row.getSection());
         assertEquals(lws[2].getBarcode(), row.getSourceBarcode());
         assertEquals(lws[3].getBarcode(), row.getCytassistBarcode());
         assertEquals("A2", row.getSourceSlotAddress());

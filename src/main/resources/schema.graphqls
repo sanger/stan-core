@@ -218,8 +218,8 @@ type Tissue {
 """A particular sample of tissue, in a particular state."""
 type Sample {
     id: Int!
-    """An optional number describing the particular slice through the block of tissue that this sample came from."""
-    section: Int
+    """An optional string describing the particular slice through the block of tissue that this sample came from."""
+    section: String
     """The tissue this sample is derived from."""
     tissue: Tissue!
     """The state of this particular sample."""
@@ -402,7 +402,7 @@ input SectionRegisterContent {
     """The medium used for the tissue."""
     medium: String!
     """The section number of this particular section from its original tissue block."""
-    sectionNumber: Int!
+    sectionNumber: String!
     """The thickness, if known, of this section."""
     sectionThickness: String
     """The region of this sample in this slot, if any."""
@@ -523,7 +523,7 @@ type PlanAction {
     """The sample in the source labware that we want to act upon."""
     sample: Sample!
     """The new section number, if the source is a block and it is being sectioned."""
-    newSection: Int
+    newSection: String
     """The planned thickness of the sample, if any."""
     sampleThickness: String
 }
@@ -585,7 +585,7 @@ input CancelPlanAction {
     """The sample id of the planned action to cancel."""
     sampleId: Int!
     """The new section number (if any) of the planned action to cancel."""
-    newSection: Int
+    newSection: String
 }
 
 """A specification of a particular piece of labware in a confirm request."""
@@ -612,7 +612,7 @@ input ConfirmSection {
     """The original sample id of the source."""
     sampleId: Int!
     """The section number of the new section."""
-    newSection: Int
+    newSection: String
     """The comment ids to record against this sample in this slot."""
     commentIds: [Int!]
     """The thickness of the section, overriding the thickness specified in the plan."""
