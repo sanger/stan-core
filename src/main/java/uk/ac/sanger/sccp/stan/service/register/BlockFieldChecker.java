@@ -48,14 +48,33 @@ public class BlockFieldChecker {
             this(brlFunction, brsFunction, tissueFunction, subFunction, description, false);
         }
 
+        /**
+         * Gets the value of the field from the given request parts.
+         * @param brl the labware part of the request
+         * @param brs the sample part of the request
+         * @return the value of the field
+         */
         public Object apply(BlockRegisterLabware brl, BlockRegisterSample brs) {
             return brlFunction!=null ? brlFunction.apply(brl) : brsFunction.apply(brs);
         }
+
+        /**
+         * Gets the value of the field from the given tissue.
+         * @param tissue existing tissue
+         * @return the value of the field
+         */
         public Object apply(Tissue tissue) {
             return tissueFunction.apply(tissue);
         }
     }
 
+    /**
+     * Checks for discrepancies between the existing tissue and the values in the request
+     * @param problemConsumer receptacle for problems found
+     * @param brl labware part of the request
+     * @param brs sample part of the request
+     * @param tissue existing tissue
+     */
     public void check(Consumer<String> problemConsumer, BlockRegisterLabware brl, BlockRegisterSample brs, Tissue tissue) {
         for (Field field : Field.values()) {
             Object oldValue = field.apply(tissue);
@@ -70,6 +89,12 @@ public class BlockFieldChecker {
         }
     }
 
+    /**
+     * Checks whether two values match, ignoring string capitalisation, and ignoring an empty new value if the old value is null
+     * @param oldValue old value
+     * @param newValue new value
+     * @return true if the values match; false otherwise
+     */
     public static boolean match(Object oldValue, Object newValue) {
         if (oldValue==null) {
             return (newValue==null || newValue.equals(""));
