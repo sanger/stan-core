@@ -31,8 +31,8 @@ public class BlockRegisterValidationImp implements RegisterValidation {
     private final SpeciesRepo speciesRepo;
     private final CellClassRepo cellClassRepo;
     private final LabwareRepo lwRepo;
-    private final Validator<String> donorNameValidation;
-    private final Validator<String> externalNameValidation;
+    private final Validator<String> donorNameValidator;
+    private final Validator<String> externalNameValidator;
     private final Validator<String> replicateValidator;
     private final Validator<String> externalBarcodeValidator;
     private final BlockFieldChecker blockFieldChecker;
@@ -56,7 +56,7 @@ public class BlockRegisterValidationImp implements RegisterValidation {
                                       HmdmcRepo hmdmcRepo, TissueTypeRepo ttRepo, LabwareTypeRepo ltRepo,
                                       MediumRepo mediumRepo, FixativeRepo fixativeRepo, TissueRepo tissueRepo,
                                       SpeciesRepo speciesRepo, CellClassRepo cellClassRepo, LabwareRepo lwRepo,
-                                      Validator<String> donorNameValidation, Validator<String> externalNameValidation,
+                                      Validator<String> donorNameValidator, Validator<String> externalNameValidator,
                                       Validator<String> replicateValidator, Validator<String> externalBarcodeValidator,
                                       BlockFieldChecker blockFieldChecker,
                                       BioRiskService bioRiskService, WorkService workService) {
@@ -71,8 +71,8 @@ public class BlockRegisterValidationImp implements RegisterValidation {
         this.speciesRepo = speciesRepo;
         this.cellClassRepo = cellClassRepo;
         this.lwRepo = lwRepo;
-        this.donorNameValidation = donorNameValidation;
-        this.externalNameValidation = externalNameValidation;
+        this.donorNameValidator = donorNameValidator;
+        this.externalNameValidator = externalNameValidator;
         this.replicateValidator = replicateValidator;
         this.externalBarcodeValidator = externalBarcodeValidator;
         this.blockFieldChecker = blockFieldChecker;
@@ -156,6 +156,7 @@ public class BlockRegisterValidationImp implements RegisterValidation {
         return works;
     }
 
+    /** Checks the donor info for problems */
     public void validateDonors() {
         for (BlockRegisterSample brs : iter(blockSamples())) {
             boolean skip = false;
@@ -163,8 +164,8 @@ public class BlockRegisterValidationImp implements RegisterValidation {
             if (nullOrEmpty(brs.getDonorIdentifier())) {
                 skip = true;
                 addProblem("Missing donor identifier.");
-            } else if (donorNameValidation!=null) {
-                donorNameValidation.validate(brs.getDonorIdentifier(), this::addProblem);
+            } else if (donorNameValidator !=null) {
+                donorNameValidator.validate(brs.getDonorIdentifier(), this::addProblem);
             }
             if (nullOrEmpty(brs.getSpecies())) {
                 addProblem("Missing species.");
@@ -213,6 +214,7 @@ public class BlockRegisterValidationImp implements RegisterValidation {
         }
     }
 
+    /** Checks the HMDMCs for problems */
     public void validateHmdmcs() {
         Set<String> unknownHmdmcs = new LinkedHashSet<>();
         boolean unwanted = false;
@@ -263,6 +265,7 @@ public class BlockRegisterValidationImp implements RegisterValidation {
         }
     }
 
+    /** Checks tissue types and spatial locations for problems */
     public void validateSpatialLocations() {
         UCMap<TissueType> tissueTypeMap = new UCMap<>();
         Set<String> unknownTissueTypes = new LinkedHashSet<>();
@@ -314,18 +317,22 @@ public class BlockRegisterValidationImp implements RegisterValidation {
         }
     }
 
+    /** Loads and checks the labware types for problems */
     public void validateLabwareTypes() {
         validateByName("labware type", BlockRegisterLabware::getLabwareType, ltRepo::findByName, labwareTypeMap);
     }
 
+    /** Loads and checks the mediums for problems */
     public void validateMediums() {
         validateByName("medium", BlockRegisterLabware::getMedium, mediumRepo::findByName, mediumMap);
     }
 
+    /** Loads and checks the fixatives for problems */
     public void validateFixatives() {
         validateByName("fixative", BlockRegisterLabware::getFixative, fixativeRepo::findByName, fixativeMap);
     }
 
+    /** Checks the collection dates for problems */
     public void validateCollectionDates() {
         boolean missing = false;
         LocalDate today = LocalDate.now();
@@ -359,6 +366,7 @@ public class BlockRegisterValidationImp implements RegisterValidation {
         }
     }
 
+    /** Looks for problems with the information given for existing tissues */
     public void validateExistingTissues() {
         List<BlockRegisterLabwareAndSample> blocksForExistingTissues = new ArrayList<>();
         for (BlockRegisterLabware blw : request.getLabware()) {
@@ -387,13 +395,13 @@ public class BlockRegisterValidationImp implements RegisterValidation {
                 .filter(xn -> !tissueMap.containsKey(xn))
                 .collect(toLinkedHashSet());
         if (!missing.isEmpty()) {
-            addProblem("Existing external identifiers not recognised: " + reprCollection(missing));
+            addProblem("Existing external identifier not recognised: " + reprCollection(missing));
         }
 
         for (BlockRegisterLabwareAndSample b : blocksForExistingTissues) {
             String xn = b.sample().getExternalIdentifier();
             if (!nullOrEmpty(xn)) {
-                Tissue tissue = tissueMap.get(xn.toUpperCase());
+                Tissue tissue = tissueMap.get(xn);
                 if (tissue != null) {
                     blockFieldChecker.check(this::addProblem, b.labware(), b.sample(), tissue);
                 }
@@ -401,6 +409,7 @@ public class BlockRegisterValidationImp implements RegisterValidation {
         }
     }
 
+    /** Looks for problems with the information given for new tissues */
     public void validateNewTissues() {
         // NB repeated new external identifier in one request is still disallowed
         Set<String> externalNames = new HashSet<>();
@@ -419,8 +428,8 @@ public class BlockRegisterValidationImp implements RegisterValidation {
             if (nullOrEmpty(brs.getExternalIdentifier())) {
                 addProblem("Missing external identifier.");
             } else {
-                if (externalNameValidation != null) {
-                    externalNameValidation.validate(brs.getExternalIdentifier(), this::addProblem);
+                if (externalNameValidator != null) {
+                    externalNameValidator.validate(brs.getExternalIdentifier(), this::addProblem);
                 }
                 if (!externalNames.add(brs.getExternalIdentifier().toUpperCase())) {
                     addProblem("Repeated external identifier: " + brs.getExternalIdentifier());
@@ -432,11 +441,13 @@ public class BlockRegisterValidationImp implements RegisterValidation {
         }
     }
 
+    /** Loads and checks bio risks for problems */
     public void validateBioRisks() {
         this.bioRiskMap = bioRiskService.loadAndValidateBioRisks(problems, blockSamples(),
                 BlockRegisterSample::getBioRiskCode, BlockRegisterSample::setBioRiskCode);
     }
 
+    /** Loads and checks cell classes for problems */
     public void validateCellClasses() {
         Set<String> cellClassNames = new HashSet<>();
         boolean anyMissing = false;
@@ -465,6 +476,7 @@ public class BlockRegisterValidationImp implements RegisterValidation {
         }
     }
 
+    /** Loads and checks works for problems */
     public void validateWorks() {
         if (request.getWorkNumbers().isEmpty()) {
             addProblem("No work number supplied.");
@@ -474,6 +486,7 @@ public class BlockRegisterValidationImp implements RegisterValidation {
         }
     }
 
+    /** Checks labware external barcodes for problems */
     public void validateExternalBarcodes() {
         Set<String> barcodes = new HashSet<>();
         boolean anyMissing = false;
@@ -502,6 +515,7 @@ public class BlockRegisterValidationImp implements RegisterValidation {
         }
     }
 
+    /** Checks slot addresses for problems */
     public void validateAddresses() {
         Map<LabwareType, Set<Address>> lwTypeInvalidAddresses = new HashMap<>();
         boolean missing = false;
@@ -527,11 +541,19 @@ public class BlockRegisterValidationImp implements RegisterValidation {
         }
         if (!lwTypeInvalidAddresses.isEmpty()) {
             lwTypeInvalidAddresses.forEach((lt, invalidAddresses)
-                    -> problems.add(String.format("Invalid slot addresses for labware type %s: %s", lt.getName(), invalidAddresses)));
+                    -> problems.add(String.format("Invalid slot addresses for labware type %s: %s",
+                    lt.getName(), invalidAddresses.stream().sorted().toList())));
         }
     }
 
-
+    /**
+     * Helper method to load entities into a map and check for problems
+     * @param <E> type of entity to load
+     * @param entityName name of the type of entity
+     * @param nameFunction function to extract the name from the request
+     * @param lkp function to load the entity from the database
+     * @param map map to load the entity into
+     */
     <E> void validateByName(String entityName,
                             Function<BlockRegisterLabware, String> nameFunction,
                             Function<String, Optional<E>> lkp,
@@ -565,14 +587,21 @@ public class BlockRegisterValidationImp implements RegisterValidation {
         }
     }
 
+    Collection<String> getProblems() {
+        return problems;
+    }
+
+    /** Adds a problem to the internal collection of problems found */
     boolean addProblem(String problem) {
         return problems.add(problem);
     }
 
+    /** Helper method to stream samples in the request */
     Stream<BlockRegisterSample> blockSamples() {
         return this.request.getLabware().stream().flatMap(brl -> brl.getSamples().stream());
     }
 
+    /** A non-null string and an int, used for case insensitive deduplication. The string is put into upper case. */
     record StringIntKey(String string, int number) {
         StringIntKey(String string, int number) {
             this.string = string.toUpperCase();
@@ -580,5 +609,6 @@ public class BlockRegisterValidationImp implements RegisterValidation {
         }
     }
 
+    /** A linked labware and sample from the request. Used when validating existing tissues. */
     record BlockRegisterLabwareAndSample(BlockRegisterLabware labware, BlockRegisterSample sample) {}
 }
