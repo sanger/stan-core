@@ -3,7 +3,8 @@ package uk.ac.sanger.sccp.stan.service.register;
 import org.junit.jupiter.api.*;
 import org.mockito.InjectMocks;
 import org.mockito.MockitoAnnotations;
-import uk.ac.sanger.sccp.stan.request.register.*;
+import uk.ac.sanger.sccp.stan.request.register.BlockRegisterRequest;
+import uk.ac.sanger.sccp.stan.request.register.SectionRegisterRequest;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
@@ -30,11 +31,6 @@ public class TestRegisterValidationFactory {
     @Test
     public void testCreateBlockRegisterValidation() {
         assertNotNull(registerValidationFactory.createBlockRegisterValidation(new BlockRegisterRequest()));
-    }
-
-    @Test
-    public void testCreateRegisterValidation() {
-        assertNotNull(registerValidationFactory.createRegisterValidation(new RegisterRequest()));
     }
 
     @Test

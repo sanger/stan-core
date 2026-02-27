@@ -49,21 +49,6 @@ public class RegisterClashChecker {
         return createClashInfo(existingTissues);
     }
 
-    public List<RegisterClash> findClashes(RegisterRequest request) {
-        Set<String> externalNames = request.getBlocks().stream()
-                .filter(br -> !br.isExistingTissue())
-                .map(BlockRegisterRequest_old::getExternalIdentifier)
-                .collect(toSet());
-        if (externalNames.isEmpty()) {
-            return List.of();
-        }
-        List<Tissue> existingTissues = tissueRepo.findAllByExternalNameIn(externalNames);
-        if (existingTissues.isEmpty()) {
-            return List.of();
-        }
-        return createClashInfo(existingTissues);
-    }
-
     public List<RegisterClash> createClashInfo(List<Tissue> tissues) {
         Set<Integer> tissueIds = tissues.stream().map(Tissue::getId).collect(toSet());
         Set<Integer> sampleIds = loadSampleIds(tissueIds);

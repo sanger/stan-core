@@ -86,10 +86,11 @@ public class TestRegisterClashChecker {
 
     @ParameterizedTest
     @MethodSource("findClashesArgs")
-    public void testFindClashes(RegisterRequest request, List<Tissue> tissues) {
-        Set<String> newXns = request.getBlocks().stream()
+    public void testFindClashes(BlockRegisterRequest request, List<Tissue> tissues) {
+        Set<String> newXns = request.getLabware().stream()
+                .flatMap(brl -> brl.getSamples().stream())
                 .filter(b -> !b.isExistingTissue())
-                .map(BlockRegisterRequest_old::getExternalIdentifier)
+                .map(BlockRegisterSample::getExternalIdentifier)
                 .collect(toSet());
         if (newXns.isEmpty()) {
             assertThat(checker.findClashes(request)).isEmpty();
@@ -126,17 +127,19 @@ public class TestRegisterClashChecker {
         );
     }
 
-    static RegisterRequest makeRequest(Object... data) {
-        List<BlockRegisterRequest_old> brs = new ArrayList<>(data.length/2);
-        for (int i = 0; i < data.length; i += 2) {
-            String xn = (String) data[i];
-            boolean exists = (boolean) data[i+1];
-            BlockRegisterRequest_old br = new BlockRegisterRequest_old();
-            br.setExternalIdentifier(xn);
-            br.setExistingTissue(exists);
-            brs.add(br);
+    static BlockRegisterRequest makeRequest(Object... args) {
+        List<BlockRegisterSample> brss = new ArrayList<>(args.length/2);
+        for (int i = 0; i < args.length; i += 2) {
+            BlockRegisterSample brs = new BlockRegisterSample();
+            brs.setExternalIdentifier((String) args[i]);
+            brs.setExistingTissue((Boolean) args[i+1]);
+            brss.add(brs);
         }
-        return new RegisterRequest(brs);
+        BlockRegisterLabware brl = new BlockRegisterLabware();
+        brl.setSamples(brss);
+        BlockRegisterRequest request = new BlockRegisterRequest();
+        request.setLabware(List.of(brl));
+        return request;
     }
 
     @Test
@@ -193,6 +196,5 @@ public class TestRegisterClashChecker {
         Map<Integer, List<Labware>> tissueIdLabwareMap = Map.of(tissues[0].getId(), Arrays.asList(labware));
         assertEquals(new RegisterClash(tissues[0], Arrays.asList(labware)), checker.toRegisterClash(tissues[0], tissueIdLabwareMap));
         assertEquals(new RegisterClash(tissues[1], List.of()), checker.toRegisterClash(tissues[1], tissueIdLabwareMap));
-
     }
 }

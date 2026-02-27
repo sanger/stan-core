@@ -149,7 +149,7 @@ class TestFileRegisterService {
     static Stream<Arguments> regArgs() {
         return Arrays.stream(new Object[][] {
                 {new SectionRegisterRequest()},
-                {new RegisterRequest()},
+                {new BlockRegisterRequest()},
                 {new OriginalSampleRegisterRequest()},
         }).map(Arguments::of);
     }

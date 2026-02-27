@@ -4,7 +4,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import uk.ac.sanger.sccp.stan.repo.*;
-import uk.ac.sanger.sccp.stan.request.register.*;
+import uk.ac.sanger.sccp.stan.request.register.BlockRegisterRequest;
+import uk.ac.sanger.sccp.stan.request.register.SectionRegisterRequest;
 import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.sanitiser.Sanitiser;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
@@ -35,7 +36,6 @@ public class RegisterValidationFactory {
     private final Validator<String> xeniumLotValidator;
     private final Validator<String> sectionValidator;
     private final Sanitiser<String> thicknessSanitiser;
-    private final TissueFieldChecker tissueFieldChecker;
     private final BlockFieldChecker blockFieldChecker;
     private final SlotRegionService slotRegionService;
     private final BioRiskService bioRiskService;
@@ -55,7 +55,7 @@ public class RegisterValidationFactory {
                                      @Qualifier("xeniumLotValidator") Validator<String> xeniumLotValidator,
                                      @Qualifier("replicateValidator") Validator<String> replicateValidator,
                                      @Qualifier("sectionValidator") Validator<String> sectionValidator,
-                                     TissueFieldChecker tissueFieldChecker, BlockFieldChecker blockFieldChecker,
+                                     BlockFieldChecker blockFieldChecker,
                                      SlotRegionService slotRegionService, BioRiskService bioRiskService, WorkService workService) {
         this.donorRepo = donorRepo;
         this.hmdmcRepo = hmdmcRepo;
@@ -77,17 +77,10 @@ public class RegisterValidationFactory {
         this.xeniumLotValidator = xeniumLotValidator;
         this.thicknessSanitiser = thicknessSanitiser;
         this.sectionValidator = sectionValidator;
-        this.tissueFieldChecker = tissueFieldChecker;
         this.blockFieldChecker = blockFieldChecker;
         this.slotRegionService = slotRegionService;
         this.workService = workService;
         this.bioRiskService = bioRiskService;
-    }
-
-    public RegisterValidation createRegisterValidation(RegisterRequest request) {
-        return new RegisterValidationImp(request, donorRepo, hmdmcRepo, ttRepo, ltRepo, mediumRepo,
-                fixativeRepo, tissueRepo, speciesRepo, cellClassRepo, donorNameValidation, externalNameValidation, replicateValidator,
-                tissueFieldChecker, bioRiskService, workService);
     }
 
     public RegisterValidation createBlockRegisterValidation(BlockRegisterRequest request) {
