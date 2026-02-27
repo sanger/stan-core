@@ -131,7 +131,7 @@ public class BlockRegisterServiceImp implements IRegisterService<BlockRegisterRe
                     tissueMap.put(tissueKey, existingTissue);
                     continue;
                 }
-                Donor donor = donors.get(brs.getDonorIdentifier().toUpperCase());
+                Donor donor = donors.get(brs.getDonorIdentifier());
                 Hmdmc hmdmc;
                 if (nullOrEmpty(brs.getHmdmc())) {
                     hmdmc = null;
@@ -175,7 +175,8 @@ public class BlockRegisterServiceImp implements IRegisterService<BlockRegisterRe
         BioState bioState = opType.getNewBioState();
         for (BlockRegisterLabware brl : request.getLabware()) {
             LabwareType labwareType = validation.getLabwareType(brl.getLabwareType());
-            Labware lw = labwareService.create(labwareType);
+            String xb = brl.getExternalBarcode();
+            Labware lw = labwareService.create(labwareType, xb, xb);
             lwList.add(lw);
             Set<Slot> slotsToUpdate = new HashSet<>();
             List<Action> actions = new ArrayList<>();
