@@ -295,8 +295,8 @@ public class TestSectionRegisterService {
 
         verify(mockLwService).create(lt, prebarcode ? xb : null, xb);
 
-        verify(mockSlotRepo, times(2)).save(lw.getSlot(A1));
-        verify(mockSlotRepo).save(lw.getSlot(B2));
+        verify(mockSlotRepo, times(2)).saveAll(List.of(lw.getSlot(A1)));
+        verify(mockSlotRepo).saveAll(List.of(lw.getSlot(B2)));
 
         assertEquals(lw, result);
         assertThat(lw.getSlot(A1).getSamples()).containsExactlyInAnyOrder(sample1, sample2);
@@ -310,7 +310,7 @@ public class TestSectionRegisterService {
 
     private SectionRegisterContent content(Address address, String extName, String regionName) {
         SectionRegisterContent src = new SectionRegisterContent();
-        src.setAddress(address);
+        src.setAddresses(address==null ? List.of() : List.of(address));
         src.setExternalIdentifier(extName);
         src.setRegion(regionName);
         return src;
@@ -318,7 +318,7 @@ public class TestSectionRegisterService {
 
     private SectionRegisterContent content(Address address, String extName, Integer thickness) {
         SectionRegisterContent content = new SectionRegisterContent();
-        content.setAddress(address);
+        content.setAddresses(address==null ? List.of() : List.of(address));
         content.setExternalIdentifier(extName);
         content.setSectionThickness(thickness==null ? null : thickness.toString());
         return content;

@@ -198,15 +198,23 @@ public class SectionRegisterValidation {
                 continue;
             }
             for (var content : lw.getContents()) {
-                Address address = content.getAddress();
-                if (address==null) {
+                if (nullOrEmpty(content.getAddresses())) {
                     addProblem("Missing slot address.");
-                } else if (lt.indexOf(address) < 0) {
-                    addProblem("Invalid address %s in labware type %s.", address, lt.getName());
+                    continue;
+                }
+                Set<Address> seen = new HashSet<>(content.getAddresses().size());
+                for (Address address : content.getAddresses()) {
+                    if (address == null) {
+                        addProblem("Missing slot address.");
+                    } else if (!seen.add(address)) {
+                        addProblem("Slot address %s given multiple times for the same section.", address);
+                    } else if (lt.indexOf(address) < 0) {
+                        addProblem("Invalid address %s in labware type %s.", address, lt.getName());
+                    }
                 }
             }
         }
-        // Allow duplicate addresses
+        // Allow duplicate addresses across different sections but not in the same section
         return lwTypeMap;
     }
 
@@ -510,8 +518,9 @@ public class SectionRegisterValidation {
 
         for (var srl : request.getLabware()) {
             Stream<Map.Entry<Address, String>> regionStream = srl.getContents().stream()
-                    .filter(src -> !nullOrEmpty(src.getRegion()) && src.getAddress()!=null)
-                    .map(src -> Map.entry(src.getAddress(), src.getRegion()));
+                    .filter(src -> !nullOrEmpty(src.getRegion()) && !nullOrEmpty(src.getAddresses()))
+                    .flatMap(src -> src.getAddresses().stream()
+                            .map(ad -> Map.entry(ad, src.getRegion())));
             problems.addAll(slotRegionService.validateSlotRegions(slotRegions, regionStream));
         }
 
@@ -520,8 +529,10 @@ public class SectionRegisterValidation {
 
     public boolean anyMissingRegions(SectionRegisterLabware srl) {
         return slotRegionService.anyMissingRegions(srl.getContents().stream()
-                .filter(src -> src.getAddress()!=null)
-                .map(src -> simpleEntry(src.getAddress(), src.getRegion())));
+                .filter(src -> !nullOrEmpty(src.getAddresses()))
+                .flatMap(src -> src.getAddresses().stream()
+                        .filter(Objects::nonNull)
+                        .map(ad -> simpleEntry(ad, src.getRegion()))));
     }
 
     private Stream<SectionRegisterContent> contentStream() {
@@ -551,9 +562,9 @@ public class SectionRegisterValidation {
     }
 
     private <E> UCMap<E> loadAllFromSectionsToStringMap(SectionRegisterRequest request,
-                                                              Function<SectionRegisterContent, String> requestFunction,
-                                                              Function<? super E, String> entityFunction,
-                                                              Function<? super Set<String>, ? extends Collection<E>> lookupFunction) {
+                                                        Function<SectionRegisterContent, String> requestFunction,
+                                                        Function<? super E, String> entityFunction,
+                                                        Function<? super Set<String>, ? extends Collection<E>> lookupFunction) {
         Set<String> strings = request.getLabware().stream()
                 .flatMap(lw -> lw.getContents().stream().map(requestFunction))
                 .filter(s -> s!=null && !s.isEmpty())

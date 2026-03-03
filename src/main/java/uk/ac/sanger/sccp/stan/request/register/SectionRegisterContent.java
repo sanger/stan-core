@@ -5,7 +5,10 @@ import uk.ac.sanger.sccp.stan.model.LifeStage;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Objects;
+
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullToEmpty;
 
 /**
  * One section in one labware of a section registration request.
@@ -15,7 +18,7 @@ public class SectionRegisterContent {
     private String donorIdentifier;
     private LifeStage lifeStage;
     private String species;
-    private Address address;
+    private List<Address> addresses = List.of();
     private String hmdmc;
     private String externalIdentifier;
     private String tissueType;
@@ -38,12 +41,12 @@ public class SectionRegisterContent {
         this.species = species;
     }
 
-    public Address getAddress() {
-        return this.address;
+    public List<Address> getAddresses() {
+        return this.addresses;
     }
 
-    public void setAddress(Address address) {
-        this.address = address;
+    public void setAddresses(List<Address> addresses) {
+        this.addresses = nullToEmpty(addresses);
     }
 
     public String getSpecies() {
@@ -183,7 +186,7 @@ public class SectionRegisterContent {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         SectionRegisterContent that = (SectionRegisterContent) o;
-        return (Objects.equals(this.address, that.address)
+        return (Objects.equals(this.addresses, that.addresses)
                 && Objects.equals(this.species, that.species)
                 && Objects.equals(this.hmdmc, that.hmdmc)
                 && Objects.equals(this.donorIdentifier, that.donorIdentifier)
@@ -205,13 +208,13 @@ public class SectionRegisterContent {
 
     @Override
     public int hashCode() {
-        return Objects.hash(address, externalIdentifier);
+        return Objects.hash(addresses, externalIdentifier);
     }
 
     @Override
     public String toString() {
         return BasicUtils.describe("SectionRegisterContent")
-                .add("address", address)
+                .add("addresses", addresses)
                 .add("species", species)
                 .add("hmdmc", hmdmc)
                 .add("donorIdentifier", donorIdentifier)

@@ -104,7 +104,7 @@ public class SectionRegisterFileReaderImp extends BaseRegisterFileReader<Section
      */
     public SectionRegisterContent createRequestContent(Collection<String> problems, Map<Column, Object> row) {
         SectionRegisterContent content = new SectionRegisterContent();
-        content.setAddress(valueToAddress(problems, (String) row.get(Column.Section_address)));
+        content.setAddresses(valueToAddresses(problems, (String) row.get(Column.Section_address)));
         content.setExternalIdentifier((String) row.get(Column.Section_external_ID));
         content.setFixative((String) row.get(Column.Fixative));
         content.setHmdmc((String) row.get(Column.HuMFre));

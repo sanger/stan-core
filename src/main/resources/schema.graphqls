@@ -367,8 +367,8 @@ input RegisterRequest {
 
 """Information about a section of tissue (already taken from some a block tracked elsewhere) to register."""
 input SectionRegisterContent {
-    """The address of the slot in the labware where this section should be created."""
-    address: Address!
+    """The addresses of the slots in the labware where this section should be created."""
+    addresses: [Address!]!
     """The species from which this section originates."""
     species: String!
     """The cellular classification of the section."""

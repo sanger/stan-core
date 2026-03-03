@@ -24,7 +24,7 @@ public interface SectionRegisterFileReader extends MultipartFileReader<SectionRe
         External_slide_ID(Pattern.compile("(external )?(slide (barcode|id|identifier)|barcode.*slide)", Pattern.CASE_INSENSITIVE|Pattern.DOTALL)),
         Prebarcode(String.class, Pattern.compile("(xenium( slide)?\\s*|pre)barcode", Pattern.CASE_INSENSITIVE), false),
         Lot(String.class, Pattern.compile("(xenium )?(slide )?lot\\b.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL), false),
-        Section_address,
+        Section_address(Pattern.compile("section\\s*address(es)?", Pattern.CASE_INSENSITIVE)),
         Fixative,
         Embedding_medium,
         Donor_ID,
