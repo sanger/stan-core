@@ -575,6 +575,32 @@ public class TestLabwareLabelDataService {
         }).map(Arguments::of);
     }
 
+    @Test
+    void testDistinctPlanSection() {
+        Sample[] samples = EntityFactory.makeSamples(2);
+        List<PlanAction> pas = List.of(
+                makePlanAction(1, samples[0], null),
+                makePlanAction(2, samples[0], null),
+                makePlanAction(3, samples[1], null),
+                makePlanAction(4, samples[0], "1a"),
+                makePlanAction(5, samples[0], "1a"), // this one gets filtered out
+                makePlanAction(6, samples[1], "1a"),
+                makePlanAction(7, samples[1], "2b")
+        );
+        assertThat(pas.stream()
+                .filter(LabwareLabelDataService.distinctPlanSection())
+                .map(PlanAction::getId)
+        ).containsExactly(1, 2, 3, 4, 6, 7);
+    }
+
+    static PlanAction makePlanAction(int id, Sample sam, String newSection) {
+        PlanAction pa = new PlanAction();
+        pa.setId(id);
+        pa.setSample(sam);
+        pa.setNewSection(newSection);
+        return pa;
+    }
+
     private String tissueString(Tissue tissue) {
         String prefix = switch (tissue.getDonor().getLifeStage()) {
             case paediatric -> "P";
