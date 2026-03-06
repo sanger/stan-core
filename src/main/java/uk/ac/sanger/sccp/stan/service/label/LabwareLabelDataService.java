@@ -9,6 +9,7 @@ import uk.ac.sanger.sccp.stan.service.label.LabwareLabelData.LabelContent;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -38,6 +39,7 @@ public class LabwareLabelDataService {
         List<LabelContent> content = labware.getSlots().stream()
                 .sorted(slotOrder)
                 .flatMap(slot -> slot.getSamples().stream())
+                .distinct()
                 .map(this::getContent)
                 .collect(toList());
         Set<String> mediums = labware.getSlots().stream()
@@ -425,10 +427,20 @@ public class LabwareLabelDataService {
 
     public List<LabelContent> getPlannedContent(List<PlanAction> planActions, Comparator<Slot> slotOrder) {
         return planActions.stream()
+                .filter(distinctPlanSection())
                 .sorted(Comparator.comparing(PlanAction::getDestination, slotOrder)
                         .thenComparing(PlanAction::getId))
                 .map(this::getContent)
                 .collect(toList());
+    }
+
+    /**
+     * Creates a filter to dedupe new sections. Doesn't filter out non-sections.
+     * @return a predicate to filter out plan actions creating the same section
+     */
+    static Predicate<PlanAction> distinctPlanSection() {
+        final Set<PlanActionKey> keys = new HashSet<>();
+        return pa -> (nullOrEmpty(pa.getNewSection()) || keys.add(new PlanActionKey(pa)));
     }
 
     public LabelContent getContent(PlanAction planAction) {
@@ -466,6 +478,13 @@ public class LabwareLabelDataService {
     public record SimpleContent(Tissue tissue, String section) {
         public SimpleContent(Sample sample) {
             this(sample.getTissue(), sample.getSection());
+        }
+    }
+
+    /** The characteristics to dedupe the new section that will be created from a plan action */
+    record PlanActionKey(Sample parentSample, String section) {
+        public PlanActionKey(PlanAction pa) {
+            this(pa.getSample(), pa.getNewSection());
         }
     }
 }
