@@ -379,6 +379,7 @@ public class CytassistOverview {
                 .add("visiumConcentrationValue", visiumConcentrationValue)
                 .add("visiumConcentrationAverageSize", visiumConcentrationAverageSize)
                 .add("visiumConcentrationRange", visiumConcentrationRange)
+                .add("visiumConcentrationPerformed", visiumConcentrationPerformed)
                 .add("latestBarcode", latestBarcode)
                 .add("latestLwState", latestLwState)
                 .add("latestBioState", latestBioState)
