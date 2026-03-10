@@ -420,6 +420,7 @@ public class CytassistOverviewDataCompilerImp implements CytassistOverviewDataCo
                         }
                     }
                 }
+                d.row.setVisiumConcentrationPerformed(found.getPerformed());
             }
         }
     }
