@@ -661,6 +661,7 @@ class TestCytassistOverviewDataCompiler {
         assertEquals("50", d.row.getVisiumConcentrationValue());
         assertEquals("15", d.row.getVisiumConcentrationAverageSize());
         assertEquals("10-20", d.row.getVisiumConcentrationRange());
+        assertEquals(ops.get(0).getPerformed(), d.row.getVisiumConcentrationPerformed());
         assertThat(d.users).containsExactly(user);
         d = data.get(1);
         assertEquals("Library concentration", d.row.getVisiumConcentrationType());
