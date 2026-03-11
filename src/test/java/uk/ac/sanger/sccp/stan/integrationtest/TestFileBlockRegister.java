@@ -139,7 +139,6 @@ public class TestFileBlockRegister {
         tester.setUser(user);
         when(mockRegService.register(any(), any())).thenThrow(new ValidationException(List.of("Bad reg")));
         var response = upload("testdata/block_reg_existing.xlsx", null, List.of("Ext17"), false);
-        System.out.printf("%n****%n%s%n****%n", response.getContentAsString());
         var map = objectMapper.readValue(response.getContentAsString(), Map.class);
         ArgumentCaptor<BlockRegisterRequest> requestCaptor = ArgumentCaptor.forClass(BlockRegisterRequest.class);
         verify(mockRegService).register(eq(user), requestCaptor.capture());
