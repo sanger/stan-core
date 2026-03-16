@@ -51,7 +51,7 @@ public class TestRegisterMutation {
         tester.setUser(entityCreator.createUser("dr6"));
         String mutation = tester.readGraphQL("register.graphql").replace("SGP1", work.getWorkNumber());
         Object result = tester.post(mutation);
-        Object data = chainGet(result, "data", "register");
+        Object data = chainGet(result, "data", "registerBlocks");
         assertThat(chainGetList(data, "clashes")).isEmpty();
         String barcode = chainGet(data, "labware", 0, "barcode");
         assertNotNull(barcode);
@@ -61,7 +61,7 @@ public class TestRegisterMutation {
         assertEquals("2021-02-03", tissueData.get("collectionDate"));
 
         result = tester.post(mutation);
-        data = chainGet(result, "data", "register");
+        data = chainGet(result, "data", "registerBlocks");
         assertThat(chainGetList(data, "labware")).isEmpty();
         List<Map<String, ?>> clashes = chainGet(data, "clashes");
         assertThat(clashes).hasSize(1);

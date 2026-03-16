@@ -1,22 +1,26 @@
 mutation {
-    register(request:{
-        blocks:[
+    registerBlocks(request:{
+        labware:[
             {
                 labwareType:"proviasette",
-                donorIdentifier:"DONOR1",
-                species: "Homo sapiens (Human)",
-                externalIdentifier:"TISSUE1",
-                lifeStage:adult,
-                hmdmc:"20/0002",
-                spatialLocation:0,
-                tissueType:"Bone",
-                replicateNumber:"1",
                 medium:"None",
                 fixative:"None",
-                highestSection:0,
-                sampleCollectionDate: "2021-02-03",
-                bioRiskCode: "biorisk1",
-                cellClass: "Tissue"
+                externalBarcode: "XBC1"
+                samples: {
+                    donorIdentifier:"DONOR1",
+                    species: "Homo sapiens (Human)",
+                    externalIdentifier:"TISSUE1",
+                    lifeStage:adult,
+                    hmdmc:"20/0002",
+                    spatialLocation:0,
+                    tissueType:"Bone",
+                    replicateNumber:"1",
+                    highestSection:0,
+                    sampleCollectionDate: "2021-02-03",
+                    bioRiskCode: "biorisk1",
+                    cellClass: "Tissue"
+                    addresses: ["A1"]
+                }
             }
         ]
         workNumbers: ["SGP1"]

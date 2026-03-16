@@ -153,7 +153,7 @@ public class GraphQLProvider {
                         .dataFetcher("registerAsEndUser", graphQLMutation.userSelfRegister(User.Role.enduser)) // internal transaction
                         .dataFetcher("login", graphQLMutation.logIn())
                         .dataFetcher("logout", graphQLMutation.logOut())
-                        .dataFetcher("register", transact(graphQLMutation.register()))
+                        .dataFetcher("registerBlocks", transact(graphQLMutation.blockRegister()))
                         .dataFetcher("plan", transact(graphQLMutation.recordPlan()))
                         .dataFetcher("printLabware", graphQLMutation.printLabware()) // not transacted
                         .dataFetcher("confirmOperation", transact(graphQLMutation.confirmOperation()))
