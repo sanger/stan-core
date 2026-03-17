@@ -112,7 +112,7 @@ public class TestRegisterOriginalSamplesMutation {
         assertThat(bioRiskRepo.loadBioRiskForSampleId(sample.getId())).contains(risk1);
 
         Work work = entityCreator.createWork(null, null, null, null, null);
-        Labware block = testBlockProcessing(barcode, work);
+        Labware block = testBlockProcessing(barcode, work, sample.getId());
         testSectioningBlock(block, work);
         lw.setDiscarded(false);
         lwRepo.save(lw);
@@ -121,10 +121,11 @@ public class TestRegisterOriginalSamplesMutation {
 
     }
 
-    private Labware testBlockProcessing(String sourceBarcode, Work work) throws Exception {
+    private Labware testBlockProcessing(String sourceBarcode, Work work, Integer sourceSampleId) throws Exception {
         OperationType opType = entityCreator.createOpType("Block processing", null);
         String mutation = tester.readGraphQL("tissueblock.graphql")
                 .replace("WORKNUMBER", work.getWorkNumber())
+                .replace("999", String.valueOf(sourceSampleId))
                 .replace("BARCODE", sourceBarcode);
         Object result = tester.post(mutation);
         String destBarcode = chainGet(result, "data", "performTissueBlock", "labware", 0, "barcode");
@@ -141,7 +142,7 @@ public class TestRegisterOriginalSamplesMutation {
     }
 
     private void testSectioningBlock(Labware block, Work work) throws Exception {
-        final Integer blockSampleId = block.getFirstSlot().getBlockSampleId();
+        final Integer blockSampleId = block.getFirstSlot().getSamples().getFirst().getId();
         String planMutation = tester.readGraphQL("plan_simple.graphql")
                 .replace("BARCODE0", block.getBarcode())
                 .replace("55555", String.valueOf(blockSampleId));

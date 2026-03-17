@@ -367,28 +367,28 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
      * @param ops the operations creating the new sections
      */
     public void updateSourceBlocks(Collection<Operation> ops) {
-        Map<Integer, Slot> slotsToUpdate = new HashMap<>();
+        Map<Integer, Sample> samplesToUpdate = new HashMap<>();
         for (Operation op : ops) {
             for (Action action : op.getActions()) {
-                Slot src = action.getSource();
+                Sample srcSample = action.getSourceSample();
                 Sample sample = action.getSample();
-                if (src.isBlock() && sample.getSection() != null) {
-                    Integer alreadyHighestSection = src.getBlockHighestSection();
-                    Slot slotInMap = slotsToUpdate.get(src.getId());
-                    if (slotInMap!=null) {
-                        if (alreadyHighestSection==null || slotInMap.getBlockHighestSection() > alreadyHighestSection) {
-                            alreadyHighestSection = slotInMap.getBlockHighestSection();
-                        }
-                    }
+                if (srcSample.isBlock() && sample.getSection() != null) {
                     Integer sectionInt = parseSectionInt(sample.getSection());
-                    if (sectionInt != null && (alreadyHighestSection == null || alreadyHighestSection < sectionInt)) {
-                        src.setBlockHighestSection(sectionInt);
-                        slotsToUpdate.put(src.getId(), src);
+                    if (sectionInt != null) {
+                        Sample sampleInMap = samplesToUpdate.get(srcSample.getId());
+                        if (sampleInMap != null) {
+                            if (sampleInMap.getBlockHighestSection() < sectionInt) {
+                                sampleInMap.setBlockHighestSection(sectionInt);
+                            }
+                        } else if (srcSample.getBlockHighestSection() < sectionInt) {
+                            srcSample.setBlockHighestSection(sectionInt);
+                            samplesToUpdate.put(srcSample.getId(), srcSample);
+                        }
                     }
                 }
             }
         }
-        slotRepo.saveAll(slotsToUpdate.values());
+        sampleRepo.saveAll(samplesToUpdate.values());
     }
 
     /**

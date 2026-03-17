@@ -154,8 +154,7 @@ public class EntityFactory {
         if (tube==null) {
             int lwId = 100;
             int slotId = 1001;
-            Slot slot = new Slot(slotId, lwId, new Address(1,1), new ArrayList<>(List.of(getSample())),
-                    null, null);
+            Slot slot = new Slot(slotId, lwId, new Address(1,1), new ArrayList<>(List.of(getSample())));
             tube = new Labware(lwId, "STAN-00"+lwId, getTubeType(), new ArrayList<>(List.of(slot)));
         }
         return tube;
@@ -177,7 +176,7 @@ public class EntityFactory {
         int lwId = ++idCounter;
         final int[] slotId = { 10*lwId };
         List<Slot> slots = Address.stream(lt.getNumRows(), lt.getNumColumns())
-                .map(ad -> new Slot(++slotId[0], lwId, ad, new ArrayList<>(), null, null))
+                .map(ad -> new Slot(++slotId[0], lwId, ad, new ArrayList<>()))
                 .collect(toList());
         if (barcode==null) {
             barcode = "STAN-"+lwId;
@@ -199,12 +198,8 @@ public class EntityFactory {
         return lw;
     }
 
-    public static Labware makeBlock(Sample sample) {
-        Labware lw = makeLabware(getTubeType(), sample);
-        Slot slot = lw.getFirstSlot();
-        slot.setBlockSampleId(sample.getId());
-        slot.setBlockHighestSection(0);
-        return lw;
+    public static Labware makeTube(Sample sample) {
+        return makeLabware(getTubeType(), sample);
     }
 
     public static OperationType makeOperationType(String name, BioState newBioState, OperationTypeFlag... flags) {

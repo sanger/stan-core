@@ -32,7 +32,7 @@ import static org.mockito.Mockito.*;
 public class TestUnreleaseService {
     private LabwareValidatorFactory mockLabwareValidatorFactory;
     private LabwareRepo mockLwRepo;
-    private SlotRepo mockSlotRepo;
+    private SampleRepo mockSampleRepo;
     private OperationTypeRepo mockOpTypeRepo;
     private OperationService mockOpService;
 
@@ -43,12 +43,12 @@ public class TestUnreleaseService {
     void setup() {
         mockLabwareValidatorFactory = mock(LabwareValidatorFactory.class);
         mockLwRepo = mock(LabwareRepo.class);
-        mockSlotRepo = mock(SlotRepo.class);
+        mockSampleRepo = mock(SampleRepo.class);
         mockOpTypeRepo = mock(OperationTypeRepo.class);
         mockOpService = mock(OperationService.class);
         mockWorkService = mock(WorkService.class);
 
-        service = spy(new UnreleaseServiceImp(mockLabwareValidatorFactory, mockLwRepo, mockSlotRepo,
+        service = spy(new UnreleaseServiceImp(mockLabwareValidatorFactory, mockLwRepo, mockSampleRepo,
                 mockOpTypeRepo, mockOpService, mockWorkService));
     }
 
@@ -199,19 +199,18 @@ public class TestUnreleaseService {
 
     @ParameterizedTest
     @CsvSource(value={
-            "true, 2, 5,",
-            "true, 4, 3, 'For block STAN-1, cannot reduce the highest section number from 4 to 3.'",
-            "true,,2,",
-            "true,,-2,Cannot set the highest section to a negative number.",
-            "false,,1,Cannot set the highest section number from labware STAN-1 because it is not a block.",
+            "2, 5,",
+            "4, 3, 'For block STAN-1, cannot reduce the highest section number from 4 to 3.'",
+            "1,-2,Cannot set the highest section to a negative number.",
+            ",1,Cannot set the highest section number from labware STAN-1 because it is not a block.",
     })
-    public void testHighestSectionProblem(boolean isBlock, Integer oldNum, int num, String expectedProblem) {
-        Sample sample = EntityFactory.getSample();
-        Labware lw = (isBlock ? EntityFactory.makeBlock(sample) : EntityFactory.makeLabware(EntityFactory.getTubeType(), sample));
-        lw.setBarcode("STAN-1");
-        if (oldNum!=null || isBlock) {
-            lw.getFirstSlot().setBlockHighestSection(oldNum);
+    public void testHighestSectionProblem(Integer oldNum, int num, String expectedProblem) {
+        Sample sample = EntityFactory.makeSamples(1)[0];
+        if (oldNum != null) {
+            sample.setBlockHighestSection(oldNum);
         }
+        Labware lw = EntityFactory.makeTube(sample);
+        lw.setBarcode("STAN-1");
         assertEquals(expectedProblem, service.highestSectionProblem(lw, num));
     }
 
@@ -240,12 +239,12 @@ public class TestUnreleaseService {
 
     @Test
     public void testUpdateLabware() {
-        final List<Slot> slotUpdates = new ArrayList<>();
+        final List<Sample> sampleUpdates = new ArrayList<>();
         final List<Labware> lwUpdates = new ArrayList<>();
-        when(mockSlotRepo.saveAll(any())).then(invocation -> {
-            List<Slot> slots = invocation.getArgument(0);
-            slotUpdates.addAll(slots);
-            return slots;
+        when(mockSampleRepo.saveAll(any())).then(invocation -> {
+            List<Sample> samples = invocation.getArgument(0);
+            sampleUpdates.addAll(samples);
+            return samples;
         });
         when(mockLwRepo.saveAll(any())).then(invocation -> {
             List<Labware> lw = invocation.getArgument(0);
@@ -253,19 +252,15 @@ public class TestUnreleaseService {
             return lw;
         });
 
-        Sample sample = EntityFactory.getSample();
         LabwareType lt = EntityFactory.getTubeType();
+        Sample[] samples = EntityFactory.makeSamples(5);
         Labware[] labware = IntStream.range(0,5).mapToObj(i -> {
-            Labware lw = EntityFactory.makeLabware(lt, sample);
+            if (i > 0) {
+                samples[i].setBlockHighestSection(i);
+            }
+            Labware lw = EntityFactory.makeLabware(lt, samples[i]);
             lw.setBarcode("STAN-" + i);
             lw.setReleased(true);
-            if (i>0) {
-                final Slot slot = lw.getFirstSlot();
-                slot.setBlockSampleId(sample.getId());
-                if (i < 4) {
-                    slot.setBlockHighestSection(i);
-                }
-            }
             return lw;
         }).toArray(Labware[]::new);
 
@@ -288,10 +283,10 @@ public class TestUnreleaseService {
         }
         Integer[] expectedHighestSection = { null, 5, 10, 3, 12 };
         for (int i = 0; i < labware.length; ++i) {
-            assertEquals(expectedHighestSection[i], labware[i].getFirstSlot().getBlockHighestSection());
+            assertEquals(expectedHighestSection[i], labware[i].getFirstSlot().getSamples().getFirst().getBlockHighestSection());
         }
-        Slot[] expectedSlotUpdates = IntStream.of(1,2,4).mapToObj(i -> labware[i].getFirstSlot()).toArray(Slot[]::new);
-        assertThat(slotUpdates).containsExactly(expectedSlotUpdates);
+        Sample[] expectedSampleUpdates = IntStream.of(1,2,4).mapToObj(i -> samples[i]).toArray(Sample[]::new);
+        assertThat(sampleUpdates).containsExactlyInAnyOrder(expectedSampleUpdates);
     }
 
     @Test

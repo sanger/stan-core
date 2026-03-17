@@ -71,7 +71,7 @@ public class FieldValidation {
         Set<CharacterType> charTypes = EnumSet.of(
                 CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN,
                 CharacterType.UNDERSCORE, CharacterType.FULL_STOP
-        ) ;
+        );
         return new StringValidator("External identifier", 3, 64, charTypes);
     }
 
@@ -79,8 +79,8 @@ public class FieldValidation {
     public Validator<String> externalBarcodeValidator() {
         Set<CharacterType> charTypes = EnumSet.of(
                 CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN,
-                CharacterType.UNDERSCORE
-        ) ;
+                CharacterType.UNDERSCORE, CharacterType.FULL_STOP
+        );
         return new StringValidator("External barcode", 3, 32, charTypes);
     }
 
@@ -388,7 +388,7 @@ public class FieldValidation {
         Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN,
                 CharacterType.UNDERSCORE, CharacterType.SPACE, CharacterType.SLASH, CharacterType.BACKSLASH,
                 CharacterType.PAREN, CharacterType.FULL_STOP, CharacterType.APOSTROPHE, CharacterType.PERCENT,
-                CharacterType.COMMA, CharacterType.COLON, CharacterType.SEMICOLON);
+                CharacterType.COMMA, CharacterType.COLON, CharacterType.SEMICOLON, CharacterType.AMPERSAND);
         return new StringValidator("ROI", 1, 64, charTypes);
     }
 

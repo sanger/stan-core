@@ -3,9 +3,15 @@ mutation {
         discardSourceBarcodes: ["BARCODE"]
         workNumber: "WORKNUMBER"
         labware: [{
-            sourceBarcode: "BARCODE"
             labwareType: "Tube"
-            replicate: "5c"
+            contents: [
+                {
+                    sourceBarcode: "BARCODE"
+                    replicate: "5c"
+                    addresses: ["A1"]
+                    sourceSampleId: 999
+                }
+            ]
         }]
     }) {
         labware {

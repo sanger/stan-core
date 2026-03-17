@@ -216,6 +216,7 @@ public class TestCytassistOverview {
         assertEquals("70", co.getVisiumConcentrationValue());
         assertNull(co.getVisiumConcentrationAverageSize());
         assertNull(co.getVisiumConcentrationRange());
+        assertEquals(vc1.getPerformed(), co.getVisiumConcentrationPerformed());
         assertEquals(lws[5].getBarcode(), co.getLatestBarcode());
         assertEquals(Labware.State.active.toString(), co.getLatestLwState());
         assertEquals("Tissue", co.getLatestBioState());
@@ -253,6 +254,7 @@ public class TestCytassistOverview {
         assertEquals("80", co.getVisiumConcentrationValue());
         assertEquals("75", co.getVisiumConcentrationAverageSize());
         assertEquals("1-2", co.getVisiumConcentrationRange());
+        assertEquals(vc2.getPerformed(), co.getVisiumConcentrationPerformed());
         assertEquals(lws[6].getBarcode(), co.getLatestBarcode());
         assertEquals(Labware.State.released.toString(), co.getLatestLwState());
         assertEquals(time(28), co.getLatestBarcodeReleased());
