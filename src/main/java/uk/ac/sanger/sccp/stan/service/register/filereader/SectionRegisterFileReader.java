@@ -41,6 +41,7 @@ public interface SectionRegisterFileReader extends MultipartFileReader<SectionRe
         Section_thickness(String.class),
         Date_sectioned(LocalDate.class, Pattern.compile("date.*sectioned|section.*date", Pattern.CASE_INSENSITIVE|Pattern.DOTALL), false),
         Section_position(Pattern.compile("(if.+)?(section\\s+)?position|position.*slot.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL)),
+        Comment(Void.class, Pattern.compile("(information|comment).*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL), false),
         ;
 
         private final Pattern pattern;
