@@ -23,18 +23,18 @@ import static java.util.stream.Collectors.toSet;
 public class UnreleaseServiceImp implements UnreleaseService {
     private final LabwareValidatorFactory labwareValidatorFactory;
     private final LabwareRepo lwRepo;
-    private final SlotRepo slotRepo;
+    private final SampleRepo sampleRepo;
     private final OperationTypeRepo opTypeRepo;
     private final OperationService opService;
     private final WorkService workService;
 
     @Autowired
     public UnreleaseServiceImp(LabwareValidatorFactory labwareValidatorFactory,
-                               LabwareRepo lwRepo, SlotRepo slotRepo, OperationTypeRepo opTypeRepo,
+                               LabwareRepo lwRepo, SampleRepo sampleRepo, OperationTypeRepo opTypeRepo,
                                OperationService opService, WorkService workService) {
         this.labwareValidatorFactory = labwareValidatorFactory;
         this.lwRepo = lwRepo;
-        this.slotRepo = slotRepo;
+        this.sampleRepo = sampleRepo;
         this.opTypeRepo = opTypeRepo;
         this.opService = opService;
         this.workService = workService;
@@ -149,17 +149,21 @@ public class UnreleaseServiceImp implements UnreleaseService {
      * @return a string indicating the problem; null if no problem was found.
      */
     public String highestSectionProblem(Labware lw, int highestSection) {
-        Slot slot = lw.getFirstSlot();
-        if (!slot.isBlock()) {
+        Integer oldValue = lw.getSlots().stream()
+                .flatMap(slot -> slot.getSamples().stream())
+                .map(Sample::getBlockHighestSection)
+                .filter(Objects::nonNull)
+                .max(Comparator.naturalOrder())
+                .orElse(null);
+        if (oldValue == null) {
             return "Cannot set the highest section number from labware "+lw.getBarcode()+" because it is not a block.";
-        }
-        Integer oldValue = slot.getBlockHighestSection();
-        if (oldValue!=null && oldValue > highestSection) {
-            return String.format("For block %s, cannot reduce the highest section number from %s to %s.",
-                    lw.getBarcode(), slot.getBlockHighestSection(), highestSection);
         }
         if (highestSection < 0) {
             return "Cannot set the highest section to a negative number.";
+        }
+        if (oldValue > highestSection) {
+            return String.format("For block %s, cannot reduce the highest section number from %s to %s.",
+                    lw.getBarcode(), oldValue, highestSection);
         }
         return null;
     }
@@ -191,23 +195,26 @@ public class UnreleaseServiceImp implements UnreleaseService {
     @NotNull
     public List<Labware> updateLabware(List<UnreleaseLabware> requestLabware, UCMap<Labware> labwareMap) {
         List<Labware> labwareList = new ArrayList<>(requestLabware.size());
-        List<Slot> slotsToUpdate = new ArrayList<>(requestLabware.size());
+        Set<Sample> samplesToUpdate = new HashSet<>();
 
         for (UnreleaseLabware ul : requestLabware) {
             Labware lw = labwareMap.get(ul.getBarcode());
             lw.setReleased(false);
             if (ul.getHighestSection()!=null) {
-                Slot slot = lw.getFirstSlot();
-                if (slot.getBlockHighestSection()==null || slot.getBlockHighestSection() < ul.getHighestSection()) {
-                    slot.setBlockHighestSection(ul.getHighestSection());
-                    slotsToUpdate.add(slot);
+                for (Slot slot : lw.getSlots()) {
+                    for (Sample sample : slot.getSamples()) {
+                        if (sample.isBlock() && !sample.getBlockHighestSection().equals(ul.getHighestSection())) {
+                            sample.setBlockHighestSection(ul.getHighestSection());
+                            samplesToUpdate.add(sample);
+                        }
+                    }
                 }
             }
             labwareList.add(lw);
         }
 
-        if (!slotsToUpdate.isEmpty()) {
-            slotRepo.saveAll(slotsToUpdate);
+        if (!samplesToUpdate.isEmpty()) {
+            sampleRepo.saveAll(new ArrayList<>(samplesToUpdate));
         }
         lwRepo.saveAll(labwareList);
         return labwareList;

@@ -84,9 +84,9 @@ public class TestReleaseRepo {
     }
 
     private Release[] createReleases() {
-        Sample sample = createSample();
-        Labware lw1 = entityCreator.createBlock("STAN-01", sample);
-        Labware lw2 = entityCreator.createBlock("STAN-02", sample);
+        Sample sample = entityCreator.createBlockSample(null);
+        Labware lw1 = entityCreator.createTube("STAN-01", sample);
+        Labware lw2 = entityCreator.createTube("STAN-02", sample);
         User user = entityCreator.createUser("user1");
         ReleaseDestination destination = entityCreator.createReleaseDestination("Venus");
         ReleaseRecipient recipient = entityCreator.createReleaseRecipient("Mekon");

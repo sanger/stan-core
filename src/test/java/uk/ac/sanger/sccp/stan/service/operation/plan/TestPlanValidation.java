@@ -390,13 +390,11 @@ public class TestPlanValidation {
         Sample sample = EntityFactory.getSample();
         int sectionSampleId = sample.getId();
         int blockSampleId = sectionSampleId + 50;
-        Sample blockSample = new Sample(blockSampleId, null, sample.getTissue(), EntityFactory.getBioState());
+        Sample blockSample = Sample.newBlock(blockSampleId, sample.getTissue(), EntityFactory.getBioState(), 0);
         LabwareType lt = EntityFactory.getTubeType();
         Labware block = EntityFactory.makeEmptyLabware(lt);
         Slot blockSlot = block.getFirstSlot();
         blockSlot.getSamples().add(blockSample);
-        blockSlot.setBlockSampleId(blockSampleId);
-        blockSlot.setBlockHighestSection(0);
 
         Labware nonBlock = EntityFactory.makeEmptyLabware(lt);
         nonBlock.getFirstSlot().getSamples().add(sample);
@@ -534,12 +532,12 @@ public class TestPlanValidation {
                 .mapToObj(i -> EntityFactory.makeTissue(EntityFactory.getDonor(), EntityFactory.getSpatialLocation()))
                 .toArray(Tissue[]::new);
         Sample[] sams = IntStream.range(0,3)
-                .mapToObj(i -> new Sample(10+i, null, tissues[i], EntityFactory.getBioState()))
+                .mapToObj(i -> Sample.newBlock(10+i, tissues[i], EntityFactory.getBioState(), 0))
                 .toArray(Sample[]::new);
         Labware[] blocks = Arrays.stream(sams)
-                .map(EntityFactory::makeBlock)
+                .map(EntityFactory::makeTube)
                 .toArray(Labware[]::new);
-        Labware someOtherBlock = EntityFactory.makeBlock(sams[0]);
+        Labware someOtherBlock = EntityFactory.makeTube(sams[0]);
 
         UCMap<Labware> sourceLwMap = UCMap.from(Labware::getBarcode, blocks);
 

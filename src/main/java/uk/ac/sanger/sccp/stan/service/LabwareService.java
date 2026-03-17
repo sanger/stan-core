@@ -13,6 +13,7 @@ import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
+import static uk.ac.sanger.sccp.utils.BasicUtils.stream;
 
 /**
  * Service to help with labware, including creating labware with appropriate slots.
@@ -90,20 +91,20 @@ public class LabwareService {
         List<String> barcodes = barcodeIntRepo.createStanBarcodes(number);
         List<Labware> newLabware = barcodes.stream()
                 .map(bc -> new Labware(null, bc, labwareType, null))
-                .collect(toList());
+                .toList();
         Iterable<Labware> savedLabware = labwareRepo.saveAll(newLabware);
 
         final int numRows = labwareType.getNumRows();
         final int numColumns = labwareType.getNumColumns();
-        final List<Slot> newSlots = Streams.stream(savedLabware).flatMap(lw ->
-                Address.stream(numRows, numColumns).map(address ->
-                        new Slot(null, lw.getId(), address, null, null, null)
-                )
-        ).collect(toList());
+        final List<Slot> newSlots = stream(savedLabware).flatMap(lw -> {
+            assert lw != null;
+            return Address.stream(numRows, numColumns).map(address ->
+                            new Slot(null, lw.getId(), address, null));
+        }).toList();
         slotRepo.saveAll(newSlots);
         return Streams.stream(savedLabware)
                 .peek(entityManager::refresh)
-                .collect(toList());
+                .toList();
     }
 
     /**
@@ -121,7 +122,7 @@ public class LabwareService {
         final int numRows = labwareType.getNumRows();
         final int numColumns = labwareType.getNumColumns();
         List<Slot> newSlots = Address.stream(numRows, numColumns)
-                .map(address -> new Slot(null, labware.getId(), address, null, null, null))
+                .map(address -> new Slot(null, labware.getId(), address, null))
                 .collect(toList());
         slotRepo.saveAll(newSlots);
         entityManager.refresh(labware);

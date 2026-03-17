@@ -40,7 +40,7 @@ public class TestFindLatestOpQuery {
         User user = entityCreator.createUser("user1");
         tester.setUser(user);
         Object mutationResult = tester.post(mutation);
-        String barcode = chainGet(mutationResult, "data", "register", "labware", 0, "barcode");
+        String barcode = chainGet(mutationResult, "data", "registerBlocks", "labware", 0, "barcode");
 
         String query = tester.readGraphQL("findlatestop.graphql").replace("STAN-A1", barcode);
         Object result = tester.post(query);

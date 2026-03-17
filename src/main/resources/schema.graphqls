@@ -224,6 +224,8 @@ type Sample {
     tissue: Tissue!
     """The state of this particular sample."""
     bioState: BioState!
+    """For blocks, what is the highest section number already taken from this block?"""
+    blockHighestSection: Int
 }
 
 """A slot in a piece of labware, which may contain samples."""
@@ -236,10 +238,6 @@ type Slot {
     labwareId: Int!
     """The list of samples contained in this slot. May be empty."""
     samples: [Sample!]!
-    """Is this slot a block of tissue? Blocks have different properties from sections."""
-    block: Boolean!
-    """For blocks, what is the highest section number already taken from this block?"""
-    blockHighestSection: Int
 }
 
 type Labware {
@@ -323,8 +321,10 @@ type ProbePanel {
     enabled: Boolean!
 }
 
-"""A request to register a new block of tissue."""
-input BlockRegisterRequest {
+"""A sample inside a block being registered."""
+input BlockRegisterSample {
+    """The slot addresses containing the sample."""
+    addresses: [Address!]!
     """The string to use as the donor name."""
     donorIdentifier: String!
     """The life stage of the donor."""
@@ -341,12 +341,6 @@ input BlockRegisterRequest {
     externalIdentifier: String!
     """The highest section already taken from the tissue block."""
     highestSection: Int!
-    """The name of the type of labware containing the block."""
-    labwareType: String!
-    """The medium used for the tissue."""
-    medium: String!
-    """The fixative used for the tissue."""
-    fixative: String!
     """The species of the donor."""
     species: String!
     """The cellular classification of the tissue."""
@@ -359,10 +353,26 @@ input BlockRegisterRequest {
     bioRiskCode: String!
 }
 
-"""A request to register one or more blocks of tissue."""
-input RegisterRequest {
-    blocks: [BlockRegisterRequest!]!
+"""A request to register in a piece of labware containing one or more block-samples."""
+input BlockRegisterLabware {
+    """The name of the type of labware containing the block."""
+    labwareType: String!
+    """The medium used for the tissue."""
+    medium: String!
+    """The fixative used for the tissue."""
+    fixative: String!
+    """The external barcode of the labware."""
+    externalBarcode: String!
+    """The samples in this block."""
+    samples: [BlockRegisterSample!]!
+}
+
+"""A request to register new blocks of tissue."""
+input BlockRegisterRequest {
+    """The work numbers for the request."""
     workNumbers: [String!]!
+    """The labware to register."""
+    labware: [BlockRegisterLabware!]!
 }
 
 """Information about a section of tissue (already taken from some a block tracked elsewhere) to register."""
@@ -1818,16 +1828,26 @@ input TissueBlockRequest {
 
 """The input about a new block being created."""
 input TissueBlockLabware {
-    """The original tissue barcode."""
-    sourceBarcode: String!
     """The labware type for the new labware."""
     labwareType: String!
     """The barcode of the new labware, if it is prebarcoded."""
     preBarcode: String
-    """The comment (if any) associated with this operation."""
+    """The contents (new samples) for the new labware."""
+    contents: [TissueBlockContent!]!
+}
+
+"""Info describing a new block in a tissue block request."""
+input TissueBlockContent {
+    """The barcode of the labware containing the source sample."""
+    sourceBarcode: String!
+    """The id of the source sample."""
+    sourceSampleId: Int!
+    """The addresses to place the sample in the new labware."""
+    addresses: [Address!]!
+    """The id of a comment to record on the new block, if any."""
     commentId: Int
     """The replicate number for the new block."""
-    replicate: String!
+    replicate: String
 }
 
 """A request to transfer original sample into pots."""
@@ -2401,7 +2421,7 @@ type Mutation {
     """Log out; end the current login session."""
     logout: String
     """Register blocks of tissue."""
-    register(request: RegisterRequest!): RegisterResult!
+    registerBlocks(request: BlockRegisterRequest!): RegisterResult!
     """Register sections of tissue."""
     registerSections(request: SectionRegisterRequest): RegisterResult!
     """Record planned operations."""

@@ -20,6 +20,7 @@ public class Sample {
     private Tissue tissue;
     @ManyToOne
     private BioState bioState;
+    private Integer blockHighestSection;
 
     public Sample() {}
 
@@ -62,6 +63,24 @@ public class Sample {
         this.bioState = bioState;
     }
 
+    public Integer getBlockHighestSection() {
+        return this.blockHighestSection;
+    }
+
+    public void setBlockHighestSection(Integer blockHighestSection) {
+        this.blockHighestSection = blockHighestSection;
+    }
+
+    public boolean isBlock() {
+        return blockHighestSection != null;
+    }
+
+    public static Sample newBlock(Integer id, Tissue tissue, BioState bs, Integer blockHighestSection) {
+        Sample sample = new Sample(id, null, tissue, bs);
+        sample.setBlockHighestSection(blockHighestSection);
+        return sample;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -70,7 +89,9 @@ public class Sample {
         return (Objects.equals(this.id, that.id)
                 && Objects.equals(this.section, that.section)
                 && Objects.equals(this.tissue, that.tissue)
-                && Objects.equals(this.bioState, that.bioState));
+                && Objects.equals(this.bioState, that.bioState)
+                && Objects.equals(this.blockHighestSection, that.blockHighestSection)
+        );
     }
 
     @Override
@@ -85,6 +106,7 @@ public class Sample {
                 .addRepr("section", section)
                 .add("tissue", tissue)
                 .add("bioState", bioState)
+                .addIfNotNull("blockHighestSection", blockHighestSection)
                 .toString();
     }
 }

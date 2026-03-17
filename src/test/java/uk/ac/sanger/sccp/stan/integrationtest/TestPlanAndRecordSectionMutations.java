@@ -50,12 +50,12 @@ public class TestPlanAndRecordSectionMutations {
         entityCreator.createBioState("Fetal waste");
 
         Sample[] blockSamples = {
-                entityCreator.createSample(entityCreator.createTissue(entityCreator.createDonor("DONOR1"), "TISSUE1"), null),
-                entityCreator.createSample(entityCreator.createTissue(entityCreator.createDonor("DONOR2"), "TISSUE2"), null),
+                entityCreator.createBlockSample(entityCreator.createTissue(entityCreator.createDonor("DONOR1"), "TISSUE1")),
+                entityCreator.createBlockSample(entityCreator.createTissue(entityCreator.createDonor("DONOR2"), "TISSUE2")),
         };
         Labware[] sourceBlocks = {
-                entityCreator.createBlock("STAN-B70C", blockSamples[0]),
-                entityCreator.createBlock("STAN-B70D", blockSamples[1]),
+                entityCreator.createTube("STAN-B70C", blockSamples[0]),
+                entityCreator.createTube("STAN-B70D", blockSamples[1]),
         };
 
         // Recording the plan
@@ -272,8 +272,8 @@ public class TestPlanAndRecordSectionMutations {
         // Check that the source blocks' highest section numbers have been updated
         entityManager.refresh(sourceBlocks[0]);
         entityManager.refresh(sourceBlocks[1]);
-        assertEquals(14, sourceBlocks[0].getFirstSlot().getBlockHighestSection());
-        assertEquals(17, sourceBlocks[1].getFirstSlot().getBlockHighestSection());
+        assertEquals(14, sourceBlocks[0].getFirstSlot().getSamples().getFirst().getBlockHighestSection());
+        assertEquals(17, sourceBlocks[1].getFirstSlot().getSamples().getFirst().getBlockHighestSection());
         entityManager.flush();
         entityManager.refresh(work);
         assertThat(work.getOperationIds()).hasSize(3);

@@ -50,7 +50,7 @@ public class TestFileBlockRegister {
     ObjectMapper objectMapper;
 
     @MockBean
-    IRegisterService<RegisterRequest> mockRegService;
+    IRegisterService<BlockRegisterRequest> mockRegService;
 
     @Test
     @Transactional
@@ -81,10 +81,10 @@ public class TestFileBlockRegister {
         tester.setUser(user);
         Tissue tissue1 = creator.createTissue(null, "EXT1");
         Tissue tissue2 = creator.createTissue(tissue1.getDonor(), "EXT2");
-        Sample sample1 = creator.createSample(tissue1, null);
-        Sample sample2 = creator.createSample(tissue2, null);
-        Labware lw1 = creator.createBlock("STAN-X", sample1);
-        Labware lw2 = creator.createBlock("STAN-Y", sample2);
+        Sample sample1 = creator.createBlockSample(tissue1);
+        Sample sample2 = creator.createBlockSample(tissue2);
+        Labware lw1 = creator.createTube("STAN-X", sample1);
+        Labware lw2 = creator.createTube("STAN-Y", sample2);
         when(mockRegService.register(any(), any())).thenReturn(RegisterResult.clashes(
                 List.of(new RegisterClash(tissue1, List.of(lw1)), new RegisterClash(tissue2, List.of(lw2)))
         ));
@@ -100,7 +100,7 @@ public class TestFileBlockRegister {
                 .containsExactlyInAnyOrder("EXT1", "EXT2");
         for (var clash : clashes) {
             String bc = clash.get("tissue").get("externalName").equals("EXT1") ? "STAN-X" : "STAN-Y";
-            assertEquals(List.of(Map.of("barcode", bc,"labwareType", Map.of("name", "Proviasette"))),
+            assertEquals(List.of(Map.of("barcode", bc,"labwareType", Map.of("name", "Tube"))),
                     clash.get("labware"));
         }
     }
@@ -117,12 +117,12 @@ public class TestFileBlockRegister {
         when(mockRegService.register(any(), any())).thenThrow(new ValidationException(List.of("Bad reg")));
         var response = upload("testdata/block_reg_existing.xlsx", List.of("Ext17"), null, false);
         var map = objectMapper.readValue(response.getContentAsString(), Map.class);
-        ArgumentCaptor<RegisterRequest> requestCaptor = ArgumentCaptor.forClass(RegisterRequest.class);
+        ArgumentCaptor<BlockRegisterRequest> requestCaptor = ArgumentCaptor.forClass(BlockRegisterRequest.class);
         verify(mockRegService).register(eq(user), requestCaptor.capture());
-        RegisterRequest request = requestCaptor.getValue();
-        assertThat(request.getBlocks()).hasSize(2);
-        assertTrue(request.getBlocks().get(0).isExistingTissue());
-        assertFalse(request.getBlocks().get(1).isExistingTissue());
+        BlockRegisterRequest request = requestCaptor.getValue();
+        assertThat(request.getLabware()).hasSize(2);
+        assertTrue(request.getLabware().get(0).getSamples().getFirst().isExistingTissue());
+        assertFalse(request.getLabware().get(1).getSamples().getFirst().isExistingTissue());
         assertEquals("Bad reg", getProblem(map));
     }
 
@@ -140,14 +140,15 @@ public class TestFileBlockRegister {
         when(mockRegService.register(any(), any())).thenThrow(new ValidationException(List.of("Bad reg")));
         var response = upload("testdata/block_reg_existing.xlsx", null, List.of("Ext17"), false);
         var map = objectMapper.readValue(response.getContentAsString(), Map.class);
-        ArgumentCaptor<RegisterRequest> requestCaptor = ArgumentCaptor.forClass(RegisterRequest.class);
+        ArgumentCaptor<BlockRegisterRequest> requestCaptor = ArgumentCaptor.forClass(BlockRegisterRequest.class);
         verify(mockRegService).register(eq(user), requestCaptor.capture());
-        RegisterRequest request = requestCaptor.getValue();
-        assertThat(request.getBlocks()).hasSize(1);
-        BlockRegisterRequest br = request.getBlocks().getFirst();
-        assertEquals("EXT18", br.getExternalIdentifier());
+        BlockRegisterRequest request = requestCaptor.getValue();
+        assertThat(request.getLabware()).hasSize(1);
+        BlockRegisterLabware brl = request.getLabware().getFirst();
+        BlockRegisterSample brs = brl.getSamples().getFirst();
+        assertEquals("EXT18", brs.getExternalIdentifier());
         assertEquals("Bad reg", getProblem(map));
-        assertEquals("risk1", br.getBioRiskCode());
+        assertEquals("risk1", brs.getBioRiskCode());
     }
 
     private MockHttpServletResponse upload(String filename) throws Exception {

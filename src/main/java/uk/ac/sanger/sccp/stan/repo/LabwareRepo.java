@@ -24,6 +24,9 @@ public interface LabwareRepo extends CrudRepository<Labware, Integer> {
     @Query("select barcode from Labware where barcode in (?1)")
     Set<String> findBarcodesByBarcodeIn(Collection<String> barcodes);
 
+    @Query("select externalBarcode from Labware where externalBarcode in (?1)")
+    Set<String> findExternalBarcodesIn(Collection<String> barcodes);
+
     default Labware getById(final Integer id) throws EntityNotFoundException {
         return findById(id).orElseThrow(() -> new EntityNotFoundException("No labware found with id "+id));
     }

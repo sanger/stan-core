@@ -55,7 +55,7 @@ public class TestHistoryQuery {
         tester.setUser(user);
 
         Map<String, ?> response = tester.post(mutation);
-        Map<String, ?> lwData = chainGet(response, "data", "register", "labware", 0);
+        Map<String, ?> lwData = chainGet(response, "data", "registerBlocks", "labware", 0);
         String barcode = chainGet(lwData, "barcode");
         int sampleId = chainGet(lwData, "slots", 0, "samples", 0, "id");
 

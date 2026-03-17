@@ -622,6 +622,13 @@ public class BasicUtils {
     }
 
     /**
+     * Returns an iterable that emits the iterator from the given stream.
+     */
+    public static <E> Iterable<E> iter(Stream<E> stream) {
+        return stream::iterator;
+    }
+
+    /**
      * Does the given iterable contain any duplicates?
      * Duplication is checked using a hashset.
      * @param items iterable items
