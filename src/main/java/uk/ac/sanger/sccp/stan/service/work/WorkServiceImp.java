@@ -113,7 +113,7 @@ public class WorkServiceImp implements WorkService {
         ReleaseRecipient workRequester = findOrCreateRequester(user, workRequesterName);
         ReleaseDestination leadDest;
         if (nullOrEmpty(facultyLead)) {
-            leadDest = null;
+            throw new IllegalArgumentException("No faculty lead specified.");
         } else {
             leadDest = destinationRepo.getByName(facultyLead);
             if (!leadDest.isEnabled()) {
