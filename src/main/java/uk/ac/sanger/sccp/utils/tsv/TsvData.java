@@ -4,6 +4,8 @@ import java.util.List;
 
 /**
  * The data required for a tsv file
+ * @param <C> the type of the columns
+ * @param <E> the type of the data
  * @author dr6
  */
 public interface TsvData<C, E> {
