@@ -44,6 +44,8 @@ public class TestWorkMutation {
     private OmeroProjectRepo omeroProjectRepo;
     @Autowired
     private DnapStudyRepo dnapStudyRepo;
+    @Autowired
+    private ReleaseDestinationRepo releaseDestinationRepo;
 
     @Transactional
     @Test
@@ -57,9 +59,10 @@ public class TestWorkMutation {
         User normaluser = entityCreator.createUser("user1", User.Role.normal);
         OmeroProject omero = omeroProjectRepo.save(new OmeroProject("om_proj"));
         DnapStudy study = dnapStudyRepo.save(new DnapStudy(123, "S123"));
+        ReleaseDestination rd = releaseDestinationRepo.save(new ReleaseDestination(null, "Kurt"));
 
         String worksQuery  = "query { works(status: [active]) { workNumber, workType {name}, workRequester {username}," +
-                "project {name}, program {name}, costCode {code}, status, omeroProject {name}, dnapStudy {name} } }";
+                "project {name}, program {name}, costCode {code}, status, omeroProject {name}, dnapStudy {name}, facultyLead {name} }}";
         Object data = tester.post(worksQuery);
         List<Map<String,?>> worksData = chainGet(data, "data", "works");
         assertNotNull(worksData);
@@ -78,6 +81,7 @@ public class TestWorkMutation {
         assertEquals(workRequester.getUsername(), chainGet(workData, "workRequester", "username"));
         assertEquals(omero.getName(), chainGet(workData, "omeroProject", "name"));
         assertEquals(study.getName(), chainGet(workData, "dnapStudy", "name"));
+        assertEquals(rd.getName(), chainGet(workData, "facultyLead", "name"));
         assertEquals("unstarted", workData.get("status"));
 
         String worksCreatedByQuery = "query { worksCreatedBy(username: \"USER\") { workNumber } }";
