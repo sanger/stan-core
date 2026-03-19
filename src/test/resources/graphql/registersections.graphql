@@ -6,7 +6,7 @@ mutation {
                 externalBarcode: "EXT1"
                 contents: [
                     {
-                        address: "A1"
+                        addresses: ["A1"]
                         donorIdentifier: "DONOR1"
                         species: "Homo sapiens (Human)"
                         hmdmc: "20/0002"
@@ -24,7 +24,7 @@ mutation {
                         cellClass: "tissue"
                     }
                     {
-                        address: "A1"
+                        addresses: ["A1"]
                         donorIdentifier: "DONOR2"
                         species: "Hamster"
                         fixative: "None"
@@ -41,7 +41,7 @@ mutation {
                         cellClass: "tissue"
                     }
                     {
-                        address: "B2"
+                        addresses: ["B2"]
                         donorIdentifier: "DONOR1"
                         species: "Homo sapiens (Human)"
                         hmdmc: "20/0002"

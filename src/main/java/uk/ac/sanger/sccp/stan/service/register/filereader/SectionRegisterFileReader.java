@@ -24,7 +24,7 @@ public interface SectionRegisterFileReader extends MultipartFileReader<SectionRe
         External_slide_ID(Pattern.compile("(external )?(slide (barcode|id|identifier)|barcode.*slide)", Pattern.CASE_INSENSITIVE|Pattern.DOTALL)),
         Prebarcode(String.class, Pattern.compile("(xenium( slide)?\\s*|pre)barcode", Pattern.CASE_INSENSITIVE), false),
         Lot(String.class, Pattern.compile("(xenium )?(slide )?lot\\b.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL), false),
-        Section_address,
+        Section_address(Pattern.compile("(section|slot)\\s*address(es)?\\b.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL)),
         Fixative,
         Embedding_medium,
         Donor_ID,
@@ -41,6 +41,7 @@ public interface SectionRegisterFileReader extends MultipartFileReader<SectionRe
         Section_thickness(String.class),
         Date_sectioned(LocalDate.class, Pattern.compile("date.*sectioned|section.*date", Pattern.CASE_INSENSITIVE|Pattern.DOTALL), false),
         Section_position(Pattern.compile("(if.+)?(section\\s+)?position|position.*slot.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL)),
+        Comment(Void.class, Pattern.compile("(information|comment).*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL), false),
         ;
 
         private final Pattern pattern;

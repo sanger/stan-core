@@ -9,6 +9,7 @@ import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
@@ -194,10 +195,10 @@ public class SectionRegisterServiceImp implements IRegisterService<SectionRegist
         }
         Labware lw = lwService.create(lt, prebarcode, externalBarcode);
         for (var content : srl.getContents()) {
-            Slot slot = lw.getSlot(content.getAddress());
             Sample sample = sampleMap.get(content.getExternalIdentifier());
-            slot.getSamples().add(sample);
-            slotRepo.save(slot);
+            List<Slot> slots = lwSlots(lw, content.getAddresses()).toList();
+            slots.forEach(slot -> slot.addSample(sample));
+            slotRepo.saveAll(slots);
         }
         return lw;
     }
@@ -271,14 +272,18 @@ public class SectionRegisterServiceImp implements IRegisterService<SectionRegist
                 continue;
             }
             Sample sample = sampleMap.get(src.getExternalIdentifier());
-            Slot slot = lw.getSlot(src.getAddress());
+            List<Slot> slots = lwSlots(lw, src.getAddresses()).toList();
             if (src.getSectionThickness() != null) {
-                measurements.add(new Measurement(null, "Thickness", src.getSectionThickness(),
-                        sample.getId(), op.getId(), slot.getId()));
+                for (Slot slot : slots) {
+                    measurements.add(new Measurement(null, "Thickness", src.getSectionThickness(),
+                            sample.getId(), op.getId(), slot.getId()));
+                }
             }
             if (src.getDateSectioned() != null) {
-                measurements.add(new Measurement(null, "Date sectioned", src.getDateSectioned().toString(),
-                        sample.getId(), op.getId(), slot.getId()));
+                for (Slot slot : slots) {
+                    measurements.add(new Measurement(null, "Date sectioned", src.getDateSectioned().toString(),
+                            sample.getId(), op.getId(), slot.getId()));
+                }
             }
         }
         return (measurements.isEmpty() ? measurements : measurementRepo.saveAll(measurements));
@@ -297,11 +302,18 @@ public class SectionRegisterServiceImp implements IRegisterService<SectionRegist
                                                           UCMap<Sample> sampleMap, UCMap<SlotRegion> regionMap) {
         List<SamplePosition> samps = srl.getContents().stream()
                 .filter(src -> !nullOrEmpty(src.getRegion()))
-                .map(src -> new SamplePosition(lw.getSlot(src.getAddress()).getId(),
-                        sampleMap.get(src.getExternalIdentifier()).getId(),
-                        regionMap.get(src.getRegion()), opId))
-                .collect(toList());
+                .flatMap(src -> newSamplePositions(src, lw, opId, sampleMap, regionMap))
+                .toList();
         return (samps.isEmpty() ? samps : samplePositionRepo.saveAll(samps));
+    }
+
+    /** Makes new (unsaved) sample position objects for a given source */
+    Stream<SamplePosition> newSamplePositions(final SectionRegisterContent src, final Labware lw, final Integer opId,
+                                              final UCMap<Sample> sampleMap, final UCMap<SlotRegion> regionMap) {
+        final Integer sampleId = sampleMap.get(src.getExternalIdentifier()).getId();
+        final SlotRegion region = regionMap.get(src.getRegion());
+        return lwSlots(lw, src.getAddresses())
+                .map(slot -> new SamplePosition(slot.getId(), sampleId, region, opId));
     }
 
     /**
@@ -316,5 +328,15 @@ public class SectionRegisterServiceImp implements IRegisterService<SectionRegist
         Map<Integer, BioRisk> sampleBioRisks = srl.getContents().stream()
                 .collect(toMap(src -> sampleMap.get(src.getExternalIdentifier()).getId(), src -> bioRiskMap.get(src.getBioRiskCode())));
         bioRiskService.recordSampleBioRisks(sampleBioRisks, opId);
+    }
+
+    /**
+     * Streams the slots with the given addresses from the given labware
+     * @param lw the labware to get slots from
+     * @param addresses the addresses of the slots
+     * @return a stream of slots
+     */
+    static Stream<Slot> lwSlots(Labware lw, Collection<Address> addresses) {
+        return addresses.stream().map(lw::getSlot);
     }
 }

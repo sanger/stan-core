@@ -852,7 +852,7 @@ public class TestSectionRegisterValidation {
 
     private static SectionRegisterContent content(Address address, String regionName) {
         SectionRegisterContent src = new SectionRegisterContent();
-        src.setAddress(address);
+        src.setAddresses(address==null ? List.of() : List.of(address));
         src.setRegion(regionName);
         return src;
     }
@@ -966,7 +966,7 @@ public class TestSectionRegisterValidation {
                 assert current != null;
                 Address ad = (Address) obj;
                 SectionRegisterContent content = new SectionRegisterContent();
-                content.setAddress(ad);
+                content.setAddresses(ad==null ? List.of() : List.of(ad));
                 current.getContents().add(content);
             }
         }

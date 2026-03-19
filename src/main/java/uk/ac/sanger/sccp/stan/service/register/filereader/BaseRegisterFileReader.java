@@ -151,15 +151,28 @@ public abstract class BaseRegisterFileReader<RequestType, ColumnType extends Enu
         return null;
     }
 
-    public Address valueToAddress(Collection<String> problems, String addressString) {
-        if (!nullOrEmpty(addressString)) {
-            try {
-                return Address.valueOf(addressString);
-            } catch (IllegalArgumentException e) {
-                problems.add(e.getMessage());
-            }
+    /** Converts a string to a list of slot addresses */
+    public List<Address> valueToAddresses(Collection<String> problems, String addressString) {
+        if (nullOrEmpty(addressString)) {
+            return List.of();
         }
-        return null;
+        try {
+            return Arrays.stream(addressString.replace(',', ' ').split("\\s+"))
+                    .filter(s -> !s.isEmpty())
+                    .map(Address::valueOf)
+                    .toList();
+        } catch (IllegalArgumentException ignored) {
+            // try again without removing commas
+        }
+        try {
+            return Arrays.stream(addressString.split("\\s+"))
+                    .filter(s -> !s.isEmpty())
+                    .map(Address::valueOf)
+                    .toList();
+        } catch (IllegalArgumentException e) {
+            problems.add("Invalid addresses: "+repr(addressString));
+        }
+        return List.of();
     }
 
     /**

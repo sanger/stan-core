@@ -22,6 +22,7 @@ import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.stan.Matchers.assertProblem;
 
 /**
  * Tests {@link SectionRegisterFileReaderImp}
@@ -195,7 +196,7 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
 
         doThrow(new IllegalArgumentException("Bad stuff")).when(reader).cellValue(any(), any());
         assertNull(reader.readCellValue(problems, Column.Donor_ID, cell));
-        Matchers.assertProblem(problems, "At cell A4: Bad stuff");
+        assertProblem(problems, "At cell A4: Bad stuff");
     }
 
     @ParameterizedTest
@@ -380,7 +381,7 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
         String expectedProblem = (numPrebarcodes==0 ? "A prebarcode is expected for Xenium labware."
                 : numPrebarcodes==2 ? "Multiple different prebarcodes specified for external ID X1."
                 : null);
-        Matchers.assertProblem(problems, expectedProblem);
+        assertProblem(problems, expectedProblem);
         SectionRegisterLabware expectedSrl = new SectionRegisterLabware("X1", "Xenium", srcs);
         if (numPrebarcodes > 0) {
             expectedSrl.setPreBarcode("XYZ123");
@@ -423,7 +424,7 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
         SectionRegisterContent src = reader.createRequestContent(problems, row);
         assertEquals("Donor1", src.getDonorIdentifier());
         assertEquals("41", src.getSectionThickness());
-        assertNull(src.getAddress());
+        assertThat(src.getAddresses()).isEmpty();
         assertNull(src.getLifeStage());
         assertNull(src.getSpatialLocation());
         assertThat(problems).isEmpty();
@@ -451,7 +452,7 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
         SectionRegisterContent src = reader.createRequestContent(problems, row);
         assertEquals("Donor1", src.getDonorIdentifier());
         assertEquals("41", src.getSectionThickness());
-        assertEquals(new Address(1,4), src.getAddress());
+        assertThat(src.getAddresses()).containsExactly(new Address(1,4));
         assertEquals("X1", src.getExternalIdentifier());
         assertEquals("12/234", src.getHmdmc());
         assertEquals(LifeStage.adult, src.getLifeStage());
@@ -476,12 +477,33 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
         SectionRegisterContent src = reader.createRequestContent(problems, row);
         assertThat(problems).containsExactlyInAnyOrder(
                 "Unknown life stage: \"ascended\"",
-                "Invalid address string: \"xyz\""
+                "Invalid addresses: \"xyz\""
 
         );
         assertEquals("Donor1", src.getDonorIdentifier());
         assertNull(src.getLifeStage());
-        assertNull(src.getAddress());
+        assertThat(src.getAddresses()).isEmpty();
+    }
+
+    @ParameterizedTest
+    @MethodSource("valueToAddressesArgs")
+    void testValueToAddresses(String string, List<Address> expectedAddresses, String expectedProblem) {
+        final List<String> problems = new ArrayList<>(expectedProblem==null ? 0 : 1);
+        assertEquals(expectedAddresses, reader.valueToAddresses(problems, string));
+        assertProblem(problems, expectedProblem);
+    }
+
+    static Stream<Arguments> valueToAddressesArgs() {
+        Address A1 = new Address(1,1), A2 = new Address(1,2), AA31 = new Address(27,31);
+        return Arrays.stream(new Object[][] {
+                {"A1", List.of(A1), null},
+                {"A1,A2", List.of(A1,A2), null},
+                {"A1, A2", List.of(A1,A2), null},
+                {"A1  A2", List.of(A1,A2), null},
+                {"A1 27,31  A2", List.of(A1,AA31,A2), null},
+                {"X!", List.of(), "Invalid addresses: \"X!\""},
+                {"", List.of(), null},
+        }).map(Arguments::of);
     }
 
     static <V> Map<Column, V> columnMapOf(Column k1, V v1) {
