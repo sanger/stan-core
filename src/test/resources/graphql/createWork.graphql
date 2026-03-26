@@ -1,6 +1,6 @@
 mutation {
     createWork(prefix: "SGP", workType: "Drywalling", workRequester: "test1", project: "Stargate", program: "Hello",
-        costCode: "S666", omeroProject: "OM_PROJ", ssStudyId: 123) {
+        costCode: "S666", omeroProject: "OM_PROJ", ssStudyId: 123, facultyLead: "Kurt") {
         workNumber
         workType {name}
         workRequester {username}
@@ -9,6 +9,7 @@ mutation {
         costCode {code}
         omeroProject {name}
         dnapStudy {name}
+        facultyLead {name}
         status
     }
 }

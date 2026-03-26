@@ -2524,7 +2524,7 @@ type Mutation {
     """Create a new work, which will be allocated a new work number with the given prefix."""
     createWork(prefix: String!, workType: String!, workRequester: String!, project: String!, program: String!,
         costCode: String!, numBlocks: Int, numSlides: Int, numOriginalSamples: Int, omeroProject: String,
-        ssStudyId: Int, facultyLead: String): Work!
+        ssStudyId: Int, facultyLead: String!): Work!
     """Update the status of an existing work."""
     updateWorkStatus(workNumber: String!, status: WorkStatus!, commentId: Int): WorkWithComment!
     """Update the number of blocks field in a work."""

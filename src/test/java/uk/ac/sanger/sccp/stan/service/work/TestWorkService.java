@@ -96,17 +96,19 @@ public class TestWorkService {
         when(mockWorkRepo.save(any())).then(Matchers.returnArgument());
         ReleaseRecipient workRequester = new ReleaseRecipient(30, workRequesterName);
         doReturn(workRequester).when(workService).findOrCreateRequester(user, workRequesterName);
+        ReleaseDestination dest = new ReleaseDestination(40, "Kurt");
+        when(mockReleaseDestRepo.getByName("Kurt")).thenReturn(dest);
 
         if (expectedErrorMessage==null) {
-            Work result = workService.createWork(user, prefix, workTypeName, workRequesterName, projectName, progName, code, numBlocks, numSlides, numOriginalSamples, null, null, null);
+            Work result = workService.createWork(user, prefix, workTypeName, workRequesterName, projectName, progName, code, numBlocks, numSlides, numOriginalSamples, null, null, "Kurt");
             verify(workService).checkPrefix(prefix);
             verify(mockWorkRepo).createNumber(prefix);
             verify(mockWorkRepo).save(result);
             verify(mockWorkEventService).recordEvent(user, result, WorkEvent.Type.create, null);
-            assertEquals(new Work(null, workNumber, workType, workRequester, project, prog, cc, Status.unstarted, numBlocks, numSlides, numOriginalSamples, null, null, null, null), result);
+            assertEquals(new Work(null, workNumber, workType, workRequester, project, prog, cc, Status.unstarted, numBlocks, numSlides, numOriginalSamples, null, null, null, dest), result);
         } else {
             assertThat(assertThrows(IllegalArgumentException.class, () -> workService.createWork(user, prefix, workTypeName, workRequesterName, projectName,
-                    progName, code, numBlocks, numSlides, numOriginalSamples, null, null, null))).hasMessage(expectedErrorMessage);
+                    progName, code, numBlocks, numSlides, numOriginalSamples, null, null, "Kurt"))).hasMessage(expectedErrorMessage);
             verifyNoInteractions(mockWorkRepo);
         }
     }
@@ -145,13 +147,15 @@ public class TestWorkService {
         when(mockWorkRepo.createNumber(prefix)).thenReturn(workNumber);
         User user = new User(1, "user1", User.Role.admin);
         when(mockReleaseRecipientRepo.findByUsername(workRequesterName)).thenReturn(Optional.of(new ReleaseRecipient(10, workRequesterName)));
+        ReleaseDestination dest = new ReleaseDestination(40, "Kurt");
+        when(mockReleaseDestRepo.getByName("Kurt")).thenReturn(dest);
 
         when(mockWorkRepo.save(any())).then(Matchers.returnArgument());
         if (expectedErrorMessage!=null) {
-            assertThat(assertThrows(RuntimeException.class, () -> workService.createWork(user, prefix, workTypeName, workRequesterName, projectName, progName, code, null, null, null, omeroName, null, null)))
+            assertThat(assertThrows(RuntimeException.class, () -> workService.createWork(user, prefix, workTypeName, workRequesterName, projectName, progName, code, null, null, null, omeroName, null, "Kurt")))
                     .hasMessage(expectedErrorMessage);
         } else {
-            Work result = workService.createWork(user, prefix, workTypeName, workRequesterName, projectName, progName, code, null, null, null, omeroName, null, null);
+            Work result = workService.createWork(user, prefix, workTypeName, workRequesterName, projectName, progName, code, null, null, null, omeroName, null, "Kurt");
             verify(mockWorkRepo).save(result);
             assertSame(omero, result.getOmeroProject());
         }
@@ -159,14 +163,16 @@ public class TestWorkService {
 
     @ParameterizedTest
     @CsvSource({
-            ", Release destination not found.",
-            "true,",
-            "false, Destination Banana is disabled.",
+            "Banana,, Release destination not found.",
+            "Banana,true,",
+            "Banana,false, Destination Banana is disabled.",
+            ",,No faculty lead specified.",
     })
-    public void testCreateWork_facultyLead(Boolean enabled, String expectedErrorMessage) {
-        String destName = "Banana";
+    public void testCreateWork_facultyLead(String destName, Boolean enabled, String expectedErrorMessage) {
         ReleaseDestination dest;
-        if (enabled==null) {
+        if (destName==null) {
+            dest = null;
+        } else if (enabled==null) {
             dest = null;
             when(mockReleaseDestRepo.getByName(destName)).thenThrow(new EntityNotFoundException(expectedErrorMessage));
         } else {
@@ -238,13 +244,15 @@ public class TestWorkService {
         when(mockWorkRepo.createNumber(prefix)).thenReturn(workNumber);
         User user = new User(1, "user1", User.Role.admin);
         when(mockReleaseRecipientRepo.findByUsername(workRequesterName)).thenReturn(Optional.of(new ReleaseRecipient(10, workRequesterName)));
+        ReleaseDestination dest = new ReleaseDestination(40, "Kurt");
+        when(mockReleaseDestRepo.getByName("Kurt")).thenReturn(dest);
 
         when(mockWorkRepo.save(any())).then(Matchers.returnArgument());
         if (expectedErrorMessage!=null) {
-            assertThat(assertThrows(RuntimeException.class, () -> workService.createWork(user, prefix, workTypeName, workRequesterName, projectName, progName, code, null, null, null, null, ssId, null)))
+            assertThat(assertThrows(RuntimeException.class, () -> workService.createWork(user, prefix, workTypeName, workRequesterName, projectName, progName, code, null, null, null, null, ssId, "Kurt")))
                     .hasMessage(expectedErrorMessage);
         } else {
-            Work result = workService.createWork(user, prefix, workTypeName, workRequesterName, projectName, progName, code, null, null, null, null, ssId, null);
+            Work result = workService.createWork(user, prefix, workTypeName, workRequesterName, projectName, progName, code, null, null, null, null, ssId, "Kurt");
             verify(mockWorkRepo).save(result);
             assertSame(study, result.getDnapStudy());
         }
