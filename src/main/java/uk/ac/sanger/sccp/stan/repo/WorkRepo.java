@@ -13,8 +13,7 @@ import java.util.function.Function;
 
 import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
-import static uk.ac.sanger.sccp.utils.BasicUtils.inMap;
-import static uk.ac.sanger.sccp.utils.BasicUtils.stream;
+import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 public interface WorkRepo extends CrudRepository<Work, Integer> {
     Optional<Work> findByWorkNumber(String workNumber);
@@ -81,6 +80,15 @@ public interface WorkRepo extends CrudRepository<Work, Integer> {
             opWork.get((Integer) opIdWorkNumber[0]).add((String) opIdWorkNumber[1]);
         }
         return opWork;
+    }
+
+    @Query(value = "select work_id from work_op where operation_id=?1", nativeQuery = true)
+    List<Integer> findWorkIdsForOperationId(Integer opId);
+
+    /** Gets list of works linked to the given operation id. */
+    default List<Work> findWorksForOperationId(Integer opId) {
+        List<Integer> workIds = findWorkIdsForOperationId(opId);
+        return (workIds.isEmpty() ? List.of() : asList(findAllById(workIds)));
     }
 
     @Query(value="select release_id as releaseId, work_number as workNumber from work_release join work on (work_id=work.id) where release_id IN (?1)", nativeQuery=true)
