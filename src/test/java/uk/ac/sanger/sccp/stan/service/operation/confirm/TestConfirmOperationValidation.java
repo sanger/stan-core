@@ -10,8 +10,8 @@ import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
 import uk.ac.sanger.sccp.stan.repo.PlanOperationRepo;
-import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.request.AddressCommentId;
+import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.service.CommentValidationService;
 
 import java.util.*;
@@ -210,16 +210,16 @@ public class TestConfirmOperationValidation {
         OperationType opType = EntityFactory.makeOperationType("Section", null);
         int planId = 200;
         List<PlanAction> planActions = List.of(
-                new PlanAction(201, planId, srcSlot, lw.getFirstSlot(), sample, 1, null, null),
-                new PlanAction(202, planId, srcSlot, lw.getFirstSlot(), sample, 2, null, null),
-                new PlanAction(203, planId, srcSlot, otherLabware.getSlot(A2), sample, 1, null, null)
+                new PlanAction(201, planId, srcSlot, lw.getFirstSlot(), sample, "1", null, null),
+                new PlanAction(202, planId, srcSlot, lw.getFirstSlot(), sample, "2", null, null),
+                new PlanAction(203, planId, srcSlot, otherLabware.getSlot(A2), sample, "1", null, null)
         );
         PlanOperation plan = new PlanOperation(planId, opType, null, planActions, EntityFactory.getUser());
         final Integer sampleId = sample.getId();
         List<CancelPlanAction> cpas = List.of(
-                new CancelPlanAction(A1, sampleId, 1),
-                new CancelPlanAction(A2, sampleId, 1),
-                new CancelPlanAction(B1, sampleId, 1),
+                new CancelPlanAction(A1, sampleId, "1"),
+                new CancelPlanAction(A2, sampleId, "1"),
+                new CancelPlanAction(B1, sampleId, "1"),
                 new CancelPlanAction(null, null, null)
         );
 

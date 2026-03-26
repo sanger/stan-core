@@ -7,7 +7,7 @@ mutation {
                 confirmSections: [
                     {
                         destinationAddresses: ["A1"]
-                        newSection: 14
+                        newSection: "14"
                         sampleId: 55555
                     }
                 ]

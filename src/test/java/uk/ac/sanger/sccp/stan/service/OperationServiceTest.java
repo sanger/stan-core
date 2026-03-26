@@ -106,7 +106,7 @@ public class OperationServiceTest {
         if (withMutator) {
             List<Operation> opStash = new ArrayList<>(1);
             op = opService.createOperation(opType, user, actions, null, opStash::add);
-            assertEquals(opStash.size(), 1);
+            assertEquals(1, opStash.size());
         } else {
             op = opService.createOperation(opType, user, actions, null);
         }
@@ -148,7 +148,7 @@ public class OperationServiceTest {
         OperationType opType = new OperationType(2, "Mash");
         User user = EntityFactory.getUser();
         Sample sam1 = EntityFactory.getSample();
-        Sample sam2 = new Sample(sam1.getId()+1, 2, sam1.getTissue(), sam1.getBioState());
+        Sample sam2 = new Sample(sam1.getId()+1, "2", sam1.getTissue(), sam1.getBioState());
         int sam1id = sam1.getId();
         int sam2id = sam2.getId();
         LabwareType lt = EntityFactory.makeLabwareType(3,1);
@@ -164,10 +164,10 @@ public class OperationServiceTest {
         assertNotNull(op.getId());
         assertThat(savedOps).contains(op);
         assertThat(savedActions).hasSize(3);
-        assertEquals(op.getActions(), savedActions);
-        assertEquals(op.getOperationType(), opType);
-        assertEquals(op.getEquipment(), eq);
-        assertEquals(op.getPlanOperationId(), planId);
+        assertEquals(savedActions, op.getActions());
+        assertEquals(opType, op.getOperationType());
+        assertEquals(eq, op.getEquipment());
+        assertEquals(planId, op.getPlanOperationId());
         List<List<Integer>> slotSampleIds = new ArrayList<>(3);
         for (Action ac : op.getActions()) {
             assertSame(ac.getSource(), ac.getDestination());

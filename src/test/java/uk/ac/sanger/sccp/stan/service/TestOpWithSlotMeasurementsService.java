@@ -601,7 +601,7 @@ public class TestOpWithSlotMeasurementsService {
     public void testCreateMeasurements() {
         Integer opId = 7;
         Sample sam1 = EntityFactory.getSample();
-        Sample sam2 = new Sample(sam1.getId()+1, 2, sam1.getTissue(), sam1.getBioState());
+        Sample sam2 = new Sample(sam1.getId()+1, "2", sam1.getTissue(), sam1.getBioState());
         LabwareType lt = EntityFactory.makeLabwareType(1,2);
         final Address A1 = new Address(1,1), A2 = new Address(1,2);
         Labware lw = EntityFactory.makeEmptyLabware(lt);

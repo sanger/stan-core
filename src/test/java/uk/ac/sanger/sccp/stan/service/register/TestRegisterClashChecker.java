@@ -61,7 +61,7 @@ public class TestRegisterClashChecker {
     private Sample[] createSamples() {
         if (samples==null) {
             BioState bs = EntityFactory.getBioState();
-            samples = Arrays.stream(createTissues()).map(t -> new Sample(10+t.getId(), 3, t, bs)).toArray(Sample[]::new);
+            samples = Arrays.stream(createTissues()).map(t -> new Sample(10+t.getId(), "3", t, bs)).toArray(Sample[]::new);
         }
         return samples;
     }

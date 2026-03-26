@@ -107,7 +107,7 @@ public class TestReleaseFileService {
         Tissue tissue = EntityFactory.getTissue();
         BioState bioState = EntityFactory.getBioState();
         sample = new Sample(10, null, tissue, bioState);
-        sample1 = new Sample(11, 1, tissue, bioState);
+        sample1 = new Sample(11, "1", tissue, bioState);
         lw1 = EntityFactory.makeLabware(lt);
         lw1.getFirstSlot().getSamples().addAll(List.of(sample, sample1));
         lw1.getSlots().get(1).addSample(sample);
@@ -115,12 +115,12 @@ public class TestReleaseFileService {
         lw2 = EntityFactory.makeLabware(lt, sample);
 
         LabwareType ltTOSlide = new LabwareType(1, "Visium TO", 4, 2, null, false);
-        sample2 = new Sample(12, 1, tissue, bioState);
+        sample2 = new Sample(12, "1", tissue, bioState);
         lwTOSlide = EntityFactory.makeLabware(ltTOSlide);
         lwTOSlide.getFirstSlot().addSample(sample2);
 
         LabwareType lt96WellPlate = new LabwareType(2, "96 well plate", 12, 8, null, false);
-        sample3 = new Sample(13, 1, tissue, bioState);
+        sample3 = new Sample(13, "1", tissue, bioState);
         lw96WellPlate = EntityFactory.makeLabware(lt96WellPlate);
         lw96WellPlate.getFirstSlot().addSample(sample3);
     }
@@ -286,7 +286,7 @@ public class TestReleaseFileService {
                 .mapToObj(i -> new BioState(i, i==1 ? "Tissue" : i==2 ? "RNA" : "cDNA"))
                 .toArray(BioState[]::new);
         Sample[] samples = IntStream.range(1,5)
-                .mapToObj(i -> new Sample(i, i, tissue, bss[Math.min(i, bss.length)-1]))
+                .mapToObj(i -> new Sample(i, String.valueOf(i), tissue, bss[Math.min(i, bss.length)-1]))
                 .toArray(Sample[]::new);
         return Stream.of(
                 Arguments.of(List.of(samples[0], samples[1]), ReleaseFileMode.NORMAL),
@@ -316,7 +316,7 @@ public class TestReleaseFileService {
     @Test
     public void testLoadSamples() {
         setupReleases();
-        Sample otherSample = new Sample(800, 3, sample.getTissue(), EntityFactory.getBioState());
+        Sample otherSample = new Sample(800, "3", sample.getTissue(), EntityFactory.getBioState());
         Integer otherSampleId = otherSample.getId();
         Set<Integer> otherSampleIds = Set.of(otherSampleId);
         when(mockSampleRepo.getMapByIdIn(otherSampleIds)).thenReturn(Map.of(otherSample.getId(), otherSample));
@@ -464,10 +464,10 @@ public class TestReleaseFileService {
         BioState cdna = new BioState(3, "cDNA");
         Tissue tissue = EntityFactory.getTissue();
         Sample[] samples = {
-                new Sample(1, 1, tissue, bs),
-                new Sample(2, 1, tissue, bs),
-                new Sample(3, 1, tissue, cdna),
-                new Sample(4, 1, tissue, cdna),
+                new Sample(1, "1", tissue, bs),
+                new Sample(2, "1", tissue, bs),
+                new Sample(3, "1", tissue, cdna),
+                new Sample(4, "1", tissue, cdna),
         };
         LabwareType lt = EntityFactory.getTubeType();
         Labware[] labware = Arrays.stream(samples)
@@ -494,9 +494,9 @@ public class TestReleaseFileService {
     @ValueSource(booleans={false,true})
     public void testSelectSourceForCDNA(boolean found) {
         BioState cdna = new BioState(10, "cDNA");
-        Sample sam1 = new Sample(90, 1, EntityFactory.getTissue(), cdna);
+        Sample sam1 = new Sample(90, "1", EntityFactory.getTissue(), cdna);
         BioState bs = (found ? new BioState(11, "Feet") : cdna);
-        Sample sam2 = new Sample(sam1.getId()+1, 10, sam1.getTissue(), bs);
+        Sample sam2 = new Sample(sam1.getId()+1, "10", sam1.getTissue(), bs);
         Labware lw1 = EntityFactory.getTube();
         Slot slot1 = lw1.getFirstSlot();
         Labware lw2 = EntityFactory.makeLabware(lw1.getLabwareType(), sam2);

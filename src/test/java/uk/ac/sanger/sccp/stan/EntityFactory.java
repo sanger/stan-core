@@ -123,7 +123,7 @@ public class EntityFactory {
 
     public static Sample getSample() {
         if (sample==null) {
-            sample = new Sample(90, 1, getTissue(), getBioState());
+            sample = new Sample(90, "1", getTissue(), getBioState());
         }
         return sample;
     }

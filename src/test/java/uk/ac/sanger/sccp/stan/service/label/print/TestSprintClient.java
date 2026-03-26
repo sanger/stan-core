@@ -41,10 +41,10 @@ public class TestSprintClient {
         final LabelType labelType = EntityFactory.getLabelType();
         LabelPrintRequest request = new LabelPrintRequest(labelType,
                 List.of(new LabwareLabelData("STAN-1", "123456", "None", "2021-03-17",
-                        List.of(new LabelContent("DONOR1", "ext1", "TISSUE1", "1", 2),
-                                new LabelContent("DONOR2", "ext2", "TISSUE2", "3", 4))),
+                        List.of(LabelContent.ofSection("DONOR1", "ext1", "TISSUE1", "1", "2"),
+                                LabelContent.ofSection("DONOR2", "ext2", "TISSUE2", "3", "4"))),
                         new LabwareLabelData("STAN-2", null, "None", "2021-03-16",
-                                List.of(new LabelContent("DONOR3", "ext3", "TISSUE3", "5", (String) null))))
+                                List.of(new LabelContent("DONOR3", "ext3", "TISSUE3", "5", null))))
         );
         StringTemplate template = new StringTemplate("{\"barcode\":\"#barcode#\", " +
                 "\"date\":\"#date#\", " +
@@ -58,7 +58,7 @@ public class TestSprintClient {
                 "\"variables\":{\"printer\":\"printer1\"," +
                 "\"printRequest\":{\"layouts\":[{\"barcode\":\"STAN-1\"," +
                 "\"date\":\"2021-03-17\"," +
-                "\"contents\":[\"DONOR1\",\"TISSUE1\",\"R:1\",\"S002\",\"DONOR2\",\"TISSUE2\",\"R:3\",\"S004\"]}," +
+                "\"contents\":[\"DONOR1\",\"TISSUE1\",\"R:1\",\"S2\",\"DONOR2\",\"TISSUE2\",\"R:3\",\"S4\"]}," +
                 "{\"barcode\":\"STAN-2\"," +
                 "\"date\":\"2021-03-16\"," +
                 "\"contents\":[\"DONOR3\",\"TISSUE3\",\"R:5\",\"\",\"\",\"\",\"\",\"\"]}]}}}";

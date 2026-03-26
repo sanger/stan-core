@@ -8,21 +8,8 @@ import java.util.List;
 import java.util.OptionalInt;
 
 public interface PlanActionRepo extends CrudRepository<PlanAction, Integer> {
-    @Query("SELECT MAX(a.newSection) FROM PlanAction a WHERE a.sample.tissue.id=?1")
-    Integer _findMaxPlannedSectionForTissueId(int tissueId);
-
-    @Query("SELECT MAX(a.newSection) FROM PlanAction a WHERE a.source.id=?1")
+    @Query(value = "SELECT MAX(CAST(a.new_section AS UNSIGNED)) FROM plan_action a WHERE a.source_slot_id=?1", nativeQuery = true)
     Integer _findMaxPlannedSectionFromSlotId(int sourceSlotId);
-
-    /**
-     * Finds the maximum section for planned actions for particular tissue
-     * @param tissueId the id of tissue
-     * @return the highest section number of any planned action on a sample with that tissue id
-     */
-    default OptionalInt findMaxPlannedSectionForTissueId(int tissueId) {
-        Integer maxInteger = _findMaxPlannedSectionForTissueId(tissueId);
-        return (maxInteger==null ? OptionalInt.empty() : OptionalInt.of(maxInteger));
-    }
 
     /**
      * Finds the maximum section for planned actions from a particular slot

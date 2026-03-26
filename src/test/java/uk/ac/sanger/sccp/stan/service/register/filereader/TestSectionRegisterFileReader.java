@@ -446,7 +446,7 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
         row.put(Column.Spatial_location, 2);
         row.put(Column.Embedding_medium, "brass");
         row.put(Column.Fixative, "Floop");
-        row.put(Column.Section_number, 400);
+        row.put(Column.Section_number, "400");
         row.put(Column.Section_position, "Middle");
         SectionRegisterContent src = reader.createRequestContent(problems, row);
         assertEquals("Donor1", src.getDonorIdentifier());
@@ -461,7 +461,7 @@ class TestSectionRegisterFileReader extends BaseTestFileReader {
         assertEquals(2, src.getSpatialLocation());
         assertEquals("brass", src.getMedium());
         assertEquals("Floop", src.getFixative());
-        assertEquals(400, src.getSectionNumber());
+        assertEquals("400", src.getSectionNumber());
         assertEquals("Middle", src.getRegion());
         assertThat(problems).isEmpty();
     }

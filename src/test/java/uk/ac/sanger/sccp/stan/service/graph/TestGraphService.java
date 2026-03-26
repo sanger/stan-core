@@ -134,7 +134,7 @@ class TestGraphService {
         Map<Integer, Labware> lwMap = Map.of(lw.getId(), lw);
         Tissue tis = EntityFactory.getTissue();
         BioState bs = EntityFactory.getBioState();
-        List<Sample> samples = IntStream.rangeClosed(1,2).mapToObj(i -> new Sample(10+i, i, tis, bs)).toList();
+        List<Sample> samples = IntStream.rangeClosed(1,2).mapToObj(i -> new Sample(10+i, String.valueOf(i), tis, bs)).toList();
         Map<Integer, Sample> sampleMap = samples.stream().collect(inMap(Sample::getId));
         Sample sample = samples.getFirst();
         HistoryEntry entry = new HistoryEntry(10, "eventname", LocalDateTime.of(2024,3,11,12,0), -5, lw.getId(),
@@ -261,12 +261,12 @@ class TestGraphService {
             "2,1,null,3,2:BS; s1-3"
     }, delimiter=':')
     void testDescribeBio(String secString, String expected) {
-        List<Integer> secs;
+        List<String> secs;
         if (secString==null) {
             secs = List.of();
         } else {
             secs = Arrays.stream(secString.split(","))
-                    .map(s -> s.equals("null") ? null : Integer.valueOf(s))
+                    .map(s -> s.equals("null") ? null : s)
                     .toList();
         }
         BioState bs = new BioState(10, "BS");
@@ -283,15 +283,15 @@ class TestGraphService {
             "2;2",
             "2 3; 2,3",
             "2 3 4; 2-4",
+            "2 3a 4; 2,3a,4",
             "2 3 4 6; 2,3,4,6",
     }, delimiter = ';')
     void testSummariseSections(String secString, String expected) {
-        List<Integer> secs;
+        List<String> secs;
         if (secString==null) {
             secs = List.of();
         } else {
             secs = Arrays.stream(secString.split("\\s+"))
-                    .map(Integer::valueOf)
                     .toList();
         }
         assertEquals(expected, service.summariseSections(secs));
@@ -322,7 +322,7 @@ class TestGraphService {
         NodeData regNd = makeNodeData(1, makeTime(1), lw1.getId(), lw1.getId(), regSs, regSs);
 
         List<Sample> sections = IntStream.rangeClosed(1,2)
-                .mapToObj(i -> new Sample(10+i, i, tis, bs))
+                .mapToObj(i -> new Sample(10+i, String.valueOf(i), tis, bs))
                 .toList();
 
         List<Labware> secLw = sections.stream()
@@ -334,7 +334,7 @@ class TestGraphService {
                         regSs, Set.of(new SlotSample(secLw.get(i).getFirstSlot(), sections.get(i)))))
                 .toList();
 
-        Sample extractSample = new Sample(20, 2, tis, bs);
+        Sample extractSample = new Sample(20, String.valueOf(2), tis, bs);
         Labware extractLw = EntityFactory.makeLabware(lt1, extractSample);
         NodeData extractNd = makeNodeData(5, makeTime(3), secLw.getLast().getId(), extractLw.getId(),
                 Set.of(new SlotSample(secLw.getLast().getFirstSlot(), sections.getLast())),

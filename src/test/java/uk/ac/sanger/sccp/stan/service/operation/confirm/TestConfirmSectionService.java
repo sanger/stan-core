@@ -257,7 +257,7 @@ public class TestConfirmSectionService {
         final Address A1 = new Address(1,1);
         Map<Integer, Comment> commentMap = Map.of(1, new Comment(1, "com", "cat"));
         ConfirmSectionLabware csl = new ConfirmSectionLabware(lw.getBarcode(), false,
-                List.of(new ConfirmSection(A1, sample.getId(), 12)), null, null);
+                List.of(new ConfirmSection(A1, sample.getId(), "12")), null, null);
 
         assertThat(assertThrows(IllegalArgumentException.class,
                 () -> service.confirmLabware(EntityFactory.getUser(), csl, lw, plan, commentMap)))
@@ -282,14 +282,14 @@ public class TestConfirmSectionService {
         final Address A1 = new Address(1,1);
         final Address B3 = new Address(2,3);
         List<ConfirmSection> csecs = List.of(
-                new ConfirmSection(A1, sample.getId(), 10, List.of(30,31)),
-                new ConfirmSection(B3, sample.getId(), 12, null)
+                new ConfirmSection(A1, sample.getId(), "10", List.of(30,31)),
+                new ConfirmSection(B3, sample.getId(), "12", null)
         );
         csecs.getFirst().setThickness("10.5");
         ConfirmSectionLabware csl = new ConfirmSectionLabware(lw1.getBarcode(), false, csecs, List.of(), null);
         Map<Address, PlanAction> planActionMap = Stream.of(
                 new PlanAction(1, 1, source, lw1.getSlot(A1), sample),
-                new PlanAction(2, 1, source, lw1.getSlot(B3), sample, 12, "50", null)
+                new PlanAction(2, 1, source, lw1.getSlot(B3), sample, "12", "50", null)
         ).collect(BasicUtils.inMap(pa -> pa.getDestination().getAddress(), HashMap::new));
         plan.setPlanActions(new ArrayList<>(planActionMap.values()));
 
@@ -367,7 +367,7 @@ public class TestConfirmSectionService {
     @Test
     public void testMakeAction() {
         Sample sourceSample = new Sample(100, null, EntityFactory.getTissue(), EntityFactory.getBioState());
-        Sample section = new Sample(101, 11, sourceSample.getTissue(), sourceSample.getBioState());
+        Sample section = new Sample(101, "11", sourceSample.getTissue(), sourceSample.getBioState());
         Labware lw0 = EntityFactory.makeLabware(EntityFactory.getTubeType(), sourceSample);
         Slot source = lw0.getFirstSlot();
         Labware lw1 = EntityFactory.makeEmptyLabware(EntityFactory.getTubeType());
@@ -389,7 +389,8 @@ public class TestConfirmSectionService {
                         BioState bs0, Slot sourceSlot, Sample sourceSample, Slot destSlot,
                         Sample expectedSample, boolean create) {
         sectionMap = new HashMap<>(sectionMap);
-        ConfirmSection csec = new ConfirmSection((Address) null, null, sectionNum, null);
+        String sectionString = (sectionNum==null ? null : sectionNum.toString());
+        ConfirmSection csec = new ConfirmSection((Address) null, null, sectionString, null);
         PlanAction pa = new PlanAction(1, 1, sourceSlot, destSlot, sourceSample);
         pa.setNewBioState(bs0);
         if (create) {
@@ -397,11 +398,11 @@ public class TestConfirmSectionService {
         }
         assertSame(expectedSample, service.getSection(sectionMap, csec, pa, destSlot));
         if (create) {
-            verify(service).createSection(pa.getSample().getTissue(), sectionNum, expectedSample.getBioState());
+            verify(service).createSection(pa.getSample().getTissue(), sectionString, expectedSample.getBioState());
         } else {
             verify(service, never()).createSection(any(), any(), any());
         }
-        assertSame(expectedSample, sectionMap.get(new SectionKey(sourceSample.getTissue().getId(), sectionNum, expectedSample.getBioState())));
+        assertSame(expectedSample, sectionMap.get(new SectionKey(sourceSample.getTissue().getId(), sectionString, expectedSample.getBioState())));
     }
 
     static Stream<Arguments> getSectionArgs() {
@@ -415,7 +416,7 @@ public class TestConfirmSectionService {
         Slot destSlot = EntityFactory.makeEmptyLabware(EntityFactory.getTubeType()).getFirstSlot();
         Slot destSlot2 = EntityFactory.makeLabware(EntityFactory.getTubeType(), sams[2]).getFirstSlot();
         Map<SectionKey, Sample> sectionMap = Map.of(
-                new SectionKey(sams[0].getTissue().getId(), 1, bs), sams[1]
+                new SectionKey(sams[0].getTissue().getId(), "1", bs), sams[1]
         );
         return Arrays.stream(new Object[][] {
                 { sectionMap, 1, bs, sourceSlot, sourceSample, destSlot, sams[1], false},
@@ -428,12 +429,12 @@ public class TestConfirmSectionService {
     public void testCreateSection() {
         Tissue tissue = EntityFactory.getTissue();
         BioState bs = new BioState(50, "Bananas");
-        Integer secNum = 7;
-        Sample createdSample = new Sample(101, secNum, tissue, bs);
+        String secStr = "7";
+        Sample createdSample = new Sample(101, secStr, tissue, bs);
         when(mockSampleRepo.save(any())).thenReturn(createdSample);
 
-        assertSame(createdSample, service.createSection(tissue, secNum, bs));
-        verify(mockSampleRepo).save(new Sample(null, secNum, tissue, bs));
+        assertSame(createdSample, service.createSection(tissue, secStr, bs));
+        verify(mockSampleRepo).save(new Sample(null, secStr, tissue, bs));
     }
 
     @Test
@@ -463,7 +464,7 @@ public class TestConfirmSectionService {
         final Address A1 = new Address(1,1);
         final Address B3 = new Address(2,3);
         Sample[] samples = IntStream.range(1, 3)
-                .mapToObj(i -> new Sample(i, 10+i, EntityFactory.getTissue(), EntityFactory.getBioState()))
+                .mapToObj(i -> new Sample(i, String.valueOf(10+i), EntityFactory.getTissue(), EntityFactory.getBioState()))
                 .toArray(Sample[]::new);
         lw.getSlot(A1).getSamples().addAll(Arrays.asList(samples));
         ConfirmSectionLabware csl = new ConfirmSectionLabware(lw.getBarcode(), false, List.of(), List.of(
@@ -559,7 +560,7 @@ public class TestConfirmSectionService {
         Labware[] destLabware = new Labware[2];
 
         for (int i = 0; i < sections.length; ++i) {
-            sections[i] = new Sample(100+i, 20+i, tissue, bs);
+            sections[i] = new Sample(100+i, String.valueOf(20+i), tissue, bs);
         }
 
         destLabware[0] = EntityFactory.makeLabware(slideType, sections[0], sections[3]);

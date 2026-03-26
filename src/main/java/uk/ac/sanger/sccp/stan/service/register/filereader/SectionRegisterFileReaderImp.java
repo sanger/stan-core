@@ -109,7 +109,7 @@ public class SectionRegisterFileReaderImp extends BaseRegisterFileReader<Section
         content.setFixative((String) row.get(Column.Fixative));
         content.setHmdmc((String) row.get(Column.HuMFre));
         content.setBioRiskCode((String) row.get(Column.Bio_risk));
-        content.setSectionNumber((Integer) row.get(Column.Section_number));
+        content.setSectionNumber((String) row.get(Column.Section_number));
         content.setMedium((String) row.get(Column.Embedding_medium));
         content.setDonorIdentifier((String) row.get(Column.Donor_ID));
         content.setLifeStage(valueToLifeStage(problems, (String) row.get(Column.Life_stage)));

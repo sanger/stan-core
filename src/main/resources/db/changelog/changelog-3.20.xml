@@ -1,0 +1,14 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+    <changeSet id="3.20.0" author="dr6">
+        <modifyDataType tableName="sample" columnName="section" newDataType="VARCHAR(16) NULL" />
+        <modifyDataType tableName="plan_action" columnName="new_section" newDataType="VARCHAR(16) NULL" />
+
+        <rollback>
+            <modifyDataType tableName="sample" columnName="section" newDataType="INT NULL" />
+            <modifyDataType tableName="plan_action" columnName="new_section" newDataType="INT NULL" />
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

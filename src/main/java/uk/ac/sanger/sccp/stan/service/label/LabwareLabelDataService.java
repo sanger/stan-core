@@ -9,13 +9,13 @@ import uk.ac.sanger.sccp.stan.service.label.LabwareLabelData.LabelContent;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
-import static uk.ac.sanger.sccp.utils.BasicUtils.getSingleValue;
-import static uk.ac.sanger.sccp.utils.BasicUtils.reverseIter;
+import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 /**
  * Service for creating LabwareLabelData from labware.
@@ -39,6 +39,7 @@ public class LabwareLabelDataService {
         List<LabelContent> content = labware.getSlots().stream()
                 .sorted(slotOrder)
                 .flatMap(slot -> slot.getSamples().stream())
+                .distinct()
                 .map(this::getContent)
                 .collect(toList());
         Set<String> mediums = labware.getSlots().stream()
@@ -197,7 +198,7 @@ public class LabwareLabelDataService {
                         .mapToObj(col -> map.get(new Address(row, col)))
                         .filter(Objects::nonNull)
                         .flatMap(Collection::stream);
-                Integer[] sectionRange = sectionRange(scStream.iterator());
+                String[] sectionRange = sectionRange(scStream.iterator());
                 content.add(new LabelContent(donorNames[i], externalNames[i], tissueDescs[i], reps[i], sectionRange[0], sectionRange[1]));
             }
         }
@@ -253,7 +254,7 @@ public class LabwareLabelDataService {
                 if (tissues[tissueIndex]==null) {
                     content.add(new LabelContent());
                 } else {
-                    Integer[] sectionRange = sectionRange(map.get(new Address(row, col)));
+                    String[] sectionRange = sectionRange(map.get(new Address(row, col)));
                     content.add(new LabelContent(donorNames[tissueIndex], externalNames[tissueIndex], tissueDescs[tissueIndex], reps[tissueIndex],
                             sectionRange[0], sectionRange[1]));
                 }
@@ -323,9 +324,9 @@ public class LabwareLabelDataService {
      * @param scs an iterator for SimpleContents
      * @return the min and max of sections in the given collection, in an array
      */
-    public Integer[] sectionRange(Collection<SimpleContent> scs) {
+    public String[] sectionRange(Collection<SimpleContent> scs) {
         if (scs == null || scs.isEmpty()) {
-            return new Integer[] { null, null };
+            return new String[] { null, null };
         }
         return sectionRange(scs.iterator());
     }
@@ -336,20 +337,20 @@ public class LabwareLabelDataService {
      * @param scs an iterator for SimpleContents
      * @return the min and max of sections in the given contents, in an array
      */
-    public Integer[] sectionRange(Iterator<SimpleContent> scs) {
-        Integer minSection = null, maxSection = null;
+    public String[] sectionRange(Iterator<SimpleContent> scs) {
+        String minSection = null, maxSection = null;
         while (scs.hasNext()) {
             SimpleContent sc = scs.next();
-            if (sc.section != null) {
-                if (minSection == null || sc.section < minSection) {
+            if (!nullOrEmpty(sc.section)) {
+                if (minSection == null || compareNumberStrings(sc.section, minSection) < 0) {
                     minSection = sc.section;
                 }
-                if (maxSection == null || sc.section > maxSection) {
+                if (maxSection == null || compareNumberStrings(sc.section, maxSection) > 0) {
                     maxSection = sc.section;
                 }
             }
         }
-        return new Integer[] { minSection, maxSection };
+        return new String[] { minSection, maxSection };
 
     }
 
@@ -377,8 +378,8 @@ public class LabwareLabelDataService {
                 Slot slot = pa.getDestination();
                 if (slot.getLabwareId().equals(labware.getId())) {
                     Sample sample = pa.getSample();
-                    Integer section = pa.getNewSection();
-                    if (section==null) {
+                    String section = pa.getNewSection();
+                    if (nullOrEmpty(section)) {
                         section = sample.getSection();
                     }
                     SimpleContent sc = new SimpleContent(pa.getSample().getTissue(), section);
@@ -396,7 +397,7 @@ public class LabwareLabelDataService {
         Tissue tissue = sample.getTissue();
         String stateDesc = sample.getBioState().getName();
         if (stateDesc.equalsIgnoreCase("Tissue")) {
-            return new LabelContent(tissue.getDonor().getDonorName(), tissue.getExternalName(),
+            return LabelContent.ofSection(tissue.getDonor().getDonorName(), tissue.getExternalName(),
                     getTissueDesc(tissue), tissue.getReplicate(), sample.getSection());
         }
         if (stateDesc.equalsIgnoreCase("Original sample")) {
@@ -426,10 +427,20 @@ public class LabwareLabelDataService {
 
     public List<LabelContent> getPlannedContent(List<PlanAction> planActions, Comparator<Slot> slotOrder) {
         return planActions.stream()
+                .filter(distinctPlanSection())
                 .sorted(Comparator.comparing(PlanAction::getDestination, slotOrder)
                         .thenComparing(PlanAction::getId))
                 .map(this::getContent)
                 .collect(toList());
+    }
+
+    /**
+     * Creates a filter to dedupe new sections. Doesn't filter out non-sections.
+     * @return a predicate to filter out plan actions creating the same section
+     */
+    static Predicate<PlanAction> distinctPlanSection() {
+        final Set<PlanActionKey> keys = new HashSet<>();
+        return pa -> (nullOrEmpty(pa.getNewSection()) || keys.add(new PlanActionKey(pa)));
     }
 
     public LabelContent getContent(PlanAction planAction) {
@@ -439,12 +450,12 @@ public class LabwareLabelDataService {
         }
         String stateDesc = bs.getName();
         if (stateDesc.equalsIgnoreCase("Tissue")) {
-            Integer section = planAction.getNewSection();
-            if (section == null) {
+            String section = planAction.getNewSection();
+            if (nullOrEmpty(section)) {
                 section = planAction.getSample().getSection();
             }
 
-            return new LabelContent(
+            return LabelContent.ofSection(
                     planAction.getSample().getTissue().getDonor().getDonorName(),
                     planAction.getSample().getTissue().getExternalName(),
                     getTissueDesc(planAction.getSample().getTissue()),
@@ -464,9 +475,16 @@ public class LabwareLabelDataService {
         );
     }
 
-    public record SimpleContent(Tissue tissue, Integer section) {
+    public record SimpleContent(Tissue tissue, String section) {
         public SimpleContent(Sample sample) {
             this(sample.getTissue(), sample.getSection());
+        }
+    }
+
+    /** The characteristics to dedupe the new section that will be created from a plan action */
+    record PlanActionKey(Sample parentSample, String section) {
+        public PlanActionKey(PlanAction pa) {
+            this(pa.getSample(), pa.getNewSection());
         }
     }
 }

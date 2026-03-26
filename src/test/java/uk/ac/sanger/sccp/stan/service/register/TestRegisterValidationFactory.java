@@ -11,6 +11,7 @@ import uk.ac.sanger.sccp.stan.service.work.WorkService;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;
+import static uk.ac.sanger.sccp.stan.Matchers.genericMock;
 
 /**
  * Tests {@link RegisterValidationFactory}
@@ -18,17 +19,17 @@ import static org.mockito.Mockito.mock;
  */
 public class TestRegisterValidationFactory {
     RegisterValidationFactory registerValidationFactory;
-    @SuppressWarnings("unchecked")
+
     @BeforeEach
     void setup() {
-        Validator<String> mockStringValidator = mock(Validator.class);
-        Sanitiser<String> mockSanitiser = mock(Sanitiser.class);
+        Validator<String> mockStringValidator = genericMock(Validator.class);
+        Sanitiser<String> mockSanitiser = genericMock(Sanitiser.class);
         registerValidationFactory = new RegisterValidationFactory(
                 mock(DonorRepo.class), mock(HmdmcRepo.class), mock(TissueTypeRepo.class),
                 mock(LabwareTypeRepo.class), mock(MediumRepo.class),
                 mock(FixativeRepo.class), mock(TissueRepo.class), mock(SpeciesRepo.class), mock(LabwareRepo.class),
                 mock(BioStateRepo.class), mock(CellClassRepo.class), mockStringValidator, mockStringValidator, mockStringValidator,
-                mockStringValidator, mockStringValidator, mockSanitiser, mockStringValidator, mockStringValidator,
+                mockStringValidator, mockStringValidator, mockSanitiser, mockStringValidator, mockStringValidator, mockStringValidator,
                 mock(TissueFieldChecker.class), mock(SlotRegionService.class), mock(BioRiskService.class),
                 mock(WorkService.class));
     }

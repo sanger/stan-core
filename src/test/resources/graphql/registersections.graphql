@@ -13,7 +13,7 @@ mutation {
                         fixative: "None"
                         medium: "None"
                         replicateNumber: "7"
-                        sectionNumber: 8
+                        sectionNumber: "8"
                         sectionThickness: "12"
                         lifeStage: adult
                         externalIdentifier: "TISSUE1"
@@ -30,7 +30,7 @@ mutation {
                         fixative: "None"
                         medium: "None"
                         replicateNumber: "9a"
-                        sectionNumber: 10
+                        sectionNumber: "10a"
                         sectionThickness: "13"
                         lifeStage: adult
                         externalIdentifier: "TISSUE2"
@@ -48,7 +48,7 @@ mutation {
                         fixative: "None"
                         medium: "None"
                         replicateNumber: "8"
-                        sectionNumber: 11
+                        sectionNumber: "11"
                         sectionThickness: "14.5"
                         lifeStage: adult
                         externalIdentifier: "TISSUE3"

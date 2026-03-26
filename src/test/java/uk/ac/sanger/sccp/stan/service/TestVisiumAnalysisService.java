@@ -217,7 +217,7 @@ public class TestVisiumAnalysisService {
     @Test
     public void testCreateMeasurements() {
         Sample sam1 = EntityFactory.getSample();
-        Sample sam2 = new Sample(sam1.getId()+1, 17, sam1.getTissue(), sam1.getBioState());
+        Sample sam2 = new Sample(sam1.getId()+1, "17", sam1.getTissue(), sam1.getBioState());
         Slot slot = EntityFactory.makeEmptyLabware(EntityFactory.getTubeType()).getFirstSlot();
         slot.setSamples(List.of(sam1, sam2));
         String value = "240";

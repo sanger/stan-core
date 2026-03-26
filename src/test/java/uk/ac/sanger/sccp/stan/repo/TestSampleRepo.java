@@ -30,21 +30,6 @@ public class TestSampleRepo {
         this.sampleRepo = sampleRepo;
     }
 
-    @SuppressWarnings("deprecation")
-    @Test
-    @Transactional
-    public void testFindMaxSectionForTissueId() {
-        assertThat(sampleRepo.findMaxSectionForTissueId(-1)).isEmpty();
-        Donor donor = entityCreator.createDonor("DONOR");
-        Tissue tissue = entityCreator.createTissue(donor, "TISSUE1");
-        BioState bioState = entityCreator.anyBioState();
-
-        sampleRepo.save(new Sample(null, 3, tissue, bioState));
-        sampleRepo.save(new Sample(null, 18, tissue, bioState));
-        sampleRepo.save(new Sample(null, 4, tissue, bioState));
-        assertThat(sampleRepo.findMaxSectionForTissueId(tissue.getId())).hasValue(18);
-    }
-
     @Test
     @Transactional
     public void testFindAllByTissueIdIn() {

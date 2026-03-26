@@ -17,8 +17,8 @@ public class TestLabwareLabelData {
         LabwareLabelData data = new LabwareLabelData(
                 "STAN-123", "123456", "Butter", "2021-03-17",
                 List.of(
-                        new LabelContent("DONOR1", null, "TISSUE1", "1", (String) null),
-                        new LabelContent("DONOR2", null, "TISSUE2", "2a", 3)
+                        new LabelContent("DONOR1", null, "TISSUE1", "1", null),
+                        LabelContent.ofSection("DONOR2", null, "TISSUE2", "2a", "3")
                 )
         );
         Map<String, String> fields = data.getFields();
@@ -33,7 +33,7 @@ public class TestLabwareLabelData {
         expected.put("donor[1]", "DONOR2");
         expected.put("tissue[1]", "TISSUE2");
         expected.put("replicate[1]", "R:2a");
-        expected.put("state[1]", "S003");
+        expected.put("state[1]", "S3");
         assertThat(fields).containsExactlyInAnyOrderEntriesOf(expected);
     }
 }

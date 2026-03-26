@@ -207,7 +207,7 @@ public class ConfirmOperationServiceImp implements ConfirmOperationService {
      */
     public Sample getOrCreateSample(PlanAction planAction, Slot dest) {
         final Sample sourceSample = planAction.getSample();
-        final Integer correctSection = coalesce(planAction.getNewSection(), sourceSample.getSection());
+        final String correctSection = coalesce(planAction.getNewSection(), sourceSample.getSection());
         final BioState correctBioState = coalesce(planAction.getNewBioState(), sourceSample.getBioState());
         if (Objects.equals(correctSection, sourceSample.getSection())
                 && correctBioState.getId().equals(sourceSample.getBioState().getId())) {
@@ -270,7 +270,7 @@ public class ConfirmOperationServiceImp implements ConfirmOperationService {
         return new Action(null, null, planAction.getSource(), destination, sample, planAction.getSample());
     }
 
-    private Sample createNewSample(Sample sourceSample, Integer section, BioState bioState) {
+    private Sample createNewSample(Sample sourceSample, String section, BioState bioState) {
         return sampleRepo.save(new Sample(null, section, sourceSample.getTissue(), bioState));
     }
 

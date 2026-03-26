@@ -20,22 +20,22 @@ public interface OriginalSampleRegisterFileReader extends MultipartFileReader<Or
 
     /** Columns expected in the excel file */
     enum Column implements IColumn {
-        _preamble(Void.class, Pattern.compile("mand.tory.*", Pattern.CASE_INSENSITIVE), false),
+        _preamble(Void.class, Pattern.compile("mand.tory.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL), false),
         Work_number(Pattern.compile("(work|sgp)\\s*number.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL), false),
-        Donor_identifier(Pattern.compile("donor\\s*id.*", Pattern.CASE_INSENSITIVE)),
+        Donor_identifier(Pattern.compile("donor\\s*id.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL)),
         Life_stage,
-        Collection_date(LocalDate.class, Pattern.compile("(if.*)?(date.*collection|collection.*date).*", Pattern.CASE_INSENSITIVE), false),
+        Collection_date(LocalDate.class, Pattern.compile("(if.*)?(date.*collection|collection.*date).*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL), false),
         Species,
         Cell_class(Pattern.compile("cell(ular)?\\s*class(ification)?", Pattern.CASE_INSENSITIVE), true),
-        Bio_risk(Pattern.compile("bio\\w*\\s+risk.*", Pattern.CASE_INSENSITIVE)),
+        Bio_risk(Pattern.compile("bio\\w*\\s+risk.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL)),
         HuMFre(Pattern.compile("humfre\\s*(number)?", Pattern.CASE_INSENSITIVE), false),
         Tissue_type,
-        External_identifier(Pattern.compile("external\\s*id.*", Pattern.CASE_INSENSITIVE), false),
+        External_identifier(Pattern.compile("external\\s*id.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL), false),
         Spatial_location(Integer.class, Pattern.compile("spatial\\s*location\\s*(number)?", Pattern.CASE_INSENSITIVE), true),
-        Replicate_number(Pattern.compile("replicate.*", Pattern.CASE_INSENSITIVE), false),
+        Replicate_number(Pattern.compile("replicate.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL), false),
         Labware_type,
         Fixative,
-        Solution(Pattern.compile("(current\\s*)?solution.*", Pattern.CASE_INSENSITIVE)),
+        Solution(Pattern.compile("(current\\s*)?solution.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL)),
         _postramble(Void.class, Pattern.compile("info.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL), false),
         ;
 

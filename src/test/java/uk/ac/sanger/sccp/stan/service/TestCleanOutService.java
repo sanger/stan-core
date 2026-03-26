@@ -222,7 +222,7 @@ class TestCleanOutService {
         Tissue tissue = EntityFactory.getTissue();
         BioState bs = EntityFactory.getBioState();
         List<Sample> samples = IntStream.range(0,3)
-                .mapToObj(i -> new Sample(10+i, 20+i, tissue, bs))
+                .mapToObj(i -> new Sample(10+i, String.valueOf(20+i), tissue, bs))
                 .toList();
         Labware lw = EntityFactory.makeEmptyLabware(lt);
         final Address A2 = new Address(1,2), A3 = new Address(1,3);

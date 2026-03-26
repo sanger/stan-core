@@ -3,8 +3,8 @@ package uk.ac.sanger.sccp.stan.service.operation.confirm;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
 import uk.ac.sanger.sccp.stan.repo.PlanOperationRepo;
-import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.request.AddressCommentId;
+import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.service.CommentValidationService;
 
 import java.util.*;
@@ -155,7 +155,7 @@ public class ConfirmOperationValidationImp implements ConfirmOperationValidation
         LabwareType lt = lw.getLabwareType();
         final Set<CancelPlanAction> candidates = plan.getPlanActions().stream()
                 .filter(pa -> pa.getDestination().getLabwareId().equals(labwareId))
-                .map(CancelPlanAction::new)
+                .map(CancelPlanAction::forPlanAction)
                 .collect(toSet());
         for (CancelPlanAction cpa : cancelledActions) {
             boolean ok = true;
@@ -170,6 +170,10 @@ public class ConfirmOperationValidationImp implements ConfirmOperationValidation
             if (cpa.getSampleId()==null) {
                 addProblem("No sample id specified in cancelled plan action.");
                 ok = false;
+            }
+            if (cpa.getNewSection() != null) {
+                // Make sure new section string is lower case to match expected format
+                cpa.setNewSection(cpa.getNewSection().toLowerCase());
             }
             if (ok && !candidates.contains(cpa)) {
                 addProblem("Cancelled plan action does not match any action in the plan: %s",

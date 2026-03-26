@@ -403,8 +403,8 @@ public class TestPermService {
     public void testAddControl() {
         User user = EntityFactory.getUser();
         Labware controlLw = EntityFactory.getTube();
-        Sample sam1 = new Sample(500, 1, EntityFactory.getTissue(), EntityFactory.getBioState());
-        Sample sam2 = new Sample(501, 2, sam1.getTissue(), sam1.getBioState());
+        Sample sam1 = new Sample(500, "1", EntityFactory.getTissue(), EntityFactory.getBioState());
+        Sample sam2 = new Sample(501, "2", sam1.getTissue(), sam1.getBioState());
         LabwareType lt = EntityFactory.makeLabwareType(2,2);
         Labware slide = EntityFactory.makeLabware(lt, sam1, sam2);
 
@@ -430,7 +430,7 @@ public class TestPermService {
     public void testCreateMeasurements() {
         LabwareType lt = EntityFactory.makeLabwareType(2,2);
         Sample sam1 = EntityFactory.getSample();
-        Sample sam2 = new Sample(sam1.getId()+1, 7, sam1.getTissue(), sam1.getBioState());
+        Sample sam2 = new Sample(sam1.getId()+1, "7", sam1.getTissue(), sam1.getBioState());
         Labware lw = EntityFactory.makeLabware(lt, sam1, sam2, sam1);
         lw.getFirstSlot().getSamples().add(sam2);
         final Address A1 = new Address(1,1), A2 = new Address(1,2);

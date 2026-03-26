@@ -200,7 +200,7 @@ public class TestStainService {
         OperationType opType = new OperationType(6, "Stain");
 
         Sample sam1 = EntityFactory.getSample();
-        Sample sam2 = new Sample(sam1.getId()+1, 17, sam1.getTissue(), sam1.getBioState());
+        Sample sam2 = new Sample(sam1.getId()+1, "17", sam1.getTissue(), sam1.getBioState());
         LabwareType lt = EntityFactory.makeLabwareType(4,1);
         Labware lw = EntityFactory.makeLabware(lt, sam1, sam1, sam2, null);
         lw.getFirstSlot().setSamples(List.of(sam1, sam2));
@@ -277,7 +277,7 @@ public class TestStainService {
         List<Comment> comments = List.of(new Comment(1, "com1", "cat1"),
                 new Comment(2, "com2", "cat2"));
         Sample sam1 = EntityFactory.getSample();
-        Sample sam2 = new Sample(sam1.getId()+1, 17, sam1.getTissue(), sam1.getBioState());
+        Sample sam2 = new Sample(sam1.getId()+1, "17", sam1.getTissue(), sam1.getBioState());
         LabwareType lt = EntityFactory.makeLabwareType(1, 2);
         Labware lw1 = EntityFactory.makeLabware(lt, sam1, sam2);
         int slot1id1 = lw1.getFirstSlot().getId();

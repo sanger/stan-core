@@ -1,25 +1,19 @@
 package uk.ac.sanger.sccp.stan.service;
 
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.AddExternalIDRequest;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 
+import java.util.*;
 
-import java.util.Collection;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
-
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.Matchers.assertValidationException;
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Tests {@link SampleProcessingServiceImp}
@@ -52,7 +46,7 @@ public class TestSampleProcessingService {
         SpatialLocation sl = EntityFactory.getSpatialLocation();
         Tissue tissue = EntityFactory.makeTissue(donor, sl);
         tissue.setExternalName("");
-        Sample sample = new Sample(1, 100, tissue, null);
+        Sample sample = new Sample(1, "100", tissue, null);
         LabwareType lt = EntityFactory.makeLabwareType(1,1, "LT1");
         Labware lw = EntityFactory.makeLabware(lt, sample);
         OperationType opType = EntityFactory.makeOperationType("Add External ID", null);
@@ -77,7 +71,7 @@ public class TestSampleProcessingService {
         Donor donor = EntityFactory.getDonor();
         SpatialLocation sl = EntityFactory.getSpatialLocation();
         Tissue tissue = EntityFactory.makeTissue(donor, sl);
-        Sample sample = new Sample(1, 100, tissue, null);
+        Sample sample = new Sample(1, "100", tissue, null);
         LabwareType lt = EntityFactory.makeLabwareType(1,1, "LT1");
         Labware lw = EntityFactory.makeLabware(lt, sample);
 
@@ -124,8 +118,8 @@ public class TestSampleProcessingService {
         Donor donor = EntityFactory.getDonor();
         SpatialLocation sl = EntityFactory.getSpatialLocation();
         Tissue tissue = EntityFactory.makeTissue(donor, sl);
-        Sample sample1 = new Sample(1, 100, tissue, null);
-        Sample sample2 = new Sample(2, 100, tissue, null);
+        Sample sample1 = new Sample(1, "100", tissue, null);
+        Sample sample2 = new Sample(2, "100", tissue, null);
 
         sampleProcessingService.validateSamples(problems, Set.of(sample1, sample2));
         assertThat(problems).contains("There are too many samples associated with this labware");
@@ -137,7 +131,7 @@ public class TestSampleProcessingService {
         Donor donor = EntityFactory.getDonor();
         SpatialLocation sl = EntityFactory.getSpatialLocation();
         Tissue tissue = EntityFactory.makeTissue(donor, sl);
-        Sample sample1 = new Sample(1, 100, tissue, null);
+        Sample sample1 = new Sample(1, "100", tissue, null);
 
         sampleProcessingService.validateSamples(problems, Set.of(sample1));
         assertThat(problems).contains("The associated tissue already has an external identifier: "+tissue.getExternalName());
@@ -151,7 +145,7 @@ public class TestSampleProcessingService {
         Tissue tissue = EntityFactory.makeTissue(donor, sl);
         tissue.setReplicate("");
         tissue.setExternalName("");
-        Sample sample1 = new Sample(1, 100, tissue, null);
+        Sample sample1 = new Sample(1, "100", tissue, null);
 
         sampleProcessingService.validateSamples(problems, Set.of(sample1));
         assertThat(problems).contains("The associated tissue does not have a replicate number");

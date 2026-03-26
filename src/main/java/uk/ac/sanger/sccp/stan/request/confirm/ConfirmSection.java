@@ -16,13 +16,13 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.nullToEmpty;
 public class ConfirmSection {
     private List<Address> destinationAddresses = List.of();
     private Integer sampleId;
-    private Integer newSection;
+    private String newSection;
     private List<Integer> commentIds = List.of();
     private String thickness;
 
     public ConfirmSection() {}
 
-    public ConfirmSection(List<Address> destinationAddresses, Integer sampleId, Integer newSection,
+    public ConfirmSection(List<Address> destinationAddresses, Integer sampleId, String newSection,
                           List<Integer> commentIds) {
         setDestinationAddress(destinationAddresses);
         setSampleId(sampleId);
@@ -30,12 +30,12 @@ public class ConfirmSection {
         setCommentIds(commentIds);
     }
 
-    public ConfirmSection(Address destinationAddress, Integer sampleId, Integer newSection,
+    public ConfirmSection(Address destinationAddress, Integer sampleId, String newSection,
                           List<Integer> commentIds) {
         this(destinationAddress==null ? null : List.of(destinationAddress), sampleId, newSection, commentIds);
     }
 
-    public ConfirmSection(Address destinationAddress, Integer sampleId, Integer newSection) {
+    public ConfirmSection(Address destinationAddress, Integer sampleId, String newSection) {
         this(destinationAddress, sampleId, newSection, null);
     }
 
@@ -55,11 +55,11 @@ public class ConfirmSection {
         this.sampleId = sampleId;
     }
 
-    public Integer getNewSection() {
+    public String getNewSection() {
         return this.newSection;
     }
 
-    public void setNewSection(Integer newSection) {
+    public void setNewSection(String newSection) {
         this.newSection = newSection;
     }
 
@@ -102,7 +102,7 @@ public class ConfirmSection {
         return BasicUtils.describe("ConfirmSection")
                 .add("destinationAddresses", destinationAddresses)
                 .add("sampleId", sampleId)
-                .add("newSection", newSection)
+                .addRepr("newSection", newSection)
                 .add("commentIds", commentIds)
                 .addRepr("thickness", thickness)
                 .toString();

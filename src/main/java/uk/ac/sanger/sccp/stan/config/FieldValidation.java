@@ -20,6 +20,12 @@ import java.util.regex.Pattern;
 @Configuration
 public class FieldValidation {
     @Bean
+    public Validator<String> sectionValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA, CharacterType.DIGIT);
+        return new StringValidator("Section", 1, 16, charTypes, false, Pattern.compile("[1-9][0-9]*[a-z]*", Pattern.CASE_INSENSITIVE));
+    }
+
+    @Bean
     public Validator<String> cellClassValidator() {
         Set<CharacterType> charTypes = EnumSet.of(
                 CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN,
@@ -382,7 +388,7 @@ public class FieldValidation {
         Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN,
                 CharacterType.UNDERSCORE, CharacterType.SPACE, CharacterType.SLASH, CharacterType.BACKSLASH,
                 CharacterType.PAREN, CharacterType.FULL_STOP, CharacterType.APOSTROPHE, CharacterType.PERCENT,
-                CharacterType.COMMA, CharacterType.COLON, CharacterType.SEMICOLON);
+                CharacterType.COMMA, CharacterType.COLON, CharacterType.SEMICOLON, CharacterType.AMPERSAND);
         return new StringValidator("ROI", 1, 64, charTypes);
     }
 
