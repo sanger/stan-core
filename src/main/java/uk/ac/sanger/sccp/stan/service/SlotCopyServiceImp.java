@@ -32,16 +32,10 @@ public class SlotCopyServiceImp implements SlotCopyService {
     static final String LP_NOTE_NAME = "LP number";
     static final String CASSETTE_LOT_NOTE_NAME = "cassette lot";
 
-    static final String BS_PROBES = "Probes", BS_CDNA = "cDNA", BS_LIBRARY = "Library",
-            BS_LIB_PRE_CLEAN = "Library pre-clean", BS_LIB_POST_CLEAN = "Library post-clean",
-            BS_PROBES_PRE_CLEAN = "Probes pre-clean", BS_PROBES_POST_CLEAN = "Probes post-clean",
-            BS_LIB_POST_CLEAN_1_20 = "Library post-clean 1:20 dilution",
-            BS_CDNA_PRE_CLEAN = "cDNA pre-clean", BS_CDNA_POST_CLEAN = "cDNA post-clean";
-
     static final Set<String> VALID_BS_UPPER = Stream.of(
-                    BS_PROBES, BS_CDNA, BS_LIBRARY, BS_LIB_PRE_CLEAN, BS_LIB_POST_CLEAN,
-                    BS_PROBES_PRE_CLEAN, BS_PROBES_POST_CLEAN, BS_LIB_POST_CLEAN_1_20,
-                    BS_CDNA_PRE_CLEAN, BS_CDNA_POST_CLEAN
+                    "Probes", "cDNA", "Library", "Library pre-clean", "Library post-clean",
+                    "Probes pre-clean", "Probes post-clean", "Library post-clean 1:20 dilution",
+                    "cDNA pre-clean", "cDNA post-clean", "cDNA fragmentation", "cDNA adaptor ligation", "Poly(A) RNA"
             ).map(String::toUpperCase)
             .collect(toSet());
 
