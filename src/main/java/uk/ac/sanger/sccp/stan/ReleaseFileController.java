@@ -37,6 +37,12 @@ public class ReleaseFileController {
         return new TsvFile<>(filename, rfc.getEntries(), columns);
     }
 
+    /**
+     * Supplies a filename suitable for the specified type. If the filetype is not supplied, defaults to tsv.
+     * @param fileType type of file (extension without dot)
+     * @return a filename suitable for the file type
+     * @exception IllegalArgumentException a file type is supplied other than tsv and xlsx
+     */
     protected String filenameForType(String fileType) {
         if (nullOrEmpty(fileType) || fileType.equalsIgnoreCase("tsv")) {
             return "releases.tsv";
