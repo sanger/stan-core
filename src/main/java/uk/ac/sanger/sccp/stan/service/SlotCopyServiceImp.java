@@ -32,10 +32,13 @@ public class SlotCopyServiceImp implements SlotCopyService {
     static final String LP_NOTE_NAME = "LP number";
     static final String CASSETTE_LOT_NOTE_NAME = "cassette lot";
 
+    static final String POLY_A_BS = "Poly(A) RNA";
+    static final String CYTASSIST_3_START = "Cytassist HD 3'";
+
     static final Set<String> VALID_BS_UPPER = Stream.of(
                     "Probes", "cDNA", "Library", "Library pre-clean", "Library post-clean",
                     "Probes pre-clean", "Probes post-clean", "Library post-clean 1:20 dilution",
-                    "cDNA pre-clean", "cDNA post-clean", "cDNA fragmentation", "cDNA adaptor ligation", "Poly(A) RNA"
+                    "cDNA pre-clean", "cDNA post-clean", "cDNA fragmentation", "cDNA adaptor ligation", POLY_A_BS
             ).map(String::toUpperCase)
             .collect(toSet());
 
@@ -43,6 +46,7 @@ public class SlotCopyServiceImp implements SlotCopyService {
     private final SampleRepo sampleRepo;
     private final SlotRepo slotRepo;
     private final LabwareNoteRepo lwNoteRepo;
+    private final BioStateRepo bsRepo;
     private final SlotCopyValidationService valService;
     private final LabwareService lwService;
     private final BioRiskService bioRiskService;
@@ -54,6 +58,7 @@ public class SlotCopyServiceImp implements SlotCopyService {
 
     @Autowired
     public SlotCopyServiceImp(LabwareRepo lwRepo, SampleRepo sampleRepo, SlotRepo slotRepo, LabwareNoteRepo lwNoteRepo,
+                              BioStateRepo bsRepo,
                               SlotCopyValidationService valService, LabwareService lwService, BioRiskService bioRiskService,
                               OperationService opService, StoreService storeService, WorkService workService,
                               EntityManager entityManager, Transactor transactor) {
@@ -61,6 +66,7 @@ public class SlotCopyServiceImp implements SlotCopyService {
         this.sampleRepo = sampleRepo;
         this.slotRepo = slotRepo;
         this.lwNoteRepo = lwNoteRepo;
+        this.bsRepo = bsRepo;
         this.valService = valService;
         this.lwService = lwService;
         this.bioRiskService = bioRiskService;
@@ -137,13 +143,15 @@ public class SlotCopyServiceImp implements SlotCopyService {
         } else {
             sourceLpNumbers = null;
         }
+        // cache for looked up bio states
+        UCMap<BioState> bsCache = new UCMap<>();
         for (SlotCopyDestination dest : dests) {
             OperationResult opres = executeOp(user, dest.getContents(), opType, lwTypes.get(dest.getLabwareType()),
                     dest.getPreBarcode(), sources,sourceLpNumbers, dest.getCosting(), dest.getLotNumber(),
                     dest.getProbeLotNumber(), bioStates.get(dest.getBioState()), dest.getLpNumber(),
                     dest.getReagentLot(), dest.getReagentALot(), dest.getReagentBLot(), dest.getCassetteLot(),
                     dest.getReagentCosting(),
-                    existingDests.get(dest.getBarcode()), executionType);
+                    existingDests.get(dest.getBarcode()), executionType, bsCache);
             ops.addAll(opres.getOperations());
             destLabware.addAll(opres.getLabware());
         }
@@ -198,6 +206,7 @@ public class SlotCopyServiceImp implements SlotCopyService {
      * @param cassetteLot cassette lot, if given
      * @param destLw existing destination labware, if applicable
      * @param executionType the execution type of the operation, if given
+     * @param bsCache a cache for named bio states
      * @return the result of the operation
      */
     public OperationResult executeOp(User user, Collection<SlotCopyContent> contents,
@@ -207,14 +216,17 @@ public class SlotCopyServiceImp implements SlotCopyService {
                                      String probeLotNumber, BioState bioState, String lpNumber,
                                      String reagentLot, String reagentALot, String reagentBLot,
                                      String cassetteLot, SlideCosting reagentCosting,
-                                     Labware destLw, ExecutionType executionType) {
+                                     Labware destLw, ExecutionType executionType,
+                                     UCMap<BioState> bsCache) {
         if (destLw==null) {
             destLw = lwService.create(lwType, preBarcode, preBarcode);
         } else if (bioState==null) {
             bioState = findBioStateInLabware(destLw);
         }
-        Map<Integer, Sample> oldSampleIdToNewSample = createSamples(contents, sourceMap,
-                coalesce(bioState, opType.getNewBioState()));
+        if (bioState==null) {
+            bioState = opTypeBioState(opType, destLw, bsCache);
+        }
+        Map<Integer, Sample> oldSampleIdToNewSample = createSamples(contents, sourceMap, bioState);
         lpNumber = (lpNumber==null ? inheritedLpNumber(contents, sourceLps) : lpNumber.toUpperCase());
         Labware filledLabware = fillLabware(destLw, contents, sourceMap, oldSampleIdToNewSample);
         Operation op = createOperation(user, contents, opType, sourceMap, filledLabware, oldSampleIdToNewSample);
@@ -269,6 +281,26 @@ public class SlotCopyServiceImp implements SlotCopyService {
             }
         }
         return found;
+    }
+
+    /**
+     * Gets the bio state for the operation for the destination labware.
+     * @param opType the operation type being performed
+     * @param destLw the destination labware
+     * @param bsCache a cache of bio states, to avoid repeated lookups of the same biostates
+     * @return the new bio state, or null if the operation doesn't specify
+     */
+    public BioState opTypeBioState(OperationType opType, Labware destLw, UCMap<BioState> bsCache) {
+        if (opType.getName().equalsIgnoreCase(CYTASSIST_OP)
+                && startsWithIgnoreCase(destLw.getLabwareType().getName(), CYTASSIST_3_START)) {
+            BioState bs = bsCache.get(POLY_A_BS);
+            if (bs==null) {
+                bs = bsRepo.getByName(POLY_A_BS);
+                bsCache.put(POLY_A_BS, bs);
+            }
+            return bs;
+        }
+        return opType.getNewBioState();
     }
 
     /**
