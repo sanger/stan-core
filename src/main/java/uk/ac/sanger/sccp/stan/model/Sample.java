@@ -11,7 +11,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.describe;
  * @author dr6
  */
 @Entity
-public class Sample {
+public class Sample implements HasIntId {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
@@ -31,6 +31,7 @@ public class Sample {
         this.bioState = bioState;
     }
 
+    @Override
     public Integer getId() {
         return this.id;
     }
