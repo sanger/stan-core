@@ -42,6 +42,8 @@ public class TestSlotCopyService {
     @Mock
     LabwareNoteRepo mockLwNoteRepo;
     @Mock
+    BioStateRepo mockBsRepo;
+    @Mock
     SlotCopyValidationService mockValService;
     @Mock
     LabwareService mockLwService;
@@ -80,7 +82,7 @@ public class TestSlotCopyService {
         slideType = EntityFactory.makeLabwareType(4, 1);
         user = EntityFactory.getUser();
 
-        service = spy(new SlotCopyServiceImp(mockLwRepo, mockSampleRepo, mockSlotRepo, mockLwNoteRepo,
+        service = spy(new SlotCopyServiceImp(mockLwRepo, mockSampleRepo, mockSlotRepo, mockLwNoteRepo, mockBsRepo,
                 mockValService, mockLwService, mockBioRiskService, mockOpService, mockStoreService, mockWorkService,
                 mockEntityManager, mockTransactor));
     }
@@ -226,7 +228,7 @@ public class TestSlotCopyService {
                 new OperationResult(List.of(op2), List.of(newLw2)),
                 new OperationResult(List.of(op3), List.of(dest1)))
                 .when(service).executeOp(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
-                        any(), any(), any(), any(), any(), any(), any(), any());
+                        any(), any(), any(), any(), any(), any(), any(), any(), any());
         doReturn(sourceLps).when(service).loadLpNumbers(any());
 
         final ExecutionType exType = ExecutionType.manual;
@@ -236,9 +238,9 @@ public class TestSlotCopyService {
         assertThat(result.getLabware()).containsExactly(newLw1, newLw2, dest1);
 
         verify(service).loadLpNumbers(sources.values());
-        verify(service).executeOp(user, firstDest.getContents(), opType, lt1, "pb1", sources, sourceLps, SlideCosting.SGP, "1234567", "777777", bs, "LP1", "0000", "1111", "2222", "123456", SlideCosting.Faculty, null, exType);
-        verify(service).executeOp(user, dests.get(1).getContents(), opType, lt2, null, sources, sourceLps, SlideCosting.Faculty, null, null, null, null, null, null, null, null, null,null, exType);
-        verify(service).executeOp(user, dests.get(2).getContents(), opType, null, null, sources, sourceLps, null, null, null, null, null, null,null, null, null, null, dest1, exType);
+        verify(service).executeOp(same(user), same(firstDest.getContents()), same(opType), same(lt1), eq("pb1"), eq(sources), eq(sourceLps), same(SlideCosting.SGP), eq("1234567"), eq("777777"), same(bs), eq("LP1"), eq("0000"), eq("1111"), eq("2222"), eq("123456"), same(SlideCosting.Faculty), isNull(), same(exType), any());
+        verify(service).executeOp(same(user), same(dests.get(1).getContents()), same(opType), same(lt2), isNull(), eq(sources), eq(sourceLps), same(SlideCosting.Faculty), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),isNull(), same(exType), any());
+        verify(service).executeOp(same(user), same(dests.get(2).getContents()), same(opType), isNull(), isNull(), eq(sources), eq(sourceLps), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),isNull(), isNull(), isNull(), isNull(), same(dest1), same(exType), any());
 
         verify(mockBioRiskService).copyOpSampleBioRisks(result.getOperations());
         verify(mockWorkService).link(work, result.getOperations());
@@ -310,10 +312,11 @@ public class TestSlotCopyService {
         Operation op = new Operation();
         op.setId(50);
         doReturn(op).when(service).createOperation(any(), any(), any(), any(), any(), any());
+        UCMap<BioState> bsMap = new UCMap<>();
 
         OperationResult opres = service.executeOp(user, contents, opType, lt, preBarcode, sourceMap, sourceLps, costing,
                 lotNumber, probeLotNumber, rbs, lpNumber, reagentLot, reagentALot, reagentBLot, cassetteLot,
-                reagentCosting, existingDest ? destLw : null, exType);
+                reagentCosting, existingDest ? destLw : null, exType, bsMap);
         assertThat(opres.getLabware()).containsExactly(filledLw);
         assertThat(opres.getOperations()).containsExactly(op);
 
@@ -582,5 +585,45 @@ public class TestSlotCopyService {
                 new SlotCopyContent(bcs[0], null, null)
         );
         assertEquals(expected, service.inheritedLpNumber(contents, sourceLps));
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "Cytassist, Cytassist HD 3' 11, Probes pre-clean, false, true",
+            "Cytassist, Cytassist HD 3' 6.5, Probes pre-clean, true, true",
+            "Boop, Cytassist HD 3' 11, BS Alpha, false, false",
+            "Cytassist, Jug, Probes pre-clean, false, false",
+            "Cytassist, Jug, Probes pre-clean, true, false",
+            "Cytassist, Jug,, true, false",
+    })
+    public void testOpTypeBioState(String opName, String lwTypeName, String opBsName,
+                                   boolean cacheHit, boolean cytHit) {
+        BioState opBs = null, cytBs = null;
+        UCMap<BioState> bsCache = new UCMap<>(cytHit || cacheHit ? 1 : 0);
+        if (opBsName != null) {
+            opBs = new BioState(1, opBsName);
+        }
+        if (cytHit || cacheHit) {
+            cytBs = new BioState(2, "Poly(A) RNA");
+            if (cacheHit) {
+                bsCache.put(cytBs.getName(), cytBs);
+            }
+        }
+        OperationType opType = EntityFactory.makeOperationType(opName, opBs);
+        LabwareType lt = EntityFactory.makeLabwareType(1, 1, lwTypeName);
+        Labware lw = EntityFactory.makeEmptyLabware(lt);
+        if (cytBs != null) {
+            when(mockBsRepo.getByName(cytBs.getName())).thenReturn(cytBs);
+        }
+        BioState bs = service.opTypeBioState(opType, lw, bsCache);
+        assertSame(cytHit ? cytBs : opBs, bs);
+        if (cytHit) {
+            assertSame(cytBs, bsCache.get(cytBs.getName()));
+        }
+        if (cytHit && !cacheHit) {
+            verify(mockBsRepo).getByName(cytBs.getName());
+        } else {
+            verifyNoInteractions(mockBsRepo);
+        }
     }
 }
