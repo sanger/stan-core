@@ -300,9 +300,27 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
             }
         }
 
+        SampleDescriber sampleDescriber = makeSampleDescriber(plan);
+
         for (ConfirmSection con : cons) {
-            validateSection(problems, lw, con, plannedSampleIds, sampleMaxSection, sampleIdSections);
+            validateSection(problems, lw, con, plannedSampleIds, sampleMaxSection, sampleIdSections, sampleDescriber);
         }
+    }
+
+    SampleDescriber makeSampleDescriber(PlanOperation plan) {
+        Map<Integer, Set<Slot>> sampleSlots = new HashMap<>();
+        Map<Integer, Sample> sampleMap = new HashMap<>();
+        for (PlanAction pa : plan.getPlanActions()) {
+            Integer sampleId = pa.getSample().getId();
+            sampleSlots.computeIfAbsent(sampleId, k -> new LinkedHashSet<>()).add(pa.getSource());
+            sampleMap.put(sampleId, pa.getSample());
+        }
+        Set<Integer> labwareIds = sampleSlots.values().stream()
+                .flatMap(Collection::stream)
+                .map(Slot::getLabwareId)
+                .collect(toSet());
+        Map<Integer, Labware> lwMap =labwareRepo.findAllByIdIn(labwareIds).stream().collect(inMap(Labware::getId));
+        return new SampleDescriber(lwMap, sampleMap, sampleSlots);
     }
 
     /**
@@ -314,10 +332,11 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
      * @param sampleMaxSection the max section already taken from each source sample id (can be null for some sample ids)
      * @param sampleIdSections a map of sample id to sections specified, which is filled in
      *                         by multiple calls to this method
+     * @param sampleDescriber helper to describe samples
      */
     public void validateSection(Collection<String> problems, Labware lw, ConfirmSection con,
                                 Map<Address, Set<Integer>> plannedSampleIds, Map<Integer, Integer> sampleMaxSection,
-                                Map<Integer, Set<String>> sampleIdSections) {
+                                Map<Integer, Set<String>> sampleIdSections, SampleDescriber sampleDescriber) {
         boolean ok = true;
         final LabwareType lt = lw.getLabwareType();
         if (nullOrEmpty(con.getDestinationAddresses())) {
@@ -366,8 +385,8 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
         }
         for (Address address : con.getDestinationAddresses()) {
             if (!plannedSampleIds.getOrDefault(address, Set.of()).contains(sampleId)) {
-                addProblem(problems, "Sample id %s is not expected in address %s of labware %s.",
-                        sampleId, address, lw.getBarcode());
+                addProblem(problems, "Sample %s is not expected in address %s of labware %s.",
+                        sampleDescriber.describe(sampleId), address, lw.getBarcode());
             }
         }
 
@@ -377,14 +396,15 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
             sections.add(section);
             sampleIdSections.put(sampleId, sections);
         } else if (section!=null && sections.contains(section)) {
-            addProblem(problems, "Repeated section: %s from sample id %s.", section, sampleId);
+            addProblem(problems, "Repeated section: %s from sample %s.", section, sampleDescriber.describe(sampleId));
         } else {
             sections.add(section);
         }
         Integer maxSection = sampleMaxSection.get(sampleId);
         Integer sectionInt = parseSectionInt(section);
         if (maxSection != null && sectionInt != null && sectionInt <= maxSection) {
-            addProblem(problems, "Section numbers from sample id %s must be greater than %s.", sampleId, maxSection);
+            addProblem(problems, "Section numbers (from sample %s) must be greater than %s.",
+                    sampleDescriber.describe(sampleId), maxSection);
         }
     }
 

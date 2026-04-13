@@ -437,7 +437,10 @@ public class TestConfirmSectionValidationService {
 
         final Set<String> problems = hashSetOf("Identifiable problem.");
 
-        doNothing().when(service).validateSection(any(), any(), any(), any(), any(), any());
+        doNothing().when(service).validateSection(any(), any(), any(), any(), any(), any(), any());
+
+        SampleDescriber mockSamDesc = mock(SampleDescriber.class);
+        doReturn(mockSamDesc).when(service).makeSampleDescriber(any());
 
         service.validateSections(problems, cons, lw1, plan, sampleIdSections);
 
@@ -447,8 +450,9 @@ public class TestConfirmSectionValidationService {
         Map<Address, Set<Integer>> plannedSampleIds = Map.of(A1, Set.of(sampleA.getId(), sampleB.getId()),
                 B3, Set.of(sampleB.getId()));
 
-        verify(service).validateSection(problems, lw1, cons.get(0), plannedSampleIds, sampleMaxSection, sampleIdSections);
-        verify(service).validateSection(problems, lw1, cons.get(1), plannedSampleIds, sampleMaxSection, sampleIdSections);
+
+        verify(service).validateSection(problems, lw1, cons.get(0), plannedSampleIds, sampleMaxSection, sampleIdSections, mockSamDesc);
+        verify(service).validateSection(problems, lw1, cons.get(1), plannedSampleIds, sampleMaxSection, sampleIdSections, mockSamDesc);
     }
 
     @MethodSource("validateSectionArgs")
@@ -466,10 +470,36 @@ public class TestConfirmSectionValidationService {
             }
             return true;
         });
+        SampleDescriber mockSamDesc = mock(SampleDescriber.class);
+        when(mockSamDesc.describe(any())).then(invocation -> {
+            Integer sampleId = invocation.getArgument(0);
+            return "id " + sampleId + " desc";
+        });
         Map<Integer, Set<String>> sampleIdSections = inputSampleIdSections==null ? new HashMap<>() : new HashMap<>(inputSampleIdSections);
-        service.validateSection(problems, lw, con, plannedSampleIds, sampleMaxSection, sampleIdSections);
+        service.validateSection(problems, lw, con, plannedSampleIds, sampleMaxSection, sampleIdSections, mockSamDesc);
         assertThat(problems).containsExactlyInAnyOrderElementsOf(expectedProblems);
         assertEquals(combineMaps(inputSampleIdSections, newSampleIdSections), sampleIdSections);
+    }
+
+    @Test
+    void testMakeSampleDescriber() {
+        PlanOperation plan = new PlanOperation();
+        Sample[] samples = EntityFactory.makeSamples(2);
+        Labware tube = EntityFactory.makeLabware(EntityFactory.getTubeType(), samples[0]);
+        Labware plate = EntityFactory.makeLabware(EntityFactory.makeLabwareType(1,2), samples);
+        Slot[] slots = {tube.getFirstSlot(), plate.getFirstSlot(), plate.getSlots().getLast()};
+        List<PlanAction> pas = List.of(
+                new PlanAction(1, 1, slots[0], null, samples[0]),
+                new PlanAction(2, 1, slots[1], null, samples[1]),
+                new PlanAction(3, 1, slots[2], null, samples[1])
+        );
+        plan.setPlanActions(pas);
+        when(mockLwRepo.findAllByIdIn(any())).thenReturn(List.of(tube, plate));
+        SampleDescriber sd = service.makeSampleDescriber(plan);
+        assertNotNull(sd);
+        verify(mockLwRepo).findAllByIdIn(Set.of(tube.getId(), plate.getId()));
+        assertEquals(String.format("id %s (%s) from %s", samples[0].getId(), samples[0].getTissue().getExternalName(), tube.getBarcode()), sd.describe(samples[0].getId()));
+        assertEquals(String.format("id %s (%s) from %s (A1,A2)", samples[1].getId(), samples[1].getTissue().getExternalName(), plate.getBarcode()), sd.describe(samples[1].getId()));
     }
 
     static Stream<Arguments> validateSectionArgs() {
@@ -508,15 +538,15 @@ public class TestConfirmSectionValidationService {
                 { lw, new ConfirmSection(A1, aid, "-4"), plannedSampleIds, sampleMaxSection, null,
                         "Bad section", null },
                 { lw, new ConfirmSection(A2, bid, "20"), plannedSampleIds, sampleMaxSection, null,
-                        "Sample id "+bid+" is not expected in address A2 of labware STAN-01.", Map.of(bid, Set.of("20"))},
+                        "Sample id "+bid+" desc is not expected in address A2 of labware STAN-01.", Map.of(bid, Set.of("20"))},
                 { lw, new ConfirmSection(B3, aid, "21"), plannedSampleIds, sampleMaxSection, null,
-                        "Sample id "+aid+" is not expected in address B3 of labware STAN-01.", Map.of(aid, Set.of("21"))},
+                        "Sample id "+aid+" desc is not expected in address B3 of labware STAN-01.", Map.of(aid, Set.of("21"))},
                 { lw, new ConfirmSection(A1, aid, "14"), plannedSampleIds, sampleMaxSection, Map.of(aid, Set.of("13","14")),
-                        "Repeated section: 14 from sample id "+aid+".", null},
+                        "Repeated section: 14 from sample id "+aid+" desc.", null},
                 { lw, new ConfirmSection(A1, aid, "8"), plannedSampleIds, sampleMaxSection, null,
-                        "Section numbers from sample id "+aid+" must be greater than 12.", Map.of(aid, Set.of("8"))},
+                        "Section numbers (from sample id "+aid+" desc) must be greater than 12.", Map.of(aid, Set.of("8"))},
                 { lw, new ConfirmSection(A1, aid, "12"), plannedSampleIds, sampleMaxSection, Map.of(aid, hashSetOf("16")),
-                        "Section numbers from sample id "+aid+" must be greater than 12.", Map.of(aid, Set.of("16","12"))},
+                        "Section numbers (from sample id "+aid+" desc) must be greater than 12.", Map.of(aid, Set.of("16","12"))},
                 { fw, new ConfirmSection(A1, aid, "20"), plannedSampleIds, sampleMaxSection, Map.of(aid, hashSetOf("18","19")),
                         "Section number not expected for fetal waste.", Map.of(aid, Set.of("18","19"))},
 

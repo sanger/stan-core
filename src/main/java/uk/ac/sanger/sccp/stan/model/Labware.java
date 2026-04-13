@@ -17,7 +17,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
  * @author dr6
  */
 @Entity
-public class Labware {
+public class Labware implements HasIntId {
 
     /** The states a piece of labware may be in */
     public enum State {
@@ -55,6 +55,7 @@ public class Labware {
         setSlots(slots);
     }
 
+    @Override
     public Integer getId() {
         return this.id;
     }
