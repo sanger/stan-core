@@ -16,8 +16,7 @@ import uk.ac.sanger.sccp.utils.UCMap;
 
 import javax.persistence.EntityNotFoundException;
 import java.util.*;
-import java.util.function.Function;
-import java.util.function.Predicate;
+import java.util.function.*;
 import java.util.stream.Stream;
 
 import static java.util.Objects.requireNonNull;
@@ -75,7 +74,7 @@ public class WorkServiceImp implements WorkService {
     public Work createWork(User user, String prefix, String workTypeName, String workRequesterName, String projectName,
                            String programName, String costCode,
                            Integer numBlocks, Integer numSlides, Integer numOriginalSamples,
-                           String omeroProjectName, Integer ssStudyId, String facultyLead) {
+                           String omeroProjectName, Integer ssStudyId, Integer xeniumStudyId, String facultyLead) {
         checkPrefix(prefix);
 
         Project project = projectRepo.getByName(projectName);
@@ -91,15 +90,8 @@ public class WorkServiceImp implements WorkService {
                 throw new IllegalArgumentException("Omero project "+omeroProject.getName()+" is disabled.");
             }
         }
-        DnapStudy dnapStudy;
-        if (ssStudyId==null) {
-            dnapStudy = null;
-        } else {
-            dnapStudy = dnapStudyRepo.getBySsId(ssStudyId);
-            if (!dnapStudy.isEnabled()) {
-                throw new IllegalArgumentException("DNAP study is disabled: "+dnapStudy);
-            }
-        }
+        DnapStudy dnapStudy = loadDnapStudy(ssStudyId);
+        DnapStudy xeniumStudy = loadDnapStudy(xeniumStudyId);
         if (numBlocks!=null && numBlocks < 0) {
             throw new IllegalArgumentException("Number of blocks cannot be a negative number.");
         }
@@ -123,9 +115,20 @@ public class WorkServiceImp implements WorkService {
 
         String workNumber = workRepo.createNumber(prefix);
         Work work = workRepo.save(new Work(null, workNumber, type, workRequester, project, program, cc, Status.unstarted,
-                numBlocks, numSlides, numOriginalSamples, null, omeroProject, dnapStudy, leadDest));
+                numBlocks, numSlides, numOriginalSamples, null, omeroProject, dnapStudy, xeniumStudy, leadDest));
         workEventService.recordEvent(user, work, WorkEvent.Type.create, null);
         return work;
+    }
+
+    DnapStudy loadDnapStudy(Integer ssStudyId) {
+        if (ssStudyId==null) {
+            return null;
+        }
+        DnapStudy study = dnapStudyRepo.getBySsId(ssStudyId);
+        if (!study.isEnabled()) {
+            throw new IllegalArgumentException("DNAP study is disabled: "+study);
+        }
+        return study;
     }
 
     /**
@@ -245,26 +248,37 @@ public class WorkServiceImp implements WorkService {
         return work;
     }
 
-    @Override
-    public Work updateWorkDnapStudy(User user, String workNumber, Integer ssStudyId) {
+    Work updateStudy(User user, String workNumber, Integer ssStudyId,
+                     Function<Work, DnapStudy> getter, BiConsumer<Work, DnapStudy> setter) {
         Work work = workRepo.getByWorkNumber(workNumber);
         checkAuthorisation(user, work);
-        if (ssStudyId==null) {
-            if (work.getDnapStudy()!=null) {
-                work.setDnapStudy(null);
+        final DnapStudy curWork = getter.apply(work);
+        if (ssStudyId == null) {
+            if (curWork != null) {
+                setter.accept(work, null);
                 work = workRepo.save(work);
             }
         } else {
             DnapStudy dnapStudy = dnapStudyRepo.getBySsId(ssStudyId);
-            if (work.getDnapStudy()==null || !work.getDnapStudy().equals(dnapStudy)) {
+            if (curWork == null || !curWork.equals(dnapStudy)) {
                 if (!dnapStudy.isEnabled()) {
                     throw new IllegalArgumentException("DNAP study is disabled: "+dnapStudy);
                 }
-                work.setDnapStudy(dnapStudy);
+                setter.accept(work, dnapStudy);
                 work = workRepo.save(work);
             }
         }
         return work;
+    }
+
+    @Override
+    public Work updateWorkXeniumStudy(User user, String workNumber, Integer ssStudyId) {
+        return updateStudy(user, workNumber, ssStudyId, Work::getXeniumStudy, Work::setXeniumStudy);
+    }
+
+    @Override
+    public Work updateWorkDnapStudy(User user, String workNumber, Integer ssStudyId) {
+        return updateStudy(user, workNumber, ssStudyId, Work::getDnapStudy, Work::setDnapStudy);
     }
 
     @Override

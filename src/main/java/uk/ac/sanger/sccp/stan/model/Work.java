@@ -93,6 +93,9 @@ public class Work {
     private DnapStudy dnapStudy;
 
     @ManyToOne
+    private DnapStudy xeniumStudy;
+
+    @ManyToOne
     @JoinColumn(name="faculty_lead_id")
     private ReleaseDestination facultyLead;
 
@@ -123,7 +126,7 @@ public class Work {
     public Work(Integer id, String workNumber, WorkType workType, ReleaseRecipient workRequester, Project project,
                 Program program, CostCode costCode, Status status, Integer numBlocks, Integer numSlides,
                 Integer numOriginalSamples, String priority, OmeroProject omeroProject, DnapStudy dnapStudy,
-                ReleaseDestination facultyLead) {
+                DnapStudy xeniumStudy, ReleaseDestination facultyLead) {
         this.id = id;
         this.workNumber = workNumber;
         this.workType = workType;
@@ -138,6 +141,7 @@ public class Work {
         this.priority = priority;
         this.omeroProject = omeroProject;
         this.dnapStudy = dnapStudy;
+        this.xeniumStudy = xeniumStudy;
         this.facultyLead = facultyLead;
         setOperationIds(null);
         setReleaseIds(null);
@@ -146,7 +150,7 @@ public class Work {
     public Work(Integer id, String workNumber, WorkType workType, ReleaseRecipient workRequester, Project project,
                 Program program, CostCode costCode, Status status) {
         this(id, workNumber, workType, workRequester, project, program, costCode, status, null,
-                null, null, null, null, null, null);
+                null, null, null, null, null, null, null);
     }
 
     public Integer getId() {
@@ -288,6 +292,14 @@ public class Work {
         this.dnapStudy = dnapStudy;
     }
 
+    public DnapStudy getXeniumStudy() {
+        return this.xeniumStudy;
+    }
+
+    public void setXeniumStudy(DnapStudy xeniumStudy) {
+        this.xeniumStudy = xeniumStudy;
+    }
+
     public ReleaseDestination getFacultyLead() {
         return this.facultyLead;
     }
@@ -329,6 +341,7 @@ public class Work {
                 && Objects.equals(this.priority, that.priority)
                 && Objects.equals(this.omeroProject, that.omeroProject)
                 && Objects.equals(this.dnapStudy, that.dnapStudy)
+                && Objects.equals(this.xeniumStudy, that.xeniumStudy)
                 && Objects.equals(this.facultyLead, that.facultyLead)
                 && this.status == that.status);
     }
