@@ -92,7 +92,7 @@ public class SSStudyServiceImp implements SSStudyService {
                 .filter(ss -> stanStudies.get(ss.id())==null)
                 .collect(toList());
 
-        Set<DnapStudy> updated = new HashSet<>(toDisable.size() + toEnable.size() + toRename.size() + toCreate.size());
+        Set<DnapStudy> updated = new HashSet<>(toDisable.size() + toEnable.size() + toRename.size());
         updated.addAll(setEnabled(toDisable, false));
         updated.addAll(setEnabled(toEnable, true));
         updated.addAll(rename(toRename, ssStudies));
