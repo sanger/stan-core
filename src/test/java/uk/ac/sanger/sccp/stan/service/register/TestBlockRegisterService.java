@@ -337,11 +337,12 @@ class TestBlockRegisterService {
         when(val.getLabwareType(eqCi(lt.getName()))).thenReturn(lt);
         BioRisk[] bioRisks = IntStream.of(1,2,3).mapToObj(i -> new BioRisk(i, "BR"+i)).toArray(BioRisk[]::new);
         Arrays.stream(bioRisks).forEach(br -> when(val.getBioRisk(eqCi(br.getCode()))).thenReturn(br));
-        Labware[] lws = Stream.of("XB1", "XB2").map(xb -> {
+        Labware[] lws = IntStream.of(1,2).mapToObj(i -> {
+            String xb = "XB"+i;
             Labware lw = EntityFactory.makeEmptyLabware(lt);
             lw.setExternalBarcode(xb);
-            lw.setBarcode(xb);
-            when(mockLabwareService.create(any(), eqCi(xb), eqCi(xb))).thenReturn(lw);
+            lw.setBarcode("STAN-"+i);
+            when(mockLabwareService.create(any(), any(), eqCi(xb))).thenReturn(lw);
             return lw;
         }).toArray(Labware[]::new);
 
@@ -380,7 +381,7 @@ class TestBlockRegisterService {
         verify(service).createTissues(request, val);
         verify(mockOpTypeRepo).getByName(eqCi(opType.getName()));
         for (Labware lw : lws) {
-            verify(mockLabwareService).create(lt, lw.getExternalBarcode(), lw.getBarcode());
+            verify(mockLabwareService).create(lt, null, lw.getExternalBarcode());
         }
         verifyNoMoreInteractions(mockLabwareService);
         verify(mockSampleRepo, times(3)).save(any());
