@@ -175,8 +175,7 @@ public class BlockRegisterServiceImp implements IRegisterService<BlockRegisterRe
         BioState bioState = opType.getNewBioState();
         for (BlockRegisterLabware brl : request.getLabware()) {
             LabwareType labwareType = validation.getLabwareType(brl.getLabwareType());
-            String xb = brl.getExternalBarcode();
-            Labware lw = labwareService.create(labwareType, xb, xb);
+            Labware lw = labwareService.create(labwareType, null, brl.getExternalBarcode());
             lwList.add(lw);
             Set<Slot> slotsToUpdate = new HashSet<>();
             List<Action> actions = new ArrayList<>();
