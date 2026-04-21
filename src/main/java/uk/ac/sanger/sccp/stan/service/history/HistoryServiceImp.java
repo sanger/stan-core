@@ -32,7 +32,6 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 public class HistoryServiceImp implements HistoryService {
     static final String RELEASE_EVENT_TYPE = "Release", DESTRUCTION_EVENT_TYPE = "Destruction",
             SOLUTION_TRANSFER_OP_NAME = "Solution transfer";
-    static final Pattern SIZE_BP_PTN = Pattern.compile("^(Average|Main peak) size$", Pattern.CASE_INSENSITIVE);
 
     private final OperationRepo opRepo;
     private final OperationTypeRepo opTypeRepo;
@@ -58,6 +57,7 @@ public class HistoryServiceImp implements HistoryService {
     private final ReagentActionDetailService reagentActionDetailService;
     private final SlotRegionService slotRegionService;
     private final FlagLookupService flagLookupService;
+    private final DetailerFactory detailerFactory;
 
     @Autowired
     public HistoryServiceImp(OperationRepo opRepo, OperationTypeRepo opTypeRepo, LabwareRepo lwRepo, SampleRepo sampleRepo, TissueRepo tissueRepo,
@@ -67,7 +67,8 @@ public class HistoryServiceImp implements HistoryService {
                              LabwareNoteRepo labwareNoteRepo, ResultOpRepo resultOpRepo,
                              StainTypeRepo stainTypeRepo, LabwareProbeRepo lwProbeRepo, LabwareFlagRepo flagRepo, OperationSolutionRepo opSolRepo, SolutionRepo solutionRepo, OpPanelRepo opPanelRepo,
                              ReagentActionDetailService reagentActionDetailService,
-                             SlotRegionService slotRegionService, FlagLookupService flagLookupService) {
+                             SlotRegionService slotRegionService, FlagLookupService flagLookupService,
+                             DetailerFactory detailerFactory) {
         this.opRepo = opRepo;
         this.opTypeRepo = opTypeRepo;
         this.lwRepo = lwRepo;
@@ -92,6 +93,7 @@ public class HistoryServiceImp implements HistoryService {
         this.reagentActionDetailService = reagentActionDetailService;
         this.slotRegionService = slotRegionService;
         this.flagLookupService = flagLookupService;
+        this.detailerFactory = detailerFactory;
     }
 
     @Override
@@ -525,7 +527,7 @@ public class HistoryServiceImp implements HistoryService {
         if (opComments.isEmpty()) {
             return Map.of();
         }
-        return opComments.stream().collect(Collectors.groupingBy(OperationComment::getOperationId));
+        return opComments.stream().collect(groupingBy(OperationComment::getOperationId));
     }
 
     /**
@@ -538,7 +540,7 @@ public class HistoryServiceImp implements HistoryService {
         if (rois.isEmpty()) {
             return Map.of();
         }
-        return rois.stream().collect(Collectors.groupingBy(Roi::getOperationId));
+        return rois.stream().collect(groupingBy(Roi::getOperationId));
     }
 
     /**
@@ -631,7 +633,7 @@ public class HistoryServiceImp implements HistoryService {
         if (measurements.isEmpty()) {
             return Map.of();
         }
-        return measurements.stream().collect(Collectors.groupingBy(Measurement::getOperationId));
+        return measurements.stream().collect(groupingBy(Measurement::getOperationId));
     }
 
     /**
@@ -644,7 +646,7 @@ public class HistoryServiceImp implements HistoryService {
         if (notes.isEmpty()) {
             return Map.of();
         }
-        return notes.stream().collect(Collectors.groupingBy(LabwareNote::getOperationId));
+        return notes.stream().collect(groupingBy(LabwareNote::getOperationId));
     }
 
     /**
@@ -657,71 +659,32 @@ public class HistoryServiceImp implements HistoryService {
         if (opPanels.isEmpty()) {
             return Map.of();
         }
-        return opPanels.stream().collect(Collectors.groupingBy(OpPanel::getOperationId));
-    }
-
-    public String describeSeconds(String value) {
-        int seconds;
-        try {
-            seconds = Integer.parseInt(value);
-        } catch (NumberFormatException nfe) {
-            return value;
-        }
-        int minutes = seconds/60;
-        if (minutes==0) {
-            return seconds+"\u00a0sec";
-        }
-        seconds %= 60;
-        int hours = minutes/60;
-        if (hours==0) {
-            if (seconds==0) {
-                return minutes + "\u00a0min";
-            }
-            return minutes + "\u00a0min " + seconds + "\u00a0sec";
-        }
-        minutes %= 60;
-        if (minutes==0 && seconds==0) {
-            return hours + "\u00a0hour";
-        }
-        if (seconds==0) {
-            return hours + "\u00a0hour " + minutes + "\u00a0min";
-        }
-        return String.format("%d\u00a0hour %d\u00a0min %d\u00a0sec", hours, minutes, seconds);
+        return opPanels.stream().collect(groupingBy(OpPanel::getOperationId));
     }
 
     /**
-     * Converts a measurement into a string to go into the details of a history entry
-     * @param measurement a measurement
-     * @param slotIdMap a map to look up slot ids
-     * @return a string describing the measurement
+     * Adds measurements to details, grouping them up where they are spread across slots with the same name and value.
+     * Omits the addresses completely if they match the entry's addresses.
+     * @param entry the history entry we're building
+     * @param measurements the measurements to add, if applicable
+     * @param slotIdMap map to get slots from id
+     * @param entryAddresses the slot addresses of the entry, sorted
      */
-    public String measurementDetail(Measurement measurement, Map<Integer, Slot> slotIdMap) {
-        MeasurementType mt = MeasurementType.forName(measurement.getName());
-        if (mt==null && BasicUtils.startsWithIgnoreCase(measurement.getName(), "DV200")) {
-            mt = MeasurementType.DV200;
-        } else if (mt==null && SIZE_BP_PTN.matcher(measurement.getName()).matches()) {
-            mt = MeasurementType.Size_bp;
-        }
-        MeasurementValueType vt = (mt==null ? null : mt.getValueType());
-        String detail = measurement.getName() + ": ";
-        if (vt==MeasurementValueType.TIME) {
-            detail += describeSeconds(measurement.getValue());
-        } else {
-            detail += measurement.getValue();
-            if (mt!=null && mt.getUnit()!=null) {
-                detail += "\u00a0" + mt.getUnit();
-            }
-        }
-        if (measurement.getSlotId()!=null) {
-            assert slotIdMap != null;
-            detail = slotIdMap.get(measurement.getSlotId()).getAddress()+": "+detail;
-        }
-        return detail;
+    public void addMeasurementDetails(HistoryEntry entry, List<Measurement> measurements, Map<Integer, Slot> slotIdMap,
+                                      List<Address> entryAddresses) {
+        var detailer = detailerFactory.measurementDetailer(entry, slotIdMap, entryAddresses);
+        detailer.addDetails(measurements);
     }
 
-    public String roiDetail(Roi roi, Map<Integer, Slot> slotIdMap) {
-        Address address = slotIdMap.get(roi.getSlotId()).getAddress();
-        return String.format("ROI (%s, %s): %s", roi.getSampleId(), address, roi.getRoi());
+    public void addCommentDetails(HistoryEntry entry, List<OperationComment> comments, Map<Integer, Slot> slotIdMap,
+                                  List<Address> entryAddresses) {
+        var detailer = detailerFactory.commentDetailer(entry, slotIdMap, entryAddresses);
+        detailer.addDetails(comments);
+    }
+
+    public void addRoiDetails(HistoryEntry entry, List<Roi> rois, Map<Integer, Slot> slotIdMap, List<Address> entryAddresses) {
+        var detailer = detailerFactory.roiDetailer(entry, slotIdMap, entryAddresses);
+        detailer.addDetails(rois);
     }
 
     public String opPanelDetail(OpPanel opPanel) {
@@ -771,7 +734,7 @@ public class HistoryServiceImp implements HistoryService {
             return Map.of();
         }
         Iterable<ResultOp> results = resultOpRepo.findAllByOperationIdIn(resultOpIds);
-        return BasicUtils.stream(results).collect(Collectors.groupingBy(ResultOp::getOperationId));
+        return BasicUtils.stream(results).collect(groupingBy(ResultOp::getOperationId));
     }
 
     /**
@@ -788,7 +751,7 @@ public class HistoryServiceImp implements HistoryService {
             return Map.of();
         }
         return flagRepo.findAllByOperationIdIn(flagOpIds).stream()
-                .collect(Collectors.groupingBy(LabwareFlag::getOperationId));
+                .collect(groupingBy(LabwareFlag::getOperationId));
     }
 
     /**
@@ -805,7 +768,7 @@ public class HistoryServiceImp implements HistoryService {
             return Map.of();
         }
         return lwProbeRepo.findAllByOperationIdIn(probeOpIds).stream()
-                .collect(Collectors.groupingBy(LabwareProbe::getOperationId));
+                .collect(groupingBy(LabwareProbe::getOperationId));
     }
 
     /**
@@ -906,7 +869,7 @@ public class HistoryServiceImp implements HistoryService {
             }
             List<ResultOp> results = opResults.get(op.getId());
             Equipment equipment = op.getEquipment();
-            Map<SampleTransferInfo, List<String>> itemAddresses = new LinkedHashMap<>();
+            Map<SampleTransferInfo, List<Address>> itemAddresses = new LinkedHashMap<>();
             List<OperationComment> comments = opComments.getOrDefault(op.getId(), List.of());
             List<Measurement> measurements = opMeasurements.getOrDefault(op.getId(), List.of());
             List<LabwareNote> lwNotes = opLabwareNotes.getOrDefault(op.getId(), List.of());
@@ -949,14 +912,15 @@ public class HistoryServiceImp implements HistoryService {
                     final String region = samplePositionResultsMap.get(new SlotIdSampleId(action.getDestination().getId(), sampleId));
                     final SampleTransferInfo key = new SampleTransferInfo(sampleId, sourceId, destId, region);
                     itemAddresses.computeIfAbsent(key, k -> new ArrayList<>())
-                            .add(action.getDestination().getAddress().toString());
+                            .add(action.getDestination().getAddress());
                 }
             }
             String username = op.getUser().getUsername();
             for (var e : itemAddresses.entrySet()) {
                 var item = e.getKey();
                 var addresses = e.getValue();
-                String addressString = String.join(", ", addresses);
+                addresses.sort(Comparator.naturalOrder());
+                String addressString = addresses.stream().map(Address::toString).collect(joining(", "));
                 HistoryEntry entry = new HistoryEntry(op.getId(), op.getOperationType().getName(),
                         op.getPerformed(), item.sourceId, item.destId, item.sampleId, username, workNumber, null,
                         addressString, item.region);
@@ -997,29 +961,9 @@ public class HistoryServiceImp implements HistoryService {
                         }
                     });
                 }
-                comments.forEach(com -> {
-                    if (doesCommentApply(com, item.sampleId, item.destId, slotIdMap)) {
-                        String detail = com.getComment().getText();
-                        if (com.getSlotId()!=null) {
-                            assert slotIdMap != null;
-                            detail = slotIdMap.get(com.getSlotId()).getAddress()+": "+detail;
-                        }
-                        entry.addDetail(detail);
-                    }
-                });
-                measurements.forEach(measurement -> {
-                    if (doesMeasurementApply(measurement, item.sampleId, item.destId, slotIdMap)) {
-                        String detail = measurementDetail(measurement, slotIdMap);
-                        entry.addDetail(detail);
-                    }
-                });
-                rois.forEach(roi -> {
-                    assert slotIdMap != null;
-                    if (doesRoiApply(roi, item.sampleId, item.destId, slotIdMap)) {
-                        String detail = roiDetail(roi, slotIdMap);
-                        entry.addDetail(detail);
-                    }
-                });
+                addCommentDetails(entry, comments, slotIdMap, addresses);
+                addMeasurementDetails(entry, measurements, slotIdMap, addresses);
+                addRoiDetails(entry, rois, slotIdMap, addresses);
                 panels.stream().map(this::opPanelDetail).forEach(entry::addDetail);
 
                 entries.add(entry);

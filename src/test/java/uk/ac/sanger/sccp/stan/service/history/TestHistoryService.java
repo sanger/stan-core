@@ -86,6 +86,8 @@ public class TestHistoryService {
     private SlotRegionService mockSlotRegionService;
     @Mock
     private FlagLookupService mockFlagLookupService;
+    @Mock
+    private DetailerFactory mockDetailerFactory;
 
     private HistoryServiceImp service;
 
@@ -103,7 +105,7 @@ public class TestHistoryService {
                 mockReleaseRepo, mockDestructionRepo, mockOpCommentRepo, mockRoiRepo, mockSnapshotRepo, mockWorkRepo,
                 mockMeasurementRepo, mockLwNoteRepo, mockResultOpRepo, mockStainTypeRepo, mockLwProbeRepo,
                 mockFlagRepo, mockOpSolRepo, mockSolutionRepo, mockOpPanelRepo,
-                mockRadService, mockSlotRegionService, mockFlagLookupService));
+                mockRadService, mockSlotRegionService, mockFlagLookupService, mockDetailerFactory));
     }
 
     @AfterEach
@@ -1167,55 +1169,11 @@ public class TestHistoryService {
         assertEquals(expected, service.resultDetail(result, slotIdMap));
     }
 
-    @ParameterizedTest
-    @CsvSource(value={
-            "bananas, bananas",
-            "51, 51\u00a0sec",
-            "60, 1\u00a0min",
-            "3333, 55\u00a0min 33\u00a0sec",
-            "7200, 2\u00a0hour",
-            "7320, 2\u00a0hour 2\u00a0min",
-            "7205, 2\u00a0hour 0\u00a0min 5\u00a0sec",
-            "9876, 2\u00a0hour 44\u00a0min 36\u00a0sec",
-    })
-    public void testDescribeSeconds(String value, String expected) {
-        assertEquals(expected, service.describeSeconds(value));
-    }
-
-    @Test
-    public void testRoiDetail() {
-        final int slotId = 4;
-        Slot slot = new Slot();
-        slot.setAddress(new Address(2,3));
-        Roi roi = new Roi(slotId, 6, 7, "roi1");
-        String detail = service.roiDetail(roi, Map.of(slotId, slot));
-        assertEquals("ROI (6, B3): roi1", detail);
-    }
-
     @Test
     public void testOpPanelDetail() {
         OpPanel opPanel = new OpPanel(1, new ProteinPanel(1, "Alpha", true), 10, 100, "11", SlideCosting.SGP);
         String detail = service.opPanelDetail(opPanel);
         assertEquals("Alpha (11, SGP)", detail);
-    }
-
-    @ParameterizedTest
-    @CsvSource(value={
-            "Thickness, 14,, Thickness: 14\u00a0μm",
-            "Thickness, 11, B3, B3: Thickness: 11\u00a0μm",
-            "Blueing, 902,, Blueing: 15\u00a0min 2\u00a0sec",
-            "Blueing, 75, D9, D9: Blueing: 1\u00a0min 15\u00a0sec",
-    })
-    public void testMeasurementDetail(String name, String value, Address address, String expected) {
-        Map<Integer, Slot> slotIdMap = null;
-        Integer slotId = null;
-        if (address != null) {
-            slotId = 70;
-            Slot slot = new Slot(slotId, 7, address, null);
-            slotIdMap = Map.of(slotId, slot);
-        }
-        Measurement measurement = new Measurement(6, name, value, 4, 5, slotId);
-        assertEquals(expected, service.measurementDetail(measurement, slotIdMap));
     }
 
     @Test
@@ -1407,13 +1365,16 @@ public class TestHistoryService {
                 new HistoryEntry(opIds[0], opTypeName0, ops.get(0).getPerformed(), labware[0].getId(),
                         labware[1].getId(), samples[0].getId(), username, "SGP5000",
                         List.of("123 : A2 -> B3", "456 : C4 -> E6", "Alpha: Beta", "Gamma: Delta", "Flag: Alpha", "Equipment: Feeniks",
-                                "A1: pass", "Alabama", "A1: Alaska", "Thickness: 4\u00a0μm", "ROI (90, A1): roi1"), "A1", null),
+                                "A1: pass"), "A1", null),
                 new HistoryEntry(opIds[1], opTypeName1, ops.get(1).getPerformed(), labware[0].getId(),
                         labware[3].getId(), samples[2].getId(), username, null,
                         List.of("Stain type: Coffee, Blood", "Epsilon: Zeta", "Probe panel: probe1", "Lot: LOT1",
-                                "Plex: 5", "Probe costing: SGP", "Solution: Solution 100", "Arizona"),
+                                "Plex: 5", "Probe costing: SGP", "Solution: Solution 100"),
                         "A1", null)
         );
+        doNothing().when(service).addMeasurementDetails(any(), any(), any(), any());
+        doNothing().when(service).addCommentDetails(any(), any(), any(), any());
+        doNothing().when(service).addRoiDetails(any(), any(), any(), any());
         final List<HistoryEntry> actualEntries = service.createEntriesForOps(ops, sampleIds, labwareList, opWork, null);
         for (HistoryEntry entry : actualEntries) {
             assertNotNull(entry.getOperation());
@@ -1425,6 +1386,11 @@ public class TestHistoryService {
         verify(service).loadLabwareFlags(ops);
         verify(mockStainTypeRepo).loadOperationStainTypes(opIdSet);
         verify(mockRadService).loadReagentTransfers(opIdSet);
+        for (HistoryEntry entry : actualEntries) {
+            verify(service).addMeasurementDetails(same(entry), any(), any(), any());
+            verify(service).addCommentDetails(same(entry), any(), any(), any());
+            verify(service).addRoiDetails(same(entry), any(), any(), any());
+        }
     }
 
     @ParameterizedTest
@@ -1461,6 +1427,9 @@ public class TestHistoryService {
         }
 
         expectedEntries.forEach(e -> e.setOperation(op1));
+        doNothing().when(service).addMeasurementDetails(any(), any(), any(), any());
+        doNothing().when(service).addCommentDetails(any(), any(), any(), any());
+        doNothing().when(service).addRoiDetails(any(), any(), any(), any());
 
         assertThat(service.createEntriesForOps(List.of(op1), Set.of(samples[0].getId(), samples[2].getId()), Arrays.asList(labware), Map.of(
                 op1.getId(), Set.of()
@@ -1475,7 +1444,7 @@ public class TestHistoryService {
         return Arrays.stream(new Object[][] {
                 {0, 2, B1, A1, "Left", "Right", "B1", "A1", "Left", "Right"},
                 {0, 2, B1, B1, "Top Right", "Top Bottom", "B1", "B1", "Top Right", "Top Bottom"},
-                {2, 2, B1, A1, "", "", "B1, A1", null, "", ""},
+                {2, 2, B1, A1, "", "", "A1, B1", null, "", ""},
                 {2, 2, B1, A1, "Top Right", "", "B1", "A1", "Top Right", ""},
 
         }).map(Arguments::of);
@@ -1494,6 +1463,9 @@ public class TestHistoryService {
         User user = EntityFactory.getUser();
         Operation op = EntityFactory.makeOpForSlots(opType, lw.getSlots(), lw.getSlots(), user);
         String workNumber = "SGP42";
+        doNothing().when(service).addMeasurementDetails(any(), any(), any(), any());
+        doNothing().when(service).addCommentDetails(any(), any(), any(), any());
+        doNothing().when(service).addRoiDetails(any(), any(), any(), any());
         List<HistoryEntry> entries = service.createEntriesForOps(List.of(op), null, List.of(lw), null, workNumber);
         assertThat(entries).hasSize(1);
         HistoryEntry entry = entries.getFirst();
@@ -1650,5 +1622,34 @@ public class TestHistoryService {
         assertThat(map).hasSize(2);
         assertThat(map.get(LabwareFlag.Priority.flag)).containsExactlyInAnyOrder(labwares.get(1).getBarcode(), labwares.get(2).getBarcode());
         assertThat(map.get(LabwareFlag.Priority.note)).containsExactly(labwares.get(3).getBarcode());
+    }
+
+    @Test
+    void testAddDetails_various() {
+        Detailer<Measurement> measDetailer = genericMock(Detailer.class);
+        Detailer<OperationComment> commentDetailer = genericMock(Detailer.class);
+        Detailer<Roi> roiDetailer = genericMock(Detailer.class);
+        when(mockDetailerFactory.measurementDetailer(any(), any(), any())).thenReturn(measDetailer);
+        when(mockDetailerFactory.commentDetailer(any(), any(), any())).thenReturn(commentDetailer);
+        when(mockDetailerFactory.roiDetailer(any(), any(), any())).thenReturn(roiDetailer);
+        Map<Integer, Slot> slotIdMap = Map.of(1, new Slot());
+        List<Address> addresses = List.of(new Address(1,1));
+        HistoryEntry entry = new HistoryEntry(1, "Type", LocalDateTime.now(), 1, 1, 1, "user", null, null, null, null);
+
+        List<Measurement> measurements = List.of(new Measurement());
+        List<OperationComment> comments = List.of(new OperationComment());
+        List<Roi> rois = List.of(new Roi());
+
+        service.addMeasurementDetails(entry, measurements, slotIdMap, addresses);
+        verify(mockDetailerFactory).measurementDetailer(entry, slotIdMap, addresses);
+        verify(measDetailer).addDetails(measurements);
+
+        service.addCommentDetails(entry, comments, slotIdMap, addresses);
+        verify(mockDetailerFactory).commentDetailer(entry, slotIdMap, addresses);
+        verify(commentDetailer).addDetails(comments);
+
+        service.addRoiDetails(entry, rois, slotIdMap, addresses);
+        verify(mockDetailerFactory).roiDetailer(entry, slotIdMap, addresses);
+        verify(roiDetailer).addDetails(rois);
     }
 }

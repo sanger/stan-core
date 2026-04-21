@@ -1,3 +1,5 @@
+threshold: medium
+
 fileignoreconfig:
 - filename: 'changelog-*.xml'
   ignore_detectors: [filecontent]
