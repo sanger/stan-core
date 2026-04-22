@@ -37,6 +37,7 @@ public class WorkServiceImp implements WorkService {
     private final ReleaseRecipientRepo recipientRepo;
     private final ReleaseDestinationRepo destinationRepo;
     private final WorkEventRepo workEventRepo;
+    private final TreatmentTypeRepo treatmentTypeRepo;
     private final WorkEventService workEventService;
     private final Validator<String> priorityValidator;
 
@@ -44,7 +45,8 @@ public class WorkServiceImp implements WorkService {
     public WorkServiceImp(ProjectRepo projectRepo, ProgramRepo programRepo, CostCodeRepo costCodeRepo,
                           WorkTypeRepo workTypeRepo, WorkRepo workRepo, LabwareRepo lwRepo, OmeroProjectRepo omeroProjectRepo,
                           DnapStudyRepo dnapStudyRepo, ReleaseRecipientRepo recipientRepo, ReleaseDestinationRepo destinationRepo,
-                          WorkEventRepo workEventRepo, WorkEventService workEventService,
+                          WorkEventRepo workEventRepo, TreatmentTypeRepo treatmentTypeRepo,
+                          WorkEventService workEventService,
                           @Qualifier("workPriorityValidator") Validator<String> priorityValidator) {
         this.projectRepo = projectRepo;
         this.programRepo = programRepo;
@@ -57,6 +59,7 @@ public class WorkServiceImp implements WorkService {
         this.recipientRepo = recipientRepo;
         this.destinationRepo = destinationRepo;
         this.workEventRepo = workEventRepo;
+        this.treatmentTypeRepo = treatmentTypeRepo;
         this.workEventService = workEventService;
         this.priorityValidator = priorityValidator;
     }
@@ -74,7 +77,8 @@ public class WorkServiceImp implements WorkService {
     public Work createWork(User user, String prefix, String workTypeName, String workRequesterName, String projectName,
                            String programName, String costCode,
                            Integer numBlocks, Integer numSlides, Integer numOriginalSamples,
-                           String omeroProjectName, Integer ssStudyId, Integer xeniumStudyId, String facultyLead) {
+                           String omeroProjectName, Integer ssStudyId, Integer xeniumStudyId, String facultyLead,
+                           Collection<String> treatmentTypeNames) {
         checkPrefix(prefix);
 
         Project project = projectRepo.getByName(projectName);
@@ -112,10 +116,10 @@ public class WorkServiceImp implements WorkService {
                 throw new IllegalArgumentException("Destination "+leadDest.getName()+" is disabled.");
             }
         }
-
+        Set<TreatmentType> treatmentTypes = nullOrEmpty(treatmentTypeNames) ? Set.of() : treatmentTypeRepo.getSetByNameIn(treatmentTypeNames);
         String workNumber = workRepo.createNumber(prefix);
         Work work = workRepo.save(new Work(null, workNumber, type, workRequester, project, program, cc, Status.unstarted,
-                numBlocks, numSlides, numOriginalSamples, null, omeroProject, dnapStudy, xeniumStudy, leadDest));
+                numBlocks, numSlides, numOriginalSamples, null, omeroProject, dnapStudy, xeniumStudy, leadDest, treatmentTypes));
         workEventService.recordEvent(user, work, WorkEvent.Type.create, null);
         return work;
     }
@@ -279,6 +283,24 @@ public class WorkServiceImp implements WorkService {
     @Override
     public Work updateWorkDnapStudy(User user, String workNumber, Integer ssStudyId) {
         return updateStudy(user, workNumber, ssStudyId, Work::getDnapStudy, Work::setDnapStudy);
+    }
+
+    @Override
+    public Work updateWorkTreatmentTypes(User user, String workNumber, List<String> treatmentTypeNames) {
+        Work work = workRepo.getByWorkNumber(workNumber);
+        checkAuthorisation(user, work);
+
+        Set<TreatmentType> treatmentTypes;
+        if (nullOrEmpty(treatmentTypeNames)) {
+            treatmentTypes = Set.of();
+        } else {
+            treatmentTypes = treatmentTypeRepo.getSetByNameIn(treatmentTypeNames);
+        }
+        if (!work.getTreatmentTypes().equals(treatmentTypes)) {
+            work.setTreatmentTypes(treatmentTypes);// Note this mutates the set in the work object
+            work = workRepo.save(work);
+        }
+        return work;
     }
 
     @Override

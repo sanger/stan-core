@@ -195,6 +195,12 @@ type ProteinPanel {
     enabled: Boolean!
 }
 
+"""A treatment type."""
+type TreatmentType {
+    name: String!
+    enabled: Boolean!
+}
+
 """A piece of tissue from which multiple samples may originate."""
 type Tissue {
     externalName: String
@@ -1315,6 +1321,8 @@ type Work {
     xeniumStudy: DnapStudy
     """The faculty lead for this work, if any."""
     facultyLead: ReleaseDestination
+    """The treatment types for this work, if any."""
+    treatmentTypes: [TreatmentType!]!
 }
 
 """A work along with a comment that was recorded to explain its current status."""
@@ -2262,6 +2270,8 @@ type Query {
     cellClasses(includeDisabled: Boolean): [CellClass!]!
     """Get protein panels that are enabled, or all including disabled."""
     proteinPanels(includeDisabled: Boolean): [ProteinPanel!]!
+    """Get treatment types that are enabled, or all including disabled."""
+    treatmentTypes(includeDisabled: Boolean): [TreatmentType!]!
     """Get all the mediums available."""
     mediums: [Medium!]!
     """Get all the fixatives that are enabled, or get all including those that are disabled."""
@@ -2522,11 +2532,15 @@ type Mutation {
     addProteinPanel(name: String!): ProteinPanel!
     """Enable or disable a protein panel."""
     setProteinPanelEnabled(name: String!, enabled: Boolean!): ProteinPanel!
+    """Add a new treatment type."""
+    addTreatmentType(name: String!): TreatmentType!
+    """Enable or disable a treatment type."""
+    setTreatmentTypeEnabled(name: String!, enabled: Boolean!): TreatmentType!
 
     """Create a new work, which will be allocated a new work number with the given prefix."""
     createWork(prefix: String!, workType: String!, workRequester: String!, project: String!, program: String!,
         costCode: String!, numBlocks: Int, numSlides: Int, numOriginalSamples: Int, omeroProject: String,
-        ssStudyId: Int, xeniumStudyId: Int, facultyLead: String!): Work!
+        ssStudyId: Int, xeniumStudyId: Int, facultyLead: String!, treatmentTypes: [String!]): Work!
     """Update the status of an existing work."""
     updateWorkStatus(workNumber: String!, status: WorkStatus!, commentId: Int): WorkWithComment!
     """Update the number of blocks field in a work."""
@@ -2541,6 +2555,8 @@ type Mutation {
     updateWorkOmeroProject(workNumber: String!, omeroProject: String): Work!
     """Update the DNAP study of a work."""
     updateWorkDnapStudy(workNumber: String!, ssStudyId: Int): Work!
+    """Updates the treatment types of a work."""
+    updateWorkTreatmentTypes(workNumber: String!, treatmentTypes: [String!]!): Work
     """Updates Stan's internal list of Dnap Studies, and returns the enabled ones."""
     updateDnapStudies: [DnapStudy!]!
     """Add a new tissue type."""

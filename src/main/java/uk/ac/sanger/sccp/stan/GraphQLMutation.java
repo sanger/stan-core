@@ -111,6 +111,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final CellClassService cellClassService;
     final CytassistOverviewService cytassistOverviewService;
     final ProteinPanelAdminService proteinPanelAdminService;
+    final TreatmentTypeService treatmentTypeService;
 
     @Autowired
     public GraphQLMutation(ObjectMapper objectMapper, AuthenticationComponent authComp,
@@ -147,7 +148,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            UserAdminService userAdminService, SlotCopyRecordService slotCopyRecordService,
                            TissueTypeService tissueTypeService, WorkChangeService workChangeService,
                            CellClassService cellClassService, CytassistOverviewService cytassistOverviewService,
-                           ProteinPanelAdminService proteinPanelAdminService) {
+                           ProteinPanelAdminService proteinPanelAdminService, TreatmentTypeService treatmentTypeService) {
         super(objectMapper, authComp, userRepo);
         this.authService = authService;
         this.blockRegisterService = blockRegisterService;
@@ -217,6 +218,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.cellClassService = cellClassService;
         this.cytassistOverviewService = cytassistOverviewService;
         this.proteinPanelAdminService = proteinPanelAdminService;
+        this.treatmentTypeService = treatmentTypeService;
     }
 
     private void logRequest(String name, User user, Object request) {
@@ -573,6 +575,14 @@ public class GraphQLMutation extends BaseGraphQLResource {
         return adminSetEnabled(proteinPanelAdminService::setEnabled, "SetProteinPanelEnabled", "name");
     }
 
+    public DataFetcher<TreatmentType> addTreatmentType() {
+        return adminAdd(treatmentTypeService::addNew, "AddTreatmentType", "name");
+    }
+
+    public DataFetcher<TreatmentType> setTreatmentTypeEnabled() {
+        return adminSetEnabled(treatmentTypeService::setEnabled, "SetTreatmentTypeEnabled", "name");
+    }
+
     public DataFetcher<Work> createWork() {
         return dfe -> {
             User user = checkUser(dfe, User.Role.enduser);
@@ -589,14 +599,17 @@ public class GraphQLMutation extends BaseGraphQLResource {
             Integer ssStudyId = dfe.getArgument("ssStudyId");
             Integer xeniumStudyId = dfe.getArgument("xeniumStudyId");
             String facultyLead = dfe.getArgument("facultyLead");
+            List<String> treatmentTypeNames = dfe.getArgument("treatmentTypes");
             logRequest("Create work", user,
                     String.format("project: %s, program: %s, costCode: %s, prefix: %s, workType: %s, " +
                                     "workRequesterName: %s, numBlocks: %s, numSlides: %s, numOriginalSamples: %s, " +
-                                    "omeroProjectName: %s, ssStudyId: %s, xeniumStudyId: %s, facultyLead: %s",
+                                    "omeroProjectName: %s, ssStudyId: %s, xeniumStudyId: %s, facultyLead: %s, " +
+                                    "treatmentTypes: %s",
                     projectName, programName, code, prefix, workTypeName, workRequesterName, numBlocks, numSlides,
-                            numOriginalSamples, omeroProjectName, ssStudyId, xeniumStudyId, facultyLead));
+                            numOriginalSamples, omeroProjectName, ssStudyId, xeniumStudyId, facultyLead, treatmentTypeNames));
             return workService.createWork(user, prefix, workTypeName, workRequesterName, projectName, programName, code,
-                    numBlocks, numSlides, numOriginalSamples, omeroProjectName, ssStudyId, xeniumStudyId, facultyLead);
+                    numBlocks, numSlides, numOriginalSamples, omeroProjectName, ssStudyId, xeniumStudyId, facultyLead,
+                    treatmentTypeNames);
         };
     }
 
@@ -675,6 +688,17 @@ public class GraphQLMutation extends BaseGraphQLResource {
             logRequest("Update work dnap study", user,
                     String.format("Work number: %s, ssStudyId: %s", workNumber, ssStudyId));
             return workService.updateWorkDnapStudy(user, workNumber, ssStudyId);
+        };
+    }
+
+    public DataFetcher<Work> updateWorkTreatmentTypes() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.enduser);
+            String workNumber = dfe.getArgument("workNumber");
+            List<String> treatmentTypes = dfe.getArgument("treatmentTypes");
+            logRequest("Update work treatment types", user,
+                    String.format("Work number: %s, treatmentTypes: %s", workNumber, treatmentTypes));
+            return workService.updateWorkTreatmentTypes(user, workNumber, treatmentTypes);
         };
     }
 
