@@ -433,7 +433,7 @@ public class FieldValidation {
     @Bean
     public Validator<String> treatmentTypeNameValidator() {
         Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.PAREN,
-                CharacterType.SPACE, CharacterType.COMMA, CharacterType.FULL_STOP, CharacterType.SLASH);
+                CharacterType.SPACE, CharacterType.COMMA, CharacterType.FULL_STOP, CharacterType.SLASH, CharacterType.HYPHEN);
         return new StringValidator("Treatment type name", 2, 64, charTypes);
     }
 
