@@ -41,6 +41,7 @@ public class CytassistOverview {
     private String visiumConcentrationType;
     private String visiumConcentrationValue;
     private String visiumConcentrationAverageSize;
+    private String visiumConcentrationMainPeakSize;
     private String visiumConcentrationRange;
     private LocalDateTime visiumConcentrationPerformed;
     private String latestBarcode;
@@ -282,6 +283,14 @@ public class CytassistOverview {
         this.visiumConcentrationAverageSize = visiumConcentrationAverageSize;
     }
 
+    public String getVisiumConcentrationMainPeakSize() {
+        return this.visiumConcentrationMainPeakSize;
+    }
+
+    public void setVisiumConcentrationMainPeakSize(String visiumConcentrationMainPeakSize) {
+        this.visiumConcentrationMainPeakSize = visiumConcentrationMainPeakSize;
+    }
+
     public String getVisiumConcentrationRange() {
         return this.visiumConcentrationRange;
     }
@@ -378,6 +387,7 @@ public class CytassistOverview {
                 .add("visiumConcentrationType", visiumConcentrationType)
                 .add("visiumConcentrationValue", visiumConcentrationValue)
                 .add("visiumConcentrationAverageSize", visiumConcentrationAverageSize)
+                .add("visiumConcentrationMainPeakSize", visiumConcentrationMainPeakSize)
                 .add("visiumConcentrationRange", visiumConcentrationRange)
                 .add("visiumConcentrationPerformed", visiumConcentrationPerformed)
                 .add("latestBarcode", latestBarcode)
