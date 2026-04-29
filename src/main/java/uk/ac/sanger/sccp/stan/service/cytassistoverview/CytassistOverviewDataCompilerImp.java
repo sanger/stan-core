@@ -402,11 +402,13 @@ public class CytassistOverviewDataCompilerImp implements CytassistOverviewDataCo
                         if (measurementApplies(meas, foundSsIds)) {
                             String name = meas.getName();
                             if (name.equalsIgnoreCase("cDNA concentration")
-                                || name.equalsIgnoreCase("Library concentration")) {
+                                    || name.equalsIgnoreCase("Library concentration")) {
                                 d.row.setVisiumConcentrationType(name);
                                 d.row.setVisiumConcentrationValue(meas.getValue());
                             } else if (name.equalsIgnoreCase("Average size")) {
                                 d.row.setVisiumConcentrationAverageSize(meas.getValue());
+                            } else if (name.equalsIgnoreCase("Main peak size")) {
+                                d.row.setVisiumConcentrationMainPeakSize(meas.getValue());
                             }
                         }
                     }
