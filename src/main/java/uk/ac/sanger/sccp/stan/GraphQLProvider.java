@@ -214,6 +214,7 @@ public class GraphQLProvider {
                         .dataFetcher("updateWorkPriority", transact(graphQLMutation.updateWorkPriority()))
                         .dataFetcher("updateWorkOmeroProject", transact(graphQLMutation.updateWorkOmeroProject()))
                         .dataFetcher("updateWorkDnapStudy", transact(graphQLMutation.updateWorkDnapStudy()))
+                        .dataFetcher("updateWorkXeniumStudy", transact(graphQLMutation.updateWorkXeniumStudy()))
                         .dataFetcher("updateDnapStudies", graphQLMutation.updateDnapStudies()) // transacted internally
                         .dataFetcher("addTissueType", transact(graphQLMutation.addTissueType()))
                         .dataFetcher("addSpatialLocations", transact(graphQLMutation.addSpatialLocations()))

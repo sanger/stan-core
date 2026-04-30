@@ -2541,6 +2541,8 @@ type Mutation {
     updateWorkOmeroProject(workNumber: String!, omeroProject: String): Work!
     """Update the DNAP study of a work."""
     updateWorkDnapStudy(workNumber: String!, ssStudyId: Int): Work!
+    """Update the Xenium study of a work."""
+    updateWorkXeniumStudy(workNumber: String!, ssStudyId: Int): Work!
     """Updates Stan's internal list of Dnap Studies, and returns the enabled ones."""
     updateDnapStudies: [DnapStudy!]!
     """Add a new tissue type."""
