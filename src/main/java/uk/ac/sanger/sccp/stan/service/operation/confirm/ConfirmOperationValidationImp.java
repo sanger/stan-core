@@ -80,6 +80,8 @@ public class ConfirmOperationValidationImp implements ConfirmOperationValidation
                 addProblem("Labware %s is already discarded.", col.getBarcode());
             } else if (lw.isUsed()) {
                 addProblem("Labware %s is already used.", col.getBarcode());
+            } else if (lw.isFrozen()) {
+                addProblem("Labware %s is frozen.", col.getBarcode());
             }
 
             if (!lw.isEmpty()) {

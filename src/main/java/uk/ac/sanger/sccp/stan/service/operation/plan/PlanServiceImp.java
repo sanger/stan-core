@@ -224,13 +224,14 @@ public class PlanServiceImp implements PlanService {
     }
 
     public void validateLabwareForPlanData(Labware labware) {
-        String[] errors = { "already contains samples", "is destroyed", "is released", "is discarded", "is used" };
+        String[] errors = { "already contains samples", "is destroyed", "is released", "is discarded", "is used", "is frozen" };
         List<Predicate<Labware>> predicates = List.of(
                 lw -> !lw.isEmpty(),
                 Labware::isDestroyed,
                 Labware::isReleased,
                 Labware::isDiscarded,
-                Labware::isUsed
+                Labware::isUsed,
+                Labware::isFrozen
         );
         for (int i = 0; i < errors.length; ++i) {
             if (predicates.get(i).test(labware)) {

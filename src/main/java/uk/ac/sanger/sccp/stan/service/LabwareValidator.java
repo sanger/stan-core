@@ -22,6 +22,8 @@ public class LabwareValidator {
     private boolean uniqueRequired = true;
     private boolean singleSample = false;
     private boolean usedAllowed = false;
+    private boolean frozenAllowed = false;
+    private boolean frozenRequired = false;
     private boolean oneFilledSlotRequired = false;
     private boolean blockRequired = false;
 
@@ -113,6 +115,28 @@ public class LabwareValidator {
      */
     public void setUsedAllowed(boolean usedAllowed) {
         this.usedAllowed = usedAllowed;
+    }
+
+    public boolean isFrozenAllowed() {
+        return this.frozenAllowed;
+    }
+
+    public void setFrozenAllowed(boolean frozenAllowed) {
+        this.frozenAllowed = frozenAllowed;
+        if (!frozenAllowed) {
+            this.frozenRequired = false;
+        }
+    }
+
+    public boolean isFrozenRequired() {
+        return this.frozenRequired;
+    }
+
+    public void setFrozenRequired(boolean frozenRequired) {
+        this.frozenRequired = frozenRequired;
+        if (frozenRequired) {
+            this.frozenAllowed = true;
+        }
     }
 
     /**
@@ -344,6 +368,11 @@ public class LabwareValidator {
         validateState(Labware::isDestroyed, "destroyed");
         if (!isUsedAllowed()) {
             validateState(Labware::isUsed, "used");
+        }
+        if (isFrozenRequired()) {
+            validateState(lw -> !lw.isFrozen(), "not frozen");
+        } else if (!isFrozenAllowed()) {
+            validateState(Labware::isFrozen, "frozen");
         }
     }
 

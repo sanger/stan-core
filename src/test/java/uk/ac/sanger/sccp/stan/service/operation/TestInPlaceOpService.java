@@ -11,6 +11,7 @@ import uk.ac.sanger.sccp.stan.repo.OperationTypeRepo;
 import uk.ac.sanger.sccp.stan.request.InPlaceOpRequest;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.service.*;
+import uk.ac.sanger.sccp.stan.service.operation.InPlaceOpServiceImp.Mode;
 import uk.ac.sanger.sccp.stan.service.validation.ValidationHelper;
 import uk.ac.sanger.sccp.stan.service.validation.ValidationHelperFactory;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
@@ -18,6 +19,7 @@ import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -59,17 +61,27 @@ public class TestInPlaceOpService {
     }
 
     @ParameterizedTest
-    @ValueSource(booleans={false, true})
-    public void testRecord(boolean successful) {
+    @CsvSource({
+            "false, Normal",
+            "true, Normal",
+            "true, Freeze",
+            "true, Thaw"
+    })
+    void testRecord(boolean successful, Mode mode) {
         List<Labware> labware = List.of(EntityFactory.getTube());
-        OperationType opType = new OperationType(10, "Bananas");
+        String opname = switch (mode) {
+            case Freeze -> InPlaceOpServiceImp.FREEZE_OP;
+            case Thaw -> InPlaceOpServiceImp.THAW_OP;
+            default -> "Bananas";
+        };
+        OperationType opType = new OperationType(10, opname);
         Equipment equipment = new Equipment("Feniks", "scanner");
         Work work = new Work(20, "SGP2000", null, null, null, null, null, Work.Status.active);
 
         InPlaceOpRequest request = new InPlaceOpRequest(opType.getName(), List.of(labware.get(0).getBarcode()),
                 equipment.getId(), List.of(work.getWorkNumber()));
 
-        doReturn(labware).when(service).validateLabware(any(), any());
+        doReturn(labware).when(service).validateLabware(any(), any(), any());
         doReturn(opType).when(service).validateOpType(any(), any(), any());
         doReturn(mockVal).when(valFactory).getHelper();
         doReturn(equipment).when(mockVal).checkEquipment(any(), any());
@@ -87,6 +99,7 @@ public class TestInPlaceOpService {
             doReturn(Set.of("Bad equipment.")).when(mockVal).getProblems();
         }
         OperationResult result = new OperationResult();
+        doNothing().when(service).updateLabware(any(), any());
         doReturn(result).when(service).createOperations(any(), any(), any(), any(), any());
 
         User user = EntityFactory.getUser();
@@ -98,15 +111,33 @@ public class TestInPlaceOpService {
             assertThat((Collection<String>) exception.getProblems()).containsExactlyInAnyOrder(problem, "Bad equipment.");
         }
 
-        verify(service).validateLabware(any(), eq(request.getBarcodes()));
+        verify(service).validateLabware(any(), eq(request.getBarcodes()), same(mode));
         verify(service).validateOpType(any(), eq(request.getOperationType()), eq(labware));
         verify(mockWorkService).validateWorksForOpType(any(), eq(request.getWorkNumbers()), same(opType));
         verify(mockVal).checkEquipment(request.getEquipmentId(), null);
-        verify(service, times(successful ? 1 : 0)).createOperations(user, labware, opType, equipment, workMap.values());
+        if (successful) {
+            verify(service).updateLabware(mode, labware);
+            verify(service).createOperations(user, labware, opType, equipment, workMap.values());
+        } else {
+            verify(service, never()).updateLabware(any(), any());
+            verify(service, never()).createOperations(any(), any(), any(), any(), any());
+        }
     }
 
-    @Test
-    public void testValidateLabware() {
+    @ParameterizedTest
+    @EnumSource(Mode.class)
+    void testFindOpMode(Mode mode) {
+        String opname = switch (mode) {
+            case Freeze -> InPlaceOpServiceImp.FREEZE_OP;
+            case Thaw -> InPlaceOpServiceImp.THAW_OP;
+            case Normal -> "Bananas";
+        };
+        assertSame(mode, service.findOpMode(opname));
+    }
+
+    @ParameterizedTest
+    @EnumSource(Mode.class)
+    void testValidateLabware(Mode mode) {
         Labware lw = EntityFactory.getTube();
         List<Labware> labware = List.of(lw);
         LabwareValidator mockVal = mock(LabwareValidator.class);
@@ -118,10 +149,11 @@ public class TestInPlaceOpService {
         List<String> barcodes = List.of(lw.getBarcode());
         List<String> problems = new ArrayList<>();
 
-        assertSame(labware, service.validateLabware(problems, barcodes));
+        assertSame(labware, service.validateLabware(problems, barcodes, mode));
         assertThat(problems).containsExactly(problem);
 
         verify(mockVal).setUniqueRequired(true);
+        (mode==Mode.Thaw ? verify(mockVal) : verify(mockVal, never())).setFrozenRequired(true);
         verify(mockVal).loadLabware(mockLwRepo, barcodes);
         verify(mockVal).validateSources();
     }
@@ -167,6 +199,25 @@ public class TestInPlaceOpService {
                 {ot3, block, null},
                 {ot3, tube, "Operation type Blodge can only be recorded on a block."},
         }).map(Arguments::of);
+    }
+
+    @ParameterizedTest
+    @EnumSource(Mode.class)
+    void testUpdateLabware(Mode mode) {
+        LabwareType lt = EntityFactory.getTubeType();
+        List<Labware> lws = IntStream.of(1,2).mapToObj(i -> EntityFactory.makeEmptyLabware(lt)).toList();
+        if (mode==Mode.Thaw) {
+            lws.forEach(lw -> lw.setFrozen(true));
+        }
+
+        service.updateLabware(mode, lws);
+
+        lws.forEach(lw -> assertEquals(mode==Mode.Freeze, lw.isFrozen()));
+        if (mode==Mode.Normal) {
+            verifyNoInteractions(mockLwRepo);
+        } else {
+            verify(mockLwRepo).saveAll(lws);
+        }
     }
 
     @Test

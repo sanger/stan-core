@@ -24,6 +24,9 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
  */
 @Service
 public class InPlaceOpServiceImp implements InPlaceOpService {
+    static final String FREEZE_OP = "Cryopreserve", THAW_OP = "Thaw";
+    enum Mode { Freeze, Thaw, Normal }
+
     private final LabwareValidatorFactory labwareValidatorFactory;
     private final OperationService opService;
     private final BioRiskService bioRiskService;
@@ -50,7 +53,8 @@ public class InPlaceOpServiceImp implements InPlaceOpService {
     @Override
     public OperationResult record(User user, InPlaceOpRequest request) {
         final Set<String> problems = new LinkedHashSet<>();
-        Collection<Labware> labware = validateLabware(problems, request.getBarcodes());
+        Mode mode = findOpMode(request.getOperationType());
+        Collection<Labware> labware = validateLabware(problems, request.getBarcodes(), mode);
         OperationType opType = validateOpType(problems, request.getOperationType(), labware);
         ValidationHelper val = valFactory.getHelper();
         Equipment eq = val.checkEquipment(request.getEquipmentId(), null);
@@ -61,7 +65,20 @@ public class InPlaceOpServiceImp implements InPlaceOpService {
             throw new ValidationException("The request could not be validated.", problems);
         }
 
+        updateLabware(mode, labware);
         return createOperations(user, labware, opType, eq, works.values());
+    }
+
+    Mode findOpMode(String opName) {
+        if (opName!=null) {
+            opName = opName.trim();
+            if (opName.equalsIgnoreCase(FREEZE_OP)) {
+                return Mode.Freeze;
+            } else if (opName.equalsIgnoreCase(THAW_OP)) {
+                return Mode.Thaw;
+            }
+        }
+        return Mode.Normal;
     }
 
     /**
@@ -70,8 +87,11 @@ public class InPlaceOpServiceImp implements InPlaceOpService {
      * @param barcodes the barcodes to look up
      * @return the labware loaded, if any
      */
-    public Collection<Labware> validateLabware(Collection<String> problems, Collection<String> barcodes) {
+    Collection<Labware> validateLabware(Collection<String> problems, Collection<String> barcodes, Mode mode) {
         LabwareValidator lv = labwareValidatorFactory.getValidator();
+        if (mode==Mode.Thaw) {
+            lv.setFrozenRequired(true);
+        }
         lv.setUniqueRequired(true);
         lv.loadLabware(lwRepo, barcodes);
         lv.validateSources();
@@ -103,6 +123,18 @@ public class InPlaceOpServiceImp implements InPlaceOpService {
             problems.add("Operation type "+opType.getName()+" can only be recorded on a block.");
         }
         return opt.get();
+    }
+
+    /**
+     * Freezes or thaws the labware according to the given mode.
+     * @param mode type of update to perform
+     * @param labware the labware to update
+     */
+    void updateLabware(final Mode mode, final Collection<Labware> labware) {
+        if (mode==Mode.Freeze || mode==Mode.Thaw) {
+            labware.forEach(lw -> lw.setFrozen(mode==Mode.Freeze));
+            lwRepo.saveAll(labware);
+        }
     }
 
     /**
