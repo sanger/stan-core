@@ -37,7 +37,8 @@ public class BlockValidatorImp implements BlockValidator {
     private final TissueBlockRequest request;
     private List<BlockLabwareData> lwData;
     private Work work;
-    private BioState bioState;
+    private BioState requiredBioState;
+    private BioState newBioState;
     private Medium medium;
     private OperationType opType;
 
@@ -93,7 +94,8 @@ public class BlockValidatorImp implements BlockValidator {
      */
     public void loadEntities() {
         setWork(workService.validateUsableWork(problems, request.getWorkNumber()));
-        setBioState(loadFromOpt("Bio state", bsRepo::findByName, "Original sample"));
+        setRequiredBioState(loadFromOpt("Bio state", bsRepo::findByName, "Original sample"));
+        setNewBioState(loadFromOpt("Bio state", bsRepo::findByName, "Tissue"));
         setMedium(loadFromOpt("Medium", mediumRepo::findByName, "OCT"));
         setOpType(loadFromOpt("Operation type", opTypeRepo::findByName, "Block processing"));
         loadSources();
@@ -122,8 +124,8 @@ public class BlockValidatorImp implements BlockValidator {
         LabwareValidator val = lwValFactory.getValidator();
         val.loadLabware(lwRepo, barcodes);
         val.validateSources();
-        if (bioState!=null) {
-            val.validateBioState(bioState);
+        if (requiredBioState!=null) {
+            val.validateBioState(requiredBioState);
         }
         problems.addAll(val.getErrors());
         UCMap<Labware> sourceLabware = UCMap.from(val.getLabware(), Labware::getBarcode);
@@ -389,13 +391,22 @@ public class BlockValidatorImp implements BlockValidator {
         return this.work;
     }
 
-    public void setBioState(BioState bioState) {
-        this.bioState = bioState;
+    void setRequiredBioState(BioState bioState) {
+        this.requiredBioState = bioState;
+    }
+
+    /** The bio state used in validation */
+    BioState getRequiredBioState() {
+        return this.requiredBioState;
+    }
+
+    public void setNewBioState(BioState bioState) {
+        this.newBioState = bioState;
     }
 
     @Override
-    public BioState getBioState() {
-        return this.bioState;
+    public BioState getNewBioState() {
+        return this.newBioState;
     }
 
     public void setMedium(Medium medium) {
