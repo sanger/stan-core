@@ -9,6 +9,10 @@ import uk.ac.sanger.sccp.stan.service.imagedatafile.ImageDataFileService;
 import uk.ac.sanger.sccp.utils.tsv.TsvFile;
 
 import javax.persistence.EntityNotFoundException;
+import java.util.List;
+
+import static uk.ac.sanger.sccp.utils.BasicUtils.asList;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 
 /**
  * Controller for delivering image data files (excel).
@@ -30,12 +34,22 @@ public class ImageDataFileController {
     @RequestMapping(value="/imageqc", method=RequestMethod.GET,
                     produces="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     @ResponseBody
-    public TsvFile<?> getImageDataFile(@RequestParam(name="id") Integer id) {
-        Operation op = opRepo.findById(id).orElseThrow(() -> new EntityNotFoundException("No operation found with id " + id+"."));
-        if (!op.getOperationType().getName().equalsIgnoreCase(IMAGING_QC_OP_NAME)) {
-            throw new IllegalArgumentException("Operation " + id + " is not an imaging QC operation");
+    public TsvFile<?> getImageDataFile(@RequestParam(name="id") List<Integer> ids) {
+        if (nullOrEmpty(ids)) {
+            throw new IllegalArgumentException("No operation IDs provided.");
         }
-        return imageDataFileService.generateFile(op);
+        List<Operation> ops = asList(opRepo.findAllById(ids));
+        if (ops.isEmpty()) {
+            throw new EntityNotFoundException("No operations found with IDs " + ids);
+        }
+        List<Integer> wrongOpTypeIds = ops.stream()
+                .filter(op -> !op.getOperationType().getName().equalsIgnoreCase(IMAGING_QC_OP_NAME))
+                .map(Operation::getId)
+                .toList();
+        if (!wrongOpTypeIds.isEmpty()) {
+            throw new IllegalArgumentException("Not an imaging QC operation: "+wrongOpTypeIds);
+        }
+        return imageDataFileService.generateFile(ops);
         // TsvFileConverter will convert the data to an excel file
     }
 }
