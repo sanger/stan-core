@@ -259,6 +259,7 @@ public class GraphQLProvider {
                         .dataFetcher("store", graphQLStore.store())
                         .dataFetcher("storeBarcode", graphQLStore.storeBarcode())
                         .dataFetcher("unstoreBarcode", graphQLStore.unstoreBarcode())
+                        .dataFetcher("unstoreBarcodes", graphQLStore.unstoreBarcodes())
                         .dataFetcher("empty", graphQLStore.empty())
                         .dataFetcher("transfer", graphQLStore.transfer())
                         .dataFetcher("setLocationCustomName", graphQLStore.setLocationCustomName())

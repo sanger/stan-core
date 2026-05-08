@@ -2633,6 +2633,8 @@ type Mutation {
     store(store: [StoreInput!]!, locationBarcode: String!): Location!
     """Remove a specified item from storage."""
     unstoreBarcode(barcode: String!): UnstoredItem
+    """Remove specified items from storage."""
+    unstoreBarcodes(barcodes: [String!]!): Int!
     """Empty a specified location of its stored items."""
     empty(locationBarcode: String!): UnstoreResult!
     """Transfer labware from one storage location to another."""
