@@ -254,7 +254,7 @@ public class TestReagentTransferService {
         UCMap<ReagentPlate> rpMap = UCMap.from(ReagentPlate::getBarcode, EntityFactory.makeReagentPlate("RP1"));
         Labware lw = EntityFactory.getTube();
         service.validateTransfers(problems, transfers, rpMap, lw);
-        verify(mockValService).validateTransfers(problems, transfers, rpMap, lw.getLabwareType());
+        verify(mockValService).validateTransfers(problems, transfers, rpMap, lw.layout());
         assertProblem(problems, problem);
     }
 

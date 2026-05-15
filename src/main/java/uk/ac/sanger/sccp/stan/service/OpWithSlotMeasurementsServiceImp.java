@@ -141,11 +141,11 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
                 .filter(slot -> !slot.getSamples().isEmpty())
                 .map(Slot::getAddress)
                 .collect(toSet());
-        validateAddresses(problems, lw.getLabwareType(), filledSlotAddresses, slotMeasurements);
+        validateAddresses(problems, lw.layout(), filledSlotAddresses, slotMeasurements);
     }
 
     @Override
-    public void validateAddresses(Collection<String> problems, LabwareType lt, Set<Address> filledSlotAddresses,
+    public void validateAddresses(Collection<String> problems, Layout layout, Set<Address> filledSlotAddresses,
                                   List<SlotMeasurementRequest> slotMeasurements) {
         Set<Address> invalidAddresses = new LinkedHashSet<>();
         Set<Address> emptyAddresses = new LinkedHashSet<>();
@@ -155,7 +155,7 @@ public class OpWithSlotMeasurementsServiceImp implements OpWithSlotMeasurementsS
             if (address ==null) {
                 nullAddress = true;
             } else {
-                if (lt.indexOf(address) < 0) {
+                if (layout.indexOf(address) < 0) {
                     invalidAddresses.add(address);
                 } else if (!filledSlotAddresses.contains(address)) {
                     emptyAddresses.add(address);

@@ -152,7 +152,6 @@ public class ConfirmOperationValidationImp implements ConfirmOperationValidation
             return;
         }
         final Integer labwareId = lw.getId();
-        LabwareType lt = lw.getLabwareType();
         final Set<CancelPlanAction> candidates = plan.getPlanActions().stream()
                 .filter(pa -> pa.getDestination().getLabwareId().equals(labwareId))
                 .map(CancelPlanAction::forPlanAction)
@@ -163,7 +162,7 @@ public class ConfirmOperationValidationImp implements ConfirmOperationValidation
             if (address ==null) {
                 addProblem("No address specified in cancelled plan action.");
                 ok = false;
-            } else if (lt.indexOf(address) < 0) {
+            } else if (lw.layout().indexOf(address) < 0) {
                 addProblem("Invalid address %s in cancelled plan action for labware %s.", address, lw.getBarcode());
                 ok = false;
             }
@@ -199,14 +198,13 @@ public class ConfirmOperationValidationImp implements ConfirmOperationValidation
                 .filter(planAction -> planAction.getDestination().getLabwareId().equals(labwareId))
                 .map(planAction -> planAction.getDestination().getAddress())
                 .collect(toSet());
-        LabwareType lt = lw.getLabwareType();
         for (AddressCommentId adcom : addressComments) {
             Address ad = adcom.getAddress();
             if (ad==null) {
                 addProblem("Comment specified with no address for labware %s.", lw.getBarcode());
                 continue;
             }
-            if (lt.indexOf(ad) < 0) {
+            if (lw.layout().indexOf(ad) < 0) {
                 addProblem("Invalid address %s in comments for labware %s.", ad, lw.getBarcode());
             } else if (!planAddresses.contains(ad)) {
                 addProblem("No planned action recorded for address %s in labware %s, specified in comments.",

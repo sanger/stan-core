@@ -1,6 +1,7 @@
 package uk.ac.sanger.sccp.stan.service.block;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.TissueBlockRequest;
@@ -212,15 +213,15 @@ public class BlockValidatorImp implements BlockValidator {
     public void checkDestAddresses() {
         boolean anyMissing = false;
         for (var lwd : lwData) {
-            LabwareType lt = lwd.getLwType();
+            Layout layout = layout(lwd);
             for (var bl : lwd.getBlocks()) {
                 List<Address> addresses = bl.getRequestContent().getAddresses();
                 if (nullOrEmpty(addresses)) {
                     anyMissing = true;
                 } else {
                     for (Address addr : addresses) {
-                        if (lt != null && lt.indexOf(addr) < 0) {
-                            problems.add(String.format("Slot address %s not valid in labware type %s.", addr, lt.getName()));
+                        if (layout != null && layout.indexOf(addr) < 0) {
+                            problems.add(String.format("Slot address %s is not valid for this layout.", addr));
                         }
                     }
                 }
@@ -229,6 +230,19 @@ public class BlockValidatorImp implements BlockValidator {
         if (anyMissing) {
             problems.add("Destination slot addresses missing from block request.");
         }
+    }
+
+    @Nullable
+    static Layout layout(BlockLabwareData lwd) {
+        LabwareType lt = lwd.getLwType();
+        Integer numRows = lwd.getRequestLabware().getNumRows();
+        Integer numColumns = lwd.getRequestLabware().getNumColumns();
+        if ((numRows==null || numColumns==null) && lt == null) {
+            return null;
+        }
+        // NB don't use coalesce here because we don't want to NPE if lt is null
+        return new Layout(numRows!=null ? numRows : lt.getNumRows(),
+                numColumns != null ? numColumns : lt.getNumColumns());
     }
 
     /**

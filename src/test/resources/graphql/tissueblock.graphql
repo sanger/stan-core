@@ -3,18 +3,22 @@ mutation {
         discardSourceBarcodes: ["BARCODE"]
         workNumber: "WORKNUMBER"
         labware: [{
-            labwareType: "Tube"
+            numRows: 2
+            numColumns: 3
+            labwareType: "Proviasette"
             contents: [
                 {
                     sourceBarcode: "BARCODE"
                     replicate: "5c"
-                    addresses: ["A1"]
+                    addresses: ["A1", "B3"]
                     sourceSampleId: 999
                 }
             ]
         }]
     }) {
         labware {
+            numRows
+            numColumns
             barcode
         }
         operations {

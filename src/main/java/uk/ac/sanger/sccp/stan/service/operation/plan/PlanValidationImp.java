@@ -100,7 +100,7 @@ public class PlanValidationImp implements PlanValidation {
                 }
             }
             Address address = (source.getAddress()==null ? new Address(1,1) : source.getAddress());
-            if (lw.getLabwareType().indexOf(address) < 0) {
+            if (lw.layout().indexOf(address) < 0) {
                 addProblem("Labware %s (%s) has no slot at address %s.", barcode, lw.getLabwareType().getName(), address);
                 continue;
             }
@@ -162,15 +162,15 @@ public class PlanValidationImp implements PlanValidation {
         UCMap<LabwareType> labwareTypeMap = new UCMap<>();
         Set<String> unknownTypes = new LinkedHashSet<>();
         Set<String> seenBarcodes = new HashSet<>();
-        for (PlanRequestLabware lw : request.getLabware()) {
-            boolean gotBarcode = !nullOrEmpty(lw.getBarcode());
+        for (PlanRequestLabware plw : request.getLabware()) {
+            boolean gotBarcode = !nullOrEmpty(plw.getBarcode());
             boolean alreadySeen = false;
-            if (gotBarcode && !seenBarcodes.add(lw.getBarcode().toUpperCase())) {
-                addProblem("Repeated barcode given for new labware: " + lw.getBarcode());
+            if (gotBarcode && !seenBarcodes.add(plw.getBarcode().toUpperCase())) {
+                addProblem("Repeated barcode given for new labware: " + plw.getBarcode());
                 alreadySeen = true;
             }
 
-            String ltn = lw.getLabwareType();
+            String ltn = plw.getLabwareType();
             if (nullOrEmpty(ltn)) {
                 addProblem("Missing labware type.");
                 continue;
@@ -188,15 +188,15 @@ public class PlanValidationImp implements PlanValidation {
                 lt = optLt.get();
                 labwareTypeMap.put(ltn, lt);
             }
-            validatePrebarcode(lw.getBarcode(), lt);
-            checkActions(lw, lt);
-            if (gotBarcode && !alreadySeen && labwareRepo.existsByBarcode(lw.getBarcode())) {
-                addProblem("Labware with the barcode "+lw.getBarcode()+" already exists in the database.");
-            } else if (gotBarcode && !alreadySeen && labwareRepo.existsByExternalBarcode(lw.getBarcode())) {
-                addProblem("Labware with the external barcode "+lw.getBarcode()+" already exists in the database.");
+            validatePrebarcode(plw.getBarcode(), lt);
+            checkActions(plw, lt);
+            if (gotBarcode && !alreadySeen && labwareRepo.existsByBarcode(plw.getBarcode())) {
+                addProblem("Labware with the barcode "+plw.getBarcode()+" already exists in the database.");
+            } else if (gotBarcode && !alreadySeen && labwareRepo.existsByExternalBarcode(plw.getBarcode())) {
+                addProblem("Labware with the external barcode "+plw.getBarcode()+" already exists in the database.");
             }
             if (lt.getLabelType()!=null && lt.getLabelType().getName().equalsIgnoreCase("adh")) {
-                if (!hasDividedLayout(sourceLabwareMap, lw, lt, 1)) {
+                if (!hasDividedLayout(sourceLabwareMap, plw, lt, 1)) {
                     addProblem("Labware of type "+lt.getName()+" must have one tissue per row.");
                 }
             }
@@ -327,7 +327,7 @@ public class PlanValidationImp implements PlanValidation {
     /**
      * Are rows laid out with only one tissue on each row?
      * @param sourceLwMap look up source labware from barcode
-     * @param lw the destination labware
+     * @param lw the specification of the destination labware
      * @param lt the labware type of the destination labware
      * @param rowsPerGroup number of rows expected for each tissue
      * @return true if the layout is divided as expected, false otherwise

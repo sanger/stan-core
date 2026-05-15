@@ -10,7 +10,6 @@ import javax.persistence.EntityManager;
 import java.util.*;
 
 import static java.util.Objects.requireNonNull;
-import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 import static uk.ac.sanger.sccp.utils.BasicUtils.stream;
@@ -21,6 +20,8 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.stream;
  */
 @Service
 public class LabwareService {
+    public static final int MAX_OVERRIDE_SLOTS = 225;
+
     private final LabwareRepo labwareRepo;
     private final SlotRepo slotRepo;
     private final BarcodeIntRepo barcodeIntRepo;
@@ -63,6 +64,19 @@ public class LabwareService {
      * @return the new labware
      */
     public Labware create(LabwareType labwareType, String barcode, String externalBarcode) {
+        return create(labwareType, null, null, barcode, externalBarcode);
+    }
+
+    /**
+     * Creates new empty labware of the given type with the given barcode.
+     * @param labwareType the labware type
+     * @param numRows the number of rows if overridden
+     * @param numColumns the number of columns if overridden
+     * @param barcode the barcode for the labware
+     * @param externalBarcode the external barcode, if any
+     * @return the new labware
+     */
+    public Labware create(LabwareType labwareType, Integer numRows, Integer numColumns, String barcode, String externalBarcode) {
         if (barcode!=null) {
             barcode = barcode.toUpperCase();
         }
@@ -71,6 +85,8 @@ public class LabwareService {
         }
         Labware unsaved = new Labware(null, barcode, labwareType, null);
         unsaved.setExternalBarcode(externalBarcode);
+        unsaved.setNumRowsOverride(numRows);
+        unsaved.setNumColumnsOverride(numColumns);
         return create(unsaved);
     }
 
@@ -108,6 +124,43 @@ public class LabwareService {
     }
 
     /**
+     * Make sure num rows/columns are either both specified or neither,
+     * and are not specified if they are the same as the labware type already says
+     * @param lw the labware whose layout to sanitise
+     */
+    public void sanitiseLayout(Labware lw) {
+        LabwareType lt = lw.getLabwareType();
+        if (lt == null) {
+            return; // can't do anything, won't work anyway
+        }
+        Integer numRows = lw.getNumRowsOverride();
+        Integer numColumns = lw.getNumColumnsOverride();
+        if (numRows==null && numColumns==null) {
+            return;
+        }
+        if ((numRows==null || numRows==lt.getNumRows()) && (numColumns==null || numColumns==lt.getNumColumns())) {
+            lw.setNumRowsOverride(null);
+            lw.setNumColumnsOverride(null);
+            return;
+        }
+        if (numRows==null) {
+            lw.setNumRowsOverride(numRows = lt.getNumRows());
+        }
+        if (numColumns==null) {
+            lw.setNumColumnsOverride(numColumns = lt.getNumColumns());
+        }
+        if (numRows <= 0) {
+            throw new IllegalArgumentException("Number of rows must be a positive number.");
+        }
+        if (numColumns <= 0) {
+            throw new IllegalArgumentException("Number of columns must be a positive number.");
+        }
+        if (numRows * numColumns > MAX_OVERRIDE_SLOTS) {
+            throw new IllegalArgumentException("Specified labware layout is too big.");
+        }
+    }
+
+    /**
      * Creates new empty labware with slots from the given unsaved labware object.
      * If the given labware does not specify a barcode, one will be created.
      * @param unsaved an unsaved labware object
@@ -117,13 +170,11 @@ public class LabwareService {
         if (unsaved.getBarcode()==null) {
             unsaved.setBarcode(barcodeIntRepo.createStanBarcode());
         }
+        sanitiseLayout(unsaved);
         Labware labware = labwareRepo.save(unsaved);
-        LabwareType labwareType = unsaved.getLabwareType();
-        final int numRows = labwareType.getNumRows();
-        final int numColumns = labwareType.getNumColumns();
-        List<Slot> newSlots = Address.stream(numRows, numColumns)
+        List<Slot> newSlots = Address.stream(labware.getNumRows(), labware.getNumColumns())
                 .map(address -> new Slot(null, labware.getId(), address, null))
-                .collect(toList());
+                .toList();
         slotRepo.saveAll(newSlots);
         entityManager.refresh(labware);
         return labware;

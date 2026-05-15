@@ -3,6 +3,7 @@ package uk.ac.sanger.sccp.stan.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.Address;
+import uk.ac.sanger.sccp.stan.model.LabwareType;
 import uk.ac.sanger.sccp.stan.request.LibraryPrepRequest;
 import uk.ac.sanger.sccp.stan.request.ReagentTransferRequest.ReagentTransfer;
 import uk.ac.sanger.sccp.stan.request.SlotCopyRequest;
@@ -54,9 +55,12 @@ public class LibraryPrepValidationServiceImp implements LibraryPrepValidationSer
         data.slotCopyData = scValService.validateRequest(data.user, scRequest);
         if (!nullOrEmpty(data.slotCopyData.destLabware)) {
             data.destination = data.slotCopyData.destLabware.values().iterator().next();
-            data.destLabwareType = data.destination.getLabwareType();
+            data.destLayout = data.destination.layout();
         } else {
-            data.destLabwareType = data.slotCopyData.lwTypes.get(request.getDestination().getLabwareType());
+            LabwareType lt = data.slotCopyData.lwTypes.get(request.getDestination().getLabwareType());
+            if (lt != null) {
+                data.destLayout = lt.layout();
+            }
         }
         data.work = data.slotCopyData.work;
         data.problems.addAll(data.slotCopyData.problems);
@@ -72,7 +76,7 @@ public class LibraryPrepValidationServiceImp implements LibraryPrepValidationSer
         data.reagentOpType = rtService.loadOpType(data.problems, "Dual index plate");
         data.reagentPlates = rtService.loadReagentPlates(reagentTransfers);
         data.reagentPlateType = rtService.checkPlateType(data.problems, data.reagentPlates.values(), request.getReagentPlateType());
-        rtValService.validateTransfers(data.problems, reagentTransfers, data.reagentPlates, data.destLabwareType);
+        rtValService.validateTransfers(data.problems, reagentTransfers, data.reagentPlates, data.destLayout);
     }
 
     /**
@@ -80,14 +84,14 @@ public class LibraryPrepValidationServiceImp implements LibraryPrepValidationSer
      * @param data data related to the request
      */
     public void owsmValidate(RequestData data) {
-        if (data.destLabwareType==null) {
+        if (data.destLayout==null) {
             return;
         }
         Set<Address> filledAddresses = data.request.getDestination().getContents().stream()
                 .map(SlotCopyContent::getDestinationAddress)
                 .filter(Objects::nonNull)
                 .collect(toSet());
-        owsmService.validateAddresses(data.problems, data.destLabwareType, filledAddresses, data.request.getSlotMeasurements());
+        owsmService.validateAddresses(data.problems, data.destLayout, filledAddresses, data.request.getSlotMeasurements());
         data.ampOpType = owsmService.loadOpType(data.problems, "Amplification");
         data.comments = owsmService.validateComments(data.problems, data.request.getSlotMeasurements());
         data.sanitisedMeasurements = owsmService.sanitiseMeasurements(data.problems, data.ampOpType, data.request.getSlotMeasurements());
