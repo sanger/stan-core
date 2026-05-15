@@ -383,4 +383,23 @@ public class LabwareServiceTest {
         verify(mockLabwareRepo).getByBarcode(lw.getBarcode());
         verify(mockBioRiskRepo).loadBioRisksForSampleIds(sampleIds);
     }
+
+    @ParameterizedTest
+    @CsvSource({
+            "cassette,true",
+            "proviasette,true",
+            "tube,false",
+            ",false",
+    })
+    void testCustomSizeLabwareType(String name, boolean expected) {
+        assertEquals(expected, LabwareService.customSizeLabwareType(name));
+    }
+
+    @Test
+    void testRequiredLayout() {
+        Stream<Address> addressStream = Stream.of(new Address(1,1), new Address(2,3), new Address(4,1));
+        Layout layout = LabwareService.requiredLayout(addressStream);
+        assertEquals(4, layout.numRows());
+        assertEquals(3, layout.numColumns());
+    }
 }

@@ -3,6 +3,7 @@ package uk.ac.sanger.sccp.stan.service.register;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.*;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
@@ -708,6 +709,23 @@ class TestBlockRegisterValidation {
                 "Slot addresses missing from request.",
                 "Invalid slot addresses for labware type lt: [A2, A3]"
         );
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void testValidateAddresses_customSize(boolean ok) {
+        LabwareType lt = EntityFactory.makeLabwareType(1, 1, LabwareType.CASSETTE_NAME);
+        BlockRegisterLabware brl = new BlockRegisterLabware();
+        brl.setLabwareType(lt.getName());
+        brl.setSamples(List.of(brsForAddresses(new Address(1,1), new Address(15, 3),
+                new Address(1, ok ? 15 : 16))));
+        BlockRegisterRequest request = new BlockRegisterRequest();
+        request.setLabware(List.of(brl));
+        var val = makeVal(request);
+        val.labwareTypeMap.put(lt.getName(), lt);
+        val.validateAddresses();
+        String expectedProblem = ok ? null : "Required layout (15 rows, 16 columns) is too big.";
+        assertProblem(val.getProblems(), expectedProblem);
     }
 
     static BlockRegisterSample brsForAddresses(Address... addresses) {

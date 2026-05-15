@@ -8,11 +8,11 @@ import uk.ac.sanger.sccp.stan.repo.*;
 
 import javax.persistence.EntityManager;
 import java.util.*;
+import java.util.stream.Stream;
 
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toSet;
-import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
-import static uk.ac.sanger.sccp.utils.BasicUtils.stream;
+import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 /**
  * Service to help with labware, including creating labware with appropriate slots.
@@ -261,6 +261,31 @@ public class LabwareService {
                 .collect(toSet());
         Map<Integer, BioRisk> riskMap = bioRiskRepo.loadBioRisksForSampleIds(sampleIds);
         return riskMap.entrySet().stream().map(e -> new SampleBioRisk(e.getKey(), e.getValue().getCode())).toList();
+    }
+
+    /** Is the specified labware type one that we expect to have a custom layout? */
+    public static boolean customSizeLabwareType(String ltName) {
+        return (ltName!=null && (ltName.equalsIgnoreCase(LabwareType.CASSETTE_NAME)
+                || ltName.equalsIgnoreCase(LabwareType.PROVIASETTE_NAME)));
+    }
+
+    /**
+     * Finds the necessary layout to include the given addresses
+     * @param addressStream a stream of addresses
+     * @return a layout object
+     */
+    public static Layout requiredLayout(Stream<Address> addressStream) {
+        int maxRow = 1;
+        int maxColumn = 1;
+        for (Address address : iter(addressStream)) {
+            if (address.getRow() > maxRow) {
+                maxRow = address.getRow();
+            }
+            if (address.getColumn() > maxColumn) {
+                maxColumn = address.getColumn();
+            }
+        }
+        return new Layout(maxRow, maxColumn);
     }
 
     /** A linked sample and bio risk */

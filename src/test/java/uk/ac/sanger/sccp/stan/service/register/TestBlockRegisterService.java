@@ -324,6 +324,19 @@ class TestBlockRegisterService {
     }
 
     @Test
+    void testCreateCustomSizeLabware() {
+        BlockRegisterSample brs = brsForCreate("EXT1", 31, "BR1",
+                List.of(new Address(1,4), new Address(5,3)));
+        BlockRegisterLabware brl = brlForCreate("Cassette", "XB1", List.of(brs));
+        LabwareType lt = EntityFactory.makeLabwareType(1, 1, "Cassette");
+
+        Labware lw = EntityFactory.makeEmptyLabware(lt);
+        when(mockLabwareService.create(any(), any(), any(), any(), any())).thenReturn(lw);
+        assertSame(lw, service.createCustomSizeLabware(brl, lt));
+        verify(mockLabwareService).create(lt, 5, 4, null, "XB1");
+    }
+
+    @Test
     void testCreate() {
         User user = EntityFactory.getUser();
         List<Work> works = List.of(EntityFactory.makeWork("SGP1"));
@@ -334,7 +347,9 @@ class TestBlockRegisterService {
         OperationType opType = EntityFactory.makeOperationType("Register", EntityFactory.getBioState());
         when(mockOpTypeRepo.getByName(eqCi(opType.getName()))).thenReturn(opType);
         LabwareType lt = new LabwareType(1, "lt", 1, 2, null, false);
+        LabwareType lt2 = new LabwareType(2, "cassette", 1, 2, null, false);
         when(val.getLabwareType(eqCi(lt.getName()))).thenReturn(lt);
+        when(val.getLabwareType(eqCi(lt2.getName()))).thenReturn(lt2);
         BioRisk[] bioRisks = IntStream.of(1,2,3).mapToObj(i -> new BioRisk(i, "BR"+i)).toArray(BioRisk[]::new);
         Arrays.stream(bioRisks).forEach(br -> when(val.getBioRisk(eqCi(br.getCode()))).thenReturn(br));
         Labware[] lws = IntStream.of(1,2).mapToObj(i -> {
@@ -342,9 +357,10 @@ class TestBlockRegisterService {
             Labware lw = EntityFactory.makeEmptyLabware(lt);
             lw.setExternalBarcode(xb);
             lw.setBarcode("STAN-"+i);
-            when(mockLabwareService.create(any(), any(), eqCi(xb))).thenReturn(lw);
             return lw;
         }).toArray(Labware[]::new);
+        when(mockLabwareService.create(any(), any(), any())).thenReturn(lws[0]);
+        when(mockLabwareService.create(any(), any(), any(), any(), any())).thenReturn(lws[1]);
 
         final int[] idCounter = {20};
         when(mockSampleRepo.save(any())).then(invocation -> {
@@ -372,7 +388,7 @@ class TestBlockRegisterService {
                 brsForCreate("EXT3", 33, "BR3", List.of(A2))
         );
         BlockRegisterLabware brl1 = brlForCreate(lt.getName(), lws[0].getExternalBarcode(), brs1);
-        BlockRegisterLabware brl2 = brlForCreate(lt.getName(), lws[1].getExternalBarcode(), brs2);
+        BlockRegisterLabware brl2 = brlForCreate(lt2.getName(), lws[1].getExternalBarcode(), brs2);
         BlockRegisterRequest request = new BlockRegisterRequest();
         request.setLabware(List.of(brl1, brl2));
 
@@ -380,9 +396,8 @@ class TestBlockRegisterService {
 
         verify(service).createTissues(request, val);
         verify(mockOpTypeRepo).getByName(eqCi(opType.getName()));
-        for (Labware lw : lws) {
-            verify(mockLabwareService).create(lt, null, lw.getExternalBarcode());
-        }
+        verify(mockLabwareService).create(lt, null, lws[0].getExternalBarcode());
+        verify(mockLabwareService).create(lt2, 1, 2, null, lws[1].getExternalBarcode());
         verifyNoMoreInteractions(mockLabwareService);
         verify(mockSampleRepo, times(3)).save(any());
         Arrays.stream(lws).forEach(lw -> verify(mockEntityManager).refresh(lw));

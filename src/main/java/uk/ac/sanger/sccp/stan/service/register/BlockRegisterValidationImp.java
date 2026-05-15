@@ -3,8 +3,7 @@ package uk.ac.sanger.sccp.stan.service.register;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.register.*;
-import uk.ac.sanger.sccp.stan.service.BioRiskService;
-import uk.ac.sanger.sccp.stan.service.Validator;
+import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.UCMap;
@@ -524,16 +523,28 @@ public class BlockRegisterValidationImp implements RegisterValidation {
             if (lt == null) {
                 continue;
             }
+            int maxRow = 1, maxColumn = 1;
+            boolean customSize = LabwareService.customSizeLabwareType(lt.getName());
             for (BlockRegisterSample brs : brl.getSamples()) {
                 if (brs.getAddresses().isEmpty()) {
                     missing = true;
                 } else {
                     for (Address ad : brs.getAddresses()) {
-                        if (lt.indexOf(ad) < 0) {
+                        if (customSize) {
+                            if (ad.getRow() > maxRow) {
+                                maxRow = ad.getRow();
+                            }
+                            if (ad.getColumn() > maxColumn) {
+                                maxColumn = ad.getColumn();
+                            }
+                        } else if (lt.indexOf(ad) < 0) {
                             lwTypeInvalidAddresses.computeIfAbsent(lt, k -> new HashSet<>()).add(ad);
                         }
                     }
                 }
+            }
+            if (customSize && maxRow * maxColumn > LabwareService.MAX_OVERRIDE_SLOTS) {
+                problems.add(String.format("Required layout (%s rows, %s columns) is too big.", maxRow, maxColumn));
             }
         }
         if (missing) {
