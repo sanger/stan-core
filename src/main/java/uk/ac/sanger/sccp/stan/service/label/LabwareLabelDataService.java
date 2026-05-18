@@ -187,7 +187,7 @@ public class LabwareLabelDataService {
         }
 
         List<LabelContent> content = new ArrayList<>(numTissues);
-        final int numCols = labware.getLabwareType().getNumColumns();
+        final int numCols = labware.getNumColumns();
         for (int i = 0; i < numTissues; ++i) {
             Tissue tissue = tissues[i];
             if (tissue==null) {
@@ -216,11 +216,10 @@ public class LabwareLabelDataService {
         // 2. Load simple contents into a map.
         // 3. Check contents are suitable.
         // 4. Convert to correct number of label contents.
-        LabwareType lt = labware.getLabwareType();
-        if (lt.getNumRows()!=4) {
+        if (labware.getNumRows()!=4) {
             throw new IllegalArgumentException("The specified label template is only suitable for labware with 4 rows.");
         }
-        int numCols = lt.getNumColumns();
+        int numCols = labware.getNumColumns();
 
         Map<Address, List<SimpleContent>> map = addressToSimpleContent(labware);
         if (map.isEmpty()) {
@@ -273,7 +272,7 @@ public class LabwareLabelDataService {
      * @exception IllegalArgumentException if the layout is not consistent with a row-based layout
      */
     public Tissue[] checkRowBasedLayout(Labware labware, Map<Address, List<SimpleContent>> map) {
-        Tissue[] tissues = new Tissue[labware.getLabwareType().getNumRows()];
+        Tissue[] tissues = new Tissue[labware.getNumRows()];
         for (var entry : map.entrySet()) {
             int index = entry.getKey().getRow() - 1;
             for (SimpleContent sc : entry.getValue()) {
@@ -300,7 +299,7 @@ public class LabwareLabelDataService {
      */
     public Tissue[] checkDividedLayout(Labware labware, Map<Address, List<SimpleContent>> map) {
         Tissue[] tissues = new Tissue[2];
-        int regionRows = labware.getLabwareType().getNumRows() / 2;
+        int regionRows = labware.getNumRows() / 2;
         for (var entry : map.entrySet()) {
             int row = entry.getKey().getRow();
             int tissueIndex = (row-1) / regionRows;

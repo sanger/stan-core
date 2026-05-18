@@ -4,6 +4,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.request.TissueBlockRequest;
+import uk.ac.sanger.sccp.stan.request.TissueBlockRequest.TissueBlockLabware;
 import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 
@@ -79,9 +80,10 @@ public class BlockMakerImp implements BlockMaker {
     public List<Labware> createLabware() {
         List<Labware> labware = new ArrayList<>(lwData.size());
         for (BlockLabwareData lwd : lwData) {
-            String prebarcode = lwd.getRequestLabware().getPreBarcode();
+            TissueBlockLabware rlw = lwd.getRequestLabware();
+            String prebarcode = rlw.getPreBarcode();
             // Uses the prebarcode for the labware external barcode and the de facto barcode
-            Labware lw = lwService.create(lwd.getLwType(), prebarcode, prebarcode);
+            Labware lw = lwService.create(lwd.getLwType(), rlw.getNumRows(), rlw.getNumColumns(), prebarcode, prebarcode);
             labware.add(lw);
             lwd.setLabware(lw);
         }

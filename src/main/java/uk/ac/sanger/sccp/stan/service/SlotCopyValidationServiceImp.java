@@ -433,6 +433,7 @@ public class SlotCopyValidationServiceImp implements SlotCopyValidationService {
             Set<SlotCopyContent> contentSet = new HashSet<>(scd.getContents().size());
             Labware destLw = existingDestinations.get(scd.getBarcode());
             LabwareType lt = destLw != null ? destLw.getLabwareType() : lwTypes.get(scd.getLabwareType());
+            Layout layout = (destLw != null ? destLw.layout() : lt != null ? lt.layout() : null);
             for (var content : scd.getContents()) {
                 Address destAddress = content.getDestinationAddress();
                 if (!contentSet.add(content)) {
@@ -443,19 +444,20 @@ public class SlotCopyValidationServiceImp implements SlotCopyValidationService {
                     problems.add("No destination address specified.");
                 } else if (destLw != null) {
                     Slot slot = destLw.optSlot(destAddress).orElse(null);
-                    if (slot==null) {
+                    if (slot == null) {
                         problems.add(String.format("No such slot %s in labware %s.", destAddress, destLw.getBarcode()));
                     } else if (!slot.getSamples().isEmpty()) {
                         problems.add(String.format("Slot %s in labware %s is not empty.", destAddress, destLw.getBarcode()));
                     }
-                } else if (lt != null && lt.indexOf(destAddress) < 0) {
+                } else if (layout != null && layout.indexOf(destAddress) < 0) {
+                    // NB if destLw is null and layout is non-null, then lt must be non-null
                     problems.add("Invalid address " + destAddress + " for labware type " + lt.getName() + ".");
                 }
                 Address sourceAddress = content.getSourceAddress();
                 Labware lw = sourceLabware.get(content.getSourceBarcode());
                 if (sourceAddress == null) {
                     problems.add("No source address specified.");
-                } else if (lw != null && lw.getLabwareType().indexOf(sourceAddress) < 0) {
+                } else if (lw != null && lw.layout().indexOf(sourceAddress) < 0) {
                     problems.add("Invalid address " + sourceAddress + " for source labware " + lw.getBarcode() + ".");
                 } else if (lw != null && lw.getSlot(sourceAddress).getSamples().isEmpty()) {
                     problems.add(String.format("Slot %s in labware %s is empty.", sourceAddress, lw.getBarcode()));

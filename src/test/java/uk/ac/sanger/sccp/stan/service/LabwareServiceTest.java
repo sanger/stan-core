@@ -3,8 +3,8 @@ package uk.ac.sanger.sccp.stan.service;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.*;
+import org.mockito.ArgumentCaptor;
 import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
@@ -22,6 +22,7 @@ import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.stan.Matchers.genericCaptor;
 
 /**
  * Tests for {@link LabwareService}
@@ -178,6 +179,66 @@ public class LabwareServiceTest {
     }
 
     @Test
+    void testCreate_overrideLayout() {
+        String barcode = "STAN-ABC";
+        when(mockBarcodeIntRepo.createStanBarcode()).thenReturn(barcode);
+        LabwareType lt = EntityFactory.makeLabwareType(1, 2);
+        Labware unsaved = new Labware(null, null, lt, null);
+        unsaved.setNumRowsOverride(3);
+        unsaved.setNumColumnsOverride(4);
+
+        Labware lw = labwareService.create(unsaved);
+        verify(labwareService).sanitiseLayout(unsaved);
+        assertEquals(3, lw.getNumRows());
+        assertEquals(4, lw.getNumColumns());
+        verify(mockLabwareRepo).save(unsaved);
+        ArgumentCaptor<List<Slot>> slotsCaptor = genericCaptor(List.class);
+        verify(mockSlotRepo).saveAll(slotsCaptor.capture());
+        List<Slot> savedSlots = slotsCaptor.getValue();
+        Set<Address> addresses = new HashSet<>(12);
+        for (Slot slot : savedSlots) {
+            assertEquals(lw.getId(), slot.getLabwareId());
+            final Address address = slot.getAddress();
+            assertNotNull(address);
+            assertThat(addresses).doesNotContain(address);
+            addresses.add(address);
+        }
+        Set<Address> expectedAddresses = Address.stream(3,4).collect(toSet());
+        assertEquals(expectedAddresses, addresses);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "4,5,4,5",
+            "4,,4,3",
+            ",5,2,5",
+            "2,3,2,3",
+            "2,,2,3",
+            ",3,2,3",
+            "20,21,,"
+    })
+    void testSanitiseLayout(Integer numRowsOverride, Integer numColumnsOverride, Integer expectedNumRows, Integer expectedNumColumns) {
+        LabwareType lt = EntityFactory.makeLabwareType(2, 3);
+        Labware lw = new Labware(null, null, lt, null);
+        lw.setNumRowsOverride(numRowsOverride);
+        lw.setNumColumnsOverride(numColumnsOverride);
+        if (expectedNumRows==null) {
+            assertThrows(IllegalArgumentException.class, () -> labwareService.sanitiseLayout(lw), "Specified labware layout is too big.");
+            return;
+        }
+        labwareService.sanitiseLayout(lw);
+        assertEquals(expectedNumRows, lw.getNumRows());
+        assertEquals(expectedNumColumns, lw.getNumColumns());
+        if (expectedNumRows==2 && expectedNumColumns==3) {
+            assertNull(lw.getNumRowsOverride());
+            assertNull(lw.getNumColumnsOverride());
+        } else {
+            assertEquals(expectedNumRows, lw.getNumRowsOverride());
+            assertEquals(expectedNumColumns, lw.getNumColumnsOverride());
+        }
+    }
+
+    @Test
     public void testFindBySample() {
         Sample sample1 = EntityFactory.getSample();
         Sample sample2 = new Sample(sample1.getId() + 1, "100", sample1.getTissue(), sample1.getBioState());
@@ -321,5 +382,24 @@ public class LabwareServiceTest {
         );
         verify(mockLabwareRepo).getByBarcode(lw.getBarcode());
         verify(mockBioRiskRepo).loadBioRisksForSampleIds(sampleIds);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "cassette,true",
+            "proviasette,true",
+            "tube,false",
+            ",false",
+    })
+    void testCustomSizeLabwareType(String name, boolean expected) {
+        assertEquals(expected, LabwareService.customSizeLabwareType(name));
+    }
+
+    @Test
+    void testRequiredLayout() {
+        Stream<Address> addressStream = Stream.of(new Address(1,1), new Address(2,3), new Address(4,1));
+        Layout layout = LabwareService.requiredLayout(addressStream);
+        assertEquals(4, layout.numRows());
+        assertEquals(3, layout.numColumns());
     }
 }

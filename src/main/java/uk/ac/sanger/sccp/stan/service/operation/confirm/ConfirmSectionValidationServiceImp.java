@@ -232,12 +232,12 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
                 .filter(planAction -> planAction.getDestination().getLabwareId().equals(lwId))
                 .map(planAction -> planAction.getDestination().getAddress())
                 .collect(toSet());
-        LabwareType lt = lw.getLabwareType();
+        Layout layout = lw.layout();
         for (AddressCommentId adcom : addressComments) {
             Address ad = adcom.getAddress();
             if (ad==null) {
                 addProblem(problems, "Comment specified with no address for labware %s.", lw.getBarcode());
-            } else if (lt.indexOf(ad) < 0) {
+            } else if (layout.indexOf(ad) < 0) {
                 addProblem(problems, "Invalid address %s in comments for labware %s.", ad, lw.getBarcode());
             } else if (!planAddresses.contains(ad)) {
                 addProblem(problems, "No planned action recorded for address %s in labware %s, specified in comments.",
@@ -338,7 +338,7 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
                                 Map<Address, Set<Integer>> plannedSampleIds, Map<Integer, Integer> sampleMaxSection,
                                 Map<Integer, Set<String>> sampleIdSections, SampleDescriber sampleDescriber) {
         boolean ok = true;
-        final LabwareType lt = lw.getLabwareType();
+        Layout layout = lw.layout();
         if (nullOrEmpty(con.getDestinationAddresses())) {
             addProblem(problems, "Section specified with no address.");
             ok = false;
@@ -348,7 +348,7 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
             if (ad==null) {
                 addProblem(problems, "Null given as destination address.");
                 ok = false;
-            } else if (lt.indexOf(ad) < 0) {
+            } else if (layout.indexOf(ad) < 0) {
                 addProblem(problems, "Invalid address %s in labware %s specified as destination.", ad, lw.getBarcode());
                 ok = false;
             } else if (!seenAddresses.add(ad)) {
@@ -365,7 +365,7 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
             addProblem(problems, "Sample id not specified for section.");
             ok = false;
         }
-        if (lt.isFetalWaste()) {
+        if (lw.getLabwareType().isFetalWaste()) {
             if (section != null) {
                 addProblem(problems, "Section number not expected for fetal waste.");
                 ok = false;

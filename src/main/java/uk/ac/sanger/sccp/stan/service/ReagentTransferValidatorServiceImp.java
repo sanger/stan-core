@@ -4,13 +4,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.Address;
-import uk.ac.sanger.sccp.stan.model.LabwareType;
+import uk.ac.sanger.sccp.stan.model.Layout;
 import uk.ac.sanger.sccp.stan.model.reagentplate.ReagentPlate;
 import uk.ac.sanger.sccp.stan.request.ReagentTransferRequest;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
 
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 import static uk.ac.sanger.sccp.utils.BasicUtils.pluralise;
 
 /**
@@ -29,8 +30,8 @@ public class ReagentTransferValidatorServiceImp implements ReagentTransferValida
 
     @Override
     public void validateTransfers(Collection<String> problems, Collection<ReagentTransferRequest.ReagentTransfer> transfers,
-                                  UCMap<ReagentPlate> reagentPlates, LabwareType lt) {
-        if (transfers==null || transfers.isEmpty()) {
+                                  UCMap<ReagentPlate> reagentPlates, Layout layout) {
+        if (nullOrEmpty(transfers)) {
             problems.add("No transfers specified.");
             return;
         }
@@ -67,10 +68,8 @@ public class ReagentTransferValidatorServiceImp implements ReagentTransferValida
             }
             if (dAddress==null) {
                 missingDestAddresses = true;
-            } else if (lt!=null) {
-                if (lt.indexOf(dAddress) < 0) {
-                    invalidDestSlots.add(dAddress);
-                }
+            } else if (layout!=null && layout.indexOf(dAddress) < 0) {
+                invalidDestSlots.add(dAddress);
             }
         }
 

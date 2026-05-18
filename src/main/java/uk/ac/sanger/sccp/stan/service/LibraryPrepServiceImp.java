@@ -108,7 +108,7 @@ public class LibraryPrepServiceImp implements LibraryPrepService {
         Work work;
         Labware destination;
         UCMap<ReagentPlate> reagentPlates;
-        LabwareType destLabwareType;
+        Layout destLayout;
         Set<String> barcodesToUnstore;
         List<SlotMeasurementRequest> sanitisedMeasurements;
 

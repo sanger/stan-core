@@ -136,6 +136,10 @@ public class LabwareType implements HasIntId, HasName, HasEnabled {
         return isXenium();
     }
 
+    public Layout layout() {
+        return new Layout(numRows, numColumns);
+    }
+
     /**
      * Returns the index of the specified address in this labware type's valid addresses.
      * Returns -1 if the address is not valid for this labware type
@@ -143,11 +147,7 @@ public class LabwareType implements HasIntId, HasName, HasEnabled {
      * @return the index found, or -1 if the address is not valid for this labware type
      */
     public int indexOf(Address address) {
-        if (address.getRow() < 1 || address.getColumn() < 1
-                || address.getRow() > numRows || address.getColumn() > numColumns) {
-            return -1;
-        }
-        return (address.getRow()-1) * numColumns + address.getColumn()-1;
+        return layout().indexOf(address);
     }
 
     @Override
