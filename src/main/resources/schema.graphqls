@@ -451,6 +451,8 @@ input OriginalSampleData {
     replicateNumber: String
     """The external identifier used to identify the tissue."""
     externalIdentifier: String
+    """The pot number used to distinguish pots in a request."""
+    potNumber: Int
     """The name of the type of labware containing the sample."""
     labwareType: String!
     """The solution used for the tissue."""
