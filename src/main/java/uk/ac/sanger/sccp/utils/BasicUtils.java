@@ -15,10 +15,8 @@ import static java.util.stream.Collectors.joining;
  * @author dr6
  */
 public class BasicUtils {
-    /**
-     * The pattern used in {@link #trimAndRequire} to identify runs of whitespace
-     */
-    private static final Pattern RUN_OF_WHITESPACE = Pattern.compile("\\s+");
+    /** The pattern used in {@link #trimAndRequire} to identify runs of whitespace */
+    public static final Pattern RUN_OF_WHITESPACE = Pattern.compile("\\s+");
 
     private BasicUtils() {}
 

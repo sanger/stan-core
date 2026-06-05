@@ -9,6 +9,7 @@ import java.util.Map;
 
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.joining;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 
 /**
  * Tool to combine details in history to concise strings
@@ -83,12 +84,14 @@ public abstract class Detailer<I> {
 
     /** Groups the items and adds details for each group to the history entry */
     public void addDetails(List<I> items) {
-        Map<?, List<I>> groups = items.stream()
-                .filter(this::doesApply)
-                .collect(groupingBy(this::groupKey));
-        for (List<I> group : groups.values()) {
-            final String detail = describeGroup(group);
-            entry.addDetail(detail);
+        if (!nullOrEmpty(items)) {
+            Map<?, List<I>> groups = items.stream()
+                    .filter(this::doesApply)
+                    .collect(groupingBy(this::groupKey));
+            for (List<I> group : groups.values()) {
+                final String detail = describeGroup(group);
+                entry.addDetail(detail);
+            }
         }
     }
 }

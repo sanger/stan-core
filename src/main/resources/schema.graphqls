@@ -2557,6 +2557,8 @@ type Mutation {
     updateWorkDnapStudy(workNumber: String!, ssStudyId: Int): Work!
     """Updates the treatment types of a work."""
     updateWorkTreatmentTypes(workNumber: String!, treatmentTypes: [String!]!): Work
+    """Update the Xenium study of a work."""
+    updateWorkXeniumStudy(workNumber: String!, ssStudyId: Int): Work!
     """Updates Stan's internal list of Dnap Studies, and returns the enabled ones."""
     updateDnapStudies: [DnapStudy!]!
     """Add a new tissue type."""
@@ -2647,6 +2649,8 @@ type Mutation {
     store(store: [StoreInput!]!, locationBarcode: String!): Location!
     """Remove a specified item from storage."""
     unstoreBarcode(barcode: String!): UnstoredItem
+    """Remove specified items from storage."""
+    unstoreBarcodes(barcodes: [String!]!): Int!
     """Empty a specified location of its stored items."""
     empty(locationBarcode: String!): UnstoreResult!
     """Transfer labware from one storage location to another."""

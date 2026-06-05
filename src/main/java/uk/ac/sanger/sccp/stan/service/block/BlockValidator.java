@@ -21,10 +21,10 @@ public interface BlockValidator {
     /** Gets the work (if any) indicated in the request. */
     Work getWork();
 
-    /** Gets the appropriate bio state for the request. */
-    BioState getBioState();
+    /** Gets the appropriate bio state for the samples created in the request. */
+    BioState getNewBioState();
 
-    /** Gets the appropriate medium for the request. */
+    /** Gets the appropriate medium for the samples created in the request. */
     Medium getMedium();
 
     /** Gets the appropriate operation type for the request. */

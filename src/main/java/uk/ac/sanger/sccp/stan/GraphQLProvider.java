@@ -218,6 +218,7 @@ public class GraphQLProvider {
                         .dataFetcher("updateWorkOmeroProject", transact(graphQLMutation.updateWorkOmeroProject()))
                         .dataFetcher("updateWorkDnapStudy", transact(graphQLMutation.updateWorkDnapStudy()))
                         .dataFetcher("updateWorkTreatmentTypes", transact(graphQLMutation.updateWorkTreatmentTypes()))
+                        .dataFetcher("updateWorkXeniumStudy", transact(graphQLMutation.updateWorkXeniumStudy()))
                         .dataFetcher("updateDnapStudies", graphQLMutation.updateDnapStudies()) // transacted internally
                         .dataFetcher("addTissueType", transact(graphQLMutation.addTissueType()))
                         .dataFetcher("addSpatialLocations", transact(graphQLMutation.addSpatialLocations()))
@@ -262,6 +263,7 @@ public class GraphQLProvider {
                         .dataFetcher("store", graphQLStore.store())
                         .dataFetcher("storeBarcode", graphQLStore.storeBarcode())
                         .dataFetcher("unstoreBarcode", graphQLStore.unstoreBarcode())
+                        .dataFetcher("unstoreBarcodes", graphQLStore.unstoreBarcodes())
                         .dataFetcher("empty", graphQLStore.empty())
                         .dataFetcher("transfer", graphQLStore.transfer())
                         .dataFetcher("setLocationCustomName", graphQLStore.setLocationCustomName())

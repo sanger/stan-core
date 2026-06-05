@@ -702,6 +702,17 @@ public class GraphQLMutation extends BaseGraphQLResource {
         };
     }
 
+    public DataFetcher<Work> updateWorkXeniumStudy() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.enduser);
+            String workNumber = dfe.getArgument("workNumber");
+            Integer ssStudyId = dfe.getArgument("ssStudyId");
+            logRequest("Update work xenium study", user,
+                    String.format("Work number: %s, ssStudyId: %s", workNumber, ssStudyId));
+            return workService.updateWorkXeniumStudy(user, workNumber, ssStudyId);
+        };
+    }
+
     public DataFetcher<List<DnapStudy>> updateDnapStudies() {
         return dfe -> {
             User user = checkUser(dfe, User.Role.admin);

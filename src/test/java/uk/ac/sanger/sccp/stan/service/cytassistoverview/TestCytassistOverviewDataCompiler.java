@@ -636,7 +636,8 @@ class TestCytassistOverviewDataCompiler {
         List<Measurement> measurements = List.of(
                 new Measurement(101, "cDNA concentration", "50", futureSamples[0].getId(), 1, futureSlots.get(0).getId()),
                 new Measurement(102, "Library concentration", "60", futureSamples[1].getId(), 2, futureSlots.get(1).getId()),
-                new Measurement(103, "Average size", "15", futureSamples[0].getId(), 1, futureSlots.get(0).getId())
+                new Measurement(103, "Average size", "15", futureSamples[0].getId(), 1, futureSlots.get(0).getId()),
+                new Measurement(104, "Main peak size", "22", futureSamples[0].getId(), 1, futureSlots.get(0).getId())
         );
         Comment com = new Comment(1, "10-20", "size range");
         OperationComment opcom = new OperationComment(21, com, ops.getFirst().getId(), futureSamples[0].getId(), futureSlots.getFirst().getId(), com.getId());
@@ -660,6 +661,7 @@ class TestCytassistOverviewDataCompiler {
         assertEquals("cDNA concentration", d.row.getVisiumConcentrationType());
         assertEquals("50", d.row.getVisiumConcentrationValue());
         assertEquals("15", d.row.getVisiumConcentrationAverageSize());
+        assertEquals("22", d.row.getVisiumConcentrationMainPeakSize());
         assertEquals("10-20", d.row.getVisiumConcentrationRange());
         assertEquals(ops.get(0).getPerformed(), d.row.getVisiumConcentrationPerformed());
         assertThat(d.users).containsExactly(user);
@@ -667,6 +669,7 @@ class TestCytassistOverviewDataCompiler {
         assertEquals("Library concentration", d.row.getVisiumConcentrationType());
         assertEquals("60", d.row.getVisiumConcentrationValue());
         assertNull(d.row.getVisiumConcentrationAverageSize());
+        assertNull(d.row.getVisiumConcentrationMainPeakSize());
         assertNull(d.row.getVisiumConcentrationRange());
         assertThat(d.users).containsExactly(user);
     }
