@@ -30,11 +30,13 @@ public interface WorkService {
      * @param ssStudyId the Sequencescape study id (may be null)
      * @param xeniumStudyId the study id for xenium (may be null)
      * @param facultyLead the name of the faculty lead (may be null)
+     * @param treatmentTypeNames names of treatment types (may be null)
      * @return the new work
      */
     Work createWork(User user, String prefix, String workTypeName, String workRequesterName, String projectName,
                     String programName, String costCode, Integer numBlocks, Integer numSlides,
-                    Integer numOriginalSamples, String omeroProjectName, Integer ssStudyId, Integer xeniumStudyId, String facultyLead);
+                    Integer numOriginalSamples, String omeroProjectName, Integer ssStudyId, Integer xeniumStudyId,
+                    String facultyLead, Collection<String> treatmentTypeNames);
 
     /**
      * Updates the status of the work. Records a work event for the change.
@@ -111,6 +113,15 @@ public interface WorkService {
      * @return the updated work
      */
     Work updateWorkXeniumStudy(User user, String workNumber, Integer ssStudyId);
+
+    /**
+     * Updates the treatment types of an existing work.
+     * @param user the user responsible
+     * @param workNumber the work number of the work
+     * @param treatmentTypes the names of the treatment types
+     * @return the updated work
+     */
+    Work updateWorkTreatmentTypes(User user, String workNumber, List<String> treatmentTypes);
 
     /**
      * Updates the existing work linking it to the given operations and samples in slots in the ops' actions

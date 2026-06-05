@@ -64,6 +64,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
     final WorkRepo workRepo;
     final ReagentPlateRepo reagentPlateRepo;
     final ProteinPanelRepo proteinPanelRepo;
+    final TreatmentTypeRepo treatmentTypeRepo;
     final LabelPrintService labelPrintService;
     final FindService findService;
     final CommentAdminService commentAdminService;
@@ -106,6 +107,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
                                SolutionRepo solutionRepo, OmeroProjectRepo omeroProjectRepo,
                                ProbePanelRepo probePanelRepo, WorkTypeRepo workTypeRepo, CellClassRepo cellClassRepo,
                                WorkRepo workRepo, ReagentPlateRepo reagentPlateRepo, ProteinPanelRepo proteinPanelRepo,
+                               TreatmentTypeRepo treatmentTypeRepo,
                                LabelPrintService labelPrintService, FindService findService,
                                CommentAdminService commentAdminService, EquipmentAdminService equipmentAdminService,
                                HistoryService historyService, WorkProgressService workProgressService, PlanService planService,
@@ -138,6 +140,7 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         this.probePanelRepo = probePanelRepo;
         this.reagentPlateRepo = reagentPlateRepo;
         this.proteinPanelRepo = proteinPanelRepo;
+        this.treatmentTypeRepo = treatmentTypeRepo;
         this.equipmentAdminService = equipmentAdminService;
         this.releaseDestinationRepo = releaseDestinationRepo;
         this.releaseRecipientRepo = releaseRecipientRepo;
@@ -212,6 +215,10 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
 
     public DataFetcher<Iterable<ProteinPanel>> getProteinPanels() {
         return allOrEnabled(proteinPanelRepo::findAll, proteinPanelRepo::findAllByEnabled);
+    }
+
+    public DataFetcher<Iterable<TreatmentType>> getTreatmentTypes() {
+        return allOrEnabled(treatmentTypeRepo::findAll, treatmentTypeRepo::findAllByEnabled);
     }
 
     public DataFetcher<Labware> findLabwareByBarcode() {

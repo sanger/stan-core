@@ -121,6 +121,7 @@ public class GraphQLProvider {
                         .dataFetcher("rois", graphQLDataFetchers.labwareRois())
                         .dataFetcher("runRois", graphQLDataFetchers.labwareRunRois())
                         .dataFetcher("proteinPanels", graphQLDataFetchers.getProteinPanels())
+                        .dataFetcher("treatmentTypes", graphQLDataFetchers.getTreatmentTypes())
 
                         .dataFetcher("users", graphQLDataFetchers.getUsers())
                         .dataFetcher("planData", graphQLDataFetchers.getPlanData())
@@ -205,6 +206,8 @@ public class GraphQLProvider {
                         .dataFetcher("setCellClassEnabled", transact(graphQLMutation.setCellClassEnabled()))
                         .dataFetcher("addProteinPanel", transact(graphQLMutation.addProteinPanel()))
                         .dataFetcher("setProteinPanelEnabled", transact(graphQLMutation.setProteinPanelEnabled()))
+                        .dataFetcher("addTreatmentType", transact(graphQLMutation.addTreatmentType()))
+                        .dataFetcher("setTreatmentTypeEnabled", transact(graphQLMutation.setTreatmentTypeEnabled()))
 
                         .dataFetcher("createWork", transact(graphQLMutation.createWork()))
                         .dataFetcher("updateWorkStatus", transact(graphQLMutation.updateWorkStatus()))
@@ -214,6 +217,7 @@ public class GraphQLProvider {
                         .dataFetcher("updateWorkPriority", transact(graphQLMutation.updateWorkPriority()))
                         .dataFetcher("updateWorkOmeroProject", transact(graphQLMutation.updateWorkOmeroProject()))
                         .dataFetcher("updateWorkDnapStudy", transact(graphQLMutation.updateWorkDnapStudy()))
+                        .dataFetcher("updateWorkTreatmentTypes", transact(graphQLMutation.updateWorkTreatmentTypes()))
                         .dataFetcher("updateWorkXeniumStudy", transact(graphQLMutation.updateWorkXeniumStudy()))
                         .dataFetcher("updateDnapStudies", graphQLMutation.updateDnapStudies()) // transacted internally
                         .dataFetcher("addTissueType", transact(graphQLMutation.addTissueType()))
