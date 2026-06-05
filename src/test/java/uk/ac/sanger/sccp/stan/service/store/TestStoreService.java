@@ -23,6 +23,7 @@ import javax.persistence.EntityNotFoundException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -32,6 +33,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.utils.BasicUtils.RUN_OF_WHITESPACE;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 /**
@@ -190,6 +192,36 @@ public class TestStoreService {
 
     static Stream<Arguments> unstoreBarcodeArgs() {
         return Stream.of(Arguments.of(false, false), Arguments.of(true, false), Arguments.of(true, true));
+    }
+
+    @Test
+    public void testUnstoreBarcodes() throws IOException {
+        assertEquals(0, service.unstoreBarcodes(user, List.of()));
+        List<String> barcodes = List.of("STAN-001", "Stan-002", "stan-002");
+        when(mockLabwareRepo.findBarcodesByBarcodeIn(any())).thenReturn(Set.of("stan-001", "stan-002"));
+        GraphQLResponse response = setupResponse("unstoreBarcodes", Map.of("numUnstored", 2));
+        assertEquals(2, service.unstoreBarcodes(user, barcodes));
+        verify(mockLabwareRepo).findBarcodesByBarcodeIn(barcodes);
+        Pattern expectedPattern = Pattern.compile("""
+                mutation \\{ unstoreBarcodes\\(barcodes: \\[
+                ("STAN-001","STAN-002"|"STAN-002","STAN-001")
+                ]\\) \\{ numUnstored }}
+                """, Pattern.COMMENTS);
+        verifyQueryMatches(expectedPattern, user.getUsername());
+        verify(service).checkErrors(response);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            ", Null or empty barcode supplied.",
+            "'', Null or empty barcode supplied.",
+            "STAN-404, Unknown labware barcode: [\"STAN-404\"]",
+    })
+    public void testUnstoreBarcodes_problems(String barcode, String expectedError) {
+        List<String> barcodes = Arrays.asList(barcode, "STAN-002");
+        when(mockLabwareRepo.findBarcodesByBarcodeIn(any())).thenReturn(Set.of("stan-002"));
+        assertThrows(RuntimeException.class, () -> service.unstoreBarcodes(user, barcodes), expectedError);
+        verifyNoInteractions(mockClient);
     }
 
     @Test
@@ -712,7 +744,17 @@ public class TestStoreService {
         ArgumentCaptor<String> queryCaptor = ArgumentCaptor.forClass(String.class);
         verify(mockClient).postQuery(queryCaptor.capture(), eq(username));
         String actual = queryCaptor.getValue();
-        assertEquals(expected.replaceAll("\\s+", ""), actual.replaceAll("\\s+",""));
+        assertEquals(removeSpaces(expected), removeSpaces(actual));
     }
 
+    private void verifyQueryMatches(Pattern pattern, String username) throws IOException {
+        ArgumentCaptor<String> queryCaptor = ArgumentCaptor.forClass(String.class);
+        verify(mockClient).postQuery(queryCaptor.capture(), eq(username));
+        String actual = removeSpaces(queryCaptor.getValue());
+        assertThat(actual).matches(pattern);
+    }
+
+    private static String removeSpaces(String string) {
+        return RUN_OF_WHITESPACE.matcher(string).replaceAll("");
+    }
 }
