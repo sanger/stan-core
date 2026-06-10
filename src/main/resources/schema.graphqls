@@ -1903,6 +1903,22 @@ input AddExternalIDRequest {
     labwareBarcode: String!
 }
 
+"""A link between a slot address and an external name."""
+input AddressExternalName {
+    """A slot address."""
+    address: Address!
+    """An external name."""
+    externalName: String!
+}
+
+"""Request to assign external names to tissues at particular positions in labware."""
+input AddExternalIdsRequest {
+    """The barcode of the labware containing the tissue"""
+    labwareBarcode: String!
+    """The slot addresses and new external names."""
+    addressNames: [AddressExternalName!]!
+}
+
 """A request to perform solution transfer."""
 input SolutionTransferRequest {
     """The work number for the operations."""
@@ -2606,6 +2622,8 @@ type Mutation {
     performParaffinProcessing(request: ParaffinProcessingRequest!): OperationResult!
     """Record an operation adding a external ID to a sample."""
     addExternalID(request: AddExternalIDRequest!): OperationResult!
+    """Record an op adding external names to tissues in a particular piece of labware."""
+    addExternalIds(request: AddExternalIdsRequest!): OperationResult!
     """Record an operation in-place with comments on slots."""
     recordOpWithSlotComments(request: OpWithSlotCommentsRequest!): OperationResult!
     """Record an operation involving probe panels."""

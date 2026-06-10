@@ -877,6 +877,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
         };
     }
 
+    public DataFetcher<OperationResult> addExternalIds() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            AddExternalIdsRequest request = arg(dfe, "request", AddExternalIdsRequest.class);
+            logRequest("addExternalIds", user, request);
+            return sampleProcessingService.addExternalIds(user, request);
+        };
+    }
+
     public DataFetcher<OperationResult> performSolutionTransfer() {
         return dfe -> {
             User user = checkUser(dfe, User.Role.normal);

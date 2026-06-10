@@ -239,6 +239,7 @@ public class GraphQLProvider {
                         .dataFetcher("performPotProcessing", graphQLMutation.performPotProcessing()) // internal transaction
                         .dataFetcher("recordSampleProcessingComments", transact(graphQLMutation.addSampleProcessingComments()))
                         .dataFetcher("addExternalID", transact(graphQLMutation.addExternalID()))
+                        .dataFetcher("addExternalIds", transact(graphQLMutation.addExternalIds()))
                         .dataFetcher("performParaffinProcessing", transact(graphQLMutation.performParaffinProcessing()))
                         .dataFetcher("performSolutionTransfer", transact(graphQLMutation.performSolutionTransfer()))
                         .dataFetcher("recordOpWithSlotComments", transact(graphQLMutation.performOpWithSlotComments()))

@@ -14,6 +14,7 @@ import javax.transaction.Transactional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.assertNoErrors;
 import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGet;
 
 
@@ -32,7 +33,6 @@ public class TestAddExternalIDMutation {
     public void testAddExternalID() throws Exception {
         tester.setUser(entityCreator.createUser("user1"));
 
-        // Create the intial labware with sample
         entityCreator.createOpType("Add external ID", null,OperationTypeFlag.IN_PLACE);
         Donor donor = entityCreator.createDonor("Donor1");
         Tissue tissue = entityCreator.createTissue(donor, "", "1");
@@ -42,9 +42,34 @@ public class TestAddExternalIDMutation {
 
         String mutation = tester.readGraphQL("addexternalid.graphql");
         Object result = tester.post(mutation);
-
+        assertNoErrors(result);
         Integer opId = chainGet(result, "data", "addExternalID", "operations", 0, "id");
         assertNotNull(opId);
         assertEquals("ExternalName", tissue.getExternalName());
+    }
+
+
+    @Test
+    @Transactional
+    public void testAddExternalIDs() throws Exception {
+        tester.setUser(entityCreator.createUser("user1"));
+
+        entityCreator.createOpType("Add external ID", null,OperationTypeFlag.IN_PLACE);
+        Donor donor = entityCreator.createDonor("Donor1");
+        Tissue tissue = entityCreator.createTissue(donor, "", "1");
+        Tissue tissue2 = entityCreator.createTissue(donor, "", "2");
+        Sample sample = entityCreator.createSample(tissue, 1, null);
+        Sample sample2 = entityCreator.createSample(tissue2, 1, null);
+        LabwareType lt = entityCreator.createLabwareType("LT",1, 2);
+        entityCreator.createLabware("BC1", lt, sample, sample2);
+
+        String mutation = tester.readGraphQL("addexternalids.graphql");
+        Object result = tester.post(mutation);
+        assertNoErrors(result);
+
+        Integer opId = chainGet(result, "data", "addExternalIds", "operations", 0, "id");
+        assertNotNull(opId);
+        assertEquals("NAME1", tissue.getExternalName());
+        assertEquals("NAME2", tissue2.getExternalName());
     }
 }
