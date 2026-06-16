@@ -13,6 +13,7 @@ import uk.ac.sanger.sccp.stan.service.register.OriginalSampleRegisterServiceImp.
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService.WorkOp;
 import uk.ac.sanger.sccp.utils.UCMap;
+import uk.ac.sanger.sccp.utils.Zip;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -21,8 +22,7 @@ import java.util.function.Function;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toSet;
+import static java.util.stream.Collectors.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -116,7 +116,7 @@ public class TestOriginalSampleRegisterService {
     @Test
     public void testRegister_validationErrors() {
         OriginalSampleData data = new OriginalSampleData("DONOR1", LifeStage.adult, "HMDMC1", "TISSUE1", 5,
-                "R1", "EXT1", "LT1", "SOL1", "FIX1", "SPEC1", LocalDate.of(2022,1,1), "TODO", "RISK1", "Tissue");
+                "R1", "EXT1", null, "LT1", "SOL1", "FIX1", "SPEC1", LocalDate.of(2022,1,1), "TODO", "RISK1", "Tissue");
         OriginalSampleRegisterRequest request = new OriginalSampleRegisterRequest(List.of(data));
 
         doAnswer(invocation -> {
@@ -156,7 +156,7 @@ public class TestOriginalSampleRegisterService {
                 "Solution wrong: SOL1",
                 "Labware type wrong: LT1");
 
-        verifyValidationMethods(request);
+        verifyValidationMethods(request, null);
 
         verify(service, never()).createNewDonors(any());
         verify(service, never()).createNewSamples(any());
@@ -171,7 +171,7 @@ public class TestOriginalSampleRegisterService {
     public void testRegister_valid() {
         User user = EntityFactory.getUser();
         OriginalSampleData data = new OriginalSampleData("DONOR1", LifeStage.adult, "HMDMC1", "TISSUE1", 5,
-                "R1", "EXT1", "LT1", "SOL1", "FIX1", "SPEC1", LocalDate.of(2022,1,1), "TODO", "risk1", "Tissue");
+                "R1", "EXT1", null, "LT1", "SOL1", "FIX1", "SPEC1", LocalDate.of(2022,1,1), "TODO", "risk1", "Tissue");
         OriginalSampleRegisterRequest request = new OriginalSampleRegisterRequest(List.of(data));
         doNothing().when(service).checkFormat(any(), any(), any(), any(), anyBoolean(), any());
         doNothing().when(service).checkHmdmcsForSpecies(any(), any());
@@ -192,23 +192,25 @@ public class TestOriginalSampleRegisterService {
         doNothing().when(service).recordRegistrations(any(), any());
         doNothing().when(service).recordSolutions(any());
         doNothing().when(service).linkBioRisks(any());
+        List<List<DataStruct>> groups = List.of(List.of(new DataStruct(data)));
+        doReturn(groups).when(service).compilePotGroups(any());
         final RegisterResult expectedResult = new RegisterResult(List.of(EntityFactory.getTube()));
         doReturn(expectedResult).when(service).makeResult(any());
 
         assertSame(expectedResult, service.register(user, request));
-        var datas = verifyValidationMethods(request);
+        var datas = verifyValidationMethods(request, groups);
 
         verify(service).createNewDonors(same(datas));
         verify(service).createNewSamples(same(datas));
-        verify(service).createNewLabware(same(datas));
-        verify(service).recordRegistrations(same(user), same(datas));
-        verify(service).recordSolutions(same(datas));
-        verify(service).linkWork(same(datas));
-        verify(service).linkBioRisks(same(datas));
-        verify(service).makeResult(same(datas));
+        verify(service).createNewLabware(same(groups));
+        verify(service).recordRegistrations(same(user), same(groups));
+        verify(service).recordSolutions(same(groups));
+        verify(service).linkWork(same(groups));
+        verify(service).linkBioRisks(same(groups));
+        verify(service).makeResult(same(groups));
     }
 
-    private List<DataStruct> verifyValidationMethods(OriginalSampleRegisterRequest request) {
+    private List<DataStruct> verifyValidationMethods(OriginalSampleRegisterRequest request, List<List<DataStruct>> groups) {
         ArgumentCaptor<Collection<String>> problemsArgCaptor = genericCaptor(Collection.class);
         verify(service).checkFormat(problemsArgCaptor.capture(), same(request), eq("Donor identifier"), any(), eq(true), same(mockDonorNameValidator));
         Collection<String> problems = problemsArgCaptor.getValue();
@@ -239,6 +241,10 @@ public class TestOriginalSampleRegisterService {
 
         verify(service).checkTissueTypesAndSpatialLocations(same(problems), same(datas));
         verify(service).checkBioRisks(same(problems), same(datas));
+        if (groups != null) {
+            verify(service).compilePotGroups(same(datas));
+            verify(service).checkPotGroups(same(problems), same(groups));
+        }
         return datas;
     }
 
@@ -659,6 +665,84 @@ public class TestOriginalSampleRegisterService {
         assertThat(datas.stream().map(data -> data.bioRisk)).containsExactly(risk1, null, risk2);
     }
 
+    @ParameterizedTest
+    @CsvSource(value = {
+            "-,",
+            "2,",
+            "3 3 4,",
+            "2 -,Pot number missing from sample info.",
+            "- -,Pot number missing from sample info.",
+    })
+    void testCheckPotNumbers(String potNumberArgs, String expectedProblem) {
+        String[] potNumbersStrings = potNumberArgs.split("\\s+");
+        Integer[] potNumbers = Arrays.stream(potNumbersStrings)
+                .map(s -> s.equals("-") ? null : Integer.valueOf(s))
+                .toArray(Integer[]::new);
+        List<OriginalSampleData> osds = Arrays.stream(potNumbers).map(p -> {
+            OriginalSampleData os = new OriginalSampleData();
+            os.setPotNumber(p);
+            return os;
+        }).toList();
+        List<String> problems = new ArrayList<>(expectedProblem==null ? 0 : 1);
+        service.checkPotNumbers(problems, new OriginalSampleRegisterRequest(osds));
+        assertProblem(problems, expectedProblem);
+    }
+
+    @Test
+    void testCompilePotGroups() {
+        List<DataStruct> datas = IntStream.range(0,3)
+                .mapToObj(i -> new DataStruct(new OriginalSampleData()))
+                .toList();
+        datas.get(0).getOriginalSampleData().setPotNumber(1);
+        datas.get(1).getOriginalSampleData().setPotNumber(1);
+        datas.get(2).getOriginalSampleData().setPotNumber(2);
+        List<List<DataStruct>> groups = service.compilePotGroups(datas);
+        assertThat(groups).containsExactly(List.of(datas.get(0), datas.get(1)), List.of(datas.get(2)));
+    }
+
+    @ParameterizedTest
+    @MethodSource("checkPotGroupsArgs")
+    void testCheckPotGroups(List<List<DataStruct>> groups, List<String> expectedProblems) {
+        List<String> problems = new ArrayList<>();
+        service.checkPotGroups(problems, groups);
+        assertThat(problems).containsExactlyInAnyOrderElementsOf(expectedProblems);
+    }
+
+    static Stream<Arguments> checkPotGroupsArgs() {
+        Solution[] sols = IntStream.of(1,2).mapToObj(i -> new Solution(i, "sol"+i)).toArray(Solution[]::new);
+        LabwareType[] lts = {EntityFactory.getTubeType(), EntityFactory.makeLabwareType(1,1)};
+        Work[] works = EntityFactory.makeWorks("SGP1", "SGP2");
+        List<DataStruct> smallGroup = List.of(new DataStruct(new OriginalSampleData()));
+        List<DataStruct> goodGroup = List.of(new DataStruct(new OriginalSampleData()), new DataStruct(new OriginalSampleData()));
+        List<DataStruct> ltGroup = List.of(new DataStruct(new OriginalSampleData()), new DataStruct(new OriginalSampleData()));
+        List<DataStruct> solGroup = List.of(new DataStruct(new OriginalSampleData()), new DataStruct(new OriginalSampleData()));
+        List<DataStruct> workGroup = List.of(new DataStruct(new OriginalSampleData()), new DataStruct(new OriginalSampleData()));
+        Zip.of(Stream.of(smallGroup, goodGroup, ltGroup, solGroup, workGroup),
+                Stream.of(1, 2, 3, 4, 5)).forEach((group, potNumber) -> {
+            for (DataStruct data : group) {
+                data.solution = sols[0];
+                data.labwareType = lts[0];
+                data.work = works[0];
+                data.getOriginalSampleData().setPotNumber(potNumber);
+            }
+        });
+        ltGroup.get(1).labwareType = lts[1];
+        solGroup.get(1).solution = sols[1];
+        workGroup.get(1).work = works[1];
+        String ltError = "Inconsistent labware type specified for pot 3.";
+        String solError = "Inconsistent solution specified for pot 4.";
+        String workError = "Inconsistent work specified for pot 5.";
+
+        return Arrays.stream(new Object[][] {
+                {List.of(smallGroup, goodGroup), List.of()},
+                {List.of(smallGroup, ltGroup), List.of(ltError)},
+                {List.of(smallGroup, solGroup), List.of(solError)},
+                {List.of(smallGroup, workGroup), List.of(workError)},
+                {List.of(smallGroup, goodGroup, ltGroup, solGroup, workGroup),
+                        List.of(ltError, solError, workError)},
+        }).map(Arguments::of);
+    }
+
     @Test
     public void testLoadDonors_none() {
         List<DataStruct> datas = Stream.of(osdWithDonor(""), osdWithDonor(null))
@@ -713,13 +797,13 @@ public class TestOriginalSampleRegisterService {
         service.createNewDonors(datas);
         assertThat(createdDonors).hasSize(2);
         Donor d3 = createdDonors.getFirst();
-        assertEquals(d3.getDonorName(), "DONOR3");
-        assertSame(d3.getSpecies(), human);
-        assertSame(d3.getLifeStage(), LifeStage.fetal);
+        assertEquals("DONOR3", d3.getDonorName());
+        assertSame(human, d3.getSpecies());
+        assertSame(LifeStage.fetal, d3.getLifeStage());
         Donor d4 = createdDonors.get(1);
-        assertEquals(d4.getDonorName(), "DONOR4");
-        assertSame(d4.getSpecies(), banana);
-        assertSame(d4.getLifeStage(), LifeStage.adult);
+        assertEquals("DONOR4", d4.getDonorName());
+        assertSame(banana, d4.getSpecies());
+        assertSame(LifeStage.adult, d4.getLifeStage());
         assertThat(datas.stream().map(d -> d.donor)).containsExactly(existingDonors[0], existingDonors[1], d3, d4);
     }
 
@@ -733,25 +817,22 @@ public class TestOriginalSampleRegisterService {
 
     @Test
     public void testLinkBioRisks() {
-        Operation[] ops = IntStream.range(100,103)
-                .mapToObj(id -> {
-                    Operation op = new Operation();
-                    op.setId(id);
-                    return op;
-                }).toArray(Operation[]::new);
-        Sample[] samples = EntityFactory.makeSamples(ops.length);
+        Operation[] ops = IntStream.range(100,102)
+                .mapToObj(TestOriginalSampleRegisterService::opWithId).toArray(Operation[]::new);
+        Sample[] samples = EntityFactory.makeSamples(5);
         BioRisk risk1 = new BioRisk(201, "risk1");
         BioRisk risk2 = new BioRisk(202, "risk2");
-        List<DataStruct> datas = List.of(
-                dataForRisk(ops[0], samples[0], risk1),
-                dataForRisk(ops[1], samples[1], risk2),
-                dataForRisk(ops[2], samples[2], risk1)
+        List<List<DataStruct>> groups = List.of(
+                List.of(dataForRisk(ops[0], samples[0], risk1),
+                        dataForRisk(ops[0], samples[1], risk2),
+                        dataForRisk(ops[0], samples[2], risk2)),
+                List.of(dataForRisk(ops[1], samples[2], risk1))
         );
-        service.linkBioRisks(datas);
-        verify(mockBioRiskService, times(datas.size())).recordSampleBioRisks(any(), any());
-        verify(mockBioRiskService).recordSampleBioRisks(Map.of(samples[0].getId(), risk1), ops[0].getId());
-        verify(mockBioRiskService).recordSampleBioRisks(Map.of(samples[1].getId(), risk2), ops[1].getId());
-        verify(mockBioRiskService).recordSampleBioRisks(Map.of(samples[2].getId(), risk1), ops[2].getId());
+        service.linkBioRisks(groups);
+        verify(mockBioRiskService, times(ops.length)).recordSampleBioRisks(any(), any());
+        verify(mockBioRiskService).recordSampleBioRisks(
+                Map.of(samples[0].getId(), risk1, samples[1].getId(), risk2, samples[2].getId(), risk2), ops[0].getId());
+        verify(mockBioRiskService).recordSampleBioRisks(Map.of(samples[2].getId(), risk1), ops[1].getId());
     }
 
     private static DataStruct dataForRisk(Operation op, Sample sample, BioRisk risk) {
@@ -760,6 +841,12 @@ public class TestOriginalSampleRegisterService {
         data.sample = sample;
         data.bioRisk = risk;
         return data;
+    }
+
+    private static Operation opWithId(Integer id) {
+        Operation op = new Operation();
+        op.setId(id);
+        return op;
     }
 
     @Test
@@ -854,11 +941,7 @@ public class TestOriginalSampleRegisterService {
                 .mapToObj(i -> EntityFactory.makeWork("SGP"+i))
                 .toArray(Work[]::new);
         Operation[] ops = IntStream.range(1,5)
-                .mapToObj(i -> {
-                    Operation op = new Operation();
-                    op.setId(i);
-                    return op;
-                })
+                .mapToObj(TestOriginalSampleRegisterService::opWithId)
                 .toArray(Operation[]::new);
         Work[] opWorks = {null, works[0], works[1], works[0], null};
         List<DataStruct> datas = IntStream.range(0, ops.length)
@@ -868,9 +951,12 @@ public class TestOriginalSampleRegisterService {
                     data.work = opWorks[i];
                     return data;
                 })
-                .collect(toList());
+                .toList();
+        List<List<DataStruct>> groups = datas.stream().map(List::of).collect(toCollection(ArrayList::new));
+        // make one of the groups have more than one data
+        groups.set(0, List.of(datas.getFirst(), new DataStruct(null)));
 
-        service.linkWork(datas);
+        service.linkWork(groups);
 
         ArgumentCaptor<Stream<WorkOp>> captor = streamCaptor();
         verify(mockWorkService).linkWorkOps(captor.capture());
@@ -883,53 +969,60 @@ public class TestOriginalSampleRegisterService {
 
     @Test
     public void testCreateNewLabware() {
-        DataStruct[] datas = IntStream.range(0,2)
+        Sample[] samples = EntityFactory.makeSamples(3);
+        DataStruct[] datas = IntStream.range(0,samples.length)
                 .mapToObj(i -> new DataStruct(new OriginalSampleData()))
                 .toArray(DataStruct[]::new);
-        Sample sam = EntityFactory.getSample();
-        datas[0].sample = sam;
-        datas[1].sample = new Sample(sam.getId()+1, null, sam.getTissue(), sam.getBioState());
-        datas[0].labwareType = EntityFactory.getTubeType();
-        datas[1].labwareType = EntityFactory.makeLabwareType(1,1);
-
-        Labware[] lws = Arrays.stream(datas)
-                .map(d -> {
-                    Labware lw = EntityFactory.makeEmptyLabware(d.labwareType);
-                    when(mockLabwareService.create(d.labwareType)).thenReturn(lw);
+        Zip.of(Arrays.stream(datas), Arrays.stream(samples)).forEach((data, sam) -> data.sample = sam);
+        datas[0].labwareType = datas[1].labwareType = EntityFactory.getTubeType();
+        datas[2].labwareType = EntityFactory.makeLabwareType(1,1);
+        List<List<DataStruct>> groups = List.of(List.of(datas[0], datas[1]), List.of(datas[2]));
+        Labware[] lws = Stream.of(datas[0].labwareType, datas[2].labwareType)
+                .map(lt -> {
+                    Labware lw = EntityFactory.makeEmptyLabware(lt);
+                    when(mockLabwareService.create(lt)).thenReturn(lw);
                     return lw;
                 })
                 .toArray(Labware[]::new);
-        service.createNewLabware(Arrays.asList(datas));
-        verify(mockLabwareService, times(2)).create(any(LabwareType.class));
-        for (int i = 0; i < datas.length; ++i) {
-            assertSame(lws[i], datas[i].labware);
+        service.createNewLabware(groups);
+        verify(mockLabwareService, times(groups.size())).create(any(LabwareType.class));
+        for (int i = 0; i < groups.size(); ++i) {
+            List<DataStruct> group = groups.get(i);
+            for (DataStruct data : group) {
+                assertSame(lws[i], data.labware);
+            }
             Slot slot = lws[i].getFirstSlot();
-            assertThat(slot.getSamples()).containsExactly(datas[i].sample);
+            if (i==0) {
+                assertThat(slot.getSamples()).containsExactlyInAnyOrder(samples[0], samples[1]);
+            } else {
+                assertThat(slot.getSamples()).containsExactly(samples[2]);
+            }
             verify(mockSlotRepo).save(slot);
         }
     }
 
     @Test
     public void testRecordRegistrations() {
-        List<Operation> ops = IntStream.range(0,2).mapToObj(i -> {
-            Operation op = new Operation();
-            op.setId(i);
-            return op;
-        }).toList();
+        List<Operation> ops = IntStream.range(0,2).mapToObj(TestOriginalSampleRegisterService::opWithId).toList();
         when(mockOpService.createOperationInPlace(any(), any(), any(), any(), any())).thenReturn(ops.get(0), ops.get(1));
         OperationType opType = EntityFactory.makeOperationType("Register", null, OperationTypeFlag.IN_PLACE);
         when(mockOpTypeRepo.getByName(opType.getName())).thenReturn(opType);
         User user = EntityFactory.getUser();
         List<DataStruct> datas = IntStream.range(0,2)
                 .mapToObj(i -> new DataStruct(new OriginalSampleData()))
-                .collect(toList());
+                .toList();
         for (int i = 0; i < datas.size(); ++i) {
             DataStruct data = datas.get(i);
             data.sample = new Sample(10+i, null, EntityFactory.getTissue(), EntityFactory.getBioState());
             data.labware = EntityFactory.makeLabware(EntityFactory.getTubeType(), data.sample);
         }
-        service.recordRegistrations(user, datas);
-        verify(mockOpService, times(datas.size())).createOperationInPlace(any(), any(), any(), any(), any());
+        DataStruct extraSample = new DataStruct(new OriginalSampleData());
+        extraSample.sample = new Sample(100, null, EntityFactory.getTissue(), EntityFactory.getBioState());
+        extraSample.labware = datas.getFirst().labware;
+        List<List<DataStruct>> groups = datas.stream().map(List::of).collect(toCollection(ArrayList::new));
+        groups.set(0, List.of(datas.getFirst(), extraSample));
+        service.recordRegistrations(user, groups);
+        verify(mockOpService, times(groups.size())).createOperationInPlace(any(), any(), any(), any(), any());
         for (int i = 0; i < datas.size(); ++i) {
             DataStruct data = datas.get(i);
             assertSame(ops.get(i), data.operation);
@@ -940,36 +1033,54 @@ public class TestOriginalSampleRegisterService {
     @Test
     public void testRecordSolutions() {
         Solution[] solutions = { new Solution(1, "sol1"), null };
-        Sample[] samples = IntStream.range(1, 3)
+        Sample[] samples = IntStream.range(1, 4)
                 .mapToObj(i -> new Sample(10+i, null, EntityFactory.getTissue(), EntityFactory.getBioState()))
                 .toArray(Sample[]::new);
-        Labware[] lws = Arrays.stream(samples)
-                .map(sam -> EntityFactory.makeLabware(EntityFactory.getTubeType(), sam))
-                .toArray(Labware[]::new);
+        Labware[] lws = Arrays.stream(new int[][] {
+                {0,1}, {2}
+        }).map(arr -> {
+            Sample[] lwSamples = Arrays.stream(arr).mapToObj(i -> samples[i]).toArray(Sample[]::new);
+            Labware lw = EntityFactory.makeLabware(EntityFactory.getTubeType(), lwSamples[0]);
+            for (int i = 1; i < lwSamples.length; ++i) {
+                lw.getFirstSlot().addSample(lwSamples[i]);
+            }
+            return lw;
+        }).toArray(Labware[]::new);
         Operation[] ops = IntStream.range(1, 3)
                 .mapToObj(i -> {
                     Operation op = new Operation();
                     op.setId(100+i);
                     Slot slot = lws[i-1].getFirstSlot();
-                    Sample sample = samples[i-1];
-                    op.setActions(List.of(new Action(1000+i, op.getId(), slot, slot, sample, sample)));
+                    List<Action> actions = slot.getSamples().stream()
+                            .map(sam -> new Action(1000+sam.getId(), op.getId(), slot, slot, sam, sam))
+                            .toList();
+                    op.setActions(actions);
                     return op;
                 })
                 .toArray(Operation[]::new);
-        List<DataStruct> datas = IntStream.range(0, solutions.length)
-                .mapToObj(i -> {
-                    DataStruct ds = new DataStruct(new OriginalSampleData());
-                    ds.solution = solutions[i];
-                    ds.sample = samples[i];
-                    ds.labware = lws[i];
-                    ds.operation = ops[i];
-                    return ds;
-                }).collect(toList());
+        List<DataStruct> group1 = List.of(
+                dataStructOf(solutions[0], samples[0], lws[0], ops[0]),
+                dataStructOf(solutions[0], samples[1], lws[0], ops[0])
+        );
+        List<DataStruct> group2 = List.of(
+                dataStructOf(null, samples[2], lws[1], ops[1])
+        );
+        List<List<DataStruct>> groups = List.of(group1, group2);
 
-        service.recordSolutions(datas);
+        service.recordSolutions(groups);
         verify(mockOpSolRepo).saveAll(Set.of(
-                new OperationSolution(ops[0].getId(), solutions[0].getId(), lws[0].getId(), samples[0].getId())
+                new OperationSolution(ops[0].getId(), solutions[0].getId(), lws[0].getId(), samples[0].getId()),
+                new OperationSolution(ops[0].getId(), solutions[0].getId(), lws[0].getId(), samples[1].getId())
         ));
+    }
+
+    static DataStruct dataStructOf(Solution sol, Sample sam, Labware lw, Operation op) {
+        DataStruct ds = new DataStruct(new OriginalSampleData());
+        ds.solution = sol;
+        ds.sample = sam;
+        ds.labware = lw;
+        ds.operation = op;
+        return ds;
     }
 
     @Test
@@ -985,8 +1096,10 @@ public class TestOriginalSampleRegisterService {
                     d.solution = sols[i];
                     d.labware = lws[i];
                     return d;
-                }).collect(toList());
-        RegisterResult result = service.makeResult(datas);
+                }).toList();
+        List<List<DataStruct>> groups = datas.stream().map(List::of).collect(toCollection(ArrayList::new));
+        groups.set(0, List.of(datas.getFirst(), new DataStruct(null)));
+        RegisterResult result = service.makeResult(groups);
         assertThat(result.getClashes()).isEmpty();
         assertThat(result.getLabware()).containsExactly(lws);
         assertThat(result.getLabwareSolutions()).containsExactlyInAnyOrder(

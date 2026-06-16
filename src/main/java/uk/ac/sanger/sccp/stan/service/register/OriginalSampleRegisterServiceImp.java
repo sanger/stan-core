@@ -15,6 +15,7 @@ import java.time.LocalDate;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.Objects.requireNonNull;
@@ -101,6 +102,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
             throw new ValidationException("The request validation failed.", problems);
         }
 
+        checkPotNumbers(problems, request);
         checkFormat(problems, request, "Donor identifier", OriginalSampleData::getDonorIdentifier, true, donorNameValidator);
         checkFormat(problems, request, "External identifier", OriginalSampleData::getExternalIdentifier, false, externalNameValidator);
         checkFormat(problems, request, "Life stage", OriginalSampleData::getLifeStage, false, null);
@@ -128,19 +130,29 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
         checkDonorFieldsAreConsistent(problems, datas);
         checkTissueTypesAndSpatialLocations(problems, datas);
         checkBioRisks(problems, datas);
-
+        List<List<DataStruct>> potGroups = null;
+        if (problems.isEmpty()) {
+            potGroups = compilePotGroups(datas);
+            checkPotGroups(problems, potGroups);
+        }
         if (!problems.isEmpty()) {
             throw new ValidationException("The request validation failed.", problems);
         }
-
         createNewDonors(datas);
         createNewSamples(datas);
-        createNewLabware(datas);
-        recordRegistrations(user, datas);
-        recordSolutions(datas);
-        linkWork(datas);
-        linkBioRisks(datas);
-        return makeResult(datas);
+        createNewLabware(potGroups);
+        recordRegistrations(user, potGroups);
+        recordSolutions(potGroups);
+        linkWork(potGroups);
+        linkBioRisks(potGroups);
+        return makeResult(potGroups);
+    }
+
+    void checkPotNumbers(Collection<String> problems, OriginalSampleRegisterRequest request) {
+        if (request.getSamples().size() > 1
+                && request.getSamples().stream().anyMatch(os -> os.getPotNumber() == null)) {
+            problems.add("Pot number missing from sample info.");
+        }
     }
 
     /**
@@ -275,7 +287,7 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
      * @param problems receptacle for problems
      * @param datas data for the register request
      */
-    public void checkHmdmcsForSpecies(Collection<String> problems, Collection<DataStruct> datas) {
+    void checkHmdmcsForSpecies(Collection<String> problems, Collection<DataStruct> datas) {
         boolean anyUnexpected = false;
         boolean anyMissing = false;
         for (var data : datas) {
@@ -427,6 +439,51 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
     }
 
     /**
+     * Groups the datastructs by pot number.
+     * @param datas the data for individual samples
+     * @return a list of groups of data, where each are linked to the same pot number
+     */
+    List<List<DataStruct>> compilePotGroups(List<DataStruct> datas) {
+        if (datas.size() <= 1) {
+            return List.of(datas);
+        }
+        Map<Integer, List<DataStruct>> potGroups = new HashMap<>();
+        for (DataStruct data : datas) {
+            potGroups.computeIfAbsent(data.getOriginalSampleData().getPotNumber(), k -> new ArrayList<>()).add(data);
+        }
+        final Comparator<Integer> nullableIntComparator = Comparator.nullsFirst(Comparator.naturalOrder());
+        return potGroups.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey(nullableIntComparator))
+                .map(Map.Entry::getValue)
+                .toList();
+    }
+
+    <T> void checkGroupConsistency(Collection<String> problems, List<DataStruct> group,
+                                 Function<DataStruct, T> getter, String desc) {
+        final DataStruct first = group.getFirst();
+        T firstValue = getter.apply(first);
+        if (group.stream().anyMatch(d -> !Objects.equals(getter.apply(d), firstValue))) {
+            Integer potNumber = first.getOriginalSampleData().getPotNumber();
+            problems.add(String.format("Inconsistent %s specified for pot %s.", desc, potNumber));
+        }
+    }
+
+    /**
+     * Checks that information is consistent across a pot group; in particular, they all indicate the same labware type
+     * @param problems receptacle for problems
+     * @param groups the pot groups
+     */
+    void checkPotGroups(Collection<String> problems, List<List<DataStruct>> groups) {
+        for (List<DataStruct> group : groups) {
+            if (group.size() > 1) {
+                checkGroupConsistency(problems, group, d -> d.labwareType, "labware type");
+                checkGroupConsistency(problems, group, d -> d.solution, "solution");
+                checkGroupConsistency(problems, group, d -> d.work, "work");
+            }
+        }
+    }
+
+    /**
      * Loads any existing donors matching given donor names.
      * The donors are placed in the appropriate field in the DataStructs.
      * @param datas the data under construction
@@ -493,11 +550,12 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
 
     /**
      * Records specified solutions against the given operations
-     * @param datas created data
+     * @param groups created data
      */
-    void recordSolutions(List<DataStruct> datas) {
+    void recordSolutions(List<List<DataStruct>> groups) {
         Collection<OperationSolution> opSols = new LinkedHashSet<>();
-        for (DataStruct data : datas) {
+        for (List<DataStruct> group : groups) {
+            DataStruct data = group.getFirst();
             if (data.solution!=null) {
                 Operation op = data.operation;
                 for (Action a : op.getActions()) {
@@ -513,10 +571,12 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
 
     /**
      * Link operations and labware to the indicated work.
-     * @param datas created data
+     * NB all entries in group must specify the same work (or no work).
+     * @param groups created data
      */
-    void linkWork(List<DataStruct> datas) {
-        Stream<WorkService.WorkOp> workOps = datas.stream()
+    void linkWork(List<List<DataStruct>> groups) {
+        Stream<WorkService.WorkOp> workOps = groups.stream()
+                .map(List::getFirst)
                 .filter(data -> data.work!=null && data.operation!=null)
                 .map(data -> new WorkService.WorkOp(data.work, data.operation));
         workService.linkWorkOps(workOps);
@@ -524,49 +584,58 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
 
     /**
      * Link samples and operations to the indicated bio risk
-     * @param datas created data
+     * @param groups created data
      */
-    void linkBioRisks(List<DataStruct> datas) {
-        for (DataStruct data : datas) {
-            bioRiskService.recordSampleBioRisks(Map.of(data.sample.getId(), data.bioRisk), data.operation.getId());
+    void linkBioRisks(List<List<DataStruct>> groups) {
+        for (List<DataStruct> group : groups) {
+            Map<Integer, BioRisk> sampleBioRisk = group.stream()
+                            .collect(Collectors.toMap(d -> d.sample.getId(), d -> d.bioRisk));
+            bioRiskService.recordSampleBioRisks(sampleBioRisk, group.getFirst().operation.getId());
         }
     }
 
     /**
      * Creates labware for each data element
-     * @param datas the data under construction
+     * @param groups the data under construction
      */
-    void createNewLabware(List<DataStruct> datas) {
-        for (DataStruct data : datas) {
-            final Labware lw = labwareService.create(data.labwareType);
+    void createNewLabware(List<List<DataStruct>> groups) {
+        for (List<DataStruct> group : groups) {
+            final Labware lw = labwareService.create(group.getFirst().labwareType);
             final Slot slot = lw.getFirstSlot();
-            slot.addSample(data.sample);
+            for (DataStruct data : group) {
+                slot.addSample(data.sample);
+                data.labware = lw;
+            }
             slotRepo.save(slot);
-            data.labware = lw;
         }
     }
 
     /**
      * Records registration ops using {@link OperationService}.
      * @param user user responsible for operations
-     * @param datas data under construction
+     * @param groups data under construction
      */
-    void recordRegistrations(User user, List<DataStruct> datas) {
+    void recordRegistrations(User user, List<List<DataStruct>> groups) {
         OperationType opType = opTypeRepo.getByName("Register");
-        for (var data : datas) {
-            data.operation = opService.createOperationInPlace(opType, user, data.labware, null, null);
+        for (var group : groups) {
+            Labware lw = group.getFirst().labware;
+            Operation op = opService.createOperationInPlace(opType, user, lw, null, null);
+            for (DataStruct data : group) {
+                data.operation = op;
+            }
         }
     }
 
     /**
      * Creates a registration result from the given created data objects.
-     * @param datas created data objects
+     * @param groups created data objects
      * @return a result including the labware and solution names
      */
-    RegisterResult makeResult(List<DataStruct> datas) {
-        List<Labware> lwList = new ArrayList<>(datas.size());
-        List<LabwareSolutionName> lwSols = new ArrayList<>(datas.size());
-        for (DataStruct data : datas) {
+    RegisterResult makeResult(List<List<DataStruct>> groups) {
+        List<Labware> lwList = new ArrayList<>(groups.size());
+        List<LabwareSolutionName> lwSols = new ArrayList<>(groups.size());
+        for (var group : groups) {
+            DataStruct data = group.getFirst();
             lwList.add(data.labware);
             if (data.solution!=null) {
                 lwSols.add(new LabwareSolutionName(data.labware.getBarcode(), data.solution.getName()));
@@ -621,10 +690,6 @@ public class OriginalSampleRegisterServiceImp implements IRegisterService<Origin
 
         void setSpecies(Species species) {
             this.species = species;
-        }
-
-        public void setWork(Work work) {
-            this.work = work;
         }
 
         void setBioRisk(BioRisk risk) {
