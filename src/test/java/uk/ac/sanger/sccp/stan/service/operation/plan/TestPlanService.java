@@ -323,11 +323,13 @@ public class TestPlanService {
                         new PlanRequestAction(A2, samples.get(0).getId(),
                                 new PlanRequestSource(sourceBarcodes.get(0), null), "1")
                 ));
+        Zip.enumerate(prl.getActions().stream()).forEach((i, a) -> a.setSectioningOrder(i+1));
 
         List<PlanAction> expectedActions = List.of(
                 new PlanAction(21, planId, sources.get(0).getFirstSlot(), destination.getFirstSlot(), samples.get(0), null, null, bioState),
                 new PlanAction(22, planId, sources.get(0).getFirstSlot(), destination.getSlot(A2), samples.get(0), null, "1", bioState)
         );
+        Zip.enumerate(expectedActions.stream()).forEach((i, a) -> a.setSectioningOrder(i+1));
 
         final int[] planActionIdCounter = {20};
         when(mockPlanActionRepo.saveAll(any())).then(invocation -> {

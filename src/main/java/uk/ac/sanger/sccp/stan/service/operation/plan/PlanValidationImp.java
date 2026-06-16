@@ -70,6 +70,7 @@ public class PlanValidationImp implements PlanValidation {
         Set<String> releasedBarcodes = new LinkedHashSet<>();
         Set<String> discardedBarcodes = new LinkedHashSet<>();
         Set<String> usedBarcodes = new LinkedHashSet<>();
+        Map<Integer, Set<Integer>> sampleIdSectioningOrders = new HashMap<>();
         for (PlanRequestAction action : (Iterable<PlanRequestAction>) (actions()::iterator)) {
             PlanRequestSource source = action.getSource();
             if (source==null || source.getBarcode()==null || source.getBarcode().isEmpty()) {
@@ -111,11 +112,19 @@ public class PlanValidationImp implements PlanValidation {
                 addProblem("Slot %s of labware %s does not contain a sample with ID %s.",
                         address, barcode, action.getSampleId());
             }
+            if (action.getSectioningOrder()==null) {
+                addProblem("Missing sectioning order.");
+            }
             if (opType!=null && opType.sourceMustBeBlock() && !slot.isBlock()) {
                 addProblem("Source %s,%s is not a block for operation %s.", action.getSource().getBarcode(), address,
                         opType.getName());
             } else if (opType!=null && !opType.canCreateSection() && sample!=null && sample.getSection()==null) {
                 addProblem("Operation %s cannot create a section of sample %s.", opType.getName(), sample.getId());
+            } else if (sample != null && action.getSectioningOrder() != null) {
+                Set<Integer> secOrders = sampleIdSectioningOrders.computeIfAbsent(sample.getId(), k -> new HashSet<>());
+                if (!secOrders.add(action.getSectioningOrder())) {
+                    addProblem("Repeated sectioning order: %s from sample %s.", action.getSectioningOrder(), sample.getId());
+                }
             }
         }
         if (!unfoundBarcodes.isEmpty()) {

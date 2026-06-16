@@ -30,6 +30,7 @@ public class PlanAction {
     private String sampleThickness;
     @ManyToOne
     private BioState newBioState;
+    private Integer sectioningOrder;
 
     public PlanAction() {}
 
@@ -113,6 +114,14 @@ public class PlanAction {
         this.newBioState = newBioState;
     }
 
+    public Integer getSectioningOrder() {
+        return this.sectioningOrder;
+    }
+
+    public void setSectioningOrder(Integer sectioningOrder) {
+        this.sectioningOrder = sectioningOrder;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -125,7 +134,9 @@ public class PlanAction {
                 && Objects.equals(this.sample, that.sample)
                 && Objects.equals(this.newSection, that.newSection)
                 && Objects.equals(this.sampleThickness, that.sampleThickness)
-                && Objects.equals(this.newBioState, that.newBioState));
+                && Objects.equals(this.newBioState, that.newBioState)
+                && Objects.equals(this.sectioningOrder, that.sectioningOrder)
+        );
     }
 
     @Override
@@ -144,6 +155,7 @@ public class PlanAction {
                 .addRepr("newSection", newSection)
                 .add("sampleThickness", sampleThickness)
                 .add("newBioState", newBioState)
+                .add("sectioningOrder", sectioningOrder)
                 .toString();
     }
 }
