@@ -99,36 +99,44 @@ public class ParaffinProcessingServiceImp implements ParaffinProcessingService {
         final Collection<String> valErrors = val.getErrors();
         problems.addAll(valErrors);
         if (valErrors.isEmpty()) {
-            checkLabwareIsBlockish(problems, labware);
+            checkLabwareIsSuitable(problems, labware);
         }
         return labware;
     }
 
     /**
-     * Check: labware must have one sample, which must be in the first slot only,
-     * and must not have a section number.
+     * Check: Slots must not contain more than one sample, and each sample must not have a section number.
      * @param problems receptacle for problems
      * @param labware the labware to check
      */
-    public void checkLabwareIsBlockish(Collection<String> problems, Collection<Labware> labware) {
-        Set<String> badBarcodes = new LinkedHashSet<>();
-        final Address A1 = new Address(1,1);
+    public void checkLabwareIsSuitable(Collection<String> problems, Collection<Labware> labware) {
+        Set<String> overFullLabware = new LinkedHashSet<>();
+        Set<String> sectionLabware = new LinkedHashSet<>();
         for (Labware lw : labware) {
+            boolean anyOverFull = false;
+            boolean anySection = false;
             for (Slot slot : lw.getSlots()) {
-                if (slot.getAddress().equals(A1)) {
-                    if (slot.getSamples().size()!=1 || slot.getSamples().getFirst().getSection()!=null) {
-                        badBarcodes.add(lw.getBarcode());
+                if (!slot.getSamples().isEmpty()) {
+                    if (slot.getSamples().size() > 1) {
+                        anyOverFull = true;
                     }
-                } else {
-                    if (!slot.getSamples().isEmpty()) {
-                        badBarcodes.add(lw.getBarcode());
+                    if (slot.getSamples().stream().anyMatch(sam -> sam.getSection() != null)) {
+                        anySection = true;
                     }
                 }
             }
+            if (anyOverFull) {
+                overFullLabware.add(lw.getBarcode());
+            }
+            if (anySection) {
+                sectionLabware.add(lw.getBarcode());
+            }
         }
-        if (!badBarcodes.isEmpty()) {
-            problems.add("Labware must contain one unsectioned sample, and it must be in the first slot. " +
-                    "The following labware cannot be used in this operation: "+badBarcodes);
+        if (!overFullLabware.isEmpty()) {
+            problems.add("Labware must not have more than one sample in the same slot: "+overFullLabware);
+        }
+        if (!sectionLabware.isEmpty()) {
+            problems.add("Labware must not contain sectioned samples: "+sectionLabware);
         }
     }
 
@@ -174,7 +182,9 @@ public class ParaffinProcessingServiceImp implements ParaffinProcessingService {
         if (tissuesToUpdate.isEmpty()) {
             return;
         }
+        // make sure each instance of tissue in this list is updated
         tissuesToUpdate.forEach(tis -> tis.setMedium(medium));
+        // but then pass them through a set in case there are dupes
         tissueRepo.saveAll(new HashSet<>(tissuesToUpdate));
     }
 
