@@ -89,7 +89,7 @@ public class TestPlanAndRecordSectionMutations {
         String[] expectedPlanDestAddresses = { "A1", "A2", "B2" };
         int[] expectedPlanSampleId = {blockSamples[0].getId(), blockSamples[0].getId(), blockSamples[1].getId()};
         assertEquals(expectedPlanDestAddresses.length, resultActions.size());
-
+        int[] expectedSectioningOrder = {1,1,2};
         for (int i = 0; i < expectedPlanDestAddresses.length; ++i) {
             Map<String, ?> resultAction = resultActions.get(i);
             assertEquals("A1", chainGet(resultAction, "source", "address"));
@@ -99,6 +99,7 @@ public class TestPlanAndRecordSectionMutations {
             if (i == expectedPlanDestAddresses.length - 1) {
                 assertEquals("2.5", resultAction.get("sampleThickness"));
             }
+            assertEquals(expectedSectioningOrder[i], resultAction.get("sectioningOrder"));
         }
 
         testRetrievePlanData(barcodes);
@@ -120,7 +121,7 @@ public class TestPlanAndRecordSectionMutations {
         List<Map<String,?>> planActionsData = chainGet(planData, "plan", "planActions");
         assertThat(planActionsData).hasSize(3);
         assertEquals(List.of(List.of("A1", "A2"), List.of("B2")), planData.get("groups"));
-
+        int[] expectedSectioningOrder = {3,4};
         for (int i = 1; i < barcodes.length; ++i) {
             String barcode = barcodes[i]; // fetal waste barcode
             result = tester.post(planQuery.replace("$BARCODE", barcode));
@@ -133,6 +134,7 @@ public class TestPlanAndRecordSectionMutations {
                     .collect(toList())).containsExactlyInAnyOrder(sources[i-1]);
             planActionsData = chainGet(planData, "plan", "planActions");
             assertThat(planActionsData).hasSize(1);
+            assertEquals(expectedSectioningOrder[i-1], planActionsData.getFirst().get("sectioningOrder"));
         }
         assertEquals(List.of(List.of("A1")), planData.get("groups"));
     }

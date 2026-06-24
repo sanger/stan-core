@@ -534,6 +534,8 @@ type PlanAction {
     newSection: String
     """The planned thickness of the sample, if any."""
     sampleThickness: String
+    """An indicator for the order sections are taken from their block."""
+    sectioningOrder: Int
 }
 
 """A planned operation."""
@@ -554,6 +556,8 @@ input PlanRequestAction {
     sampleThickness: String
     """The source of the sample (describing a slot in some existing labware)."""
     source: PlanRequestSource!
+    """An indicator for the order sections are taken from their block."""
+    sectioningOrder: Int!
 }
 
 """A specification of new labware to be created for a plan request."""

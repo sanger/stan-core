@@ -158,7 +158,7 @@ public class TestPlanValidation {
 
     @ParameterizedTest
     @MethodSource("sourcesData")
-    public void testValidateSources(Object sourceBarcodes, Object sourceAddresses, Integer sampleId,
+    public void testValidateSources(Object sourceBarcodes, Object sourceAddresses, Integer sampleId, Integer sectioningOrder,
                                     Labware existingLabware, OperationType opType, Object expectedProblems) {
         when(mockLabwareRepo.findByBarcode(any())).thenReturn(Optional.empty());
         if (existingLabware!=null) {
@@ -173,6 +173,9 @@ public class TestPlanValidation {
                             new PlanRequestSource(bc, sourceAddressIter.hasNext() ? sourceAddressIter.next() : null), null)
                     )
                     .collect(toList());
+        if (sectioningOrder != null) {
+            prActions.forEach(a -> a.setSectioningOrder(sectioningOrder));
+        }
 
         PlanRequest request = new PlanRequest(
                 opType.getName(),
@@ -418,27 +421,29 @@ public class TestPlanValidation {
         OperationType otherOpType = EntityFactory.makeOperationType("Other", null);
 
         return Stream.of(
-                Arguments.of(List.of(), List.of(), null, null, sectionOpType, null),
-                Arguments.of(block.getBarcode(), A1, blockSampleId, block, sectionOpType, null),
-                Arguments.of(block.getBarcode(), null, blockSampleId, block, sectionOpType, null),
-                Arguments.of(nonBlock.getBarcode(), null, sectionSampleId, nonBlock, otherOpType, null),
+                Arguments.of(List.of(), List.of(), null, 1, null, sectionOpType, null),
+                Arguments.of(block.getBarcode(), A1, blockSampleId, 1, block, sectionOpType, null),
+                Arguments.of(block.getBarcode(), null, blockSampleId, 1, block, sectionOpType, null),
+                Arguments.of(nonBlock.getBarcode(), null, sectionSampleId, 1, nonBlock, otherOpType, null),
 
-                Arguments.of(destroyedLw.getBarcode(), A1, sectionSampleId, destroyedLw, otherOpType, "Labware already destroyed: ["+destroyedLw.getBarcode()+"]"),
-                Arguments.of(releasedLw.getBarcode(), A1, sectionSampleId, releasedLw, otherOpType, "Labware already released: ["+releasedLw.getBarcode()+"]"),
-                Arguments.of(discardedLw.getBarcode(), A1, sectionSampleId, discardedLw, otherOpType, "Labware already discarded: ["+discardedLw.getBarcode()+"]"),
-                Arguments.of(null, A1, blockSampleId, null, sectionOpType, "Missing source barcode."),
-                Arguments.of("", A1, blockSampleId, null, sectionOpType, "Missing source barcode."),
-                Arguments.of("404", A1, blockSampleId, null, sectionOpType, "Unknown labware barcode: [404]"),
-                Arguments.of(block.getBarcode(), new Address(2,3), blockSampleId, block, sectionOpType,
+                Arguments.of(List.of(block.getBarcode(), block.getBarcode()), List.of(A1, A1), blockSampleId, 1, block, sectionOpType, "Repeated sectioning order: 1 from sample "+ blockSampleId+"."),
+                Arguments.of(block.getBarcode(), A1, blockSampleId, null, block, sectionOpType, "Missing sectioning order."),
+                Arguments.of(destroyedLw.getBarcode(), A1, sectionSampleId, 1, destroyedLw, otherOpType, "Labware already destroyed: ["+destroyedLw.getBarcode()+"]"),
+                Arguments.of(releasedLw.getBarcode(), A1, sectionSampleId, 1, releasedLw, otherOpType, "Labware already released: ["+releasedLw.getBarcode()+"]"),
+                Arguments.of(discardedLw.getBarcode(), A1, sectionSampleId, 1, discardedLw, otherOpType, "Labware already discarded: ["+discardedLw.getBarcode()+"]"),
+                Arguments.of(null, A1, blockSampleId, 1, null, sectionOpType, "Missing source barcode."),
+                Arguments.of("", A1, blockSampleId, 1, null, sectionOpType, "Missing source barcode."),
+                Arguments.of("404", A1, blockSampleId, 1, null, sectionOpType, "Unknown labware barcode: [404]"),
+                Arguments.of(block.getBarcode(), new Address(2,3), blockSampleId, 1, block, sectionOpType,
                         "Labware "+block.getBarcode()+" ("+lt.getName()+") has no slot at address B3."),
-                Arguments.of(block.getBarcode(), null, blockSampleId+1, block, sectionOpType,
+                Arguments.of(block.getBarcode(), null, blockSampleId+1, 1, block, sectionOpType,
                         "Slot A1 of labware "+block.getBarcode()+" does not contain a sample with ID "+(blockSampleId+1)+"."),
-                Arguments.of(block.getBarcode(), null, blockSampleId, block, nonSectionOpType,
+                Arguments.of(block.getBarcode(), null, blockSampleId, 1, block, nonSectionOpType,
                         "Operation Nonsection cannot create a section of sample "+blockSampleId+"."),
-                Arguments.of(nonBlock.getBarcode(), null, sectionSampleId, nonBlock, sectionOpType,
+                Arguments.of(nonBlock.getBarcode(), null, sectionSampleId, 1, nonBlock, sectionOpType,
                         "Source "+nonBlock.getBarcode()+",A1 is not a block for operation "+sectionOpType.getName()+"."),
-                Arguments.of(List.of("404", "404"), List.of(), blockSampleId, null, sectionOpType, "Unknown labware barcode: [404]"),
-                Arguments.of(List.of("404", "405"), List.of(), blockSampleId, null, sectionOpType, "Unknown labware barcodes: [404, 405]")
+                Arguments.of(List.of("404", "404"), List.of(), blockSampleId, 1, null, sectionOpType, "Unknown labware barcode: [404]"),
+                Arguments.of(List.of("404", "405"), List.of(), blockSampleId, 1, null, sectionOpType, "Unknown labware barcodes: [404, 405]")
         );
     }
 

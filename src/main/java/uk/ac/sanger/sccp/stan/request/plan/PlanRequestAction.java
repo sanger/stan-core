@@ -17,6 +17,7 @@ public class PlanRequestAction {
     private int sampleId;
     private PlanRequestSource source;
     private String sampleThickness;
+    private Integer sectioningOrder;
 
     public PlanRequestAction() {}
 
@@ -59,6 +60,14 @@ public class PlanRequestAction {
         this.sampleThickness = sampleThickness;
     }
 
+    public Integer getSectioningOrder() {
+        return this.sectioningOrder;
+    }
+
+    public void setSectioningOrder(Integer sectioningOrder) {
+        this.sectioningOrder = sectioningOrder;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -67,7 +76,9 @@ public class PlanRequestAction {
         return (this.sampleId==that.sampleId
                 && Objects.equals(this.addresses, that.addresses)
                 && Objects.equals(this.source, that.source)
-                && Objects.equals(this.sampleThickness, that.sampleThickness));
+                && Objects.equals(this.sampleThickness, that.sampleThickness)
+                && Objects.equals(this.sectioningOrder, that.sectioningOrder)
+        );
     }
 
     @Override
@@ -82,6 +93,7 @@ public class PlanRequestAction {
                 .add("sampleId", sampleId)
                 .add("source", source)
                 .add("sampleThickness", sampleThickness)
+                .add("sectioningOrder", sectioningOrder)
                 .toString();
     }
 }
