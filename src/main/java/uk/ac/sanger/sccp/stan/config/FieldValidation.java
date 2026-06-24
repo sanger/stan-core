@@ -394,7 +394,8 @@ public class FieldValidation {
 
     @Bean
     public Validator<String> bioRiskCodeValidator() {
-        Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.UNDERSCORE);
+        Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.UNDERSCORE,
+                CharacterType.FULL_STOP);
         return new StringValidator("Bio risk code", 2, 20, charTypes);
     }
 
