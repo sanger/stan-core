@@ -21,7 +21,7 @@ public class Labware implements HasIntId {
 
     /** The states a piece of labware may be in */
     public enum State {
-        empty, active, discarded, released, destroyed, used
+        empty, active, discarded, released, destroyed, used, frozen
     }
 
     @Id
@@ -42,6 +42,7 @@ public class Labware implements HasIntId {
     private boolean released;
     private boolean destroyed;
     private boolean used;
+    private boolean frozen;
 
     @Generated(GenerationTime.INSERT)
     private LocalDateTime created;
@@ -179,6 +180,14 @@ public class Labware implements HasIntId {
         this.used = used;
     }
 
+    public boolean isFrozen() {
+        return this.frozen;
+    }
+
+    public void setFrozen(boolean frozen) {
+        this.frozen = frozen;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -193,6 +202,7 @@ public class Labware implements HasIntId {
                 && this.released == that.released
                 && this.destroyed == that.destroyed
                 && this.used == that.used
+                && this.frozen == that.frozen
         );
     }
 
@@ -213,7 +223,7 @@ public class Labware implements HasIntId {
 
     @JsonIgnore
     public boolean isUsable() {
-        return !(isDestroyed() || isReleased() || isDiscarded() || isUsed() || isEmpty());
+        return !(isDestroyed() || isReleased() || isDiscarded() || isUsed() || isEmpty() || isFrozen());
     }
 
     @JsonIgnore
@@ -234,6 +244,7 @@ public class Labware implements HasIntId {
         if (isDestroyed()) return State.destroyed;
         if (isReleased()) return State.released;
         if (isDiscarded()) return State.discarded;
+        if (isFrozen()) return State.frozen;
         if (isEmpty()) return State.empty;
         if (isUsed()) return State.used;
         return State.active;

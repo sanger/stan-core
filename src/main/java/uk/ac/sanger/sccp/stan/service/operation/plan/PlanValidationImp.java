@@ -70,6 +70,7 @@ public class PlanValidationImp implements PlanValidation {
         Set<String> releasedBarcodes = new LinkedHashSet<>();
         Set<String> discardedBarcodes = new LinkedHashSet<>();
         Set<String> usedBarcodes = new LinkedHashSet<>();
+        Set<String> frozenBarcodes = new LinkedHashSet<>();
         for (PlanRequestAction action : (Iterable<PlanRequestAction>) (actions()::iterator)) {
             PlanRequestSource source = action.getSource();
             if (source==null || source.getBarcode()==null || source.getBarcode().isEmpty()) {
@@ -97,6 +98,8 @@ public class PlanValidationImp implements PlanValidation {
                     discardedBarcodes.add(lw.getBarcode());
                 } else if (lw.isUsed()) {
                     usedBarcodes.add(lw.getBarcode());
+                } else if (lw.isFrozen()) {
+                    frozenBarcodes.add(lw.getBarcode());
                 }
             }
             Address address = (source.getAddress()==null ? new Address(1,1) : source.getAddress());
@@ -132,6 +135,9 @@ public class PlanValidationImp implements PlanValidation {
         }
         if (!usedBarcodes.isEmpty()) {
             addProblem("Labware already used: "+usedBarcodes);
+        }
+        if (!frozenBarcodes.isEmpty()) {
+            addProblem("Labware is frozen: "+frozenBarcodes);
         }
         return labwareMap;
     }

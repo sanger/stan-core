@@ -15,10 +15,12 @@ import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.EntityFactory.objToList;
@@ -138,16 +140,22 @@ class TestCleanOutService {
         Labware lw = ok ? EntityFactory.getTube() : null;
         String problem = ok ? null : "Bad lw.";
         if (ok) {
-            when(val.checkLabware(any())).thenReturn(UCMap.from(Labware::getBarcode, lw));
+            when(val.checkLabware(any(), any())).thenReturn(UCMap.from(Labware::getBarcode, lw));
         } else {
-            when(val.checkLabware(any())).then(invocation -> {
+            when(val.checkLabware(any(), any())).then(invocation -> {
                 val.getProblems().add(problem);
                 return new UCMap<>(0);
             });
         }
         String bc = lw==null ? "STAN-1" : lw.getBarcode();
         assertSame(lw, service.loadLabware(val, bc));
-        verify(val).checkLabware(List.of(bc));
+        ArgumentCaptor<Consumer<LabwareValidator>> customCaptor = genericCaptor(Consumer.class);
+        verify(val).checkLabware(eq(List.of(bc)), customCaptor.capture());
+        Consumer<LabwareValidator> customiser = customCaptor.getValue();
+        assertNotNull(customiser);
+        LabwareValidator lwVal = mock(LabwareValidator.class);
+        customiser.accept(lwVal);
+        verify(lwVal).setFrozenAllowed(true);
         assertProblem(val.getProblems(), problem);
     }
 
