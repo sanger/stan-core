@@ -1,11 +1,13 @@
 package uk.ac.sanger.sccp.stan.service.validation;
 
 import uk.ac.sanger.sccp.stan.model.*;
+import uk.ac.sanger.sccp.stan.service.LabwareValidator;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
@@ -56,7 +58,17 @@ public interface ValidationHelper {
      * @param barcodes barcodes of labware
      * @return the loaded labware, mapped from barcodes
      */
-    UCMap<Labware> checkLabware(Collection<String> barcodes);
+    default UCMap<Labware> checkLabware(Collection<String> barcodes) {
+        return checkLabware(barcodes, null);
+    }
+
+    /**
+     * Loads and checks the labware as a source
+     * @param barcodes barcodes of labware
+     * @param lwValCustomiser optional function to call to set up the labware validator
+     * @return the loaded labware, mapped from barcodes
+     */
+    UCMap<Labware> checkLabware(Collection<String> barcodes, Consumer<LabwareValidator> lwValCustomiser);
 
     /**
      * Loads labware and checks it is a valid active destination (for operations that support active destinations)

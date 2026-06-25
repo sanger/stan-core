@@ -63,7 +63,7 @@ public class CleanOutServiceImp implements CleanOutService {
      * @return the labware loaded, if any
      */
     public Labware loadLabware(ValidationHelper val, String barcode) {
-        UCMap<Labware> labware = val.checkLabware(singletonList(barcode));
+        UCMap<Labware> labware = val.checkLabware(singletonList(barcode), lwVal -> lwVal.setFrozenAllowed(true));
         return labware.get(barcode);
     }
 
