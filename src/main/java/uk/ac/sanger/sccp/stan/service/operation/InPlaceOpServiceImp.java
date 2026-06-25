@@ -24,8 +24,8 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
  */
 @Service
 public class InPlaceOpServiceImp implements InPlaceOpService {
-    static final String FREEZE_OP = "Cryopreserve", THAW_OP = "Thaw";
-    enum Mode { Freeze, Thaw, Normal }
+    static final String FREEZE_OP = "Cryopreserve", THAW_OP = "Thaw", ASSIGN_OP = "Assign to work";
+    enum Mode { Freeze, Thaw, Normal, Assign}
 
     private final LabwareValidatorFactory labwareValidatorFactory;
     private final OperationService opService;
@@ -76,6 +76,8 @@ public class InPlaceOpServiceImp implements InPlaceOpService {
                 return Mode.Freeze;
             } else if (opName.equalsIgnoreCase(THAW_OP)) {
                 return Mode.Thaw;
+            } else if (opName.equalsIgnoreCase(ASSIGN_OP)) {
+                return Mode.Assign;
             }
         }
         return Mode.Normal;
@@ -91,6 +93,8 @@ public class InPlaceOpServiceImp implements InPlaceOpService {
         LabwareValidator lv = labwareValidatorFactory.getValidator();
         if (mode==Mode.Thaw) {
             lv.setFrozenRequired(true);
+        } else if (mode==Mode.Assign) {
+            lv.setFrozenAllowed(true);
         }
         lv.setUniqueRequired(true);
         lv.loadLabware(lwRepo, barcodes);

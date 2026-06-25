@@ -130,6 +130,7 @@ public class TestInPlaceOpService {
         String opname = switch (mode) {
             case Freeze -> InPlaceOpServiceImp.FREEZE_OP;
             case Thaw -> InPlaceOpServiceImp.THAW_OP;
+            case Assign -> InPlaceOpServiceImp.ASSIGN_OP;
             case Normal -> "Bananas";
         };
         assertSame(mode, service.findOpMode(opname));
@@ -153,7 +154,14 @@ public class TestInPlaceOpService {
         assertThat(problems).containsExactly(problem);
 
         verify(mockVal).setUniqueRequired(true);
-        (mode==Mode.Thaw ? verify(mockVal) : verify(mockVal, never())).setFrozenRequired(true);
+        switch (mode) {
+            case Mode.Thaw -> verify(mockVal).setFrozenRequired(true);
+            case Mode.Assign -> verify(mockVal).setFrozenAllowed(true);
+            default -> {
+                verify(mockVal, never()).setFrozenRequired(true);
+                verify(mockVal, never()).setFrozenAllowed(true);
+            }
+        }
         verify(mockVal).loadLabware(mockLwRepo, barcodes);
         verify(mockVal).validateSources();
     }
@@ -213,10 +221,10 @@ public class TestInPlaceOpService {
         service.updateLabware(mode, lws);
 
         lws.forEach(lw -> assertEquals(mode==Mode.Freeze, lw.isFrozen()));
-        if (mode==Mode.Normal) {
-            verifyNoInteractions(mockLwRepo);
-        } else {
+        if (mode == Mode.Freeze || mode == Mode.Thaw) {
             verify(mockLwRepo).saveAll(lws);
+        } else {
+            verifyNoInteractions(mockLwRepo);
         }
     }
 
