@@ -2075,12 +2075,20 @@ type LabwareRoi {
     rois: [Roi!]!
 }
 
+"""A work number and a possible xenium study sequencescape id."""
+type WorkNumberXeniumStudyId {
+    """A work number."""
+    workNumber: String!
+    """The sequencescape ID of a xenium study, if the work is linked to one."""
+    xeniumStudyId: Int
+}
+
 """Information to show when a user scans in labware for the analyser op."""
 type AnalyserScanData {
     """The barcode of the labware."""
     barcode: String!
-    """The work numbers linked to the labware."""
-    workNumbers: [String!]!
+    """The work numbers and xenium study ids linked to the labware."""
+    workNumberXeniumStudyIds: [WorkNumberXeniumStudyId!]!
     """The names of probes recorded on the labware."""
     probes: [String!]!
     """Has cell segmentation been recorded?"""

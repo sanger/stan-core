@@ -2,7 +2,7 @@ query {
     analyserScanData(barcode: "STAN-1") {
         barcode
         probes
-        workNumbers
+        workNumberXeniumStudyIds { workNumber xeniumStudyId }
         cellSegmentationRecorded
     }
 }
