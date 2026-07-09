@@ -394,7 +394,8 @@ public class FieldValidation {
 
     @Bean
     public Validator<String> bioRiskCodeValidator() {
-        Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.UNDERSCORE);
+        Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.UNDERSCORE,
+                CharacterType.FULL_STOP);
         return new StringValidator("Bio risk code", 2, 20, charTypes);
     }
 
@@ -428,6 +429,13 @@ public class FieldValidation {
     public Validator<String> xeniumLotValidator() {
         Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN);
         return new StringValidator("Xenium lot", 6, 10, charTypes);
+    }
+
+    @Bean
+    public Validator<String> treatmentTypeNameValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.PAREN,
+                CharacterType.SPACE, CharacterType.COMMA, CharacterType.FULL_STOP, CharacterType.SLASH, CharacterType.HYPHEN);
+        return new StringValidator("Treatment type name", 2, 64, charTypes);
     }
 
     @Bean

@@ -159,50 +159,65 @@ public class TestParaffinProcessingService {
         when(val.loadLabware(any(), any())).thenReturn(labware);
         final List<String> expectedProblems = (expectedProblem == null ? List.of() : List.of(expectedProblem));
         when(val.getErrors()).thenReturn(expectedProblems);
-        doNothing().when(service).checkLabwareIsBlockish(any(), any());
+        doNothing().when(service).checkLabwareIsSuitable(any(), any());
 
         assertSame(labware, service.loadLabware(problems, barcodes));
         verify(val).loadLabware(mockLwRepo, barcodes);
         verify(val).validateSources();
         assertThat(problems).containsExactlyElementsOf(expectedProblems);
         if (expectedProblems.isEmpty()) {
-            verify(service).checkLabwareIsBlockish(problems, labware);
+            verify(service).checkLabwareIsSuitable(problems, labware);
         } else {
-            verify(service, never()).checkLabwareIsBlockish(any(), any());
+            verify(service, never()).checkLabwareIsSuitable(any(), any());
         }
     }
 
-    @ParameterizedTest
-    @ValueSource(booleans={false,true})
-    public void testCheckLabwareIsBlockish(boolean anyBad) {
-        Tissue tissue = EntityFactory.getTissue();
+    @Test
+    void testCheckLabwareIsSuitable_good() {
+        LabwareType lt = EntityFactory.makeLabwareType(1,4);
+        Donor donor = EntityFactory.getDonor();
+        SpatialLocation sl = EntityFactory.getSpatialLocation();
         BioState bs = EntityFactory.getBioState();
-        Sample[] samples = IntStream.rangeClosed(101,105).mapToObj(
-                i -> new Sample(i, null, tissue, bs)
-        ).toArray(Sample[]::new);
+        Tissue[] tissues = IntStream.range(0,3).mapToObj(i -> EntityFactory.makeTissue(donor, sl)).toArray(Tissue[]::new);
+        Sample[] samples = Arrays.stream(tissues).map(tis -> new Sample(10*tis.getId(), null, tis, bs)).toArray(Sample[]::new);
+        Labware lw0 = EntityFactory.makeLabware(lt, null, samples[0], samples[0], samples[1]);
+        Labware lw1 = EntityFactory.makeLabware(lt, samples[2]);
+        List<Labware> labware = List.of(lw0, lw1);
+        List<String> problems = new ArrayList<>();
+        service.checkLabwareIsSuitable(problems, labware);
+        assertThat(problems).isEmpty();
+    }
+
+    @Test
+    void testCheckLabwareIsSuitable_bad() {
         LabwareType lt = EntityFactory.makeLabwareType(1,2);
-        List<Labware> labware = Arrays.stream(samples)
-                .map(sam -> EntityFactory.makeLabware(lt, sam))
-                .toList();
-        for (int i = 0; i < labware.size(); ++i) {
-            labware.get(i).setBarcode("STAN-"+i);
-        }
-        String expectedProblem;
-        if (anyBad) {
-            Sample otherSam = new Sample(105, null, tissue, bs);
-            samples[0].setSection("5");
-            labware.get(1).getFirstSlot().addSample(otherSam);
-            labware.get(2).getFirstSlot().getSamples().clear();
-            labware.get(3).getSlot(new Address(1,2)).addSample(samples[3]);
-            expectedProblem =
-                    "Labware must contain one unsectioned sample, and it must be in the first slot. " +
-                    "The following labware cannot be used in this operation: [STAN-0, STAN-1, STAN-2, STAN-3]";
-        } else {
-            expectedProblem = null;
-        }
-        List<String> problems = new ArrayList<>(anyBad ? 1 : 0);
-        service.checkLabwareIsBlockish(problems, labware);
-        assertProblem(problems, expectedProblem);
+        Donor donor = EntityFactory.getDonor();
+        SpatialLocation sl = EntityFactory.getSpatialLocation();
+        BioState bs = EntityFactory.getBioState();
+        Tissue[] tissues = IntStream.range(0,4).mapToObj(i -> EntityFactory.makeTissue(donor, sl)).toArray(Tissue[]::new);
+        Sample[] samples = Arrays.stream(tissues).map(tis -> new Sample(10*tis.getId(), null, tis, bs)).toArray(Sample[]::new);
+        samples[3].setSection("5");
+        Labware lw0 = EntityFactory.makeLabware(lt, samples[0], samples[0]);
+        lw0.setBarcode("STAN-0");
+        Labware lw1 = EntityFactory.makeEmptyLabware(lt);
+        Slot slot = lw1.getFirstSlot();
+        slot.addSample(samples[1]);
+        slot.addSample(samples[2]);
+        lw1.setBarcode("STAN-1");
+        Labware lw2 = EntityFactory.makeLabware(lt, samples[3]);
+        lw2.setBarcode("STAN-2");
+        Labware lw3 = EntityFactory.makeEmptyLabware(lt);
+        slot = lw3.getSlots().getLast();
+        slot.addSample(samples[2]);
+        slot.addSample(samples[3]);
+        lw3.setBarcode("STAN-3");
+
+        List<String> problems = new ArrayList<>(2);
+        service.checkLabwareIsSuitable(problems, List.of(lw0, lw1, lw2, lw3));
+        assertThat(problems).containsExactlyInAnyOrder(
+                "Labware must not have more than one sample in the same slot: [STAN-1, STAN-3]",
+                "Labware must not contain sectioned samples: [STAN-2, STAN-3]"
+        );
     }
 
     @ParameterizedTest
@@ -392,5 +407,4 @@ public class TestParaffinProcessingService {
                     return op;
                 }).collect(toList());
     }
-
 }

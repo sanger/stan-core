@@ -77,6 +77,15 @@ public class GraphQLStore extends BaseGraphQLResource {
         };
     }
 
+    public DataFetcher<Integer> unstoreBarcodes() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            List<String> itemBarcodes = arg(dfe, "barcodes", new TypeReference<>() {});
+            logRequest("UnstoreBarcodes", user, itemBarcodes);
+            return storeService.unstoreBarcodes(user, itemBarcodes);
+        };
+    }
+
     public DataFetcher<UnstoreResult> empty() {
         return dfe -> {
             User user = checkUser(dfe, User.Role.normal);
@@ -91,6 +100,10 @@ public class GraphQLStore extends BaseGraphQLResource {
             User user = checkUser(dfe, User.Role.normal);
             String sourceBarcode = dfe.getArgument("sourceBarcode");
             String destinationBarcode = dfe.getArgument("destinationBarcode");
+            if (log.isInfoEnabled()) {
+                log.info("Storage transfer request from {}: sourceBarcode: {}, destinationBarcode: {}",
+                        user.getUsername(), repr(sourceBarcode), repr(destinationBarcode));
+            }
             return storeService.transfer(user, sourceBarcode, destinationBarcode);
         };
     }

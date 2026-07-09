@@ -1,0 +1,14 @@
+mutation {
+    addExternalIds(request: {
+        labwareBarcode: "BC1"
+        addressNames: [
+            { address: "A1", externalName: "NAME1" },
+            { address: "A2", externalName: "NAME2" }
+        ]
+    }) {
+        operations {
+            operationType { name }
+            id
+        }
+    }
+}

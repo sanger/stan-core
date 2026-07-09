@@ -5,6 +5,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import javax.persistence.*;
 import java.util.*;
 
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
+
 /**
  * A work (identified by a work number) indicates a piece of requested work to be performed for some particular project and cost code
  * @author dr6
@@ -121,12 +123,20 @@ public class Work {
 
     private String priority;
 
+    @ManyToMany
+    @JoinTable(
+            name = "work_treatment_type",
+            joinColumns = @JoinColumn(name = "work_id"),
+            inverseJoinColumns = @JoinColumn(name = "treatment_type_id")
+    )
+    private final Set<TreatmentType> treatmentTypes = new HashSet<>();
+
     public Work() {}
 
     public Work(Integer id, String workNumber, WorkType workType, ReleaseRecipient workRequester, Project project,
                 Program program, CostCode costCode, Status status, Integer numBlocks, Integer numSlides,
                 Integer numOriginalSamples, String priority, OmeroProject omeroProject, DnapStudy dnapStudy,
-                DnapStudy xeniumStudy, ReleaseDestination facultyLead) {
+                DnapStudy xeniumStudy, ReleaseDestination facultyLead, Set<TreatmentType> treatmentTypes) {
         this.id = id;
         this.workNumber = workNumber;
         this.workType = workType;
@@ -145,12 +155,13 @@ public class Work {
         this.facultyLead = facultyLead;
         setOperationIds(null);
         setReleaseIds(null);
+        setTreatmentTypes(treatmentTypes);
     }
 
     public Work(Integer id, String workNumber, WorkType workType, ReleaseRecipient workRequester, Project project,
                 Program program, CostCode costCode, Status status) {
         this(id, workNumber, workType, workRequester, project, program, costCode, status, null,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
     }
 
     public Integer getId() {
@@ -323,6 +334,23 @@ public class Work {
         return (status==Status.active);
     }
 
+    public Set<TreatmentType> getTreatmentTypes() {
+        return this.treatmentTypes;
+    }
+
+    /**
+     * This mutates the set object inside the work rather than replacing it.
+     * @param treatmentTypes treatment types to set
+     */
+    public void setTreatmentTypes(Set<TreatmentType> treatmentTypes) {
+        if (nullOrEmpty(treatmentTypes)) {
+            this.treatmentTypes.clear();
+        } else {
+            this.treatmentTypes.retainAll(treatmentTypes);
+            this.treatmentTypes.addAll(treatmentTypes);
+        }
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -343,7 +371,9 @@ public class Work {
                 && Objects.equals(this.dnapStudy, that.dnapStudy)
                 && Objects.equals(this.xeniumStudy, that.xeniumStudy)
                 && Objects.equals(this.facultyLead, that.facultyLead)
-                && this.status == that.status);
+                && this.status == that.status
+                && Objects.equals(this.treatmentTypes, that.treatmentTypes)
+        );
     }
 
     @Override

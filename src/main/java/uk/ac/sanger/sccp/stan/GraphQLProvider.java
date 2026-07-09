@@ -121,6 +121,7 @@ public class GraphQLProvider {
                         .dataFetcher("rois", graphQLDataFetchers.labwareRois())
                         .dataFetcher("runRois", graphQLDataFetchers.labwareRunRois())
                         .dataFetcher("proteinPanels", graphQLDataFetchers.getProteinPanels())
+                        .dataFetcher("treatmentTypes", graphQLDataFetchers.getTreatmentTypes())
 
                         .dataFetcher("users", graphQLDataFetchers.getUsers())
                         .dataFetcher("planData", graphQLDataFetchers.getPlanData())
@@ -205,6 +206,8 @@ public class GraphQLProvider {
                         .dataFetcher("setCellClassEnabled", transact(graphQLMutation.setCellClassEnabled()))
                         .dataFetcher("addProteinPanel", transact(graphQLMutation.addProteinPanel()))
                         .dataFetcher("setProteinPanelEnabled", transact(graphQLMutation.setProteinPanelEnabled()))
+                        .dataFetcher("addTreatmentType", transact(graphQLMutation.addTreatmentType()))
+                        .dataFetcher("setTreatmentTypeEnabled", transact(graphQLMutation.setTreatmentTypeEnabled()))
 
                         .dataFetcher("createWork", transact(graphQLMutation.createWork()))
                         .dataFetcher("updateWorkStatus", transact(graphQLMutation.updateWorkStatus()))
@@ -214,6 +217,7 @@ public class GraphQLProvider {
                         .dataFetcher("updateWorkPriority", transact(graphQLMutation.updateWorkPriority()))
                         .dataFetcher("updateWorkOmeroProject", transact(graphQLMutation.updateWorkOmeroProject()))
                         .dataFetcher("updateWorkDnapStudy", transact(graphQLMutation.updateWorkDnapStudy()))
+                        .dataFetcher("updateWorkTreatmentTypes", transact(graphQLMutation.updateWorkTreatmentTypes()))
                         .dataFetcher("updateWorkXeniumStudy", transact(graphQLMutation.updateWorkXeniumStudy()))
                         .dataFetcher("updateDnapStudies", graphQLMutation.updateDnapStudies()) // transacted internally
                         .dataFetcher("addTissueType", transact(graphQLMutation.addTissueType()))
@@ -235,6 +239,7 @@ public class GraphQLProvider {
                         .dataFetcher("performPotProcessing", graphQLMutation.performPotProcessing()) // internal transaction
                         .dataFetcher("recordSampleProcessingComments", transact(graphQLMutation.addSampleProcessingComments()))
                         .dataFetcher("addExternalID", transact(graphQLMutation.addExternalID()))
+                        .dataFetcher("addExternalIds", transact(graphQLMutation.addExternalIds()))
                         .dataFetcher("performParaffinProcessing", transact(graphQLMutation.performParaffinProcessing()))
                         .dataFetcher("performSolutionTransfer", transact(graphQLMutation.performSolutionTransfer()))
                         .dataFetcher("recordOpWithSlotComments", transact(graphQLMutation.performOpWithSlotComments()))
@@ -259,6 +264,7 @@ public class GraphQLProvider {
                         .dataFetcher("store", graphQLStore.store())
                         .dataFetcher("storeBarcode", graphQLStore.storeBarcode())
                         .dataFetcher("unstoreBarcode", graphQLStore.unstoreBarcode())
+                        .dataFetcher("unstoreBarcodes", graphQLStore.unstoreBarcodes())
                         .dataFetcher("empty", graphQLStore.empty())
                         .dataFetcher("transfer", graphQLStore.transfer())
                         .dataFetcher("setLocationCustomName", graphQLStore.setLocationCustomName())

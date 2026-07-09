@@ -10,12 +10,14 @@ mutation {
                     source:{ barcode:"STAN-B70C" }
                     addresses: ["A1", "A2"]
                     sampleId: 55555
+                    sectioningOrder: 1
                 }
                 {
                     source: { barcode: "STAN-B70D" }
                     addresses: ["B2"]
                     sampleId: 55556
                     sampleThickness: "2.5"
+                    sectioningOrder: 2
                 }
             ]
         }, {
@@ -25,6 +27,7 @@ mutation {
                     source:{ barcode:"STAN-B70C" }
                     addresses: ["A1"]
                     sampleId: 55555
+                    sectioningOrder: 3
                 }
             ]
         }, {
@@ -34,6 +37,7 @@ mutation {
                     source:{ barcode:"STAN-B70D" }
                     addresses: ["A1"]
                     sampleId: 55556
+                    sectioningOrder: 4
                 }
             ]
         }]
@@ -58,6 +62,7 @@ mutation {
                 sample { id }
                 newSection
                 sampleThickness
+                sectioningOrder
             }
         }
     }
