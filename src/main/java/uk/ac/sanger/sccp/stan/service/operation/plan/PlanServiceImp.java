@@ -180,10 +180,12 @@ public class PlanServiceImp implements PlanService {
                     .findAny()
                     .orElseThrow(() -> new EntityNotFoundException("Sample " + prac.getSampleId()
                             + " not found in " + prac.getSource()));
+            Integer sectioningOrder = prac.getSectioningOrder();
             for (Address ad : prac.getAddresses()) {
                 Slot slot1 = destination.getSlot(ad);
                 PlanAction action = new PlanAction(null, planId, slot0, slot1, originalSample,
                         null, prac.getSampleThickness(), newBioState);
+                action.setSectioningOrder(sectioningOrder);
                 actions.add(action);
             }
         }

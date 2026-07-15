@@ -33,6 +33,7 @@ public interface OriginalSampleRegisterFileReader extends MultipartFileReader<Or
         External_identifier(Pattern.compile("external\\s*id.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL), false),
         Spatial_location(Integer.class, Pattern.compile("spatial\\s*location\\s*(number)?", Pattern.CASE_INSENSITIVE), true),
         Replicate_number(Pattern.compile("replicate.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL), false),
+        Pot_number,
         Labware_type,
         Fixative,
         Solution(Pattern.compile("(current\\s*)?solution.*", Pattern.CASE_INSENSITIVE|Pattern.DOTALL)),

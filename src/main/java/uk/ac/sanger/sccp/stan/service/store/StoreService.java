@@ -18,6 +18,7 @@ import uk.ac.sanger.sccp.stan.model.store.*;
 import uk.ac.sanger.sccp.stan.repo.LabwareRepo;
 import uk.ac.sanger.sccp.stan.request.StoreInput;
 import uk.ac.sanger.sccp.stan.service.EmailService;
+import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.GraphQLClient.GraphQLResponse;
 import uk.ac.sanger.sccp.utils.UCMap;
 
@@ -136,6 +137,40 @@ public class StoreService {
         }
         return send(user, "unstoreBarcode", new String[] { "\"BARCODE\"" }, new Object[] { barcode},
                     UnstoredItem.class);
+    }
+
+    /**
+     * Unstores the given labware barcodes.
+     * Barcodes that are not known labware barcodes will cause an error.
+     * Barcodes that are known but not currently stored will be unaffected.
+     * @param user the user responsible
+     * @param barcodes the labware barcodes to unstore
+     * @return the number removed from storage
+     * @exception EntityNotFoundException if any of the barcodes are not known labware barcodes
+     */
+    public int unstoreBarcodes(User user, List<String> barcodes) throws EntityNotFoundException {
+        requireNonNull(user, "User is null.");
+        requireNonNull(barcodes, "Barcodes is null.");
+        if (barcodes.isEmpty()) {
+            return 0;
+        }
+        if (barcodes.stream().anyMatch(BasicUtils::nullOrEmpty)) {
+            throw new IllegalArgumentException("Null or empty barcode supplied.");
+        }
+        Set<String> bcSet = labwareRepo.findBarcodesByBarcodeIn(barcodes).stream()
+                .map(String::toUpperCase)
+                .collect(toSet());
+        List<String> missing = barcodes.stream()
+                .map(String::toUpperCase)
+                .filter(bc -> !bcSet.contains(bc))
+                .distinct()
+                .map(BasicUtils::repr)
+                .toList();
+        if (!missing.isEmpty()) {
+            throw new EntityNotFoundException("Unknown labware barcode: "+missing);
+        }
+        Map<?,?> result = send(user, "unstoreBarcodes", new String[] { "[]" }, new Object[] { bcSet }, Map.class);
+        return (int) result.get("numUnstored");
     }
 
     /**

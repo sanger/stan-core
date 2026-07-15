@@ -7,6 +7,7 @@ query {
                     labwareId
                     address
                 }
+                sectioningOrder
             }
         }
         destination {

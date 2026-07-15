@@ -123,10 +123,12 @@ class TestBlockValidator {
     void testLoadEntities() {
         Work work = EntityFactory.makeWork("SGP1");
         OperationType opType = EntityFactory.makeOperationType("Block processing", null);
-        BioState bs = EntityFactory.getBioState();
+        BioState bs1 = new BioState(1, "Original sample");
+        BioState bs2 = new BioState(2, "Tissue");
         Medium medium = EntityFactory.getMedium();
         when(mockWorkService.validateUsableWork(any(), any())).thenReturn(work);
-        when(mockBsRepo.findByName(any())).thenReturn(Optional.of(bs));
+        when(mockBsRepo.findByName("Original sample")).thenReturn(Optional.of(bs1));
+        when(mockBsRepo.findByName("Tissue")).thenReturn(Optional.of(bs2));
         when(mockOpTypeRepo.findByName(any())).thenReturn(Optional.of(opType));
         when(mockMediumRepo.findByName(any())).thenReturn(Optional.of(medium));
         BlockValidatorImp val = spy(makeVal(new TissueBlockRequest()));
@@ -142,7 +144,8 @@ class TestBlockValidator {
         verify(val).loadComments();
         assertSame(work, val.getWork());
         assertSame(opType, val.getOpType());
-        assertSame(bs, val.getBioState());
+        assertSame(bs1, val.getRequiredBioState());
+        assertSame(bs2, val.getNewBioState());
         assertSame(medium, val.getMedium());
     }
 
@@ -176,7 +179,7 @@ class TestBlockValidator {
         List<BlockLabwareData> lds = tbls.stream().map(BlockLabwareData::new).toList();
         val.setLwData(lds);
         val.setProblems(new LinkedHashSet<>());
-        val.setBioState(bs);
+        val.setRequiredBioState(bs);
         val.loadSources();
         assertSame(ok ? lws[0] : null, lds.get(0).getBlocks().getFirst().getSourceLabware());
         assertSame(lws[0], lds.get(1).getBlocks().getFirst().getSourceLabware());

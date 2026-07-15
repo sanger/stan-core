@@ -24,4 +24,8 @@ public class DetailerFactory {
     public Detailer<Roi> roiDetailer(HistoryEntry entry, Map<Integer, Slot> slotIdMap, List<Address> entryAddresses) {
         return new RoiDetailer(entry, slotIdMap, entryAddresses);
     }
+
+    public Detailer<ResultOp> resultDetailer(HistoryEntry entry, Map<Integer, Slot> slotIdMap, List<Address> entryAddresses) {
+        return new ResultDetailer(entry, slotIdMap, entryAddresses);
+    }
 }

@@ -12,13 +12,18 @@ import java.io.IOException;
 import java.nio.file.*;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static java.util.stream.Collectors.toList;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
+import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 @Service
 public class OriginalSampleRegisterFileReaderImp extends BaseRegisterFileReader<OriginalSampleRegisterRequest, Column>
         implements OriginalSampleRegisterFileReader {
     static final int HEADING_ROW = 1, FIRST_DATA_ROW = 3;
+    static final Pattern POT_NUMBER_PTN = Pattern.compile("(?:pot\\s*)?(\\d{1,5})", Pattern.CASE_INSENSITIVE);
 
     public OriginalSampleRegisterFileReaderImp() {
         super(Column.class, HEADING_ROW, FIRST_DATA_ROW);
@@ -53,11 +58,29 @@ public class OriginalSampleRegisterFileReaderImp extends BaseRegisterFileReader<
         data.setExternalIdentifier((String) row.get(Column.External_identifier));
         data.setSpatialLocation((Integer) row.get(Column.Spatial_location));
         data.setReplicateNumber((String) row.get(Column.Replicate_number));
+        data.setPotNumber(potNumberValue((String) row.get(Column.Pot_number)));
         data.setLabwareType((String) row.get(Column.Labware_type));
         data.setFixative((String) row.get(Column.Fixative));
         data.setSolution((String) row.get(Column.Solution));
         data.setCellClass((String) row.get(Column.Cell_class));
         return data;
+    }
+
+    /**
+     * Converts the pot number string to an integer.
+     * @param string the string to parse
+     * @return an integer if the string is a valid pot number; null if it's not given
+     * @exception IllegalArgumentException if the string is not a valid pot number
+     */
+    public Integer potNumberValue(String string) {
+        if (nullOrEmpty(string)) {
+            return null;
+        }
+        Matcher m = POT_NUMBER_PTN.matcher(string);
+        if (!m.matches()) {
+            throw new IllegalArgumentException("Invalid string for pot number: "+repr(string));
+        }
+        return Integer.valueOf(m.group(1));
     }
 
     /**

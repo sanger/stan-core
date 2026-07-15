@@ -132,7 +132,7 @@ public class TestBlockProcessingService {
             opType = EntityFactory.makeOperationType("opname", null);
             when(val.getLwData()).thenReturn(lwData);
             when(val.getMedium()).thenReturn(medium);
-            when(val.getBioState()).thenReturn(bs);
+            when(val.getNewBioState()).thenReturn(bs);
             when(val.getWork()).thenReturn(work);
             when(val.getOpType()).thenReturn(opType);
         }

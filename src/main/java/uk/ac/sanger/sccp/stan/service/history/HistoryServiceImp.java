@@ -676,12 +676,39 @@ public class HistoryServiceImp implements HistoryService {
         detailer.addDetails(measurements);
     }
 
+    /**
+     * Adds pass/fail results to details, grouping them by result
+     * @param entry the history entry we're building
+     * @param results the results to add, if applicable
+     * @param slotIdMap map to get slots from id
+     * @param entryAddresses the slot addresses of the entry, sorted
+     */
+    public void addResultDetails(HistoryEntry entry, List<ResultOp> results, Map<Integer, Slot> slotIdMap,
+                                 List<Address> entryAddresses) {
+        var detailer = detailerFactory.resultDetailer(entry, slotIdMap, entryAddresses);
+        detailer.addDetails(results);
+    }
+
+    /**
+     * Adds comments to details, grouping similar ones when they are spread across slots.
+     * @param entry the history entry we're building
+     * @param comments the comments to add, if applicable
+     * @param slotIdMap map to get slots from id
+     * @param entryAddresses the slot addresses of the entry, sorted
+     */
     public void addCommentDetails(HistoryEntry entry, List<OperationComment> comments, Map<Integer, Slot> slotIdMap,
                                   List<Address> entryAddresses) {
         var detailer = detailerFactory.commentDetailer(entry, slotIdMap, entryAddresses);
         detailer.addDetails(comments);
     }
 
+    /**
+     * Adds ROIs to details, grouping similar ones when they are spread across slots.
+     * @param entry the history entry we're building
+     * @param rois the rois to add, if applicable
+     * @param slotIdMap map to get slots from id
+     * @param entryAddresses the slot addresses of the entry, sorted
+     */
     public void addRoiDetails(HistoryEntry entry, List<Roi> rois, Map<Integer, Slot> slotIdMap, List<Address> entryAddresses) {
         var detailer = detailerFactory.roiDetailer(entry, slotIdMap, entryAddresses);
         detailer.addDetails(rois);
@@ -798,23 +825,6 @@ public class HistoryServiceImp implements HistoryService {
                     .add(solutionMap.get(opsol.getSolutionId()));
         }
         return opSolMap;
-    }
-
-    /**
-     * Describes a result for inclusion in the details of a history entry
-     * @param result the result to describe
-     * @param slotIdMap a map to look up slots by their id
-     * @return a string describing the result
-     */
-    public String resultDetail(ResultOp result, Map<Integer, Slot> slotIdMap) {
-        String detail = result.getResult().name();
-        if (result.getSlotId()!=null) {
-            Slot slot = slotIdMap.get(result.getSlotId());
-            if (slot!=null) {
-                detail = slot.getAddress()+": "+detail;
-            }
-        }
-        return detail;
     }
 
     /**
@@ -954,13 +964,7 @@ public class HistoryServiceImp implements HistoryService {
                 if (equipment!=null) {
                     entry.addDetail("Equipment: "+equipment.getName());
                 }
-                if (results!=null) {
-                    results.forEach(result -> {
-                        if (doesResultApply(result, item.sampleId, item.destId, slotIdMap)) {
-                            entry.addDetail(resultDetail(result, slotIdMap));
-                        }
-                    });
-                }
+                addResultDetails(entry, results, slotIdMap, addresses);
                 addCommentDetails(entry, comments, slotIdMap, addresses);
                 addMeasurementDetails(entry, measurements, slotIdMap, addresses);
                 addRoiDetails(entry, rois, slotIdMap, addresses);
