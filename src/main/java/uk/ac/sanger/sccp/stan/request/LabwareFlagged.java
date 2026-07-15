@@ -86,6 +86,10 @@ public class LabwareFlagged {
         return this.labware.isUsed();
     }
 
+    public boolean isFrozen() {
+        return this.labware.isFrozen();
+    }
+
     /**
      * The state, derived from the contents and other fields on the labware.
      */

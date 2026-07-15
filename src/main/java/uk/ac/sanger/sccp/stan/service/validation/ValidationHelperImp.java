@@ -10,6 +10,7 @@ import uk.ac.sanger.sccp.utils.UCMap;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
@@ -67,7 +68,7 @@ public class ValidationHelperImp implements ValidationHelper {
     }
 
     @Override
-    public UCMap<Labware> checkLabware(Collection<String> barcodes) {
+    public UCMap<Labware> checkLabware(Collection<String> barcodes, Consumer<LabwareValidator> lwValCustomiser) {
         if (nullOrEmpty(barcodes)) {
             addProblem("No barcodes specified.");
             return new UCMap<>(0);
@@ -82,6 +83,9 @@ public class ValidationHelperImp implements ValidationHelper {
             }
         }
         LabwareValidator val = lwValFactory.getValidator();
+        if (lwValCustomiser != null) {
+            lwValCustomiser.accept(val);
+        }
         val.loadLabware(lwRepo, barcodes);
         val.validateSources();
         problems.addAll(val.getErrors());

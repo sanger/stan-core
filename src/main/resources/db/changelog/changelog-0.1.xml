@@ -349,6 +349,9 @@
             <column name="used" type="BOOLEAN" defaultValue="FALSE">
                 <constraints nullable="false"/>
             </column>
+            <column name="frozen" type="BOOLEAN" defaultValue="FALSE">
+                <constraints nullable="false"/>
+            </column>
             <column name="created" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
             </column>

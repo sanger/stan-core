@@ -31,6 +31,8 @@ enum LabwareState {
     destroyed
     """The labware has been used but may still be stored."""
     used
+    """The labware is frozen."""
+    frozen
 }
 
 """A pass or fail result."""
@@ -265,6 +267,8 @@ type Labware {
     discarded: Boolean!
     """Has this labware been marked as used?"""
     used: Boolean!
+    """Is this labware frozen?"""
+    frozen: Boolean!
     """The state, derived from the contents and other fields on the labware."""
     state: LabwareState!
     """The time when this labware was created in the application."""
@@ -291,6 +295,8 @@ type LabwareFlagged {
     discarded: Boolean!
     """Has this labware been marked as used?"""
     used: Boolean!
+    """Is this labware frozen?"""
+    frozen: Boolean!
     """The state, derived from the contents and other fields on the labware."""
     state: LabwareState!
     """The time when this labware was created in the application."""

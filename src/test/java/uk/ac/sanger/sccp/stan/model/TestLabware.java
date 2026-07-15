@@ -17,6 +17,9 @@ public class TestLabware {
         assertEquals(State.empty, lw.getState());
         lw.getFirstSlot().getSamples().add(EntityFactory.getSample());
         assertEquals(State.active, lw.getState());
+        lw.setFrozen(true);
+        assertEquals(State.frozen, lw.getState());
+        lw.setFrozen(false);
         lw.setUsed(true);
         assertEquals(State.used, lw.getState());
         lw.setDiscarded(true);

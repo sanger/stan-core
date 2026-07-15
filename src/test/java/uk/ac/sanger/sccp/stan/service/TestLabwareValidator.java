@@ -19,6 +19,7 @@ import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.stan.Matchers.assertProblem;
 
 /**
  * Tests {@link LabwareValidator}
@@ -202,6 +203,38 @@ public class TestLabwareValidator {
         validator.setLabware(List.of());
         validator.validateStates();
         verify(validator, never()).validateState(any(), any());
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "false,false",
+            "true,false",
+            "true,true",
+    })
+    void testValidateStates_frozen(boolean allowed, boolean required) {
+        LabwareType lt = EntityFactory.getTubeType();
+        List<Labware> lw = IntStream.of(1,2).mapToObj(i -> EntityFactory.makeEmptyLabware(lt)).toList();
+        lw.get(1).setFrozen(true);
+        if (allowed) {
+            validator.setFrozenAllowed(true);
+        }
+        if (required) {
+            validator.setFrozenRequired(true);
+        }
+        validator.setLabware(lw);
+        validator.validateStates();
+
+        // cannot verify the identity of method references
+        verify(validator, times(allowed ? 0 : 1)).validateState(any(), eq("frozen"));
+        verify(validator, times(required ? 1 : 0)).validateState(any(), eq("not frozen"));
+        // so verify the effects instead
+        if (required) {
+            assertProblem(validator.getErrors(), errorBarcode("Labware is not frozen", lw.get(0)));
+        } else if (!allowed) {
+            assertProblem(validator.getErrors(), errorBarcode("Labware is frozen", lw.get(1)));
+        } else {
+            assertThat(validator.getErrors()).isEmpty();
+        }
     }
 
     @ParameterizedTest

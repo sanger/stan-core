@@ -14,6 +14,7 @@ import uk.ac.sanger.sccp.utils.UCMap;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -23,8 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
-import static uk.ac.sanger.sccp.stan.Matchers.assertProblem;
-import static uk.ac.sanger.sccp.stan.Matchers.mayAddProblem;
+import static uk.ac.sanger.sccp.stan.Matchers.*;
 
 /**
  * Tests {@link ValidationHelperImp}
@@ -150,6 +150,24 @@ class TestValidationHelper {
 
         verify(lwVal).loadLabware(mockLwRepo, nonEmptyBarcodes);
         verify(lwVal).validateSources();
+    }
+
+    @Test
+    public void testCheckLabware_customiser() {
+        List<String> barcodes = List.of("STAN-1");
+        Consumer<LabwareValidator> customiser = genericMock(Consumer.class);
+        LabwareValidator lwVal = mock(LabwareValidator.class);
+        when(mockLwValFactory.getValidator()).thenReturn(lwVal);
+        Labware lw = EntityFactory.getTube();
+        when(lwVal.getLabware()).thenReturn(List.of(lw));
+        String problem = "Some error.";
+        when(lwVal.getErrors()).thenReturn(List.of(problem));
+
+        assertThat(val.checkLabware(barcodes, customiser)).containsEntry(lw.getBarcode(), lw);
+        verify(customiser).accept(lwVal);
+        verify(lwVal).loadLabware(mockLwRepo, barcodes);
+        verify(lwVal).validateSources();
+        assertThat(val.getProblems()).containsExactly(problem);
     }
 
     @ParameterizedTest
