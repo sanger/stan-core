@@ -336,8 +336,46 @@ class TestBlockValidator {
             assertThat(val.getProblems()).isEmpty();
         } else {
             assertThat(val.getProblems()).containsExactlyInAnyOrder(
-                    "Slot address A2 not valid in labware type "+lt1.getName()+".",
+                    "Slot address A2 is not valid for this layout.",
                     "Destination slot addresses missing from block request."
+            );
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    void testCheckAddresses_customLayout(boolean ok) {
+        LabwareType lt = EntityFactory.getTubeType();
+        Address A1 = new Address(1, 1), A2 = new Address(1,2), A3 = new Address(1,3),
+                B1 = new Address(2,1), C1 = new Address(3,1);
+        TissueBlockLabware tbl1 = new TissueBlockLabware();
+        TissueBlockLabware tbl2 = new TissueBlockLabware();
+        tbl1.setLabwareType(lt.getName());
+        tbl2.setLabwareType(lt.getName());
+        tbl1.setNumRows(2);
+        tbl1.setNumColumns(3);
+        tbl2.setNumColumns(3);
+        if (ok) {
+            tbl1.setContents(List.of(contentForAddresses(A1), contentForAddresses(A2, A3)));
+            tbl2.setContents(List.of(contentForAddresses(A1, A2)));
+        } else {
+            tbl1.setContents(List.of(contentForAddresses(A1, C1)));
+            tbl2.setContents(List.of(contentForAddresses(A1, B1)));
+        }
+        TissueBlockRequest request = new TissueBlockRequest(List.of(tbl1, tbl2));
+
+        List<BlockLabwareData> blds = request.getLabware().stream().map(BlockLabwareData::new).toList();
+        blds.forEach(bld -> bld.setLwType(lt));
+        BlockValidatorImp val = makeVal(request);
+        val.setLwData(blds);
+        val.setProblems(new LinkedHashSet<>());
+        val.checkDestAddresses();
+        if (ok) {
+            assertThat(val.getProblems()).isEmpty();
+        } else {
+            assertThat(val.getProblems()).containsExactlyInAnyOrder(
+                    "Slot address C1 is not valid for this layout.",
+                    "Slot address B1 is not valid for this layout."
             );
         }
     }

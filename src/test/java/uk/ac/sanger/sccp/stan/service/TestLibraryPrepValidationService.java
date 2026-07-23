@@ -101,10 +101,10 @@ class TestLibraryPrepValidationService {
 
         if (existingDest) {
             assertSame(data.destination, lw);
-            assertSame(data.destLabwareType, lw.getLabwareType());
+            assertEquals(data.destLayout, lw.layout());
         } else {
             assertNull(data.destination);
-            assertSame(data.destLabwareType, lt);
+            assertEquals(data.destLayout, lt.layout());
         }
         assertSame(data.work, work);
         assertThat(data.problems).containsExactly("sc problem");
@@ -116,7 +116,7 @@ class TestLibraryPrepValidationService {
         LibraryPrepRequest request = new LibraryPrepRequest();
         User user = EntityFactory.getUser();
         RequestData data = new RequestData(request, user, new ArrayList<>());
-        data.destLabwareType = EntityFactory.getTubeType();
+        data.destLayout = EntityFactory.getTubeType().layout();
         request.setReagentTransfers(List.of(new ReagentTransfer("RPNC", null, null)));
         request.setReagentPlateType("reagent plate type");
         OperationType opType = EntityFactory.makeOperationType("Dual index plate", null);
@@ -132,11 +132,11 @@ class TestLibraryPrepValidationService {
         verify(mockRtService).loadOpType(data.problems, "Dual index plate");
         verify(mockRtService).loadReagentPlates(request.getReagentTransfers());
         verify(mockRtService).checkPlateType(data.problems, reagentPlates.values(), request.getReagentPlateType());
-        verify(mockRtValService).validateTransfers(data.problems, request.getReagentTransfers(), reagentPlates, data.destLabwareType);
+        verify(mockRtValService).validateTransfers(data.problems, request.getReagentTransfers(), reagentPlates, data.destLayout);
 
-        assertSame(data.reagentOpType, opType);
-        assertSame(data.reagentPlates, reagentPlates);
-        assertSame(data.reagentPlateType, reagentPlateType);
+        assertSame(opType, data.reagentOpType);
+        assertSame(reagentPlates, data.reagentPlates);
+        assertSame(reagentPlateType, data.reagentPlateType);
     }
 
     @Test
@@ -161,7 +161,7 @@ class TestLibraryPrepValidationService {
 
         User user = EntityFactory.getUser();
         RequestData data = new RequestData(request, user, new ArrayList<>());
-        data.destLabwareType = EntityFactory.getTubeType();
+        data.destLayout = EntityFactory.getTubeType().layout();
 
         OperationType opType = EntityFactory.makeOperationType("Amplification", null);
         List<Comment> validatedComments = List.of(new Comment(1, "Bananas", "custard"));
@@ -174,7 +174,7 @@ class TestLibraryPrepValidationService {
         mayAddProblem("Bad measurement").when(mockOwsmService).checkForDupeMeasurements(any(), any());
 
         service.owsmValidate(data);
-        verify(mockOwsmService).validateAddresses(data.problems, data.destLabwareType, Set.of(A1, A2), data.request.getSlotMeasurements());
+        verify(mockOwsmService).validateAddresses(data.problems, data.destLayout, Set.of(A1, A2), data.request.getSlotMeasurements());
         verify(mockOwsmService).loadOpType(data.problems, "Amplification");
         verify(mockOwsmService).validateComments(data.problems, data.request.getSlotMeasurements());
         verify(mockOwsmService).sanitiseMeasurements(data.problems, opType, data.request.getSlotMeasurements());

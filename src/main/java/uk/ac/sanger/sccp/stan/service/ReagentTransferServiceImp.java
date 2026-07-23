@@ -151,7 +151,7 @@ public class ReagentTransferServiceImp implements ReagentTransferService {
      */
     public void validateTransfers(Collection<String> problems, Collection<ReagentTransfer> transfers,
                                   UCMap<ReagentPlate> reagentPlates, Labware lw) {
-        rtValidatorService.validateTransfers(problems, transfers, reagentPlates, lw==null ? null : lw.getLabwareType());
+        rtValidatorService.validateTransfers(problems, transfers, reagentPlates, lw==null ? null : lw.layout());
     }
 
     @Override

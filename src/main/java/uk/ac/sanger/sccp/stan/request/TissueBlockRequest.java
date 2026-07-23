@@ -91,11 +91,28 @@ public class TissueBlockRequest {
      * @author dr6
      */
     public static class TissueBlockLabware {
+        private Integer numRows, numColumns;
         private String labwareType;
         private String preBarcode;
         private List<TissueBlockContent> contents = List.of();
 
         public TissueBlockLabware() {}
+
+        public Integer getNumRows() {
+            return this.numRows;
+        }
+
+        public void setNumRows(Integer numRows) {
+            this.numRows = numRows;
+        }
+
+        public Integer getNumColumns() {
+            return this.numColumns;
+        }
+
+        public void setNumColumns(Integer numColumns) {
+            this.numColumns = numColumns;
+        }
 
         /**
          * The labware type for the new labware.
@@ -130,6 +147,8 @@ public class TissueBlockRequest {
         @Override
         public String toString() {
             return BasicUtils.describe("TissueBlockLabware")
+                    .add("numRows", numRows)
+                    .add("numColumns", numColumns)
                     .add("labwareType", labwareType)
                     .add("preBarcode", preBarcode)
                     .add("contents", contents)
@@ -144,6 +163,8 @@ public class TissueBlockRequest {
             if (o == null || getClass() != o.getClass()) return false;
             TissueBlockLabware that = (TissueBlockLabware) o;
             return (Objects.equals(this.labwareType, that.labwareType)
+                    && Objects.equals(this.numRows, that.numRows)
+                    && Objects.equals(this.numColumns, that.numColumns)
                     && Objects.equals(this.preBarcode, that.preBarcode)
                     && Objects.equals(this.contents, that.contents));
         }

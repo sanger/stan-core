@@ -100,13 +100,16 @@ class TestBlockMaker {
         List<TissueBlockLabware> tbls = List.of(new TissueBlockLabware(), new TissueBlockLabware());
         final String prebarcode = "PREB1";
         tbls.get(0).setPreBarcode(prebarcode);
+        var tbl1 = tbls.get(1);
+        tbl1.setNumRows(2);
+        tbl1.setNumColumns(3);
         List<BlockLabwareData> lds = tbls.stream().map(BlockLabwareData::new).toList();
         Zip.of(Arrays.stream(lts), lds.stream()).forEach((lt, ld) -> ld.setLwType(lt));
-        Zip.of(Arrays.stream(lts), lws.stream()).forEach((lt, lw) -> when(mockLwService.create(same(lt), any(), any())).thenReturn(lw));
+        Zip.of(Arrays.stream(lts), lws.stream()).forEach((lt, lw) -> when(mockLwService.create(same(lt), any(), any(), any(), any())).thenReturn(lw));
         BlockMakerImp maker = makeBlockMaker(new TissueBlockRequest(tbls), lds, null, null, null, null, null);
         List<Labware> result = maker.createLabware();
-        verify(mockLwService).create(lts[0], prebarcode, prebarcode);
-        verify(mockLwService).create(lts[1], null, null);
+        verify(mockLwService).create(lts[0], null, null, prebarcode, prebarcode);
+        verify(mockLwService).create(lts[1], 2, 3, null, null);
         assertEquals(lws, result);
     }
 

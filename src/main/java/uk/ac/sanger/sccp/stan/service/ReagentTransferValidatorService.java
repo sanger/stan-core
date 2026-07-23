@@ -1,6 +1,6 @@
 package uk.ac.sanger.sccp.stan.service;
 
-import uk.ac.sanger.sccp.stan.model.LabwareType;
+import uk.ac.sanger.sccp.stan.model.Layout;
 import uk.ac.sanger.sccp.stan.model.reagentplate.ReagentPlate;
 import uk.ac.sanger.sccp.stan.request.ReagentTransferRequest.ReagentTransfer;
 import uk.ac.sanger.sccp.utils.UCMap;
@@ -22,8 +22,8 @@ public interface ReagentTransferValidatorService {
      * @param problems receptacle for problems
      * @param transfers the transfers to validate
      * @param reagentPlates the existing reagent plates
-     * @param lt the destination labware type, if known
+     * @param layout the layout of the destination labware, if known
      */
     void validateTransfers(Collection<String> problems, Collection<ReagentTransfer> transfers,
-                           UCMap<ReagentPlate> reagentPlates, LabwareType lt);
+                           UCMap<ReagentPlate> reagentPlates, Layout layout);
 }

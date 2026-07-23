@@ -19,7 +19,7 @@ public interface OpWithSlotMeasurementsService {
      */
     OperationResult perform(User user, OpWithSlotMeasurementsRequest request) throws ValidationException;
 
-    void validateAddresses(Collection<String> problems, LabwareType lt, Set<Address> filledSlotAddresses,
+    void validateAddresses(Collection<String> problems, Layout lt, Set<Address> filledSlotAddresses,
                            List<SlotMeasurementRequest> slotMeasurements);
 
     /**

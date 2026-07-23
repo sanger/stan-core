@@ -44,6 +44,8 @@ public class Labware implements HasIntId {
     private boolean used;
     private boolean frozen;
 
+    private Integer numRowsOverride, numColumnsOverride;
+
     @Generated(GenerationTime.INSERT)
     private LocalDateTime created;
 
@@ -116,6 +118,36 @@ public class Labware implements HasIntId {
         return this.created;
     }
 
+    public Integer getNumRowsOverride() {
+        return this.numRowsOverride;
+    }
+
+    public void setNumRowsOverride(Integer numRowsOverride) {
+        this.numRowsOverride = numRowsOverride;
+    }
+
+    public Integer getNumColumnsOverride() {
+        return this.numColumnsOverride;
+    }
+
+    public void setNumColumnsOverride(Integer numColumnsOverride) {
+        this.numColumnsOverride = numColumnsOverride;
+    }
+
+    public Layout layout() {
+        return new Layout(getNumRows(), getNumColumns());
+    }
+
+    @Transient
+    public int getNumRows() {
+        return numRowsOverride != null ? numRowsOverride : labwareType.getNumRows();
+    }
+
+    @Transient
+    public int getNumColumns() {
+        return numColumnsOverride != null ? numColumnsOverride : labwareType.getNumColumns();
+    }
+
     /**
      * Returns the slot with the given address from this labware.
      * Throws an exception if no such slot exists
@@ -125,7 +157,19 @@ public class Labware implements HasIntId {
      * @exception IllegalStateException the slot at the index expected for that address does not have the expected address
      */
     public Slot getSlot(Address address) {
-        return optSlot(address).orElseThrow(() -> new IllegalArgumentException("Address "+address+" is not valid for labware type "+labwareType.getName()));
+        Optional<Slot> optSlot = optSlot(address);
+        if (optSlot.isPresent()) {
+            return optSlot.get();
+        }
+        String msg = "Address "+address+" is not valid for labware";
+        if (barcode!=null) {
+            msg += " "+barcode;
+        }
+        if (labwareType!=null) {
+            msg += " ("+labwareType.getName()+")";
+        }
+        msg += ".";
+        throw new IllegalArgumentException(msg);
     }
 
     /**
@@ -136,7 +180,7 @@ public class Labware implements HasIntId {
      * @exception IllegalStateException the slot at the index expected for that address does not have the expected address
      */
     public Optional<Slot> optSlot(Address address) {
-        int index = labwareType.indexOf(address);
+        int index = layout().indexOf(address);
         if (index < 0) {
             return Optional.empty();
         }
@@ -198,6 +242,8 @@ public class Labware implements HasIntId {
                 && Objects.equals(this.externalBarcode, that.externalBarcode)
                 && Objects.equals(this.labwareType, that.labwareType)
                 && Objects.equals(this.slots, that.slots)
+                && Objects.equals(this.numRowsOverride, that.numRowsOverride)
+                && Objects.equals(this.numColumnsOverride, that.numColumnsOverride)
                 && this.discarded == that.discarded
                 && this.released == that.released
                 && this.destroyed == that.destroyed

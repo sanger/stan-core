@@ -69,7 +69,7 @@ public class SampleDescriber {
             if (lw==null) {
                 continue;
             }
-            if (lw.getLabwareType().getNumColumns()==1 && lw.getLabwareType().getNumRows()==1) {
+            if (lw.getNumColumns()==1 && lw.getNumRows()==1) {
                 locStrings.add(lw.getBarcode());
             } else {
                 String addresses = entry.getValue().stream().map(Slot::getAddress).sorted().map(Object::toString).collect(Collectors.joining(","));

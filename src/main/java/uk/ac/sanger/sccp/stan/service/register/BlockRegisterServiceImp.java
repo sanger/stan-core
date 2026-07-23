@@ -161,6 +161,20 @@ public class BlockRegisterServiceImp implements IRegisterService<BlockRegisterRe
     }
 
     /**
+     * Figures out the required size and creates the labware with that custom size
+     * @param brl details of the request for this labware
+     * @param lt the labware type
+     * @return the created labware
+     */
+    public Labware createCustomSizeLabware(BlockRegisterLabware brl, LabwareType lt) {
+        Stream<Address> addressStream = brl.getSamples().stream()
+                .flatMap(brs -> brs.getAddresses().stream());
+        Layout layout = LabwareService.requiredLayout(addressStream);
+        return labwareService.create(lt, layout.numRows(), layout.numColumns(),
+                null, brl.getExternalBarcode());
+    }
+
+    /**
      * Creates the labware and operations for the given registration request
      * @param request the registration request
      * @param user the user responsible for the operations
@@ -175,7 +189,13 @@ public class BlockRegisterServiceImp implements IRegisterService<BlockRegisterRe
         BioState bioState = opType.getNewBioState();
         for (BlockRegisterLabware brl : request.getLabware()) {
             LabwareType labwareType = validation.getLabwareType(brl.getLabwareType());
-            Labware lw = labwareService.create(labwareType, null, brl.getExternalBarcode());
+            boolean customSize = LabwareService.customSizeLabwareType(labwareType.getName());
+            Labware lw;
+            if (customSize) {
+                lw = createCustomSizeLabware(brl, labwareType);
+            } else {
+                lw = labwareService.create(labwareType, null, brl.getExternalBarcode());
+            }
             lwList.add(lw);
             Set<Slot> slotsToUpdate = new HashSet<>();
             List<Action> actions = new ArrayList<>();

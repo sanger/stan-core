@@ -58,6 +58,14 @@ public class LabwareFlagged {
         return this.labware.getSlots();
     }
 
+    public int getNumRows() {
+        return this.labware.getNumRows();
+    }
+
+    public int getNumColumns() {
+        return this.labware.getNumColumns();
+    }
+
     /**
      * Has this labware been released?
      */

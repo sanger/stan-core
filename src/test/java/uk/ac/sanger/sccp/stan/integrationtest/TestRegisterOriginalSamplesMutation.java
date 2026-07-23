@@ -128,13 +128,20 @@ public class TestRegisterOriginalSamplesMutation {
                 .replace("999", String.valueOf(sourceSampleId))
                 .replace("BARCODE", sourceBarcode);
         Object result = tester.post(mutation);
-        String destBarcode = chainGet(result, "data", "performTissueBlock", "labware", 0, "barcode");
+        assertNoErrors(result);
+        Map<String,?> lwData = chainGet(result, "data", "performTissueBlock", "labware", 0);
+        String destBarcode = chainGet(lwData, "barcode");
+        assertEquals(2, lwData.get("numRows"));
+        assertEquals(3, lwData.get("numColumns"));
         Integer opId = chainGet(result, "data", "performTissueBlock", "operations", 0, "id");
         Labware dest = lwRepo.getByBarcode(destBarcode);
         assertEquals("5c", dest.getFirstSlot().getSamples().get(0).getTissue().getReplicate());
         Labware src = lwRepo.getByBarcode(sourceBarcode);
         assertTrue(src.isDiscarded());
         assertTrue(dest.getFirstSlot().isBlock());
+        assertEquals(2, dest.getNumRows());
+        assertEquals(3, dest.getNumColumns());
+        assertThat(dest.getFirstSlot().getSamples()).hasSameElementsAs(dest.getSlot(new Address(2,3)).getSamples());
 
         Operation op = opRepo.findById(opId).orElseThrow();
         assertEquals(opType, op.getOperationType());
