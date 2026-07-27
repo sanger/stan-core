@@ -79,8 +79,8 @@ public class TestImageDataFileService {
 
     @Test
     void testGetFilename() {
-        List<Operation> ops = opsWithId(11,10,12);
-        assertEquals("imaging-qc-11-10-12.xlsx", service.getFilename(ops));
+        List<Operation> ops = opsWithId(11,10,12,9,14);
+        assertEquals("imaging-qc-9to12-14.xlsx", service.getFilename(ops));
     }
 
 
