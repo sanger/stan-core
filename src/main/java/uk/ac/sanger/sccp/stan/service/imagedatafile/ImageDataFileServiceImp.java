@@ -47,7 +47,10 @@ public class ImageDataFileServiceImp implements ImageDataFileService {
 
     /** Filename for the given operations */
     public String getFilename(Collection<Operation> ops) {
-        String idsJoined = ops.stream().map(Operation::getId).map(Object::toString).collect(joining("-"));
+        List<int[]> ranges = ranges(ops.stream().mapToInt(Operation::getId));
+        String idsJoined = ranges.stream()
+                .map(arr -> arr.length==1 ? String.valueOf(arr[0]) : arr[0]+"to"+arr[1])
+                .collect(joining("-"));
         return "imaging-qc-" + idsJoined + ".xlsx";
     }
 

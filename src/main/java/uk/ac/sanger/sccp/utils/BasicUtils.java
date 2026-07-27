@@ -644,6 +644,36 @@ public class BasicUtils {
     }
 
     /**
+     * Combines numbers into ranges. Each array in the result is either
+     * <ul>
+     *     <li><code>{lower,upper}</code> — indicating a range (inclusive)</li>
+     *     <li><code>{value}</code> — indicating a single value that is not part of a range</li>
+     * </ul>
+     * @param values int-stream of values
+     * @return a list of int arrays
+     */
+    public static List<int[]> ranges(IntStream values) {
+        int[] arr = values.sorted().distinct().toArray();
+        if (arr.length==0) {
+            return List.of();
+        }
+        List<int[]> ranges = new ArrayList<>();
+        int lower = arr[0];
+        int upper = lower;
+        for (int i = 1; i<arr.length; i++) {
+            int value = arr[i];
+            if (value==upper + 1) {
+                upper = value;
+            } else {
+                ranges.add(lower == upper ? new int[]{lower} : new int[]{lower, upper});
+                lower = upper = value;
+            }
+        }
+        ranges.add(lower == upper ? new int[]{lower} : new int[]{lower, upper});
+        return ranges;
+    }
+
+    /**
      * Streams pairs of items from the given list.
      * Each combination of items will be emitted once, via the given mapper function,
      * with the order of the items used as arguments consistent with the order they

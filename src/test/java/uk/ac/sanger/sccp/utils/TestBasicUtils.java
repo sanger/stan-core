@@ -416,6 +416,16 @@ public class TestBasicUtils {
     }
 
     @Test
+    public void testRanges() {
+        assertThat(ranges(IntStream.empty())).isEmpty();
+        assertThat(ranges(IntStream.of(3,1,2))).containsExactly(new int[]{1,3});
+        assertThat(ranges(IntStream.of(5))).containsExactly(new int[]{5});
+        assertThat(ranges(IntStream.of(10, 6, 8, 2, 4, 15, 0, 3, 9, 11))).containsExactly(
+                new int[][] {{0}, {2,4}, {6}, {8,11}, {15}}
+        );
+    }
+
+    @Test
     public void testStreamPairs() {
         assertThat(streamPairs(List.of(11,22,303,44), (a,b) -> new Integer[] {a,b}))
                 .containsExactly(new Integer[][] {
