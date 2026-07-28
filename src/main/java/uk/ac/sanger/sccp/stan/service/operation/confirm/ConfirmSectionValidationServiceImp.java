@@ -1,5 +1,6 @@
 package uk.ac.sanger.sccp.stan.service.operation.confirm;
 
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -52,7 +53,7 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
     public ConfirmSectionValidation validate(ConfirmSectionRequest request) {
         requireNonNull(request, "Request is null");
         final Set<String> problems = new LinkedHashSet<>();
-        if (request.getLabware()==null || request.getLabware().isEmpty()) {
+        if (nullOrEmpty(request.getLabware())) {
             problems.add("No labware specified in request.");
             return new ConfirmSectionValidation(problems);
         }
@@ -74,28 +75,31 @@ public class ConfirmSectionValidationServiceImp implements ConfirmSectionValidat
     }
 
     /**
-     * Checks that slots aren't assigned multiple sections
+     * Checks that slots aren't assigned duplicate actions
      * @param problems receptacle for problems found
      * @param csls the specification of each labware
      */
     public void checkRepeatedDestSlots(Collection<String> problems, Collection<ConfirmSectionLabware> csls) {
+        record ActionKey(Address address, int sampleId, String section) {
+            @NotNull
+            @Override
+            public String toString() {
+                return String.format("(slot=%s, sampleId=%d, section=%s)", address, sampleId, section);
+            }
+        }
         for (ConfirmSectionLabware csl : csls) {
             if (nullOrEmpty(csl.getBarcode())) {
                 continue; // Request is already broken, and we can't give meaningful problem messages
             }
-            Map<Address, Integer> sectionCount = new HashMap<>();
-
+            Set<ActionKey> seenActions = new HashSet<>();
             for (ConfirmSection cs : csl.getConfirmSections()) {
                 for (Address address : cs.getDestinationAddresses()) {
-                    if (address != null) {
-                        sectionCount.merge(address, 1, Integer::sum);
+                    if (address != null && cs.getSampleId() != null && !nullOrEmpty(cs.getNewSection())) {
+                        final ActionKey key = new ActionKey(address, cs.getSampleId(), cs.getNewSection());
+                        if (!seenActions.add(key)) {
+                            addProblem(problems, "Repeated action for destination %s: %s", csl.getBarcode(), key);
+                        }
                     }
-                }
-            }
-            for (Map.Entry<Address, Integer> entry : sectionCount.entrySet()) {
-                if (entry.getValue() > 1) {
-                    problems.add(String.format("Multiple actions linked to destination %s %s.",
-                            csl.getBarcode(), entry.getKey()));
                 }
             }
         }

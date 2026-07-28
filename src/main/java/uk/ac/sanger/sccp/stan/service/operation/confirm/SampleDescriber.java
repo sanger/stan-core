@@ -10,7 +10,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 /**
  * Util to provide descriptions of samples used in ops.
  * <p>Usage: <code>"You have misused sample "+describer.describe(sampleId)+"."</code>
- * <br><code>You have misused sample 40 (section 8 of EXT12) from STAN-12 (A3).</code>
+ * <br><code>You have misused sample id 40 (section 8 of EXT12) from STAN-12 (A3).</code>
  * <p>Descriptions are cached.
  * @author dr6
  */
