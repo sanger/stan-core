@@ -14,6 +14,7 @@ import uk.ac.sanger.sccp.stan.service.operation.AnalyserServiceImp;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.Ancestry;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
 import uk.ac.sanger.sccp.utils.UCMap;
+import uk.ac.sanger.sccp.utils.tsv.CombinerColumn;
 import uk.ac.sanger.sccp.utils.tsv.TsvColumn;
 
 import javax.persistence.EntityNotFoundException;
@@ -101,7 +102,7 @@ public class ReleaseFileService {
      */
     public ReleaseFileContent getReleaseFileContent(Collection<Integer> releaseIds, Set<ReleaseFileOption> options) {
         if (releaseIds.isEmpty()) {
-            return new ReleaseFileContent(EnumSet.of(ReleaseFileMode.NORMAL), List.of(), options);
+            return new ReleaseFileContent(EnumSet.of(ReleaseFileMode.NORMAL), List.of(), options, List.of());
         }
         List<Release> releases = getReleases(releaseIds);
         Map<Integer, Snapshot> snapshots = loadSnapshots(releases);
@@ -142,7 +143,21 @@ public class ReleaseFileService {
         }
         loadXeniumFields(entries, slotIds);
         loadFlags(entries);
-        return new ReleaseFileContent(modes, entries, options);
+        return new ReleaseFileContent(modes, entries, options, groupRows(entries));
+    }
+
+    /** Groups the entries by labware and sample */
+    public List<List<ReleaseEntry>> groupRows(List<ReleaseEntry> entries) {
+        record RowKey(int labwareId, int sampleId) {
+            RowKey(ReleaseEntry entry) {
+                this(entry.getLabware().getId(), entry.getSample().getId());
+            }
+        }
+        Map<RowKey, List<ReleaseEntry>> rows = new LinkedHashMap<>();
+        for (ReleaseEntry entry : entries) {
+            rows.computeIfAbsent(new RowKey(entry), k -> new ArrayList<>()).add(entry);
+        }
+        return asList(rows.values());
     }
 
     /**
@@ -1389,6 +1404,11 @@ public class ReleaseFileService {
         return summaries.stream()
                 .map(summary -> summary.getBarcode()+": "+summary.getDescription())
                 .collect(joining(" "));
+    }
+
+    public List<TsvColumn<List<ReleaseEntry>>> computeRowColumns(ReleaseFileContent rfc) {
+        var innerColumns = computeColumns(rfc);
+        return innerColumns.stream().<TsvColumn<List<ReleaseEntry>>>map(CombinerColumn::new).toList();
     }
 
     public List<? extends TsvColumn<ReleaseEntry>> computeColumns(ReleaseFileContent rfc) {

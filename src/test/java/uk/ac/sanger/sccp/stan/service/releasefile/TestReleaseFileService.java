@@ -16,6 +16,9 @@ import uk.ac.sanger.sccp.stan.service.operation.AnalyserServiceImp;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.Ancestry;
 import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser.SlotSample;
 import uk.ac.sanger.sccp.stan.service.releasefile.ReleaseFileService.StorageDetail;
+import uk.ac.sanger.sccp.utils.Zip;
+import uk.ac.sanger.sccp.utils.tsv.CombinerColumn;
+import uk.ac.sanger.sccp.utils.tsv.TsvColumn;
 
 import javax.persistence.EntityNotFoundException;
 import java.time.LocalDate;
@@ -232,6 +235,26 @@ public class TestReleaseFileService {
         verify(service).loadXeniumFields(entries, slotIds);
         verify(service).loadSolutions(entries);
         verify(service).loadFlags(entries);
+    }
+
+    @Test
+    void testGroupRows() {
+        setupLabware();
+        Address A2 = new Address(1,2);
+        ReleaseEntry[] entries = {
+                new ReleaseEntry(lw1, lw1.getFirstSlot(), sample),
+                new ReleaseEntry(lw1, lw1.getSlot(A2), sample),
+                new ReleaseEntry(lw1, lw1.getFirstSlot(), sample2),
+                new ReleaseEntry(lw2, lw2.getFirstSlot(), sample),
+                new ReleaseEntry(lw2, lw2.getFirstSlot(), sample2),
+                new ReleaseEntry(lw2, lw2.getSlot(A2), sample)
+        };
+        List<List<ReleaseEntry>> grouped = service.groupRows(Arrays.asList(entries));
+        assertThat(grouped).hasSize(4);
+        assertThat(grouped.get(0)).containsExactly(entries[0], entries[1]);
+        assertThat(grouped.get(1)).containsExactly(entries[2]);
+        assertThat(grouped.get(2)).containsExactly(entries[3], entries[5]);
+        assertThat(grouped.get(3)).containsExactly(entries[4]);
     }
 
     @ParameterizedTest
@@ -1217,6 +1240,24 @@ public class TestReleaseFileService {
         assertEquals("Pears", entries.get(1).getParaffinProcessingProgram());
     }
 
+    @SuppressWarnings("rawtypes")
+    @Test
+    public void testComputeRowColumns() {
+        List<TsvColumn<?>> innerColumns = List.of(
+                v -> "Alpha", v -> "Beta"
+        );
+        doReturn(innerColumns).when(service).computeColumns(any());
+        ReleaseFileContent rfc = new ReleaseFileContent(null, null, null, null);
+
+        var rowColumns = service.computeRowColumns(rfc);
+        assertThat(rowColumns).hasSameSizeAs(innerColumns);
+        verify(service).computeColumns(same(rfc));
+        Zip.of(innerColumns.stream(), rowColumns.stream()).forEach((innerCol, outerCol) -> {
+            assertThat(outerCol).isInstanceOf(CombinerColumn.class);
+            assertSame(innerCol, ((CombinerColumn) outerCol).innerColumn);
+        });
+    }
+
     @SuppressWarnings({"unchecked", "rawtypes"})
     @ParameterizedTest
     @CsvSource({
@@ -1246,7 +1287,8 @@ public class TestReleaseFileService {
             entries.get(1).setTagData(orderedMap("Alpha", "A", "Beta", "B"));
             entries.get(2).setTagData(orderedMap("Beta", "8", "Gamma", "9"));
         }
-        var columns = service.computeColumns(new ReleaseFileContent(EnumSet.of(mode), entries, options));
+        List<List<ReleaseEntry>> rows = entries.stream().map(List::of).toList();
+        var columns = service.computeColumns(new ReleaseFileContent(EnumSet.of(mode), entries, options, rows));
         List modeColumns = ReleaseColumn.forModesAndOptions(modes, options);
         if (!anyTagData || !options.contains(ReleaseFileOption.Visium)) {
             assertThat(columns).containsExactlyElementsOf(modeColumns);

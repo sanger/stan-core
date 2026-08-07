@@ -28,13 +28,13 @@ public class ReleaseFileController {
 
     @RequestMapping(value="/release", method = RequestMethod.GET, produces = "text/tsv")
     @ResponseBody
-    public TsvFile<ReleaseEntry> getReleaseFile(@RequestParam(name="id") List<Integer> ids,
+    public TsvFile<?> getReleaseFile(@RequestParam(name="id") List<Integer> ids,
                                                 @RequestParam(name="groups", required=false) List<String> groupNames,
                                                 @RequestParam(name="type", required=false) String fileType) {
         final String filename = filenameForType(fileType);
         ReleaseFileContent rfc = releaseFileService.getReleaseFileContent(ids, parseOptions(groupNames));
-        List<? extends TsvColumn<ReleaseEntry>> columns = releaseFileService.computeColumns(rfc);
-        return new TsvFile<>(filename, rfc.getEntries(), columns);
+        List<? extends TsvColumn<List<ReleaseEntry>>> columns = releaseFileService.computeRowColumns(rfc);
+        return new TsvFile<>(filename, rfc.getRows(), columns);
     }
 
     /**
