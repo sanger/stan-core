@@ -146,7 +146,7 @@ public class TestReleaseMutation {
 
         String tsvString = getReleaseFile(releaseIds, EnumSet.allOf(ReleaseFileOption.class));
         var tsvMaps = tsvToMap(tsvString);
-        assertEquals(4, tsvMaps.size());
+        assertEquals(3, tsvMaps.size());
         Set<String> expectedColumns = Arrays.stream(ReleaseColumn.values())
                 .filter(c -> c.getMode()!=ReleaseFileMode.CDNA)
                 .map(ReleaseColumn::toString)
@@ -158,11 +158,13 @@ public class TestReleaseMutation {
         assertMapValue(row0, ReleaseColumn.Last_section_number, "6");
         assertMapValue(row0, ReleaseColumn.Released_from_box_name, "Box 1");
         assertMapValue(row0, ReleaseColumn.Released_from_box_location, "4");
+        assertMapValue(row0, ReleaseColumn.Slot_of_labware, "A1");
         var row1 = tsvMaps.get(1);
         assertMapValue(row1, ReleaseColumn.Released_from_box_name, "Box 1");
         assertMapValue(row1, ReleaseColumn.Released_from_box_location, "C4");
+        assertMapValue(row1, ReleaseColumn.Slot_of_labware, "A1, A2");
         String bsName = sample.getBioState().getName();
-        for (int i = 1; i < 4; ++i) {
+        for (int i = 1; i < tsvMaps.size(); ++i) {
             var row = tsvMaps.get(i);
             assertMapValue(row, ReleaseColumn.Released_labware_barcode, lw.getBarcode());
             assertMapValue(row, ReleaseColumn.Labware_type, lw.getLabwareType().getName());
