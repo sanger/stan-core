@@ -1,6 +1,6 @@
 query {
     workProgress(workNumber: "SGP500", statuses: [active]) {
-        work { workNumber, workType { name }}
+        work { workNumber, workTypes { name }}
         timestamps { type, timestamp }
         mostRecentOperation
         workComment

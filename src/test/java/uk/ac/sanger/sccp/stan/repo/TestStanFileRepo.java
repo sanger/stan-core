@@ -48,7 +48,7 @@ public class TestStanFileRepo {
         if (prog==null) {
             prog = entityCreator.createProgram("Hello");
         }
-        return entityCreator.createWork(workType, project, prog, costCode, null);
+        return entityCreator.createWork(Set.of(workType), project, prog, costCode, null);
     }
 
     @Test

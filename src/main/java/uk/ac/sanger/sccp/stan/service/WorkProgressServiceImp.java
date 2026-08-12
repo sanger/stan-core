@@ -93,7 +93,7 @@ public class WorkProgressServiceImp implements WorkProgressService {
         if (singleWork!=null) {
             ws.setSource(() -> List.of(singleWork));
         }
-        ws.addFilter(workTypes, Work::getWorkType, workRepo::findAllByWorkTypeIn);
+        ws.addFilter(workTypes, Work::hasWorkType, workRepo::findAllByWorkTypeIn);
         ws.addFilter(programs, Work::getProgram, workRepo::findAllByProgramIn);
         ws.addFilter(requesters, Work::getWorkRequester, workRepo::findAllByWorkRequesterIn);
         ws.addFilter(statuses, Work::getStatus, workRepo::findAllByStatusIn);

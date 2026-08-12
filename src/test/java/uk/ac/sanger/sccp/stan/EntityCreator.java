@@ -10,6 +10,8 @@ import javax.persistence.EntityManager;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
+
 /**
  * Utility for creating persisted entities for tests
  * @author dr6
@@ -248,7 +250,7 @@ public class EntityCreator {
         return workTypeRepo.save(new WorkType(null, name));
     }
 
-    public Work createWork(WorkType workType, Project project, Program program, CostCode cc, ReleaseRecipient workRequester) {
+    public Work createWork(Set<WorkType> workTypes, Project project, Program program, CostCode cc, ReleaseRecipient workRequester) {
         if (project==null) {
             project = createProject("Stargate");
         }
@@ -258,15 +260,15 @@ public class EntityCreator {
         if (cc==null) {
             cc = createCostCode("S400");
         }
-        if (workType ==null) {
-            workType = createWorkType("Drywalling");
+        if (nullOrEmpty(workTypes)) {
+            workTypes = Set.of(createWorkType("Drywalling"));
         }
         String workNumber = workRepo.createNumber("SGP");
-        return workRepo.save(new Work(null, workNumber, workType, workRequester, project, program, cc, Work.Status.active));
+        return workRepo.save(new Work(null, workNumber, workTypes, workRequester, project, program, cc, Work.Status.active));
     }
 
     public Work createWorkLike(Work otherWork) {
-        return createWork(otherWork.getWorkType(), otherWork.getProject(), otherWork.getProgram(), otherWork.getCostCode(), otherWork.getWorkRequester());
+        return createWork(otherWork.getWorkTypes(), otherWork.getProject(), otherWork.getProgram(), otherWork.getCostCode(), otherWork.getWorkRequester());
     }
 
     public Operation simpleOp(OperationType opType, User user, Labware source, Labware dest) {

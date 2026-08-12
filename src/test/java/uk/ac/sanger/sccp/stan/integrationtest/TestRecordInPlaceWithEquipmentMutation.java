@@ -49,7 +49,7 @@ public class TestRecordInPlaceWithEquipmentMutation {
         Project pr = entityCreator.createProject("Stargate");
         CostCode cc = entityCreator.createCostCode("4");
         ReleaseRecipient wr = entityCreator.createReleaseRecipient("test1");
-        Work work = entityCreator.createWork(wt, pr, null, cc, wr);
+        Work work = entityCreator.createWork(Set.of(wt), pr, null, cc, wr);
         User user = entityCreator.createUser("user1");
         Sample sam = entityCreator.createSample(entityCreator.createTissue(entityCreator.createDonor("DONOR1"), "TISSUE1"), 5);
         LabwareType lt = entityCreator.createLabwareType("lt1", 1, 1);

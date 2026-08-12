@@ -1307,8 +1307,8 @@ enum WorkStatus {
 
 """Work that can be used to collect together operations done on related samples for a particular purpose."""
 type Work {
-    """The type of work: what does it entail?"""
-    workType: WorkType!
+    """The types of this work."""
+    workTypes: [WorkType!]!
     """The project for which this work is done."""
     project: Project!
     """The program associated with this work."""
@@ -2586,7 +2586,7 @@ type Mutation {
     setTreatmentTypeEnabled(name: String!, enabled: Boolean!): TreatmentType!
 
     """Create a new work, which will be allocated a new work number with the given prefix."""
-    createWork(prefix: String!, workType: String!, workRequester: String!, project: String!, program: String!,
+    createWork(prefix: String!, workTypes: [String!]!, workRequester: String!, project: String!, program: String!,
         costCode: String!, numBlocks: Int, numSlides: Int, numOriginalSamples: Int, omeroProject: String,
         ssStudyId: Int, xeniumStudyId: Int, facultyLead: String!, treatmentTypes: [String!]): Work!
     """Update the status of an existing work."""

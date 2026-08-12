@@ -92,7 +92,8 @@ public class TestWorkProgressService {
         WorkType wt1 = new WorkType(2, "California");
         String wtn = wt1.getName();
         WorkType wt2 = new WorkType(3, "Colorado");
-        work.setWorkType(wt1);
+        work.getWorkTypes().clear();
+        work.getWorkTypes().add(wt1);
         work.setStatus(Status.active);
         Program prog = new Program(10, "Hello", true);
         String progname = prog.getName();

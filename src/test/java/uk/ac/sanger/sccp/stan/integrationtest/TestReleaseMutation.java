@@ -181,7 +181,7 @@ public class TestReleaseMutation {
 
         entityCreator.createOpType("Unrelease", null, OperationTypeFlag.IN_PLACE);
 
-        Work work2 = entityCreator.createWork(work1.getWorkType(), work1.getProject(), work1.getProgram(),
+        Work work2 = entityCreator.createWork(work1.getWorkTypes(), work1.getProject(), work1.getProgram(),
                 work1.getCostCode(), work1.getWorkRequester());
 
         String unreleaseMutation = tester.readGraphQL("unrelease.graphql")

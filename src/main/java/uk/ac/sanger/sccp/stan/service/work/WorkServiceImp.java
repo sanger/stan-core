@@ -74,7 +74,7 @@ public class WorkServiceImp implements WorkService {
     }
 
     @Override
-    public Work createWork(User user, String prefix, String workTypeName, String workRequesterName, String projectName,
+    public Work createWork(User user, String prefix, Collection<String> workTypeNames, String workRequesterName, String projectName,
                            String programName, String costCode,
                            Integer numBlocks, Integer numSlides, Integer numOriginalSamples,
                            String omeroProjectName, Integer ssStudyId, Integer xeniumStudyId, String facultyLead,
@@ -84,7 +84,7 @@ public class WorkServiceImp implements WorkService {
         Project project = projectRepo.getByName(projectName);
         Program program = programRepo.getByName(programName);
         CostCode cc = costCodeRepo.getByCode(costCode);
-        WorkType type = workTypeRepo.getByName(workTypeName);
+        List<WorkType> workTypes = workTypeRepo.getAllByNameIn(workTypeNames);
         OmeroProject omeroProject;
         if (nullOrEmpty(omeroProjectName)) {
             omeroProject = null;
@@ -118,7 +118,7 @@ public class WorkServiceImp implements WorkService {
         }
         Set<TreatmentType> treatmentTypes = nullOrEmpty(treatmentTypeNames) ? Set.of() : treatmentTypeRepo.getSetByNameIn(treatmentTypeNames);
         String workNumber = workRepo.createNumber(prefix);
-        Work work = workRepo.save(new Work(null, workNumber, type, workRequester, project, program, cc, Status.unstarted,
+        Work work = workRepo.save(new Work(null, workNumber, workTypes, workRequester, project, program, cc, Status.unstarted,
                 numBlocks, numSlides, numOriginalSamples, null, omeroProject, dnapStudy, xeniumStudy, leadDest, treatmentTypes));
         workEventService.recordEvent(user, work, WorkEvent.Type.create, null);
         return work;

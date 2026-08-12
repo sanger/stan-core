@@ -12,8 +12,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 
 import javax.transaction.Transactional;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -60,7 +59,7 @@ public class TestStainAndSubsequentMutations {
         Project pr = entityCreator.createProject("Stargate");
         CostCode cc = entityCreator.createCostCode("4");
         ReleaseRecipient wr = entityCreator.createReleaseRecipient("test1");
-        Work work = entityCreator.createWork(wt, pr, null, cc, wr);
+        Work work = entityCreator.createWork(Set.of(wt), pr, null, cc, wr);
         work.setWorkNumber("SGP500");
         User user = entityCreator.createUser("user1");
         Sample sam = entityCreator.createSample(entityCreator.createTissue(entityCreator.createDonor("DONOR1"), "TISSUE1"), 5);
@@ -84,7 +83,7 @@ public class TestStainAndSubsequentMutations {
         data = tester.post(tester.readGraphQL("workprogress.graphql"));
         Object progressData = chainGet(data, "data", "workProgress", 0);
         assertEquals(work.getWorkNumber(), chainGet(progressData, "work", "workNumber"));
-        assertEquals(work.getWorkType().getName(), chainGet(progressData, "work", "workType", "name"));
+        assertEquals(work.getWorkTypes().iterator().next().getName(), chainGet(progressData, "work", "workTypes", 0, "name"));
 
         List<Map<String,?>> timeEntries = chainGetList(progressData, "timestamps");
         assertThat(timeEntries).hasSize(1);
