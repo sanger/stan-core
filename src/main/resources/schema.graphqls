@@ -1732,6 +1732,8 @@ type ReagentPlate {
     barcode: String!
     slots: [ReagentSlot!]!
     plateType: String
+    numRows: Int!
+    numColumns: Int!
 }
 
 """

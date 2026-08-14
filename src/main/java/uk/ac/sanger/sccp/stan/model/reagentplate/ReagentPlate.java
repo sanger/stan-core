@@ -123,6 +123,14 @@ public class ReagentPlate implements HasIntId {
         this.tagLayoutId = tagLayoutId;
     }
 
+    public int getNumRows() {
+        return getPlateLayout().getNumRows();
+    }
+
+    public int getNumColumns() {
+        return getPlateLayout().getNumColumns();
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
