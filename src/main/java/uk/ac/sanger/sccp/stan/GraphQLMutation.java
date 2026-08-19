@@ -101,6 +101,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
     final SSStudyService ssStudyService;
     final ReactivateService reactivateService;
     final LibraryPrepService libraryPrepService;
+    final LibraryConService libraryConService;
     final SegmentationService segmentationService;
     final CleanOutService cleanOutService;
     final RoiMetricService roiMetricService;
@@ -144,6 +145,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
                            FlagLabwareService flagLabwareService,
                            QCLabwareService qcLabwareService, OrientationService orientationService, SSStudyService ssStudyService,
                            ReactivateService reactivateService, LibraryPrepService libraryPrepService,
+                           LibraryConService libraryConService,
                            SegmentationService segmentationService, CleanOutService cleanOutService, RoiMetricService roiMetricService,
                            UserAdminService userAdminService, SlotCopyRecordService slotCopyRecordService,
                            TissueTypeService tissueTypeService, WorkChangeService workChangeService,
@@ -208,6 +210,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
         this.ssStudyService = ssStudyService;
         this.reactivateService = reactivateService;
         this.libraryPrepService = libraryPrepService;
+        this.libraryConService = libraryConService;
         this.segmentationService = segmentationService;
         this.cleanOutService = cleanOutService;
         this.roiMetricService = roiMetricService;
@@ -981,6 +984,15 @@ public class GraphQLMutation extends BaseGraphQLResource {
             LibraryPrepRequest request = arg(dfe, "request", LibraryPrepRequest.class);
             logRequest("Library prep", user, request);
             return libraryPrepService.perform(user, request);
+        };
+    }
+
+    public DataFetcher<OperationResult> libraryCon() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.normal);
+            LibraryConRequest request = arg(dfe, "request", LibraryConRequest.class);
+            logRequest("Library con", user, request);
+            return libraryConService.perform(user, request);
         };
     }
 
