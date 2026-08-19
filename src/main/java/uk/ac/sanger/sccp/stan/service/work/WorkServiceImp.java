@@ -84,7 +84,7 @@ public class WorkServiceImp implements WorkService {
         Project project = projectRepo.getByName(projectName);
         Program program = programRepo.getByName(programName);
         CostCode cc = costCodeRepo.getByCode(costCode);
-        List<WorkType> workTypes = workTypeRepo.getAllByNameIn(workTypeNames);
+        Collection<WorkType> workTypes = workTypeRepo.getSetByNameIn(workTypeNames);
         OmeroProject omeroProject;
         if (nullOrEmpty(omeroProjectName)) {
             omeroProject = null;
@@ -298,6 +298,28 @@ public class WorkServiceImp implements WorkService {
         }
         if (!work.getTreatmentTypes().equals(treatmentTypes)) {
             work.setTreatmentTypes(treatmentTypes);// Note this mutates the set in the work object
+            work = workRepo.save(work);
+        }
+        return work;
+    }
+
+    @Override
+    public Work updateWorkWorkTypes(User user, String workNumber, List<String> workTypeNames) {
+        Work work = workRepo.getByWorkNumber(workNumber);
+        checkAuthorisation(user, work);
+        if (workTypeNames==null) {
+            throw new IllegalArgumentException("Missing parameter: workTypeNames");
+        }
+        Set<WorkType> workTypes;
+        if (workTypeNames.isEmpty()) {
+            workTypes = Set.of();
+        } else {
+            workTypes = workTypeRepo.getSetByNameIn(workTypeNames);
+        }
+        final Set<WorkType> oldTypes = work.getWorkTypes();
+        if (!oldTypes.equals(workTypes)) {
+            oldTypes.retainAll(workTypes);
+            oldTypes.addAll(workTypes);
             work = workRepo.save(work);
         }
         return work;

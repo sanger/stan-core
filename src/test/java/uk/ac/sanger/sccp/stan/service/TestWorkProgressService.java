@@ -269,11 +269,11 @@ public class TestWorkProgressService {
     private void mockWorkType(String workTypeName, WorkType workType) {
         if (workType != null) {
             when(mockWorkTypeRepo.getByName(workTypeName)).thenReturn(workType);
-            when(mockWorkTypeRepo.getAllByNameIn(List.of(workTypeName))).thenReturn(List.of(workType));
+            when(mockWorkTypeRepo.getSetByNameIn(List.of(workTypeName))).thenReturn(Set.of(workType));
         } else if (workTypeName!=null) {
             when(mockWorkTypeRepo.getByName(workTypeName)).thenThrow(new EntityNotFoundException("Unknown work type: "+workTypeName));
             final List<String> workTypeNames = List.of(workTypeName);
-            when(mockWorkTypeRepo.getAllByNameIn(workTypeNames)).thenThrow(new EntityNotFoundException("Unknown work types: "+workTypeNames));
+            when(mockWorkTypeRepo.getSetByNameIn(workTypeNames)).thenThrow(new EntityNotFoundException("Unknown work types: "+workTypeNames));
         }
     }
 

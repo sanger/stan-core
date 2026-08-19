@@ -154,5 +154,19 @@ public class TestWorkMutation {
         data = tester.post("mutation { updateWorkStatus(workNumber: \""+workNumber+"\", status: completed) {work{status,priority}}}");
         assertEquals("completed", chainGet(data, "data", "updateWorkStatus", "work", "status"));
         assertNull(chainGet(data, "data", "updateWorkStatus", "work", "priority"));
+
+        data = tester.post("mutation { updateWorkWorkTypes(workNumber: \""+workNumber+"\", workTypes: [\"RNAscope\"]) { workTypes { name }}}");
+        List<?> wtd = chainGet(data, "data", "updateWorkWorkTypes", "workTypes");
+        assertThat(wtd).hasSize(1);
+        assertEquals("RNAscope", chainGet(wtd, 0, "name"));
+        data = tester.post("mutation { updateWorkWorkTypes(workNumber: \""+workNumber+"\", workTypes: [\"RNAscope\", \"Histology\"]) { workTypes { name }}}");
+        wtd = chainGet(data, "data", "updateWorkWorkTypes", "workTypes");
+        assertThat(wtd).hasSize(2);
+        assertThat(wtd.stream().map(wt -> chainGet(wt, "name"))).containsExactlyInAnyOrder("RNAscope", "Histology");
+
+        data = tester.post("query { work(workNumber: \""+workNumber+"\") { workTypes { name }}}");
+        wtd = chainGet(data, "data", "work", "workTypes");
+        assertThat(wtd).hasSize(2);
+        assertThat(wtd.stream().map(wt -> chainGet(wt, "name"))).containsExactlyInAnyOrder("RNAscope", "Histology");
     }
 }

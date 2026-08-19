@@ -89,7 +89,7 @@ public class TestWorkService {
         when(mockCostCodeRepo.getByCode(code)).thenReturn(cc);
         WorkType workType = new WorkType(30, workTypeName);
         Set<String> workTypeNames = Set.of(workTypeName);
-        when(mockWorkTypeRepo.getAllByNameIn(workTypeNames)).thenReturn(List.of(workType));
+        when(mockWorkTypeRepo.getSetByNameIn(workTypeNames)).thenReturn(Set.of(workType));
         String prefix = "SGP";
         String workNumber = "SGP4000";
         when(mockWorkRepo.createNumber(prefix)).thenReturn(workNumber);
@@ -663,6 +663,40 @@ public class TestWorkService {
             verify(mockTreatmentTypeRepo).getSetByNameIn(newNames);
         }
         assertEquals(newTts, work.getTreatmentTypes());
+        if (mode.equals("same")) {
+            verify(mockWorkRepo, never()).save(any());
+        } else {
+            verify(mockWorkRepo).save(work);
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings={"none", "same", "new"})
+    void testUpdateWorkWorkTypes(String mode) {
+        List<WorkType> workTypes = IntStream.range(1,4).mapToObj(
+                i -> new WorkType(i, "wt"+i)
+        ).toList();
+        Set<WorkType> oldWts = new HashSet<>(workTypes.subList(0, 2));
+        Set<WorkType> newWts = switch (mode) {
+            case "none" -> Set.of();
+            case "same" -> oldWts;
+            default -> Set.of(workTypes.getFirst(), workTypes.getLast());
+        };
+        when(mockWorkTypeRepo.getSetByNameIn(any())).thenReturn(newWts);
+        Work work = EntityFactory.makeWork("SGP1");
+        work.setWorkTypes(oldWts);
+        when(mockWorkRepo.getByWorkNumber(work.getWorkNumber())).thenReturn(work);
+
+        doNothing().when(workService).checkAuthorisation(any(), any());
+        User user = EntityFactory.getUser();
+        List<String> newNames = newWts.stream().map(WorkType::getName).toList();
+        workService.updateWorkWorkTypes(user, work.getWorkNumber(), newNames);
+        verify(workService).checkAuthorisation(user, work);
+        verify(mockWorkRepo).getByWorkNumber(work.getWorkNumber());
+        if (!nullOrEmpty(newNames)) {
+            verify(mockWorkTypeRepo).getSetByNameIn(newNames);
+        }
+        assertEquals(newWts, work.getWorkTypes());
         if (mode.equals("same")) {
             verify(mockWorkRepo, never()).save(any());
         } else {

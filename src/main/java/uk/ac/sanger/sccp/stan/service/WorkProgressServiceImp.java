@@ -67,7 +67,7 @@ public class WorkProgressServiceImp implements WorkProgressService {
         } else if (workTypeNames.isEmpty()) {
             return List.of();
         } else {
-            workTypes = new HashSet<>(workTypeRepo.getAllByNameIn(workTypeNames));
+            workTypes = workTypeRepo.getSetByNameIn(workTypeNames);
         }
         Set<Program> programs;
         if (programNames==null) {

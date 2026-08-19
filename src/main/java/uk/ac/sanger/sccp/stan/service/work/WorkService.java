@@ -124,6 +124,15 @@ public interface WorkService {
     Work updateWorkTreatmentTypes(User user, String workNumber, List<String> treatmentTypes);
 
     /**
+     * Updates the work types of an existing work.
+     * @param user the user responsible
+     * @param workNumber the work number of the work
+     * @param workTypeNames the names of the work types
+     * @return the updated work
+     */
+    Work updateWorkWorkTypes(User user, String workNumber, List<String> workTypeNames);
+
+    /**
      * Updates the existing work linking it to the given operations and samples in slots in the ops' actions
      * @param workNumber the string identifying an existing work
      * @param operations the operations to link
