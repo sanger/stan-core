@@ -17,8 +17,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
-import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGet;
-import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGetList;
+import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.*;
 
 /**
  * Tests work mutation
@@ -61,15 +60,17 @@ public class TestWorkMutation {
         DnapStudy study = dnapStudyRepo.save(new DnapStudy(123, "S123"));
         ReleaseDestination rd = releaseDestinationRepo.save(new ReleaseDestination(null, "Kurt"));
 
-        String worksQuery  = "query { works(status: [active]) { workNumber, workType {name}, workRequester {username}," +
+        String worksQuery  = "query { works(status: [active]) { workNumber, workTypes {name}, workRequester {username}," +
                 "project {name}, program {name}, costCode {code}, status, omeroProject {name}, dnapStudy {name}, facultyLead {name} }}";
         Object data = tester.post(worksQuery);
+        assertNoErrors(data);
         List<Map<String,?>> worksData = chainGet(data, "data", "works");
         assertNotNull(worksData);
         int startingNum = worksData.size();
 
         tester.setUser(enduser);
         data = tester.post(tester.readGraphQL("createWork.graphql"));
+        assertNoErrors(data);
 
         Map<String, Object> workData = chainGet(data, "data", "createWork");
         String workNumber = (String) workData.get("workNumber");
@@ -77,18 +78,21 @@ public class TestWorkMutation {
         assertEquals(project.getName(), chainGet(workData, "project", "name"));
         assertEquals(prog.getName(), chainGet(workData, "program", "name"));
         assertEquals(cc.getCode(), chainGet(workData, "costCode", "code"));
-        assertEquals(workType.getName(), chainGet(workData, "workType", "name"));
+        assertEquals(workType.getName(), chainGet(workData, "workTypes", 0, "name"));
         assertEquals(workRequester.getUsername(), chainGet(workData, "workRequester", "username"));
         assertEquals(omero.getName(), chainGet(workData, "omeroProject", "name"));
         assertEquals(study.getName(), chainGet(workData, "dnapStudy", "name"));
         assertEquals(rd.getName(), chainGet(workData, "facultyLead", "name"));
         assertEquals("unstarted", workData.get("status"));
 
-        String worksCreatedByQuery = "query { worksCreatedBy(username: \"USER\") { workNumber } }";
+        String worksCreatedByQuery = "query { worksCreatedBy(username: \"USER\") { workNumber, workTypes {name} } }";
         data = tester.post(worksCreatedByQuery.replace("USER", enduser.getUsername()));
         List<?> createdWorks = chainGet(data, "data", "worksCreatedBy");
         assertThat(createdWorks).hasSize(1);
         assertEquals(workNumber, chainGet(createdWorks, 0, "workNumber"));
+        List<?> workTypes = chainGet(createdWorks, 0, "workTypes");
+        assertThat(workTypes).hasSize(1);
+        assertEquals(workType.getName(), chainGet(workTypes, 0, "name"));
 
         data = tester.post(worksCreatedByQuery.replace("USER", normaluser.getUsername()));
         assertThat(chainGetList(data, "data", "worksCreatedBy")).isEmpty();
@@ -150,5 +154,19 @@ public class TestWorkMutation {
         data = tester.post("mutation { updateWorkStatus(workNumber: \""+workNumber+"\", status: completed) {work{status,priority}}}");
         assertEquals("completed", chainGet(data, "data", "updateWorkStatus", "work", "status"));
         assertNull(chainGet(data, "data", "updateWorkStatus", "work", "priority"));
+
+        data = tester.post("mutation { updateWorkWorkTypes(workNumber: \""+workNumber+"\", workTypes: [\"RNAscope\"]) { workTypes { name }}}");
+        List<?> wtd = chainGet(data, "data", "updateWorkWorkTypes", "workTypes");
+        assertThat(wtd).hasSize(1);
+        assertEquals("RNAscope", chainGet(wtd, 0, "name"));
+        data = tester.post("mutation { updateWorkWorkTypes(workNumber: \""+workNumber+"\", workTypes: [\"RNAscope\", \"Histology\"]) { workTypes { name }}}");
+        wtd = chainGet(data, "data", "updateWorkWorkTypes", "workTypes");
+        assertThat(wtd).hasSize(2);
+        assertThat(wtd.stream().map(wt -> chainGet(wt, "name"))).containsExactlyInAnyOrder("RNAscope", "Histology");
+
+        data = tester.post("query { work(workNumber: \""+workNumber+"\") { workTypes { name }}}");
+        wtd = chainGet(data, "data", "work", "workTypes");
+        assertThat(wtd).hasSize(2);
+        assertThat(wtd.stream().map(wt -> chainGet(wt, "name"))).containsExactlyInAnyOrder("RNAscope", "Histology");
     }
 }

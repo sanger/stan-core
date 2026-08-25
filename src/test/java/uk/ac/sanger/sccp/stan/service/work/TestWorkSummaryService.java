@@ -9,8 +9,10 @@ import uk.ac.sanger.sccp.stan.model.Work.Status;
 import uk.ac.sanger.sccp.stan.repo.WorkRepo;
 import uk.ac.sanger.sccp.stan.repo.WorkTypeRepo;
 import uk.ac.sanger.sccp.stan.request.WorkSummaryData;
+import uk.ac.sanger.sccp.stan.service.work.WorkSummaryServiceImp.GroupKey;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -84,10 +86,8 @@ public class TestWorkSummaryService {
     public void testGroupKeys(int type1, int type2, Status st1, Status st2, boolean equal) {
         WorkType wt1 = new WorkType(type1, "wt"+type1);
         WorkType wt2 = new WorkType(type2, "wt"+type2);
-        Work work1 = work(wt1, st1, 1, 0, 0);
-        Work work2 = work(wt2, st2, 0, 2, 0);
-        var key1 = service.groupKey(work1);
-        var key2 = service.groupKey(work2);
+        GroupKey key1 = new GroupKey(wt1.getId(), st1);
+        GroupKey key2 = new GroupKey(wt2.getId(), st2);
         if (equal) {
             assertEquals(key1, key2);
             assertEquals(key1.hashCode(), key2.hashCode());
@@ -98,7 +98,7 @@ public class TestWorkSummaryService {
 
     private Work work(WorkType wt, Status status, Integer numBlocks, Integer numSlides, Integer numOriginal) {
         int id = ++idCounter;
-        return new Work(id, "SGP"+id, wt, null, null, null, null, status,
+        return new Work(id, "SGP"+id, Set.of(wt), null, null, null, null, status,
                 numBlocks, numSlides, numOriginal, null, null, null, null, null, null);
     }
 

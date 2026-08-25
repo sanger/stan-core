@@ -22,8 +22,8 @@ public interface WorkTypeRepo extends CrudRepository<WorkType, Integer> {
 
     List<WorkType> findAllByNameIn(Collection<String> names);
 
-    default List<WorkType> getAllByNameIn(Collection<String> names) throws EntityNotFoundException {
-        return RepoUtils.getAllByField(this::findAllByNameIn, names, WorkType::getName,
+    default Set<WorkType> getSetByNameIn(Collection<String> names) throws EntityNotFoundException {
+        return RepoUtils.getSetByField(this::findAllByNameIn, names, WorkType::getName,
                 "Unknown work type{s}: ", String::toUpperCase);
     }
 }

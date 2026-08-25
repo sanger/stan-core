@@ -65,8 +65,21 @@ public interface WorkRepo extends CrudRepository<Work, Integer> {
      */
     Iterable<Work> findAllByStatusIn(Collection<Status> statuses);
 
-    List<Work> findAllByWorkTypeIn(Collection<WorkType> workTypes);
+    default List<Work> findAllByWorkTypeIn(Collection<WorkType> workTypes) {
+        if (!workTypes.isEmpty()) {
+            List<Integer> workTypeIds = workTypes.stream().map(WorkType::getId).toList();
+            List<Integer> workIds = _findWorkIdsByWorkTypeIdIn(workTypeIds);
+            if (!workIds.isEmpty()) {
+                return asList(findAllById(workIds));
+            }
+        }
+        return List.of();
+    }
 
+    @Query(value = "select distinct work_id from work_type_link " +
+            "where work_type_id in (?1)", nativeQuery = true
+    )
+    List<Integer> _findWorkIdsByWorkTypeIdIn(Collection<Integer> workTypeIds);
 
     @Query(value="select operation_id as opId, work_number as workNumber from work_op join work on (work_id=work.id) where operation_id IN (?1)", nativeQuery=true)
     List<Object[]> _opIdWorkNumbersForOpIds(Collection<Integer> opIds);

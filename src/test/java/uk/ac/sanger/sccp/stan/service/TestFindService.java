@@ -345,7 +345,7 @@ public class TestFindService {
         CostCode cc = new CostCode(1, "cc1");
         WorkType workType = new WorkType(1, "worktype", true);
         ReleaseRecipient workRequester = new ReleaseRecipient(1, "test1");
-        Work work = new Work(1, "SGP404", workType, workRequester, pr, null, cc, Work.Status.active);
+        Work work = new Work(1, "SGP404", Set.of(workType), workRequester, pr, null, cc, Work.Status.active);
         work.getSampleSlotIds().add(new Work.SampleSlotId(sample.getId(), lw.getSlots().getFirst().getId()));
 
         when(mockWorkRepo.getByWorkNumber(work.getWorkNumber())).thenReturn(work);
@@ -393,7 +393,7 @@ public class TestFindService {
         CostCode cc = new CostCode(1, "cc1");
         WorkType workType = new WorkType(1, "worktype", true);
         ReleaseRecipient workRequester = new ReleaseRecipient(1, "test1");
-        Work work = new Work(1, "SGP404", workType, workRequester, pr, null, cc, Work.Status.active);
+        Work work = new Work(1, "SGP404", Set.of(workType), workRequester, pr, null, cc, Work.Status.active);
 
         List<LabwareSample> lss = List.of(
                 new LabwareSample(lw1, sample1, Set.of(work.getWorkNumber())),

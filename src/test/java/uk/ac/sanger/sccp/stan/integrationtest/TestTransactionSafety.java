@@ -62,7 +62,7 @@ public class TestTransactionSafety {
             Project project = entityCreator.getAny(projectRepo);
             newProgram = entityCreator.createProgram("prog1");
             CostCode costCode = entityCreator.getAny(costCodeRepo);
-            Work work = new Work(null, "SGPX", workType, null, project, newProgram, costCode, Work.Status.active);
+            Work work = new Work(null, "SGPX", Set.of(workType), null, project, newProgram, costCode, Work.Status.active);
             workRepo.save(work);
         }
         OperationType opType = entityCreator.getAny(opTypeRepo);

@@ -1,8 +1,8 @@
 mutation {
-    createWork(prefix: "SGP", workType: "Drywalling", workRequester: "test1", project: "Stargate", program: "Hello",
+    createWork(prefix: "SGP", workTypes: ["Drywalling"], workRequester: "test1", project: "Stargate", program: "Hello",
         costCode: "S666", omeroProject: "OM_PROJ", ssStudyId: 123, facultyLead: "Kurt") {
         workNumber
-        workType {name}
+        workTypes {name}
         workRequester {username}
         project {name}
         program {name}

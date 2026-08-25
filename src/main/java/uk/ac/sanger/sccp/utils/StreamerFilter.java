@@ -30,6 +30,17 @@ public class StreamerFilter<E> {
         }
     }
 
+    public <T> void addFilter(Collection<T> items, BiPredicate<E, T> biPredicate,
+                              Function<? super Collection<T>, ? extends Iterable<E>> sourceFunction) {
+        if (items != null) {
+            if (!hasSource()) {
+                setSource(new ItemSource<>(items, sourceFunction));
+            } else {
+                this.filters.add(new ItemPredicateFilter<>(items, biPredicate));
+            }
+        }
+    }
+
     /**
      * Creates a predicate matching the filters specified in this.
      * @return a predicate for filtering the {@code E} entities
@@ -81,6 +92,21 @@ public class StreamerFilter<E> {
         @Override
         public boolean test(E e) {
             return (this.items==null || items.contains(getter.apply(e)));
+        }
+    }
+
+    static class ItemPredicateFilter<T,E> implements Predicate<E> {
+        private final Collection<T> items;
+        private final BiPredicate<E, T> biPredicate;
+
+        ItemPredicateFilter(Collection<T> items, BiPredicate<E, T> biPredicate) {
+            this.items = items;
+            this.biPredicate = biPredicate;
+        }
+
+        @Override
+        public boolean test(E e) {
+            return (this.items==null || items.stream().anyMatch(t -> biPredicate.test(e, t)));
         }
     }
 

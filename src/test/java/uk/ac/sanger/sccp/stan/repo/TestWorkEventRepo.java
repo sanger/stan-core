@@ -12,6 +12,7 @@ import uk.ac.sanger.sccp.stan.model.WorkEvent.Type;
 import javax.transaction.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -35,13 +36,13 @@ public class TestWorkEventRepo {
     @Test
     public void testGetLatestEventForEachWorkId() {
         User user = entityCreator.createUser("user1");
-        WorkType wt = entityCreator.createWorkType("Rocks");
+        Set<WorkType> wts = Set.of(entityCreator.createWorkType("Rocks"));
         Project pr = entityCreator.createProject("Stargate");
         CostCode cc = entityCreator.createCostCode("4");
         ReleaseRecipient wr = entityCreator.createReleaseRecipient("test1");
         Program prog = entityCreator.createProgram("Hello");
-        Work work1 = entityCreator.createWork(wt, pr, prog, cc, wr);
-        Work work2 = entityCreator.createWork(wt, pr, prog, cc, wr);
+        Work work1 = entityCreator.createWork(wts, pr, prog, cc, wr);
+        Work work2 = entityCreator.createWork(wts, pr, prog, cc, wr);
         Comment com1 = commentRepo.save(new Comment(null, "Alpha", "work"));
         Comment com2 = commentRepo.save(new Comment(null, "Beta", "work"));
 

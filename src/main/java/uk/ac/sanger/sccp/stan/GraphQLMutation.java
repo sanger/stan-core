@@ -590,7 +590,7 @@ public class GraphQLMutation extends BaseGraphQLResource {
             String programName = dfe.getArgument("program");
             String code = dfe.getArgument("costCode");
             String prefix = dfe.getArgument("prefix");
-            String workTypeName = dfe.getArgument("workType");
+            List<String> workTypeNames = dfe.getArgument("workTypes");
             String workRequesterName = dfe.getArgument("workRequester");
             Integer numBlocks = dfe.getArgument("numBlocks");
             Integer numSlides = dfe.getArgument("numSlides");
@@ -601,13 +601,13 @@ public class GraphQLMutation extends BaseGraphQLResource {
             String facultyLead = dfe.getArgument("facultyLead");
             List<String> treatmentTypeNames = dfe.getArgument("treatmentTypes");
             logRequest("Create work", user,
-                    String.format("project: %s, program: %s, costCode: %s, prefix: %s, workType: %s, " +
+                    String.format("project: %s, program: %s, costCode: %s, prefix: %s, workTypes: %s, " +
                                     "workRequesterName: %s, numBlocks: %s, numSlides: %s, numOriginalSamples: %s, " +
                                     "omeroProjectName: %s, ssStudyId: %s, xeniumStudyId: %s, facultyLead: %s, " +
                                     "treatmentTypes: %s",
-                    projectName, programName, code, prefix, workTypeName, workRequesterName, numBlocks, numSlides,
+                    projectName, programName, code, prefix, workTypeNames, workRequesterName, numBlocks, numSlides,
                             numOriginalSamples, omeroProjectName, ssStudyId, xeniumStudyId, facultyLead, treatmentTypeNames));
-            return workService.createWork(user, prefix, workTypeName, workRequesterName, projectName, programName, code,
+            return workService.createWork(user, prefix, workTypeNames, workRequesterName, projectName, programName, code,
                     numBlocks, numSlides, numOriginalSamples, omeroProjectName, ssStudyId, xeniumStudyId, facultyLead,
                     treatmentTypeNames);
         };
@@ -710,6 +710,17 @@ public class GraphQLMutation extends BaseGraphQLResource {
             logRequest("Update work xenium study", user,
                     String.format("Work number: %s, ssStudyId: %s", workNumber, ssStudyId));
             return workService.updateWorkXeniumStudy(user, workNumber, ssStudyId);
+        };
+    }
+
+    public DataFetcher<Work> updateWorkWorkTypes() {
+        return dfe -> {
+            User user = checkUser(dfe, User.Role.enduser);
+            String workNumber = dfe.getArgument("workNumber");
+            List<String> workTypes = dfe.getArgument("workTypes");
+            logRequest("Update work work types", user,
+                    String.format("Work number: %s, workTypes: %s", workNumber, workTypes));
+            return workService.updateWorkWorkTypes(user, workNumber, workTypes);
         };
     }
 

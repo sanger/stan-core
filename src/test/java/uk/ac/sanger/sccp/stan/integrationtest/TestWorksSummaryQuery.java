@@ -12,8 +12,7 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.WorkRepo;
 
 import javax.transaction.Transactional;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -40,12 +39,13 @@ public class TestWorksSummaryQuery {
     public void testWorksSummary() throws Exception {
         WorkType wt1 = entityCreator.createWorkType("wt1");
         WorkType wt2 = entityCreator.createWorkType("wt2");
+        WorkType wt3 = entityCreator.createWorkType("wt3");
         Project project = entityCreator.createProject("Stargate");
         Program prog = entityCreator.createProgram("Hello");
         CostCode cc = entityCreator.createCostCode("CC1");
-        Work work1 = entityCreator.createWork(wt1, project, prog, cc, null);
-        Work work2 = entityCreator.createWork(wt1, project, prog, cc, null);
-        Work work3 = entityCreator.createWork(wt2, project, prog, cc, null);
+        Work work1 = entityCreator.createWork(Set.of(wt1), project, prog, cc, null);
+        Work work2 = entityCreator.createWork(Set.of(wt1, wt3), project, prog, cc, null);
+        Work work3 = entityCreator.createWork(Set.of(wt2), project, prog, cc, null);
 
         work1.setNumBlocks(5);
         work2.setNumSlides(6);
@@ -58,21 +58,21 @@ public class TestWorksSummaryQuery {
         Object result = tester.post(query);
 
         List<Map<String,?>> workTypes = chainGet(result, "data", "worksSummary", "workTypes");
-        assertThat(workTypes).hasSize(4);
+        assertThat(workTypes).hasSize(5);
         assertEquals("RNAscope", chainGet(workTypes.get(0), "name"));
         assertEquals("Histology", chainGet(workTypes.get(1), "name"));
         assertEquals("wt1", chainGet(workTypes.get(2), "name"));
         assertEquals("wt2", chainGet(workTypes.get(3), "name"));
+        assertEquals("wt3", chainGet(workTypes.get(4), "name"));
 
         List<Map<String,?>> groupsData = chainGet(result, "data", "worksSummary", "workSummaryGroups");
-        assertThat(groupsData).hasSize(2);
+        assertThat(groupsData).hasSize(3);
+        groupsData = groupsData.stream()
+                .sorted(Comparator.comparing(gd -> (String) chainGet(gd, "workType", "name")))
+                .toList();
         Map<String, ?> g1 = groupsData.get(0);
         Map<String, ?> g2 = groupsData.get(1);
-        if (chainGet(g1, "workType", "name").equals("wt2")) {
-            var swap = g1;
-            g1 = g2;
-            g2 = swap;
-        }
+        Map<String, ?> g3 = groupsData.get(2);
         assertEquals("wt1", chainGet(g1, "workType", "name"));
         assertEquals("active", g1.get("status"));
         assertEquals(2, g1.get("numWorks"));
@@ -85,5 +85,11 @@ public class TestWorksSummaryQuery {
         assertEquals(0, g2.get("totalNumBlocks"));
         assertEquals(0, g2.get("totalNumSlides"));
         assertEquals(7, g2.get("totalNumOriginalSamples"));
+        assertEquals("wt3", chainGet(g3, "workType", "name"));
+        assertEquals("active", g3.get("status"));
+        assertEquals(1, g3.get("numWorks"));
+        assertEquals(0, g3.get("totalNumBlocks"));
+        assertEquals(6, g3.get("totalNumSlides"));
+        assertEquals(0, g3.get("totalNumOriginalSamples"));
     }
 }

@@ -15,10 +15,12 @@ import javax.transaction.Transactional;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.IntFunction;
+import java.util.stream.IntStream;
 
 import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.assertNoErrors;
 import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGet;
 
 /**
@@ -108,7 +110,10 @@ public class TestWorkProgressQuery {
         release.setReleased(time(12));
         releaseRepo.save(release);
 
-        Work work = entityCreator.createWork(null, null, null, null, null);
+        WorkType wt1 = entityCreator.createWorkType("Brewing");
+        WorkType wt2 = entityCreator.createWorkType("Sclooping");
+
+        Work work = entityCreator.createWork(Set.of(wt1, wt2), null, null, null, null);
         work.setOperationIds(Arrays.stream(ops).map(Operation::getId).collect(toSet()));
         work.setStatus(Work.Status.paused);
         work = workRepo.save(work);
@@ -124,9 +129,13 @@ public class TestWorkProgressQuery {
                 .replace("active", "paused");
 
         Object result = tester.post(query);
+        assertNoErrors(result);
         List<?> workProgresses = chainGet(result, "data", "workProgress");
         assertThat(workProgresses).hasSize(1);
         assertEquals(work.getWorkNumber(), chainGet(workProgresses, 0, "work", "workNumber"));
+        List<?> wtsData = chainGet(workProgresses, 0, "work", "workTypes");
+        assertThat(wtsData).hasSize(2);
+        assertThat(IntStream.range(0, wtsData.size()).mapToObj(i -> chainGet(wtsData, i, "name"))).containsExactlyInAnyOrder(wt1.getName(), wt2.getName());
         assertEquals("Release 96 well plate", chainGet(workProgresses, 0, "mostRecentOperation"));
         assertEquals(pausedComment.getText(), chainGet(workProgresses, 0, "workComment"));
         List<Map<String,String>> timestamps = chainGet(workProgresses,0, "timestamps");

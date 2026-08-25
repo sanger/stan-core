@@ -18,7 +18,7 @@ public interface WorkService {
      * Creates a new work. Records a create event for the work linked to the specified user
      * @param user the user responsible for creating the work
      * @param prefix the prefix ({@code SGP} or {@code R&D}) for the work
-     * @param workTypeName the name of a work type for the work number
+     * @param workTypeNames the names of work type for the work number
      * @param workRequesterName the name of the ReleaseRecipient requesting the work
      * @param projectName the name of the project for the work
      * @param programName the name of the program for the work
@@ -33,7 +33,7 @@ public interface WorkService {
      * @param treatmentTypeNames names of treatment types (may be null)
      * @return the new work
      */
-    Work createWork(User user, String prefix, String workTypeName, String workRequesterName, String projectName,
+    Work createWork(User user, String prefix, Collection<String> workTypeNames, String workRequesterName, String projectName,
                     String programName, String costCode, Integer numBlocks, Integer numSlides,
                     Integer numOriginalSamples, String omeroProjectName, Integer ssStudyId, Integer xeniumStudyId,
                     String facultyLead, Collection<String> treatmentTypeNames);
@@ -122,6 +122,15 @@ public interface WorkService {
      * @return the updated work
      */
     Work updateWorkTreatmentTypes(User user, String workNumber, List<String> treatmentTypes);
+
+    /**
+     * Updates the work types of an existing work.
+     * @param user the user responsible
+     * @param workNumber the work number of the work
+     * @param workTypeNames the names of the work types
+     * @return the updated work
+     */
+    Work updateWorkWorkTypes(User user, String workNumber, List<String> workTypeNames);
 
     /**
      * Updates the existing work linking it to the given operations and samples in slots in the ops' actions

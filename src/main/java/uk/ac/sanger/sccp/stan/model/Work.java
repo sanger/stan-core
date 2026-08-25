@@ -73,8 +73,13 @@ public class Work {
 
     private String workNumber;
 
-    @ManyToOne
-    private WorkType workType;
+    @ManyToMany
+    @JoinTable(
+            name = "work_type_link",
+            joinColumns = @JoinColumn(name = "work_id"),
+            inverseJoinColumns = @JoinColumn(name = "work_type_id")
+    )
+    private Set<WorkType> workTypes = new HashSet<>();
 
     @ManyToOne
     private ReleaseRecipient workRequester;
@@ -133,13 +138,15 @@ public class Work {
 
     public Work() {}
 
-    public Work(Integer id, String workNumber, WorkType workType, ReleaseRecipient workRequester, Project project,
+    public Work(Integer id, String workNumber, Collection<WorkType> workTypes, ReleaseRecipient workRequester, Project project,
                 Program program, CostCode costCode, Status status, Integer numBlocks, Integer numSlides,
                 Integer numOriginalSamples, String priority, OmeroProject omeroProject, DnapStudy dnapStudy,
                 DnapStudy xeniumStudy, ReleaseDestination facultyLead, Set<TreatmentType> treatmentTypes) {
         this.id = id;
         this.workNumber = workNumber;
-        this.workType = workType;
+        if (workTypes != null) {
+            this.workTypes.addAll(workTypes);
+        }
         this.workRequester = workRequester;
         this.project = project;
         this.program = program;
@@ -158,9 +165,9 @@ public class Work {
         setTreatmentTypes(treatmentTypes);
     }
 
-    public Work(Integer id, String workNumber, WorkType workType, ReleaseRecipient workRequester, Project project,
+    public Work(Integer id, String workNumber, Collection<WorkType> workTypes, ReleaseRecipient workRequester, Project project,
                 Program program, CostCode costCode, Status status) {
-        this(id, workNumber, workType, workRequester, project, program, costCode, status, null,
+        this(id, workNumber, workTypes, workRequester, project, program, costCode, status, null,
                 null, null, null, null, null, null, null, null);
     }
 
@@ -180,12 +187,16 @@ public class Work {
         this.workNumber = workNumber;
     }
 
-    public WorkType getWorkType() {
-        return this.workType;
+    public Set<WorkType> getWorkTypes() {
+        return this.workTypes;
     }
 
-    public void setWorkType(WorkType workType) {
-        this.workType = workType;
+    public void setWorkTypes(Set<WorkType> workTypes) {
+        this.workTypes = (workTypes==null ? new HashSet<>() : workTypes);
+    }
+
+    public boolean hasWorkType(WorkType workType) {
+        return getWorkTypes().contains(workType);
     }
 
     public ReleaseRecipient getWorkRequester() {
@@ -357,7 +368,7 @@ public class Work {
         if (o == null || getClass() != o.getClass()) return false;
         Work that = (Work) o;
         return (Objects.equals(this.id, that.id)
-                && Objects.equals(this.workType, that.workType)
+                && Objects.equals(this.workTypes, that.workTypes)
                 && Objects.equals(this.workNumber, that.workNumber)
                 && Objects.equals(this.workRequester, that.workRequester)
                 && Objects.equals(this.project, that.project)

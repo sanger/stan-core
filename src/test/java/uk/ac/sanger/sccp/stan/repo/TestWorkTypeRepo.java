@@ -9,6 +9,7 @@ import uk.ac.sanger.sccp.stan.model.WorkType;
 import javax.persistence.EntityNotFoundException;
 import javax.transaction.Transactional;
 import java.util.List;
+import java.util.Set;
 
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -53,19 +54,19 @@ public class TestWorkTypeRepo {
 
     @Test
     @Transactional
-    public void testGetAllByNameIn() {
+    public void testGetSetByNameIn() {
         // In database already: RNAscope and Histology
-        List<WorkType> workTypes = workTypeRepo.getAllByNameIn(List.of("rnascope", "histology"));
+        Set<WorkType> workTypes = workTypeRepo.getSetByNameIn(List.of("rnascope", "histology"));
         assertThat(workTypes).hasSize(2);
         assertThat(workTypes.stream().map(WorkType::getName).collect(toList())).containsExactlyInAnyOrder("RNAscope", "Histology");
-        List<WorkType> fewerWorkTypes = workTypeRepo.getAllByNameIn(List.of("RNASCOPE"));
+        Set<WorkType> fewerWorkTypes = workTypeRepo.getSetByNameIn(List.of("RNASCOPE"));
         assertThat(fewerWorkTypes).hasSize(1);
-        assertThat(fewerWorkTypes.get(0).getName()).isEqualTo("RNAscope");
+        assertEquals("RNAscope", fewerWorkTypes.iterator().next().getName());
 
-        var ex1 = assertThrows(EntityNotFoundException.class, () -> workTypeRepo.getAllByNameIn(List.of("rnascope", "bananas")));
+        var ex1 = assertThrows(EntityNotFoundException.class, () -> workTypeRepo.getSetByNameIn(List.of("rnascope", "bananas")));
         assertThat(ex1).hasMessage("Unknown work type: [bananas]");
 
-        var ex2 = assertThrows(EntityNotFoundException.class, () -> workTypeRepo.getAllByNameIn(List.of("custard", "bananas")));
+        var ex2 = assertThrows(EntityNotFoundException.class, () -> workTypeRepo.getSetByNameIn(List.of("custard", "bananas")));
         assertThat(ex2).hasMessage("Unknown work types: [custard, bananas]");
     }
 }

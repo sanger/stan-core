@@ -74,7 +74,7 @@ public class WorkServiceImp implements WorkService {
     }
 
     @Override
-    public Work createWork(User user, String prefix, String workTypeName, String workRequesterName, String projectName,
+    public Work createWork(User user, String prefix, Collection<String> workTypeNames, String workRequesterName, String projectName,
                            String programName, String costCode,
                            Integer numBlocks, Integer numSlides, Integer numOriginalSamples,
                            String omeroProjectName, Integer ssStudyId, Integer xeniumStudyId, String facultyLead,
@@ -84,7 +84,7 @@ public class WorkServiceImp implements WorkService {
         Project project = projectRepo.getByName(projectName);
         Program program = programRepo.getByName(programName);
         CostCode cc = costCodeRepo.getByCode(costCode);
-        WorkType type = workTypeRepo.getByName(workTypeName);
+        Collection<WorkType> workTypes = workTypeRepo.getSetByNameIn(workTypeNames);
         OmeroProject omeroProject;
         if (nullOrEmpty(omeroProjectName)) {
             omeroProject = null;
@@ -118,7 +118,7 @@ public class WorkServiceImp implements WorkService {
         }
         Set<TreatmentType> treatmentTypes = nullOrEmpty(treatmentTypeNames) ? Set.of() : treatmentTypeRepo.getSetByNameIn(treatmentTypeNames);
         String workNumber = workRepo.createNumber(prefix);
-        Work work = workRepo.save(new Work(null, workNumber, type, workRequester, project, program, cc, Status.unstarted,
+        Work work = workRepo.save(new Work(null, workNumber, workTypes, workRequester, project, program, cc, Status.unstarted,
                 numBlocks, numSlides, numOriginalSamples, null, omeroProject, dnapStudy, xeniumStudy, leadDest, treatmentTypes));
         workEventService.recordEvent(user, work, WorkEvent.Type.create, null);
         return work;
@@ -298,6 +298,28 @@ public class WorkServiceImp implements WorkService {
         }
         if (!work.getTreatmentTypes().equals(treatmentTypes)) {
             work.setTreatmentTypes(treatmentTypes);// Note this mutates the set in the work object
+            work = workRepo.save(work);
+        }
+        return work;
+    }
+
+    @Override
+    public Work updateWorkWorkTypes(User user, String workNumber, List<String> workTypeNames) {
+        Work work = workRepo.getByWorkNumber(workNumber);
+        checkAuthorisation(user, work);
+        if (workTypeNames==null) {
+            throw new IllegalArgumentException("Missing parameter: workTypeNames");
+        }
+        Set<WorkType> workTypes;
+        if (workTypeNames.isEmpty()) {
+            workTypes = Set.of();
+        } else {
+            workTypes = workTypeRepo.getSetByNameIn(workTypeNames);
+        }
+        final Set<WorkType> oldTypes = work.getWorkTypes();
+        if (!oldTypes.equals(workTypes)) {
+            oldTypes.retainAll(workTypes);
+            oldTypes.addAll(workTypes);
             work = workRepo.save(work);
         }
         return work;
