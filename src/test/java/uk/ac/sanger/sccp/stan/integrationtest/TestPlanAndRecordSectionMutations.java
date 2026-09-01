@@ -9,8 +9,7 @@ import org.springframework.test.context.ActiveProfiles;
 import uk.ac.sanger.sccp.stan.EntityCreator;
 import uk.ac.sanger.sccp.stan.GraphQLTester;
 import uk.ac.sanger.sccp.stan.model.*;
-import uk.ac.sanger.sccp.stan.repo.LabwareNoteRepo;
-import uk.ac.sanger.sccp.stan.repo.OperationCommentRepo;
+import uk.ac.sanger.sccp.stan.repo.*;
 
 import javax.persistence.EntityManager;
 import javax.transaction.Transactional;
@@ -41,6 +40,102 @@ public class TestPlanAndRecordSectionMutations {
     private EntityManager entityManager;
     @Autowired
     private LabwareNoteRepo lwNoteRepo;
+
+    @Autowired
+    private LabwareTypeRepo ltRepo;
+
+    /** Section sectioning several block-samples into the same slot */
+    @Test
+    @Transactional
+    public void testPlanAndRecordSection_mult() throws Exception {
+        tester.setUser(entityCreator.createUser("dr6"));
+        LabwareType provLt = ltRepo.getByName("Proviasette");
+        Sample[] blockSamples = {
+                entityCreator.createBlockSample(entityCreator.createTissue(entityCreator.createDonor("DONOR1"), "TISSUE1")),
+                entityCreator.createBlockSample(entityCreator.createTissue(entityCreator.createDonor("DONOR2"), "TISSUE2")),
+        };
+        final int[] blockSampleIds = Arrays.stream(blockSamples).mapToInt(Sample::getId).toArray();
+        Labware sourceProv = entityCreator.createLabware("STAN-0001", provLt, new Sample[][] { blockSamples });
+        String mutation = tester.readGraphQL("plan_mult.graphql");
+        mutation = mutation.replace("55555", String.valueOf(blockSampleIds[0]));
+        mutation = mutation.replace("55556", String.valueOf(blockSampleIds[1]));
+        Map<String, ?> result = tester.post(mutation);
+        assertNoErrors(result);
+        Object resultPlan = chainGet(result, "data", "plan");
+        List<?> planResultLabware = chainGet(resultPlan, "labware");
+        assertEquals(1, planResultLabware.size());
+        String barcode = chainGet(planResultLabware, 0, "barcode");
+        testRetrievePlanData_mult(barcode, blockSampleIds);
+        testConfirm_mult(blockSampleIds, barcode, sourceProv);
+    }
+
+    private void testRetrievePlanData_mult(String barcode, int[] blockSampleIds) throws Exception {
+        String planQuery = tester.readGraphQL("plandata.graphql");
+        Map<String, ?> result = tester.post(planQuery.replace("$BARCODE", barcode));
+
+        Map<String, ?> planData = chainGet(result, "data", "planData");
+        List<List<String>> groups = chainGet(planData, "groups");
+        assertThat(groups).hasSize(1);
+        assertThat(groups.getFirst()).containsExactly("A1");
+        List<Map<String, ?>> planActionsData = chainGet(planData, "plan", "planActions");
+        assertThat(planActionsData).hasSize(2);
+        for (var paData : planActionsData) {
+            assertEquals("A1", chainGet(paData, "destination", "address"));
+            assertNotNull(chainGet(paData, "destination", "labwareId"));
+            assertEquals("A1", chainGet(paData, "source", "address"));
+        }
+        assertThat(planActionsData.stream()
+                .mapToInt(paData -> chainGet(paData, "sample", "id")))
+                .containsExactlyInAnyOrder(Arrays.stream(blockSampleIds).boxed().toArray(Integer[]::new));
+    }
+
+    void testConfirm_mult(int[] blockSampleIds, String barcode, Labware source) throws Exception {
+        Work work = entityCreator.createWork(null, null, null, null, null);
+        String mutation = tester.readGraphQL("confirmmult.graphql")
+                .replace("$BARCODE", barcode)
+                .replace("55555", String.valueOf(blockSampleIds[0]))
+                .replace("55556", String.valueOf(blockSampleIds[1]))
+                .replace("SGP4000", work.getWorkNumber())
+                ;
+        Object response = tester.post(mutation);
+        assertNoErrors(response);
+
+        List<Map<String, ?>> lwList = chainGet(response, "data", "confirmSection", "labware");
+        assertThat(lwList).hasSize(1);
+        Map<String, ?> lwData = lwList.getFirst();
+        assertEquals(barcode, lwData.get("barcode"));
+        List<Map<String, ?>> slotList = chainGetList(lwData, "slots");
+        assertThat(slotList).hasSize(1);
+        Map<String, ?> slotData = slotList.getFirst();
+        assertEquals("A1", slotData.get("address"));
+        List<Map<String, ?>> sampleList = chainGetList(slotData, "samples");
+        assertThat(sampleList).hasSize(2);
+        Map<String, ?> sampleData = sampleList.getFirst();
+        assertEquals("14", sampleData.get("section"));
+        assertEquals("TISSUE1", chainGet(sampleData, "tissue", "externalName"));
+        sampleData = sampleList.getLast();
+        assertEquals("17", sampleData.get("section"));
+        assertEquals("TISSUE2", chainGet(sampleData, "tissue", "externalName"));
+        int lwId = (int) lwData.get("id");
+
+        List<Map<String, ?>> opList = chainGetList(response, "data", "confirmSection", "operations");
+        assertThat(opList).hasSize(1);
+        Map<String, ?> opData = opList.getFirst();
+        List<Map<String, ?>> actionList = chainGetList(opData, "actions");
+        assertThat(actionList).hasSize(2);
+        for (var actionData : actionList) {
+            assertEquals("A1", chainGet(actionData, "source", "address"));
+            assertEquals("A1", chainGet(actionData, "destination", "address"));
+            assertEquals(source.getId(), chainGet(actionData, "source", "labwareId"));
+            assertEquals(lwId, (Integer) chainGet(actionData, "destination", "labwareId"));
+        }
+        sampleData = chainGet(actionList, 0, "sample");
+        assertEquals("14", sampleData.get("section"));
+        assertEquals("TISSUE1", chainGet(sampleData, "tissue", "externalName"));
+        sampleData = chainGet(actionList, 1, "sample");
+        assertEquals("17", sampleData.get("section"));
+        assertEquals("TISSUE2", chainGet(sampleData, "tissue", "externalName"));
+    }
 
     @Test
     @Transactional

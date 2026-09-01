@@ -131,17 +131,19 @@ public class TestConfirmSectionValidationService {
         List<ConfirmSectionLabware> csls = List.of(
                 new ConfirmSectionLabware(null),
                 new ConfirmSectionLabware("STAN-1", false, List.of(
-                        new ConfirmSection(List.of(A1, A2), null, null, null),
-                        new ConfirmSection(A3, null, null, null)
+                        new ConfirmSection(List.of(A1, A2), 10, "14b", null),
+                        new ConfirmSection(List.of(A1, A2), 10, "14c", null),
+                        new ConfirmSection(List.of(A1, A2), 11, "14c", null),
+                        new ConfirmSection(A3, 10, "14b", null)
                 ), null, null),
                 new ConfirmSectionLabware("STAN-2", false, List.of(
-                        new ConfirmSection(List.of(A1, A2), null, null, null),
-                        new ConfirmSection(List.of(A2, A3), null, null, null)
+                        new ConfirmSection(List.of(A1, A2), 10, "14b", null),
+                        new ConfirmSection(List.of(A2, A3), 10, "14b", null)
                 ), null, null)
         );
         List<String> problems = new ArrayList<>(1);
         service.checkRepeatedDestSlots(problems, csls);
-        assertProblem(problems, "Multiple actions linked to destination STAN-2 A2.");
+        assertProblem(problems, "Repeated action for destination STAN-2: (slot=A2, sampleId=10, section=14b)");
     }
 
     @ParameterizedTest

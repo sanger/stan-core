@@ -8,6 +8,8 @@ query {
                     address
                 }
                 sectioningOrder
+                source { address }
+                sample { id }
             }
         }
         destination {
