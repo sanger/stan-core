@@ -183,20 +183,19 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
         Set<Slot> slotsToSave = new HashSet<>();
         List<Measurement> measurements = new ArrayList<>();
         List<OperationComment> opComs = new ArrayList<>();
-
         var planActionMap = getPlanActionMap(plan.getPlanActions(), lwId);
         List<Action> actions = new ArrayList<>(secs.size());
         for (ConfirmSection sec : secs) {
             for (Address ad : sec.getDestinationAddresses()) {
-                PlanAction pa = planActionMap.get(ad);
-                if (pa == null) {
-                    throw new IllegalArgumentException(String.format("No plan action found into %s slot %s.",
-                            lw.getBarcode(), ad));
+                PlanAction pa = planActionMap.get(new ActionKey(ad, sec.getSampleId()));
+                if (pa==null) {
+                    throw new IllegalArgumentException(String.format("No plan action found into %s slot %s from sample %s.",
+                            lw.getBarcode(), ad, sec.getSampleId()));
                 }
                 Slot slot = lw.getSlot(ad);
                 final Sample sample = getSection(sectionMap, sec, pa, slot);
                 Action action = makeAction(sample, pa, slot);
-                slot.getSamples().add(sample);
+                slot.addSample(sample);
                 slotsToSave.add(slot);
                 String thickness = thickness(sec, pa);
                 if (!nullOrEmpty(thickness)) {
@@ -255,7 +254,7 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
      * The sectionMap uses tissue (id), section number and bio state in its keys.
      * @param sectionMap a cache of existing sections to prevent dupes
      * @param sec the request pertaining to a single section
-     * @param pa the plan action for the source sample going into this slot
+     * @param pa the plan actions for the sample id going into this slot
      * @param slot the destination slot
      * @return the sample as specified
      */
@@ -345,18 +344,24 @@ public class ConfirmSectionServiceImp implements ConfirmSectionService {
         return sampleIdStream.map(sampleId -> new OperationComment(null, comment, opId, sampleId, slotId, null));
     }
 
+    record ActionKey(Address address, int sampleId) {
+        ActionKey(PlanAction pa) {
+            this(pa.getDestination().getAddress(), pa.getSample().getId());
+        }
+    }
+
     /**
-     * Puts plan actions into a map from destination address.
+     * Puts plan actions into a map from destination address and source sample id.
      * Only those linked to the indicated labware will be included.
      * @param planActions the plan actions to put into a map
      * @param lwId the id of the labware whose plan actions we want to include
-     * @return a map from address to {@code PlanAction}
+     * @return a map from address/sample id to {@code PlanAction}s
      */
-    public Map<Address, PlanAction> getPlanActionMap(Collection<PlanAction> planActions, final int lwId) {
-        Map<Address, PlanAction> planActionMap = new HashMap<>(planActions.size());
+    Map<ActionKey, PlanAction> getPlanActionMap(Collection<PlanAction> planActions, final int lwId) {
+        Map<ActionKey, PlanAction> planActionMap = new HashMap<>(planActions.size());
         for (PlanAction pa : planActions) {
             if (pa.getDestination().getLabwareId()==lwId) {
-                planActionMap.putIfAbsent(pa.getDestination().getAddress(), pa);
+                planActionMap.put(new ActionKey(pa), pa);
             }
         }
         return planActionMap;

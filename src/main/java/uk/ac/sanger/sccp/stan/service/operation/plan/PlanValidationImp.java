@@ -205,6 +205,7 @@ public class PlanValidationImp implements PlanValidation {
             }
             validatePrebarcode(plw.getBarcode(), lt);
             checkActions(plw, lt);
+            checkSlotGroups(plw);
             if (gotBarcode && !alreadySeen && labwareRepo.existsByBarcode(plw.getBarcode())) {
                 addProblem("Labware with the barcode "+plw.getBarcode()+" already exists in the database.");
             } else if (gotBarcode && !alreadySeen && labwareRepo.existsByExternalBarcode(plw.getBarcode())) {
@@ -310,12 +311,22 @@ public class PlanValidationImp implements PlanValidation {
         return opType;
     }
 
+    // We are going to disallow the same sample being transferred into the same slot
+    //  in several ways, because it is too complicated to handle
+    record SectionKey(int sourceSampleId, Address destAddress) {
+        static Stream<SectionKey> from(PlanRequestAction action) {
+            final int sourceSampleId = action.getSampleId();
+            return action.getAddresses().stream()
+                    .map(ad -> new SectionKey(sourceSampleId, ad));
+        }
+    }
+
     public void checkActions(PlanRequestLabware lw, LabwareType lt) {
         if (lw.getActions().isEmpty()) {
             addProblem("No actions specified for labware %s.", lwErrorDesc(lw));
             return;
         }
-        Set<Address> seenAddresses = new HashSet<>();
+        final Set<SectionKey> seenSectionKeys = new HashSet<>();
         for (PlanRequestAction ac : lw.getActions()) {
             if (nullOrEmpty(ac.getAddresses())) {
                 addProblem("Missing destination address.");
@@ -331,11 +342,39 @@ public class PlanValidationImp implements PlanValidation {
                             invalidAddresses);
                 }
             }
-            for (Address ad : ac.getAddresses()) {
-                if (!seenAddresses.add(ad)) {
-                    addProblem("Actions for labware %s contains duplicate address: %s", lwErrorDesc(lw), ad);
+            SectionKey.from(ac).forEach(sk -> {
+                if (!seenSectionKeys.add(sk)) {
+                    addProblem("Duplicate actions transfer sample ID %s into slot %s of labware %s.",
+                            sk.sourceSampleId(), sk.destAddress(), lwErrorDesc(lw));
                 }
+            });
+        }
+    }
+
+    /** Looks for cases where slot groups are specified that overlap but do not match. */
+    void checkSlotGroups(PlanRequestLabware prl) {
+        if (nullOrEmpty(prl.getActions())) {
+            return;
+        }
+        final Set<Set<Address>> addressGroups = new HashSet<>();
+        boolean anyOverlaps = false;
+        for (PlanRequestAction ac : prl.getActions()) {
+            if (nullOrEmpty(ac.getAddresses())) {
+                continue;
             }
+            Set<Address> addressGroup = new HashSet<>(ac.getAddresses());
+            Optional<Set<Address>> matchingGroup = addressGroups.stream()
+                    .filter(g -> !Collections.disjoint(addressGroup, g))
+                    .findAny();
+            if (matchingGroup.isEmpty()) {
+                addressGroups.add(addressGroup);
+            } else if (!matchingGroup.get().equals(addressGroup)) {
+                anyOverlaps = true;
+                break;
+            }
+        }
+        if (anyOverlaps) {
+            addProblem("There are overlapping slot groups given for labware "+lwErrorDesc(prl)+".");
         }
     }
 
@@ -389,10 +428,10 @@ public class PlanValidationImp implements PlanValidation {
     }
 
     private static String lwErrorDesc(PlanRequestLabware lw) {
-        if (lw.getBarcode()!=null && !lw.getBarcode().isEmpty()) {
+        if (!nullOrEmpty(lw.getBarcode())) {
             return lw.getBarcode();
         }
-        if (lw.getLabwareType()!=null && !lw.getLabwareType().isEmpty()) {
+        if (!nullOrEmpty(lw.getLabwareType())) {
             return "of type "+lw.getLabwareType();
         }
         return "of unspecified type";

@@ -212,6 +212,27 @@ public class TestPlanValidation {
     }
 
     @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    void testCheckSlotGroups(boolean ok) {
+        final Address A1 = new Address(1,1), A2 = new Address(1,2), A3 = new Address(1,3);
+        PlanRequestSource prs = new PlanRequestSource("STAN-0", A1);
+        List<PlanRequestAction> pras = List.of(
+                new PlanRequestAction(A1, 1, prs, null),
+                new PlanRequestAction(A1, 2, prs, null),
+                new PlanRequestAction(A1, 3, prs, null)
+        );
+        pras.get(0).setAddresses(List.of(A1,A2));
+        pras.get(1).setAddresses(List.of(A1,A2));
+        pras.get(2).setAddresses(ok ? List.of(A3) : List.of(A1, A3));
+        PlanRequestLabware prlw = new PlanRequestLabware("Tube", "STAN-1", pras);
+        final String problem = ok ? null : "There are overlapping slot groups given for labware STAN-1.";
+        PlanRequest request = new PlanRequest("opname", List.of(prlw));
+        PlanValidationImp validation = makeValidation(request);
+        validation.checkSlotGroups(prlw);
+        assertProblems(problem, validation.problems);
+    }
+
+    @ParameterizedTest
     @MethodSource("destinationData")
     public void testValidateDestinations(Object planRequestLabware,
                                          List<LabwareType> labwareTypes, Object expectedProblems,
@@ -220,6 +241,7 @@ public class TestPlanValidation {
 
         PlanValidationImp validation = makeValidation(request);
         doNothing().when(validation).checkActions(any(), any());
+        doNothing().when(validation).checkSlotGroups(any());
         doNothing().when(validation).validateLotAndCostings(any());
         doNothing().when(validation).validatePrebarcode(any(), any());
 
@@ -268,6 +290,7 @@ public class TestPlanValidation {
 
         if (expectedProblems==null) {
             verify(validation, times(request.getLabware().size())).checkActions(any(), any());
+            verify(validation, times(request.getLabware().size())).checkSlotGroups(any());
             verify(validation, times(request.getLabware().size()))
                     .validatePrebarcode(any(), isNotNull());
             for (PlanRequestLabware prlw : request.getLabware()) {
@@ -472,12 +495,16 @@ public class TestPlanValidation {
                 Arguments.of("STAN-100", List.of(new PlanRequestAction(A1, 4, src, null),
                         new PlanRequestAction(A1, 4, src, null),
                         new PlanRequestAction(A2, 4, srcAlt, null)),
-                        lt, "Actions for labware STAN-100 contains duplicate address: A1"),
+                        lt, "Duplicate actions transfer sample ID 4 into slot A1 of labware STAN-100."),
                 //Duplicate actions from a non-block source without a barcode
                 Arguments.of(null, List.of(new PlanRequestAction(A1, 4, src, null),
                         new PlanRequestAction(A1, 4, src, null),
                         new PlanRequestAction(A2, 4, src, null)),
-                        lt, "Actions for labware of type "+lt.getName()+" contains duplicate address: A1"),
+                        lt, "Duplicate actions transfer sample ID 4 into slot A1 of labware of type "+lt.getName()+"."),
+                //Non-duplicate actions into the same slot
+                Arguments.of("STAN-100", List.of(new PlanRequestAction(A1, 4, src, null),
+                        new PlanRequestAction(A1, 5, src, null)),
+                        lt, null),
                 Arguments.of("STAN-100", new PlanRequestAction(null, 4, src, null), lt,
                         "Missing destination address."),
                 Arguments.of(null, new PlanRequestAction(null, 4, src, null), lt,

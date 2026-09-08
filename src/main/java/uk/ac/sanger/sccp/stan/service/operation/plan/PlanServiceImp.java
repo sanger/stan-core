@@ -258,6 +258,7 @@ public class PlanServiceImp implements PlanService {
     public void createSlotGroups(int planId, Labware lw, PlanRequestLabware prl) {
         List<List<Address>> addressGroups = prl.getActions().stream()
                 .map(PlanRequestAction::getAddresses)
+                .distinct()
                 .toList();
         slotGroupService.saveGroups(lw, planId, addressGroups);
     }

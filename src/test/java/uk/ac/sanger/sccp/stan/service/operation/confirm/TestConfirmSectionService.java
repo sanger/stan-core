@@ -12,8 +12,7 @@ import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.request.confirm.*;
 import uk.ac.sanger.sccp.stan.request.confirm.ConfirmSectionLabware.AddressCommentId;
 import uk.ac.sanger.sccp.stan.service.*;
-import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmSectionServiceImp.ConfirmLabwareResult;
-import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmSectionServiceImp.SectionKey;
+import uk.ac.sanger.sccp.stan.service.operation.confirm.ConfirmSectionServiceImp.*;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.BasicUtils;
 import uk.ac.sanger.sccp.utils.UCMap;
@@ -253,7 +252,7 @@ public class TestConfirmSectionService {
         Sample sample = EntityFactory.getSample();
         lw.setBarcode("STAN-01");
         PlanOperation plan = new PlanOperation();
-        Map<Address, PlanAction> planActionMap = Map.of();
+        Map<ActionKey, PlanAction> planActionMap = Map.of();
         doReturn(planActionMap).when(service).getPlanActionMap(any(), anyInt());
         final Address A1 = new Address(1,1);
         Map<Integer, Comment> commentMap = Map.of(1, new Comment(1, "com", "cat"));
@@ -262,7 +261,7 @@ public class TestConfirmSectionService {
 
         assertThat(assertThrows(IllegalArgumentException.class,
                 () -> service.confirmLabware(EntityFactory.getUser(), csl, lw, plan, commentMap)))
-                .hasMessage("No plan action found into STAN-01 slot A1.");
+                .hasMessage("No plan action found into STAN-01 slot A1 from sample "+sample.getId()+".");
         verifyNoInteractions(mockSlotRepo);
         verifyNoInteractions(mockMeasurementRepo);
     }
@@ -288,10 +287,10 @@ public class TestConfirmSectionService {
         );
         csecs.getFirst().setThickness("10.5");
         ConfirmSectionLabware csl = new ConfirmSectionLabware(lw1.getBarcode(), false, csecs, List.of(), null);
-        Map<Address, PlanAction> planActionMap = Stream.of(
+        Map<ActionKey, PlanAction> planActionMap = Stream.of(
                 new PlanAction(1, 1, source, lw1.getSlot(A1), sample),
                 new PlanAction(2, 1, source, lw1.getSlot(B3), sample, "12", "50", null)
-        ).collect(BasicUtils.inMap(pa -> pa.getDestination().getAddress(), HashMap::new));
+        ).collect(BasicUtils.inMap(ActionKey::new, HashMap::new));
         plan.setPlanActions(new ArrayList<>(planActionMap.values()));
 
         doReturn(planActionMap).when(service).getPlanActionMap(any(), anyInt());
@@ -304,7 +303,7 @@ public class TestConfirmSectionService {
             doReturn(section).when(service).createSection(eq(sample.getTissue()), eq(csec.getNewSection()), eq(sample.getBioState()));
             for (Address ad : csec.getDestinationAddresses()) {
                 sections.add(section);
-                PlanAction pa = planActionMap.get(ad);
+                PlanAction pa = planActionMap.get(new ActionKey(ad, csec.getSampleId()));
                 Action action = new Action(null, null, pa.getSource(), pa.getDestination(), section, sample);
                 doReturn(action).when(service).makeAction(any(), same(pa), same(pa.getDestination()));
                 actions.add(action);
@@ -331,7 +330,7 @@ public class TestConfirmSectionService {
         verify(service).getPlanActionMap(plan.getPlanActions(), lw1.getId());
         for (ConfirmSection csec : csecs) {
             for (Address ad : csec.getDestinationAddresses()) {
-                verify(service).makeAction(any(), eq(planActionMap.get(ad)), eq(lw1.getSlot(ad)));
+                verify(service).makeAction(any(), eq(planActionMap.get(new ActionKey(ad, csec.getSampleId()))), eq(lw1.getSlot(ad)));
             }
         }
         verify(mockSlotRepo).saveAll(Matchers.sameElements(List.of(lw1.getSlot(A1), lw1.getSlot(B3)), true));
@@ -346,7 +345,7 @@ public class TestConfirmSectionService {
                 new OperationComment(null, com1, opId, sections.get(0).getId(), lw1.getFirstSlot().getId(), null)));
         for (ConfirmSection csec : csecs) {
             for (Address ad : csec.getDestinationAddresses()) {
-                verify(service).thickness(csec, planActionMap.get(ad));
+                verify(service).thickness(csec, planActionMap.get(new ActionKey(ad, csec.getSampleId())));
             }
         }
     }
@@ -529,10 +528,10 @@ public class TestConfirmSectionService {
                 new PlanAction(54, 1, source, slots[2], samples[0]),
         };
 
-        Map<Address, PlanAction> map = service.getPlanActionMap(Arrays.asList(pas), 10);
+        var map = service.getPlanActionMap(Arrays.asList(pas), 10);
         assertEquals(2, map.size());
-        assertEquals(pas[0], map.get(A1));
-        assertEquals(pas[1], map.get(A2));
+        assertEquals(pas[0], map.get(new ActionKey(A1, samples[0].getId())));
+        assertEquals(pas[1], map.get(new ActionKey(A2, samples[1].getId())));
     }
 
     /**

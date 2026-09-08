@@ -1,0 +1,46 @@
+mutation {
+    plan(request:{
+        operationType: "Section"
+        labware:[{
+            labwareType:"Tube"
+            actions:[
+                {
+                    source:{ barcode:"STAN-0001" }
+                    addresses: ["A1"]
+                    sampleId: 55555
+                    sectioningOrder: 1
+                }
+                {
+                    source:{ barcode:"STAN-0001" }
+                    addresses: ["A1"]
+                    sampleId: 55556
+                    sectioningOrder: 1
+                }
+            ]
+        }]
+    }) {
+        labware {
+            barcode
+            labwareType { name }
+        }
+        operations {
+            operationType {
+                name
+            }
+            planActions {
+                source {
+                    address
+                    labwareId
+                }
+                destination {
+                    address
+                    labwareId
+                }
+                sample { id }
+                newSection
+                sampleThickness
+                sectioningOrder
+            }
+        }
+    }
+}
