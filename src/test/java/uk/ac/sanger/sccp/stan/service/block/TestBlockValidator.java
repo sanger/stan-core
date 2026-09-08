@@ -9,11 +9,14 @@ import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.Matchers;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.request.BarcodeSampleId;
 import uk.ac.sanger.sccp.stan.request.TissueBlockRequest;
 import uk.ac.sanger.sccp.stan.request.TissueBlockRequest.TissueBlockContent;
 import uk.ac.sanger.sccp.stan.request.TissueBlockRequest.TissueBlockLabware;
 import uk.ac.sanger.sccp.stan.service.*;
+import uk.ac.sanger.sccp.stan.service.block.BlockValidatorImp.SourceChangeImp;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
+import uk.ac.sanger.sccp.utils.UCMap;
 import uk.ac.sanger.sccp.utils.Zip;
 
 import java.util.*;
@@ -22,8 +25,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.Matchers.*;
 
@@ -79,8 +81,9 @@ class TestBlockValidator {
         assertProblem(val.getProblems(), "No labware specified.");
     }
 
-    @Test
-    void testValidate() {
+    @ParameterizedTest
+    @ValueSource(booleans={false,true})
+    void testValidate(boolean valid) {
         TissueBlockRequest request = new TissueBlockRequest();
         TissueBlockLabware rlw = new TissueBlockLabware();
         TissueBlockContent content = new TissueBlockContent();
@@ -93,7 +96,9 @@ class TestBlockValidator {
         doNothing().when(val).checkDestAddresses();
         doNothing().when(val).checkPrebarcodes();
         doNothing().when(val).checkReplicates();
-        doAnswer(addProblem(val, "Bad barcode")).when(val).checkDiscardBarcodes();
+        doAnswer(addProblem(val, valid ? null : "Bad barcode")).when(val).checkDiscardBarcodes();
+        doNothing().when(val).checkRemovedSamples();
+        doNothing().when(val).calculateSourceChanges();
 
         val.validate();
 
@@ -103,14 +108,22 @@ class TestBlockValidator {
         inOrder.verify(val).checkPrebarcodes();
         inOrder.verify(val).checkReplicates();
         inOrder.verify(val).checkDiscardBarcodes();
+        inOrder.verify(val).checkRemovedSamples();
+        if (valid) {
+            inOrder.verify(val).calculateSourceChanges();
+        } else {
+            verify(val, never()).calculateSourceChanges();
+        }
 
         assertThat(val.getLwData()).containsExactly(new BlockLabwareData(request.getLabware().getFirst()));
-        assertThat(val.getProblems()).containsExactly("Bad barcode");
+        assertProblem(val.getProblems(), valid ? null : "Bad barcode");
     }
 
     static <X> Answer<X> addProblem(BlockValidatorImp val, String problem, X returnValue) {
         return invocation -> {
-            val.getProblems().add(problem);
+            if (problem != null) {
+                val.getProblems().add(problem);
+            }
             return returnValue;
         };
     }
@@ -524,6 +537,64 @@ class TestBlockValidator {
                     "The given list of barcodes to discard includes a barcode that is not specified as a source barcode in this request: [\"STAN-3\"]"
             );
         }
+    }
+
+    @Test
+    void testCheckRemovedSamples() {
+        List<TissueBlockContent> cons = IntStream.range(0,2).mapToObj(i -> new TissueBlockContent()).toList();
+        cons.get(0).setSourceBarcode("STAN-1");
+        cons.get(0).setSourceSampleId(10);
+        cons.get(1).setSourceBarcode("STAN-2");
+        cons.get(1).setSourceSampleId(11);
+        TissueBlockLabware tbl = new TissueBlockLabware();
+        tbl.setContents(cons);
+        TissueBlockRequest request = new TissueBlockRequest(List.of(tbl));
+        request.setRemovedSourceSampleIds(List.of(new BarcodeSampleId("STAN-1", 10),
+                new BarcodeSampleId("STAN-2", 11),
+                new BarcodeSampleId("STAN-3", 10),
+                new BarcodeSampleId("STAN-1", 11)));
+        BlockValidatorImp val = makeVal(request);
+        val.setProblems(new HashSet<>());
+        val.checkRemovedSamples();
+        assertThat(val.getProblems()).containsExactlyInAnyOrder(
+                "Cannot remove samples from labware that is not a source in this request: [\"STAN-3\"]",
+                "Cannot remove samples that are not a source sample in this request: [BarcodeSampleId{barcode=\"STAN-1\", sampleId=11}]"
+        );
+    }
+
+    @Test
+    void testCalculateSourceChanges() {
+        LabwareType lt = EntityFactory.getTubeType();
+        Sample[] samples = EntityFactory.makeSamples(2);
+        List<Sample> samplesList = Arrays.asList(samples);
+        Labware[] lws = IntStream.range(0,4).mapToObj(i -> {
+            Labware lw = EntityFactory.makeEmptyLabware(lt);
+            lw.setBarcode("STAN-"+i);
+            lw.getFirstSlot().getSamples().addAll(samplesList);
+            return lw;
+        }).toArray(Labware[]::new);
+        // 0: already being discarded, 1 removed out of 2 (-> discard and forget the samples)
+        // 1: not already being discarded, 1 removed out of 2
+        // 2: not already being discarded, 2 removed out of 2 (-> discard and forget the samples)
+        // 3: not already being discarded, 0 removed
+        TissueBlockRequest request = new TissueBlockRequest();
+        request.setDiscardSourceBarcodes(List.of("STAN-0"));
+        request.setRemovedSourceSampleIds(List.of(
+                new BarcodeSampleId("STAN-0", samples[0].getId()),
+                new BarcodeSampleId("STAN-1", samples[0].getId()),
+                new BarcodeSampleId("STAN-2", samples[0].getId()),
+                new BarcodeSampleId("STAN-2", samples[1].getId())
+        ));
+        BlockValidatorImp val = makeVal(request);
+        val.setSourceLabware(UCMap.from(Labware::getBarcode, lws));
+
+        val.calculateSourceChanges();
+        UCMap<BlockValidator.SourceChange> expected = new UCMap<>();
+        expected.put("STAN-0", new SourceChangeImp(true));
+        expected.put("STAN-1", new SourceChangeImp(Set.of(samples[0].getId())));
+        expected.put("STAN-2", new SourceChangeImp(true));
+        expected.put("STAN-3", new SourceChangeImp(false));
+        assertEquals(expected, val.getSourceChanges());
     }
 
     @ParameterizedTest

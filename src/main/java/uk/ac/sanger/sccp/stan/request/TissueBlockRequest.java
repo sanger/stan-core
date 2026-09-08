@@ -16,17 +16,20 @@ public class TissueBlockRequest {
     private List<TissueBlockLabware> labware = List.of();
     private String workNumber;
     private List<String> discardSourceBarcodes = List.of();
+    private List<BarcodeSampleId> removedSourceSampleIds = List.of();
 
     public TissueBlockRequest() {}
 
     public TissueBlockRequest(List<TissueBlockLabware> labware) {
-        this(labware, null, null);
+        this(labware, null, null, null);
     }
 
-    public TissueBlockRequest(List<TissueBlockLabware> labware, String workNumber, List<String> discardSourceBarcodes) {
+    public TissueBlockRequest(List<TissueBlockLabware> labware, String workNumber, List<String> discardSourceBarcodes,
+                              List<BarcodeSampleId> removedSourceSampleIds) {
         setLabware(labware);
-        this.workNumber = workNumber;
+        setWorkNumber(workNumber);
         setDiscardSourceBarcodes(discardSourceBarcodes);
+        setRemovedSourceSampleIds(removedSourceSampleIds);
     }
 
     /**
@@ -48,7 +51,7 @@ public class TissueBlockRequest {
     }
 
     public void setLabware(List<TissueBlockLabware> labware) {
-        this.labware = (labware==null ? List.of() : labware);
+        this.labware = nullToEmpty(labware);
     }
 
     /**
@@ -59,7 +62,15 @@ public class TissueBlockRequest {
     }
 
     public void setDiscardSourceBarcodes(List<String> discardSourceBarcodes) {
-        this.discardSourceBarcodes = (discardSourceBarcodes==null ? List.of() : discardSourceBarcodes);
+        this.discardSourceBarcodes = nullToEmpty(discardSourceBarcodes);
+    }
+
+    public List<BarcodeSampleId> getRemovedSourceSampleIds() {
+        return this.removedSourceSampleIds;
+    }
+
+    public void setRemovedSourceSampleIds(List<BarcodeSampleId> removedSourceSampleIds) {
+        this.removedSourceSampleIds = nullToEmpty(removedSourceSampleIds);
     }
 
     @Override
@@ -68,6 +79,7 @@ public class TissueBlockRequest {
                 .add("labware", labware)
                 .addReprIfNotNull("workNumber", workNumber)
                 .addIfNotEmpty("discardSourceBarcodes", discardSourceBarcodes)
+                .addIfNotNull("removedSourceSampleIds", removedSourceSampleIds)
                 .toString();
     }
 
@@ -78,7 +90,9 @@ public class TissueBlockRequest {
         TissueBlockRequest that = (TissueBlockRequest) o;
         return (Objects.equals(this.labware, that.labware)
                 && Objects.equals(this.workNumber, that.workNumber)
-                && Objects.equals(this.discardSourceBarcodes, that.discardSourceBarcodes));
+                && Objects.equals(this.discardSourceBarcodes, that.discardSourceBarcodes)
+                && Objects.equals(this.removedSourceSampleIds, that.removedSourceSampleIds)
+        );
     }
 
     @Override

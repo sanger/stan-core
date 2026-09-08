@@ -4,6 +4,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
+import uk.ac.sanger.sccp.stan.request.BarcodeSampleId;
 import uk.ac.sanger.sccp.stan.request.TissueBlockRequest;
 import uk.ac.sanger.sccp.stan.request.TissueBlockRequest.TissueBlockContent;
 import uk.ac.sanger.sccp.stan.request.TissueBlockRequest.TissueBlockLabware;
@@ -42,6 +43,9 @@ public class BlockValidatorImp implements BlockValidator {
     private BioState newBioState;
     private Medium medium;
     private OperationType opType;
+    private UCMap<Labware> sourceLabware;
+    private UCMap<Set<Integer>> checkedSources;
+    private UCMap<SourceChangeImp> sourceChanges;
 
     private Collection<String> problems;
 
@@ -88,6 +92,25 @@ public class BlockValidatorImp implements BlockValidator {
         checkPrebarcodes();
         checkReplicates();
         checkDiscardBarcodes();
+        checkRemovedSamples();
+        if (problems.isEmpty()) {
+            calculateSourceChanges();
+        }
+    }
+
+    private UCMap<Set<Integer>> sourceSamples() {
+        if (checkedSources == null) {
+            checkedSources = new UCMap<>();
+            for (TissueBlockContent con : iter(requestContents())) {
+                if (!nullOrEmpty(con.getSourceBarcode())) {
+                    Set<Integer> ids = checkedSources.computeIfAbsent(con.getSourceBarcode(), k -> new HashSet<>());
+                    if (con.getSourceSampleId() != null) {
+                        ids.add(con.getSourceSampleId());
+                    }
+                }
+            }
+        }
+        return checkedSources;
     }
 
     /**
@@ -129,10 +152,15 @@ public class BlockValidatorImp implements BlockValidator {
             val.validateBioState(requiredBioState);
         }
         problems.addAll(val.getErrors());
-        UCMap<Labware> sourceLabware = UCMap.from(val.getLabware(), Labware::getBarcode);
+        UCMap<Labware> sources = UCMap.from(val.getLabware(), Labware::getBarcode);
         for (BlockData bd : iter(blockDatas())) {
-            bd.setSourceLabware(sourceLabware.get(bd.getRequestContent().getSourceBarcode()));
+            bd.setSourceLabware(sources.get(bd.getRequestContent().getSourceBarcode()));
         }
+        setSourceLabware(sources);
+    }
+
+    public void setSourceLabware(UCMap<Labware> sourceLabware) {
+        this.sourceLabware = sourceLabware;
     }
 
     /** Loads the source samples into a map. */
@@ -363,17 +391,13 @@ public class BlockValidatorImp implements BlockValidator {
         if (discardBarcodes.isEmpty()) {
             return;
         }
-        Set<String> sourceBarcodes = requestContents()
-                .map(TissueBlockContent::getSourceBarcode)
-                .filter(s -> !nullOrEmpty(s))
-                .map(String::toUpperCase)
-                .collect(toSet());
+        Set<String> sourceBarcodes = sourceSamples().keySet();
         boolean anyNull = false;
         Set<String> missingBarcodes = new LinkedHashSet<>();
         for (String barcode : discardBarcodes) {
             if (nullOrEmpty(barcode)) {
                 anyNull = true;
-            } else if (!sourceBarcodes.contains(barcode.toUpperCase())) {
+            } else if (!sourceBarcodes.contains(barcode)) {
                 missingBarcodes.add(repr(barcode));
             }
         }
@@ -385,6 +409,74 @@ public class BlockValidatorImp implements BlockValidator {
                     "that {is|are} not specified as {a |}source barcode{s} in this request: ", missingBarcodes.size())
                     + missingBarcodes);
         }
+    }
+
+    /** Check that the samples to remove from the sources are valid for the request */
+    public void checkRemovedSamples() {
+        List<BarcodeSampleId> removed = request.getRemovedSourceSampleIds();
+        if (nullOrEmpty(removed)) {
+            return;
+        }
+        UCMap<Set<Integer>> sourceSampleIds = sourceSamples();
+        Set<String> wrongBarcodes = new LinkedHashSet<>();
+        Set<BarcodeSampleId> wrongSampleIds = new LinkedHashSet<>();
+        for (BarcodeSampleId removedSample : removed) {
+            Set<Integer> ids = sourceSampleIds.get(removedSample.getBarcode());
+            if (ids==null) {
+                wrongBarcodes.add(repr(removedSample.getBarcode()));
+            } else if (!ids.contains(removedSample.getSampleId())) {
+                wrongSampleIds.add(removedSample);
+            }
+        }
+        if (!wrongBarcodes.isEmpty()) {
+            problems.add("Cannot remove samples from labware that is not a source in this request: " + wrongBarcodes);
+        }
+        if (!wrongSampleIds.isEmpty()) {
+            problems.add("Cannot remove samples that are not a source sample in this request: " + wrongSampleIds);
+        }
+    }
+
+    /**
+     * Combine removed samples and discarded labware.
+     * If all the samples are being removed from a labware, discard it instead.
+     * Don't remove samples from labware that is being discarded.
+     * Combines this information into sourceChanges.
+     */
+    public void calculateSourceChanges() {
+        UCMap<Set<Integer>> sourceSampleIds = new UCMap<>(sourceLabware.size());
+        for (Labware lw : sourceLabware.values()) {
+            Set<Integer> sampleIds = lw.getSlots().stream()
+                    .flatMap(slot -> slot.getSamples().stream().map(Sample::getId))
+                    .collect(toSet());
+            sourceSampleIds.put(lw.getBarcode(), sampleIds);
+        }
+        sourceChanges = new UCMap<>(sourceSampleIds.size());
+        for (String barcode : sourceSampleIds.keySet()) {
+            sourceChanges.put(barcode, new SourceChangeImp());
+        }
+        for (String barcode : request.getDiscardSourceBarcodes()) {
+            SourceChangeImp sc = sourceChanges.get(barcode);
+            if (sc != null) {
+                sc.discard = true;
+            }
+        }
+        for (BarcodeSampleId bs : request.getRemovedSourceSampleIds()) {
+            SourceChangeImp sc = sourceChanges.get(bs.getBarcode());
+            if (sc != null && !sc.discard) {
+                if (sc.sampleIdsToRemove==null) {
+                    sc.sampleIdsToRemove = new HashSet<>();
+                }
+                sc.sampleIdsToRemove.add(bs.getSampleId());
+            }
+        }
+        sourceChanges.forEach((barcode, sc) -> {
+            if (!sc.discard && !nullOrEmpty(sc.sampleIdsToRemove)) {
+                if (sc.sampleIdsToRemove.equals(sourceSampleIds.get(barcode))) {
+                    sc.discard = true;
+                    sc.sampleIdsToRemove = null;
+                }
+            }
+        });
     }
 
     public void setLwData(List<BlockLabwareData> lwData) {
@@ -441,6 +533,11 @@ public class BlockValidatorImp implements BlockValidator {
         return this.opType;
     }
 
+    @Override
+    public UCMap<? extends SourceChange> getSourceChanges() {
+        return this.sourceChanges;
+    }
+
     public void setProblems(Collection<String> problems) {
         this.problems = problems;
     }
@@ -466,7 +563,6 @@ public class BlockValidatorImp implements BlockValidator {
     Stream<BlockData> blockDatas() {
         return lwData.stream().flatMap(lwd -> lwd.getBlocks().stream());
     }
-
 
     /** The unique fields associated with a block */
     record RepKey(Donor donor, SpatialLocation spatialLocation, String replicate) {
@@ -500,6 +596,54 @@ public class BlockValidatorImp implements BlockValidator {
             return String.format("{Donor: %s, Tissue type: %s, Spatial location: %s, Replicate: %s}",
                     donor.getDonorName(), spatialLocation.getTissueType().getName(), spatialLocation.getCode(),
                     replicate);
+        }
+    }
+
+    public static class SourceChangeImp implements SourceChange {
+        boolean discard;
+        Set<Integer> sampleIdsToRemove;
+
+        public SourceChangeImp() {
+            this.discard = false;
+            this.sampleIdsToRemove = null;
+        }
+
+        public SourceChangeImp(boolean discard) {
+            this.discard = discard;
+            this.sampleIdsToRemove = null;
+        }
+
+        public SourceChangeImp(Set<Integer> sampleIdsToRemove) {
+            this.discard = false;
+            this.sampleIdsToRemove = sampleIdsToRemove;
+        }
+
+        @Override
+        public boolean discard() {
+            return this.discard;
+        }
+
+        @Override
+        public Set<Integer> getSampleIdsToRemove() {
+            return this.sampleIdsToRemove;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("(discard=%s, sampleIdsToRemove=%s)", discard, sampleIdsToRemove);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (o == null || getClass() != o.getClass()) return false;
+            SourceChangeImp that = (SourceChangeImp) o;
+            return (this.discard == that.discard
+                    && Objects.equals(this.sampleIdsToRemove, that.sampleIdsToRemove));
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(discard, sampleIdsToRemove);
         }
     }
 }

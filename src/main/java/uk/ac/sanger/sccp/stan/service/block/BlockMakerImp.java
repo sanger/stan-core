@@ -6,7 +6,9 @@ import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.request.TissueBlockRequest;
 import uk.ac.sanger.sccp.stan.request.TissueBlockRequest.TissueBlockLabware;
 import uk.ac.sanger.sccp.stan.service.*;
+import uk.ac.sanger.sccp.stan.service.block.BlockValidator.SourceChange;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
+import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
 import java.util.stream.Stream;
@@ -31,6 +33,7 @@ public class BlockMakerImp implements BlockMaker {
 
     private final TissueBlockRequest request;
     private final List<BlockLabwareData> lwData;
+    private final UCMap<? extends SourceChange> sourceChanges;
     private final Medium medium;
     private final BioState bioState;
     private final Work work;
@@ -42,6 +45,7 @@ public class BlockMakerImp implements BlockMaker {
                          LabwareService lwService, OperationService opService, WorkService workService,
                          BioRiskService bioRiskService,
                          TissueBlockRequest request, List<BlockLabwareData> lwData,
+                         UCMap<? extends SourceChange> sourceChanges,
                          Medium medium, BioState bioState, Work work, OperationType opType, User user) {
         this.tissueRepo = tissueRepo;
         this.sampleRepo = sampleRepo;
@@ -54,6 +58,7 @@ public class BlockMakerImp implements BlockMaker {
         this.bioRiskService = bioRiskService;
         this.request = request;
         this.lwData = lwData;
+        this.sourceChanges = sourceChanges;
         this.medium = medium;
         this.bioState = bioState;
         this.work = work;
@@ -67,6 +72,7 @@ public class BlockMakerImp implements BlockMaker {
         createSamples();
         findSlots();
         fillLabware();
+        removeSourceSamples();
         List<Operation> ops = createOperations();
         if (work != null) {
             workService.link(work, ops);
@@ -198,17 +204,50 @@ public class BlockMakerImp implements BlockMaker {
         slotRepo.saveAll(slotsToUpdate);
     }
 
-    /** Marks any sources discarded if the request specifies that we do so */
+    /** Removes samples from source labware, as requested */
+    public void removeSourceSamples() {
+        if (nullOrEmpty(sourceChanges)) {
+            return;
+        }
+        Set<Slot> slotsToSave = new HashSet<>();
+        for (BlockData bd : iter(blockDataStream())) {
+            Labware lw = bd.getSourceLabware();
+            SourceChange sc = sourceChanges.get(lw.getBarcode());
+            if (sc != null && !nullOrEmpty(sc.getSampleIdsToRemove())) {
+                for (Slot slot : lw.getSlots()) {
+                    if (!slot.getSamples().isEmpty()
+                            && slot.getSamples().removeIf(sam -> sc.getSampleIdsToRemove().contains(sam.getId()))) {
+                        slotsToSave.add(slot);
+                    }
+                }
+            }
+        }
+        if (!slotsToSave.isEmpty()) {
+            slotRepo.saveAll(slotsToSave);
+        }
+    }
+
+    /**
+     * Marks any sources discarded if the request specifies that we do so.
+     * Sets {@link TissueBlockRequest#getDiscardSourceBarcodes discardSourceBarcodes}
+     * so we know which labware need to be removed from storage.
+     **/
     public void discardSources() {
-        if (!nullOrEmpty(request.getDiscardSourceBarcodes())) {
-            Set<String> discardBarcodes = request.getDiscardSourceBarcodes().stream()
-                    .map(String::toUpperCase)
+        if (nullOrEmpty(sourceChanges)) {
+            request.setDiscardSourceBarcodes(null);
+        } else {
+            Set<String> discardBarcodes = sourceChanges.entrySet().stream()
+                    .filter(e -> e.getValue().discard())
+                    .map(Map.Entry::getKey)
                     .collect(toSet());
-            Set<Labware> lwToDiscard = blockDataStream().map(BlockData::getSourceLabware)
-                    .filter(lw -> !lw.isDiscarded() && discardBarcodes.contains(lw.getBarcode().toUpperCase()))
-                    .collect(toSet());
-            lwToDiscard.forEach(lw -> lw.setDiscarded(true));
-            lwRepo.saveAll(lwToDiscard);
+            request.setDiscardSourceBarcodes(new ArrayList<>(discardBarcodes));
+            if (!discardBarcodes.isEmpty()) {
+                Set<Labware> lwToDiscard = blockDataStream().map(BlockData::getSourceLabware)
+                        .filter(lw -> !lw.isDiscarded() && discardBarcodes.contains(lw.getBarcode().toUpperCase()))
+                        .collect(toSet());
+                lwToDiscard.forEach(lw -> lw.setDiscarded(true));
+                lwRepo.saveAll(lwToDiscard);
+            }
         }
     }
 
