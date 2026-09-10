@@ -1,0 +1,35 @@
+mutation {
+    libraryCon(request: {
+        workNumber: "[WORK]"
+        labwareBarcode: "[BC]"
+        reagentPlateType: "dual index ts set a"
+        reagentTransfers: [{
+            reagentPlateBarcode: "111111111111111111111111"
+            reagentSlotAddress: "A1"
+            destinationAddress: "A1"
+        }, {
+            reagentPlateBarcode: "111111111111111111111111"
+            reagentSlotAddress: "A2"
+            destinationAddress: "A2"
+        }]
+        slotMeasurements: [{
+            address: "A1"
+            commentIds: 1
+            name: "Cycles"
+            value: "10"
+        },{
+            address: "A2"
+            commentIds: 2
+            name: "Cycles"
+            value: "20"
+        }]
+    }) {
+        labware {
+            barcode
+        }
+        operations {
+            operationType { name }
+            id
+        }
+    }
+}

@@ -1848,6 +1848,20 @@ input LibraryPrepRequest {
     slotMeasurements: [SlotMeasurementRequest!]!
 }
 
+"""A request to record dual index and amplification ops."""
+input LibraryConRequest {
+    """The work number to associate with these operations."""
+    workNumber: String!
+    """The barcode of the labware."""
+    labwareBarcode: String!
+    """The transfers from aliquot slots to destination slots."""
+    reagentTransfers: [ReagentTransfer!]!
+    """The type of reagent plate involved."""
+    reagentPlateType: String
+    """The measurement to record on slots in the destination."""
+    slotMeasurements: [SlotMeasurementRequest!]!
+}
+
 """A request to process original tissue into blocks."""
 input TissueBlockRequest {
     """The work number associated with this request."""
@@ -2678,6 +2692,8 @@ type Mutation {
     reactivateLabware(items: [ReactivateLabware!]!): OperationResult!
     """Perform library prep request."""
     libraryPrep(request: LibraryPrepRequest!): OperationResult!
+    """Perform library con request."""
+    libraryCon(request: LibraryConRequest!): OperationResult!
     """Record segmentation."""
     segmentation(request: SegmentationRequest!): OperationResult!
     """Clean out a slot of a labware."""
