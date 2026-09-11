@@ -13,6 +13,7 @@ import uk.ac.sanger.sccp.stan.request.TissueBlockRequest;
 import uk.ac.sanger.sccp.stan.request.TissueBlockRequest.TissueBlockLabware;
 import uk.ac.sanger.sccp.stan.service.block.*;
 import uk.ac.sanger.sccp.stan.service.store.StoreService;
+import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.List;
 
@@ -111,6 +112,7 @@ public class TestBlockProcessingService {
         BioState bs;
         Work work;
         OperationType opType;
+        UCMap<BlockValidator.SourceChange> sourceChanges;
         if (!valid) {
             doThrow(new ValidationException(problems)).when(val).raiseError();
             maker = null;
@@ -120,21 +122,26 @@ public class TestBlockProcessingService {
             bs = null;
             work = null;
             opType = null;
+            sourceChanges = null;
         }  else {
             maker = mock(BlockMaker.class);
-            when(mockBlockMakerFactory.createBlockMaker(any(), any(), any(), any(), any(), any(), any())).thenReturn(maker);
+            when(mockBlockMakerFactory.createBlockMaker(any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(maker);
             opres = new OperationResult(List.of(new Operation()), List.of(new Labware()));
             when(maker.record()).thenReturn(opres);
             lwData = List.of(new BlockLabwareData(new TissueBlockLabware()));
             medium = EntityFactory.getMedium();
             bs = EntityFactory.getBioState();
             work = EntityFactory.makeWork("SGP1");
+            sourceChanges = new UCMap<>(1);
+            sourceChanges.put("STAN-01", new BlockValidatorImp.SourceChangeImp());
             opType = EntityFactory.makeOperationType("opname", null);
             when(val.getLwData()).thenReturn(lwData);
             when(val.getMedium()).thenReturn(medium);
             when(val.getNewBioState()).thenReturn(bs);
             when(val.getWork()).thenReturn(work);
             when(val.getOpType()).thenReturn(opType);
+            //noinspection unchecked,rawtypes
+            when(val.getSourceChanges()).thenReturn((UCMap) sourceChanges);
         }
 
         if (valid) {
@@ -146,7 +153,7 @@ public class TestBlockProcessingService {
         inOrder.verify(val).validate();
         inOrder.verify(val).raiseError();
         if (valid) {
-            inOrder.verify(mockBlockMakerFactory).createBlockMaker(request, lwData, medium, bs, work, opType, user);
+            inOrder.verify(mockBlockMakerFactory).createBlockMaker(request, lwData, sourceChanges, medium, bs, work, opType, user);
             verify(maker).record();
         } else {
             verifyNoInteractions(mockBlockMakerFactory);

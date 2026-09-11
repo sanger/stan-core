@@ -1848,6 +1848,12 @@ input LibraryPrepRequest {
     slotMeasurements: [SlotMeasurementRequest!]!
 }
 
+"""A barcode and a sample id."""
+input BarcodeSampleId {
+    barcode: String!
+    sampleId: Int!
+}
+
 """A request to process original tissue into blocks."""
 input TissueBlockRequest {
     """The work number associated with this request."""
@@ -1856,6 +1862,8 @@ input TissueBlockRequest {
     labware: [TissueBlockLabware!]!
     """Which source barcodes (if any) to discard as part of this request."""
     discardSourceBarcodes: [String!]
+    """Which samples need to be removed from the source labware?"""
+    removedSourceSampleIds: [BarcodeSampleId!]
 }
 
 """The input about a new block being created."""
