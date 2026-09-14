@@ -107,7 +107,7 @@ public class SectionRegisterValidation {
     public void checkEmpty() {
         if (request.getLabware().isEmpty()) {
             addProblem("No labware specified in request.");
-        } else if (request.getLabware().stream().anyMatch(lw -> lw.getContents()==null || lw.getContents().isEmpty())) {
+        } else if (request.getLabware().stream().anyMatch(lw -> nullOrEmpty(lw.getContents()))) {
             addProblem("Labware requested without contents.");
         }
     }
@@ -131,13 +131,13 @@ public class SectionRegisterValidation {
         for (SectionRegisterContent content : contents()) {
             boolean skip = false;
             Species species = null;
-            if (content.getDonorIdentifier()==null || content.getDonorIdentifier().isEmpty()) {
+            if (nullOrEmpty(content.getDonorIdentifier())) {
                 skip = true;
                 addProblem("Missing donor identifier.");
             } else if (donorNameValidation!=null) {
                 donorNameValidation.validate(content.getDonorIdentifier(), this::addProblem);
             }
-            if (content.getSpecies()==null || content.getSpecies().isEmpty()) {
+            if (nullOrEmpty(content.getSpecies())) {
                 addProblem("Missing species.");
             } else {
                 species = speciesMap.get(content.getSpecies());
@@ -181,14 +181,14 @@ public class SectionRegisterValidation {
     public UCMap<LabwareType> validateLabwareTypes() {
         Set<String> lwTypeNames = request.getLabware().stream()
                 .map(SectionRegisterLabware::getLabwareType)
-                .filter(s -> s!=null && !s.isEmpty())
+                .filter(s -> !nullOrEmpty(s))
                 .collect(toSet());
         UCMap<LabwareType> lwTypeMap = lwTypeRepo.findAllByNameIn(lwTypeNames).stream()
                 .collect(toUCMap(LabwareType::getName));
 
         for (var lw : request.getLabware()) {
             final String ltName = lw.getLabwareType();
-            if (ltName==null || ltName.isEmpty()) {
+            if (nullOrEmpty(ltName)) {
                 addProblem("Missing labware type.");
                 continue;
             }
@@ -368,7 +368,7 @@ public class SectionRegisterValidation {
                 needHmdmc = !needNoHmdmc && cellClass!=null && cellClass.isHmdmcRequired();
             }
             Hmdmc hmdmc;
-            if (hmdmcString==null || hmdmcString.isEmpty()) {
+            if (nullOrEmpty(hmdmcString)) {
                 if (needHmdmc) {
                     addProblem("Missing HuMFre number.");
                 }
@@ -384,7 +384,7 @@ public class SectionRegisterValidation {
             }
 
             String externalIdentifier = content.getExternalIdentifier();
-            if (externalIdentifier==null || externalIdentifier.isEmpty()) {
+            if (nullOrEmpty(externalIdentifier)) {
                 addProblem("Missing external identifier.");
             } else if (!seenExternalNames.add(externalIdentifier.toUpperCase())) {
                 problemFn.accept("Repeated external identifier{s}", externalIdentifier);
@@ -414,7 +414,7 @@ public class SectionRegisterValidation {
                 }
             }
 
-            if (content.getReplicateNumber()==null || content.getReplicateNumber().isEmpty()) {
+            if (nullOrEmpty(content.getReplicateNumber())) {
                 addProblem("Missing replicate number.");
             } else {
                 replicateValidator.validate(content.getReplicateNumber(), this::addProblem);
@@ -428,7 +428,7 @@ public class SectionRegisterValidation {
 
             String donorName = content.getDonorIdentifier();
             Donor donor;
-            if (donorName==null || donorName.isEmpty()) {
+            if (nullOrEmpty(donorName)) {
                 donor = null;
             } else {
                 donor = donorMap.get(content.getDonorIdentifier());
@@ -453,7 +453,7 @@ public class SectionRegisterValidation {
 
     private <E> E loadItem(String string, UCMap<E> itemMap, String missingMsg, String unknownMsg,
                            BiConsumer<String, String> problemFn) {
-        if (string==null || string.isEmpty()) {
+        if (nullOrEmpty(string)) {
             addProblem(missingMsg);
             return null;
         }
@@ -489,7 +489,7 @@ public class SectionRegisterValidation {
                 continue;
             }
             String externalName = content.getExternalIdentifier();
-            if (externalName==null || externalName.isEmpty()) {
+            if (nullOrEmpty(externalName)) {
                 continue;
             }
             Tissue tissue = tissueMap.get(externalName);
@@ -567,7 +567,7 @@ public class SectionRegisterValidation {
                                                         Function<? super Set<String>, ? extends Collection<E>> lookupFunction) {
         Set<String> strings = request.getLabware().stream()
                 .flatMap(lw -> lw.getContents().stream().map(requestFunction))
-                .filter(s -> s!=null && !s.isEmpty())
+                .filter(s -> !nullOrEmpty(s))
                 .collect(toSet());
         if (strings.isEmpty()) {
             return new UCMap<>(0);
