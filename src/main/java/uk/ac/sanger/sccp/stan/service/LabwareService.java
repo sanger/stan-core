@@ -20,7 +20,7 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.*;
  */
 @Service
 public class LabwareService {
-    public static final int MAX_OVERRIDE_SLOTS = 225;
+    public static final int MAX_ROWS = 20, MAX_COLS = 20;
 
     private final LabwareRepo labwareRepo;
     private final SlotRepo slotRepo;
@@ -155,8 +155,11 @@ public class LabwareService {
         if (numColumns <= 0) {
             throw new IllegalArgumentException("Number of columns must be a positive number.");
         }
-        if (numRows * numColumns > MAX_OVERRIDE_SLOTS) {
-            throw new IllegalArgumentException("Specified labware layout is too big.");
+        if (numRows > MAX_ROWS) {
+            throw new IllegalArgumentException("Number of rows must be less than or equal to " + MAX_ROWS + ".");
+        }
+        if (numColumns > MAX_COLS) {
+            throw new IllegalArgumentException("Number of columns must be less than or equal to " + MAX_COLS + ".");
         }
     }
 

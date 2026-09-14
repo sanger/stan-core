@@ -718,13 +718,13 @@ class TestBlockRegisterValidation {
         BlockRegisterLabware brl = new BlockRegisterLabware();
         brl.setLabwareType(lt.getName());
         brl.setSamples(List.of(brsForAddresses(new Address(1,1), new Address(15, 3),
-                new Address(1, ok ? 15 : 16))));
+                new Address(1, ok ? 20 : 21))));
         BlockRegisterRequest request = new BlockRegisterRequest();
         request.setLabware(List.of(brl));
         var val = makeVal(request);
         val.labwareTypeMap.put(lt.getName(), lt);
         val.validateAddresses();
-        String expectedProblem = ok ? null : "Required layout (15 rows, 16 columns) is too big.";
+        String expectedProblem = ok ? null : "Required layout (15 rows, 21 columns) is too big.";
         assertProblem(val.getProblems(), expectedProblem);
     }
 
