@@ -22,6 +22,10 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 public class LabwareService {
     public static final int MAX_ROWS = 20, MAX_COLS = 20;
 
+    private static final Set<String> UC_CUSTOM_LT_NAMES = Set.of(LabwareType.XENIUM_NAME.toUpperCase(),
+            LabwareType.CASSETTE_NAME.toUpperCase(), LabwareType.PROVIASETTE_NAME.toUpperCase(),
+            "SUPERFROST PLUS SLIDE", "SCHOTT NEXTERION SLIDE H");
+
     private final LabwareRepo labwareRepo;
     private final SlotRepo slotRepo;
     private final BarcodeIntRepo barcodeIntRepo;
@@ -268,8 +272,7 @@ public class LabwareService {
 
     /** Is the specified labware type one that we expect to have a custom layout? */
     public static boolean customSizeLabwareType(String ltName) {
-        return (ltName!=null && (ltName.equalsIgnoreCase(LabwareType.CASSETTE_NAME)
-                || ltName.equalsIgnoreCase(LabwareType.PROVIASETTE_NAME)));
+        return (ltName!=null && UC_CUSTOM_LT_NAMES.contains(ltName.toUpperCase()));
     }
 
     /**

@@ -203,14 +203,22 @@ public class SectionRegisterValidation {
                     continue;
                 }
                 Set<Address> seen = new HashSet<>(content.getAddresses().size());
+                boolean custom = LabwareService.customSizeLabwareType(lt.getName());
+                int maxRow = 0, maxColumn = 0;
                 for (Address address : content.getAddresses()) {
                     if (address == null) {
                         addProblem("Missing slot address.");
                     } else if (!seen.add(address)) {
                         addProblem("Slot address %s given multiple times for the same section.", address);
+                    } else if (custom) {
+                        maxRow = Math.max(maxRow, address.getRow());
+                        maxColumn = Math.max(maxColumn, address.getColumn());
                     } else if (lt.indexOf(address) < 0) {
                         addProblem("Invalid address %s in labware type %s.", address, lt.getName());
                     }
+                }
+                if (custom && (maxRow > LabwareService.MAX_ROWS || maxColumn > LabwareService.MAX_COLS)) {
+                    addProblem(String.format("Required layout (%s rows, %s columns) is too big.", maxRow, maxColumn));
                 }
             }
         }
