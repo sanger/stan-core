@@ -397,7 +397,7 @@ public class BlockValidatorImp implements BlockValidator {
         for (String barcode : discardBarcodes) {
             if (nullOrEmpty(barcode)) {
                 anyNull = true;
-            } else if (!sourceBarcodes.contains(barcode)) {
+            } else if (!sourceBarcodes.contains(barcode.toUpperCase())) {
                 missingBarcodes.add(repr(barcode));
             }
         }
