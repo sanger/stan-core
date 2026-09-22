@@ -1,5 +1,5 @@
 mutation {
-    libraryCon(request: {
+    libraryCon(requests: [{
         workNumber: "[WORK]"
         labwareBarcode: "[BC]"
         reagentPlateType: "dual index ts set a"
@@ -23,7 +23,7 @@ mutation {
             name: "Cycles"
             value: "20"
         }]
-    }) {
+    }]) {
         labware {
             barcode
         }

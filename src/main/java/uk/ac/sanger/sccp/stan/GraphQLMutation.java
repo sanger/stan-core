@@ -990,9 +990,9 @@ public class GraphQLMutation extends BaseGraphQLResource {
     public DataFetcher<OperationResult> libraryCon() {
         return dfe -> {
             User user = checkUser(dfe, User.Role.normal);
-            LibraryConRequest request = arg(dfe, "request", LibraryConRequest.class);
-            logRequest("Library con", user, request);
-            return libraryConService.perform(user, request);
+            List<LibraryConRequest> requests = arg(dfe, "requests", new TypeReference<>() {});
+            logRequest("Library con", user, requests);
+            return libraryConService.perform(user, requests);
         };
     }
 

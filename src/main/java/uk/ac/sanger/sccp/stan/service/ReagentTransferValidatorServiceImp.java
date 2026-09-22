@@ -4,9 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.Address;
-import uk.ac.sanger.sccp.stan.model.Layout;
 import uk.ac.sanger.sccp.stan.model.reagentplate.ReagentPlate;
-import uk.ac.sanger.sccp.stan.request.ReagentTransferRequest;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
@@ -29,9 +27,9 @@ public class ReagentTransferValidatorServiceImp implements ReagentTransferValida
     }
 
     @Override
-    public void validateTransfers(Collection<String> problems, Collection<ReagentTransferRequest.ReagentTransfer> transfers,
-                                  UCMap<ReagentPlate> reagentPlates, Layout layout) {
-        if (nullOrEmpty(transfers)) {
+    public void validateTransfers(Collection<String> problems, UCMap<ReagentPlate> reagentPlates,
+                                  Collection<LayoutTransfers> layoutTransfers) {
+        if (layoutTransfers.isEmpty()) {
             problems.add("No transfers specified.");
             return;
         }
@@ -45,31 +43,37 @@ public class ReagentTransferValidatorServiceImp implements ReagentTransferValida
         Set<Address> invalidDestSlots = new LinkedHashSet<>();
         Set<String> newBarcodesSeen = new HashSet<>();
 
-        for (var transfer : transfers) {
-            String barcode = transfer.getReagentPlateBarcode();
-            Address rAddress = transfer.getReagentSlotAddress();
-            Address dAddress = transfer.getDestinationAddress();
-            ReagentPlate plate;
-            if (barcode==null || barcode.isEmpty()) {
-                missingPlateBarcodes = true;
-                plate = null;
-                barcode = null;
-            } else {
-                plate = reagentPlates.get(barcode);
-                if (plate==null && newBarcodesSeen.add(barcode.toUpperCase())) {
-                    reagentPlateBarcodeValidator.validate(barcode, problems::add);
+        for (LayoutTransfers lt : layoutTransfers) {
+            if (nullOrEmpty(lt.transfers())) {
+                problems.add("No transfers specified for operation.");
+                continue;
+            }
+            for (var transfer : lt.transfers()) {
+                String barcode = transfer.getReagentPlateBarcode();
+                Address rAddress = transfer.getReagentSlotAddress();
+                Address dAddress = transfer.getDestinationAddress();
+                ReagentPlate plate;
+                if (nullOrEmpty(barcode)) {
+                    missingPlateBarcodes = true;
+                    plate = null;
+                    barcode = null;
+                } else {
+                    plate = reagentPlates.get(barcode);
+                    if (plate == null && newBarcodesSeen.add(barcode.toUpperCase())) {
+                        reagentPlateBarcodeValidator.validate(barcode, problems::add);
+                    }
                 }
-            }
-            if (rAddress==null) {
-                missingReagentAddresses = true;
-            } else if (barcode!=null) {
-                checkReagentSlotAddress(invalidReagentSlots, alreadyUsedReagentSlots, repeatedReagentSlots,
-                        seenReagentSlots, barcode, rAddress, plate);
-            }
-            if (dAddress==null) {
-                missingDestAddresses = true;
-            } else if (layout!=null && layout.indexOf(dAddress) < 0) {
-                invalidDestSlots.add(dAddress);
+                if (rAddress == null) {
+                    missingReagentAddresses = true;
+                } else if (barcode != null) {
+                    checkReagentSlotAddress(invalidReagentSlots, alreadyUsedReagentSlots, repeatedReagentSlots,
+                            seenReagentSlots, barcode, rAddress, plate);
+                }
+                if (dAddress == null) {
+                    missingDestAddresses = true;
+                } else if (lt.layout() != null && lt.layout().indexOf(dAddress) < 0) {
+                    invalidDestSlots.add(dAddress);
+                }
             }
         }
 

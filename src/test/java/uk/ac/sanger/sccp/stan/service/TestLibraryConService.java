@@ -9,18 +9,21 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.model.reagentplate.ReagentPlate;
 import uk.ac.sanger.sccp.stan.request.*;
 import uk.ac.sanger.sccp.stan.request.ReagentTransferRequest.ReagentTransfer;
+import uk.ac.sanger.sccp.stan.service.LibraryConServiceImp.LibConData;
 import uk.ac.sanger.sccp.stan.service.LibraryConServiceImp.RequestData;
 import uk.ac.sanger.sccp.utils.UCMap;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.Matchers.assertValidationException;
 
-/** {@link LibraryConServiceImp} */
+/** Test {@link LibraryConServiceImp} */
 class TestLibraryConService {
     @Mock
     ReagentTransferService mockReagentTransferService;
@@ -58,25 +61,37 @@ class TestLibraryConService {
                                                             missingRequest ? "No request supplied." : null);
         if (failValidation) {
             doAnswer(invocation -> {
-                RequestData data = invocation.getArgument(0);
-                data.problems.add(valError);
+                LibConData libConData = invocation.getArgument(0);
+                libConData.problems.add(valError);
                 return null;
             }).when(mockValService).validate(any());
         }
 
         if (valid) {
-            OperationResult opres = new OperationResult(List.of(), List.of());
-            doReturn(opres).when(service).record(any());
-            assertSame(opres, service.perform(user, request));
+            Labware lw = EntityFactory.getTube();
+            Operation op = new Operation();
+            op.setId(100);
+            doAnswer(invocation -> {
+                List<Operation> ops = invocation.getArgument(0);
+                List<Labware> lws = invocation.getArgument(1);
+                ops.add(op);
+                lws.add(lw);
+                return null;
+            }).when(service).record(any(), any(), any(), any());
+            OperationResult opres = new OperationResult(List.of(op), List.of(lw));
+            assertEquals(opres, service.perform(user, List.of(request)));
+            ArgumentCaptor<LibConData> libConDataCaptor = ArgumentCaptor.forClass(LibConData.class);
             ArgumentCaptor<RequestData> dataCaptor = ArgumentCaptor.forClass(RequestData.class);
-            verify(service).record(dataCaptor.capture());
+            verify(service).record(any(), any(), libConDataCaptor.capture(), dataCaptor.capture());
+            LibConData libConData = libConDataCaptor.getValue();
             RequestData data = dataCaptor.getValue();
             assertSame(request, data.request);
-            assertSame(user, data.user);
-            assertThat(data.problems).isNotNull().isEmpty();
+            assertSame(user, libConData.user);
+            assertThat(libConData.problems).isNotNull().isEmpty();
         } else {
-            assertValidationException(() -> service.perform(user, request), "The request could not be validated.", valError);
-            verify(service, never()).record(any());
+            List<LibraryConRequest> requests = (request==null ? List.of() : List.of(request));
+            assertValidationException(() -> service.perform(user, requests), "The request could not be validated.", valError);
+            verify(service, never()).record(any(), any(), any(), any());
         }
     }
 
@@ -85,17 +100,18 @@ class TestLibraryConService {
         final Address A1 = new Address(1, 1);
         User user = EntityFactory.getUser();
         LibraryConRequest request = new LibraryConRequest();
+        LibConData libConData = new LibConData(null, user, List.of(request));
         request.setReagentTransfers(List.of(new ReagentTransfer("RP1", A1, A1)));
-        RequestData data = new RequestData(request, user, null);
-        data.reagentOpType = EntityFactory.makeOperationType("Dual index plate", null);
-        data.ampOpType = EntityFactory.makeOperationType("Amplification", null);
+        RequestData data = libConData.data.getFirst();
+        libConData.reagentOpType = EntityFactory.makeOperationType("Dual index plate", null);
+        libConData.ampOpType = EntityFactory.makeOperationType("Amplification", null);
         data.work = EntityFactory.makeWork("SGP1");
         Labware lw = EntityFactory.getTube();
         data.labware = lw;
-        data.comments = List.of(new Comment(1, "Bananas", "Bananas"));
+        libConData.comments = List.of(new Comment(1, "Bananas", "Bananas"));
         data.sanitisedMeasurements = List.of(new SlotMeasurementRequest(A1, "NAME", "VALUE", List.of(1)));
         // data.request.getReagentTransfers(), data.reagentPlates, data.labware, data.reagentPlateType
-        data.reagentPlates = UCMap.from(ReagentPlate::getBarcode, new ReagentPlate("RP1", "rt1"));
+        libConData.reagentPlates = UCMap.from(ReagentPlate::getBarcode, new ReagentPlate("RP1", "rt1"));
         data.reagentPlateType = "rt2";
         Operation op1 = new Operation();
         op1.setId(1);
@@ -107,14 +123,16 @@ class TestLibraryConService {
         when(mockReagentTransferService.record(any(), any(), any(), any(), any(), any(), any())).thenReturn(opres1);
         when(mockOpWithSlotMeasurementsService.execute(any(), any(), any(), any(), any(), any())).thenReturn(opres2);
 
-        OperationResult result = service.record(data);
+        final List<Operation> opList = new ArrayList<>();
+        final List<Labware> lwList = new ArrayList<>();
+        service.record(opList, lwList, libConData, data);
 
-        verify(mockReagentTransferService).record(user, data.reagentOpType, data.work, request.getReagentTransfers(),
-                data.reagentPlates, lw, data.reagentPlateType);
-        verify(mockOpWithSlotMeasurementsService).execute(user, lw, data.ampOpType, data.work, data.comments,
+        verify(mockReagentTransferService).record(user, libConData.reagentOpType, data.work, request.getReagentTransfers(),
+                libConData.reagentPlates, lw, data.reagentPlateType);
+        verify(mockOpWithSlotMeasurementsService).execute(user, lw, libConData.ampOpType, data.work, libConData.comments,
                 data.sanitisedMeasurements);
 
-        assertThat(result.getLabware()).containsExactly(lw);
-        assertThat(result.getOperations()).containsExactly(op1, op2);
+        assertThat(lwList).containsExactly(lw);
+        assertThat(opList).containsExactly(op1, op2);
     }
 }

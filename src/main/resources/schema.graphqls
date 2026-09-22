@@ -2691,7 +2691,7 @@ type Mutation {
     """Perform library prep request."""
     libraryPrep(request: LibraryPrepRequest!): OperationResult!
     """Perform library con request."""
-    libraryCon(request: LibraryConRequest!): OperationResult!
+    libraryCon(requests: [LibraryConRequest!]!): OperationResult!
     """Record segmentation."""
     segmentation(request: SegmentationRequest!): OperationResult!
     """Clean out a slot of a labware."""
