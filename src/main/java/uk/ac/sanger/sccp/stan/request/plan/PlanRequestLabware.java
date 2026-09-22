@@ -15,7 +15,6 @@ public class PlanRequestLabware {
     private String lotNumber;
     private SlideCosting costing;
     private List<PlanRequestAction> actions;
-    private List<PlanGroup> groups;
 
     public PlanRequestLabware() {
         this(null, null, null);
