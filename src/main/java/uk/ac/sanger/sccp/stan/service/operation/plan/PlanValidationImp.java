@@ -3,6 +3,7 @@ package uk.ac.sanger.sccp.stan.service.operation.plan;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.plan.*;
+import uk.ac.sanger.sccp.stan.service.LabwareService;
 import uk.ac.sanger.sccp.stan.service.Validator;
 import uk.ac.sanger.sccp.stan.service.sanitiser.Sanitiser;
 import uk.ac.sanger.sccp.utils.UCMap;
@@ -11,8 +12,7 @@ import java.util.*;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toSet;
-import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
-import static uk.ac.sanger.sccp.utils.BasicUtils.pluralise;
+import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 /**
  * @author dr6
@@ -203,8 +203,11 @@ public class PlanValidationImp implements PlanValidation {
                 lt = optLt.get();
                 labwareTypeMap.put(ltn, lt);
             }
+            Layout layout = checkLayout(lt, plw.getNumRows(), plw.getNumColumns());
+            // layout is the requested size of the destination labware, or null
+            // if the requested layout is bad
             validatePrebarcode(plw.getBarcode(), lt);
-            checkActions(plw, lt);
+            checkActions(plw, layout);
             checkSlotGroups(plw);
             if (gotBarcode && !alreadySeen && labwareRepo.existsByBarcode(plw.getBarcode())) {
                 addProblem("Labware with the barcode "+plw.getBarcode()+" already exists in the database.");
@@ -212,7 +215,7 @@ public class PlanValidationImp implements PlanValidation {
                 addProblem("Labware with the external barcode "+plw.getBarcode()+" already exists in the database.");
             }
             if (lt.getLabelType()!=null && lt.getLabelType().getName().equalsIgnoreCase("adh")) {
-                if (!hasDividedLayout(sourceLabwareMap, plw, lt, 1)) {
+                if (layout != null && !hasDividedLayout(sourceLabwareMap, plw, layout, 1)) {
                     addProblem("Labware of type "+lt.getName()+" must have one tissue per row.");
                 }
             }
@@ -321,7 +324,40 @@ public class PlanValidationImp implements PlanValidation {
         }
     }
 
-    public void checkActions(PlanRequestLabware lw, LabwareType lt) {
+    public Layout checkLayout(LabwareType lt, Integer numRows, Integer numColumns) {
+        numRows = coalesce(numRows, lt.getNumRows());
+        numColumns = coalesce(numColumns, lt.getNumColumns());
+        boolean customRows = (numRows != lt.getNumRows());
+        boolean customCols = (numColumns != lt.getNumColumns());
+        if (!customRows && !customCols) {
+            return lt.layout();
+        }
+        if (!LabwareService.customSizeLabwareType(lt.getName())) {
+            addProblem("Labware type %s does not support custom size.", lt.getName());
+            return null;
+        }
+        boolean valid = true;
+        if (customRows && numRows > LabwareService.MAX_ROWS) {
+            addProblem("Too many rows requested in labware: "+numRows);
+            valid = false;
+        } else if (customRows && numRows < 1) {
+            addProblem("Invalid number of rows requested in labware: "+numRows);
+            valid = false;
+        }
+        if (customCols && numColumns > LabwareService.MAX_COLS) {
+            addProblem("Too many columns requested in labware: "+numColumns);
+            valid = false;
+        } else if (customCols && numColumns < 1) {
+            addProblem("Invalid number of columns requested in labware: "+numColumns);
+            valid = false;
+        }
+        if (!valid) {
+            return null;
+        }
+        return new Layout(numRows, numColumns);
+    }
+
+    public void checkActions(PlanRequestLabware lw, Layout layout) {
         if (lw.getActions().isEmpty()) {
             addProblem("No actions specified for labware %s.", lwErrorDesc(lw));
             return;
@@ -332,14 +368,13 @@ public class PlanValidationImp implements PlanValidation {
                 addProblem("Missing destination address.");
                 continue;
             }
-            if (lt != null) {
+            if (layout != null) {
                 Set<Address> invalidAddresses = ac.getAddresses().stream()
-                        .filter(ad -> lt.indexOf(ad) < 0)
+                        .filter(ad -> layout.indexOf(ad) < 0)
                         .collect(toSet());
                 if (!invalidAddresses.isEmpty()) {
-                    addProblem("Invalid address given for labware type %s: %s",
-                            lt.getName(),
-                            invalidAddresses);
+                    addProblem("Invalid address given for %s: %s",
+                            layout, invalidAddresses);
                 }
             }
             SectionKey.from(ac).forEach(sk -> {
@@ -382,12 +417,12 @@ public class PlanValidationImp implements PlanValidation {
      * Are rows laid out with only one tissue on each row?
      * @param sourceLwMap look up source labware from barcode
      * @param lw the specification of the destination labware
-     * @param lt the labware type of the destination labware
+     * @param layout the size of the destination labware
      * @param rowsPerGroup number of rows expected for each tissue
      * @return true if the layout is divided as expected, false otherwise
      */
-    public boolean hasDividedLayout(UCMap<Labware> sourceLwMap, PlanRequestLabware lw, LabwareType lt, int rowsPerGroup) {
-        final int numGroups = lt.getNumRows() / rowsPerGroup;
+    public boolean hasDividedLayout(UCMap<Labware> sourceLwMap, PlanRequestLabware lw, Layout layout, int rowsPerGroup) {
+        final int numGroups = layout.numRows() / rowsPerGroup;
         Tissue[] tissues = new Tissue[numGroups];
         for (var pa : lw.getActions()) {
             if (nullOrEmpty(pa.getAddresses()) || pa.getSource()==null || pa.getSource().getBarcode()==null) {

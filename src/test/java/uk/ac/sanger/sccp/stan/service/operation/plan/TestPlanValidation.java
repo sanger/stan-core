@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.EntityFactory.nullableObjToList;
+import static uk.ac.sanger.sccp.stan.Matchers.assertProblem;
 import static uk.ac.sanger.sccp.stan.Matchers.eqCi;
 import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 
@@ -201,12 +202,12 @@ public class TestPlanValidation {
 
     @ParameterizedTest
     @MethodSource("actionsData")
-    public void testCheckActions(String barcode, Object planRequestActions, LabwareType labwareType, Object expectedProblems) {
+    public void testCheckActions(String barcode, String ltName, Object planRequestActions, Layout layout, Object expectedProblems) {
         final List<PlanRequestAction> placs = nullableObjToList(planRequestActions);
-        PlanRequestLabware prlw = new PlanRequestLabware(labwareType==null ? null : labwareType.getName(), barcode, placs);
+        PlanRequestLabware prlw = new PlanRequestLabware(ltName, barcode, placs);
 
         PlanValidationImp validation = makeValidation(new PlanRequest());
-        validation.checkActions(prlw, labwareType);
+        validation.checkActions(prlw, layout);
 
         assertProblems(expectedProblems, validation.problems);
     }
@@ -265,6 +266,9 @@ public class TestPlanValidation {
         if (dividedLayout!=null) {
             doReturn(dividedLayout).when(validation).hasDividedLayout(any(), any(), any(), anyInt());
         }
+        Layout layout = new Layout(4,2);
+        doReturn(layout).when(validation).checkLayout(any(), any(), any());
+
         validation.validateDestinations(sourceLwMap);
         if (!request.getLabware().isEmpty()) {
             verify(validation).validateLotAndCostings(ltMap);
@@ -282,7 +286,8 @@ public class TestPlanValidation {
             verify(validation, times(adhPrls.size())).hasDividedLayout(any(), any(), any(), anyInt());
             for (PlanRequestLabware prl : adhPrls) {
                 final LabwareType lt = adhLts.get(prl.getLabwareType());
-                verify(validation).hasDividedLayout(sourceLwMap, prl, lt, 1);
+                verify(validation).checkLayout(lt, prl.getNumRows(), prl.getNumColumns());
+                verify(validation).hasDividedLayout(sourceLwMap, prl, layout, 1);
             }
         }
 
@@ -405,11 +410,27 @@ public class TestPlanValidation {
 
     @ParameterizedTest
     @MethodSource("hasDividedLayoutData")
-    public void testHasDividedLayout(UCMap<Labware> sourceLwMap, PlanRequestLabware prl, LabwareType lt,
+    public void testHasDividedLayout(UCMap<Labware> sourceLwMap, PlanRequestLabware prl, Layout layout,
                                      int rowsPerGroup, boolean expected) {
         PlanRequest request = new PlanRequest("opType", List.of(prl));
         PlanValidationImp validation = makeValidation(request);
-        assertEquals(expected, validation.hasDividedLayout(sourceLwMap, prl, lt, rowsPerGroup));
+        assertEquals(expected, validation.hasDividedLayout(sourceLwMap, prl, layout, rowsPerGroup));
+    }
+
+    @ParameterizedTest
+    @MethodSource("checkLayoutData")
+    public void testCheckLayout(LabwareType lt, Integer numRows, Integer numColumns, Object expected) {
+        Layout expectedLayout = null;
+        String expectedProblem = null;
+        if (expected instanceof Layout ly) {
+            expectedLayout = ly;
+        } else {
+            expectedProblem = (String) expected;
+        }
+        PlanValidationImp validation = makeValidation(new PlanRequest());
+
+        assertEquals(expectedLayout, validation.checkLayout(lt, numRows, numColumns));
+        assertProblem(validation.problems, expectedProblem);
     }
 
     static Stream<Arguments> sourcesData() {
@@ -472,47 +493,47 @@ public class TestPlanValidation {
 
     /** @see #testCheckActions */
     static Stream<Arguments> actionsData() {
-        LabwareType lt = EntityFactory.makeLabwareType(1,2);
+        Layout layout = new Layout(1,2);
         final Address A1 = new Address(1,1);
         final Address A2 = new Address(1,2);
         PlanRequestSource src = new PlanRequestSource("STAN-000", A1);
         PlanRequestSource srcAlt = new PlanRequestSource("stan-100", A1);
 
         return Stream.of(
-                Arguments.of("STAN-100", List.of(
+                Arguments.of("STAN-100", null, List.of(
                         new PlanRequestAction(A1, 5, src, null),
                         new PlanRequestAction(A2, 4, src, null)),
-                        lt, null),
-                Arguments.of(null, List.of(
+                        layout, null),
+                Arguments.of(null, null, List.of(
                         new PlanRequestAction(A1, 4, src, null),
                         new PlanRequestAction(A2, 4, src, null)),
-                        lt, null),
+                        layout, null),
 
-                Arguments.of("STAN-100", List.of(), lt, "No actions specified for labware STAN-100."),
-                Arguments.of(null, List.of(), lt, "No actions specified for labware of type "+lt.getName()+"."),
-                Arguments.of(null, List.of(), null, "No actions specified for labware of unspecified type."),
+                Arguments.of("STAN-100", null, List.of(), layout, "No actions specified for labware STAN-100."),
+                Arguments.of(null, "lt", List.of(), layout, "No actions specified for labware of type lt."),
+                Arguments.of(null, null, List.of(), null, "No actions specified for labware of unspecified type."),
                 //Duplicate actions
-                Arguments.of("STAN-100", List.of(new PlanRequestAction(A1, 4, src, null),
+                Arguments.of("STAN-100", null, List.of(new PlanRequestAction(A1, 4, src, null),
                         new PlanRequestAction(A1, 4, src, null),
                         new PlanRequestAction(A2, 4, srcAlt, null)),
-                        lt, "Duplicate actions transfer sample ID 4 into slot A1 of labware STAN-100."),
+                        layout, "Duplicate actions transfer sample ID 4 into slot A1 of labware STAN-100."),
                 //Duplicate actions from a non-block source without a barcode
-                Arguments.of(null, List.of(new PlanRequestAction(A1, 4, src, null),
+                Arguments.of(null, "lt", List.of(new PlanRequestAction(A1, 4, src, null),
                         new PlanRequestAction(A1, 4, src, null),
                         new PlanRequestAction(A2, 4, src, null)),
-                        lt, "Duplicate actions transfer sample ID 4 into slot A1 of labware of type "+lt.getName()+"."),
+                        layout, "Duplicate actions transfer sample ID 4 into slot A1 of labware of type lt."),
                 //Non-duplicate actions into the same slot
-                Arguments.of("STAN-100", List.of(new PlanRequestAction(A1, 4, src, null),
+                Arguments.of("STAN-100", null, List.of(new PlanRequestAction(A1, 4, src, null),
                         new PlanRequestAction(A1, 5, src, null)),
-                        lt, null),
-                Arguments.of("STAN-100", new PlanRequestAction(null, 4, src, null), lt,
+                        layout, null),
+                Arguments.of("STAN-100", null, new PlanRequestAction(null, 4, src, null), layout,
                         "Missing destination address."),
-                Arguments.of(null, new PlanRequestAction(null, 4, src, null), lt,
+                Arguments.of(null, null, new PlanRequestAction(null, 4, src, null), layout,
                         "Missing destination address."),
-                Arguments.of("STAN-100", new PlanRequestAction(new Address(2,4), 4, src, null), lt,
-                        "Invalid address given for labware type "+lt.getName()+": [B4]"),
-                Arguments.of(null, new PlanRequestAction(new Address(4,7), 4, src, null), lt,
-                        "Invalid address given for labware type "+lt.getName()+": [D7]")
+                Arguments.of("STAN-100", "lt", new PlanRequestAction(new Address(2,4), 4, src, null), layout,
+                        "Invalid address given for Layout(1,2): [B4]"),
+                Arguments.of(null, "lt", new PlanRequestAction(new Address(4,7), 4, src, null), layout,
+                        "Invalid address given for Layout(1,2): [D7]")
         );
     }
 
@@ -573,7 +594,7 @@ public class TestPlanValidation {
 
         UCMap<Labware> sourceLwMap = UCMap.from(Labware::getBarcode, blocks);
 
-        LabwareType lt = new LabwareType(10, "Visium ADH", 4, 2, new LabelType(6, "adh"), false);
+        Layout lt = new Layout(4,2);
 
         final Address A1 = new Address(1,1);
         final Address A2 = new Address(1,2);
@@ -593,22 +614,40 @@ public class TestPlanValidation {
                 {true},
                 {A1, blocks[0], A2, blocks[0], A2, blocks[1], C1, blocks[2], false},
                 {A1, blocks[0], C1, blocks[1], D2, blocks[2], false},
-        }).map(arr -> Arguments.of(sourceLwMap, toPRL(lt.getName(), arr), lt, 2, arr[arr.length - 1]));
+        }).map(arr -> Arguments.of(sourceLwMap, toPRL(null, arr), lt, 2, arr[arr.length - 1]));
 
         final Stream<Arguments> otherArgStream = Stream.of(
-                Arguments.of(sourceLwMap, new PlanRequestLabware(lt.getName(), null,
+                Arguments.of(sourceLwMap, new PlanRequestLabware(null, null,
                         List.of(
                                 new PlanRequestAction(A1, sams[0].getId(), new PlanRequestSource(blocks[0].getBarcode(), A1), null),
                                 new PlanRequestAction(A1, sams[1].getId(), new PlanRequestSource(blocks[0].getBarcode(), A2), null))),
                         lt, 2, true), // Invalid source address is ignored
-                Arguments.of(sourceLwMap, new PlanRequestLabware(lt.getName(), null,
+                Arguments.of(sourceLwMap, new PlanRequestLabware(null, null,
                         List.of(new PlanRequestAction(A1, sams[0].getId(), new PlanRequestSource(blocks[0].getBarcode(), A1), null),
                                 new PlanRequestAction(A2, sams[1].getId(), new PlanRequestSource(blocks[0].getBarcode(), A1), null))),
                         lt, 2, true) // Sample id not present in slot is ignored
         );
 
         return Stream.concat(argStream, otherArgStream);
+    }
 
+    static Stream<Arguments> checkLayoutData() {
+        LabwareType unCustomLt = EntityFactory.getTubeType();
+        LabwareType lt = EntityFactory.makeLabwareType(1,2, "Cassette");
+        Layout ltLayout = lt.layout();
+        return Arrays.stream(new Object[][] {
+                {lt, null, null, ltLayout},
+                {lt, 1, 2, ltLayout},
+                {unCustomLt, 1, 1, unCustomLt.layout()},
+                {unCustomLt, null, null, unCustomLt.layout()},
+                {unCustomLt, 1, 2, "Labware type "+unCustomLt.getName()+" does not support custom size."},
+                {lt, null, 3, new Layout(1,3)},
+                {lt, 4, null, new Layout(4,2)},
+                {lt, 0, 2, "Invalid number of rows requested in labware: 0"},
+                {lt, 1, 0, "Invalid number of columns requested in labware: 0"},
+                {lt, 1, 300, "Too many columns requested in labware: 300"},
+                {lt, 300, 1, "Too many rows requested in labware: 300"},
+        }).map(Arguments::of);
     }
 
     private static PlanRequestLabware toPRL(String ltName, Object[] data) {
