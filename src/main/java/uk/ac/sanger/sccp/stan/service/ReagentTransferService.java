@@ -7,6 +7,7 @@ import uk.ac.sanger.sccp.stan.request.ReagentTransferRequest;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.Collection;
+import java.util.stream.Stream;
 
 /**
  * Service for recording a reagent transfer operation
@@ -46,7 +47,19 @@ public interface ReagentTransferService {
      * @param existingPlates the existing reagent plates (if any) referred to by the request
      * @param plateTypeArg the plate type as given in the request
      */
-    String checkPlateType(Collection<String> problems, Collection<ReagentPlate> existingPlates, String plateTypeArg);
+    default String checkPlateType(Collection<String> problems, Collection<ReagentPlate> existingPlates, String plateTypeArg) {
+        return checkPlateType(problems, existingPlates.stream(), plateTypeArg);
+    }
+
+    /**
+     * Checks the given plate type is suitable.
+     * It must be equal to a value from {@link ReagentPlate#REAGENT_PLATE_TYPES}.
+     * It must match existing plates.
+     * @param problems receptacle for problems
+     * @param existingPlatesStream the existing reagent plates (if any) referred to by the request
+     * @param plateTypeArg the plate type as given in the request
+     */
+    String checkPlateType(Collection<String> problems, Stream<ReagentPlate> existingPlatesStream, String plateTypeArg);
 
     /**
      * Records the specified transfers.

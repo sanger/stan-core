@@ -1,5 +1,7 @@
 package uk.ac.sanger.sccp.stan.service.register;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -22,6 +24,8 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
  */
 @Service
 public class FileRegisterServiceImp implements FileRegisterService {
+    private final Logger log = LoggerFactory.getLogger(FileRegisterServiceImp.class);
+
     private final IRegisterService<SectionRegisterRequest> sectionRegisterService;
     private final IRegisterService<BlockRegisterRequest> blockRegisterService;
     private final IRegisterService<OriginalSampleRegisterRequest> originalSampleRegisterService;
@@ -77,6 +81,7 @@ public class FileRegisterServiceImp implements FileRegisterService {
         if (!nullOrEmpty(existingExternalNames) && req instanceof BlockRegisterRequest) {
             updateWithExisting((BlockRegisterRequest) req, existingExternalNames);
         }
+        log.info("Registration request from {}: file contents: {}", user, req);
         return transactor.transact("register", () -> service.apply(user, req));
     }
 

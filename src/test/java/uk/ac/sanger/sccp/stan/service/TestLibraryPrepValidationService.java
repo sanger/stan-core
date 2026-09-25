@@ -125,7 +125,7 @@ class TestLibraryPrepValidationService {
 
         when(mockRtService.loadOpType(any(), any())).thenReturn(opType);
         when(mockRtService.loadReagentPlates(any())).thenReturn(reagentPlates);
-        when(mockRtService.checkPlateType(any(), any(), any())).thenReturn(reagentPlateType);
+        when(mockRtService.checkPlateType(any(), anyCollection(), any())).thenReturn(reagentPlateType);
         mayAddProblem("transfer problem").when(mockRtValService).validateTransfers(any(), any(), any(), any());
 
         service.rtValidate(data);
