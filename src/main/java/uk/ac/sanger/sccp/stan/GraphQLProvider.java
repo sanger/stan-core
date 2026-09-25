@@ -252,6 +252,7 @@ public class GraphQLProvider {
                         .dataFetcher("recordOrientationQC", transact(graphQLMutation.recordOrientationQC()))
                         .dataFetcher("reactivateLabware", transact(graphQLMutation.reactivateLabware()))
                         .dataFetcher("libraryPrep", graphQLMutation.libraryPrep()) // internal transaction
+                        .dataFetcher("libraryCon", transact(graphQLMutation.libraryCon()))
                         .dataFetcher("segmentation", transact(graphQLMutation.segmentation()))
                         .dataFetcher("cleanOut", transact(graphQLMutation.cleanOut()))
                         .dataFetcher("recordSampleMetrics", transact(graphQLMutation.recordSampleMetrics()))

@@ -13,6 +13,7 @@ import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
+import java.util.stream.Stream;
 
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
@@ -120,13 +121,13 @@ public class ReagentTransferServiceImp implements ReagentTransferService {
     }
 
     @Override
-    public String checkPlateType(Collection<String> problems, Collection<ReagentPlate> existingPlates, String plateTypeArg) {
+    public String checkPlateType(Collection<String> problems, Stream<ReagentPlate> existingPlatesStream, String plateTypeArg) {
         String plateType = ReagentPlate.canonicalPlateType(plateTypeArg);
         if (plateType==null) {
             problems.add("Unknown plate type: "+repr(plateTypeArg));
             return null;
         }
-        List<String> nonMatching = existingPlates.stream()
+        List<String> nonMatching = existingPlatesStream
                 .filter(rp -> !plateType.equalsIgnoreCase(rp.getPlateType()))
                 .map(ReagentPlate::getBarcode)
                 .toList();

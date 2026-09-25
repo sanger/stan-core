@@ -3,6 +3,7 @@ package uk.ac.sanger.sccp.stan;
 import org.junit.jupiter.api.function.Executable;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatcher;
+import org.mockito.internal.matchers.InstanceOf;
 import org.mockito.stubbing.Answer;
 import org.mockito.stubbing.Stubber;
 import uk.ac.sanger.sccp.stan.service.ValidationException;
@@ -23,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
+import static org.mockito.internal.progress.ThreadSafeMockingProgress.mockingProgress;
 import static uk.ac.sanger.sccp.utils.BasicUtils.sameContents;
 
 /**
@@ -69,6 +71,12 @@ public class Matchers {
      */
     public static <E> ArgumentCaptor<Stream<E>> streamCaptor() {
         return genericCaptor(Stream.class);
+    }
+
+    /** Version of any() that only matches a stream */
+    public static <E> Stream<E> anyStream() {
+        mockingProgress().getArgumentMatcherStorage().reportMatcher(new InstanceOf(Stream.class, "<any stream>"));
+        return Stream.empty();
     }
 
     /**
