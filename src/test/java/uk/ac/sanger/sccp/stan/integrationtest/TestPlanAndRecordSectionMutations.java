@@ -142,6 +142,7 @@ public class TestPlanAndRecordSectionMutations {
     public void testPlanAndRecordSection() throws Exception {
         tester.setUser(entityCreator.createUser("dr6"));
         entityCreator.createLabwareType(LabwareType.FETAL_WASTE_NAME, 1, 1);
+        entityCreator.createLabwareType(LabwareType.XENIUM_NAME, 1, 1);
         entityCreator.createBioState("Fetal waste");
 
         Sample[] blockSamples = {
@@ -169,7 +170,9 @@ public class TestPlanAndRecordSectionMutations {
         for (String barcode : barcodes) {
             assertNotNull(barcode);
         }
-        assertEquals("Visium TO", chainGet(planResultLabware, 0, "labwareType", "name"));
+        assertEquals(LabwareType.XENIUM_NAME, chainGet(planResultLabware, 0, "labwareType", "name"));
+        assertEquals(2, (Integer) chainGet(planResultLabware, 0, "numRows"));
+        assertEquals(3, (Integer) chainGet(planResultLabware, 0, "numColumns"));
         for (int i = 1; i < 3; ++i) {
             assertEquals(LabwareType.FETAL_WASTE_NAME, chainGet(planResultLabware, i, "labwareType", "name"));
         }
@@ -264,7 +267,7 @@ public class TestPlanAndRecordSectionMutations {
         assertEquals(3, resultLabware.size());
         assertEquals(barcode, chainGet(resultLabware, 0, "barcode"));
         List<?> slots = chainGet(resultLabware, 0, "slots");
-        assertEquals(8, slots.size());
+        assertEquals(6, slots.size());
 
         List<Map<String, ?>> a1Samples = chainGetList(slots.stream()
                 .filter(sd -> chainGet(sd, "address").equals("A1"))

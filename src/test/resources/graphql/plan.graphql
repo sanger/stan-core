@@ -2,8 +2,10 @@ mutation {
     plan(request:{
         operationType: "Section"
         labware:[{
-            labwareType:"Visium TO"
+            labwareType:"Xenium"
             costing: SGP
+            numRows: 2
+            numColumns: 3
             lotNumber: "1234567"
             actions:[
                 {
@@ -44,6 +46,8 @@ mutation {
     }) {
         labware {
             barcode
+            numRows
+            numColumns
             labwareType { name }
         }
         operations {

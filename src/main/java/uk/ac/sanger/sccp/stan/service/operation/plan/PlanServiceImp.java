@@ -138,17 +138,13 @@ public class PlanServiceImp implements PlanService {
     public List<Labware> createDestinations(PlanRequest request) {
         List<Labware> newLabware = new ArrayList<>(request.getLabware().size());
         LabwareType lt = null;
+        final Predicate<String> nonEmpty = s -> !s.isEmpty();
         for (PlanRequestLabware prlw : request.getLabware()) {
             if (lt==null || !prlw.getLabwareType().equalsIgnoreCase(lt.getName())) {
                 lt = ltRepo.getByName(prlw.getLabwareType());
             }
-            final Labware lw;
-            if (prlw.getBarcode()==null || prlw.getBarcode().isEmpty()) {
-                lw = lwService.create(lt);
-            } else {
-                String externalBarcode = prlw.getBarcode().toUpperCase();
-                lw = lwService.create(lt, externalBarcode, externalBarcode);
-            }
+            String externalBarcode = Optional.ofNullable(prlw.getBarcode()).filter(nonEmpty).map(String::toUpperCase).orElse(null);
+            Labware lw = lwService.create(lt, prlw.getNumRows(), prlw.getNumColumns(), externalBarcode, externalBarcode);
             newLabware.add(lw);
         }
         return newLabware;
