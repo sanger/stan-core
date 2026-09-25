@@ -13,12 +13,16 @@ import uk.ac.sanger.sccp.stan.request.TissueBlockRequest;
 import uk.ac.sanger.sccp.stan.request.TissueBlockRequest.TissueBlockContent;
 import uk.ac.sanger.sccp.stan.request.TissueBlockRequest.TissueBlockLabware;
 import uk.ac.sanger.sccp.stan.service.*;
+import uk.ac.sanger.sccp.stan.service.block.BlockValidator.SourceChange;
+import uk.ac.sanger.sccp.stan.service.block.BlockValidatorImp.SourceChangeImp;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
+import uk.ac.sanger.sccp.utils.UCMap;
 import uk.ac.sanger.sccp.utils.Zip;
 
 import java.util.*;
 import java.util.stream.IntStream;
 
+import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -57,22 +61,24 @@ class TestBlockMaker {
     }
 
     private BlockMakerImp makeBlockMaker(TissueBlockRequest request, List<BlockLabwareData> blds,
+                                         UCMap<? extends SourceChange> sourceChanges,
                                          Medium medium, BioState bs, Work work, OperationType opType, User user) {
         return new BlockMakerImp(mockTissueRepo, mockSampleRepo, mockSlotRepo, mockLwRepo, mockOpcomRepo,
                 mockLwService, mockOpService, mockWorkService, mockBioRiskService,
-                request, blds, medium, bs, work, opType, user);
+                request, blds, sourceChanges, medium, bs, work, opType, user);
     }
 
     @Test
     void testRecord() {
         Work work = EntityFactory.makeWork("SGP1");
-        BlockMakerImp maker = spy(makeBlockMaker(null, null, null, null, work, null, null));
+        BlockMakerImp maker = spy(makeBlockMaker(null, null, null, null, null, work, null, null));
         List<Labware> lws = List.of(EntityFactory.getTube());
         Operation op = new Operation();
         op.setId(100);
         List<Operation> ops = List.of(op);
         doReturn(lws).when(maker).createLabware();
         doNothing().when(maker).createSamples();
+        doNothing().when(maker).removeSourceSamples();
         doNothing().when(maker).findSlots();
         doNothing().when(maker).fillLabware();
         doNothing().when(maker).discardSources();
@@ -81,6 +87,7 @@ class TestBlockMaker {
 
         verify(maker).createLabware();
         verify(maker).createSamples();
+        verify(maker).removeSourceSamples();
         verify(maker).findSlots();
         verify(maker).fillLabware();
         verify(maker).createOperations();
@@ -106,7 +113,7 @@ class TestBlockMaker {
         List<BlockLabwareData> lds = tbls.stream().map(BlockLabwareData::new).toList();
         Zip.of(Arrays.stream(lts), lds.stream()).forEach((lt, ld) -> ld.setLwType(lt));
         Zip.of(Arrays.stream(lts), lws.stream()).forEach((lt, lw) -> when(mockLwService.create(same(lt), any(), any(), any(), any())).thenReturn(lw));
-        BlockMakerImp maker = makeBlockMaker(new TissueBlockRequest(tbls), lds, null, null, null, null, null);
+        BlockMakerImp maker = makeBlockMaker(new TissueBlockRequest(tbls), lds, null, null, null, null, null, null);
         List<Labware> result = maker.createLabware();
         verify(mockLwService).create(lts[0], null, null, prebarcode, prebarcode);
         verify(mockLwService).create(lts[1], 2, 3, null, null);
@@ -129,7 +136,7 @@ class TestBlockMaker {
         oldTissue.setMedium(oldMed);
         when(mockTissueRepo.save(any())).then(Matchers.returnArgument());
 
-        BlockMakerImp maker = makeBlockMaker(null, null, null, null, null, null, null);
+        BlockMakerImp maker = makeBlockMaker(null, null, null, null, null, null, null, null);
         Tissue newTissue = maker.getOrCreateTissue(oldTissue, newRep, newMed);
         if (expectNew) {
             verify(mockTissueRepo).save(newTissue);
@@ -157,7 +164,7 @@ class TestBlockMaker {
         }
         List<BlockLabwareData> bls = List.of(new BlockLabwareData(new TissueBlockLabware()));
         bls.getFirst().setBlocks(bds);
-        BlockMakerImp maker = spy(makeBlockMaker(null, bls, medium, bs, null, null, null));
+        BlockMakerImp maker = spy(makeBlockMaker(null, bls, null, medium, bs, null, null, null));
         doAnswer(Matchers.returnArgument()).when(maker).getOrCreateTissue(any(), eq(reps[0]), any());
         doReturn(altTissue).when(maker).getOrCreateTissue(any(), eq(reps[1]), any());
         when(mockSampleRepo.save(any())).then(Matchers.returnArgument());
@@ -196,7 +203,7 @@ class TestBlockMaker {
         BlockLabwareData bl = new BlockLabwareData(new TissueBlockLabware());
         bl.setLabware(destLw);
         bl.setBlocks(List.of(bd));
-        BlockMakerImp maker = makeBlockMaker(null, List.of(bl), null, null, null, null, null);
+        BlockMakerImp maker = makeBlockMaker(null, List.of(bl), null, null, null, null, null, null);
         maker.findSlots();
         assertThat(bd.getSourceSlots()).containsExactlyInAnyOrder(sourceSlots.get(0), sourceSlots.get(2));
         assertThat(bd.getDestSlots()).containsExactlyInAnyOrder(destLw.getSlot(A1), destLw.getSlot(A2));
@@ -210,7 +217,7 @@ class TestBlockMaker {
             op.setId(i);
             return op;
         }).toArray(Operation[]::new);
-        BlockMakerImp maker = spy(makeBlockMaker(null, bls, null, null, null, null, null));
+        BlockMakerImp maker = spy(makeBlockMaker(null, bls, null, null, null, null, null, null));
         doReturn(ops[0], ops[1]).when(maker).createOperation(any());
         doNothing().when(maker).recordComments(any(), any());
         assertThat(maker.createOperations()).containsExactly(ops);
@@ -242,7 +249,7 @@ class TestBlockMaker {
         Operation op = new Operation();
         op.setId(100);
         when(mockOpService.createOperation(any(), any(), any(), any())).thenReturn(op);
-        BlockMakerImp maker = makeBlockMaker(null, List.of(ld), null, null, null, opType, user);
+        BlockMakerImp maker = makeBlockMaker(null, List.of(ld), null, null, null, null, opType, user);
         assertThat(maker.createOperations()).containsExactly(op);
         ArgumentCaptor<List<Action>> acCaptor = Matchers.genericCaptor(List.class);
         verify(mockOpService).createOperation(same(opType), same(user), acCaptor.capture(), isNull());
@@ -271,7 +278,7 @@ class TestBlockMaker {
         BlockLabwareData ld = new BlockLabwareData(new TissueBlockLabware());
         ld.setBlocks(List.of(bd0, bd));
 
-        BlockMakerImp maker = makeBlockMaker(null, List.of(ld), null, null, null, null, null);
+        BlockMakerImp maker = makeBlockMaker(null, List.of(ld), null, null, null, null, null, null);
         maker.recordComments(ld, opId);
         ArgumentCaptor<List<OperationComment>> comCaptor = Matchers.genericCaptor(List.class);
         verify(mockOpcomRepo).saveAll(comCaptor.capture());
@@ -302,7 +309,7 @@ class TestBlockMaker {
         }).toList();
         BlockLabwareData bl = new BlockLabwareData(new TissueBlockLabware());
         bl.setBlocks(bds);
-        BlockMakerImp maker = makeBlockMaker(null, List.of(bl), null, null, null, null, null);
+        BlockMakerImp maker = makeBlockMaker(null, List.of(bl), null, null, null, null, null, null);
         maker.fillLabware();
         assertThat(lw.getSlot(A1).getSamples()).containsExactly(samples[0]);
         assertThat(lw.getSlot(A2).getSamples()).containsExactly(samples[1]);
@@ -314,20 +321,71 @@ class TestBlockMaker {
     void testDiscardSources() {
         TissueBlockRequest request = new TissueBlockRequest();
         LabwareType lt = EntityFactory.getTubeType();
-        List<Labware> lws = IntStream.range(0,4).mapToObj(i -> EntityFactory.makeEmptyLabware(lt)).toList();
+        List<Labware> lws = IntStream.range(0,5).mapToObj(i -> EntityFactory.makeEmptyLabware(lt)).toList();
         List<BlockData> bds = lws.stream().map(lw -> {
             BlockData bd = new BlockData(new TissueBlockContent());
             bd.setSourceLabware(lw);
             return bd;
         }).toList();
+        lws.get(2).setDiscarded(true);
         BlockLabwareData ld = new BlockLabwareData(new TissueBlockLabware());
         ld.setBlocks(bds);
-        lws.get(1).setDiscarded(true);
-        request.setDiscardSourceBarcodes(lws.subList(0,3).stream().map(Labware::getBarcode).toList());
-        BlockMakerImp maker = makeBlockMaker(request, List.of(ld), null, null, null, null, null);
+        UCMap<SourceChangeImp> sourceChanges = new UCMap<>(4);
+        Zip.enumerate(lws.subList(0,4).stream()).forEach((i, lw) -> {
+            SourceChangeImp sc = new SourceChangeImp();
+            sc.discard = (i != 3);
+            sourceChanges.put(lw.getBarcode(), sc);
+        });
+        BlockMakerImp maker = makeBlockMaker(request, List.of(ld), sourceChanges, null, null, null, null, null);
         maker.discardSources();
 
-        Zip.enumerate(lws.stream()).forEach((i, lw) -> assertEquals(i != 3, lw.isDiscarded(), ""+i));
-        verify(mockLwRepo).saveAll(Set.of(lws.get(0), lws.get(2)));
+        Zip.enumerate(lws.stream()).forEach((i, lw) -> assertEquals(i < 3, lw.isDiscarded(), ""+i));
+        verify(mockLwRepo).saveAll(Set.of(lws.get(0), lws.get(1)));
+        assertThat(request.getDiscardSourceBarcodes()).containsExactlyInAnyOrderElementsOf(
+                lws.subList(0,3).stream().map(Labware::getBarcode)::iterator
+        );
+    }
+
+    private static SourceChangeImp makeSourceChange(Sample... samples) {
+        SourceChangeImp sc = new SourceChangeImp();
+        if (samples.length > 0) {
+            sc.sampleIdsToRemove = Arrays.stream(samples).map(Sample::getId).collect(toSet());
+        }
+        return sc;
+    }
+
+    @Test
+    void testRemoveSourceSamples() {
+        TissueBlockRequest request = new TissueBlockRequest();
+        LabwareType lt = EntityFactory.getTubeType();
+        List<Labware> lws = IntStream.range(0,5).mapToObj(i -> EntityFactory.makeEmptyLabware(lt)).toList();
+        List<BlockData> bds = lws.stream().map(lw -> {
+            BlockData bd = new BlockData(new TissueBlockContent());
+            bd.setSourceLabware(lw);
+            return bd;
+        }).toList();
+        Sample[] samples = EntityFactory.makeSamples(3);
+        lws.get(0).getFirstSlot().addSample(samples[0]);
+        lws.get(1).getFirstSlot().addSample(samples[1]);
+        lws.get(2).getFirstSlot().getSamples().addAll(Arrays.asList(samples));
+        lws.get(3).getFirstSlot().getSamples().addAll(Arrays.asList(samples));
+
+        UCMap<SourceChangeImp> sourceChanges = new UCMap<>(4);
+        sourceChanges.put(lws.get(0).getBarcode(), makeSourceChange(samples[0]));
+        sourceChanges.put(lws.get(1).getBarcode(), makeSourceChange(samples[0]));
+        sourceChanges.put(lws.get(2).getBarcode(), makeSourceChange(samples[0], samples[1]));
+        sourceChanges.put(lws.get(3).getBarcode(), makeSourceChange(samples[1]));
+
+        BlockLabwareData ld = new BlockLabwareData(new TissueBlockLabware());
+        ld.setBlocks(bds);
+        BlockMakerImp maker = makeBlockMaker(request, List.of(ld), sourceChanges, null, null, null, null, null);
+        maker.removeSourceSamples();
+
+        List<Slot> savedSlots = IntStream.of(0, 2, 3).mapToObj(i -> lws.get(i).getFirstSlot()).toList();
+        verify(mockSlotRepo).saveAll(Matchers.sameElements(savedSlots, true));
+        assertThat(lws.get(0).getFirstSlot().getSamples()).isEmpty();
+        assertThat(lws.get(1).getFirstSlot().getSamples()).containsExactly(samples[1]);
+        assertThat(lws.get(2).getFirstSlot().getSamples()).containsExactly(samples[2]);
+        assertThat(lws.get(3).getFirstSlot().getSamples()).containsExactly(samples[0], samples[2]);
     }
 }

@@ -48,8 +48,8 @@ public class BlockProcessingServiceImp implements BlockProcessingService {
         BlockValidator val = blockValidatorFactory.createBlockValidator(request);
         val.validate();
         val.raiseError();
-        BlockMaker maker = blockMakerFactory.createBlockMaker(request, val.getLwData(), val.getMedium(),
-                val.getNewBioState(), val.getWork(), val.getOpType(), user);
+        BlockMaker maker = blockMakerFactory.createBlockMaker(request, val.getLwData(), val.getSourceChanges(),
+                val.getMedium(), val.getNewBioState(), val.getWork(), val.getOpType(), user);
         return maker.record();
     }
 }

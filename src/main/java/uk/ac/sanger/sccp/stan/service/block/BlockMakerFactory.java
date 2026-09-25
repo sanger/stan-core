@@ -7,6 +7,7 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.TissueBlockRequest;
 import uk.ac.sanger.sccp.stan.service.*;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
+import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.List;
 
@@ -44,9 +45,10 @@ public class BlockMakerFactory {
 
     /** Creates a block maker for the given request with the given data. */
     public BlockMaker createBlockMaker(TissueBlockRequest request, List<BlockLabwareData> lwData,
+                                       UCMap<? extends BlockValidator.SourceChange> sourceChanges,
                                        Medium medium, BioState bioState, Work work, OperationType opType, User user) {
         return new BlockMakerImp(tissueRepo, sampleRepo, slotRepo, lwRepo, opcomRepo,
                 lwService, opService, workService, bioRiskService,
-                request, lwData, medium, bioState, work, opType, user);
+                request, lwData, sourceChanges, medium, bioState, work, opType, user);
     }
 }
