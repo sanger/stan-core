@@ -193,7 +193,13 @@ public class SectionRegisterServiceImp implements IRegisterService<SectionRegist
         if (lt.isPrebarcoded() && prebarcode==null) {
             prebarcode = externalBarcode;
         }
-        Labware lw = lwService.create(lt, prebarcode, externalBarcode);
+        final Labware lw;
+        if (LabwareService.customSizeLabwareType(lt.getName())) {
+            Layout layout = LabwareService.requiredLayout(srl.getContents().stream().flatMap(c -> c.getAddresses().stream()));
+            lw = lwService.create(lt, layout.numRows(), layout.numColumns(), prebarcode, externalBarcode);
+        } else {
+            lw = lwService.create(lt, prebarcode, externalBarcode);
+        }
         for (var content : srl.getContents()) {
             Sample sample = sampleMap.get(content.getExternalIdentifier());
             List<Slot> slots = lwSlots(lw, content.getAddresses()).toList();

@@ -543,7 +543,7 @@ public class BlockRegisterValidationImp implements RegisterValidation {
                     }
                 }
             }
-            if (customSize && maxRow * maxColumn > LabwareService.MAX_OVERRIDE_SLOTS) {
+            if (customSize && (maxRow > LabwareService.MAX_ROWS || maxColumn > LabwareService.MAX_COLS)) {
                 problems.add(String.format("Required layout (%s rows, %s columns) is too big.", maxRow, maxColumn));
             }
         }

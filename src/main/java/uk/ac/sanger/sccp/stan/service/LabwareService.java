@@ -20,7 +20,11 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.*;
  */
 @Service
 public class LabwareService {
-    public static final int MAX_OVERRIDE_SLOTS = 225;
+    public static final int MAX_ROWS = 20, MAX_COLS = 20;
+
+    private static final Set<String> UC_CUSTOM_LT_NAMES = Set.of(LabwareType.XENIUM_NAME.toUpperCase(),
+            LabwareType.CASSETTE_NAME.toUpperCase(), LabwareType.PROVIASETTE_NAME.toUpperCase(),
+            "SUPERFROST PLUS SLIDE", "SCHOTT NEXTERION SLIDE H");
 
     private final LabwareRepo labwareRepo;
     private final SlotRepo slotRepo;
@@ -155,8 +159,11 @@ public class LabwareService {
         if (numColumns <= 0) {
             throw new IllegalArgumentException("Number of columns must be a positive number.");
         }
-        if (numRows * numColumns > MAX_OVERRIDE_SLOTS) {
-            throw new IllegalArgumentException("Specified labware layout is too big.");
+        if (numRows > MAX_ROWS) {
+            throw new IllegalArgumentException("Number of rows must be less than or equal to " + MAX_ROWS + ".");
+        }
+        if (numColumns > MAX_COLS) {
+            throw new IllegalArgumentException("Number of columns must be less than or equal to " + MAX_COLS + ".");
         }
     }
 
@@ -265,8 +272,7 @@ public class LabwareService {
 
     /** Is the specified labware type one that we expect to have a custom layout? */
     public static boolean customSizeLabwareType(String ltName) {
-        return (ltName!=null && (ltName.equalsIgnoreCase(LabwareType.CASSETTE_NAME)
-                || ltName.equalsIgnoreCase(LabwareType.PROVIASETTE_NAME)));
+        return (ltName!=null && UC_CUSTOM_LT_NAMES.contains(ltName.toUpperCase()));
     }
 
     /**
