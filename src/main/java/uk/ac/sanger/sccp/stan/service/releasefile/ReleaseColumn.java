@@ -7,7 +7,6 @@ import uk.ac.sanger.sccp.utils.tsv.TsvColumn;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.format.ResolverStyle;
 import java.util.*;
 import java.util.function.Function;
 
@@ -63,7 +62,7 @@ public enum ReleaseColumn implements TsvColumn<ReleaseEntry> {
     Xenium_probe_panel(ReleaseEntry::getXeniumProbe, ReleaseFileOption.Xenium),
     Xenium_probe_lot(ReleaseEntry::getXeniumProbeLot, ReleaseFileOption.Xenium),
     Probe_hybridisation_end(ReleaseEntry::getHybridEnd, Compose.formatTime, ReleaseFileOption.Xenium),
-    Probe_comments(ReleaseEntry::getHybridComment, ReleaseFileOption.Xenium, ReleaseFileOption.Xenium),
+    Probe_comments(ReleaseEntry::getHybridComment, ReleaseFileOption.Xenium),
     Xenium_decoding_reagent_A_lot(ReleaseEntry::getXeniumReagentALot, ReleaseFileOption.Xenium),
     Xenium_decoding_reagent_B_lot(ReleaseEntry::getXeniumReagentBLot, ReleaseFileOption.Xenium),
     Xenium_run_name(ReleaseEntry::getXeniumRun, ReleaseFileOption.Xenium),
@@ -139,8 +138,8 @@ public enum ReleaseColumn implements TsvColumn<ReleaseEntry> {
     }
 
     private static class Compose {
-        private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("dd-MM-uuuu HH:mm:ss").withResolverStyle(ResolverStyle.STRICT);
-        private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd-MM-uuuu").withResolverStyle(ResolverStyle.STRICT);
+        private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("dd-MM-uuuu HH:mm:ss");
+        private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd-MM-uuuu");
 
         private static final Function<ReleaseEntry, Labware> labware = ReleaseEntry::getLabware;
         private static final Function<ReleaseEntry, Sample> sample = ReleaseEntry::getSample;
