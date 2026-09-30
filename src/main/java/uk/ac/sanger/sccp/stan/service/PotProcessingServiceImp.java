@@ -9,8 +9,7 @@ import uk.ac.sanger.sccp.stan.request.PotProcessingRequest;
 import uk.ac.sanger.sccp.stan.request.PotProcessingRequest.PotProcessingDestination;
 import uk.ac.sanger.sccp.stan.service.store.StoreService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
-import uk.ac.sanger.sccp.utils.BasicUtils;
-import uk.ac.sanger.sccp.utils.UCMap;
+import uk.ac.sanger.sccp.utils.*;
 
 import java.util.*;
 import java.util.function.Function;
@@ -77,6 +76,13 @@ public class PotProcessingServiceImp implements PotProcessingService {
         return opres;
     }
 
+    /**
+     * Validate and record the request. This should be called within a transaction.
+     * @param user the user responsible
+     * @param request the request
+     * @return the labware and operations created
+     * @exception ValidationException validation fails
+     */
     public OperationResult performInTransaction(User user, PotProcessingRequest request) throws ValidationException {
         requireNonNull(user, "User is null.");
         requireNonNull(request, "Request is null.");
@@ -122,11 +128,18 @@ public class PotProcessingServiceImp implements PotProcessingService {
         BioState bs = bsRepo.getByName("Original sample");
         LabwareValidator val = lwValidatorFactory.getValidator();
         var lws = val.loadLabware(lwRepo, List.of(barcode));
-        val.setSingleSample(true);
         val.validateSources();
         val.validateBioState(bs);
         problems.addAll(val.getErrors());
-        return (lws.isEmpty() ? null : lws.get(0));
+        if (lws.isEmpty()) {
+            return null;
+        }
+        Labware lw = lws.getFirst();
+        final Address A1 = new Address(1, 1);
+        if (lw.getSlots().stream().anyMatch(slot -> !slot.getSamples().isEmpty() && !slot.getAddress().equals(A1))) {
+            problems.add("Source labware should not have samples in slots other than the first.");
+        }
+        return lw;
     }
 
     /**
@@ -244,14 +257,11 @@ public class PotProcessingServiceImp implements PotProcessingService {
      */
     public OperationResult record(User user, PotProcessingRequest request, Labware source, UCMap<Fixative> fixatives,
                                   UCMap<LabwareType> lwTypes, Map<Integer, Comment> comments, Work work) {
-        Sample ogSample = source.getSlots().stream()
-                .flatMap(slot -> slot.getSamples().stream())
-                .findAny()
-                .orElseThrow();
-        var tissues = fixativesToTissues(ogSample.getTissue(), fixatives.values());
-        List<Sample> samples = createSamples(request.getDestinations(), ogSample, tissues);
-        List<Labware> dests = createDestinations(request.getDestinations(), lwTypes, samples);
-        List<Operation> ops = createOps(request.getDestinations(), user, source, dests, comments);
+        List<Sample> sourceSamples = source.getFirstSlot().getSamples();
+        Map<TissueFixKey, Tissue> tissues = tissueFixToTissue(sourceSamples, fixatives.values());
+        List<List<Sample>> destSamples = createSamplesPerDestination(request.getDestinations(), sourceSamples, tissues);
+        List<Labware> dests = createDestinations(request.getDestinations(), lwTypes, destSamples);
+        List<Operation> ops = createOps(request.getDestinations(), destSamples, user, source, sourceSamples, dests, comments);
         if (request.isSourceDiscarded()) {
             source.setDiscarded(true);
             lwRepo.save(source);
@@ -265,21 +275,27 @@ public class PotProcessingServiceImp implements PotProcessingService {
 
     /**
      * Creates tissues correct for each specified fixative.
-     * Where the fixative matches the original tissue, that tissue will be returned.
-     * @param ogTissue the original tissue
+     * @param samples the original samples
      * @param fixatives the fixatives that the tissues must have
-     * @return a map of fixative name to tissue
+     * @return a map of tissue id and fixative name to tissue
      */
-    public UCMap<Tissue> fixativesToTissues(Tissue ogTissue, Collection<Fixative> fixatives) {
-        UCMap<Tissue> tissues = new UCMap<>();
-        for (Fixative fix : fixatives) {
-            if (fix.equals(ogTissue.getFixative())) {
-                tissues.put(fix.getName(), ogTissue);
-            } else {
-                tissues.put(fix.getName(), createTissue(ogTissue, fix));
+    Map<TissueFixKey, Tissue> tissueFixToTissue(Collection<Sample> samples, Collection<Fixative> fixatives) {
+        Map<TissueFixKey, Tissue> tissueFixToTissue = new HashMap<>();
+        Set<Integer> doneTissues = new HashSet<>();
+        for (Sample sample : samples) {
+            Tissue tissue = sample.getTissue();
+            if (doneTissues.add(tissue.getId())) {
+                for (Fixative fix : fixatives) {
+                    final TissueFixKey key = new TissueFixKey(tissue, fix.getName());
+                    if (fix.equals(tissue.getFixative())) {
+                        tissueFixToTissue.put(key, tissue);
+                    } else {
+                        tissueFixToTissue.put(key, createTissue(tissue, fix));
+                    }
+                }
             }
         }
-        return tissues;
+        return tissueFixToTissue;
     }
 
     /**
@@ -316,38 +332,43 @@ public class PotProcessingServiceImp implements PotProcessingService {
     }
 
     /**
-     * Creates samples for the given request destinations.
+     * Creates a list of samples for each destination
      * One sample will be created for each combination of tissue and bio state.
-     * The original sample will be used in place of a sample with the same tissue and bio state.
+     * Original samples will be used in place of a sample with the same tissue and bio state.
      * @param destinations the request destinations
-     * @param ogSample the original sample
-     * @param fixativeTissues the map of tissues to use for each fixative name
-     * @return a list of samples in the order corresponding to the destinations
+     * @param ogSamples the original samples
+     * @param tissues the map of tissues to use for each fixative name
+     * @return a list of maps from source sample id to dest sample. The list is in the order corresponding to the destinations
      */
-    public List<Sample> createSamples(List<PotProcessingDestination> destinations, Sample ogSample,
-                                      UCMap<Tissue> fixativeTissues) {
+    List<List<Sample>> createSamplesPerDestination(Collection<PotProcessingDestination> destinations,
+                                                   Collection<Sample> ogSamples,
+                                                   Map<TissueFixKey, Tissue> tissues) {
         Map<TissueBSKey, Sample> sampleMap = new HashMap<>();
-        sampleMap.put(new TissueBSKey(ogSample.getTissue(), ogSample.getBioState()), ogSample);
-        List<Sample> samples = new ArrayList<>(destinations.size());
-        BioState fwBs = null;
-        for (var dest : destinations) {
-            BioState bs = ogSample.getBioState();
-            if (isForFetalWaste(dest)) {
-                if (fwBs==null) {
-                    fwBs = bsRepo.getByName("Fetal waste");
-                }
-                bs = fwBs;
-            }
-            Tissue tissue = fixativeTissues.get(dest.getFixative());
-            TissueBSKey key = new TissueBSKey(tissue, bs);
-            Sample sample = sampleMap.get(key);
-            if (sample==null) {
-                sample = createSample(tissue, bs);
-                sampleMap.put(key, sample);
-            }
-            samples.add(sample);
+        for (Sample sample : ogSamples) {
+            sampleMap.put(new TissueBSKey(sample.getTissue(), sample.getBioState()), sample);
         }
-        return samples;
+        List<List<Sample>> samplesPerDest = new ArrayList<>(destinations.size());
+        BioState fwBs = null;
+        for (PotProcessingDestination dest : destinations) {
+            boolean fw = isForFetalWaste(dest);
+            if (fw && fwBs == null) {
+                fwBs = bsRepo.getByName("Fetal waste");
+            }
+            List<Sample> destSampleList = new ArrayList<>(ogSamples.size());
+            for (Sample ogSample : ogSamples) {
+                BioState bs = fw ? fwBs : ogSample.getBioState();
+                Tissue destTissue = tissues.get(new TissueFixKey(ogSample.getTissue(), dest.getFixative()));
+                TissueBSKey key = new TissueBSKey(destTissue, bs);
+                Sample destSample = sampleMap.get(key);
+                if (destSample==null) {
+                    destSample = createSample(destTissue, bs);
+                    sampleMap.put(key, destSample);
+                }
+                destSampleList.add(destSample);
+            }
+            samplesPerDest.add(destSampleList);
+        }
+        return samplesPerDest;
     }
 
     /**
@@ -358,49 +379,46 @@ public class PotProcessingServiceImp implements PotProcessingService {
      * @return a list of labware, in corresponding order, containing the given samples
      */
     public List<Labware> createDestinations(List<PotProcessingDestination> destinations,
-                                            UCMap<LabwareType> lwTypes, List<Sample> samples) {
+                                            UCMap<LabwareType> lwTypes, List<List<Sample>> samples) {
         List<Labware> labware = destinations.stream()
                 .map(dest -> lwService.create(lwTypes.get(dest.getLabwareType())))
                 .collect(toList());
-        final Iterator<Sample> sampleIter = samples.iterator();
-        for (Labware lw : labware) {
-            Sample sample = sampleIter.next();
+        Zip.of(labware.stream(), samples.stream()).forEach((lw, sams) -> {
             Slot slot = lw.getFirstSlot();
-            slot.addSample(sample);
+            slot.getSamples().addAll(sams);
             slotRepo.save(slot);
-        }
+        });
         return labware;
     }
 
     /**
      * Creates operations for the request
      * @param destinations the request destinations
+     * @param destSampleLists the samples in the corresponding order to the destinations
      * @param user the user responsible for the operations
      * @param source the source labware
+     * @param sourceSamples the samples in the source labware
      * @param labware the destination labware
      * @param comments map to look up comments from id
      * @return list of operations in corresponding order
      */
-    public List<Operation> createOps(List<PotProcessingDestination> destinations, User user, Labware source,
+    public List<Operation> createOps(List<PotProcessingDestination> destinations,
+                                     List<List<Sample>> destSampleLists, User user, Labware source,
+                                     List<Sample> sourceSamples,
                                      Collection<Labware> labware, Map<Integer, Comment> comments) {
-        Iterator<Labware> lwIter = labware.iterator();
-        final Slot srcSlot = source.getSlots().stream()
-                .filter(slot -> !slot.getSamples().isEmpty())
-                .findAny()
-                .orElseThrow();
-        final Sample srcSample = srcSlot.getSamples().get(0);
+        Slot srcSlot = source.getFirstSlot();
         final List<Operation> ops = new ArrayList<>(destinations.size());
         final List<OperationComment> opComs = new ArrayList<>();
         OperationType opType = opTypeRepo.getByName("Pot processing");
+        Iterator<Labware> lwIter = labware.iterator();
+        Iterator<List<Sample>> destSamplesIter = destSampleLists.iterator();
         for (var dest : destinations) {
             Labware lw = lwIter.next();
-            final Slot destSlot = lw.getFirstSlot();
-            final Sample destSample = destSlot.getSamples().get(0);
-            Operation op = createOp(opType, user, srcSlot, lw.getFirstSlot(), srcSample, destSample);
-            Comment comment = (dest.getCommentId()==null ? null : comments.get(dest.getCommentId()));
+            List<Sample> destSamples = destSamplesIter.next();
+            Operation op = createOp(opType, user, srcSlot, lw.getFirstSlot(), sourceSamples, destSamples);
             if (dest.getCommentId()!=null) {
-                opComs.add(new OperationComment(null, comment, op.getId(),
-                        destSample.getId(), destSlot.getId(), null));
+                Comment comment = comments.get(dest.getCommentId());
+                opComs.add(new OperationComment(null, comment, op.getId(), null, null, lw.getId()));
             }
             ops.add(op);
         }
@@ -416,15 +434,33 @@ public class PotProcessingServiceImp implements PotProcessingService {
      * @param user the user responsible
      * @param srcSlot the source slot
      * @param destSlot the destination slot
-     * @param srcSample the source sample
-     * @param destSample the destination sample
+     * @param srcSamples the source samples
+     * @param destSamples the destination samples (parallel to source samples)
      * @return a new operation created in the database with one action, as specified
      */
-    public Operation createOp(OperationType opType, User user, Slot srcSlot, Slot destSlot, Sample srcSample, Sample destSample) {
-        Action action = new Action(null, null, srcSlot, destSlot, destSample, srcSample);
-        return opService.createOperation(opType, user, List.of(action), null);
+    public Operation createOp(OperationType opType, User user, Slot srcSlot, Slot destSlot,
+                              List<Sample> srcSamples, List<Sample> destSamples) {
+        List<Action> actions = Zip.of(srcSamples.stream(), destSamples.stream())
+                .map((srcSam, destSam) -> new Action(null, null, srcSlot, destSlot, destSam, srcSam))
+                .toList();
+        return opService.createOperation(opType, user, actions, null);
     }
 
     /** A key indicating a tissue and a bio state */
-    record TissueBSKey(Tissue tissue, BioState bs) {}
+    record TissueBSKey(Integer tissueId, Integer bsId) {
+        TissueBSKey(Tissue tissue, BioState bs) {
+            this(tissue.getId(), bs.getId());
+        }
+    }
+
+    /** A key indicating a tissue and a fixative name */
+    record TissueFixKey(Integer tissueId, String fixativeName) {
+        TissueFixKey(Tissue tissue, String fixativeName) {
+            this(tissue.getId(), fixativeName);
+        }
+        TissueFixKey(Integer tissueId, String fixativeName) {
+            this.tissueId = tissueId;
+            this.fixativeName = fixativeName.toUpperCase();
+        }
+    }
 }
