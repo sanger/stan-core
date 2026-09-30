@@ -1,11 +1,12 @@
 package uk.ac.sanger.sccp.stan.service.releasefile;
 
 import org.jetbrains.annotations.NotNull;
-import uk.ac.sanger.sccp.stan.GraphQLCustomTypes;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.utils.tsv.TsvColumn;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.function.Function;
 
@@ -28,7 +29,7 @@ public enum ReleaseColumn implements TsvColumn<ReleaseEntry> {
     Flag_description(ReleaseEntry::getFlagDescription),
     Section_position_in_slot(ReleaseEntry::getSamplePosition, ReleaseFileOption.Histology, ReleaseFileOption.RNAscope_IHC, ReleaseFileOption.Visium, ReleaseFileOption.Xenium),
     Section_thickness(ReleaseEntry::getSectionThickness, ReleaseFileOption.Histology, ReleaseFileOption.RNAscope_IHC, ReleaseFileOption.Visium, ReleaseFileOption.Xenium),
-    Date_sectioned(ReleaseEntry::getSectionDate, ReleaseFileOption.Histology, ReleaseFileOption.RNAscope_IHC, ReleaseFileOption.Visium, ReleaseFileOption.Xenium),
+    Date_sectioned(ReleaseEntry::getSectionDate, Compose.formatDate, ReleaseFileOption.Histology, ReleaseFileOption.RNAscope_IHC, ReleaseFileOption.Visium, ReleaseFileOption.Xenium),
     Section_comment(ReleaseEntry::getSectionComment, ReleaseFileOption.Histology, ReleaseFileOption.RNAscope_IHC, ReleaseFileOption.Visium, ReleaseFileOption.Xenium),
     Last_section_number(ReleaseEntry::getLastSection, ReleaseFileMode.NORMAL, ReleaseFileOption.Sample_processing, ReleaseFileOption.Histology),
     Fixative(Compose.tissue, Tissue::getFixative, HasName::getName, ReleaseFileOption.Sample_processing),
@@ -61,7 +62,7 @@ public enum ReleaseColumn implements TsvColumn<ReleaseEntry> {
     Xenium_probe_panel(ReleaseEntry::getXeniumProbe, ReleaseFileOption.Xenium),
     Xenium_probe_lot(ReleaseEntry::getXeniumProbeLot, ReleaseFileOption.Xenium),
     Probe_hybridisation_end(ReleaseEntry::getHybridEnd, Compose.formatTime, ReleaseFileOption.Xenium),
-    Probe_comments(ReleaseEntry::getHybridComment, ReleaseFileOption.Xenium, ReleaseFileOption.Xenium),
+    Probe_comments(ReleaseEntry::getHybridComment, ReleaseFileOption.Xenium),
     Xenium_decoding_reagent_A_lot(ReleaseEntry::getXeniumReagentALot, ReleaseFileOption.Xenium),
     Xenium_decoding_reagent_B_lot(ReleaseEntry::getXeniumReagentBLot, ReleaseFileOption.Xenium),
     Xenium_run_name(ReleaseEntry::getXeniumRun, ReleaseFileOption.Xenium),
@@ -137,12 +138,16 @@ public enum ReleaseColumn implements TsvColumn<ReleaseEntry> {
     }
 
     private static class Compose {
+        private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("dd-MM-uuuu HH:mm:ss");
+        private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd-MM-uuuu");
+
         private static final Function<ReleaseEntry, Labware> labware = ReleaseEntry::getLabware;
         private static final Function<ReleaseEntry, Sample> sample = ReleaseEntry::getSample;
         private static final Function<ReleaseEntry, Slot> slot = ReleaseEntry::getSlot;
         private static final Function<ReleaseEntry, Tissue> tissue = r -> r.getSample().getTissue();
         private static final Function<ReleaseEntry, Donor> donor = r -> r.getSample().getTissue().getDonor();
-        private static final Function<LocalDateTime, String> formatTime = t -> t.format(GraphQLCustomTypes.DATE_TIME_FORMAT);
+        private static final Function<LocalDateTime, String> formatTime = DATE_TIME_FORMAT::format;
+        private static final Function<LocalDate, String> formatDate = DATE_FORMAT::format;
 
         private static <A, B> Function<A, B> skipNull(Function<A, B> func) {
             return a -> (a==null ? null : func.apply(a));
