@@ -277,8 +277,8 @@ public class TestPlanService {
         pre.setBarcode(prebarcode);
         List<Labware> lws = List.of(tube1, tube2, pre);
 
-        when(mockLwService.create(tubeType)).thenReturn(tube1, tube2);
-        when(mockLwService.create(preType, prebarcode, prebarcode)).thenReturn(pre);
+        when(mockLwService.create(tubeType, null, null, null, null)).thenReturn(tube1, tube2);
+        when(mockLwService.create(preType, 2, 3, prebarcode, prebarcode)).thenReturn(pre);
 
         PlanRequest request = new PlanRequest("Section",
                 Stream.of(null, null, prebarcode)
@@ -286,12 +286,14 @@ public class TestPlanService {
                                 bc, List.of()))
                         .collect(toList())
         );
+        final PlanRequestLabware lastPrl = request.getLabware().getLast();
+        lastPrl.setNumRows(2);
+        lastPrl.setNumColumns(3);
 
         List<Labware> destinations = planService.createDestinations(request);
         assertEquals(lws, destinations);
 
-        verify(mockLwService, times(2)).create(tubeType);
-        verify(mockLwService).create(preType, prebarcode, prebarcode);
+        verify(mockLwService, times(3)).create(any(), any(), any(), any(), any());
     }
 
     @ParameterizedTest

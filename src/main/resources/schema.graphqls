@@ -578,6 +578,10 @@ input PlanRequestAction {
 input PlanRequestLabware {
     """The name of the type of labware."""
     labwareType: String!
+    """Optional number of rows for custom-size labware."""
+    numRows: Int
+    """Optional number of columns for custom-size labware."""
+    numColumns: Int
     """The barcode of the new labware, if the user needs to specify it."""
     barcode: String
     """The lot number of the new labware, if any."""
