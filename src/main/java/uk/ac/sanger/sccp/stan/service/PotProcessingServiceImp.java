@@ -289,7 +289,7 @@ public class PotProcessingServiceImp implements PotProcessingService {
                     final TissueFixKey key = new TissueFixKey(tissue, fix.getName());
                     if (fix.equals(tissue.getFixative())) {
                         tissueFixToTissue.put(key, tissue);
-                    } else {
+                    } else if (tissueFixToTissue.get(key)==null) {
                         tissueFixToTissue.put(key, createTissue(tissue, fix));
                     }
                 }
