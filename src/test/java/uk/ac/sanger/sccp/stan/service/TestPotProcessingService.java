@@ -12,9 +12,11 @@ import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.OperationResult;
 import uk.ac.sanger.sccp.stan.request.PotProcessingRequest;
 import uk.ac.sanger.sccp.stan.request.PotProcessingRequest.PotProcessingDestination;
+import uk.ac.sanger.sccp.stan.service.PotProcessingServiceImp.TissueFixKey;
 import uk.ac.sanger.sccp.stan.service.store.StoreService;
 import uk.ac.sanger.sccp.stan.service.work.WorkService;
 import uk.ac.sanger.sccp.utils.UCMap;
+import uk.ac.sanger.sccp.utils.Zip;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -28,7 +30,9 @@ import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static uk.ac.sanger.sccp.stan.Matchers.assertProblem;
 import static uk.ac.sanger.sccp.stan.Matchers.assertValidationException;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
 
 /**
  * Test {@link PotProcessingServiceImp}
@@ -200,16 +204,25 @@ public class TestPotProcessingService {
     }
 
     @ParameterizedTest
-    @CsvSource({",false,", "STAN-A1, false, No such thing", "STAN-A1, true, Bad labware", "STAN-A1, true,"})
-    public void testLoadSource(String barcode, boolean exists, String validationProblem) {
-        if (barcode==null || barcode.isEmpty()) {
+    @CsvSource({",false,false,", "STAN-A1, false, false, No such thing", "STAN-A1, true, false, Bad labware", "STAN-A1, true,false,",
+            "STAN-A1, true, true,"})
+    public void testLoadSource(String barcode, boolean exists, boolean wrongSlot, String validationProblem) {
+        if (nullOrEmpty(barcode)) {
             final List<String> problems = new ArrayList<>(1);
             assertNull(service.loadSource(problems, barcode));
             assertThat(problems).containsExactly("No source barcode was supplied.");
             verifyNoInteractions(mockLwValidatorFactory);
             return;
         }
-        Labware lw = (exists ? EntityFactory.makeEmptyLabware(EntityFactory.getTubeType()) : null);
+        Labware lw;
+        if (!exists) {
+            lw = null;
+        } else if (wrongSlot) {
+            lw = EntityFactory.makeEmptyLabware(EntityFactory.makeLabwareType(1,2));
+            lw.getSlots().getLast().addSample(EntityFactory.getSample());
+        } else {
+            lw = EntityFactory.makeEmptyLabware(EntityFactory.getTubeType());
+        }
         if (lw!=null) {
             lw.setBarcode(barcode);
         }
@@ -223,13 +236,14 @@ public class TestPotProcessingService {
         when(val.getLabware()).thenReturn(lwList);
         when(val.loadLabware(any(), any())).thenReturn(lwList);
 
-        final List<String> problems = new ArrayList<>(validationProblems.size());
+        final List<String> problems = new ArrayList<>();
         assertSame(lw, service.loadSource(problems, barcode));
 
         verify(val).loadLabware(mockLwRepo, List.of(barcode));
-        verify(val).setSingleSample(true);
+        verify(val, never()).setSingleSample(true);
         verify(val).validateSources();
         verify(val).validateBioState(bs);
+        assertProblem(problems, wrongSlot ? "Source labware should not have samples in slots other than the first." : validationProblem);
     }
 
     @ParameterizedTest
@@ -359,73 +373,91 @@ public class TestPotProcessingService {
 
     @ParameterizedTest
     @ValueSource(booleans={false,true})
-    public void testRecord(boolean discard) {
-        Sample ogSample = EntityFactory.getSample();
-        Labware source = EntityFactory.makeLabware(EntityFactory.getTubeType(), ogSample);
-        Tissue ogTissue = ogSample.getTissue();
-        UCMap<Tissue> fixTissues = new UCMap<>(1);
-        final Work work = new Work(100, "SGP100", null, null, null, null, null, null);
-        Fixative fix1 = new Fixative(1, "fix1");
-        UCMap<Fixative> fixatives = UCMap.from(Fixative::getName, fix1);
-        UCMap<LabwareType> lwTypes = UCMap.from(LabwareType::getName, EntityFactory.getTubeType());
-        Map<Integer, Comment> commentMap = Map.of(200, new Comment(200, "Custard", "non-newtonion"));
-        Tissue newTissue = new Tissue(100, null, null, ogTissue.getSpatialLocation(), ogTissue.getDonor(),
-                ogTissue.getMedium(), fix1, ogTissue.getCellClass(), ogTissue.getHmdmc(), ogTissue.getCollectionDate(),
-                ogTissue.getId());
-        final Sample newSample = new Sample(100, null, newTissue, ogSample.getBioState());
-        List<Labware> destLabware = List.of(EntityFactory.makeLabware(EntityFactory.getTubeType(), newSample));
-        List<PotProcessingDestination> ppds = List.of(
-                new PotProcessingDestination("Tube", "Fix1", 1)
-        );
-        PotProcessingRequest request = new PotProcessingRequest(source.getBarcode(), work.getWorkNumber(), ppds, discard);
-        fixTissues.put("fix1", newTissue);
-        doReturn(fixTissues).when(service).fixativesToTissues(any(), any());
-        List<Sample> samples = List.of(ogSample, newSample);
-        doReturn(samples).when(service).createSamples(any(), any(), any());
-        doReturn(destLabware).when(service).createDestinations(any(), any(), any());
-        List<Operation> ops = List.of(new Operation());
-        doReturn(ops).when(service).createOps(any(), any(), any(), any(), any());
-
+    void testRecord(boolean discard) {
         User user = EntityFactory.getUser();
-        var opRes = service.record(user, request, source, fixatives, lwTypes, commentMap, work);
+        PotProcessingRequest request = new PotProcessingRequest();
+        request.setSourceDiscarded(discard);
+        request.setDestinations(List.of(new PotProcessingDestination()));
+        Sample[] samples = EntityFactory.makeSamples(6);
+        List<Sample> sourceSamples = List.of(samples[0], samples[1]);
+        LabwareType lt = EntityFactory.getTubeType();
+        Labware source = EntityFactory.makeEmptyLabware(lt);
+        source.getFirstSlot().getSamples().addAll(sourceSamples);
+        Map<TissueFixKey, Tissue> destTissueMap = Map.of(new TissueFixKey(samples[0].getTissue(), samples[0].getTissue().getFixative().getName()), samples[0].getTissue());
+        List<List<Sample>> destSamples = List.of(List.of(samples[2], samples[3]), List.of(samples[4], samples[5]));
+        List<Labware> destLabwares = List.of(EntityFactory.makeEmptyLabware(lt), EntityFactory.makeEmptyLabware(lt));
+        List<Operation> ops = IntStream.range(1, 3).mapToObj(i -> {
+            Operation op = new Operation();
+            op.setId(i);
+            return op;
+        }).toList();
+        Work work = EntityFactory.makeWork("SGP1");
+        UCMap<Fixative> fixMap = UCMap.from(Fixative::getName, new Fixative(1, "fix1"));
+        UCMap<LabwareType> ltMap = UCMap.from(LabwareType::getName, lt);
+        Map<Integer, Comment> commentMap = Map.of(1, new Comment(1, "Alpha", "Beta"));
 
-        verify(service).fixativesToTissues(ogTissue, fixatives.values());
-        verify(service).createSamples(ppds, ogSample, fixTissues);
-        verify(service).createDestinations(ppds, lwTypes, samples);
-        verify(service).createOps(ppds, user, source, destLabware, commentMap);
+        doReturn(destTissueMap).when(service).tissueFixToTissue(any(), any());
+        doReturn(destSamples).when(service).createSamplesPerDestination(any(), any(), any());
+        doReturn(destLabwares).when(service).createDestinations(any(), any(), any());
+        doReturn(ops).when(service).createOps(any(), any(), any(), any(), any(), any(), any());
+
+        OperationResult opres = service.record(user, request, source, fixMap, ltMap, commentMap, work);
+
+        verify(service).tissueFixToTissue(sourceSamples, fixMap.values());
+        verify(service).createSamplesPerDestination(request.getDestinations(), sourceSamples, destTissueMap);
+        verify(service).createDestinations(request.getDestinations(), ltMap, destSamples);
+        verify(service).createOps(request.getDestinations(), destSamples, user, source, sourceSamples, destLabwares, commentMap);
+        assertEquals(discard, source.isDiscarded());
         if (discard) {
             verify(mockLwRepo).save(source);
+        } else {
+            verifyNoInteractions(mockLwRepo);
         }
-        assertEquals(discard, source.isDiscarded());
-        verify(mockWorkService).link(work, ops);
         verify(mockBioRiskService).copyOpSampleBioRisks(ops);
-
-        assertEquals(opRes.getLabware(), destLabware);
-        assertEquals(opRes.getOperations(), ops);
+        verify(mockWorkService).link(work, ops);
+        assertThat(opres.getOperations()).containsExactlyElementsOf(ops);
+        assertThat(opres.getLabware()).containsExactlyElementsOf(destLabwares);
     }
 
     @Test
-    public void testFixativesToTissues() {
-        Tissue ogTissue = EntityFactory.getTissue();
-        List<Fixative> fixatives = List.of(new Fixative(1, "Fix1"), new Fixative(2, "Fix2"), ogTissue.getFixative());
+    void testTissueFixToTissue() {
+        Tissue[] srcTissues = {EntityFactory.makeTissue(null, null), EntityFactory.makeTissue(null, null)};
+        Fixative[] fixes = IntStream.rangeClosed(1, 3).mapToObj(i -> new Fixative(i, "fix" + i)).toArray(Fixative[]::new);
+        srcTissues[0].setFixative(fixes[0]);
+        srcTissues[1].setFixative(fixes[0]);
+        Sample[] samples = EntityFactory.makeSamples(3);
+        samples[0].setTissue(srcTissues[0]);
+        samples[1].setTissue(srcTissues[1]);
+        samples[2].setTissue(srcTissues[1]);
+
         doAnswer(invocation -> {
-            Tissue tissue = invocation.getArgument(0);
+            Tissue tis = invocation.getArgument(0);
             Fixative fix = invocation.getArgument(1);
-            Tissue newTissue = new Tissue();
-            newTissue.setId(tissue.getId() + fix.getId());
-            newTissue.setFixative(fix);
-            return newTissue;
+            Tissue newTis = EntityFactory.makeTissue(null, null);
+            newTis.setFixative(fix);
+            newTis.setParentId(tis.getId());
+            return newTis;
         }).when(service).createTissue(any(), any());
 
-        UCMap<Tissue> fixTissues = service.fixativesToTissues(ogTissue, fixatives);
-        verify(service, times(2)).createTissue(any(), any());
-        verify(service).createTissue(ogTissue, fixatives.get(0));
-        verify(service).createTissue(ogTissue, fixatives.get(1));
-        assertThat(fixTissues).hasSize(3);
-        for (Fixative fix : fixatives) {
-            assertEquals(fix, fixTissues.get(fix.getName()).getFixative());
+        Map<TissueFixKey, Tissue> result = service.tissueFixToTissue(Arrays.asList(samples), Arrays.asList(fixes));
+
+        Set<TissueFixKey> expectedKeys = Arrays.stream(srcTissues)
+                .flatMap(t -> Arrays.stream(fixes).map(f -> new TissueFixKey(t, f.getName())))
+                .collect(toSet());
+        assertThat(result.keySet()).containsExactlyInAnyOrderElementsOf(expectedKeys);
+
+        for (Fixative fix : fixes) {
+            for (Tissue srcTis : srcTissues) {
+                Tissue destTis = result.get(new TissueFixKey(srcTis, fix.getName()));
+                if (srcTis.getFixative()==fix) {
+                    assertSame(srcTis, destTis);
+                } else {
+                    assertSame(fix, destTis.getFixative());
+                    assertEquals(srcTis.getId(), destTis.getParentId());
+                    verify(service).createTissue(srcTis, fix);
+                }
+            }
         }
-        assertSame(ogTissue, fixTissues.get(ogTissue.getFixative().getName()));
     }
 
     @Test
@@ -471,85 +503,92 @@ public class TestPotProcessingService {
     }
 
     @Test
-    public void testCreateSamples() {
-        BioState bs1 = new BioState(1, "BS1");
-        BioState fwBs = new BioState(10, "Fetal waste");
-        when(mockBsRepo.getByName("Fetal waste")).thenReturn(fwBs);
-        Donor donor = EntityFactory.getDonor();
-        Fixative noFix = new Fixative(1, "None");
-        Fixative fix1 = new Fixative(2, "fix1");
-
-        Tissue ogTissue = new Tissue();
-        ogTissue.setId(1);
-        ogTissue.setDonor(donor);
-        ogTissue.setFixative(noFix);
-        Tissue tissue1 = new Tissue();
-        tissue1.setId(2);
-        tissue1.setDonor(donor);
-        tissue1.setFixative(fix1);
-
-        Sample ogSample = new Sample(100, null, ogTissue, bs1);
-        UCMap<Tissue> fixTissues = UCMap.from(t -> t.getFixative().getName(), ogTissue, tissue1);
-
-        List<PotProcessingDestination> ppds = List.of(
-                new PotProcessingDestination("Tube", "fix1"),
-                new PotProcessingDestination("Tube", "None"),
-                new PotProcessingDestination("Tube", "fix1"),
-                new PotProcessingDestination("Fetal waste container", "None"),
-                new PotProcessingDestination("Fetal waste container", "None")
+    void testCreateSamplesPerDestination() {
+        BioState bs = EntityFactory.getBioState();
+        BioState fwBs = new BioState(100, "Fetal waste");
+        when(mockBsRepo.getByName(fwBs.getName())).thenReturn(fwBs);
+        Fixative[] fixatives = {new Fixative(1, "fix1"), new Fixative(2, "fix2"), new Fixative(3, "fix3")};
+        Tissue[] ogTissues = {new Tissue(), new Tissue()};
+        for (int i = 0; i < ogTissues.length; ++i) {
+            ogTissues[i].setId(10 + i);
+            ogTissues[i].setFixative(fixatives[0]);
+        }
+        List<Sample> ogSamples = List.of(
+                new Sample(200, null, ogTissues[0], bs),
+                new Sample(201, null, ogTissues[1], bs)
+        );
+        Tissue[] newTissues = {new Tissue(), new Tissue(), new Tissue(), new Tissue()};
+        for (int i = 0; i < newTissues.length; ++i) {
+            newTissues[i].setId(20 + i);
+            newTissues[i].setFixative(fixatives[1+i/2]);
+        }
+        Map<TissueFixKey, Tissue> destTissueMap = new HashMap<>(6);
+        destTissueMap.put(new TissueFixKey(10, "fix1"), ogTissues[0]);
+        destTissueMap.put(new TissueFixKey(11, "fix1"), ogTissues[1]);
+        destTissueMap.put(new TissueFixKey(10, "fix2"), newTissues[0]);
+        destTissueMap.put(new TissueFixKey(11, "fix2"), newTissues[1]);
+        destTissueMap.put(new TissueFixKey(10, "fix3"), newTissues[2]);
+        destTissueMap.put(new TissueFixKey(11, "fix3"), newTissues[3]);
+        List<PotProcessingDestination> destinations = List.of(
+                new PotProcessingDestination("lt1", "fix1"),
+                new PotProcessingDestination("lt1", "fix2"),
+                new PotProcessingDestination("lt1", "fix2"),
+                new PotProcessingDestination(LabwareType.FETAL_WASTE_NAME, "fix3")
         );
 
+        Sample[] createdSamples = {
+                new Sample(202, null, newTissues[0], bs),
+                new Sample(203, null, newTissues[1], bs),
+                new Sample(204, null, newTissues[2], fwBs),
+                new Sample(205, null, newTissues[3], fwBs),
+        };
+
         doAnswer(invocation -> {
-            Tissue t = invocation.getArgument(0);
-            BioState bs = invocation.getArgument(1);
-            return new Sample(t.getId()+bs.getId(), null, t, bs);
+            Tissue tis = invocation.getArgument(0);
+            BioState b = invocation.getArgument(1);
+            return Arrays.stream(createdSamples)
+                    .filter(s -> s.getTissue()==tis && s.getBioState()==b)
+                    .findAny().orElseThrow();
         }).when(service).createSample(any(), any());
 
-        List<Sample> samples = service.createSamples(ppds, ogSample, fixTissues);
-        assertThat(samples).hasSize(5);
-        assertSame(samples.get(0), samples.get(2));
-        assertSame(ogSample, samples.get(1));
-        assertSame(samples.get(3), samples.get(4));
-        for (int i = 0; i < samples.size(); ++i) {
-            Sample sample = samples.get(i);
-            final PotProcessingDestination ppd = ppds.get(i);
-            boolean isFw = ppd.getLabwareType().equalsIgnoreCase("Fetal waste container");
-            assertSame(isFw ? fwBs : bs1, sample.getBioState());
-            assertSame(fixTissues.get(ppd.getFixative()), sample.getTissue());
-        }
-        verify(service, times(2)).createSample(any(), any());
-        verify(service).createSample(tissue1, bs1);
-        verify(service).createSample(ogTissue, fwBs);
+        List<List<Sample>> samplesPerDest = service.createSamplesPerDestination(destinations, ogSamples, destTissueMap);
+
+        assertThat(samplesPerDest).hasSize(4);
+        assertThat(samplesPerDest.get(0)).containsExactly(ogSamples.get(0), ogSamples.get(1));
+        assertThat(samplesPerDest.get(1)).containsExactly(createdSamples[0], createdSamples[1]);
+        assertThat(samplesPerDest.get(2)).containsExactly(createdSamples[0], createdSamples[1]);
+        assertThat(samplesPerDest.get(3)).containsExactly(createdSamples[2], createdSamples[3]);
+        verify(service, times(4)).createSample(any(), any());
     }
 
     @Test
-    public void testCreateDestinations() {
-        Sample sample1 = EntityFactory.getSample();
-        Sample sample2 = new Sample(sample1.getId()+1, null, sample1.getTissue(), EntityFactory.getBioState());
-        LabwareType lt1 = EntityFactory.makeLabwareType(1,1,"lt1");
-        LabwareType lt2 = EntityFactory.makeLabwareType(1,1, "lt2");
-        UCMap<LabwareType> ltMap = UCMap.from(LabwareType::getName, lt1, lt2);
-        List<LabwareType> lts = List.of(lt1, lt1, lt2, lt2);
-        List<PotProcessingDestination> ppds = lts.stream()
+    void testCreateDestinations() {
+        Sample[] samples = EntityFactory.makeSamples(4);
+        LabwareType[] lts = new LabwareType[]{
+                EntityFactory.makeLabwareType(1,1,"lt1"),
+                EntityFactory.makeLabwareType(1,1, "lt2")
+        };
+        List<List<Sample>> sampleLists = List.of(
+                List.of(samples[0], samples[1]),
+                List.of(samples[2], samples[3])
+        );
+        List<PotProcessingDestination> destinations = Arrays.stream(lts)
                 .map(lt -> new PotProcessingDestination(lt.getName(), "fix1"))
-                .collect(toList());
-        List<Sample> samples = List.of(sample1, sample1, sample1, sample2);
+                .toList();
+        Labware[] newLabware = Arrays.stream(lts).map(EntityFactory::makeEmptyLabware).toArray(Labware[]::new);
+        UCMap<LabwareType> ltMap = UCMap.from(LabwareType::getName, lts);
+
         when(mockLwService.create(any(LabwareType.class))).thenAnswer(invocation -> {
             LabwareType lt = invocation.getArgument(0);
-            return EntityFactory.makeEmptyLabware(lt);
+            return Arrays.stream(newLabware).filter(lw -> lw.getLabwareType()==lt).findAny().orElseThrow();
         });
 
-        List<Labware> labware = service.createDestinations(ppds, ltMap, samples);
-        assertThat(labware).hasSameSizeAs(samples);
-        for (int i = 0; i < labware.size(); ++i) {
-            Labware lw = labware.get(i);
-            Slot slot = lw.getFirstSlot();
-            assertThat(slot.getSamples()).containsExactly(samples.get(i));
-            verify(mockSlotRepo).save(slot);
-            assertSame(lts.get(i), lw.getLabwareType());
-        }
-
-        verify(mockLwService, times(samples.size())).create(any(LabwareType.class));
+        List<Labware> dests = service.createDestinations(destinations, ltMap, sampleLists);
+        Zip.of(dests.stream(), sampleLists.stream()).forEach((lw, sampleList) ->
+                assertThat(lw.getFirstSlot().getSamples()).containsExactlyElementsOf(sampleList)
+        );
+        dests.forEach(lw -> verify(mockSlotRepo).save(lw.getFirstSlot()));
+        verify(mockLwService, times(2)).create(any(LabwareType.class));
     }
 
     @Test
@@ -557,20 +596,28 @@ public class TestPotProcessingService {
         User user = EntityFactory.getUser();
         OperationType opType = EntityFactory.makeOperationType("Pot processing", null);
         when(mockOpTypeRepo.getByName("Pot processing")).thenReturn(opType);
-        Labware source = EntityFactory.getTube();
-        Slot srcSlot = source.getFirstSlot();
-        Sample srcSample = srcSlot.getSamples().get(0);
+        LabwareType lt = EntityFactory.getTubeType();
+        Labware source = EntityFactory.makeEmptyLabware(lt);
+        Sample[] samples = EntityFactory.makeSamples(4);
+        List<List<Sample>> sampleLists = Arrays.stream(new int[][] { {0,1}, {2,3}, {2,3}})
+                .map(arr -> Arrays.stream(arr).mapToObj(i -> samples[i]).toList())
+                .toList();
+        List<Sample> sourceSamples = List.of(samples[0], samples[1]);
+        final Slot srcSlot = source.getFirstSlot();
+        srcSlot.getSamples().addAll(sourceSamples);
 
-        Sample[] samples = IntStream.range(0,3)
-                .mapToObj(i -> new Sample(10*srcSample.getId()+i, null, srcSample.getTissue(), srcSample.getBioState()))
-                .toArray(Sample[]::new);
-        List<Labware> destLabware = Arrays.stream(samples)
-                .map(sam -> EntityFactory.makeLabware(source.getLabwareType(), sam))
-                .collect(toList());
+        List<Labware> destLabware = sampleLists.stream()
+                .map(sams -> {
+                    Labware lw = EntityFactory.makeEmptyLabware(lt);
+                    lw.getFirstSlot().getSamples().addAll(sams);
+                    return lw;
+                })
+                .toList();
 
         Comment com1 = new Comment(1, "Alpha", "Beta");
         Comment com2 = new Comment(2, "Gamma", "Delta");
         Map<Integer, Comment> commentMap = Map.of(1, com1, 2, com2);
+
         List<PotProcessingDestination> ppds = List.of(
                 new PotProcessingDestination("Tube", "fix1"),
                 new PotProcessingDestination("Tube", "fix2", 1),
@@ -582,19 +629,18 @@ public class TestPotProcessingService {
                     op.setId(100+i);
                     return op;
                 })
-                .collect(toList());
+                .toList();
         doReturn(ops.get(0), ops.get(1), ops.get(2)).when(service).createOp(any(), any(), any(), any(), any(), any());
 
-        assertEquals(ops, service.createOps(ppds, user, source, destLabware, commentMap));
-
+        assertEquals(ops, service.createOps(ppds, sampleLists, user, source, sourceSamples, destLabware, commentMap));
 
         verify(service, times(ppds.size())).createOp(any(), any(), any(), any(), any(), any());
         for (int i = 0; i < ppds.size(); ++i) {
-            verify(service).createOp(opType, user, srcSlot, destLabware.get(i).getFirstSlot(), srcSample, samples[i]);
+            verify(service).createOp(opType, user, srcSlot, destLabware.get(i).getFirstSlot(), sourceSamples, sampleLists.get(i));
         }
 
         List<OperationComment> expectedOpComs = IntStream.range(1,3).mapToObj(i ->
-            new OperationComment(null, commentMap.get(i), ops.get(i).getId(), samples[i].getId(), destLabware.get(i).getFirstSlot().getId(), null)
+            new OperationComment(null, commentMap.get(i), ops.get(i).getId(), null, null, destLabware.get(i).getId())
         ).collect(toList());
         verify(mockOpComRepo).saveAll(expectedOpComs);
     }
@@ -603,19 +649,25 @@ public class TestPotProcessingService {
     public void testCreateOp() {
         OperationType opType = EntityFactory.makeOperationType("Pot processing", null);
         User user = EntityFactory.getUser();
-        Sample srcSam = EntityFactory.getSample();
-        Sample dstSam = new Sample(srcSam.getId()+1, null, srcSam.getTissue(), srcSam.getBioState());
+        Sample[] samples = EntityFactory.makeSamples(4);
+        List<Sample> sourceSamples = List.of(samples[0], samples[1]);
+        List<Sample> destSamples = List.of(samples[2], samples[3]);
         LabwareType lt = EntityFactory.getTubeType();
-        Labware lw1 = EntityFactory.makeLabware(lt, srcSam);
-        Labware lw2 = EntityFactory.makeLabware(lt, dstSam);
-        Slot src = lw1.getFirstSlot();
-        Slot dst = lw2.getFirstSlot();
+        Labware lw0 = EntityFactory.makeEmptyLabware(lt);
+        Labware lw1 = EntityFactory.makeEmptyLabware(lt);
+        lw0.getFirstSlot().getSamples().addAll(sourceSamples);
+        lw1.getFirstSlot().getSamples().addAll(destSamples);
+        Slot src = lw0.getFirstSlot();
+        Slot dst = lw1.getFirstSlot();
         Operation op = new Operation();
         op.setId(500);
         when(mockOpService.createOperation(any(), any(), any(), any())).thenReturn(op);
 
-        assertSame(op, service.createOp(opType, user, src, dst, srcSam, dstSam));
+        assertSame(op, service.createOp(opType, user, src, dst, sourceSamples, destSamples));
+        List<Action> expectedActions = Zip.of(sourceSamples.stream(), destSamples.stream())
+                .map((srcSam, dstSam) -> new Action(null, null, src, dst, dstSam, srcSam))
+                .toList();
 
-        verify(mockOpService).createOperation(opType, user, List.of(new Action(null, null, src, dst, dstSam, srcSam)), null);
+        verify(mockOpService).createOperation(opType, user, expectedActions, null);
     }
 }
