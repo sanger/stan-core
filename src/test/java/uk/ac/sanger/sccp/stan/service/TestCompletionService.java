@@ -210,7 +210,7 @@ public class TestCompletionService {
     @ParameterizedTest
     @CsvSource(value = {
             "Probe hybridisation QC; true;",
-            "Probe hybridisation QC; false; Operation type missing from database: [Probe hybridisation Xenium, Probe hybridisation Cytassist]",
+            "Probe hybridisation QC; false; Operation type missing from database: [Probe hybridisation Xenium, Probe hybridisation Cytassist, Probe hybridisation Atera]",
             ";false;",
             "foozle; false; Operation type foozle cannot be used in this operation.",
     }, delimiter=';')

@@ -1,0 +1,24 @@
+mutation {
+    recordProbeOperation(request: {
+        operationType: "Probe hybridisation Atera"
+        labware: [{
+            barcode: "STAN-1"
+            kitCosting: Faculty
+            probes: [{
+                name: "probe1"
+                lot: "lot1"
+                costing: Faculty
+            }, {
+                name: "probe2"
+                lot: "lot2"
+                costing: Warranty_replacement
+            }]
+            workNumber: "SGP1"
+            reagentLot: "123456"
+            reagentTypeCommentId: 99
+        }]
+    }) {
+        labware { barcode }
+        operations { id }
+    }
+}

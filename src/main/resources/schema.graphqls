@@ -81,6 +81,7 @@ enum FlagPriority {
 enum ProbeType {
     xenium
     cytassist
+    atera
     spike
 }
 
@@ -2043,6 +2044,8 @@ input ProbeOperationLabware {
     spike: String
     """Optional list of slot addresses to include in operation."""
     addresses: [Address!]
+    """Comment id indicating the sample prep reagent type."""
+    reagentTypeCommentId: Int
 }
 
 """The probe used on a piece of labware in an operation."""
