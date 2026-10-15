@@ -223,9 +223,6 @@ public class TestProbeOperationMutation {
         result = tester.post(addProbeMutation.replace("PROBENAME", "probe2"));
         assertNoErrors(result);
         assertEquals("probe2", chainGet(result, "data", "addProbePanel", "name"));
-        result = tester.post(addProbeMutation.replace("PROBENAME", "william").replace("xenium", "spike"));
-        assertNoErrors(result);
-        assertEquals("william", chainGet(result, "data", "addProbePanel", "name"));
 
         OperationType opType = entityCreator.createOpType("Probe hybridisation Atera", null, OperationTypeFlag.PROBES, OperationTypeFlag.IN_PLACE);
         Sample sample = entityCreator.createSample(null, null);
@@ -271,5 +268,6 @@ public class TestProbeOperationMutation {
         OperationComment opcom = opcoms.getFirst();
         assertEquals(comment, opcom.getComment());
         assertEquals(lw.getId(), opcom.getLabwareId());
+        testCompletion(lw, work, sample);
     }
 }
