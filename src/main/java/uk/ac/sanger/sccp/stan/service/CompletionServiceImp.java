@@ -27,7 +27,7 @@ public class CompletionServiceImp extends BaseResultService implements Completio
     /** The name of the probe hybridisation qc op type */
     public static final String PROBE_QC_NAME = "Probe hybridisation QC";
     /** The names of the preceding probe hybridisation op types */
-    public static final List<String> PROBE_HYBRIDISATION_NAMES = List.of("Probe hybridisation Xenium", "Probe hybridisation Cytassist");
+    public static final List<String> PROBE_HYBRIDISATION_NAMES = List.of("Probe hybridisation Xenium", "Probe hybridisation Cytassist", "Probe hybridisation Atera");
 
     private final Clock clock;
 

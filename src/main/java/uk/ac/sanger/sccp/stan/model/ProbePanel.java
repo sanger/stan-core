@@ -9,13 +9,13 @@ import java.util.Objects;
  */
 @Entity
 public class ProbePanel implements HasIntId, HasName, HasEnabled {
-    public enum ProbeType { xenium, cytassist, spike }
+    public enum ProbeType { xenium, cytassist, spike, atera }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(columnDefinition = "enum('xenium', 'cytassist', 'spike')")
+    @Column(columnDefinition = "enum('xenium', 'cytassist', 'spike', 'atera')")
     @Enumerated(EnumType.STRING)
     private ProbeType type;
 
