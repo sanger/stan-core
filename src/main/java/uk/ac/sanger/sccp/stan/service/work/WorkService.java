@@ -35,7 +35,8 @@ public interface WorkService {
      */
     Work createWork(User user, String prefix, Collection<String> workTypeNames, String workRequesterName, String projectName,
                     String programName, String costCode, Integer numBlocks, Integer numSlides,
-                    Integer numOriginalSamples, String omeroProjectName, Integer ssStudyId, Integer xeniumStudyId,
+                    Integer numOriginalSamples, String omeroProjectName,
+                    Integer ssStudyId, Integer xeniumStudyId, Integer ateraStudyId,
                     String facultyLead, Collection<String> treatmentTypeNames);
 
     /**
@@ -113,6 +114,15 @@ public interface WorkService {
      * @return the updated work
      */
     Work updateWorkXeniumStudy(User user, String workNumber, Integer ssStudyId);
+
+    /**
+     * Updates the Atera study of an existing work.
+     * @param user the user responsible
+     * @param workNumber the work number of the work
+     * @param ssStudyId the Sequencescape id of a study; or null
+     * @return the updated work
+     */
+    Work updateWorkAteraStudy(User user, String workNumber, Integer ssStudyId);
 
     /**
      * Updates the treatment types of an existing work.

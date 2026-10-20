@@ -103,6 +103,9 @@ public class Work {
     private DnapStudy xeniumStudy;
 
     @ManyToOne
+    private DnapStudy ateraStudy;
+
+    @ManyToOne
     @JoinColumn(name="faculty_lead_id")
     private ReleaseDestination facultyLead;
 
@@ -141,7 +144,8 @@ public class Work {
     public Work(Integer id, String workNumber, Collection<WorkType> workTypes, ReleaseRecipient workRequester, Project project,
                 Program program, CostCode costCode, Status status, Integer numBlocks, Integer numSlides,
                 Integer numOriginalSamples, String priority, OmeroProject omeroProject, DnapStudy dnapStudy,
-                DnapStudy xeniumStudy, ReleaseDestination facultyLead, Set<TreatmentType> treatmentTypes) {
+                DnapStudy xeniumStudy, DnapStudy ateraStudy,
+                ReleaseDestination facultyLead, Set<TreatmentType> treatmentTypes) {
         this.id = id;
         this.workNumber = workNumber;
         if (workTypes != null) {
@@ -159,6 +163,7 @@ public class Work {
         this.omeroProject = omeroProject;
         this.dnapStudy = dnapStudy;
         this.xeniumStudy = xeniumStudy;
+        this.ateraStudy = ateraStudy;
         this.facultyLead = facultyLead;
         setOperationIds(null);
         setReleaseIds(null);
@@ -168,7 +173,7 @@ public class Work {
     public Work(Integer id, String workNumber, Collection<WorkType> workTypes, ReleaseRecipient workRequester, Project project,
                 Program program, CostCode costCode, Status status) {
         this(id, workNumber, workTypes, workRequester, project, program, costCode, status, null,
-                null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null);
     }
 
     public Integer getId() {
@@ -322,6 +327,14 @@ public class Work {
         this.xeniumStudy = xeniumStudy;
     }
 
+    public DnapStudy getAteraStudy() {
+        return this.ateraStudy;
+    }
+
+    public void setAteraStudy(DnapStudy ateraStudy) {
+        this.ateraStudy = ateraStudy;
+    }
+
     public ReleaseDestination getFacultyLead() {
         return this.facultyLead;
     }
@@ -381,6 +394,7 @@ public class Work {
                 && Objects.equals(this.omeroProject, that.omeroProject)
                 && Objects.equals(this.dnapStudy, that.dnapStudy)
                 && Objects.equals(this.xeniumStudy, that.xeniumStudy)
+                && Objects.equals(this.ateraStudy, that.ateraStudy)
                 && Objects.equals(this.facultyLead, that.facultyLead)
                 && this.status == that.status
                 && Objects.equals(this.treatmentTypes, that.treatmentTypes)
