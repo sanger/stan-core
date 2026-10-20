@@ -355,7 +355,7 @@ public class FieldValidation {
 
     @Bean
     public Validator<String> decodingReagentLotValidator() {
-        Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA, CharacterType.DIGIT);
+        Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN);
         return new StringValidator("Decoding reagent lot", 1, 32, charTypes);
     }
 
