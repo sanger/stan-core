@@ -2465,6 +2465,8 @@ type Query {
     labwareFlagDetails(barcodes: [String!]!): [FlagDetail!]!
     """Get named measurement values for each slot from the indicated labware or its parent labware."""
     measurementValueFromLabwareOrParent(barcode: String!, name: String!): [AddressString!]!
+    """Get named measurement values for each slot from the indicated labware or any of its ancestor labware."""
+    measurementValueFromLabwareOrAncestor(barcode: String!, name: String!): [AddressString!]!
     """Get regions of interest in the indicated labware."""
     rois(barcodes: [String!]!): [LabwareRoi!]!
     """Get regions of interest for the indicated labware and run name."""

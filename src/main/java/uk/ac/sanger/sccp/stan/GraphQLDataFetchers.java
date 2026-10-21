@@ -414,6 +414,15 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         };
     }
 
+    public DataFetcher<List<AddressString>> getMeasurementValueFromLabwareOrAncestor() {
+        return dfe -> {
+            String barcode = dfe.getArgument("barcode");
+            String name = dfe.getArgument("name");
+            var map = measurementService.getMeasurementsFromLabwareOrAncestor(barcode, name);
+            return measurementService.toAddressStrings(map);
+        };
+    }
+
     public DataFetcher<List<LabwareRoi>> labwareRois() {
         return dfe -> {
             List<String> barcodes = dfe.getArgument("barcodes");
