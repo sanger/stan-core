@@ -2355,7 +2355,7 @@ type Query {
     """Get all the species that are enabled, or get all including those that are disabled."""
     species(includeDisabled: Boolean): [Species!]!
     """Get all probe panels of a particular type, optionally including the disabled."""
-    probePanels(type: ProbeType!, includeDisabled: Boolean): [ProbePanel!]!
+    probePanels(type: ProbeType, includeDisabled: Boolean): [ProbePanel!]!
     """Get the labware with the given barcode."""
     labware(barcode: String!): Labware!
     """Get the labware and check if it is flagged."""

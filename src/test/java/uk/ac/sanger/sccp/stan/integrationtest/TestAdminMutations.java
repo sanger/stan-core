@@ -12,12 +12,16 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 
 import javax.transaction.Transactional;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 import static org.junit.jupiter.api.Assertions.*;
+import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.assertNoErrors;
 import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGet;
 import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGetList;
 
@@ -90,7 +94,7 @@ public class TestAdminMutations {
 
     @Test
     @Transactional
-    public void testProbePanelAdmin() throws Exception {
+    public void testProbePanelAdminMutations() throws Exception {
         String mutation = "mutation { addProbePanel(type: xenium, name: \"bananas\") { type, name, enabled }}";
         tester.setUser(entityCreator.createUser("admo", User.Role.admin));
         Object result = tester.post(mutation);
@@ -111,6 +115,48 @@ public class TestAdminMutations {
         assertEquals(Boolean.FALSE, ppData.get("enabled"));
         pp = probePanelRepo.getByTypeAndName(ProbePanel.ProbeType.xenium, "bananas");
         assertFalse(pp.isEnabled());
+    }
+
+    @Test
+    @Transactional
+    public void testProbePanelsQueries() throws Exception {
+        probePanelRepo.save(new ProbePanel(ProbePanel.ProbeType.xenium, "ppq_xen"));
+        probePanelRepo.save(new ProbePanel(ProbePanel.ProbeType.cytassist, "ppq_cyt"));
+        probePanelRepo.save(new ProbePanel(null, ProbePanel.ProbeType.spike, "ppq_spike_off", false));
+        tester.setUser(entityCreator.createUser("user1"));
+
+        // No type: all enabled panels of every type
+        Object result = tester.post("query { probePanels { type, name, enabled } }");
+        assertNoErrors(result);
+        assertThat(ppNames(result)).contains("ppq_xen", "ppq_cyt").doesNotContain("ppq_spike_off");
+        List<Map<String, ?>> pps = chainGetList(result, "data", "probePanels");
+        assertThat(pps).allMatch(pp -> Boolean.TRUE.equals(pp.get("enabled")));
+        assertThat(pps.stream().map(pp -> (String) pp.get("type")).collect(toSet())).contains("xenium", "cytassist");
+
+        // No type, including disabled
+        result = tester.post("query { probePanels(includeDisabled: true) { name } }");
+        assertNoErrors(result);
+        assertThat(ppNames(result)).contains("ppq_xen", "ppq_cyt", "ppq_spike_off");
+
+        // Specific type
+        result = tester.post("query { probePanels(type: xenium) { type, name } }");
+        assertNoErrors(result);
+        assertThat(ppNames(result)).contains("ppq_xen").doesNotContain("ppq_cyt", "ppq_spike_off");
+        List<Map<String, ?>> xenPps = chainGetList(result, "data", "probePanels");
+        assertThat(xenPps).allMatch(pp -> "xenium".equals(pp.get("type")));
+
+        // Specific type, including disabled
+        result = tester.post("query { probePanels(type: spike, includeDisabled: true) { name } }");
+        assertNoErrors(result);
+        assertThat(ppNames(result)).contains("ppq_spike_off").doesNotContain("ppq_xen");
+        result = tester.post("query { probePanels(type: spike) { name } }");
+        assertNoErrors(result);
+        assertThat(ppNames(result)).doesNotContain("ppq_spike_off");
+    }
+
+    private static List<String> ppNames(Object result) {
+        List<Map<String, String>> pps = chainGetList(result, "data", "probePanels");
+        return pps.stream().map(pp -> pp.get("name")).collect(toList());
     }
 
     private <E extends HasEnabled> void testGenericAddNewAndSetEnabled(String entityTypeName, String fieldName,
