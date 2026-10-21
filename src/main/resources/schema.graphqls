@@ -1344,6 +1344,8 @@ type Work {
     dnapStudy: DnapStudy
     """The xenium study for this work, if any."""
     xeniumStudy: DnapStudy
+    """The atera study for this work, if any."""
+    ateraStudy: DnapStudy
     """The faculty lead for this work, if any."""
     facultyLead: ReleaseDestination
     """The treatment types for this work, if any."""
@@ -2619,7 +2621,8 @@ type Mutation {
     """Create a new work, which will be allocated a new work number with the given prefix."""
     createWork(prefix: String!, workTypes: [String!]!, workRequester: String!, project: String!, program: String!,
         costCode: String!, numBlocks: Int, numSlides: Int, numOriginalSamples: Int, omeroProject: String,
-        ssStudyId: Int, xeniumStudyId: Int, facultyLead: String!, treatmentTypes: [String!]): Work!
+        ssStudyId: Int, xeniumStudyId: Int, ateraStudyId: Int,
+        facultyLead: String!, treatmentTypes: [String!]): Work!
     """Update the status of an existing work."""
     updateWorkStatus(workNumber: String!, status: WorkStatus!, commentId: Int): WorkWithComment!
     """Update the number of blocks field in a work."""
@@ -2638,6 +2641,8 @@ type Mutation {
     updateWorkTreatmentTypes(workNumber: String!, treatmentTypes: [String!]!): Work!
     """Update the Xenium study of a work."""
     updateWorkXeniumStudy(workNumber: String!, ssStudyId: Int): Work!
+    """Update the Atera study of a work."""
+    updateWorkAteraStudy(workNumber: String!, ssStudyId: Int): Work!
     """Update the work types of a work."""
     updateWorkWorkTypes(workNumber: String!, workTypes: [String!]!): Work!
     """Updates Stan's internal list of Dnap Studies, and returns the enabled ones."""
