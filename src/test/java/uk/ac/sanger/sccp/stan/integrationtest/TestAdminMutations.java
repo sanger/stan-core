@@ -12,18 +12,12 @@ import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 
 import javax.transaction.Transactional;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Function;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toSet;
 import static org.junit.jupiter.api.Assertions.*;
-import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.assertNoErrors;
-import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGet;
-import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGetList;
+import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.*;
 
 /**
  * Tests admin mutations of various types of entity
@@ -128,35 +122,35 @@ public class TestAdminMutations {
         // No type: all enabled panels of every type
         Object result = tester.post("query { probePanels { type, name, enabled } }");
         assertNoErrors(result);
-        assertThat(ppNames(result)).contains("ppq_xen", "ppq_cyt").doesNotContain("ppq_spike_off");
+        assertThat(ppNames(result)).containsExactlyInAnyOrder("ppq_xen", "ppq_cyt");
         List<Map<String, ?>> pps = chainGetList(result, "data", "probePanels");
-        assertThat(pps).allMatch(pp -> Boolean.TRUE.equals(pp.get("enabled")));
-        assertThat(pps.stream().map(pp -> (String) pp.get("type")).collect(toSet())).contains("xenium", "cytassist");
+        assertThat(pps).allMatch(pp -> (boolean) pp.get("enabled"));
+        assertThat(pps.stream().map(pp -> (String) pp.get("type"))).containsExactlyInAnyOrder("xenium", "cytassist");
 
         // No type, including disabled
         result = tester.post("query { probePanels(includeDisabled: true) { name } }");
         assertNoErrors(result);
-        assertThat(ppNames(result)).contains("ppq_xen", "ppq_cyt", "ppq_spike_off");
+        assertThat(ppNames(result)).containsExactlyInAnyOrder("ppq_xen", "ppq_cyt", "ppq_spike_off");
 
         // Specific type
         result = tester.post("query { probePanels(type: xenium) { type, name } }");
         assertNoErrors(result);
-        assertThat(ppNames(result)).contains("ppq_xen").doesNotContain("ppq_cyt", "ppq_spike_off");
+        assertThat(ppNames(result)).containsExactly("ppq_xen");
         List<Map<String, ?>> xenPps = chainGetList(result, "data", "probePanels");
         assertThat(xenPps).allMatch(pp -> "xenium".equals(pp.get("type")));
 
         // Specific type, including disabled
         result = tester.post("query { probePanels(type: spike, includeDisabled: true) { name } }");
         assertNoErrors(result);
-        assertThat(ppNames(result)).contains("ppq_spike_off").doesNotContain("ppq_xen");
+        assertThat(ppNames(result)).containsExactly("ppq_spike_off");
         result = tester.post("query { probePanels(type: spike) { name } }");
         assertNoErrors(result);
-        assertThat(ppNames(result)).doesNotContain("ppq_spike_off");
+        assertThat(ppNames(result)).isEmpty();
     }
 
     private static List<String> ppNames(Object result) {
         List<Map<String, String>> pps = chainGetList(result, "data", "probePanels");
-        return pps.stream().map(pp -> pp.get("name")).collect(toList());
+        return pps.stream().map(pp -> pp.get("name")).toList();
     }
 
     private <E extends HasEnabled> void testGenericAddNewAndSetEnabled(String entityTypeName, String fieldName,
