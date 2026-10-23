@@ -28,10 +28,12 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 public class ProbeServiceImp implements ProbeService {
     public static final String
             PROBE_HYB_CYT = "Probe hybridisation Cytassist",
-            PROBE_HYB_XEN = "Probe hybridisation Xenium";
+            PROBE_HYB_XEN = "Probe hybridisation Xenium",
+            PROBE_HYB_ATERA = "Probe hybridisation Atera";
     public static final String KIT_COSTING_NAME = "kit costing";
     public static final String REAGENT_LOT_NAME = "reagent lot";
     public static final String CASSETTE_LOT_NAME = "cassette lot";
+    public static final String REAGENT_TYPE_COMMENT_CATEGORY = "sample prep reagent type";
 
     private final LabwareValidatorFactory lwValFac;
     private final LabwareRepo lwRepo;
@@ -40,8 +42,10 @@ public class ProbeServiceImp implements ProbeService {
     private final ProbePanelRepo probePanelRepo;
     private final LabwareProbeRepo lwProbeRepo;
     private final LabwareNoteRepo noteRepo;
+    private final OperationCommentRepo opComRepo;
     private final OperationService opService;
     private final WorkService workService;
+    private final CommentValidationService commentValidationService;
     private final Validator<String> probeLotValidator;
     private final Validator<String> reagentLotValidator;
     private final Validator<String> cassetteLotValidator;
@@ -51,7 +55,9 @@ public class ProbeServiceImp implements ProbeService {
     public ProbeServiceImp(LabwareValidatorFactory lwValFac,
                            LabwareRepo lwRepo, OperationTypeRepo opTypeRepo, OperationRepo opRepo,
                            ProbePanelRepo probePanelRepo, LabwareProbeRepo lwProbeRepo, LabwareNoteRepo noteRepo,
+                           OperationCommentRepo opComRepo,
                            OperationService opService, WorkService workService,
+                           CommentValidationService commentValidationService,
                            @Qualifier("probeLotNumberValidator") Validator<String> probeLotValidator,
                            @Qualifier("reagentLotValidator") Validator<String> reagentLotValidator,
                            @Qualifier("cassetteLotValidator") Validator<String> cassetteLotValidator,
@@ -63,8 +69,10 @@ public class ProbeServiceImp implements ProbeService {
         this.probePanelRepo = probePanelRepo;
         this.lwProbeRepo = lwProbeRepo;
         this.noteRepo = noteRepo;
+        this.opComRepo = opComRepo;
         this.opService = opService;
         this.workService = workService;
+        this.commentValidationService = commentValidationService;
         this.probeLotValidator = probeLotValidator;
         this.reagentLotValidator = reagentLotValidator;
         this.cassetteLotValidator = cassetteLotValidator;
@@ -83,6 +91,9 @@ public class ProbeServiceImp implements ProbeService {
             }
             if (opType.getName().equalsIgnoreCase(PROBE_HYB_XEN)) {
                 return ProbeType.xenium;
+            }
+            if (opType.getName().equalsIgnoreCase(PROBE_HYB_ATERA)) {
+                return ProbeType.atera;
             }
         }
         return null;
@@ -114,6 +125,7 @@ public class ProbeServiceImp implements ProbeService {
                 .map(ProbeOperationLabware::getWorkNumber)
                 .toList();
         UCMap<Work> work = workService.validateUsableWorks(problems, workNumbers);
+        Map<Integer, Comment> commentMap = checkReagentTypeCommentId(problems, request.getLabware());
         checkReagentLots(problems, request.getLabware());
         checkCassetteLots(problems, request.getLabware());
         UCMap<ProbePanel> probes = validateProbes(problems, probeType, request.getLabware());
@@ -126,7 +138,7 @@ public class ProbeServiceImp implements ProbeService {
             throw new ValidationException("The request could not be validated.", problems);
         }
 
-        return perform(user, request.getLabware(), opType, request.getPerformed(), labware, probes, spikes, work);
+        return perform(user, request.getLabware(), opType, request.getPerformed(), labware, probes, spikes, work, commentMap);
     }
 
     /**
@@ -234,6 +246,26 @@ public class ProbeServiceImp implements ProbeService {
             problems.add("Operation type "+opType.getName()+" cannot be used in this request.");
         }
         return opType;
+    }
+
+    /**
+     * Loads and checks the comment ids given for reagent type.
+     * @param problems receptacle for problems
+     * @param pols the labware data in the request
+     * @return a map of comments from their ids
+     */
+    public Map<Integer, Comment> checkReagentTypeCommentId(Collection<String> problems, Collection<ProbeOperationLabware> pols) {
+        if (pols != null) {
+            Stream<Integer> commentIdStream = pols.stream()
+                    .map(ProbeOperationLabware::getReagentTypeCommentId)
+                    .filter(Objects::nonNull);
+            List<Comment> comments = commentValidationService.validateCommentIds(problems, commentIdStream);
+            if (comments.stream().anyMatch(c -> !c.getCategory().equalsIgnoreCase(REAGENT_TYPE_COMMENT_CATEGORY))) {
+                problems.add("Reagent type comment ID must be a comment in the category "+REAGENT_TYPE_COMMENT_CATEGORY+".");
+            }
+            return comments.stream().collect(inMap(Comment::getId));
+        }
+        return Map.of();
     }
 
     /**
@@ -377,14 +409,16 @@ public class ProbeServiceImp implements ProbeService {
      * @param probeMap the probes indicated in the request, mapped from their names
      * @param spikeMap the spikes indicated in the request, mapped from their names
      * @param workMap the works indicated, mapped from work numbers
+     * @param commentMap the comments indicated in the request, mapped from their ids
      * @return the labware and operations recorded
      */
     public OperationResult perform(User user, Collection<ProbeOperationLabware> pols, OperationType opType,
                                    LocalDateTime time, UCMap<Labware> lwMap, UCMap<ProbePanel> probeMap,
-                                   UCMap<ProbePanel> spikeMap, UCMap<Work> workMap) {
+                                   UCMap<ProbePanel> spikeMap, UCMap<Work> workMap, Map<Integer, Comment> commentMap) {
         UCMap<Operation> lwOps = makeOps(user, opType, pols, lwMap, time);
         saveKitCostings(pols, lwMap, lwOps);
         saveLabwareLots(pols, lwMap, lwOps);
+        saveReagentTypeComments(pols, lwMap, lwOps, commentMap);
         linkWork(pols, lwOps, workMap);
         saveProbes(pols, lwOps, lwMap, probeMap, spikeMap);
         return assembleResult(pols, lwMap, lwOps);
@@ -532,6 +566,29 @@ public class ProbeServiceImp implements ProbeService {
     }
 
     /**
+     * Saves reagent types (if specified) as comments against the op/labware
+     * @param pols labware specified in the request
+     * @param lwMap map of labware from barcode
+     * @param lwOps map of operations from barcode
+     * @param commentMap map of comments from id
+     */
+    public void saveReagentTypeComments(Collection<ProbeOperationLabware> pols, UCMap<Labware> lwMap,
+                                        UCMap<Operation> lwOps, Map<Integer, Comment> commentMap) {
+        List<OperationComment> opcoms = new ArrayList<>();
+        for (ProbeOperationLabware pol : pols) {
+            if (pol.getReagentTypeCommentId() != null) {
+                Comment comment = commentMap.get(pol.getReagentTypeCommentId());
+                Labware lw = lwMap.get(pol.getBarcode());
+                Operation op = lwOps.get(pol.getBarcode());
+                opcoms.add(new OperationComment(null, comment, op.getId(), null, null, lw.getId()));
+            }
+        }
+        if (!opcoms.isEmpty()) {
+            opComRepo.saveAll(opcoms);
+        }
+    }
+
+    /**
      * Assembles an operation result whose order matches the order given in the request.
      * @param pols the request specifying labware barcodes
      * @param lwMap map of labware from their barcodes
@@ -546,5 +603,4 @@ public class ProbeServiceImp implements ProbeService {
         }
         return result;
     }
-
 }
