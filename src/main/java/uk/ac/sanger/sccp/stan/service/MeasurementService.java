@@ -21,6 +21,15 @@ public interface MeasurementService {
     Map<Address, List<Measurement>> getMeasurementsFromLabwareOrParent(String barcode, String name);
 
     /**
+     * Gets the most recent named measurements from the each slot of the indicated labware or ancestor labware.
+     * @param barcode the labware barcode
+     * @param name the name of the measurement
+     * @return map from slot address to measurements
+     * @exception javax.persistence.EntityNotFoundException if the indicated labware does not exist
+     */
+    Map<Address, List<Measurement>> getMeasurementsFromLabwareOrAncestor(String barcode, String name);
+
+    /**
      * Converts a map of address to measurements to a list with one value for each address
      * @param map a map from slot address to measurements
      * @return a list of addresses and strings

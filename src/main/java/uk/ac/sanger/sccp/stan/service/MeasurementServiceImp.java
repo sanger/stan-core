@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.AddressString;
+import uk.ac.sanger.sccp.stan.service.releasefile.Ancestoriser;
 
 import java.util.*;
 import java.util.stream.Stream;
@@ -21,12 +22,15 @@ public class MeasurementServiceImp implements MeasurementService {
     private final LabwareRepo lwRepo;
     private final ActionRepo actionRepo;
     private final MeasurementRepo measurementRepo;
+    private final Ancestoriser ancestoriser;
 
     @Autowired
-    public MeasurementServiceImp(LabwareRepo lwRepo, ActionRepo actionRepo, MeasurementRepo measurementRepo) {
+    public MeasurementServiceImp(LabwareRepo lwRepo, ActionRepo actionRepo, MeasurementRepo measurementRepo,
+                                 Ancestoriser ancestoriser) {
         this.lwRepo = lwRepo;
         this.actionRepo = actionRepo;
         this.measurementRepo = measurementRepo;
+        this.ancestoriser = ancestoriser;
     }
 
     @Override
@@ -57,6 +61,69 @@ public class MeasurementServiceImp implements MeasurementService {
             }
         }
         return map;
+    }
+
+    /**
+     * Creates a map of slot/sample ids to measurements, preferring the most recent measurement (by id)
+     * @param measurements the measurements to include in the map
+     * @return a map of slot/sample ids to measurements
+     */
+    Map<SlotIdSampleId, Measurement> makeSsMeasurementMap(Collection<Measurement> measurements) {
+        Map<SlotIdSampleId, Measurement> map = new HashMap<>();
+        for (Measurement meas : measurements) {
+            SlotIdSampleId key = new SlotIdSampleId(meas.getSlotId(), meas.getSampleId());
+            Measurement existingMeas = map.get(key);
+            if (existingMeas==null || existingMeas.getId() < meas.getId()) {
+                map.put(key, meas);
+            }
+        }
+        return map;
+    }
+
+    /**
+     * Selects the most recent measurement from the ancestry of a given slot/sample
+     * @param ancestry the ancestry of the slot/sample
+     * @param ssMeasurements a map of slot/sample ids to measurements
+     * @param lwSS the slot/sample we are interested in
+     * @return the measurement recorded on the given slot/sample or its ancestor
+     */
+    Measurement findMeasurement(Ancestoriser.Ancestry ancestry,
+                                Map<SlotIdSampleId, Measurement> ssMeasurements,
+                                Ancestoriser.SlotSample lwSS) {
+        for (Ancestoriser.SlotSample ss : ancestry.ancestors(lwSS)) {
+            SlotIdSampleId ssid = new SlotIdSampleId(ss.slotId(), ss.sampleId());
+            Measurement meas = ssMeasurements.get(ssid);
+            if (meas != null) {
+                return meas;
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public Map<Address, List<Measurement>> getMeasurementsFromLabwareOrAncestor(String barcode, String name) {
+        Labware lw = lwRepo.getByBarcode(barcode);
+        List<Ancestoriser.SlotSample> lwSlotSamples = Ancestoriser.SlotSample.stream(lw).toList();
+        Ancestoriser.Ancestry ancestry = ancestoriser.findAncestry(lwSlotSamples);
+        Set<Integer> slotIds = ancestry.keySet().stream().map(Ancestoriser.SlotSample::slotId).collect(toSet());
+        List<Measurement> measurements = measurementRepo.findAllBySlotIdInAndName(slotIds, name);
+        if (measurements.isEmpty()) {
+            return Map.of();
+        }
+        Map<SlotIdSampleId, Measurement> ssMeasurements = makeSsMeasurementMap(measurements);
+        Map<Ancestoriser.SlotSample, Measurement> foundMeasurements = new HashMap<>();
+        for (Ancestoriser.SlotSample lwSS : lwSlotSamples) {
+            Measurement foundMeasurement = findMeasurement(ancestry, ssMeasurements, lwSS);
+            if (foundMeasurement != null) {
+                foundMeasurements.put(lwSS, foundMeasurement);
+            }
+        }
+        Map<Address, List<Measurement>> addressMeasurements = new HashMap<>();
+        for (var e : foundMeasurements.entrySet()) {
+            Address ad = e.getKey().slot().getAddress();
+            addressMeasurements.computeIfAbsent(ad, k -> new ArrayList<>()).add(e.getValue());
+        }
+        return addressMeasurements;
     }
 
     @Override
