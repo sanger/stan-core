@@ -11,7 +11,7 @@ import uk.ac.sanger.sccp.stan.GraphQLTester;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.service.CompletionServiceImp;
-import uk.ac.sanger.sccp.stan.service.operation.AnalyserServiceImp;
+import uk.ac.sanger.sccp.stan.service.operation.AnalyserServiceImp.Tech;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import javax.transaction.Transactional;
@@ -130,8 +130,8 @@ public class TestProbeOperationMutation {
     }
 
     private void testAnalyser(Labware lw, Work work, Sample sample) throws Exception {
-        entityCreator.createOpType(AnalyserServiceImp.ANALYSER_OP_NAME, null, OperationTypeFlag.IN_PLACE);
-        Equipment equipment =  equipmentRepo.save(new Equipment("Xenium 1", AnalyserServiceImp.EQUIPMENT_CATEGORY));
+        entityCreator.createOpType(Tech.xenium.getOpName(), null, OperationTypeFlag.IN_PLACE);
+        Equipment equipment =  equipmentRepo.save(new Equipment("Xenium 1", Tech.xenium.getEquipmentType()));
         String mutation = tester.readGraphQL("recordanalyser.graphql")
                 .replace("SGP1", work.getWorkNumber())
                 .replace("555", String.valueOf(sample.getId()))

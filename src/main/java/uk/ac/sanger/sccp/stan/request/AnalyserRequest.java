@@ -196,6 +196,7 @@ public class AnalyserRequest {
     private String cellSegmentationLot;
     private List<AnalyserLabware> labware = List.of();
     private boolean repeat = false;
+    private Integer workTypeCommentId;
 
     public AnalyserRequest() {}
 
@@ -308,6 +309,14 @@ public class AnalyserRequest {
         this.repeat = repeat;
     }
 
+    public Integer getWorkTypeCommentId() {
+        return this.workTypeCommentId;
+    }
+
+    public void setWorkTypeCommentId(Integer workTypeCommentId) {
+        this.workTypeCommentId = workTypeCommentId;
+    }
+
     @Override
     public String toString() {
         return BasicUtils.describe("AnalyserRequest")
@@ -319,6 +328,7 @@ public class AnalyserRequest {
                 .add("cellSegmentationLot", cellSegmentationLot)
                 .add("labware", labware)
                 .add("repeat", repeat)
+                .add("workTypeCommentId", workTypeCommentId)
                 .reprStringValues()
                 .toString();
     }
@@ -335,6 +345,7 @@ public class AnalyserRequest {
                 && Objects.equals(this.performed, that.performed)
                 && Objects.equals(this.cellSegmentationLot, that.cellSegmentationLot)
                 && Objects.equals(this.labware, that.labware)
+                && Objects.equals(this.workTypeCommentId, that.workTypeCommentId)
                 && this.repeat == that.repeat
         );
     }
