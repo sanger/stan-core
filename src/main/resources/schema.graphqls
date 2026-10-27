@@ -2089,9 +2089,9 @@ input AnalyserRequest {
     """The name of the operation type to record."""
     operationType: String!
     """The lot number for the decoding reagents A."""
-    lotNumberA: String!
+    lotNumberA: String
     """The lot number for the decoding reagents B."""
-    lotNumberB: String!
+    lotNumberB: String
     """The run name."""
     runName: String!
     """The time at which this operation was performed."""
@@ -2104,6 +2104,8 @@ input AnalyserRequest {
     cellSegmentationLot: String
     """Is this request a repeat?"""
     repeat: Boolean
+    """Comment id for the work type."""
+    workTypeCommentId: Int
 }
 
 """A region of interest for a sample in an operation."""
