@@ -29,8 +29,7 @@ import java.util.stream.Stream;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.Matchers.*;
@@ -66,8 +65,10 @@ public class AnalyserServiceTest {
     private OperationCommentRepo mockOpComRepo;
     @Mock(name="decodingReagentLotValidator")
     private Validator<String> mockDecodingReagentLotValidator;
-    @Mock(name="runNameValidator")
-    private Validator<String> mockRunNameValidator;
+    @Mock(name="xeniumRunNameValidator")
+    private Validator<String> mockXeniumRunNameValidator;
+    @Mock(name="ateraRunNameValidator")
+    private Validator<String> mockAteraRunNameValidator;
     @Mock(name="roiValidator")
     private Validator<String> mockRoiValidator;
     @Mock(name="cellSegmentationLotValidator")
@@ -88,8 +89,8 @@ public class AnalyserServiceTest {
         mocking = MockitoAnnotations.openMocks(this);
         service = spy(new AnalyserServiceImp(mockLwValFactory, mockOpSearcher, mockOpService, mockWorkService,
                 mockLwRepo, mockOpTypeRepo, mockOpRepo, mockLwNoteRepo, mockRoiRepo, mockCommentRepo, mockOpComRepo,
-                mockDecodingReagentLotValidator, mockRunNameValidator, mockRoiValidator, mockCSLotValidator,
-                mockDecodingConsumablesLotValidator,
+                mockDecodingReagentLotValidator, mockXeniumRunNameValidator, mockAteraRunNameValidator,
+                mockRoiValidator, mockCSLotValidator, mockDecodingConsumablesLotValidator,
                 mockValFactory));
     }
 
@@ -120,8 +121,8 @@ public class AnalyserServiceTest {
         doNothing().when(service).checkCassettePositions(any(), any());
         doNothing().when(service).checkRois(any(), any());
         doNothing().when(service).checkSamples(any(), any(), any());
-        doNothing().when(service).validateLot(any(), any());
-        doNothing().when(service).validateRunName(any(), any());
+        doNothing().when(service).validateLot(any(), any(), any());
+        doNothing().when(service).validateRunName(any(), any(), any());
         doNothing().when(service).validateCellSegmentationLot(any(), any());
         doNothing().when(service).validateDecodingConsumablesLot(any(), any());
         doNothing().when(service).sanitiseRois(any(), any());
@@ -164,10 +165,10 @@ public class AnalyserServiceTest {
         doAnswer(addProblem("bad position")).when(service).checkCassettePositions(any(), any());
         doAnswer(addProblem("bad roi")).when(service).checkRois(any(), any());
         doAnswer(addProblem("bad sample")).when(service).checkSamples(any(), any(), any());
-        doAnswer(addProblem("bad lot")).when(service).validateLot(any(), any());
+        doAnswer(addProblem("bad lot")).when(service).validateLot(any(), any(), any());
         doAnswer(addProblem("bad cslot")).when(service).validateCellSegmentationLot(any(), any());
         doAnswer(addProblem("bad dclot")).when(service).validateDecodingConsumablesLot(any(), any());
-        doAnswer(addProblem("bad run")).when(service).validateRunName(any(), any());
+        doAnswer(addProblem("bad run")).when(service).validateRunName(any(), any(), any());
         doReturn(mockVal).when(mockValFactory).getHelper();
         doReturn(Set.of("bad equipment")).when(mockVal).getProblems();
 
@@ -210,8 +211,8 @@ public class AnalyserServiceTest {
         doNothing().when(service).checkCassettePositions(any(), any());
         doNothing().when(service).checkRois(any(), any());
         doNothing().when(service).checkSamples(any(), any(), any());
-        doNothing().when(service).validateLot(any(), any());
-        doNothing().when(service).validateRunName(any(), any());
+        doNothing().when(service).validateLot(any(), any(), any());
+        doNothing().when(service).validateRunName(any(), any(), any());
         doNothing().when(service).validateCellSegmentationLot(any(), any());
         doNothing().when(service).validateDecodingConsumablesLot(any(), any());
         doNothing().when(service).sanitiseRois(any(), any());
@@ -248,14 +249,14 @@ public class AnalyserServiceTest {
         verify(service).checkRois(any(), same(request.getLabware()));
         verify(service).checkSamples(any(), same(request.getLabware()), same(lwMap));
         if (Objects.equals(request.getLotNumberA(), request.getLotNumberB())) {
-            verify(service, times(2)).validateLot(any(), eq(request.getLotNumberA()));
+            verify(service, times(2)).validateLot(any(), same(tech), eq(request.getLotNumberA()));
         } else {
-            verify(service).validateLot(any(), eq(request.getLotNumberA()));
-            verify(service).validateLot(any(), eq(request.getLotNumberB()));
+            verify(service).validateLot(any(), same(tech), eq(request.getLotNumberA()));
+            verify(service).validateLot(any(), same(tech), eq(request.getLotNumberB()));
         }
         verify(service).validateCellSegmentationLot(any(), eq(request.getCellSegmentationLot()));
         verify(service).validateDecodingConsumablesLot(any(), same(request.getLabware()));
-        verify(service).validateRunName(any(), eq(request.getRunName()));
+        verify(service).validateRunName(any(), same(tech), eq(request.getRunName()));
         verify(mockVal).checkEquipment(request.getEquipmentId(), tech.getEquipmentType(), true);
     }
 
@@ -361,10 +362,16 @@ public class AnalyserServiceTest {
             ",",
             "Foozle,"
     })
-
     public void testGetTech(String opName, Tech expected) {
         OperationType opType = (opName==null ? null : EntityFactory.makeOperationType(opName, null));
         assertSame(expected, service.getTech(opType));
+    }
+
+    @Test
+    void testRunNameValidator() {
+        assertNull(service.runNameValidator(null));
+        assertSame(mockXeniumRunNameValidator, service.runNameValidator(Tech.xenium));
+        assertSame(mockAteraRunNameValidator, service.runNameValidator(Tech.atera));
     }
 
     @ParameterizedTest
@@ -599,11 +606,20 @@ public class AnalyserServiceTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings={"", "X!", "Alpha"})
-    public void testValidateLot(String string) {
+    @CsvSource({
+            ",",
+            ",X!",
+            "xenium,",
+            "xenium,X!",
+            "xenium,Alpha",
+            "atera,",
+            "atera,X!",
+            "atera,Alpha",
+    })
+    public void testValidateLot(Tech tech, String string) {
         String expectedProblem;
         if (nullOrEmpty(string)) {
-            expectedProblem = null; // lots are optional
+            expectedProblem = (tech==Tech.xenium ? "Missing lot number." : null);
         } else if (string.indexOf('!') >= 0) {
             expectedProblem = "Bad "+string;
             doAnswer(invocation -> {
@@ -617,7 +633,7 @@ public class AnalyserServiceTest {
             doReturn(true).when(mockDecodingReagentLotValidator).validate(any(), any());
         }
         List<String> problems = new ArrayList<>(expectedProblem==null ? 0 : 1);
-        service.validateLot(problems, string);
+        service.validateLot(problems, tech, string);
         assertProblem(problems, expectedProblem);
     }
 
@@ -675,26 +691,36 @@ public class AnalyserServiceTest {
 
     @ParameterizedTest
     @CsvSource({
-            "run1,true,false,",
-            ",true,false,Missing run name.",
-            "run1,false,false,Bad: run1",
-            "run1,true,true,Run name already used: \"run1\"",
+            "xenium,run1,true,false,",
+            "xenium,,true,false,Missing run name.",
+            "xenium,run1,false,false,Bad: run1",
+            "xenium,run1,true,true,Run name already used: \"run1\"",
+            "atera,run1,true,true,Run name already used: \"run1\"",
+            ",run1,true,false,",
+            ",run1,true,true,Run name already used: \"run1\"",
     })
-    public void testValidateRunName(String string, boolean valid, boolean exists, String expectedProblem) {
-        if (valid) {
-            doReturn(true).when(mockRunNameValidator).validate(any(), any());
-        } else {
-            doAnswer(invocation -> {
-                String s = invocation.getArgument(0);
-                Consumer<String> cons = invocation.getArgument(1);
-                cons.accept("Bad: "+s);
-                return false;
-            }).when(mockRunNameValidator).validate(any(), any());
+    public void testValidateRunName(Tech tech, String string, boolean valid, boolean exists, String expectedProblem) {
+        Validator<String> mockValidator = (tech==null ? null : genericMock(Validator.class));
+        doReturn(mockValidator).when(service).runNameValidator(tech);
+        if (tech != null) {
+            if (valid) {
+                doReturn(true).when(mockValidator).validate(any(), any());
+            } else {
+                doAnswer(invocation -> {
+                    String s = invocation.getArgument(0);
+                    Consumer<String> cons = invocation.getArgument(1);
+                    cons.accept("Bad: " + s);
+                    return false;
+                }).when(mockValidator).validate(any(), any());
+            }
         }
         doReturn(exists).when(mockLwNoteRepo).existsByNameAndValue("run", string);
 
         final List<String> problems = new ArrayList<>(expectedProblem==null ? 0 : 1);
-        service.validateRunName(problems, string);
+        service.validateRunName(problems, tech, string);
+        if (!nullOrEmpty(string)) {
+            verify(service).runNameValidator(tech);
+        }
         assertProblem(problems, expectedProblem);
     }
 

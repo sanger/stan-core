@@ -34,15 +34,17 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 public class AnalyserServiceImp extends BaseResultService implements AnalyserService {
     /** The tech used in an operation */
     public enum Tech {
-        xenium("Xenium analyser", "Probe hybridisation Xenium","xenium analyser"),
-        atera("Atera run", "Probe hybridisation Atera", "atera"),
+        xenium("Xenium analyser", "Probe hybridisation Xenium","xenium analyser", true),
+        atera("Atera run", "Probe hybridisation Atera", "atera", false),
         ;
         private final String opName, precedingOpName, equipmentType;
+        private final boolean decodingLotRequired;
 
-        Tech(String opName, String precedingOpName, String equipmentType) {
+        Tech(String opName, String precedingOpName, String equipmentType, boolean decodingLotRequired) {
             this.opName = opName;
             this.precedingOpName = precedingOpName;
             this.equipmentType = equipmentType;
+            this.decodingLotRequired = decodingLotRequired;
         }
 
         public String getOpName() {
@@ -53,6 +55,10 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
         }
         public String getEquipmentType() {
             return this.equipmentType;
+        }
+
+        public boolean isDecodingLotRequired() {
+            return this.decodingLotRequired;
         }
 
         /**
@@ -83,7 +89,8 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
     private final CommentRepo commentRepo;
     private final OperationCommentRepo opComRepo;
     private final Validator<String> decodingReagentLotValidator;
-    private final Validator<String> runNameValidator;
+    private final Validator<String> xeniumRunNameValidator;
+    private final Validator<String> ateraRunNameValidator;
     private final Validator<String> roiValidator;
     private final Validator<String> cellSegmentationLotValidator;
     private final Validator<String> decodingConsumablesLotValidator;
@@ -97,7 +104,8 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
                               LabwareNoteRepo lwNoteRepo, RoiRepo roiRepo, CommentRepo commentRepo,
                               OperationCommentRepo opComRepo,
                               @Qualifier("decodingReagentLotValidator") Validator<String> decodingReagentLotValidator,
-                              @Qualifier("runNameValidator") Validator<String> runNameValidator,
+                              @Qualifier("xeniumRunNameValidator") Validator<String> xeniumRunNameValidator,
+                              @Qualifier("ateraRunNameValidator") Validator<String> ateraRunNameValidator,
                               @Qualifier("roiValidator") Validator<String> roiValidator,
                               @Qualifier("cellSegmentationLotValidator") Validator<String> cellSegmentationLotValidator,
                               @Qualifier("decodingConsumablesLotValidator") Validator<String> decodingConsumablesLotValidator,
@@ -110,7 +118,8 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
         this.commentRepo = commentRepo;
         this.opComRepo = opComRepo;
         this.decodingReagentLotValidator = decodingReagentLotValidator;
-        this.runNameValidator = runNameValidator;
+        this.xeniumRunNameValidator = xeniumRunNameValidator;
+        this.ateraRunNameValidator = ateraRunNameValidator;
         this.roiValidator = roiValidator;
         this.cellSegmentationLotValidator = cellSegmentationLotValidator;
         this.decodingConsumablesLotValidator = decodingConsumablesLotValidator;
@@ -131,11 +140,11 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
         checkCassettePositions(problems, request.getLabware());
         checkRois(problems, request.getLabware());
         checkSamples(problems, request.getLabware(), lwMap);
-        validateLot(problems, request.getLotNumberA());
-        validateLot(problems, request.getLotNumberB());
+        validateLot(problems, tech, request.getLotNumberA());
+        validateLot(problems, tech, request.getLotNumberB());
         validateCellSegmentationLot(problems, request.getCellSegmentationLot());
         validateDecodingConsumablesLot(problems, request.getLabware());
-        validateRunName(problems, request.getRunName());
+        validateRunName(problems, tech, request.getRunName());
         Comment workTypeComment = checkWorkType(problems, request.getWorkTypeCommentId());
         Comment repeatComment = null;
         if (request.isRepeat()) {
@@ -211,6 +220,17 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
     /** Gets the tech for the op type, or null */
     public Tech getTech(OperationType opType) {
         return opType==null ? null : Tech.forOpName(opType.getName());
+    }
+
+    /** Gets the run name validator for the tech */
+    public Validator<String> runNameValidator(Tech tech) {
+        if (tech != null) {
+            return switch (tech) {
+                case xenium -> xeniumRunNameValidator;
+                case atera -> ateraRunNameValidator;
+            };
+        }
+        return null;
     }
 
     /**
@@ -412,8 +432,12 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
     }
 
     /** Validates the decoding reagent lot number */
-    public void validateLot(Collection<String> problems, String lot) {
-        if (!nullOrEmpty(lot)) {
+    public void validateLot(Collection<String> problems, Tech tech, String lot) {
+        if (isBlank(lot)) {
+            if (tech != null && tech.isDecodingLotRequired()) {
+                problems.add("Missing lot number.");
+            }
+        } else {
             decodingReagentLotValidator.validate(lot, problems::add);
         }
     }
@@ -442,12 +466,15 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
     }
 
     /** Validates the run name */
-    public void validateRunName(Collection<String> problems, String runName) {
+    public void validateRunName(Collection<String> problems, Tech tech, String runName) {
         if (isBlank(runName)) {
             problems.add("Missing run name.");
-        } else if (runNameValidator.validate(runName, problems::add)) {
-            if (lwNoteRepo.existsByNameAndValue(RUN_NAME, runName)) {
-                problems.add("Run name already used: "+repr(runName));
+        } else {
+            Validator<String> validator = runNameValidator(tech);
+            if (validator == null || validator.validate(runName, problems::add)) {
+                if (lwNoteRepo.existsByNameAndValue(RUN_NAME, runName)) {
+                    problems.add("Run name already used: "+repr(runName));
+                }
             }
         }
     }
