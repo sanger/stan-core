@@ -197,6 +197,34 @@ public class HistoryServiceImp implements HistoryService {
     }
 
     /**
+     * Gets the tissue ids for a piece of labware, including ones used by no longer present optionally filtered
+     * @param lw the labware
+     * @param filter an option filter to apply to the tissues
+     * @return the tissue ids present or used historically in the labware, excluding those filtered out
+     */
+    Set<Integer> labwareTissueIds(Labware lw, Predicate<Tissue> filter) {
+        Set<Tissue> tissueSet = lw.getSlots().stream()
+                .flatMap(slot -> slot.getSamples().stream().map(Sample::getTissue))
+                .collect(Collectors.toCollection(HashSet::new));
+        List<Integer> slotIds = lw.getSlots().stream().map(Slot::getId).toList();
+        Set<Integer> lwTissueIds = tissueSet.stream().map(Tissue::getId).collect(toCollection(HashSet::new));
+        List<Integer> extraTissueIds = actionRepo.findTissueIdsForDestinationSlots(slotIds).stream()
+                .filter(tissueId -> !lwTissueIds.contains(tissueId))
+                .toList();
+        // Simple case, just return the ids
+        if (filter==null) {
+            lwTissueIds.addAll(extraTissueIds);
+            return lwTissueIds;
+        }
+        if (!extraTissueIds.isEmpty()) {
+            // Need to load the tissues so we can apply the filter
+            List<Tissue> extraTissues = tissueRepo.findAllByIdIn(extraTissueIds);
+            tissueSet.addAll(extraTissues);
+        }
+        return tissueSet.stream().filter(filter).map(Tissue::getId).collect(toSet());
+    }
+
+    /**
      * Gets samples related to those in the specified labware, filtered additionally by external name and donor name
      * @param barcode the labware barcode
      * @param externalNames the required external name of the tissues, or a wildcard pattern, or null
@@ -206,14 +234,7 @@ public class HistoryServiceImp implements HistoryService {
     public List<Sample> samplesForBarcode(String barcode, List<String> externalNames, List<String> donorNames) {
         Labware lw = lwRepo.getByBarcode(barcode);
         Predicate<Tissue> filter = tissuePredicate(donorNames, externalNames);
-        Stream<Tissue> tissueStream = lw.getSlots().stream()
-                .flatMap(slot -> slot.getSamples().stream().map(Sample::getTissue));
-        if (filter!=null) {
-            tissueStream = tissueStream.filter(filter);
-        }
-        Set<Integer> tissueIds = tissueStream
-                .map(Tissue::getId)
-                .collect(toSet());
+        Set<Integer> tissueIds = labwareTissueIds(lw, filter);
         if (tissueIds.isEmpty()) {
             return List.of();
         }

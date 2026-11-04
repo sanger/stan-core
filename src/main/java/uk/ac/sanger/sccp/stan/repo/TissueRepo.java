@@ -10,6 +10,8 @@ import java.util.*;
 import static uk.ac.sanger.sccp.utils.BasicUtils.repr;
 
 public interface TissueRepo extends CrudRepository<Tissue, Integer> {
+    List<Tissue> findAllByIdIn(Collection<Integer> tissueIds);
+
     List<Tissue> findAllByExternalName(String externalName);
 
     /**
