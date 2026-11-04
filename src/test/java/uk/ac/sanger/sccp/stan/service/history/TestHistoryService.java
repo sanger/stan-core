@@ -81,6 +81,8 @@ public class TestHistoryService {
     @Mock
     private OpPanelRepo mockOpPanelRepo;
     @Mock
+    private ActionRepo mockActionRepo;
+    @Mock
     private ReagentActionDetailService mockRadService;
     @Mock
     private SlotRegionService mockSlotRegionService;
@@ -104,7 +106,7 @@ public class TestHistoryService {
         service = spy(new HistoryServiceImp(mockOpRepo, mockOpTypeRepo, mockLwRepo, mockSampleRepo, mockTissueRepo, mockDonorRepo,
                 mockReleaseRepo, mockDestructionRepo, mockOpCommentRepo, mockRoiRepo, mockSnapshotRepo, mockWorkRepo,
                 mockMeasurementRepo, mockLwNoteRepo, mockResultOpRepo, mockStainTypeRepo, mockLwProbeRepo,
-                mockFlagRepo, mockOpSolRepo, mockSolutionRepo, mockOpPanelRepo,
+                mockFlagRepo, mockOpSolRepo, mockSolutionRepo, mockOpPanelRepo, mockActionRepo,
                 mockRadService, mockSlotRegionService, mockFlagLookupService, mockDetailerFactory));
     }
 
@@ -173,13 +175,16 @@ public class TestHistoryService {
         Sample sample = EntityFactory.getSample();
         Tissue tissue = sample.getTissue();
         Tissue tissue2 = EntityFactory.makeTissue(tissue.getDonor(), EntityFactory.getSpatialLocation());
+        Tissue tissue3 = EntityFactory.makeTissue(tissue.getDonor(), EntityFactory.getSpatialLocation());
         Sample sample2 = new Sample(sample.getId()+1, "10", tissue2, sample.getBioState());
         Sample sample3 = new Sample(sample2.getId()+1, "11", tissue2, sample.getBioState());
         LabwareType lt = EntityFactory.makeLabwareType(1,2);
         Labware lw = EntityFactory.makeLabware(lt, sample, sample2);
+        Set<Integer> slotIds = lw.getSlots().stream().map(Slot::getId).collect(toSet());
         when(mockLwRepo.getByBarcode(lw.getBarcode())).thenReturn(lw);
+        when(mockActionRepo.findTissueIdsForDestinationSlots(slotIds)).thenReturn(List.of(tissue2.getId(), tissue3.getId()));
         List<Sample> samples = List.of(sample, sample2, sample3);
-        when(mockSampleRepo.findAllByTissueIdIn(Set.of(tissue.getId(), tissue2.getId()))).thenReturn(samples);
+        when(mockSampleRepo.findAllByTissueIdIn(Set.of(tissue.getId(), tissue2.getId(), tissue3.getId()))).thenReturn(samples);
         doReturn(history).when(service).getHistoryForSamples(samples);
 
         assertSame(history, service.getHistoryForLabwareBarcode(lw.getBarcode()));

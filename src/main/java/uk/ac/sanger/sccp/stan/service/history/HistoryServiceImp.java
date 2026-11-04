@@ -54,6 +54,7 @@ public class HistoryServiceImp implements HistoryService {
     private final OperationSolutionRepo opSolRepo;
     private final SolutionRepo solutionRepo;
     private final OpPanelRepo opPanelRepo;
+    private final ActionRepo actionRepo;
     private final ReagentActionDetailService reagentActionDetailService;
     private final SlotRegionService slotRegionService;
     private final FlagLookupService flagLookupService;
@@ -65,7 +66,9 @@ public class HistoryServiceImp implements HistoryService {
                              DestructionRepo destructionRepo, OperationCommentRepo opCommentRepo, RoiRepo roiRepo,
                              SnapshotRepo snapshotRepo, WorkRepo workRepo, MeasurementRepo measurementRepo,
                              LabwareNoteRepo labwareNoteRepo, ResultOpRepo resultOpRepo,
-                             StainTypeRepo stainTypeRepo, LabwareProbeRepo lwProbeRepo, LabwareFlagRepo flagRepo, OperationSolutionRepo opSolRepo, SolutionRepo solutionRepo, OpPanelRepo opPanelRepo,
+                             StainTypeRepo stainTypeRepo, LabwareProbeRepo lwProbeRepo, LabwareFlagRepo flagRepo,
+                             OperationSolutionRepo opSolRepo, SolutionRepo solutionRepo, OpPanelRepo opPanelRepo,
+                             ActionRepo actionRepo,
                              ReagentActionDetailService reagentActionDetailService,
                              SlotRegionService slotRegionService, FlagLookupService flagLookupService,
                              DetailerFactory detailerFactory) {
@@ -90,6 +93,7 @@ public class HistoryServiceImp implements HistoryService {
         this.opSolRepo = opSolRepo;
         this.solutionRepo = solutionRepo;
         this.opPanelRepo = opPanelRepo;
+        this.actionRepo = actionRepo;
         this.reagentActionDetailService = reagentActionDetailService;
         this.slotRegionService = slotRegionService;
         this.flagLookupService = flagLookupService;
@@ -326,10 +330,14 @@ public class HistoryServiceImp implements HistoryService {
     @Override
     public History getHistoryForLabwareBarcode(String barcode) {
         Labware lw = lwRepo.getByBarcode(barcode);
+        Set<Integer> slotIds = lw.getSlots().stream().map(Slot::getId).collect(toSet());
         Set<Integer> tissueIds = lw.getSlots().stream()
                 .flatMap(slot -> slot.getSamples().stream())
                 .map(sam -> sam.getTissue().getId())
-                .collect(toSet());
+                .collect(toCollection(HashSet::new));
+        // Make sure we include tissues from actions into this labware even if they are no longer present
+        List<Integer> actionTissueIds = actionRepo.findTissueIdsForDestinationSlots(slotIds);
+        tissueIds.addAll(actionTissueIds);
         List<Sample> samples = sampleRepo.findAllByTissueIdIn(tissueIds);
         return getHistoryForSamples(samples);
     }

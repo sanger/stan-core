@@ -53,5 +53,7 @@ public class TestActionRepo {
         assertThat(actionRepo.findAllBySourceIn(List.of(slot1))).containsOnly(action);
         assertThat(actionRepo.findSourceLabwareIdsForDestinationLabwareIds(List.of(lw2.getId()))).containsExactly(lw1.getId());
         assertThat(actionRepo.findSourceLabwareIdsForDestinationLabwareIds(List.of(lw1.getId()))).isEmpty();
+        assertThat(actionRepo.findTissueIdsForDestinationSlots(List.of(slot1.getId(), slot2.getId()))).containsExactly(tissue.getId());
+        assertThat(actionRepo.findTissueIdsForDestinationSlots(List.of(slot1.getId()))).isEmpty();
     }
 }
