@@ -96,16 +96,18 @@ public class AnalyserRequest {
         private String barcode;
         private String workNumber;
         private CassettePosition position;
+        private Integer index;
         private String decodingConsumablesLot;
         private List<SampleROI> samples = List.of();
 
         public AnalyserLabware() {}
 
         public AnalyserLabware(String barcode, String workNumber, CassettePosition position,
-                               String decodingConsumablesLot, List<SampleROI> samples) {
+                               Integer index, String decodingConsumablesLot, List<SampleROI> samples) {
             this.barcode = barcode;
             this.workNumber = workNumber;
             this.position = position;
+            this.index = index;
             this.decodingConsumablesLot = decodingConsumablesLot;
             setSamples(samples);
         }
@@ -141,6 +143,15 @@ public class AnalyserRequest {
 
         public void setPosition(CassettePosition position) {
             this.position = position;
+        }
+
+        /** The index of the cassette in the machine */
+        public Integer getIndex() {
+            return this.index;
+        }
+
+        public void setIndex(Integer index) {
+            this.index = index;
         }
 
         /** The decoding consumables lot number. */

@@ -118,7 +118,8 @@ public class AnalyserServiceTest {
         doReturn(priorOps).when(service).loadPriorOps(any(), any(), any());
         doNothing().when(service).checkTimestamp(any(), any(), any(), any());
         doReturn(workMap).when(service).loadWork(any(), any());
-        doNothing().when(service).checkCassettePositions(any(), any());
+        doNothing().when(service).checkCassettePositions(any(), any(), anyBoolean());
+        doNothing().when(service).checkPositionIndex(any(), any(), anyBoolean());
         doNothing().when(service).checkRois(any(), any());
         doNothing().when(service).checkSamples(any(), any(), any());
         doNothing().when(service).validateLot(any(), any(), any());
@@ -134,7 +135,7 @@ public class AnalyserServiceTest {
 
         AnalyserRequest request = new AnalyserRequest("opname", "lotA", "lotB",
                 "run", LocalDateTime.now(),
-                List.of(new AnalyserLabware(lw.getBarcode(), null, null, null, null)),
+                List.of(new AnalyserLabware(lw.getBarcode(), null, null, null, null, null)),
                 equipment.getId(), "cslot");
         request.setRepeat(true);
 
@@ -162,7 +163,8 @@ public class AnalyserServiceTest {
         doAnswer(addProblem("bad prior ops", priorOps)).when(service).loadPriorOps(any(), any(), any());
         doAnswer(addProblem("bad time")).when(service).checkTimestamp(any(), any(), any(), any());
         doAnswer(addProblem("bad work", workMap)).when(service).loadWork(any(), any());
-        doAnswer(addProblem("bad position")).when(service).checkCassettePositions(any(), any());
+        doAnswer(addProblem("bad position")).when(service).checkCassettePositions(any(), any(), anyBoolean());
+        doAnswer(addProblem("bad index")).when(service).checkPositionIndex(any(), any(), anyBoolean());
         doAnswer(addProblem("bad roi")).when(service).checkRois(any(), any());
         doAnswer(addProblem("bad sample")).when(service).checkSamples(any(), any(), any());
         doAnswer(addProblem("bad lot")).when(service).validateLot(any(), any(), any());
@@ -176,7 +178,7 @@ public class AnalyserServiceTest {
         request.setRepeat(true);
 
         assertValidationException(() -> service.perform(user, request), List.of(
-                        "bad lw", "bad optype", "bad prior ops", "bad time", "bad work", "bad position",
+                        "bad lw", "bad optype", "bad prior ops", "bad time", "bad work", "bad position", "bad index",
                 "bad roi", "bad sample", "bad lot", "bad cslot", "bad dclot", "bad run", "bad equipment",
                 "Repeat comment missing from database."
         ));
@@ -208,7 +210,8 @@ public class AnalyserServiceTest {
         doReturn(priorOps).when(service).loadPriorOps(any(), any(), any());
         doNothing().when(service).checkTimestamp(any(), any(), any(), any());
         doReturn(workMap).when(service).loadWork(any(), any());
-        doNothing().when(service).checkCassettePositions(any(), any());
+        doNothing().when(service).checkCassettePositions(any(), any(), anyBoolean());
+        doNothing().when(service).checkPositionIndex(any(), any(), anyBoolean());
         doNothing().when(service).checkRois(any(), any());
         doNothing().when(service).checkSamples(any(), any(), any());
         doNothing().when(service).validateLot(any(), any(), any());
@@ -224,7 +227,7 @@ public class AnalyserServiceTest {
 
         AnalyserRequest request = new AnalyserRequest("opname", null, null,
                 "run", LocalDateTime.now(),
-                List.of(new AnalyserLabware(lw.getBarcode(), null, null, null, null)),
+                List.of(new AnalyserLabware(lw.getBarcode(), null, null, null, null, null)),
                 equipment.getId(), null);
         request.setWorkTypeCommentId(workTypeComment.getId());
         request.setRepeat(true);
@@ -245,7 +248,8 @@ public class AnalyserServiceTest {
         verify(service).loadPriorOps(any(), same(tech), eq(lwMap.values()));
         verify(service).checkTimestamp(any(), same(request.getPerformed()), same(priorOps), eq(lwMap.values()));
         verify(service).loadWork(any(), same(request.getLabware()));
-        verify(service).checkCassettePositions(any(), same(request.getLabware()));
+        verify(service).checkCassettePositions(any(), same(request.getLabware()), eq(tech != null && tech.getPositionClass()==CassettePosition.class));
+        verify(service).checkPositionIndex(any(), same(request.getLabware()), eq(tech != null && tech.getPositionClass()==Integer.class));
         verify(service).checkRois(any(), same(request.getLabware()));
         verify(service).checkSamples(any(), same(request.getLabware()), same(lwMap));
         if (Objects.equals(request.getLotNumberA(), request.getLotNumberB())) {
@@ -309,7 +313,7 @@ public class AnalyserServiceTest {
                 }
             }
             als = Arrays.stream(splitBarcodes)
-                    .map(bc -> new AnalyserLabware(bc, null, null, null, null))
+                    .map(bc -> new AnalyserLabware(bc, null, null, null, null, null))
                     .collect(toList());
             bcs = Arrays.stream(splitBarcodes)
                     .filter(bc -> bc!=null && !bc.isEmpty())
@@ -436,7 +440,7 @@ public class AnalyserServiceTest {
         mayAddProblem(workProblem, workMap).when(mockWorkService).validateUsableWorks(any(), any());
         List<String> workNumbers = List.of("SGP1", "SGP2");
         List<AnalyserLabware> als = workNumbers.stream()
-                .map(wn -> new AnalyserLabware(null, wn, null, null, null))
+                .map(wn -> new AnalyserLabware(null, wn, null, null, null, null))
                 .collect(toList());
         List<String> problems = new ArrayList<>(anyProblem ? 1 : 0);
         assertSame(workMap, service.loadWork(problems, als));
@@ -446,19 +450,41 @@ public class AnalyserServiceTest {
 
     @ParameterizedTest
     @CsvSource({
-            "left-right,",
-            "right-left,",
-            "right-right-left,Cassette position specified multiple times: [right]",
-            "right-left-,Cassette position not specified.",
+            "left-right,true,",
+            "right-left,true,",
+            "right-right-left,true,Cassette position specified multiple times: [right]",
+            "right-left-,true,Left or right cassette position not specified.",
+            "--,false,",
+            "-right-,false,Cassette position right not expected for this operation.",
     })
-    public void testCheckCassettePositions(String positionsJoined, String expectedProblem) {
+    public void testCheckCassettePositions(String positionsJoined, boolean required, String expectedProblem) {
         String[] positionsSplit = positionsJoined.split("-", -1);
         List<AnalyserLabware> als = Arrays.stream(positionsSplit)
                 .map(s -> s.isEmpty() ? null : CassettePosition.valueOf(s))
-                .map(pos -> new AnalyserLabware(null, null, pos, null, null))
-                .collect(toList());
+                .map(pos -> new AnalyserLabware(null, null, pos, null, null, null))
+                .toList();
         List<String> problems = new ArrayList<>(expectedProblem==null ? 0 : 1);
-        service.checkCassettePositions(problems, als);
+        service.checkCassettePositions(problems, als, required);
+        assertProblem(problems, expectedProblem);
+    }
+
+    @ParameterizedTest
+    @CsvSource(value={
+            "1-2;true;",
+            "2-1-4-3;true;",
+            "2-1-3-1-4-3;true;Cassette position specified multiple times: [1, 3]",
+            "2-1-;true;Numerical cassette position not specified.",
+            "--;false;",
+            "-2-;false;Cassette position 2 not expected for this operation.",
+    }, delimiter=';')
+    public void testCheckLabwareIndex(String indexesJoined, boolean required, String expectedProblem) {
+        String[] indexesSplit = indexesJoined.split("-", -1);
+        List<AnalyserLabware> als = Arrays.stream(indexesSplit)
+                .map(s -> s.isEmpty() ? null : Integer.valueOf(s))
+                .map(index -> new AnalyserLabware(null, null, null, index, null, null))
+                .toList();
+        List<String> problems = new ArrayList<>(expectedProblem==null ? 0 : 1);
+        service.checkPositionIndex(problems, als, required);
         assertProblem(problems, expectedProblem);
     }
 
@@ -474,7 +500,7 @@ public class AnalyserServiceTest {
         List<SampleROI> srs = Arrays.stream(roisSplit)
                 .map(s -> new SampleROI(null, null, s))
                 .collect(toList());
-        List<AnalyserLabware> als = List.of(new AnalyserLabware(null, null, null, null, srs));
+        List<AnalyserLabware> als = List.of(new AnalyserLabware(null, null, null, null, null, srs));
 
         doAnswer(invocation -> {
             String string = invocation.getArgument(0);
@@ -526,8 +552,8 @@ public class AnalyserServiceTest {
         }
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lw1, lw2);
         List<AnalyserLabware> als = List.of(
-                new AnalyserLabware(lw1.getBarcode(), null, null, null, srs1),
-                new AnalyserLabware(lw2.getBarcode(), null, null, null, srs2)
+                new AnalyserLabware(lw1.getBarcode(), null, null, null, null, srs1),
+                new AnalyserLabware(lw2.getBarcode(), null, null, null, null, srs2)
         );
         final List<String> problems = new ArrayList<>(anyProblem ? 5 : 0);
         service.checkSamples(problems, als, lwMap);
@@ -667,7 +693,7 @@ public class AnalyserServiceTest {
         String[] expectedLots = {null, null, null, "Alpha", "Beta", "Gamma!", "Delta!"};
         final int numExpected = 4;
         List<AnalyserLabware> als = Arrays.stream(inputLots)
-                .map(lot -> new AnalyserLabware(null, null, null, lot, null))
+                .map(lot -> new AnalyserLabware(null, null, null, null, lot, null))
                 .toList();
         when(mockDecodingConsumablesLotValidator.validate(any(), any())).then(invocation -> {
             String lot = invocation.getArgument(0);
@@ -745,7 +771,7 @@ public class AnalyserServiceTest {
                 .map(roi -> new SampleROI(null, null, roi))
                 .toList();
         AnalyserLabware al = new AnalyserLabware(lw.getBarcode(), null, null,
-                null, srs);
+                null, null, srs);
         if (newRois.length > 0) {
             List<Roi> foundRois = Arrays.stream(oldRois)
                     .map(roi -> new Roi(null, null, null, roi))
@@ -788,8 +814,8 @@ public class AnalyserServiceTest {
         final Address A1 = new Address(1,1);
         List<SampleROI> srs1 = List.of(new SampleROI(A1, 1, "roi1"));
         List<SampleROI> srs2 = List.of(new SampleROI(A1, 2, "roi2"));
-        AnalyserLabware al1 = new AnalyserLabware("STAN-1", "SGP1", CassettePosition.left, "dc1", srs1);
-        AnalyserLabware al2 = new AnalyserLabware("STAN-2", "SGP2", CassettePosition.right, null, srs2);
+        AnalyserLabware al1 = new AnalyserLabware("STAN-1", "SGP1", CassettePosition.left, null, "dc1", srs1);
+        AnalyserLabware al2 = new AnalyserLabware("STAN-2", "SGP2", null, 4, null, srs2);
         Equipment equipment = new Equipment(1, "Xenium 1", Tech.xenium.getEquipmentType(), true);
         AnalyserRequest request = new AnalyserRequest(opType.getName(), "lot1", "lot2", "run1",
                 LocalDateTime.of(2023,1,1,12,0), List.of(al1, al2), equipment.getId(), cslot);
@@ -819,7 +845,7 @@ public class AnalyserServiceTest {
                 new LabwareNote(null, lw1.getId(), op1.getId(), "decoding reagent B lot", "lot2"),
                 new LabwareNote(null, lw2.getId(), op2.getId(), "decoding reagent B lot", "lot2"),
                 new LabwareNote(null, lw1.getId(), op1.getId(), "cassette position", "left"),
-                new LabwareNote(null, lw2.getId(), op2.getId(), "cassette position", "right"),
+                new LabwareNote(null, lw2.getId(), op2.getId(), "cassette position", "4"),
                 new LabwareNote(null, lw1.getId(), op1.getId(), "decoding consumables lot", "dc1")
         );
         if (!nullOrEmpty(cslot)) {

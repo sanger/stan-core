@@ -34,17 +34,20 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 public class AnalyserServiceImp extends BaseResultService implements AnalyserService {
     /** The tech used in an operation */
     public enum Tech {
-        xenium("Xenium analyser", "Probe hybridisation Xenium","xenium analyser", true),
-        atera("Atera run", "Probe hybridisation Atera", "atera", false),
+        xenium("Xenium analyser", "Probe hybridisation Xenium","xenium analyser", true, CassettePosition.class),
+        atera("Atera run", "Probe hybridisation Atera", "atera", false, Integer.class),
         ;
         private final String opName, precedingOpName, equipmentType;
         private final boolean decodingLotRequired;
+        private final Class<?> positionClass;
 
-        Tech(String opName, String precedingOpName, String equipmentType, boolean decodingLotRequired) {
+        Tech(String opName, String precedingOpName, String equipmentType, boolean decodingLotRequired,
+             Class<?> positionClass) {
             this.opName = opName;
             this.precedingOpName = precedingOpName;
             this.equipmentType = equipmentType;
             this.decodingLotRequired = decodingLotRequired;
+            this.positionClass = positionClass;
         }
 
         public String getOpName() {
@@ -59,6 +62,10 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
 
         public boolean isDecodingLotRequired() {
             return this.decodingLotRequired;
+        }
+
+        public Class<?> getPositionClass() {
+            return this.positionClass;
         }
 
         /**
@@ -78,7 +85,8 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
     }
 
     public static final String LOT_A_NAME = "decoding reagent A lot", LOT_B_NAME = "decoding reagent B lot",
-            RUN_NAME = "run", POSITION_NAME = "cassette position", CELL_SEGMENTATION_LOT_NAME = "cell segmentation lot",
+            RUN_NAME = "run", POSITION_NAME = "cassette position",
+            CELL_SEGMENTATION_LOT_NAME = "cell segmentation lot",
             DECODING_CONSUMABLES_LOT_NAME = "decoding consumables lot";
     public static final String ATERA_RUN_WORK_TYPE_CATEGORY = "Atera run work type";
 
@@ -137,7 +145,8 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
             checkTimestamp(problems, request.getPerformed(), priorOps, lwMap.values());
         }
         UCMap<Work> workMap = loadWork(problems, request.getLabware());
-        checkCassettePositions(problems, request.getLabware());
+        checkCassettePositions(problems, request.getLabware(), tech != null && tech.getPositionClass()==CassettePosition.class);
+        checkPositionIndex(problems, request.getLabware(), tech != null && tech.getPositionClass()==Integer.class);
         checkRois(problems, request.getLabware());
         checkSamples(problems, request.getLabware(), lwMap);
         validateLot(problems, tech, request.getLotNumberA());
@@ -286,11 +295,17 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
     }
 
     /**
-     * Checks cassette positions are specified and unique.
+     * Checks cassette positions are specified and unique; or absent if not required.
      * @param problems receptacle for problems
      * @param als request including cassette positions
+     * @param required whether cassette positions are required
      */
-    public void checkCassettePositions(Collection<String> problems, List<AnalyserLabware> als) {
+    public void checkCassettePositions(Collection<String> problems, List<AnalyserLabware> als, boolean required) {
+        if (!required) {
+            als.stream().map(AnalyserLabware::getPosition).filter(Objects::nonNull).findFirst()
+                    .ifPresent(pos -> problems.add("Cassette position " + pos + " not expected for this operation."));
+            return;
+        }
         Set<CassettePosition> positions = EnumSet.noneOf(CassettePosition.class);
         Set<CassettePosition> repeated = EnumSet.noneOf(CassettePosition.class);
         boolean anyMissing = false;
@@ -302,7 +317,37 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
             }
         }
         if (anyMissing) {
-            problems.add("Cassette position not specified.");
+            problems.add("Left or right cassette position not specified.");
+        }
+        if (!repeated.isEmpty()) {
+            problems.add("Cassette position specified multiple times: "+repeated);
+        }
+    }
+
+    /**
+     * Checks position indexes are specified and unique; or absent if not required.
+     * @param problems receptacle for problems
+     * @param als request including position indexes
+     * @param required whether indexes are required
+     */
+    void checkPositionIndex(Collection<String> problems, List<AnalyserLabware> als, boolean required) {
+        if (!required) {
+            als.stream().map(AnalyserLabware::getIndex).filter(Objects::nonNull).findFirst()
+                    .ifPresent(pos -> problems.add("Cassette position " + pos + " not expected for this operation."));
+            return;
+        }
+        Set<Integer> indexes = new HashSet<>();
+        Set<Integer> repeated = new HashSet<>();
+        boolean anyMissing = false;
+        for (AnalyserLabware al : als) {
+            if (al.getIndex()==null) {
+                anyMissing = true;
+            } else if (!indexes.add(al.getIndex())) {
+                repeated.add(al.getIndex());
+            }
+        }
+        if (anyMissing) {
+            problems.add("Numerical cassette position not specified.");
         }
         if (!repeated.isEmpty()) {
             problems.add("Cassette position specified multiple times: "+repeated);
@@ -539,17 +584,17 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
             Work work = workMap.get(al.getWorkNumber());
             Operation op = opService.createOperationInPlace(opType, user, lw, null, opModifier);
             workOps.computeIfAbsent(work.getWorkNumber(), k -> new ArrayList<>(numLw)).add(op);
-            Arrays.stream(new String[][] {
+            Arrays.stream(new Object[][] {
                     {RUN_NAME, run},
                     {LOT_A_NAME, lotA}, {LOT_B_NAME, lotB},
                     {CELL_SEGMENTATION_LOT_NAME, cellSegmentationLot},
                     {DECODING_CONSUMABLES_LOT_NAME, trimToNull(al.getDecodingConsumablesLot())},
-                    {POSITION_NAME, al.getPosition().toString()},
+                    {POSITION_NAME, coalesce(al.getPosition(), al.getIndex())},
             }).forEach(noteData -> {
-                String name = noteData[0];
-                String value = noteData[1];
+                String name = (String) noteData[0];
+                Object value = noteData[1];
                 if (value != null) {
-                    lwNotes.add(new LabwareNote(null, lw.getId(), op.getId(), name, value));
+                    lwNotes.add(new LabwareNote(null, lw.getId(), op.getId(), name, value.toString()));
                 }
             });
             addRois(rois, op.getId(), lw, al.getSamples());

@@ -2077,7 +2077,9 @@ input AnalyserLabware {
     """The work number for the labware."""
     workNumber: String!
     """The cassette position for the labware."""
-    position: CassettePosition!
+    position: CassettePosition
+    """The index of the cassette in the machine."""
+    index: Int
     """Decoding consumables lot number."""
     decodingConsumablesLot: String
     """The sample regions of interest in this labware."""
