@@ -376,12 +376,19 @@ public class FieldValidation {
     }
 
     @Bean
-    public Validator<String> runNameValidator() {
+    public Validator<String> xeniumRunNameValidator() {
         Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN,
                 CharacterType.UNDERSCORE, CharacterType.SPACE, CharacterType.SLASH, CharacterType.BACKSLASH,
                 CharacterType.PAREN, CharacterType.FULL_STOP, CharacterType.APOSTROPHE, CharacterType.PERCENT,
                 CharacterType.COMMA, CharacterType.COLON, CharacterType.SEMICOLON);
         return new StringValidator("Run name", 1, 255, charTypes);
+    }
+
+    @Bean
+    public Validator<String> ateraRunNameValidator() {
+        Set<CharacterType> charTypes = EnumSet.of(CharacterType.ALPHA, CharacterType.DIGIT, CharacterType.HYPHEN,
+                CharacterType.UNDERSCORE, CharacterType.SPACE);
+        return new StringValidator("Run name", 1, 32, charTypes);
     }
 
     @Bean
