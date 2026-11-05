@@ -15,4 +15,7 @@ public interface ActionRepo extends CrudRepository<Action, Integer> {
     @Query("select distinct a.source.labwareId from Action a " +
             "where a.destination.labwareId IN (?1)")
     List<Integer> findSourceLabwareIdsForDestinationLabwareIds(Collection<Integer> destLabwareIds);
+
+    @Query("select distinct a.sample.tissue.id from Action a where a.destination.id IN (?1)")
+    List<Integer> findTissueIdsForDestinationSlots(Collection<Integer> destSlotIds);
 }

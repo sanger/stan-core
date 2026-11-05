@@ -81,6 +81,8 @@ public class TestHistoryService {
     @Mock
     private OpPanelRepo mockOpPanelRepo;
     @Mock
+    private ActionRepo mockActionRepo;
+    @Mock
     private ReagentActionDetailService mockRadService;
     @Mock
     private SlotRegionService mockSlotRegionService;
@@ -104,7 +106,7 @@ public class TestHistoryService {
         service = spy(new HistoryServiceImp(mockOpRepo, mockOpTypeRepo, mockLwRepo, mockSampleRepo, mockTissueRepo, mockDonorRepo,
                 mockReleaseRepo, mockDestructionRepo, mockOpCommentRepo, mockRoiRepo, mockSnapshotRepo, mockWorkRepo,
                 mockMeasurementRepo, mockLwNoteRepo, mockResultOpRepo, mockStainTypeRepo, mockLwProbeRepo,
-                mockFlagRepo, mockOpSolRepo, mockSolutionRepo, mockOpPanelRepo,
+                mockFlagRepo, mockOpSolRepo, mockSolutionRepo, mockOpPanelRepo, mockActionRepo,
                 mockRadService, mockSlotRegionService, mockFlagLookupService, mockDetailerFactory));
     }
 
@@ -173,13 +175,16 @@ public class TestHistoryService {
         Sample sample = EntityFactory.getSample();
         Tissue tissue = sample.getTissue();
         Tissue tissue2 = EntityFactory.makeTissue(tissue.getDonor(), EntityFactory.getSpatialLocation());
+        Tissue tissue3 = EntityFactory.makeTissue(tissue.getDonor(), EntityFactory.getSpatialLocation());
         Sample sample2 = new Sample(sample.getId()+1, "10", tissue2, sample.getBioState());
         Sample sample3 = new Sample(sample2.getId()+1, "11", tissue2, sample.getBioState());
         LabwareType lt = EntityFactory.makeLabwareType(1,2);
         Labware lw = EntityFactory.makeLabware(lt, sample, sample2);
+        Set<Integer> slotIds = lw.getSlots().stream().map(Slot::getId).collect(toSet());
         when(mockLwRepo.getByBarcode(lw.getBarcode())).thenReturn(lw);
+        when(mockActionRepo.findTissueIdsForDestinationSlots(slotIds)).thenReturn(List.of(tissue2.getId(), tissue3.getId()));
         List<Sample> samples = List.of(sample, sample2, sample3);
-        when(mockSampleRepo.findAllByTissueIdIn(Set.of(tissue.getId(), tissue2.getId()))).thenReturn(samples);
+        when(mockSampleRepo.findAllByTissueIdIn(Set.of(tissue.getId(), tissue2.getId(), tissue3.getId()))).thenReturn(samples);
         doReturn(history).when(service).getHistoryForSamples(samples);
 
         assertSame(history, service.getHistoryForLabwareBarcode(lw.getBarcode()));
@@ -511,6 +516,54 @@ public class TestHistoryService {
         assertEquals(new History(), service.getHistoryOfDestructions());
     }
 
+    private static Set<Integer> stringToIntSet(String s) {
+        if (nullOrEmpty(s)) {
+            return Set.of();
+        }
+        return Arrays.stream(s.split("-")).map(Integer::valueOf).collect(toSet());
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "1-2-3,,,1-2-3",
+            "1-2,2-3,,1-2-3",
+            "1-2-3,,1-2,1-2",
+            "1-2,2-3,1-3,1-3",
+    })
+    public void testLabwareTissueIds(String initialS, String actionS, String filterS, String expectedS) {
+        Set<Integer> initialTissueIds = stringToIntSet(initialS);
+        Set<Integer> actionTissueIds = stringToIntSet(actionS);
+        Set<Integer> filterTissueIds = stringToIntSet(filterS);
+        Set<Integer> expectedTissueIds = stringToIntSet(expectedS);
+
+        Tissue[] allTissues = IntStream.rangeClosed(1, 3)
+                .mapToObj(i -> new Tissue(i, "ext"+i, null, null, null, null, null, null, null, null, null))
+                .toArray(Tissue[]::new);
+        List<Sample> initialSamples = initialTissueIds.stream()
+                .map(i -> new Sample(i+10, null, allTissues[i-1], null))
+                .toList();
+        Labware lw = EntityFactory.makeEmptyLabware(EntityFactory.getTubeType());
+        lw.getFirstSlot().getSamples().addAll(initialSamples);
+
+        when(mockActionRepo.findTissueIdsForDestinationSlots(any())).thenReturn(new ArrayList<>(actionTissueIds));
+        Predicate<Tissue> filter = null;
+        if (!nullOrEmpty(filterTissueIds)) {
+            filter = tissue -> filterTissueIds.contains(tissue.getId());
+        }
+        List<Integer> extraTissueIds = actionTissueIds.stream().filter(id -> !initialTissueIds.contains(id)).toList();
+        List<Tissue> extraTissues = extraTissueIds.stream().map(i -> allTissues[i-1]).toList();
+        when(mockTissueRepo.findAllByIdIn(any())).thenReturn(extraTissues);
+
+        assertEquals(expectedTissueIds, service.labwareTissueIds(lw, filter));
+
+        verify(mockActionRepo).findTissueIdsForDestinationSlots(List.of(lw.getFirstSlot().getId()));
+        if (!extraTissueIds.isEmpty() && filter != null) {
+            verify(mockTissueRepo).findAllByIdIn(extraTissueIds);
+        } else {
+            verifyNoInteractions(mockTissueRepo);
+        }
+    }
+
     @Test
     public void testSamplesForBarcode() {
         String barcode = "STAN-1";
@@ -524,17 +577,20 @@ public class TestHistoryService {
                     return new Sample(100+i, String.valueOf(i), tissue, null);
                 })
                 .toArray(Sample[]::new);
+        Set<Integer> tissueIds = Arrays.stream(lwSamples).map(s -> s.getTissue().getId()).collect(toSet());
         LabwareType lt = EntityFactory.makeLabwareType(1, 2);
         Labware lw = EntityFactory.makeLabware(lt, lwSamples);
         lw.setBarcode(barcode);
         when(mockLwRepo.getByBarcode(barcode)).thenReturn(lw);
         Predicate<Tissue> filter = t -> t.getDonor().getDonorName().equals("donor1");
         doReturn(filter).when(service).tissuePredicate(donorNames, externalNames);
+        doReturn(tissueIds).when(service).labwareTissueIds(lw, filter);
         List<Sample> returnSamples = List.of(lwSamples[0], EntityFactory.getSample());
         when(mockSampleRepo.findAllByTissueIdIn(any())).thenReturn(returnSamples);
 
         assertSame(returnSamples, service.samplesForBarcode(barcode, externalNames, donorNames));
-        verify(mockSampleRepo).findAllByTissueIdIn(Set.of(lwSamples[0].getTissue().getId()));
+        verify(service).labwareTissueIds(lw, filter);
+        verify(mockSampleRepo).findAllByTissueIdIn(tissueIds);
     }
 
     @ParameterizedTest

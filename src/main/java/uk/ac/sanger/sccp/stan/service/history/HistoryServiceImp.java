@@ -54,6 +54,7 @@ public class HistoryServiceImp implements HistoryService {
     private final OperationSolutionRepo opSolRepo;
     private final SolutionRepo solutionRepo;
     private final OpPanelRepo opPanelRepo;
+    private final ActionRepo actionRepo;
     private final ReagentActionDetailService reagentActionDetailService;
     private final SlotRegionService slotRegionService;
     private final FlagLookupService flagLookupService;
@@ -65,7 +66,9 @@ public class HistoryServiceImp implements HistoryService {
                              DestructionRepo destructionRepo, OperationCommentRepo opCommentRepo, RoiRepo roiRepo,
                              SnapshotRepo snapshotRepo, WorkRepo workRepo, MeasurementRepo measurementRepo,
                              LabwareNoteRepo labwareNoteRepo, ResultOpRepo resultOpRepo,
-                             StainTypeRepo stainTypeRepo, LabwareProbeRepo lwProbeRepo, LabwareFlagRepo flagRepo, OperationSolutionRepo opSolRepo, SolutionRepo solutionRepo, OpPanelRepo opPanelRepo,
+                             StainTypeRepo stainTypeRepo, LabwareProbeRepo lwProbeRepo, LabwareFlagRepo flagRepo,
+                             OperationSolutionRepo opSolRepo, SolutionRepo solutionRepo, OpPanelRepo opPanelRepo,
+                             ActionRepo actionRepo,
                              ReagentActionDetailService reagentActionDetailService,
                              SlotRegionService slotRegionService, FlagLookupService flagLookupService,
                              DetailerFactory detailerFactory) {
@@ -90,6 +93,7 @@ public class HistoryServiceImp implements HistoryService {
         this.opSolRepo = opSolRepo;
         this.solutionRepo = solutionRepo;
         this.opPanelRepo = opPanelRepo;
+        this.actionRepo = actionRepo;
         this.reagentActionDetailService = reagentActionDetailService;
         this.slotRegionService = slotRegionService;
         this.flagLookupService = flagLookupService;
@@ -193,6 +197,34 @@ public class HistoryServiceImp implements HistoryService {
     }
 
     /**
+     * Gets the tissue ids for a piece of labware, including ones used by no longer present optionally filtered
+     * @param lw the labware
+     * @param filter an option filter to apply to the tissues
+     * @return the tissue ids present or used historically in the labware, excluding those filtered out
+     */
+    Set<Integer> labwareTissueIds(Labware lw, Predicate<Tissue> filter) {
+        Set<Tissue> tissueSet = lw.getSlots().stream()
+                .flatMap(slot -> slot.getSamples().stream().map(Sample::getTissue))
+                .collect(Collectors.toCollection(HashSet::new));
+        List<Integer> slotIds = lw.getSlots().stream().map(Slot::getId).toList();
+        Set<Integer> lwTissueIds = tissueSet.stream().map(Tissue::getId).collect(toCollection(HashSet::new));
+        List<Integer> extraTissueIds = actionRepo.findTissueIdsForDestinationSlots(slotIds).stream()
+                .filter(tissueId -> !lwTissueIds.contains(tissueId))
+                .toList();
+        // Simple case, just return the ids
+        if (filter==null) {
+            lwTissueIds.addAll(extraTissueIds);
+            return lwTissueIds;
+        }
+        if (!extraTissueIds.isEmpty()) {
+            // Need to load the tissues so we can apply the filter
+            List<Tissue> extraTissues = tissueRepo.findAllByIdIn(extraTissueIds);
+            tissueSet.addAll(extraTissues);
+        }
+        return tissueSet.stream().filter(filter).map(Tissue::getId).collect(toSet());
+    }
+
+    /**
      * Gets samples related to those in the specified labware, filtered additionally by external name and donor name
      * @param barcode the labware barcode
      * @param externalNames the required external name of the tissues, or a wildcard pattern, or null
@@ -202,14 +234,7 @@ public class HistoryServiceImp implements HistoryService {
     public List<Sample> samplesForBarcode(String barcode, List<String> externalNames, List<String> donorNames) {
         Labware lw = lwRepo.getByBarcode(barcode);
         Predicate<Tissue> filter = tissuePredicate(donorNames, externalNames);
-        Stream<Tissue> tissueStream = lw.getSlots().stream()
-                .flatMap(slot -> slot.getSamples().stream().map(Sample::getTissue));
-        if (filter!=null) {
-            tissueStream = tissueStream.filter(filter);
-        }
-        Set<Integer> tissueIds = tissueStream
-                .map(Tissue::getId)
-                .collect(toSet());
+        Set<Integer> tissueIds = labwareTissueIds(lw, filter);
         if (tissueIds.isEmpty()) {
             return List.of();
         }
@@ -326,10 +351,14 @@ public class HistoryServiceImp implements HistoryService {
     @Override
     public History getHistoryForLabwareBarcode(String barcode) {
         Labware lw = lwRepo.getByBarcode(barcode);
+        Set<Integer> slotIds = lw.getSlots().stream().map(Slot::getId).collect(toSet());
         Set<Integer> tissueIds = lw.getSlots().stream()
                 .flatMap(slot -> slot.getSamples().stream())
                 .map(sam -> sam.getTissue().getId())
-                .collect(toSet());
+                .collect(toCollection(HashSet::new));
+        // Make sure we include tissues from actions into this labware even if they are no longer present
+        List<Integer> actionTissueIds = actionRepo.findTissueIdsForDestinationSlots(slotIds);
+        tissueIds.addAll(actionTissueIds);
         List<Sample> samples = sampleRepo.findAllByTissueIdIn(tissueIds);
         return getHistoryForSamples(samples);
     }
