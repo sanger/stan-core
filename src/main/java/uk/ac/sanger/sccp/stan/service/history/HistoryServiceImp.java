@@ -197,7 +197,7 @@ public class HistoryServiceImp implements HistoryService {
     }
 
     /**
-     * Gets the tissue ids for a piece of labware, including ones used by no longer present optionally filtered
+     * Gets the tissue ids for a piece of labware, including ones used but no longer present, optionally filtered
      * @param lw the labware
      * @param filter an option filter to apply to the tissues
      * @return the tissue ids present or used historically in the labware, excluding those filtered out
@@ -205,7 +205,7 @@ public class HistoryServiceImp implements HistoryService {
     Set<Integer> labwareTissueIds(Labware lw, Predicate<Tissue> filter) {
         Set<Tissue> tissueSet = lw.getSlots().stream()
                 .flatMap(slot -> slot.getSamples().stream().map(Sample::getTissue))
-                .collect(Collectors.toCollection(HashSet::new));
+                .collect(toCollection(HashSet::new));
         List<Integer> slotIds = lw.getSlots().stream().map(Slot::getId).toList();
         Set<Integer> lwTissueIds = tissueSet.stream().map(Tissue::getId).collect(toCollection(HashSet::new));
         List<Integer> extraTissueIds = actionRepo.findTissueIdsForDestinationSlots(slotIds).stream()
