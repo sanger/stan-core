@@ -103,8 +103,8 @@ public class HistoryServiceImp implements HistoryService {
     @Override
     public History getHistoryForSampleId(int sampleId) {
         Sample sample = sampleRepo.findById(sampleId).orElseThrow(() -> new EntityNotFoundException("Sample id "+ sampleId +" not found."));
-        Tissue tissue = sample.getTissue();
-        List<Sample> samples = sampleRepo.findAllByTissueIdIn(List.of(tissue.getId()));
+        Set<Integer> relatedTissueIds = tissueRepo.findRelatedTissueIds(List.of(sample.getTissue().getId()));
+        List<Sample> samples = sampleRepo.findAllByTissueIdIn(relatedTissueIds);
         return getHistoryForSamples(samples);
     }
 
@@ -238,7 +238,8 @@ public class HistoryServiceImp implements HistoryService {
         if (tissueIds.isEmpty()) {
             return List.of();
         }
-        return sampleRepo.findAllByTissueIdIn(tissueIds);
+        Set<Integer> relatedTissueIds = tissueRepo.findRelatedTissueIds(tissueIds);
+        return sampleRepo.findAllByTissueIdIn(relatedTissueIds);
     }
 
     /**
@@ -359,7 +360,8 @@ public class HistoryServiceImp implements HistoryService {
         // Make sure we include tissues from actions into this labware even if they are no longer present
         List<Integer> actionTissueIds = actionRepo.findTissueIdsForDestinationSlots(slotIds);
         tissueIds.addAll(actionTissueIds);
-        List<Sample> samples = sampleRepo.findAllByTissueIdIn(tissueIds);
+        Set<Integer> relatedTissueIds = tissueRepo.findRelatedTissueIds(tissueIds);
+        List<Sample> samples = sampleRepo.findAllByTissueIdIn(relatedTissueIds);
         return getHistoryForSamples(samples);
     }
 

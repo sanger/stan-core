@@ -11,8 +11,11 @@ import uk.ac.sanger.sccp.stan.model.*;
 import javax.persistence.EntityNotFoundException;
 import javax.transaction.Transactional;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
+import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -175,5 +178,27 @@ public class TestTissueRepo {
     private Tissue createTissue(Donor donor, SpatialLocation sl, String rep) {
         String name = "" + (++externalNameSeed);
         return entityCreator.createTissue(donor, sl, name, rep);
+    }
+
+    Tissue derivedTissue(Tissue parent) {
+        return tissueRepo.save(parent.derived());
+    }
+
+    @Test
+    @Transactional
+    void testFindRelatedTissueIds() {
+        Tissue tis = entityCreator.createTissue(null, "ext_1");
+        Tissue tis2 = derivedTissue(tis);
+        Tissue tis3 = derivedTissue(tis);
+        Tissue tis4 = derivedTissue(tis2);
+        Tissue tis5 = derivedTissue(tis2);
+        Tissue tis6 = derivedTissue(tis3);
+        Set<Integer> familyIds = Stream.of(tis, tis2, tis3, tis4, tis5, tis6).map(Tissue::getId).collect(toSet());
+        Tissue unrelatedTissue = entityCreator.createTissue(tis.getDonor(), "ext_2");
+        for (Integer relatedId : familyIds) {
+            assertEquals(familyIds, tissueRepo.findRelatedTissueIds(Set.of(relatedId)));
+        }
+        Integer unrelatedTissueId = unrelatedTissue.getId();
+        assertEquals(Set.of(unrelatedTissueId), tissueRepo.findRelatedTissueIds(Set.of(unrelatedTissueId)));
     }
 }

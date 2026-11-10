@@ -54,4 +54,34 @@ public interface TissueRepo extends CrudRepository<Tissue, Integer> {
     Integer findMaxReplicateForDonorIdAndSpatialLocationId(int donorId, int spatialLocationId);
 
     List<Tissue> findAllByExternalNameLike(String string);
+
+    /**
+     * Gets all tissue ids related to the given tissue ids
+     * @param tissueIds starting tissue ids
+     * @return all related tissue ids
+     */
+    default Set<Integer> findRelatedTissueIds(Collection<Integer> tissueIds) {
+        // Find all tissue ancestors of the specified tissues,
+        // and then all descendants of those ancestors
+        Set<Integer> ancestorIds = new HashSet<>();
+        Collection<Integer> newParentIds = tissueIds;
+        while (!newParentIds.isEmpty()) {
+            ancestorIds.addAll(newParentIds);
+            newParentIds = findParentIds(newParentIds);
+            newParentIds.removeAll(ancestorIds);
+        }
+        Set<Integer> descendentIds = new HashSet<>();
+        Set<Integer> newChildIds = ancestorIds;
+        while (!newChildIds.isEmpty()) {
+            descendentIds.addAll(newChildIds);
+            newChildIds = findChildIds(newChildIds);
+            newChildIds.removeAll(descendentIds);
+        }
+        return descendentIds;
+    }
+
+    @Query(value="select distinct parentId from Tissue where id in (?1) and parentId is not null")
+    Set<Integer> findParentIds(Collection<Integer> tissueIds);
+    @Query(value="select id from Tissue where parentId in (?1)")
+    Set<Integer> findChildIds(Collection<Integer> tissueIds);
 }
