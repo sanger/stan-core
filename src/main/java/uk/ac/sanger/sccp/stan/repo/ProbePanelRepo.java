@@ -24,4 +24,6 @@ public interface ProbePanelRepo extends CrudRepository<ProbePanel, Integer> {
     List<ProbePanel> findAllByType(ProbeType type);
 
     List<ProbePanel> findAllByTypeAndEnabled(ProbeType type, boolean enabled);
+
+    List<ProbePanel> findAllByEnabled(boolean enabled);
 }
