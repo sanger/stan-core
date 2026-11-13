@@ -15,8 +15,7 @@ import java.util.*;
 import java.util.regex.Pattern;
 
 import static java.util.stream.Collectors.toSet;
-import static uk.ac.sanger.sccp.stan.service.SlotCopyServiceImp.CYTASSIST_OP;
-import static uk.ac.sanger.sccp.stan.service.SlotCopyServiceImp.VALID_BS_UPPER;
+import static uk.ac.sanger.sccp.stan.service.SlotCopyServiceImp.*;
 import static uk.ac.sanger.sccp.utils.BasicUtils.*;
 
 /**
@@ -29,6 +28,7 @@ public class SlotCopyValidationServiceImp implements SlotCopyValidationService {
     private final LabwareTypeRepo lwTypeRepo;
     private final LabwareRepo lwRepo;
     private final BioStateRepo bsRepo;
+    private final LabwareNoteRepo lwNoteRepo;
     private final ValidationHelperFactory valHelperFactory;
     private final Validator<String> preBarcodeValidator;
     private final Validator<String> lotNumberValidator;
@@ -37,7 +37,7 @@ public class SlotCopyValidationServiceImp implements SlotCopyValidationService {
     private final CleanedOutSlotService cleanedOutSlotService;
 
     @Autowired
-    public SlotCopyValidationServiceImp(LabwareTypeRepo lwTypeRepo, LabwareRepo lwRepo, BioStateRepo bsRepo,
+    public SlotCopyValidationServiceImp(LabwareTypeRepo lwTypeRepo, LabwareRepo lwRepo, BioStateRepo bsRepo, LabwareNoteRepo lwNoteRepo,
                                         ValidationHelperFactory valHelperFactory,
                                         @Qualifier("cytAssistBarcodeValidator") Validator<String> preBarcodeValidator,
                                         @Qualifier("lotNumberValidator") Validator<String> lotNumberValidator,
@@ -47,6 +47,7 @@ public class SlotCopyValidationServiceImp implements SlotCopyValidationService {
         this.lwTypeRepo = lwTypeRepo;
         this.lwRepo = lwRepo;
         this.bsRepo = bsRepo;
+        this.lwNoteRepo = lwNoteRepo;
         this.valHelperFactory = valHelperFactory;
         this.preBarcodeValidator = preBarcodeValidator;
         this.lotNumberValidator = lotNumberValidator;
@@ -80,6 +81,7 @@ public class SlotCopyValidationServiceImp implements SlotCopyValidationService {
         if (data.sourceLabware == null) {
             data.sourceLabware = loadSources(data.problems, val, request.getDestinations());
         }
+        data.sourceLpNumbers = loadLpNumbers(data.sourceLabware.values());
         checkListedSources(data.problems, request);
         validateLotNumbers(data.problems, request.getDestinations());
         validateReagentLots(data.problems, data.opType, data.lwTypes, data.destLabware, request);
@@ -92,6 +94,7 @@ public class SlotCopyValidationServiceImp implements SlotCopyValidationService {
         if (data.work==null) {
             data.work = val.checkWork(request.getWorkNumber());
         }
+        checkForReusedLpNumbers(data.problems, request.getDestinations(), data.sourceLpNumbers, data.work);
         data.problems.addAll(val.getProblems());
     }
 
@@ -127,6 +130,21 @@ public class SlotCopyValidationServiceImp implements SlotCopyValidationService {
             problems.add("Unknown labware type: "+missing);
         }
         return lwTypes;
+    }
+
+    /** Loads lp numbers for given labware */
+    public UCMap<String> loadLpNumbers(Collection<Labware> sources) {
+        List<Integer> lwIds = sources.stream().map(Labware::getId).toList();
+        List<LabwareNote> notes = lwNoteRepo.findAllByLabwareIdInAndName(lwIds, LP_NOTE_NAME);
+        if (nullOrEmpty(notes)) {
+            return new UCMap<>(0);
+        }
+        Map<Integer, Labware> lwIdMap = sources.stream().collect(inMap(Labware::getId));
+        UCMap<String> lpNumbers = new UCMap<>(notes.size());
+        for (LabwareNote note : notes) {
+            lpNumbers.put(lwIdMap.get(note.getLabwareId()).getBarcode(), note.getValue());
+        }
+        return lpNumbers;
     }
 
     /**
@@ -379,11 +397,14 @@ public class SlotCopyValidationServiceImp implements SlotCopyValidationService {
      * Checks LP numbers in the request, if given.
      * The expected format is "LP#" where # is a positive integer.
      * A sanitised version of the value will be stored back inside the request.
+     * Also check for the same lp number given several times in the request.
      * @param problems receptacle for problems
      * @param scds info from the request
      */
     public void validateLpNumbers(Collection<String> problems, Collection<SlotCopyDestination> scds) {
         Set<String> invalidLpNumbers = new LinkedHashSet<>();
+        Set<String> seen = new HashSet<>();
+        Set<String> repeated = new LinkedHashSet<>();
         for (SlotCopyDestination scd : scds) {
             String lpNumber = scd.getLpNumber();
             if (lpNumber==null) {
@@ -401,10 +422,58 @@ public class SlotCopyValidationServiceImp implements SlotCopyValidationService {
                     lpNumber = "LP" + lpNumber;
                 }
                 scd.setLpNumber(lpNumber);
+                if (!seen.add(lpNumber)) {
+                    repeated.add(lpNumber);
+                }
             }
         }
         if (!invalidLpNumbers.isEmpty()) {
             problems.add("Unrecognised format for LP number: "+reprCollection(invalidLpNumbers));
+        }
+        if (!repeated.isEmpty()) {
+            problems.add("LP number repeated: "+repeated);
+        }
+    }
+
+    /**
+     * Checks that any specified LP numbers have not already been used in this work.
+     * If the LP number is already specified on the source labware, assume it's been used correctly
+     * @param problems receptacle for problems
+     * @param scds request info about destinations
+     * @param sourceLpNumbers lp numbers on source labware
+     * @param work the work for this request, if any
+     */
+    void checkForReusedLpNumbers(Collection<String> problems, Collection<SlotCopyDestination> scds,
+                                 UCMap<String> sourceLpNumbers, Work work) {
+        if (work==null || nullOrEmpty(work.getOperationIds())
+                || scds.stream().allMatch(scd -> nullOrEmpty(scd.getLpNumber()))) {
+            return; // nothing to check here
+        }
+
+        Set<String> newLpNumbers = new HashSet<>();
+        for (SlotCopyDestination scd : scds) {
+            String lpNumber = scd.getLpNumber();
+            if (!nullOrEmpty(lpNumber) && scd.getContents().stream().noneMatch(con -> lpNumber.equalsIgnoreCase(sourceLpNumbers.get(con.getSourceBarcode())))) {
+                newLpNumbers.add(lpNumber);
+            }
+        }
+        if (!newLpNumbers.isEmpty()) {
+            List<LabwareNote> oldNotes = lwNoteRepo.findAllByNameAndOperationIdIn(LP_NOTE_NAME, work.getOperationIds());
+            Set<String> oldLpNumbers = oldNotes.stream().map(LabwareNote::getValue).collect(toSet());
+            newLpNumbers.retainAll(oldLpNumbers);
+            if (!newLpNumbers.isEmpty()) {
+                Collection<String> sortedNewLpNumbers;
+                try {
+                    // Try to put the lp numbers in order so the error message is coherent
+                    sortedNewLpNumbers = newLpNumbers.stream()
+                            .sorted(Comparator.comparingInt(s -> Integer.parseInt(s.substring(2))))
+                            .toList();
+                } catch (NumberFormatException e) {
+                    // just in case the lp numbers are not formatted as we expect, don't explode
+                    sortedNewLpNumbers = newLpNumbers;
+                }
+                problems.add("LP number already used for work "+work.getWorkNumber()+": "+sortedNewLpNumbers);
+            }
         }
     }
 

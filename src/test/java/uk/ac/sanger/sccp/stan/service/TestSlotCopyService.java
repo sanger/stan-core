@@ -25,7 +25,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
-import static uk.ac.sanger.sccp.stan.Matchers.sameElements;
 import static uk.ac.sanger.sccp.stan.service.SlotCopyServiceImp.EXECUTION_NOTE_NAME;
 
 /**
@@ -179,6 +178,43 @@ public class TestSlotCopyService {
         }
     }
 
+    @ParameterizedTest
+    @EnumSource(value=Labware.State.class, names = {"active", "discarded", "used"})
+    public void testRecord(Labware.State newSourceState) {
+        OperationResult opres = new OperationResult(List.of(new Operation()), List.of(EntityFactory.getTube()));
+        doReturn(opres).when(service).executeOps(any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+
+        OperationType opType = EntityFactory.makeOperationType("opname", null);
+        switch (newSourceState) {
+            case discarded -> opType.setFlags(OperationTypeFlag.DISCARD_SOURCE.bit());
+            case used -> opType.setFlags(OperationTypeFlag.MARK_SOURCE_USED.bit());
+            default -> newSourceState = null;
+        }
+        User user = EntityFactory.getUser();
+
+        doNothing().when(service).updateSources(any(), any(), any(), any());
+
+        SlotCopyRequest req = new SlotCopyRequest("opname", "SGP1", ExecutionType.manual, List.of(), List.of(
+                new SlotCopyDestination("lt1", "pb1", SlideCosting.SGP, "1234567", "777777", List.of(new SlotCopyContent("STAN-0", null, null)), "bs1", "LP1")
+        ));
+        SlotCopyValidationService.Data data = new SlotCopyValidationService.Data(req);
+        data.opType = opType;
+        data.lwTypes = UCMap.from(LabwareType::getName, EntityFactory.getTubeType());
+        data.bioStates = UCMap.from(BioState::getName, EntityFactory.getBioState());
+        data.sourceLabware = UCMap.from(Labware::getBarcode, EntityFactory.getTube());
+        data.sourceLpNumbers = new UCMap<>(1);
+        data.sourceLpNumbers.put("STAN-10", "LP2");
+        data.work = EntityFactory.makeWork("SGP1");
+        data.destLabware = UCMap.from(Labware::getBarcode, EntityFactory.makeEmptyLabware(EntityFactory.getTubeType()));
+        Set<String> barcodesToUnstore = Set.of("STAN-5");
+        assertSame(opres, service.record(user, data, barcodesToUnstore));
+
+        verify(service).executeOps(user, req.getDestinations(), opType, data.lwTypes, data.bioStates,
+                data.sourceLabware, data.sourceLpNumbers, data.work, data.destLabware, req.getExecutionType());
+        verify(service).updateSources(data.request.getSources(), data.sourceLabware.values(),
+                newSourceState, barcodesToUnstore);
+    }
+
     @Test
     public void testExecuteOps() {
         final Address A1 = new Address(1,1);
@@ -229,15 +265,13 @@ public class TestSlotCopyService {
                 new OperationResult(List.of(op3), List.of(dest1)))
                 .when(service).executeOp(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
                         any(), any(), any(), any(), any(), any(), any(), any(), any());
-        doReturn(sourceLps).when(service).loadLpNumbers(any());
 
         final ExecutionType exType = ExecutionType.manual;
 
-        OperationResult result = service.executeOps(user, dests, opType, lwTypes, bsMap, sources, work, existingDests, exType);
+        OperationResult result = service.executeOps(user, dests, opType, lwTypes, bsMap, sources, sourceLps, work, existingDests, exType);
         assertThat(result.getOperations()).containsExactly(op1, op2, op3);
         assertThat(result.getLabware()).containsExactly(newLw1, newLw2, dest1);
 
-        verify(service).loadLpNumbers(sources.values());
         verify(service).executeOp(same(user), same(firstDest.getContents()), same(opType), same(lt1), eq("pb1"), eq(sources), eq(sourceLps), same(SlideCosting.SGP), eq("1234567"), eq("777777"), same(bs), eq("LP1"), eq("0000"), eq("1111"), eq("2222"), eq("123456"), same(SlideCosting.Faculty), isNull(), same(exType), any());
         verify(service).executeOp(same(user), same(dests.get(1).getContents()), same(opType), same(lt2), isNull(), eq(sources), eq(sourceLps), same(SlideCosting.Faculty), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),isNull(), same(exType), any());
         verify(service).executeOp(same(user), same(dests.get(2).getContents()), same(opType), isNull(), isNull(), eq(sources), eq(sourceLps), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),isNull(), isNull(), isNull(), isNull(), same(dest1), same(exType), any());
@@ -540,26 +574,6 @@ public class TestSlotCopyService {
         } else {
             assertThat(barcodesToUnstore).containsExactly("STAN-D");
         }
-    }
-
-    @Test
-    public void testLoadLpNumbers() {
-        String name = "LP number";
-        Labware[] lws = {EntityFactory.getTube(), null, null};
-        for (int i = 1; i < lws.length; i++) {
-            lws[i] = EntityFactory.makeEmptyLabware(lws[0].getLabwareType());
-        }
-        List<Integer> lwIds = Arrays.stream(lws).map(Labware::getId).toList();
-        when(mockLwNoteRepo.findAllByLabwareIdInAndName(any(), any())).thenReturn(
-                List.of(new LabwareNote(11, lws[1].getId(), 101, name, "LP2"),
-                        new LabwareNote(10, lws[0].getId(), 100, name, "LP1"))
-        );
-
-        UCMap<String> lps = service.loadLpNumbers(Arrays.asList(lws));
-        verify(mockLwNoteRepo).findAllByLabwareIdInAndName(sameElements(lwIds, true), eq(name));
-        assertThat(lps).hasSize(2);
-        assertEquals("LP1", lps.get(lws[0].getBarcode()));
-        assertEquals("LP2", lps.get(lws[1].getBarcode()));
     }
 
     @ParameterizedTest
