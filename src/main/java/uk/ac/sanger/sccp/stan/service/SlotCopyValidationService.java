@@ -23,6 +23,7 @@ public interface SlotCopyValidationService {
         UCMap<Labware> destLabware;
         UCMap<BioState> bioStates;
         UCMap<LabwareType> lwTypes;
+        UCMap<String> sourceLpNumbers;
 
         public Data(SlotCopyRequest request) {
             this.request = request;

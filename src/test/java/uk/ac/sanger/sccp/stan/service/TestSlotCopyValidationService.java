@@ -13,7 +13,8 @@ import uk.ac.sanger.sccp.stan.request.SlotCopyRequest.*;
 import uk.ac.sanger.sccp.stan.service.SlotCopyValidationService.Data;
 import uk.ac.sanger.sccp.stan.service.validation.ValidationHelper;
 import uk.ac.sanger.sccp.stan.service.validation.ValidationHelperFactory;
-import uk.ac.sanger.sccp.utils.*;
+import uk.ac.sanger.sccp.utils.BasicUtils;
+import uk.ac.sanger.sccp.utils.UCMap;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -39,6 +40,8 @@ public class TestSlotCopyValidationService {
     @Mock
     BioStateRepo mockBsRepo;
     @Mock
+    LabwareNoteRepo mockLwNoteRepo;
+    @Mock
     ValidationHelperFactory mockValHelperFactory;
     @Mock
     Validator<String> mockPreBarcodeValidator;
@@ -57,7 +60,8 @@ public class TestSlotCopyValidationService {
     @BeforeEach
     void setup() {
         mocking = MockitoAnnotations.openMocks(this);
-        service = spy(new SlotCopyValidationServiceImp(mockLwTypeRepo, mockLwRepo, mockBsRepo, mockValHelperFactory,
+        service = spy(new SlotCopyValidationServiceImp(mockLwTypeRepo, mockLwRepo, mockBsRepo, mockLwNoteRepo,
+                mockValHelperFactory,
                 mockPreBarcodeValidator, mockLotNumberValidator, mockReagentLotValidator, mockCassetteLotValidator,
                 mockCleanedOutSlotService));
     }
@@ -95,6 +99,10 @@ public class TestSlotCopyValidationService {
         mayAddProblem(valid ? null : "bad ops").when(service).validateOps(any(), any(), any(), any());
         mayAddProblem(valid ? null : "bad lp").when(service).validateLpNumbers(any(), any());
         mayAddProblem(valid ? null : "bad reagent lot").when(service).validateReagentLots(any(), any(), any(), any(), any());
+        mayAddProblem(valid ? null : "repeated lp").when(service).checkForReusedLpNumbers(any(), any(), any(), any());
+        UCMap<String> sourceLps = new UCMap<>(1);
+        sourceLps.put("STAN-1", "LP1");
+        doReturn(sourceLps).when(service).loadLpNumbers(any());
         UCMap<BioState> bsMap = UCMap.from(BioState::getName, EntityFactory.getBioState());
         mayAddProblem(valid ? null : "bad bs", bsMap).when(service).validateBioStates(any(), any());
         Work work = EntityFactory.makeWork("SGP1");
@@ -107,7 +115,8 @@ public class TestSlotCopyValidationService {
         } else {
             assertThat(problems).containsExactlyInAnyOrder(
                     "No user supplied.", "val problem", "bad lw type", "bad prebc", "bad source",
-                    "bad listed souce", "bad lot", "bad reagent lot", "bad contents", "bad ops", "bad bs", "used prebc", "bad lp"
+                    "bad listed souce", "bad lot", "bad reagent lot", "bad contents", "bad ops", "bad bs", "used prebc",
+                    "bad lp", "repeated lp"
             );
         }
 
@@ -124,13 +133,16 @@ public class TestSlotCopyValidationService {
         verify(service).validateOps(problems, scds, opType, lwTypes);
         verify(service).validateBioStates(problems, scds);
         verify(service).validateLpNumbers(problems, scds);
+        verify(service).loadLpNumbers(sourceLw.values());
+        verify(service).checkForReusedLpNumbers(problems, scds, sourceLps, work);
         verify(val).checkWork(request.getWorkNumber());
-        assertSame(data.destLabware, destLw);
-        assertSame(data.sourceLabware, sourceLw);
-        assertSame(data.bioStates, bsMap);
-        assertSame(data.opType, opType);
-        assertSame(data.work, work);
-        assertSame(data.lwTypes, lwTypes);
+        assertSame(destLw, data.destLabware);
+        assertSame(sourceLw, data.sourceLabware);
+        assertSame(bsMap, data.bioStates);
+        assertSame(opType, data.opType);
+        assertSame(work, data.work);
+        assertSame(lwTypes, data.lwTypes);
+        assertSame(sourceLps, data.sourceLpNumbers);
     }
 
     @Test
@@ -423,27 +435,36 @@ public class TestSlotCopyValidationService {
     }
 
     @ParameterizedTest
-    @ValueSource(booleans={false,true})
-    public void testValidateLpNumbers(boolean valid) {
+    @CsvSource({"true,false", "false,false", "true,true", "false,true"})
+    public void testValidateLpNumbers(boolean valid, boolean repeated) {
         String[] givenLps, expectedLps;
-        String expectedProblem;
+        List<String> expectedProblems = new ArrayList<>();
         if (valid) {
             givenLps = new String[] {null, "", "  ", "LP1", "   lp2  ", "3", "   4 "};
             expectedLps = new String[] {null, null, null, "LP1", "LP2", "LP3", "LP4"};
-            expectedProblem = null;
+            if (repeated) {
+                givenLps[6] = "LP3";
+                expectedLps[6] = "LP3";
+                expectedProblems.add("LP number repeated: [LP3]");
+            }
         } else {
             givenLps = new String[] {null, "", "  LP1 ", "2", "  bananas", "L5", "-6", "lp123456789"};
             expectedLps = new String[] {null, null, "LP1", "LP2", "  bananas", "L5", "-6", "lp123456789"};
-            expectedProblem = "Unrecognised format for LP number: [\"BANANAS\", \"L5\", \"-6\", \"LP123456789\"]";
+            expectedProblems.add("Unrecognised format for LP number: [\"BANANAS\", \"L5\", \"-6\", \"LP123456789\"]");
+            if (repeated) {
+                givenLps[3] = "1";
+                expectedLps[3] = "LP1";
+                expectedProblems.add("LP number repeated: [LP1]");
+            }
         }
         List<SlotCopyDestination> scds = Arrays.stream(givenLps)
                 .map(lp -> new SlotCopyDestination(null, null, null, null, null, null, null, lp))
                 .toList();
-        List<String> problems = new ArrayList<>(valid ? 0 : 1);
+        List<String> problems = new ArrayList<>();
         service.validateLpNumbers(problems, scds);
         assertThat(scds).hasSize(expectedLps.length);
-        Zip.of(scds.stream(), Arrays.stream(expectedLps)).forEach((scd, lp) -> assertEquals(lp, scd.getLpNumber()));
-        assertProblem(problems, expectedProblem);
+        assertThat(scds.stream().map(SlotCopyDestination::getLpNumber)).containsExactly(expectedLps);
+        assertThat(problems).containsExactlyInAnyOrderElementsOf(expectedProblems);
     }
 
     @Test
@@ -847,5 +868,81 @@ public class TestSlotCopyValidationService {
         final List<String> problems = new ArrayList<>(expectedProblem==null ? 0 : 1);
         service.checkExistingLabwareBioState(problems, lw, newBs);
         assertProblem(problems, expectedProblem);
+    }
+
+
+    @Test
+    public void testLoadLpNumbers() {
+        String name = "LP number";
+        Labware[] lws = {EntityFactory.getTube(), null, null};
+        for (int i = 1; i < lws.length; i++) {
+            lws[i] = EntityFactory.makeEmptyLabware(lws[0].getLabwareType());
+        }
+        List<Integer> lwIds = Arrays.stream(lws).map(Labware::getId).toList();
+        when(mockLwNoteRepo.findAllByLabwareIdInAndName(any(), any())).thenReturn(
+                List.of(new LabwareNote(11, lws[1].getId(), 101, name, "LP2"),
+                        new LabwareNote(10, lws[0].getId(), 100, name, "LP1"))
+        );
+
+        UCMap<String> lps = service.loadLpNumbers(Arrays.asList(lws));
+        verify(mockLwNoteRepo).findAllByLabwareIdInAndName(sameElements(lwIds, true), eq(name));
+        assertThat(lps).hasSize(2);
+        assertEquals("LP1", lps.get(lws[0].getBarcode()));
+        assertEquals("LP2", lps.get(lws[1].getBarcode()));
+    }
+
+    private static List<SlotCopyContent> contentFromSources(String... barcodes) {
+        return Arrays.stream(barcodes).map(barcode -> new SlotCopyContent(barcode, null, null)).toList();
+    }
+
+    @Test
+    public void testCheckForReusedLpNumbers() {
+//        0. No lp -> pass
+//        1. lp, no lp in source, not repeated -> pass
+//        2. lp, different from source, not repeated -> pass
+//        3. lp, present in source, not repeated -> pass
+//        4. lp, no lp in source, repeated -> problem
+//        5. lp, different from source, repeated -> problem
+//        6. lp, present in source, repeated -> pass
+        Work work = EntityFactory.makeWork("SGP1");
+        work.setOperationIds(Set.of(100,101));
+        List<SlotCopyDestination> scds = IntStream.range(0,7).mapToObj(i -> new SlotCopyDestination()).toList();
+        for (int i = 0; i < scds.size(); i++) {
+            SlotCopyDestination scd = scds.get(i);
+            scd.setContents(contentFromSources("STAN-" + (2*i+1), "STAN-" + (2*i+2)));
+            scd.setLpNumber(i==0 ? null : "LP"+i);
+        }
+        UCMap<String> sourceLps = new UCMap<>(4);
+        sourceLps.put("STAN-6", "LP100");
+        sourceLps.put("STAN-8", "LP3");
+        sourceLps.put("STAN-12", "LP100");
+        sourceLps.put("STAN-14", "LP6");
+
+        List<LabwareNote> notes = Stream.of("LP4", "LP5", "LP6")
+                .map(value -> new LabwareNote(null, null, null, "LP number", value))
+                .toList();
+        when(mockLwNoteRepo.findAllByNameAndOperationIdIn(any(), any())).thenReturn(notes);
+
+        List<String> problems = new ArrayList<>(1);
+        service.checkForReusedLpNumbers(problems, scds, sourceLps, work);
+
+        assertProblem(problems, "LP number already used for work SGP1: [LP4, LP5]");
+        verify(mockLwNoteRepo).findAllByNameAndOperationIdIn("LP number", work.getOperationIds());
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 1, 2})
+    public void testCheckForReusedLpNumbers_abort(int mode) {
+        Work work = mode==0 ? null : EntityFactory.makeWork("SGP1");
+        List<SlotCopyDestination> scds = List.of(new SlotCopyDestination(), new SlotCopyDestination());
+        if (mode==2) {
+            work.setOperationIds(Set.of(10, 11));
+        } else {
+            scds.getFirst().setLpNumber("LP2");
+        }
+        List<String> problems = new ArrayList<>();
+        service.checkForReusedLpNumbers(problems, scds, new UCMap<>(0), work);
+        assertThat(problems).isEmpty();
+        verifyNoInteractions(mockLwNoteRepo);
     }
 }

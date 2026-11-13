@@ -19,7 +19,8 @@ import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
-import static uk.ac.sanger.sccp.utils.BasicUtils.*;
+import static uk.ac.sanger.sccp.utils.BasicUtils.nullOrEmpty;
+import static uk.ac.sanger.sccp.utils.BasicUtils.startsWithIgnoreCase;
 
 /**
  * Service to perform an operation copying the contents of slots to new labware
@@ -108,46 +109,25 @@ public class SlotCopyServiceImp implements SlotCopyService {
     @Override
     public OperationResult record(User user, Data data, final Set<String> barcodesToUnstore) {
         OperationResult opres = executeOps(user, data.request.getDestinations(), data.opType, data.lwTypes, data.bioStates,
-                data.sourceLabware, data.work, data.destLabware, data.request.getExecutionType());
+                data.sourceLabware, data.sourceLpNumbers, data.work, data.destLabware, data.request.getExecutionType());
         final Labware.State newSourceState = (data.opType.discardSource() ? Labware.State.discarded
                 : data.opType.markSourceUsed() ? Labware.State.used : null);
         updateSources(data.request.getSources(), data.sourceLabware.values(), newSourceState, barcodesToUnstore);
         return opres;
     }
 
-    /** Loads lp numbers for given labware */
-    public UCMap<String> loadLpNumbers(Collection<Labware> sources) {
-        List<Integer> lwIds = sources.stream().map(Labware::getId).toList();
-        List<LabwareNote> notes = lwNoteRepo.findAllByLabwareIdInAndName(lwIds, LP_NOTE_NAME);
-        if (nullOrEmpty(notes)) {
-            return new UCMap<>(0);
-        }
-        Map<Integer, Labware> lwIdMap = sources.stream().collect(inMap(Labware::getId));
-        UCMap<String> lpNumbers = new UCMap<>(notes.size());
-        for (LabwareNote note : notes) {
-            lpNumbers.put(lwIdMap.get(note.getLabwareId()).getBarcode(), note.getValue());
-        }
-        return lpNumbers;
-    }
-
     // region Executing
     public OperationResult executeOps(User user, Collection<SlotCopyDestination> dests,
                                       OperationType opType, UCMap<LabwareType> lwTypes, UCMap<BioState> bioStates,
-                                      UCMap<Labware> sources, Work work, UCMap<Labware> existingDests,
+                                      UCMap<Labware> sources, UCMap<String> sourceLpNumbers, Work work, UCMap<Labware> existingDests,
                                       ExecutionType executionType) {
         List<Operation> ops = new ArrayList<>(dests.size());
         List<Labware> destLabware = new ArrayList<>(dests.size());
-        UCMap<String> sourceLpNumbers;
-        if (dests.stream().anyMatch(dest -> nullOrEmpty(dest.getLpNumber()))) {
-            sourceLpNumbers = loadLpNumbers(sources.values());
-        } else {
-            sourceLpNumbers = null;
-        }
         // cache for looked up bio states
         UCMap<BioState> bsCache = new UCMap<>();
         for (SlotCopyDestination dest : dests) {
             OperationResult opres = executeOp(user, dest.getContents(), opType, lwTypes.get(dest.getLabwareType()),
-                    dest.getPreBarcode(), sources,sourceLpNumbers, dest.getCosting(), dest.getLotNumber(),
+                    dest.getPreBarcode(), sources, sourceLpNumbers, dest.getCosting(), dest.getLotNumber(),
                     dest.getProbeLotNumber(), bioStates.get(dest.getBioState()), dest.getLpNumber(),
                     dest.getReagentLot(), dest.getReagentALot(), dest.getReagentBLot(), dest.getCassetteLot(),
                     dest.getReagentCosting(),

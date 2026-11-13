@@ -22,4 +22,6 @@ public interface LabwareNoteRepo extends CrudRepository<LabwareNote, Integer> {
             "where ln.name=?1 and op.operationType=?3 " +
             "and ln.labwareId in (?2)")
     List<LabwareNote> findAllByNameAndLabwareIdInAndOperationType(String name, Collection<Integer> labwareIds, OperationType opType);
+
+    List<LabwareNote> findAllByNameAndOperationIdIn(String lpNoteName, Collection<Integer> opIds);
 }
