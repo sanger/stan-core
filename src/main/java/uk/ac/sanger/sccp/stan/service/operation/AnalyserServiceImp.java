@@ -20,6 +20,7 @@ import uk.ac.sanger.sccp.utils.Zip;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
@@ -31,14 +32,63 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.*;
  */
 @Service
 public class AnalyserServiceImp extends BaseResultService implements AnalyserService {
-    public static final String ANALYSER_OP_NAME = "Xenium analyser";
-    public static final String PROBE_HYBRIDISATION_NAME = "Probe hybridisation Xenium";
+    /** The tech used in an operation */
+    public enum Tech {
+        xenium("Xenium analyser", "Probe hybridisation Xenium","xenium analyser", true, CassettePosition.class),
+        atera("Atera run", "Probe hybridisation Atera", "atera", false, Integer.class),
+        ;
+        private final String opName, precedingOpName, equipmentType;
+        private final boolean decodingLotRequired;
+        private final Class<?> positionClass;
+
+        Tech(String opName, String precedingOpName, String equipmentType, boolean decodingLotRequired,
+             Class<?> positionClass) {
+            this.opName = opName;
+            this.precedingOpName = precedingOpName;
+            this.equipmentType = equipmentType;
+            this.decodingLotRequired = decodingLotRequired;
+            this.positionClass = positionClass;
+        }
+
+        public String getOpName() {
+            return this.opName;
+        }
+        public String getPrecedingOpName() {
+            return this.precedingOpName;
+        }
+        public String getEquipmentType() {
+            return this.equipmentType;
+        }
+
+        public boolean isDecodingLotRequired() {
+            return this.decodingLotRequired;
+        }
+
+        public Class<?> getPositionClass() {
+            return this.positionClass;
+        }
+
+        /**
+         * Gets the tech for the given op name. Returns null if a tech cannot be identified
+         * @param opName the name of the operation type being performed
+         * @return the tech for the op type
+         */
+        public static Tech forOpName(String opName) {
+            if (opName == null) {
+                return null;
+            }
+            return Arrays.stream(values())
+                    .filter(tech -> opName.equalsIgnoreCase(tech.getOpName()))
+                    .findAny()
+                    .orElse(null);
+        }
+    }
 
     public static final String LOT_A_NAME = "decoding reagent A lot", LOT_B_NAME = "decoding reagent B lot",
-            RUN_NAME = "run", POSITION_NAME = "cassette position", CELL_SEGMENTATION_LOT_NAME = "cell segmentation lot",
+            RUN_NAME = "run", POSITION_NAME = "cassette position",
+            CELL_SEGMENTATION_LOT_NAME = "cell segmentation lot",
             DECODING_CONSUMABLES_LOT_NAME = "decoding consumables lot";
-
-    public static final String EQUIPMENT_CATEGORY = "xenium analyser";
+    public static final String ATERA_RUN_WORK_TYPE_CATEGORY = "Atera run work type";
 
     private final OperationService opService;
     private final WorkService workService;
@@ -47,7 +97,8 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
     private final CommentRepo commentRepo;
     private final OperationCommentRepo opComRepo;
     private final Validator<String> decodingReagentLotValidator;
-    private final Validator<String> runNameValidator;
+    private final Validator<String> xeniumRunNameValidator;
+    private final Validator<String> ateraRunNameValidator;
     private final Validator<String> roiValidator;
     private final Validator<String> cellSegmentationLotValidator;
     private final Validator<String> decodingConsumablesLotValidator;
@@ -61,7 +112,8 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
                               LabwareNoteRepo lwNoteRepo, RoiRepo roiRepo, CommentRepo commentRepo,
                               OperationCommentRepo opComRepo,
                               @Qualifier("decodingReagentLotValidator") Validator<String> decodingReagentLotValidator,
-                              @Qualifier("runNameValidator") Validator<String> runNameValidator,
+                              @Qualifier("xeniumRunNameValidator") Validator<String> xeniumRunNameValidator,
+                              @Qualifier("ateraRunNameValidator") Validator<String> ateraRunNameValidator,
                               @Qualifier("roiValidator") Validator<String> roiValidator,
                               @Qualifier("cellSegmentationLotValidator") Validator<String> cellSegmentationLotValidator,
                               @Qualifier("decodingConsumablesLotValidator") Validator<String> decodingConsumablesLotValidator,
@@ -74,7 +126,8 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
         this.commentRepo = commentRepo;
         this.opComRepo = opComRepo;
         this.decodingReagentLotValidator = decodingReagentLotValidator;
-        this.runNameValidator = runNameValidator;
+        this.xeniumRunNameValidator = xeniumRunNameValidator;
+        this.ateraRunNameValidator = ateraRunNameValidator;
         this.roiValidator = roiValidator;
         this.cellSegmentationLotValidator = cellSegmentationLotValidator;
         this.decodingConsumablesLotValidator = decodingConsumablesLotValidator;
@@ -86,19 +139,22 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
         final Collection<String> problems = new LinkedHashSet<>();
         UCMap<Labware> lwMap = checkLabware(problems, request.getLabware());
         OperationType opType = checkOpType(problems, request.getOperationType());
-        Map<Integer, Operation> priorOps = loadPriorOps(problems, opType, lwMap.values());
+        Tech tech = getTech(opType);
+        Map<Integer, Operation> priorOps = loadPriorOps(problems, tech, lwMap.values());
         if (request.getPerformed()!=null) {
             checkTimestamp(problems, request.getPerformed(), priorOps, lwMap.values());
         }
         UCMap<Work> workMap = loadWork(problems, request.getLabware());
-        checkCassettePositions(problems, request.getLabware());
+        checkCassettePositions(problems, request.getLabware(), tech != null && tech.getPositionClass()==CassettePosition.class);
+        checkPositionIndex(problems, request.getLabware(), tech != null && tech.getPositionClass()==Integer.class);
         checkRois(problems, request.getLabware());
         checkSamples(problems, request.getLabware(), lwMap);
-        validateLot(problems, request.getLotNumberA());
-        validateLot(problems, request.getLotNumberB());
+        validateLot(problems, tech, request.getLotNumberA());
+        validateLot(problems, tech, request.getLotNumberB());
         validateCellSegmentationLot(problems, request.getCellSegmentationLot());
         validateDecodingConsumablesLot(problems, request.getLabware());
-        validateRunName(problems, request.getRunName());
+        validateRunName(problems, tech, request.getRunName());
+        Comment workTypeComment = checkWorkType(problems, request.getWorkTypeCommentId());
         Comment repeatComment = null;
         if (request.isRepeat()) {
             Optional<Comment> optComment = commentRepo.findByCategoryAndText("misc", "repeat");
@@ -108,8 +164,9 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
                 repeatComment = optComment.get();
             }
         }
+        List<Comment> comments = Stream.of(workTypeComment, repeatComment).filter(Objects::nonNull).toList();
         ValidationHelper val = valFactory.getHelper();
-        Equipment equipment = val.checkEquipment(request.getEquipmentId(), EQUIPMENT_CATEGORY, true);
+        Equipment equipment = tech == null ? null : val.checkEquipment(request.getEquipmentId(), tech.getEquipmentType(), true);
         problems.addAll(val.getProblems());
 
         if (!problems.isEmpty()) {
@@ -119,7 +176,7 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
             sanitiseRois(al, lwMap.get(al.getBarcode()));
         }
 
-        return record(user, request, opType, lwMap, workMap, equipment, repeatComment);
+        return record(user, request, opType, lwMap, workMap, equipment, comments);
     }
 
     /**
@@ -163,20 +220,24 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
             return null;
         }
         OperationType opType = loadOpType(problems, opName);
-        if (opType!=null && (!opType.inPlace() || precedingOpTypeName(opType)==null)) {
+        if (opType!=null && (!opType.inPlace() || getTech(opType)==null)) {
             problems.add("The specified operation type "+opType.getName()+" cannot be used in this operation.");
         }
         return opType;
     }
 
-    /**
-     * What is the name of the operation type required to precede the given op type?
-     * @param opType the op type being performed
-     * @return the name of the required preceding op type, or null
-     */
-    public String precedingOpTypeName(OperationType opType) {
-        if (opType!=null && opType.getName().equalsIgnoreCase(ANALYSER_OP_NAME)) {
-            return PROBE_HYBRIDISATION_NAME;
+    /** Gets the tech for the op type, or null */
+    public Tech getTech(OperationType opType) {
+        return opType==null ? null : Tech.forOpName(opType.getName());
+    }
+
+    /** Gets the run name validator for the tech */
+    public Validator<String> runNameValidator(Tech tech) {
+        if (tech != null) {
+            return switch (tech) {
+                case xenium -> xeniumRunNameValidator;
+                case atera -> ateraRunNameValidator;
+            };
         }
         return null;
     }
@@ -184,13 +245,13 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
     /**
      * Loads operations of whatever the op type is that must precede the specified op type.
      * @param problems receptacle for problems
-     * @param opType the type of operation currently being performed
+     * @param tech the tech of this operation
      * @param labware the labware being worked on
      * @return a map of labware id to the relevant prior operation, if found
      */
-    public Map<Integer, Operation> loadPriorOps(Collection<String> problems, OperationType opType,
+    public Map<Integer, Operation> loadPriorOps(Collection<String> problems, Tech tech,
                                                 Collection<Labware> labware) {
-        String priorOpName = precedingOpTypeName(opType);
+        String priorOpName = (tech == null ? null : tech.getPrecedingOpName());
         if (priorOpName==null) {
             return Map.of();
         }
@@ -234,11 +295,17 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
     }
 
     /**
-     * Checks cassette positions are specified and unique.
+     * Checks cassette positions are specified and unique; or absent if not required.
      * @param problems receptacle for problems
      * @param als request including cassette positions
+     * @param required whether cassette positions are required
      */
-    public void checkCassettePositions(Collection<String> problems, List<AnalyserLabware> als) {
+    public void checkCassettePositions(Collection<String> problems, List<AnalyserLabware> als, boolean required) {
+        if (!required) {
+            als.stream().map(AnalyserLabware::getPosition).filter(Objects::nonNull).findFirst()
+                    .ifPresent(pos -> problems.add("Cassette position " + pos + " not expected for this operation."));
+            return;
+        }
         Set<CassettePosition> positions = EnumSet.noneOf(CassettePosition.class);
         Set<CassettePosition> repeated = EnumSet.noneOf(CassettePosition.class);
         boolean anyMissing = false;
@@ -250,7 +317,37 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
             }
         }
         if (anyMissing) {
-            problems.add("Cassette position not specified.");
+            problems.add("Left or right cassette position not specified.");
+        }
+        if (!repeated.isEmpty()) {
+            problems.add("Cassette position specified multiple times: "+repeated);
+        }
+    }
+
+    /**
+     * Checks position indexes are specified and unique; or absent if not required.
+     * @param problems receptacle for problems
+     * @param als request including position indexes
+     * @param required whether indexes are required
+     */
+    void checkPositionIndex(Collection<String> problems, List<AnalyserLabware> als, boolean required) {
+        if (!required) {
+            als.stream().map(AnalyserLabware::getIndex).filter(Objects::nonNull).findFirst()
+                    .ifPresent(pos -> problems.add("Cassette position " + pos + " not expected for this operation."));
+            return;
+        }
+        Set<Integer> indexes = new HashSet<>();
+        Set<Integer> repeated = new HashSet<>();
+        boolean anyMissing = false;
+        for (AnalyserLabware al : als) {
+            if (al.getIndex()==null) {
+                anyMissing = true;
+            } else if (!indexes.add(al.getIndex())) {
+                repeated.add(al.getIndex());
+            }
+        }
+        if (anyMissing) {
+            problems.add("Numerical cassette position not specified.");
         }
         if (!repeated.isEmpty()) {
             problems.add("Cassette position specified multiple times: "+repeated);
@@ -292,6 +389,26 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
                 checkLabwareSamples(problems, lw, al.getSamples());
             }
         }
+    }
+
+    /**
+     * Loads and checks the optional work type comment
+     * @param problems receptacle for problems
+     * @param workTypeCommentId the id of a comment with the appropriate category
+     * @return the comment, or null if not found
+     * @see #ATERA_RUN_WORK_TYPE_CATEGORY
+     */
+    public Comment checkWorkType(Collection<String> problems, Integer workTypeCommentId) {
+        if (workTypeCommentId == null) {
+            return null;
+        }
+        Comment comment = commentRepo.findById(workTypeCommentId).orElse(null);
+        if (comment==null) {
+            problems.add("Invalid work type id: "+workTypeCommentId);
+        } else if (!comment.getCategory().equalsIgnoreCase(ATERA_RUN_WORK_TYPE_CATEGORY)) {
+            problems.add("Specified comment is not a work type: "+comment);
+        }
+        return comment;
     }
 
     /**
@@ -360,9 +477,11 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
     }
 
     /** Validates the decoding reagent lot number */
-    public void validateLot(Collection<String> problems, String lot) {
+    public void validateLot(Collection<String> problems, Tech tech, String lot) {
         if (isBlank(lot)) {
-            problems.add("Missing lot number.");
+            if (tech != null && tech.isDecodingLotRequired()) {
+                problems.add("Missing lot number.");
+            }
         } else {
             decodingReagentLotValidator.validate(lot, problems::add);
         }
@@ -392,12 +511,15 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
     }
 
     /** Validates the run name */
-    public void validateRunName(Collection<String> problems, String runName) {
+    public void validateRunName(Collection<String> problems, Tech tech, String runName) {
         if (isBlank(runName)) {
             problems.add("Missing run name.");
-        } else if (runNameValidator.validate(runName, problems::add)) {
-            if (lwNoteRepo.existsByNameAndValue(RUN_NAME, runName)) {
-                problems.add("Run name already used: "+repr(runName));
+        } else {
+            Validator<String> validator = runNameValidator(tech);
+            if (validator == null || validator.validate(runName, problems::add)) {
+                if (lwNoteRepo.existsByNameAndValue(RUN_NAME, runName)) {
+                    problems.add("Run name already used: "+repr(runName));
+                }
             }
         }
     }
@@ -438,22 +560,23 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
      * @param request the operation request
      * @param opType the type of operation to record
      * @param lwMap the labware mapped from barcodes
-     * @param equipment the equipment used in this operation
      * @param workMap the work mapped from work numbers
+     * @param equipment the equipment used in this operation
+     * @param comments the comments to record
      * @return the labware and operations recorded
      */
     public OperationResult record(User user, AnalyserRequest request, OperationType opType,
-                                  UCMap<Labware> lwMap, UCMap<Work> workMap, Equipment equipment, Comment repeatComment) {
-        String lotA = request.getLotNumberA().trim();
-        String lotB = request.getLotNumberB().trim();
-        String run = request.getRunName().trim();
-        String cellSegmentationLot = nullOrEmpty(request.getCellSegmentationLot()) ? null : request.getCellSegmentationLot().trim();
+                                  UCMap<Labware> lwMap, UCMap<Work> workMap, Equipment equipment, List<Comment> comments) {
+        String lotA = trimToNull(request.getLotNumberA());
+        String lotB = trimToNull(request.getLotNumberB());
+        String run = trimToNull(request.getRunName());
+        String cellSegmentationLot = trimToNull(request.getCellSegmentationLot());
         final int numLw = request.getLabware().size();
         List<Labware> labware = new ArrayList<>(numLw);
         List<Operation> ops = new ArrayList<>(numLw);
         UCMap<List<Operation>> workOps = new UCMap<>();
 
-        List<LabwareNote> lwNotes = new ArrayList<>();
+        final List<LabwareNote> lwNotes = new ArrayList<>();
         List<Roi> rois = new ArrayList<>();
         Consumer<Operation> opModifier = op -> op.setEquipment(equipment);
         for (AnalyserLabware al : request.getLabware()) {
@@ -461,16 +584,19 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
             Work work = workMap.get(al.getWorkNumber());
             Operation op = opService.createOperationInPlace(opType, user, lw, null, opModifier);
             workOps.computeIfAbsent(work.getWorkNumber(), k -> new ArrayList<>(numLw)).add(op);
-            lwNotes.add(new LabwareNote(null, lw.getId(), op.getId(), RUN_NAME, run));
-            lwNotes.add(new LabwareNote(null, lw.getId(), op.getId(), LOT_A_NAME, lotA));
-            lwNotes.add(new LabwareNote(null, lw.getId(), op.getId(), LOT_B_NAME, lotB));
-            if (cellSegmentationLot != null) {
-                lwNotes.add(new LabwareNote(null, lw.getId(), op.getId(), CELL_SEGMENTATION_LOT_NAME, cellSegmentationLot));
-            }
-            if (al.getDecodingConsumablesLot()!=null) {
-                lwNotes.add(new LabwareNote(null, lw.getId(), op.getId(), DECODING_CONSUMABLES_LOT_NAME, al.getDecodingConsumablesLot()));
-            }
-            lwNotes.add(new LabwareNote(null, lw.getId(), op.getId(), POSITION_NAME, al.getPosition().toString()));
+            Arrays.stream(new Object[][] {
+                    {RUN_NAME, run},
+                    {LOT_A_NAME, lotA}, {LOT_B_NAME, lotB},
+                    {CELL_SEGMENTATION_LOT_NAME, cellSegmentationLot},
+                    {DECODING_CONSUMABLES_LOT_NAME, trimToNull(al.getDecodingConsumablesLot())},
+                    {POSITION_NAME, coalesce(al.getPosition(), al.getIndex())},
+            }).forEach(noteData -> {
+                String name = (String) noteData[0];
+                Object value = noteData[1];
+                if (value != null) {
+                    lwNotes.add(new LabwareNote(null, lw.getId(), op.getId(), name, value.toString()));
+                }
+            });
             addRois(rois, op.getId(), lw, al.getSamples());
             labware.add(lw);
             ops.add(op);
@@ -487,11 +613,11 @@ public class AnalyserServiceImp extends BaseResultService implements AnalyserSer
             ops.forEach(op -> op.setPerformed(request.getPerformed()));
             opRepo.saveAll(ops);
         }
-
-        if (request.isRepeat() && repeatComment != null) {
-            List<OperationComment> opcoms = Zip.of(ops.stream(), labware.stream()).map((Operation op, Labware lw) ->
-                new OperationComment(null, repeatComment, op.getId(), null, null, lw.getId())
-            ).toList();
+        if (!nullOrEmpty(comments)) {
+            List<OperationComment> opcoms = comments.stream()
+                    .flatMap(com -> Zip.of(ops.stream(), labware.stream()).map((op, lw) ->
+                                    new OperationComment(null, com, op.getId(), null, null, lw.getId())
+                    )).toList();
             opComRepo.saveAll(opcoms);
         }
 

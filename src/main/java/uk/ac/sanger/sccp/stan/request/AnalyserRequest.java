@@ -96,16 +96,18 @@ public class AnalyserRequest {
         private String barcode;
         private String workNumber;
         private CassettePosition position;
+        private Integer index;
         private String decodingConsumablesLot;
         private List<SampleROI> samples = List.of();
 
         public AnalyserLabware() {}
 
         public AnalyserLabware(String barcode, String workNumber, CassettePosition position,
-                               String decodingConsumablesLot, List<SampleROI> samples) {
+                               Integer index, String decodingConsumablesLot, List<SampleROI> samples) {
             this.barcode = barcode;
             this.workNumber = workNumber;
             this.position = position;
+            this.index = index;
             this.decodingConsumablesLot = decodingConsumablesLot;
             setSamples(samples);
         }
@@ -141,6 +143,15 @@ public class AnalyserRequest {
 
         public void setPosition(CassettePosition position) {
             this.position = position;
+        }
+
+        /** The index of the cassette in the machine */
+        public Integer getIndex() {
+            return this.index;
+        }
+
+        public void setIndex(Integer index) {
+            this.index = index;
         }
 
         /** The decoding consumables lot number. */
@@ -196,6 +207,7 @@ public class AnalyserRequest {
     private String cellSegmentationLot;
     private List<AnalyserLabware> labware = List.of();
     private boolean repeat = false;
+    private Integer workTypeCommentId;
 
     public AnalyserRequest() {}
 
@@ -308,6 +320,14 @@ public class AnalyserRequest {
         this.repeat = repeat;
     }
 
+    public Integer getWorkTypeCommentId() {
+        return this.workTypeCommentId;
+    }
+
+    public void setWorkTypeCommentId(Integer workTypeCommentId) {
+        this.workTypeCommentId = workTypeCommentId;
+    }
+
     @Override
     public String toString() {
         return BasicUtils.describe("AnalyserRequest")
@@ -319,6 +339,7 @@ public class AnalyserRequest {
                 .add("cellSegmentationLot", cellSegmentationLot)
                 .add("labware", labware)
                 .add("repeat", repeat)
+                .add("workTypeCommentId", workTypeCommentId)
                 .reprStringValues()
                 .toString();
     }
@@ -335,6 +356,7 @@ public class AnalyserRequest {
                 && Objects.equals(this.performed, that.performed)
                 && Objects.equals(this.cellSegmentationLot, that.cellSegmentationLot)
                 && Objects.equals(this.labware, that.labware)
+                && Objects.equals(this.workTypeCommentId, that.workTypeCommentId)
                 && this.repeat == that.repeat
         );
     }
