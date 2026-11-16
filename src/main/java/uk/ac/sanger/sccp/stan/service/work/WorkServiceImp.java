@@ -77,8 +77,8 @@ public class WorkServiceImp implements WorkService {
     public Work createWork(User user, String prefix, Collection<String> workTypeNames, String workRequesterName, String projectName,
                            String programName, String costCode,
                            Integer numBlocks, Integer numSlides, Integer numOriginalSamples,
-                           String omeroProjectName, Integer ssStudyId, Integer xeniumStudyId, String facultyLead,
-                           Collection<String> treatmentTypeNames) {
+                           String omeroProjectName, Integer ssStudyId, Integer xeniumStudyId, Integer ateraStudyId,
+                           String facultyLead, Collection<String> treatmentTypeNames) {
         checkPrefix(prefix);
 
         Project project = projectRepo.getByName(projectName);
@@ -96,6 +96,7 @@ public class WorkServiceImp implements WorkService {
         }
         DnapStudy dnapStudy = loadDnapStudy(ssStudyId);
         DnapStudy xeniumStudy = loadDnapStudy(xeniumStudyId);
+        DnapStudy ateraStudy = loadDnapStudy(ateraStudyId);
         if (numBlocks!=null && numBlocks < 0) {
             throw new IllegalArgumentException("Number of blocks cannot be a negative number.");
         }
@@ -119,7 +120,7 @@ public class WorkServiceImp implements WorkService {
         Set<TreatmentType> treatmentTypes = nullOrEmpty(treatmentTypeNames) ? Set.of() : treatmentTypeRepo.getSetByNameIn(treatmentTypeNames);
         String workNumber = workRepo.createNumber(prefix);
         Work work = workRepo.save(new Work(null, workNumber, workTypes, workRequester, project, program, cc, Status.unstarted,
-                numBlocks, numSlides, numOriginalSamples, null, omeroProject, dnapStudy, xeniumStudy, leadDest, treatmentTypes));
+                numBlocks, numSlides, numOriginalSamples, null, omeroProject, dnapStudy, xeniumStudy, ateraStudy, leadDest, treatmentTypes));
         workEventService.recordEvent(user, work, WorkEvent.Type.create, null);
         return work;
     }
@@ -256,15 +257,15 @@ public class WorkServiceImp implements WorkService {
                      Function<Work, DnapStudy> getter, BiConsumer<Work, DnapStudy> setter) {
         Work work = workRepo.getByWorkNumber(workNumber);
         checkAuthorisation(user, work);
-        final DnapStudy curWork = getter.apply(work);
+        final DnapStudy curStudy = getter.apply(work);
         if (ssStudyId == null) {
-            if (curWork != null) {
+            if (curStudy != null) {
                 setter.accept(work, null);
                 work = workRepo.save(work);
             }
         } else {
             DnapStudy dnapStudy = dnapStudyRepo.getBySsId(ssStudyId);
-            if (curWork == null || !curWork.equals(dnapStudy)) {
+            if (curStudy == null || !curStudy.equals(dnapStudy)) {
                 if (!dnapStudy.isEnabled()) {
                     throw new IllegalArgumentException("DNAP study is disabled: "+dnapStudy);
                 }
@@ -283,6 +284,11 @@ public class WorkServiceImp implements WorkService {
     @Override
     public Work updateWorkDnapStudy(User user, String workNumber, Integer ssStudyId) {
         return updateStudy(user, workNumber, ssStudyId, Work::getDnapStudy, Work::setDnapStudy);
+    }
+
+    @Override
+    public Work updateWorkAteraStudy(User user, String workNumber, Integer ssStudyId) {
+        return updateStudy(user, workNumber, ssStudyId, Work::getAteraStudy, Work::setAteraStudy);
     }
 
     @Override

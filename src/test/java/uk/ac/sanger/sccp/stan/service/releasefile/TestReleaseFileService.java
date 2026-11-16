@@ -1444,7 +1444,7 @@ public class TestReleaseFileService {
                 .collect(toList());
         Set<Integer> slotIds = Arrays.stream(lws).map(lw -> lw.getFirstSlot().getId()).collect(toSet());
         Operation op = EntityFactory.makeOpForLabware(opType, List.of(lws[0]), List.of(lws[0]));
-        op.setEquipment(new Equipment("Xenium 1", AnalyserServiceImp.EQUIPMENT_CATEGORY));
+        op.setEquipment(new Equipment("Xenium 1", AnalyserServiceImp.Tech.xenium.getEquipmentType()));
         List<Operation> ops = List.of(op);
         when(mockOpRepo.findAllByOperationTypeAndDestinationSlotIdIn(any(), any())).thenReturn(ops);
 

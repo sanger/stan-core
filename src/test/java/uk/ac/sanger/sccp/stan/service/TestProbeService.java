@@ -19,14 +19,13 @@ import uk.ac.sanger.sccp.utils.Zip;
 
 import java.time.*;
 import java.util.*;
-import java.util.function.Consumer;
+import java.util.function.*;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static uk.ac.sanger.sccp.stan.Matchers.*;
 import static uk.ac.sanger.sccp.stan.service.ProbeServiceImp.CASSETTE_LOT_NAME;
@@ -54,9 +53,13 @@ public class TestProbeService {
     @Mock
     private LabwareNoteRepo mockNoteRepo;
     @Mock
+    private OperationCommentRepo mockOpComRepo;
+    @Mock
     private OperationService mockOpService;
     @Mock
     private WorkService mockWorkService;
+    @Mock
+    private CommentValidationService mockCommentValidationService;
     @Mock
     private Validator<String> mockProbeLotValidator;
     @Mock
@@ -66,7 +69,6 @@ public class TestProbeService {
     @Mock
     private Clock mockClock;
 
-    @InjectMocks
     private ProbeServiceImp service;
 
     private AutoCloseable mocking;
@@ -75,14 +77,35 @@ public class TestProbeService {
     @BeforeEach
     void setUp() {
         mocking = MockitoAnnotations.openMocks(this);
-        service = spy(new ProbeServiceImp(mockLwValFac, mockLwRepo, mockOpTypeRepo, mockOpRepo,
-                mockProbePanelRepo, mockLwProbeRepo, mockNoteRepo, mockOpService, mockWorkService,
-                mockProbeLotValidator, mockReagentLotValidator, mockCassetteLotValidator, mockClock));
+        service = spy(new ProbeServiceImp(mockLwValFac, mockLwRepo, mockOpTypeRepo, mockOpRepo, mockProbePanelRepo,
+                mockLwProbeRepo, mockNoteRepo, mockOpComRepo,
+                mockOpService, mockWorkService, mockCommentValidationService, mockProbeLotValidator,
+                mockReagentLotValidator, mockCassetteLotValidator, mockClock));
     }
 
     @AfterEach
     void tearDown() throws Exception {
         mocking.close();
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "Probe hybridisation Xenium, xenium",
+            "Probe hybridisation Cytassist, cytassist",
+            "Probe hybridisation Atera, atera",
+            "Beep boop,",
+            ",",
+    })
+    void testOpProbeType(String opName, String probeTypeName) {
+        OperationType opType = nullOrEmpty(opName) ? null : EntityFactory.makeOperationType(opName, null);
+        ProbeType probeType = service.opProbeType(opType);
+        if (nullOrEmpty(probeTypeName)) {
+            assertNull(probeType);
+        } else {
+            assertNotNull(probeType);
+            assertEquals(probeTypeName, probeType.name());
+        }
+
     }
 
     @ParameterizedTest
@@ -103,15 +126,18 @@ public class TestProbeService {
         doReturn(ppMap).when(service).validateProbes(any(), any(), any());
         UCMap<ProbePanel> spikeMap = UCMap.from(ProbePanel::getName, new ProbePanel(ProbeType.spike, "william"));
         doReturn(spikeMap).when(service).checkSpikes(any(), any());
+        Map<Integer, Comment> commentMap = Map.of(1, new Comment(1, "com", "cat"));
+        doReturn(commentMap).when(service).checkReagentTypeCommentId(any(), any());
         doNothing().when(service).validateTimestamp(any(), any(), any());
         doNothing().when(service).checkReagentLots(any(), any());
         doNothing().when(service).checkCassetteLots(any(), any());
 
         if (nullOrEmpty(expectedProblems)) {
             OperationResult opres = new OperationResult(List.of(), List.of(lw));
-            doReturn(opres).when(service).perform(any(), any(), any(), any(), any(), any(), any(), any());
+            doReturn(opres).when(service).perform(any(), any(), any(), any(), any(), any(), any(), any(), any());
             assertSame(opres, service.recordProbeOperation(user, request));
-            verify(service).perform(user, request.getLabware(), opType, request.getPerformed(), lwMap, ppMap, spikeMap, workMap);
+            verify(service).perform(user, request.getLabware(), opType, request.getPerformed(), lwMap, ppMap, spikeMap,
+                    workMap, commentMap);
         } else {
             assertValidationException(() -> service.recordProbeOperation(user, request), expectedProblems);
         }
@@ -143,6 +169,7 @@ public class TestProbeService {
         verify(service).checkSpikes(any(), same(pols));
         verify(service).checkReagentLots(any(), eq(pols));
         verify(service).checkCassetteLots(any(), eq(pols));
+        verify(service).checkReagentTypeCommentId(any(), eq(pols));
         if (request.getPerformed()==null) {
             verify(service, never()).validateTimestamp(any(), any(), any());
         } else {
@@ -180,7 +207,7 @@ public class TestProbeService {
         verify(service).checkReagentLots(any(), same(request.getLabware()));
         verify(service).checkCassetteLots(any(), same(request.getLabware()));
         verify(service).validateTimestamp(any(), same(request.getPerformed()), same(lwMap));
-        verify(service, never()).perform(any(), any(), any(), any(), any(), any(), any(), any());
+        verify(service, never()).perform(any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     static Stream<Arguments> recordProbeOperationArgs() {
@@ -320,6 +347,42 @@ public class TestProbeService {
         assertProblem(problems, expectedProblem);
     }
 
+    @ParameterizedTest
+    @CsvSource({
+            ",true",
+            ",false",
+            "Bad comment,false",
+    })
+    void testCheckReagentTypeCommentId(String valError, boolean rightCategory) {
+        List<String> problems = new ArrayList<>();
+        List<ProbeOperationLabware> pols = IntStream.rangeClosed(1,3).mapToObj(
+                i -> new ProbeOperationLabware("bc"+i, null, null, null, null, null, null)
+        ).toList();
+        pols.getFirst().setReagentTypeCommentId(3);
+        pols.getLast().setReagentTypeCommentId(4);
+        final String CAT = ProbeServiceImp.REAGENT_TYPE_COMMENT_CATEGORY;
+        List<Comment> comments = List.of(new Comment(4, "com4", CAT),
+                new Comment(5, "com5", CAT));
+        if (!rightCategory) {
+            comments.getLast().setCategory("Bad category");
+        }
+        mayAddProblem(valError, comments).when(mockCommentValidationService).validateCommentIds(any(), any());
+
+        Map<Integer, Comment> commentMap = service.checkReagentTypeCommentId(problems, pols);
+        ArgumentCaptor<Stream<Integer>> commentIdsCaptor = streamCaptor();
+        verify(mockCommentValidationService).validateCommentIds(any(), commentIdsCaptor.capture());
+        assertThat(commentIdsCaptor.getValue()).containsExactly(3, 4);
+        if (rightCategory) {
+            assertProblem(problems, valError);
+        } else if (valError != null) {
+            assertThat(problems).containsExactly(valError, "Reagent type comment ID must be a comment in the category "+CAT+".");
+        } else {
+            assertThat(problems).containsExactly("Reagent type comment ID must be a comment in the category "+CAT+".");
+        }
+        assertThat(commentMap.values()).containsExactlyInAnyOrderElementsOf(comments);
+        comments.forEach(c -> assertSame(commentMap.get(c.getId()), c));
+    }
+
     @Test
     public void testCheckReagentLots() {
         when(mockReagentLotValidator.validate(any(), any())).then(invocation -> {
@@ -348,6 +411,33 @@ public class TestProbeService {
             }
         }
         verify(mockReagentLotValidator, never()).validate(isNull(), any());
+    }
+
+    @Test
+    void testCheckCassetteLots() {
+        doNothing().when(service).checkLots(any(), any(), any(), any(), any());
+        ArgumentCaptor<Stream<ProbeOperationLabware>> itemStreamCaptor = streamCaptor();
+        ArgumentCaptor<Function<ProbeOperationLabware, String>> getterCaptor = genericCaptor(Function.class);
+        ArgumentCaptor<BiConsumer<ProbeOperationLabware, String>> setterCaptor = genericCaptor(BiConsumer.class);
+        List<ProbeOperationLabware> pols = List.of(new ProbeOperationLabware(), new ProbeOperationLabware());
+        pols.getFirst().setCassetteLot("Alpha");
+        pols.getLast().setCassetteLot("Omega");
+        List<String> problems = new ArrayList<>();
+
+        service.checkCassetteLots(problems, pols);
+
+        verify(service).checkLots(same(problems), same(mockCassetteLotValidator), itemStreamCaptor.capture(), getterCaptor.capture(), setterCaptor.capture());
+
+        var getter = getterCaptor.getValue();
+        var setter = setterCaptor.getValue();
+        // test that getter and setter are the correct functions
+        ProbeOperationLabware pol = pols.getFirst();
+        assertEquals("Alpha", getter.apply(pol));
+        setter.accept(pol, "Beta");
+        assertEquals("Beta", pol.getCassetteLot());
+        assertEquals("Beta", getter.apply(pol));
+
+        assertThat(itemStreamCaptor.getValue()).containsExactlyElementsOf(pols);
     }
 
     @Test
@@ -469,6 +559,7 @@ public class TestProbeService {
         UCMap<ProbePanel> ppMap = UCMap.from(ProbePanel::getName, new ProbePanel(probeType, "banana"));
         UCMap<ProbePanel> spikeMap = UCMap.from(ProbePanel::getName, new ProbePanel(ProbeType.spike, "william"));
         UCMap<Work> workMap = UCMap.from(Work::getWorkNumber, EntityFactory.makeWork("SGP1"));
+        Map<Integer, Comment> commentMap = Map.of(1, new Comment(1, "com", "cat"));
         UCMap<Operation> lwOps = new UCMap<>();
         lwOps.put("STAN1", new Operation());
         doReturn(lwOps).when(service).makeOps(any(), any(), any(), any(), any());
@@ -476,15 +567,17 @@ public class TestProbeService {
         doNothing().when(service).saveProbes(any(), any(), any(), any(), any());
         doNothing().when(service).saveLabwareLots(any(), any(), any());
         doNothing().when(service).saveKitCostings(any(), any(), any());
+        doNothing().when(service).saveReagentTypeComments(any(), any(), any(), any());
         OperationResult opres = new OperationResult(List.of(), List.of());
         doReturn(opres).when(service).assembleResult(any(), any(), any());
 
-        assertSame(opres, service.perform(user, pols, opType, time, lwMap, ppMap, spikeMap, workMap));
+        assertSame(opres, service.perform(user, pols, opType, time, lwMap, ppMap, spikeMap, workMap, commentMap));
         verify(service).makeOps(user, opType, pols, lwMap, time);
         verify(service).linkWork(pols, lwOps, workMap);
         verify(service).saveProbes(pols, lwOps, lwMap, ppMap, spikeMap);
         verify(service).saveLabwareLots(pols, lwMap, lwOps);
         verify(service).saveKitCostings(pols, lwMap, lwOps);
+        verify(service).saveReagentTypeComments(pols, lwMap, lwOps, commentMap);
         verify(service).assembleResult(pols, lwMap, lwOps);
     }
 
@@ -693,6 +786,31 @@ public class TestProbeService {
         } else {
             verifyNoInteractions(mockNoteRepo);
         }
+    }
+
+    @Test
+    void testSaveReagentTypeComments() {
+        Comment[] comments = {new Comment(3, "com3", "cat"), new Comment(4, "com4", "cat")};
+        Map<Integer, Comment> commentMap = Map.of(3, comments[0], 4, comments[1]);
+        LabwareType lt = EntityFactory.getTubeType();
+        Labware[] lws = IntStream.range(0, 3).mapToObj(i -> EntityFactory.makeEmptyLabware(lt)).toArray(Labware[]::new)   ;
+        UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, lws);
+        Operation[] ops = IntStream.rangeClosed(1, 3).mapToObj(id -> {
+            Operation op = new Operation();
+            op.setId(id);
+            return op;
+        }).toArray(Operation[]::new);
+        UCMap<Operation> lwOps = new UCMap<>(lwMap.size());
+        Zip.of(Arrays.stream(lws), Arrays.stream(ops)).forEach((lw, op) -> lwOps.put(lw.getBarcode(), op));
+
+        List<ProbeOperationLabware> pols = Arrays.stream(lws).map(lw -> new ProbeOperationLabware(lw.getBarcode(), null, SlideCosting.SGP, null, null, null, null)).toList();
+        pols.get(0).setReagentTypeCommentId(3);
+        pols.get(2).setReagentTypeCommentId(4);
+
+        service.saveReagentTypeComments(pols, lwMap, lwOps, commentMap);
+        List<OperationComment> expectedOpComs = List.of(new OperationComment(null, comments[0], ops[0].getId(), null, null, lws[0].getId()),
+                new OperationComment(null, comments[1], ops[2].getId(), null, null, lws[2].getId()));
+        verify(mockOpComRepo).saveAll(expectedOpComs);
     }
 
     @Test

@@ -81,6 +81,7 @@ enum FlagPriority {
 enum ProbeType {
     xenium
     cytassist
+    atera
     spike
 }
 
@@ -1343,6 +1344,8 @@ type Work {
     dnapStudy: DnapStudy
     """The xenium study for this work, if any."""
     xeniumStudy: DnapStudy
+    """The atera study for this work, if any."""
+    ateraStudy: DnapStudy
     """The faculty lead for this work, if any."""
     facultyLead: ReleaseDestination
     """The treatment types for this work, if any."""
@@ -2043,6 +2046,8 @@ input ProbeOperationLabware {
     spike: String
     """Optional list of slot addresses to include in operation."""
     addresses: [Address!]
+    """Comment id indicating the sample prep reagent type."""
+    reagentTypeCommentId: Int
 }
 
 """The probe used on a piece of labware in an operation."""
@@ -2074,7 +2079,9 @@ input AnalyserLabware {
     """The work number for the labware."""
     workNumber: String!
     """The cassette position for the labware."""
-    position: CassettePosition!
+    position: CassettePosition
+    """The index of the cassette in the machine."""
+    index: Int
     """Decoding consumables lot number."""
     decodingConsumablesLot: String
     """The sample regions of interest in this labware."""
@@ -2086,9 +2093,9 @@ input AnalyserRequest {
     """The name of the operation type to record."""
     operationType: String!
     """The lot number for the decoding reagents A."""
-    lotNumberA: String!
+    lotNumberA: String
     """The lot number for the decoding reagents B."""
-    lotNumberB: String!
+    lotNumberB: String
     """The run name."""
     runName: String!
     """The time at which this operation was performed."""
@@ -2101,6 +2108,8 @@ input AnalyserRequest {
     cellSegmentationLot: String
     """Is this request a repeat?"""
     repeat: Boolean
+    """Comment id for the work type."""
+    workTypeCommentId: Int
 }
 
 """A region of interest for a sample in an operation."""
@@ -2618,7 +2627,8 @@ type Mutation {
     """Create a new work, which will be allocated a new work number with the given prefix."""
     createWork(prefix: String!, workTypes: [String!]!, workRequester: String!, project: String!, program: String!,
         costCode: String!, numBlocks: Int, numSlides: Int, numOriginalSamples: Int, omeroProject: String,
-        ssStudyId: Int, xeniumStudyId: Int, facultyLead: String!, treatmentTypes: [String!]): Work!
+        ssStudyId: Int, xeniumStudyId: Int, ateraStudyId: Int,
+        facultyLead: String!, treatmentTypes: [String!]): Work!
     """Update the status of an existing work."""
     updateWorkStatus(workNumber: String!, status: WorkStatus!, commentId: Int): WorkWithComment!
     """Update the number of blocks field in a work."""
@@ -2637,6 +2647,8 @@ type Mutation {
     updateWorkTreatmentTypes(workNumber: String!, treatmentTypes: [String!]!): Work!
     """Update the Xenium study of a work."""
     updateWorkXeniumStudy(workNumber: String!, ssStudyId: Int): Work!
+    """Update the Atera study of a work."""
+    updateWorkAteraStudy(workNumber: String!, ssStudyId: Int): Work!
     """Update the work types of a work."""
     updateWorkWorkTypes(workNumber: String!, workTypes: [String!]!): Work!
     """Updates Stan's internal list of Dnap Studies, and returns the enabled ones."""

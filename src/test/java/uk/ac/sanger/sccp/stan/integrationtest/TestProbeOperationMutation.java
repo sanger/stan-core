@@ -11,7 +11,7 @@ import uk.ac.sanger.sccp.stan.GraphQLTester;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.service.CompletionServiceImp;
-import uk.ac.sanger.sccp.stan.service.operation.AnalyserServiceImp;
+import uk.ac.sanger.sccp.stan.service.operation.AnalyserServiceImp.Tech;
 import uk.ac.sanger.sccp.utils.UCMap;
 
 import javax.transaction.Transactional;
@@ -19,8 +19,7 @@ import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
-import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGet;
-import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGetList;
+import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.*;
 import static uk.ac.sanger.sccp.utils.BasicUtils.stream;
 
 /**
@@ -47,9 +46,11 @@ public class TestProbeOperationMutation {
     @Autowired
     LabwareNoteRepo lwNoteRepo;
     @Autowired
-    private EquipmentRepo equipmentRepo;
+    EquipmentRepo equipmentRepo;
     @Autowired
-    private RoiMetricRepo roiMetricRepo;
+    RoiMetricRepo roiMetricRepo;
+    @Autowired
+    CommentRepo commentRepo;
 
     @Test
     @Transactional
@@ -71,7 +72,7 @@ public class TestProbeOperationMutation {
 
         String opMutation = tester.readGraphQL("recordprobeoperation.graphql").replace("SGP1", work.getWorkNumber());
         result = tester.post(opMutation);
-
+        assertNoErrors(result);
         assertEquals("STAN-1", chainGet(result, "data", "recordProbeOperation", "labware", 0, "barcode"));
         Integer opId = chainGet(result, "data", "recordProbeOperation", "operations", 0, "id");
         Operation op = opRepo.findById(opId).orElseThrow();
@@ -129,8 +130,8 @@ public class TestProbeOperationMutation {
     }
 
     private void testAnalyser(Labware lw, Work work, Sample sample) throws Exception {
-        entityCreator.createOpType(AnalyserServiceImp.ANALYSER_OP_NAME, null, OperationTypeFlag.IN_PLACE);
-        Equipment equipment =  equipmentRepo.save(new Equipment("Xenium 1", AnalyserServiceImp.EQUIPMENT_CATEGORY));
+        entityCreator.createOpType(Tech.xenium.getOpName(), null, OperationTypeFlag.IN_PLACE);
+        Equipment equipment =  equipmentRepo.save(new Equipment("Xenium 1", Tech.xenium.getEquipmentType()));
         String mutation = tester.readGraphQL("recordanalyser.graphql")
                 .replace("SGP1", work.getWorkNumber())
                 .replace("555", String.valueOf(sample.getId()))
@@ -207,5 +208,66 @@ public class TestProbeOperationMutation {
         assertEquals(opId, note.getOperationId());
         assertEquals("run", note.getName());
         assertEquals("RUN1", note.getValue());
+    }
+
+    @Test
+    @Transactional
+    public void testRecordProbeAtera() throws Exception {
+        User user = entityCreator.createUser("user1");
+        String addProbeMutation = tester.readGraphQL("createprobepanels.graphql")
+                        .replace("type: xenium", "type: atera");
+        tester.setUser(user);
+        Object result = tester.post(addProbeMutation.replace("PROBENAME", "probe1"));
+        assertNoErrors(result);
+        assertEquals("probe1", chainGet(result, "data", "addProbePanel", "name"));
+        result = tester.post(addProbeMutation.replace("PROBENAME", "probe2"));
+        assertNoErrors(result);
+        assertEquals("probe2", chainGet(result, "data", "addProbePanel", "name"));
+
+        OperationType opType = entityCreator.createOpType("Probe hybridisation Atera", null, OperationTypeFlag.PROBES, OperationTypeFlag.IN_PLACE);
+        Sample sample = entityCreator.createSample(null, null);
+        Labware lw = entityCreator.createLabware("STAN-1", entityCreator.getTubeType(), sample);
+        Work work = entityCreator.createWork(null, null, null, null, null);
+        Comment comment = commentRepo.save(new Comment(null, "com1", "sample prep reagent type"));
+
+        String opMutation = tester.readGraphQL("recordprobeatera.graphql")
+                .replace("SGP1", work.getWorkNumber())
+                .replace("99", String.valueOf(comment.getId()))
+                ;
+        result = tester.post(opMutation);
+        assertNoErrors(result);
+
+        assertEquals("STAN-1", chainGet(result, "data", "recordProbeOperation", "labware", 0, "barcode"));
+        Integer opId = chainGet(result, "data", "recordProbeOperation", "operations", 0, "id");
+        Operation op = opRepo.findById(opId).orElseThrow();
+        assertEquals(opType, op.getOperationType());
+        List<LabwareProbe> lwProbes = lwProbeRepo.findAllByOperationIdIn(List.of(opId));
+        assertThat(lwProbes).hasSize(2);
+        for (LabwareProbe lwp : lwProbes) {
+            assertEquals(opId, lwp.getOperationId());
+            assertEquals(lw.getId(), lwp.getLabwareId());
+            assertNull(lwp.getPlex());
+        }
+        LabwareProbe lwp = lwProbes.getFirst();
+        assertEquals("probe1", lwp.getProbePanel().getName());
+        assertEquals("LOT1", lwp.getLotNumber());
+        assertEquals(SlideCosting.Faculty, lwp.getCosting());
+        lwp = lwProbes.get(1);
+        assertEquals("probe2", lwp.getProbePanel().getName());
+        assertEquals("LOT2", lwp.getLotNumber());
+        assertEquals(SlideCosting.Warranty_replacement, lwp.getCosting());
+        List<LabwareNote> notes = lwNoteRepo.findAllByOperationIdIn(List.of(opId));
+        assertThat(notes).hasSize(2);
+        notes.forEach(note -> assertEquals(lw.getId(), note.getLabwareId()));
+        UCMap<String> noteValues = notes.stream()
+                .collect(UCMap.toUCMap(LabwareNote::getName, LabwareNote::getValue));
+        assertEquals("Faculty", noteValues.get("kit costing"));
+        assertEquals("123456", noteValues.get("reagent lot"));
+        List<OperationComment> opcoms = opComRepo.findAllByOperationIdIn(List.of(opId));
+        assertThat(opcoms).hasSize(1);
+        OperationComment opcom = opcoms.getFirst();
+        assertEquals(comment, opcom.getComment());
+        assertEquals(lw.getId(), opcom.getLabwareId());
+        testCompletion(lw, work, sample);
     }
 }

@@ -30,6 +30,7 @@ public class ProbeOperationRequest {
         private List<ProbeLot> probes = List.of();
         private String spike;
         private List<Address> addresses = List.of();
+        private Integer reagentTypeCommentId;
 
         public ProbeOperationLabware() {}
 
@@ -122,6 +123,14 @@ public class ProbeOperationRequest {
             this.addresses = nullToEmpty(addresses);
         }
 
+        public Integer getReagentTypeCommentId() {
+            return this.reagentTypeCommentId;
+        }
+
+        public void setReagentTypeCommentId(Integer reagentTypeCommentId) {
+            this.reagentTypeCommentId = reagentTypeCommentId;
+        }
+
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
@@ -135,6 +144,7 @@ public class ProbeOperationRequest {
                     && Objects.equals(this.probes, that.probes)
                     && Objects.equals(this.spike, that.spike)
                     && Objects.equals(this.addresses, that.addresses)
+                    && Objects.equals(this.reagentTypeCommentId, that.reagentTypeCommentId)
             );
         }
 
@@ -145,8 +155,8 @@ public class ProbeOperationRequest {
 
         @Override
         public String toString() {
-            return String.format("(%s, %s, workNumber: %s, reagentLot: %s, cassetteLot: %s, probes: %s, spike: %s, addresses: %s)",
-                    repr(barcode), kitCosting, repr(workNumber), repr(reagentLot), repr(cassetteLot), probes, repr(spike), addresses);
+            return String.format("(%s, %s, workNumber: %s, reagentLot: %s, cassetteLot: %s, probes: %s, spike: %s, addresses: %s, reagentTypeCommentId: %s)",
+                    repr(barcode), kitCosting, repr(workNumber), repr(reagentLot), repr(cassetteLot), probes, repr(spike), addresses, reagentTypeCommentId);
         }
     }
 
