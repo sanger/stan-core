@@ -117,18 +117,23 @@ public class TestHistoryService {
 
     @Test
     public void testGetHistoryForSampleId() {
+        Sample[] samples = EntityFactory.makeSamples(2);
+        when(mockSampleRepo.findById(samples[0].getId())).thenReturn(Optional.of(samples[0]));
+        List<Sample> samplesList = Arrays.asList(samples);
         History history = new History();
-        Sample sample = EntityFactory.getSample();
-        when(mockSampleRepo.findById(sample.getId())).thenReturn(Optional.of(sample));
-        Sample sample2 = new Sample(sample.getId()+1, "10", sample.getTissue(), sample.getBioState());
-        List<Sample> samples = List.of(sample, sample2);
-        when(mockSampleRepo.findAllByTissueIdIn(List.of(sample.getTissue().getId()))).thenReturn(samples);
-        doReturn(history).when(service).getHistoryForSamples(samples);
+        history.setSamples(samplesList);
+        Set<Integer> relatedTissueIds = Set.of(4,5,6);
+        when(mockTissueRepo.findRelatedTissueIds(List.of(samples[0].getTissue().getId()))).thenReturn(relatedTissueIds);
+        when(mockSampleRepo.findAllByTissueIdIn(relatedTissueIds)).thenReturn(samplesList);
+        doReturn(history).when(service).getHistoryForSamples(samplesList);
 
-        assertSame(history, service.getHistoryForSampleId(sample.getId()));
+        assertSame(history, service.getHistoryForSampleId(samples[0].getId()));
+    }
 
-        when(mockSampleRepo.findById(-1)).thenReturn(Optional.empty());
-        assertThrows(EntityNotFoundException.class, () -> service.getHistoryForSampleId(-1));
+    @Test
+    public void testGetHistoryForSampleId_notFound() {
+        when(mockSampleRepo.findById(404)).thenReturn(Optional.empty());
+        assertThrows(EntityNotFoundException.class, () -> service.getHistoryForSampleId(404));
     }
 
     @ParameterizedTest
@@ -175,16 +180,20 @@ public class TestHistoryService {
         Sample sample = EntityFactory.getSample();
         Tissue tissue = sample.getTissue();
         Tissue tissue2 = EntityFactory.makeTissue(tissue.getDonor(), EntityFactory.getSpatialLocation());
-        Tissue tissue3 = EntityFactory.makeTissue(tissue.getDonor(), EntityFactory.getSpatialLocation());
+        Integer tissue3Id = Math.max(tissue.getId(), tissue2.getId())+1;
+        Integer tissue4Id = tissue3Id+1;
+        Set<Integer> threeTissueIds = Set.of(tissue.getId(), tissue2.getId(), tissue3Id);
+        Set<Integer> fourTissueIds = Set.of(tissue.getId(), tissue2.getId(), tissue3Id, tissue4Id);
         Sample sample2 = new Sample(sample.getId()+1, "10", tissue2, sample.getBioState());
         Sample sample3 = new Sample(sample2.getId()+1, "11", tissue2, sample.getBioState());
         LabwareType lt = EntityFactory.makeLabwareType(1,2);
         Labware lw = EntityFactory.makeLabware(lt, sample, sample2);
         Set<Integer> slotIds = lw.getSlots().stream().map(Slot::getId).collect(toSet());
         when(mockLwRepo.getByBarcode(lw.getBarcode())).thenReturn(lw);
-        when(mockActionRepo.findTissueIdsForDestinationSlots(slotIds)).thenReturn(List.of(tissue2.getId(), tissue3.getId()));
+        when(mockActionRepo.findTissueIdsForDestinationSlots(slotIds)).thenReturn(List.of(tissue2.getId(), tissue3Id));
         List<Sample> samples = List.of(sample, sample2, sample3);
-        when(mockSampleRepo.findAllByTissueIdIn(Set.of(tissue.getId(), tissue2.getId(), tissue3.getId()))).thenReturn(samples);
+        when(mockTissueRepo.findRelatedTissueIds(threeTissueIds)).thenReturn(fourTissueIds);
+        when(mockSampleRepo.findAllByTissueIdIn(fourTissueIds)).thenReturn(samples);
         doReturn(history).when(service).getHistoryForSamples(samples);
 
         assertSame(history, service.getHistoryForLabwareBarcode(lw.getBarcode()));
@@ -578,6 +587,8 @@ public class TestHistoryService {
                 })
                 .toArray(Sample[]::new);
         Set<Integer> tissueIds = Arrays.stream(lwSamples).map(s -> s.getTissue().getId()).collect(toSet());
+        Set<Integer> relatedTissueIds = Set.of(4,5,6);
+        when(mockTissueRepo.findRelatedTissueIds(any())).thenReturn(relatedTissueIds);
         LabwareType lt = EntityFactory.makeLabwareType(1, 2);
         Labware lw = EntityFactory.makeLabware(lt, lwSamples);
         lw.setBarcode(barcode);
@@ -590,7 +601,8 @@ public class TestHistoryService {
 
         assertSame(returnSamples, service.samplesForBarcode(barcode, externalNames, donorNames));
         verify(service).labwareTissueIds(lw, filter);
-        verify(mockSampleRepo).findAllByTissueIdIn(tissueIds);
+        verify(mockTissueRepo).findRelatedTissueIds(tissueIds);
+        verify(mockSampleRepo).findAllByTissueIdIn(relatedTissueIds);
     }
 
     @ParameterizedTest
