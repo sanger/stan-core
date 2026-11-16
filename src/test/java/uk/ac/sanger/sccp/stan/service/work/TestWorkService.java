@@ -104,16 +104,16 @@ public class TestWorkService {
         when(mockTreatmentTypeRepo.getSetByNameIn(ttNames)).thenReturn(treatmentTypes);
 
         if (expectedErrorMessage==null) {
-            Work result = workService.createWork(user, prefix, workTypeNames, workRequesterName, projectName, progName, code, numBlocks, numSlides, numOriginalSamples, null, null, null, "Kurt", ttNames);
+            Work result = workService.createWork(user, prefix, workTypeNames, workRequesterName, projectName, progName, code, numBlocks, numSlides, numOriginalSamples, null, null, null, null, "Kurt", ttNames);
             verify(workService).checkPrefix(prefix);
             verify(mockWorkRepo).createNumber(prefix);
             verify(mockWorkRepo).save(result);
             verify(mockWorkEventService).recordEvent(user, result, WorkEvent.Type.create, null);
             assertThat(result.getWorkTypes()).containsExactly(workType);
-            assertEquals(new Work(null, workNumber, Set.of(workType), workRequester, project, prog, cc, Status.unstarted, numBlocks, numSlides, numOriginalSamples, null, null, null, null, dest, treatmentTypes), result);
+            assertEquals(new Work(null, workNumber, Set.of(workType), workRequester, project, prog, cc, Status.unstarted, numBlocks, numSlides, numOriginalSamples, null, null, null, null, null, dest, treatmentTypes), result);
         } else {
             assertThat(assertThrows(IllegalArgumentException.class, () -> workService.createWork(user, prefix, workTypeNames, workRequesterName, projectName,
-                    progName, code, numBlocks, numSlides, numOriginalSamples, null, null, null, "Kurt", ttNames))).hasMessage(expectedErrorMessage);
+                    progName, code, numBlocks, numSlides, numOriginalSamples, null, null, null, null, "Kurt", ttNames))).hasMessage(expectedErrorMessage);
             verifyNoInteractions(mockWorkRepo);
         }
     }
@@ -157,10 +157,10 @@ public class TestWorkService {
 
         when(mockWorkRepo.save(any())).then(Matchers.returnArgument());
         if (expectedErrorMessage!=null) {
-            assertThat(assertThrows(RuntimeException.class, () -> workService.createWork(user, prefix, Set.of(workTypeName), workRequesterName, projectName, progName, code, null, null, null, omeroName, null, null, "Kurt", null)))
+            assertThat(assertThrows(RuntimeException.class, () -> workService.createWork(user, prefix, Set.of(workTypeName), workRequesterName, projectName, progName, code, null, null, null, omeroName, null, null, null, "Kurt", null)))
                     .hasMessage(expectedErrorMessage);
         } else {
-            Work result = workService.createWork(user, prefix, Set.of(workTypeName), workRequesterName, projectName, progName, code, null, null, null, omeroName, null, null, "Kurt", null);
+            Work result = workService.createWork(user, prefix, Set.of(workTypeName), workRequesterName, projectName, progName, code, null, null, null, omeroName, null, null, null, "Kurt", null);
             verify(mockWorkRepo).save(result);
             assertSame(omero, result.getOmeroProject());
         }
@@ -206,10 +206,10 @@ public class TestWorkService {
 
         when(mockWorkRepo.save(any())).then(Matchers.returnArgument());
         if (expectedErrorMessage!=null) {
-            assertThat(assertThrows(RuntimeException.class, () -> workService.createWork(user, prefix, Set.of(workTypeName), workRequesterName, projectName, progName, code, null, null, null, null, null, null, destName, null)))
+            assertThat(assertThrows(RuntimeException.class, () -> workService.createWork(user, prefix, Set.of(workTypeName), workRequesterName, projectName, progName, code, null, null, null, null, null, null, null, destName, null)))
                     .hasMessage(expectedErrorMessage);
         } else {
-            Work result = workService.createWork(user, prefix, Set.of(workTypeName), workRequesterName, projectName, progName, code, null, null, null, null, null, null, destName, null);
+            Work result = workService.createWork(user, prefix, Set.of(workTypeName), workRequesterName, projectName, progName, code, null, null, null, null, null, null, null, destName, null);
             verify(mockWorkRepo).save(result);
             assertSame(dest, result.getFacultyLead());
         }
@@ -217,14 +217,15 @@ public class TestWorkService {
 
     @ParameterizedTest
     @CsvSource({
-            "false,, DNAP study not found.",
-            "false,true,",
-            "false,false, DNAP study is disabled: 123: S123",
-            "true,, DNAP study not found.",
-            "true,true,",
-            "true,false, DNAP study is disabled: 123: S123",
+            "dnap,, DNAP study not found.",
+            "dnap,true,",
+            "dnap,false, DNAP study is disabled: 123: S123",
+            "xenium,, DNAP study not found.",
+            "xenium,true,",
+            "xenium,false, DNAP study is disabled: 123: S123",
+            "atera,true,",
     })
-    public void testCreateWork_dnapStudy(boolean forXenium, Boolean enabled, String expectedErrorMessage) {
+    public void testCreateWork_dnapStudy(String tech, Boolean enabled, String expectedErrorMessage) {
         final Integer ssId = 123;
         DnapStudy study;
         if (enabled==null) {
@@ -256,16 +257,22 @@ public class TestWorkService {
         when(mockReleaseDestRepo.getByName("Kurt")).thenReturn(dest);
 
         when(mockWorkRepo.save(any())).then(Matchers.returnArgument());
-        Integer dnapStudyId = (forXenium ? null : ssId);
-        Integer xeniumStudyId = (forXenium ? ssId : null);
+        Integer dnapStudyId = (tech.equals("dnap") ? ssId : null);
+        Integer xeniumStudyId = (tech.equals("xenium") ? ssId : null);
+        Integer ateraStudyId = (tech.equals("atera") ? ssId : null);
         if (expectedErrorMessage!=null) {
-            assertThat(assertThrows(RuntimeException.class, () -> workService.createWork(user, prefix, Set.of(workTypeName), workRequesterName, projectName, progName, code, null, null, null, null, dnapStudyId, xeniumStudyId, "Kurt", null)))
+            assertThat(assertThrows(RuntimeException.class, () -> workService.createWork(user, prefix, Set.of(workTypeName), workRequesterName, projectName, progName, code, null, null, null, null, dnapStudyId, xeniumStudyId, ateraStudyId, "Kurt", null)))
                     .hasMessage(expectedErrorMessage);
         } else {
-            Work result = workService.createWork(user, prefix, Set.of(workTypeName), workRequesterName, projectName, progName, code, null, null, null, null, dnapStudyId, xeniumStudyId, "Kurt", null);
+            Work result = workService.createWork(user, prefix, Set.of(workTypeName), workRequesterName, projectName, progName, code, null, null, null, null, dnapStudyId, xeniumStudyId, ateraStudyId, "Kurt", null);
             verify(mockWorkRepo).save(result);
-            assertSame(study, forXenium ? result.getXeniumStudy() : result.getDnapStudy());
-            assertNull(forXenium ? result.getDnapStudy() : result.getXeniumStudy());
+            DnapStudy resultStudy = switch (tech) {
+                case "dnap" -> result.getDnapStudy();
+                case "xenium" -> result.getXeniumStudy();
+                case "atera" -> result.getAteraStudy();
+                default -> null;
+            };
+            assertSame(study, resultStudy);
         }
     }
 
