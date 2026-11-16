@@ -332,11 +332,16 @@ public class GraphQLDataFetchers extends BaseGraphQLResource {
         return dfe -> {
             ProbePanel.ProbeType type = arg(dfe, "type", ProbePanel.ProbeType.class);
             boolean includeDisabled = argOrFalse(dfe, "includeDisabled");
-            if (includeDisabled) {
-                return probePanelRepo.findAllByType(type);
-            } else {
-                return probePanelRepo.findAllByTypeAndEnabled(type, true);
+            if (type == null) {
+                return includeDisabled
+                        ? probePanelRepo.findAll()
+                        : probePanelRepo.findAllByEnabled(true);
             }
+
+            return includeDisabled
+                    ? probePanelRepo.findAllByType(type)
+                    : probePanelRepo.findAllByTypeAndEnabled(type, true);
+
         };
     }
 
