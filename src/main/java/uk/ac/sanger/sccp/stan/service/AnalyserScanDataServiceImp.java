@@ -5,10 +5,11 @@ import org.springframework.stereotype.Service;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.AnalyserScanData;
-import uk.ac.sanger.sccp.stan.request.AnalyserScanData.WorkNumberXeniumStudyId;
+import uk.ac.sanger.sccp.stan.request.AnalyserScanData.WorkNumberData;
 
 import javax.persistence.EntityNotFoundException;
 import java.util.List;
+import java.util.Optional;
 
 import static uk.ac.sanger.sccp.utils.BasicUtils.stream;
 
@@ -42,27 +43,26 @@ public class AnalyserScanDataServiceImp implements AnalyserScanDataService {
     public AnalyserScanData load(Labware lw) {
         AnalyserScanData data = new AnalyserScanData();
         data.setBarcode(lw.getBarcode());
-        data.setWorkNumberXeniumStudyIds(loadWorkNumberXeniumStudyIds(lw));
+        data.setWorkNumberData(loadWorkNumberData(lw));
         data.setProbes(loadProbes(lw));
         data.setCellSegmentationRecorded(loadCellSegmentationRecorded(lw));
         return data;
     }
 
     /** Loads distinct work numbers (and their xenium study ids) used on the given labware */
-    public List<WorkNumberXeniumStudyId> loadWorkNumberXeniumStudyIds(Labware lw) {
+    public List<WorkNumberData> loadWorkNumberData(Labware lw) {
         List<Integer> workIds = workRepo.findWorkIdsForLabwareId(lw.getId());
         if (workIds.isEmpty()) {
             return List.of();
         }
         Iterable<Work> works = workRepo.findAllById(workIds);
-        return stream(works).map(this::toWorkNumberXeniumStudyId).toList();
+        return stream(works).map(this::toWorkNumberData).toList();
     }
 
-    WorkNumberXeniumStudyId toWorkNumberXeniumStudyId(Work work) {
-        if (work.getXeniumStudy()==null) {
-            return new WorkNumberXeniumStudyId(work.getWorkNumber(), null);
-        }
-        return new WorkNumberXeniumStudyId(work.getWorkNumber(), work.getXeniumStudy().getSsId());
+    WorkNumberData toWorkNumberData(Work work) {
+        Integer xenStudyId = Optional.ofNullable(work.getXeniumStudy()).map(DnapStudy::getSsId).orElse(null);
+        Integer ateraStudyId = Optional.ofNullable(work.getAteraStudy()).map(DnapStudy::getSsId).orElse(null);
+        return new WorkNumberData(work.getWorkNumber(), xenStudyId, ateraStudyId);
     }
 
     /** Loads the names of probes recorded on the given labware */

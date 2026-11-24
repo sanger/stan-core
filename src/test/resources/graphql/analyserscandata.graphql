@@ -3,6 +3,7 @@ query {
         barcode
         probes
         workNumberXeniumStudyIds { workNumber xeniumStudyId }
+        workNumberData { workNumber xeniumStudyId ateraStudyId }
         cellSegmentationRecorded
     }
 }
