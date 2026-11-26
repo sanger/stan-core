@@ -27,6 +27,7 @@ public class ProbeOperationRequest {
         private SlideCosting kitCosting;
         private String reagentLot;
         private String cassetteLot;
+        private String assayPrepReagentLot;
         private List<ProbeLot> probes = List.of();
         private String spike;
         private List<Address> addresses = List.of();
@@ -35,11 +36,12 @@ public class ProbeOperationRequest {
         public ProbeOperationLabware() {}
 
         public ProbeOperationLabware(String barcode, String workNumber, SlideCosting kitCosting, String reagentLot,
-                                     String cassetteLot, List<ProbeLot> probes, String spike) {
+                                     String assayPrepReagentLot, String cassetteLot, List<ProbeLot> probes, String spike) {
             setBarcode(barcode);
             setWorkNumber(workNumber);
             setKitCosting(kitCosting);
             setReagentLot(reagentLot);
+            setAssayPrepReagentLot(assayPrepReagentLot);
             setCassetteLot(cassetteLot);
             setProbes(probes);
             setSpike(spike);
@@ -84,6 +86,15 @@ public class ProbeOperationRequest {
 
         public void setReagentLot(String reagentLot) {
             this.reagentLot = reagentLot;
+        }
+
+        /** Assay prep reagent lot */
+        public String getAssayPrepReagentLot() {
+            return this.assayPrepReagentLot;
+        }
+
+        public void setAssayPrepReagentLot(String assayPrepReagentLot) {
+            this.assayPrepReagentLot = assayPrepReagentLot;
         }
 
         /** Cassette lot number. */
@@ -140,6 +151,7 @@ public class ProbeOperationRequest {
                     && Objects.equals(this.workNumber, that.workNumber)
                     && this.kitCosting==that.kitCosting
                     && Objects.equals(this.reagentLot, that.reagentLot)
+                    && Objects.equals(this.assayPrepReagentLot, that.assayPrepReagentLot)
                     && Objects.equals(this.cassetteLot, that.cassetteLot)
                     && Objects.equals(this.probes, that.probes)
                     && Objects.equals(this.spike, that.spike)
@@ -155,8 +167,10 @@ public class ProbeOperationRequest {
 
         @Override
         public String toString() {
-            return String.format("(%s, %s, workNumber: %s, reagentLot: %s, cassetteLot: %s, probes: %s, spike: %s, addresses: %s, reagentTypeCommentId: %s)",
-                    repr(barcode), kitCosting, repr(workNumber), repr(reagentLot), repr(cassetteLot), probes, repr(spike), addresses, reagentTypeCommentId);
+            return String.format("(%s, %s, workNumber: %s, reagentLot: %s, assayPrepReagentLot: %s, cassetteLot: %s, " +
+                            "probes: %s, spike: %s, addresses: %s, reagentTypeCommentId: %s)",
+                    repr(barcode), kitCosting, repr(workNumber), repr(reagentLot), repr(assayPrepReagentLot),repr(cassetteLot),
+                    probes, repr(spike), addresses, reagentTypeCommentId);
         }
     }
 

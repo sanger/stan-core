@@ -129,7 +129,7 @@ public class TestProbeService {
         Map<Integer, Comment> commentMap = Map.of(1, new Comment(1, "com", "cat"));
         doReturn(commentMap).when(service).checkReagentTypeCommentId(any(), any());
         doNothing().when(service).validateTimestamp(any(), any(), any());
-        doNothing().when(service).checkReagentLots(any(), any());
+        doNothing().when(service).checkReagentLots(any(), any(), any());
         doNothing().when(service).checkCassetteLots(any(), any());
 
         if (nullOrEmpty(expectedProblems)) {
@@ -147,7 +147,7 @@ public class TestProbeService {
             verifyNoInteractions(mockWorkService);
             verify(service, never()).validateProbes(any(), any(), any());
             verify(service, never()).validateTimestamp(any(), any(), any());
-            verify(service, never()).checkReagentLots(any(), any());
+            verify(service, never()).checkReagentLots(any(), any(), any());
             verify(service, never()).checkCassetteLots(any(), any());
             return;
         }
@@ -167,7 +167,7 @@ public class TestProbeService {
         verify(service).opProbeType(opType);
         verify(service).validateProbes(any(), same(probeType), eq(pols));
         verify(service).checkSpikes(any(), same(pols));
-        verify(service).checkReagentLots(any(), eq(pols));
+        verify(service).checkReagentLots(any(), same(probeType), eq(pols));
         verify(service).checkCassetteLots(any(), eq(pols));
         verify(service).checkReagentTypeCommentId(any(), eq(pols));
         if (request.getPerformed()==null) {
@@ -190,11 +190,11 @@ public class TestProbeService {
         UCMap<ProbePanel> ppMap = UCMap.from(ProbePanel::getName, new ProbePanel(probeType, "pp1"));
         doAnswer(addProblem("Bad probe", ppMap)).when(service).validateProbes(any(), any(), any());
         doAnswer(addProblem("Bad time")).when(service).validateTimestamp(any(), any(), any());
-        doAnswer(addProblem("Bad reagent lot")).when(service).checkReagentLots(any(), any());
+        doAnswer(addProblem("Bad reagent lot")).when(service).checkReagentLots(any(), any(), any());
         doAnswer(addProblem("Bad cassette lot")).when(service).checkCassetteLots(any(), any());
         User user = EntityFactory.getUser();
         ProbeOperationRequest request = new ProbeOperationRequest("optype", LocalDateTime.now(),
-                List.of(new ProbeOperationLabware("Alpha", "Beta", SlideCosting.SGP, null, null, List.of(), null)));
+                List.of(new ProbeOperationLabware("Alpha", "Beta", SlideCosting.SGP, null, null, null, List.of(), null)));
         Matchers.assertValidationException(() -> service.recordProbeOperation(user, request),
                 List.of("Bad labware", "Bad op type", "Bad work", "Bad probe", "Bad time", "Bad reagent lot", "Bad cassette lot"));
         ArgumentCaptor<Stream<String>> streamCaptor = Matchers.streamCaptor();
@@ -204,7 +204,7 @@ public class TestProbeService {
         verify(mockWorkService).validateUsableWorks(any(), eq(List.of("Beta")));
         verify(service).validateProbes(any(), same(probeType), same(request.getLabware()));
         verify(service).checkSpikes(any(), same(request.getLabware()));
-        verify(service).checkReagentLots(any(), same(request.getLabware()));
+        verify(service).checkReagentLots(any(), same(probeType), same(request.getLabware()));
         verify(service).checkCassetteLots(any(), same(request.getLabware()));
         verify(service).validateTimestamp(any(), same(request.getPerformed()), same(lwMap));
         verify(service, never()).perform(any(), any(), any(), any(), any(), any(), any(), any(), any());
@@ -213,7 +213,7 @@ public class TestProbeService {
     static Stream<Arguments> recordProbeOperationArgs() {
         User user = EntityFactory.getUser();
         ProbeOperationRequest emptyRequest = new ProbeOperationRequest();
-        ProbeOperationLabware pol = new ProbeOperationLabware("STAN-A1", "SGP-1", SlideCosting.SGP, null, null, List.of(), null);
+        ProbeOperationLabware pol = new ProbeOperationLabware("STAN-A1", "SGP-1", SlideCosting.SGP, null, null, null, List.of(), null);
         LocalDateTime time = LocalDateTime.now();
         ProbeOperationRequest completeRequest = new ProbeOperationRequest("optype", time, List.of(pol));
         return Arrays.stream(new Object[][] {
@@ -267,9 +267,9 @@ public class TestProbeService {
         List<Labware> lwList = IntStream.range(0, 2).mapToObj(i -> EntityFactory.makeEmptyLabware(lt)).toList();
         UCMap<Labware> lwMap = UCMap.from(lwList, Labware::getBarcode);
         List<ProbeOperationLabware> pols = List.of(
-                new ProbeOperationLabware(lwList.get(0).getBarcode(), null, null, null, null, null, null),
-                new ProbeOperationLabware(lwList.get(1).getBarcode(), null, null, null, null, null, null),
-                new ProbeOperationLabware("NO SUCH LW", null, null, null, null, null, null)
+                new ProbeOperationLabware(lwList.get(0).getBarcode(), null, null, null, null, null, null, null),
+                new ProbeOperationLabware(lwList.get(1).getBarcode(), null, null, null, null, null, null, null),
+                new ProbeOperationLabware("NO SUCH LW", null, null, null, null, null, null, null)
         );
         final Address A1 = new Address(1,1), A2 = new Address(2,2);
         List<Address> addresses = List.of(A1, A2);
@@ -356,7 +356,7 @@ public class TestProbeService {
     void testCheckReagentTypeCommentId(String valError, boolean rightCategory) {
         List<String> problems = new ArrayList<>();
         List<ProbeOperationLabware> pols = IntStream.rangeClosed(1,3).mapToObj(
-                i -> new ProbeOperationLabware("bc"+i, null, null, null, null, null, null)
+                i -> new ProbeOperationLabware("bc"+i, null, null, null, null, null, null, null)
         ).toList();
         pols.getFirst().setReagentTypeCommentId(3);
         pols.getLast().setReagentTypeCommentId(4);
@@ -385,6 +385,7 @@ public class TestProbeService {
 
     @Test
     public void testCheckReagentLots() {
+        ProbeType probeType = ProbeType.atera;
         when(mockReagentLotValidator.validate(any(), any())).then(invocation -> {
             String string = invocation.getArgument(0);
             if (string.indexOf('!') < 0) {
@@ -395,17 +396,24 @@ public class TestProbeService {
             return false;
         });
         String[] lots = {null, "", "   ", "  Good  ", "Bad!"};
+        String[] apLots = {"right ", "wrong!", null, "   ", ""};
         String[] sanitisedLots = {null, null, null, "Good", "Bad!"};
-        List<ProbeOperationLabware> pols = Arrays.stream(lots)
-                .map(lot -> new ProbeOperationLabware("bc", null, null, lot, null, null, null))
+        String[] sanitisedApLots = {"right", "wrong!", null, null, null};
+        List<ProbeOperationLabware> pols = Zip.of(Arrays.stream(lots), Arrays.stream(apLots))
+                .map((lot, aplot) -> new ProbeOperationLabware("bc", null, null, lot, aplot, null, null, null))
                 .toList();
         List<String> problems = new ArrayList<>(1);
-        service.checkReagentLots(problems, pols);
-        assertProblem(problems, "Bad lot: Bad!");
+        service.checkReagentLots(problems, probeType, pols);
+        assertThat(problems).containsExactlyInAnyOrder("Bad lot: Bad!", "Bad lot: wrong!", "Missing assay prep reagent lot.");
         for (int i = 0; i < pols.size(); i++) {
             ProbeOperationLabware pol = pols.get(i);
             String lot = sanitisedLots[i];
             assertEquals(lot, pol.getReagentLot());
+            if (lot!=null) {
+                verify(mockReagentLotValidator).validate(eq(lot), any());
+            }
+            lot = sanitisedApLots[i];
+            assertEquals(lot, pol.getAssayPrepReagentLot());
             if (lot!=null) {
                 verify(mockReagentLotValidator).validate(eq(lot), any());
             }
@@ -444,10 +452,10 @@ public class TestProbeService {
     public void testValidateProbes() {
         List<ProbeOperationLabware> pols = List.of(
                 new ProbeOperationLabware("BC1", "SGP1", SlideCosting.SGP,
-                        null, null, List.of(new ProbeLot("p1", "lot1", 1, SlideCosting.SGP),
+                        null, null, null, List.of(new ProbeLot("p1", "lot1", 1, SlideCosting.SGP),
                                 new ProbeLot("p2", "lot2", 2, SlideCosting.SGP)), null),
                 new ProbeOperationLabware("BC2", "SGP2", SlideCosting.Faculty,
-                        null, null, List.of(new ProbeLot("p2", "lot3", 3, SlideCosting.Faculty),
+                        null, null, null, List.of(new ProbeLot("p2", "lot3", 3, SlideCosting.Faculty),
                                 new ProbeLot("p3", "lot4", 4, SlideCosting.SGP)), null)
         );
         final ProbeType probeType = ProbeType.xenium;
@@ -469,9 +477,9 @@ public class TestProbeService {
     public void testValidateNoProbes() {
         List<ProbeOperationLabware> pols = List.of(
                 new ProbeOperationLabware("BC1", "SGP1", SlideCosting.SGP,
-                        null, null, List.of(new ProbeLot("p1", "lot1", 1, SlideCosting.Faculty)), null),
+                        null, null, null, List.of(new ProbeLot("p1", "lot1", 1, SlideCosting.Faculty)), null),
                 new ProbeOperationLabware("BC2", "SGP2", SlideCosting.Faculty,
-                        null, null, List.of(), null)
+                        null, null, null, List.of(), null)
         );
         ProbeType probeType = ProbeType.xenium;
         List<ProbePanel> probes = List.of(new ProbePanel(1, probeType, "p1"));
@@ -497,7 +505,7 @@ public class TestProbeService {
     })
     public void testValidateProbes_problems(String probeName, String lot, Integer plex, SlideCosting costing, String expectedProblem) {
         ProbeOperationLabware pol = new ProbeOperationLabware("BC", "SGP1", SlideCosting.SGP,
-                null, null, List.of(new ProbeLot(probeName, lot, plex, costing)), null);
+                null, null, null, List.of(new ProbeLot(probeName, lot, plex, costing)), null);
         ProbeType probeType = ProbeType.xenium;
         when(mockProbeLotValidator.validate(any(), any())).then(invocation -> {
             String lotArg = invocation.getArgument(0);
@@ -587,8 +595,8 @@ public class TestProbeService {
         User user = EntityFactory.getUser();
         OperationType optype = EntityFactory.makeOperationType("opname", null);
         List<ProbeOperationLabware> pols = List.of(
-                new ProbeOperationLabware("STAN-1", null, SlideCosting.SGP, null, null, null, null),
-                new ProbeOperationLabware("STAN-2", null, SlideCosting.Faculty, null, null, null, null)
+                new ProbeOperationLabware("STAN-1", null, SlideCosting.SGP, null, null, null, null, null),
+                new ProbeOperationLabware("STAN-2", null, SlideCosting.Faculty, null, null, null, null, null)
         );
         final List<Address> addresses = List.of(new Address(1, 2), new Address(3, 4));
         pols.getFirst().setAddresses(addresses);
@@ -659,9 +667,9 @@ public class TestProbeService {
     @Test
     public void testLinkWork() {
         List<ProbeOperationLabware> pols = List.of(
-                new ProbeOperationLabware("STAN-1", "SGP1", SlideCosting.SGP, null, null, null, null),
-                new ProbeOperationLabware("STAN-2", "SGP1", SlideCosting.SGP, null, null, null, null),
-                new ProbeOperationLabware("STAN-3", "SGP2", SlideCosting.Faculty, null, null, null, null)
+                new ProbeOperationLabware("STAN-1", "SGP1", SlideCosting.SGP, null, null, null, null, null),
+                new ProbeOperationLabware("STAN-2", "SGP1", SlideCosting.SGP, null, null, null, null, null),
+                new ProbeOperationLabware("STAN-3", "SGP2", SlideCosting.Faculty, null, null, null, null, null)
         );
         Operation[] ops = IntStream.range(1, 4)
                 .mapToObj(i -> {
@@ -700,8 +708,8 @@ public class TestProbeService {
         final String noteName = ProbeServiceImp.KIT_COSTING_NAME;
 
         List<ProbeOperationLabware> pols = List.of(
-                new ProbeOperationLabware(lw1.getBarcode(), null, SlideCosting.SGP, null, null, null, null),
-                new ProbeOperationLabware(lw2.getBarcode(), null, SlideCosting.Faculty, null, null, null, null)
+                new ProbeOperationLabware(lw1.getBarcode(), null, SlideCosting.SGP, null, null, null, null, null),
+                new ProbeOperationLabware(lw2.getBarcode(), null, SlideCosting.Faculty, null, null, null, null, null)
         );
 
         service.saveKitCostings(pols, lwMap, opMap);
@@ -716,11 +724,11 @@ public class TestProbeService {
     @Test
     public void testSaveProbes() {
         List<ProbeOperationLabware> pols = List.of(
-                new ProbeOperationLabware("STAN-1", null, SlideCosting.Faculty, null, null, List.of(
+                new ProbeOperationLabware("STAN-1", null, SlideCosting.Faculty, null, null, null, List.of(
                         new ProbeLot("probe1", "lot1", 1, SlideCosting.SGP),
                         new ProbeLot("probe2", "lot2", 2, SlideCosting.SGP)
                 ), null),
-                new ProbeOperationLabware("STAN-2", null, SlideCosting.SGP, null, null, List.of(
+                new ProbeOperationLabware("STAN-2", null, SlideCosting.SGP, null, null, null, List.of(
                         new ProbeLot("probe1", "lot3", 3, SlideCosting.Faculty)
                 ), "william")
         );
@@ -769,7 +777,7 @@ public class TestProbeService {
         });
 
         List<ProbeOperationLabware> pols = Zip.enumerate(Arrays.stream(lws)).map((i, lw) ->
-            new ProbeOperationLabware(lw.getBarcode(), null, null, rlots[i], clots[i], null, null)
+            new ProbeOperationLabware(lw.getBarcode(), null, null, rlots[i], null, clots[i], null, null)
         ).toList();
         service.saveLabwareLots(pols, lwMap, opMap);
         if (anyLots) {
@@ -803,7 +811,7 @@ public class TestProbeService {
         UCMap<Operation> lwOps = new UCMap<>(lwMap.size());
         Zip.of(Arrays.stream(lws), Arrays.stream(ops)).forEach((lw, op) -> lwOps.put(lw.getBarcode(), op));
 
-        List<ProbeOperationLabware> pols = Arrays.stream(lws).map(lw -> new ProbeOperationLabware(lw.getBarcode(), null, SlideCosting.SGP, null, null, null, null)).toList();
+        List<ProbeOperationLabware> pols = Arrays.stream(lws).map(lw -> new ProbeOperationLabware(lw.getBarcode(), null, SlideCosting.SGP, null, null, null, null, null)).toList();
         pols.get(0).setReagentTypeCommentId(3);
         pols.get(2).setReagentTypeCommentId(4);
 
@@ -819,8 +827,8 @@ public class TestProbeService {
         Labware[] labware = { EntityFactory.makeEmptyLabware(lt, "STAN-1"), EntityFactory.makeEmptyLabware(lt, "STAN-2")};
         UCMap<Labware> lwMap = UCMap.from(Labware::getBarcode, labware);
         List<ProbeOperationLabware> pols = List.of(
-                new ProbeOperationLabware("STAN-1", null, SlideCosting.SGP, null, null, null, null),
-                new ProbeOperationLabware("STAN-2", null, SlideCosting.Faculty, null, null, null, null)
+                new ProbeOperationLabware("STAN-1", null, SlideCosting.SGP, null, null, null, null, null),
+                new ProbeOperationLabware("STAN-2", null, SlideCosting.Faculty, null, null, null, null, null)
         );
         Operation[] ops = { new Operation(), new Operation()};
         ops[0].setId(1);

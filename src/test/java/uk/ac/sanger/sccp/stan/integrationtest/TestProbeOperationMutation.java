@@ -257,12 +257,13 @@ public class TestProbeOperationMutation {
         assertEquals("LOT2", lwp.getLotNumber());
         assertEquals(SlideCosting.Warranty_replacement, lwp.getCosting());
         List<LabwareNote> notes = lwNoteRepo.findAllByOperationIdIn(List.of(opId));
-        assertThat(notes).hasSize(2);
+        assertThat(notes).hasSize(3);
         notes.forEach(note -> assertEquals(lw.getId(), note.getLabwareId()));
         UCMap<String> noteValues = notes.stream()
                 .collect(UCMap.toUCMap(LabwareNote::getName, LabwareNote::getValue));
         assertEquals("Faculty", noteValues.get("kit costing"));
         assertEquals("123456", noteValues.get("reagent lot"));
+        assertEquals("666666", noteValues.get("assay prep reagent lot"));
         List<OperationComment> opcoms = opComRepo.findAllByOperationIdIn(List.of(opId));
         assertThat(opcoms).hasSize(1);
         OperationComment opcom = opcoms.getFirst();
