@@ -2038,6 +2038,8 @@ input ProbeOperationLabware {
     kitCosting: SlideCosting
     """Reagent lot number."""
     reagentLot: String
+    """Assay prep reagent lot number."""
+    assayPrepReagentLot: String
     """Cassette lot number."""
     cassetteLot: String
     """The probes used on this labware."""

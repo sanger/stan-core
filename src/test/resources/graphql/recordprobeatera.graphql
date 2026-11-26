@@ -15,6 +15,7 @@ mutation {
             }]
             workNumber: "SGP1"
             reagentLot: "123456"
+            assayPrepReagentLot: "666666"
             reagentTypeCommentId: 99
         }]
     }) {

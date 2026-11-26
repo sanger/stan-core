@@ -32,6 +32,7 @@ public class ProbeServiceImp implements ProbeService {
             PROBE_HYB_ATERA = "Probe hybridisation Atera";
     public static final String KIT_COSTING_NAME = "kit costing";
     public static final String REAGENT_LOT_NAME = "reagent lot";
+    public static final String ASSAY_PREP_REAGENT_LOT_NAME = "assay prep reagent lot";
     public static final String CASSETTE_LOT_NAME = "cassette lot";
     public static final String REAGENT_TYPE_COMMENT_CATEGORY = "sample prep reagent type";
 
@@ -126,7 +127,7 @@ public class ProbeServiceImp implements ProbeService {
                 .toList();
         UCMap<Work> work = workService.validateUsableWorks(problems, workNumbers);
         Map<Integer, Comment> commentMap = checkReagentTypeCommentId(problems, request.getLabware());
-        checkReagentLots(problems, request.getLabware());
+        checkReagentLots(problems, probeType, request.getLabware());
         checkCassetteLots(problems, request.getLabware());
         UCMap<ProbePanel> probes = validateProbes(problems, probeType, request.getLabware());
         UCMap<ProbePanel> spikes = checkSpikes(problems, request.getLabware());
@@ -274,9 +275,13 @@ public class ProbeServiceImp implements ProbeService {
      * @param problems receptacle for problems
      * @param pols details of the request
      */
-    public void checkReagentLots(Collection<String> problems, Collection<ProbeOperationLabware> pols) {
+    public void checkReagentLots(Collection<String> problems, ProbeType probeType, Collection<ProbeOperationLabware> pols) {
         if (pols != null) {
             checkLots(problems, reagentLotValidator, pols.stream(), ProbeOperationLabware::getReagentLot, ProbeOperationLabware::setReagentLot);
+            checkLots(problems, reagentLotValidator, pols.stream(), ProbeOperationLabware::getAssayPrepReagentLot, ProbeOperationLabware::setAssayPrepReagentLot);
+            if (probeType==ProbeType.atera && pols.stream().anyMatch(pol -> pol.getAssayPrepReagentLot()==null)) {
+                problems.add("Missing assay prep reagent lot.");
+            }
         }
     }
 
@@ -548,7 +553,8 @@ public class ProbeServiceImp implements ProbeService {
         for (ProbeOperationLabware pol : pols) {
             String rlot = pol.getReagentLot();
             String clot = pol.getCassetteLot();
-            if (!nullOrEmpty(rlot) || !nullOrEmpty(clot)) {
+            String aplot = pol.getAssayPrepReagentLot();
+            if (!(nullOrEmpty(rlot) && nullOrEmpty(clot) && nullOrEmpty(aplot))) {
                 String barcode = pol.getBarcode();
                 Labware lw = lwMap.get(barcode);
                 Operation op = lwOps.get(barcode);
@@ -557,6 +563,9 @@ public class ProbeServiceImp implements ProbeService {
                 }
                 if (!nullOrEmpty(clot)) {
                     notes.add(new LabwareNote(null, lw.getId(), op.getId(), CASSETTE_LOT_NAME, clot));
+                }
+                if (!nullOrEmpty(aplot)) {
+                    notes.add(new LabwareNote(null, lw.getId(), op.getId(), ASSAY_PREP_REAGENT_LOT_NAME, aplot));
                 }
             }
         }
