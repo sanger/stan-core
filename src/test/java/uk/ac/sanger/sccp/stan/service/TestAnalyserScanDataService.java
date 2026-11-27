@@ -8,7 +8,7 @@ import uk.ac.sanger.sccp.stan.EntityFactory;
 import uk.ac.sanger.sccp.stan.model.*;
 import uk.ac.sanger.sccp.stan.repo.*;
 import uk.ac.sanger.sccp.stan.request.AnalyserScanData;
-import uk.ac.sanger.sccp.stan.request.AnalyserScanData.WorkNumberXeniumStudyId;
+import uk.ac.sanger.sccp.stan.request.AnalyserScanData.WorkNumberData;
 
 import java.util.Arrays;
 import java.util.List;
@@ -62,16 +62,16 @@ class TestAnalyserScanDataService {
     @ValueSource(booleans={false,true})
     void testLoadForLabware(boolean segmented) {
         Labware lw = EntityFactory.getTube();
-        List<WorkNumberXeniumStudyId> wxs = List.of(new WorkNumberXeniumStudyId("SGP1", 123),
-                new WorkNumberXeniumStudyId("SGP2", null));
+        List<WorkNumberData> wxs = List.of(new WorkNumberData("SGP1", 123, null),
+                new WorkNumberData("SGP2", null, 456));
         List<String> probes = List.of("probe1", "probe2");
-        doReturn(wxs).when(service).loadWorkNumberXeniumStudyIds(lw);
+        doReturn(wxs).when(service).loadWorkNumberData(lw);
         doReturn(probes).when(service).loadProbes(lw);
         doReturn(segmented).when(service).loadCellSegmentationRecorded(lw);
 
         AnalyserScanData data = service.load(lw);
         assertEquals(lw.getBarcode(), data.getBarcode());
-        assertSame(wxs, data.getWorkNumberXeniumStudyIds());
+        assertSame(wxs, data.getWorkNumberData());
         assertSame(probes, data.getProbes());
         assertEquals(segmented, data.isCellSegmentationRecorded());
     }
@@ -81,23 +81,25 @@ class TestAnalyserScanDataService {
         Labware lw = EntityFactory.getTube();
         when(mockWorkRepo.findWorkIdsForLabwareId(lw.getId())).thenReturn(List.of());
 
-        assertThat(service.loadWorkNumberXeniumStudyIds(lw)).isEmpty();
+        assertThat(service.loadWorkNumberData(lw)).isEmpty();
         verify(mockWorkRepo, never()).findAllById(any());
     }
 
     @Test
-    void testLoadWorkNumberXeniumStudyIds() {
+    void testLoadWorkNumberData() {
         Labware lw = EntityFactory.getTube();
         List<Work> works = Arrays.asList(EntityFactory.makeWorks("SGP1", "SGP2"));
-        DnapStudy ds = new DnapStudy(100, 555, "DNAP 555", true);
-        works.getFirst().setXeniumStudy(ds);
+        DnapStudy ds1 = new DnapStudy(100, 555, "DNAP 555", true);
+        DnapStudy ds2 = new DnapStudy(101, 666, "DNAP 666", true);
+        works.getFirst().setXeniumStudy(ds1);
+        works.getLast().setAteraStudy(ds2);
         List<Integer> workIds = works.stream().map(Work::getId).toList();
         when(mockWorkRepo.findWorkIdsForLabwareId(lw.getId())).thenReturn(workIds);
         when(mockWorkRepo.findAllById(workIds)).thenReturn(works);
 
-        assertThat(service.loadWorkNumberXeniumStudyIds(lw)).containsExactly(
-                new WorkNumberXeniumStudyId("SGP1", 555),
-                new WorkNumberXeniumStudyId("SGP2", null)
+        assertThat(service.loadWorkNumberData(lw)).containsExactly(
+                new WorkNumberData("SGP1", 555, null),
+                new WorkNumberData("SGP2", null, 666)
         );
     }
 

@@ -11,17 +11,19 @@ import static uk.ac.sanger.sccp.utils.BasicUtils.nullToEmpty;
  * @author dr6
  */
 public class AnalyserScanData {
-    public static class WorkNumberXeniumStudyId {
+    public static class WorkNumberData {
         private String workNumber;
         private Integer xeniumStudyId;
+        private Integer ateraStudyId;
 
-        public WorkNumberXeniumStudyId(String workNumber, Integer xeniumStudyId) {
+        public WorkNumberData(String workNumber, Integer xeniumStudyId, Integer ateraStudyId) {
             this.workNumber = workNumber;
             this.xeniumStudyId = xeniumStudyId;
+            this.ateraStudyId = ateraStudyId;
         }
 
-        public WorkNumberXeniumStudyId() {
-            this(null, null);
+        public WorkNumberData() {
+            this(null, null, null);
         }
 
         public String getWorkNumber() {
@@ -40,26 +42,37 @@ public class AnalyserScanData {
             this.xeniumStudyId = xeniumStudyId;
         }
 
+        public Integer getAteraStudyId() {
+            return this.ateraStudyId;
+        }
+
+        public void setAteraStudyId(Integer ateraStudyId) {
+            this.ateraStudyId = ateraStudyId;
+        }
+
         @Override
         public boolean equals(Object o) {
             if (o == null || getClass() != o.getClass()) return false;
-            WorkNumberXeniumStudyId that = (WorkNumberXeniumStudyId) o;
+            WorkNumberData that = (WorkNumberData) o;
             return (Objects.equals(this.workNumber, that.workNumber)
-                    && Objects.equals(this.xeniumStudyId, that.xeniumStudyId));
+                    && Objects.equals(this.xeniumStudyId, that.xeniumStudyId)
+                    && Objects.equals(this.ateraStudyId, that.ateraStudyId)
+            );
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(workNumber, xeniumStudyId);
+            return Objects.hash(workNumber, xeniumStudyId, ateraStudyId);
         }
 
         @Override
         public String toString() {
-            return String.format("(workNumber=%s, xeniumStudyId=%s)", workNumber, xeniumStudyId);
+            return String.format("(workNumber=%s, xeniumStudyId=%s, ateraStudyId=%s)",
+                    workNumber, xeniumStudyId, ateraStudyId);
         }
     }
     private String barcode;
-    private List<WorkNumberXeniumStudyId> workNumberXeniumStudyIds = List.of();
+    private List<WorkNumberData> workNumberData = List.of();
     private List<String> probes = List.of();
     private boolean cellSegmentationRecorded;
 
@@ -72,13 +85,21 @@ public class AnalyserScanData {
         this.barcode = barcode;
     }
 
-    /** The work numbers and xenium study ids linked to the labware. */
-    public List<WorkNumberXeniumStudyId> getWorkNumberXeniumStudyIds() {
-        return this.workNumberXeniumStudyIds;
+    /**
+     * The work numbers and xenium study ids linked to the labware.
+     * @deprecated use {@link #getWorkNumberData}
+     **/
+    @Deprecated
+    public List<WorkNumberData> getWorkNumberXeniumStudyIds() {
+        return getWorkNumberData();
     }
 
-    public void setWorkNumberXeniumStudyIds(List<WorkNumberXeniumStudyId> workNumberXeniumStudyIds) {
-        this.workNumberXeniumStudyIds = nullToEmpty(workNumberXeniumStudyIds);
+    public List<WorkNumberData> getWorkNumberData() {
+        return this.workNumberData;
+    }
+
+    public void setWorkNumberData(List<WorkNumberData> workNumberData) {
+        this.workNumberData = nullToEmpty(workNumberData);
     }
 
     /** The names of probes recorded on the labware. */
@@ -103,7 +124,7 @@ public class AnalyserScanData {
     public String toString() {
         return describe(this)
                 .add("barcode", barcode)
-                .add("workNumberXeniumStudyIds", workNumberXeniumStudyIds)
+                .add("workNumberData", workNumberData)
                 .add("probes", probes)
                 .add("cellSegmentationRecorded", cellSegmentationRecorded)
                 .reprStringValues()
@@ -117,13 +138,13 @@ public class AnalyserScanData {
         AnalyserScanData that = (AnalyserScanData) o;
         return (this.cellSegmentationRecorded == that.cellSegmentationRecorded
                 && Objects.equals(this.barcode, that.barcode)
-                && Objects.equals(this.workNumberXeniumStudyIds, that.workNumberXeniumStudyIds)
+                && Objects.equals(this.workNumberData, that.workNumberData)
                 && Objects.equals(this.probes, that.probes)
         );
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(barcode, workNumberXeniumStudyIds, probes, cellSegmentationRecorded);
+        return Objects.hash(barcode, workNumberData, probes, cellSegmentationRecorded);
     }
 }

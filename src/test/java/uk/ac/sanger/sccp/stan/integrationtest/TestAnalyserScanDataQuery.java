@@ -16,10 +16,8 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static uk.ac.sanger.sccp.stan.integrationtest.IntegrationTestUtils.chainGet;
-import static uk.ac.sanger.sccp.utils.BasicUtils.simpleEntry;
 
 /**
  * @author dr6
@@ -59,10 +57,15 @@ public class TestAnalyserScanDataQuery {
         Map<String, ?> data = chainGet(response, "data", "analyserScanData");
         assertEquals(lw.getBarcode(), data.get("barcode"));
         assertEquals(List.of(probe.getName()), data.get("probes"));
-        List<Map<String, Object>> wxs = chainGet(data, "workNumberXeniumStudyIds");
-        assertThat(wxs).hasSize(1);
-        Map<String, Object> wx = wxs.getFirst();
-        assertThat(wx).containsOnly(simpleEntry("workNumber", work.getWorkNumber()), simpleEntry("xeniumStudyId", null));
+        String[] accessors = { "workNumberXeniumStudyIds", "workNumberData"};
+        for (String accessor : accessors) {
+            List<Map<String, Object>> wxs = chainGet(data, accessor);
+            assertThat(wxs).hasSize(1);
+            Map<String, Object> wx = wxs.getFirst();
+            assertEquals(work.getWorkNumber(), wx.get("workNumber"));
+            assertNull(wx.get("xeniumStudyId"));
+            assertNull(wx.get("ateraStudyId"));
+        }
         assertTrue((Boolean) data.get("cellSegmentationRecorded"));
     }
 }
